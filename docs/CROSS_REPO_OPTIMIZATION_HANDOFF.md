@@ -18145,3 +18145,217 @@ No numeric reduction above is an end-to-end Hadalis speedup; all numbers are
 local source-derived allocation/process-shape counts.
 
 No runtime/source implementation is authorized by this handoff.
+
+
+## 69. Round 55 — YtMusic large-queue membership and lyrics JSON collection (2026-09-30)
+
+Research continued from Round-54 docs commit
+`d353745ce115f948b6bdbcfba4d1ee4269bb2a17`.
+
+Immediately before this write, `dev` advanced one commit to
+`094559d3fa0271ee04e1aca3db0237a45c862b31`. The direct compare was audited:
+the delta only changes `automation/chat_bridge/desktop_driver.mjs` and
+`scripts/test-hadalis-desktop-marker-scan.mjs`. It does not touch YtMusic,
+LyricsService or this handoff.
+
+The handoff was searched before promotion for `YtMusicView.qml`,
+`addToPlaylist`, Save Queue / playlist creation, `LyricsService.qml`,
+`payload.lines` and synced-lyrics collection. Existing YtMusic findings in
+§51 cover changed-event classification, browser ordering and bounded
+recent/liked collections; they do not own the queue-to-playlist path below.
+
+### 69.1 Saving a YtMusic queue as a playlist can replace growing duplicate scans with one invocation-local membership Set while preserving every publication — CONFIRMED / P2 large-queue user action
+
+Paths:
+
+- `modules/sidebarLeft/YtMusicView.qml`;
+- `services/YtMusic.qml`.
+
+The Save Queue action currently:
+
+1. calls `YtMusic.createPlaylist(name)`, which publishes/persists the new
+   empty playlist;
+2. takes the new playlist index;
+3. walks `YtMusic.queue` in order;
+4. calls `addToPlaylist(newIdx, queue[i])` for every queue item.
+
+Each `addToPlaylist()` call currently:
+
+- validates index and truthy `item.videoId`;
+- shallow-copies the complete `root.playlists` array;
+- linearly searches the growing target `items` array with
+  `.find(i => i.videoId === item.videoId)`;
+- for a unique ID, shallow-copies the growing item prefix, appends the same
+  normalized item record, publishes `root.playlists`, then calls
+  `_persistPlaylists()`.
+
+For N valid distinct queue tracks, duplicate-membership comparisons alone are
+approximately:
+
+`0 + 1 + ... + (N - 1) = N(N - 1) / 2`.
+
+A strict-safe specialization for **this Save Queue operation** can keep one
+invocation-local Set of IDs already accepted into the newly created empty
+playlist.
+
+Required sequence:
+
+1. keep `createPlaylist()` unchanged, including its first
+   `playlistsChanged` publication and Config write;
+2. preserve the dynamic source-order loop over the live `root.queue`;
+3. keep the same truthy-`videoId` rejection;
+4. test the accepted ID in the local Set;
+5. for a duplicate, skip it exactly as the existing `.find()` branch does;
+6. for a unique item, perform the **same** root-playlists shallow copy, the
+   same target-items prefix copy, the same item-record construction/property
+   reads, the same `root.playlists = p` assignment and the same
+   `_persistPlaylists()` call before moving to the next queue item;
+7. only then add the accepted ID to the local Set.
+
+Repository parity evidence:
+
+- persisted queue/playlist state is Config/JSON data;
+- yt-dlp and InnerTube tracks are JSON-decoded/plain object records;
+- InnerTube's stream collector stores `JSON.parse()` objects directly;
+- repository search finds no assignment to `YtMusic.playlists` outside the
+  service;
+- the current `onPlaylistsChanged` consumer in YtMusicView only rebuilds its
+  ListModel and does not mutate the service playlist;
+- YtMusic itself has no Config-change handler that reloads playlists between
+  these synchronous iterations.
+
+Membership semantics also remain exact. Current comparison is strict equality;
+Set uses SameValueZero. For accepted `videoId` values the only primitive
+difference, `NaN`, cannot pass the existing truthy check, while object values
+retain identity comparison and +/-0 remain equal under both rules.
+
+Do **not** use the cached ID in place of the existing item-property reads when
+constructing the published playlist record if exact malformed-object read
+behavior is desired; the Set is only a membership accelerator.
+
+For N distinct valid tracks:
+
+- duplicate-membership comparisons:
+  **N(N - 1) / 2 -> N Set lookups**;
+- every current unique-item prefix copy remains;
+- every `playlistsChanged` publication remains;
+- every Config persistence call remains.
+
+For duplicate queue entries, the specialized path can additionally avoid the
+currently useless shallow `root.playlists` copy that is created before
+`.find()` discovers the duplicate.
+
+This finding deliberately does **not** claim that the complete Save Queue action
+becomes linear: the required per-track prefix copies/publications/persistence
+remain under strict parity.
+
+### 69.2 Batch-publishing an entire saved YtMusic queue is outside the current strict-lossless contract — CLOSED
+
+Same paths as §69.1.
+
+It is tempting to build the full new playlist once, assign `root.playlists`
+once and persist once. That would remove far more work.
+
+It would also change observable behavior:
+
+- current `playlistsChanged` fires after creation and after each accepted
+  unique track;
+- the library ListModel can observe every growing prefix;
+- `Config.setNestedValue("sidebar.ytmusic.playlists", ...)` is invoked after
+  each prefix;
+- prior published item arrays are fresh prefix snapshots.
+
+Therefore a one-publication/one-write bulk conversion is **CLOSED under the
+current strict contract**. §69.1 is intentionally narrower: optimize only
+duplicate membership while retaining the exact publication/write sequence.
+
+### 69.3 LyricsService can fuse JSON-line filter + map into one ordered collection before the same sort — CONFIRMED / P2 lyrics completion
+
+Path:
+
+- `services/LyricsService.qml`.
+
+After the helper response is parsed with `JSON.parse(raw)` and protocol/request
+IDs are validated, the successful path currently executes:
+
+`(payload.lines ?? []).filter(validTime).map(toLine).sort(byTime)`.
+
+For a normal array of L helper records this creates:
+
+1. one filtered-reference array;
+2. one mapped `{time,text}` array;
+3. two full ordered traversals before the existing sort.
+
+Valid records also read `line.t` twice: once in the filter and once in the
+map.
+
+Strict-safe direction for the normal protocol array:
+
+- keep the exact payload/request/status validation before this point;
+- allocate one result array;
+- traverse source order once;
+- read `line.t`;
+- if `typeof t !== "number"`, skip exactly as today;
+- otherwise append
+  `{ time: t, text: line.text ?? "" }`;
+- run the **same** `sort((a,b) => a.time - b.time)` on the resulting array;
+- keep empty-result failure and deferred success publication unchanged.
+
+Source proof:
+
+- the payload is produced by `JSON.parse(raw)`;
+- line records therefore have no JS getters/callbacks or QML reactive property
+  reads;
+- preserving source traversal and the same final Array.sort preserves duplicate
+  timestamps and comparator tie behavior.
+
+Malformed-container parity must not be accidentally broadened. Current code
+will throw when a truthy non-array `payload.lines` does not provide the
+expected Array `filter()` method. A strict implementation should retain the
+current chain as a compatibility/error path for non-arrays, and use the fused
+loop only when `Array.isArray(payload.lines ?? [])` is true. Nullish
+`payload.lines` continues to behave as an empty array.
+
+For a valid L-line array with V accepted records:
+
+- filtered intermediate arrays: **1 -> 0**;
+- pre-sort traversals: **2 -> 1**;
+- `line.t` reads for valid rows: **2V -> V**;
+- the mapped result array and final sort remain exactly one each.
+
+### 69.4 Nearby reactive partition hits are not promoted
+
+Two apparent static wins were checked and intentionally left out of the strict
+set:
+
+- `modules/dashboard/DashTodo.qml` exposes `indexedTasks`,
+  `unfinishedTasks` and `doneTasks` as separate readonly properties. A
+  fused internal partition would require removing/changing the public
+  `indexedTasks` publication or introducing shared aggregate signal
+  dependencies. That is not equivalent to §63.3's private TodoWidget
+  derivation.
+- `modules/settings/NiriConfig.qml` independently publishes actionable and
+  informational custom-config arrays. One shared partition could reduce a
+  second source scan, but it changes readonly-property dependency/change
+  topology. No strict promotion without signal parity.
+
+### 69.5 Round-55 conclusion
+
+New strict-lossless groups:
+
+1. Save Queue invocation-local duplicate membership while preserving every
+   YtMusic playlist publication/write (§69.1, **CONFIRMED / P2**);
+2. one-pass valid-line collection in LyricsService before the unchanged sort
+   (§69.3, **CONFIRMED / P2**).
+
+Explicitly closed/held:
+
+3. one-shot bulk YtMusic playlist publication/persistence changes observable
+   intermediate state (§69.2);
+4. DashTodo/NiriConfig shared reactive partitions lack property/signal parity
+   (§69.4).
+
+No numeric reduction above is an end-to-end Hadalis speedup; all values are
+local source-derived comparison/allocation counts.
+
+No runtime/source implementation is authorized by this handoff.

@@ -17851,3 +17851,297 @@ No numeric reduction above is an end-to-end Hadalis speedup; all values are
 local source-derived operation/allocation reductions.
 
 No runtime/source implementation is authorized by this handoff.
+
+
+## 68. Round 54 — automation event-pipeline allocation and calendar merge staging (2026-09-30)
+
+Research continued from Round 53 commit
+`a1a1f2b7be100e07db7f4c81466e13339dfedfdb`.
+
+Before this round, `dev` advanced to
+`fbbca3d24591cd41db0f2016cb852661d86c9f6d`. The four intervening commits
+were audited before reusing prior findings.
+
+The concurrent delta is primarily automation-manager/desktop-driver work and
+adds the new Settings page `modules/settings/AutomationConfig.qml`. It does
+not touch the Round-53 Calendar/LocalMusic paths. The only other runtime QML
+delta is a two-line `ConfigSpinBox.qml` change plus Settings page registry
+wiring.
+
+The handoff was searched before promotion for `AutomationConfig.qml`,
+`automation/manager/store.py`, `EVENT_LIMIT`, Recent Activity ownership,
+the event-merge surfaces below and the existing CalendarSync day-bucket work.
+No ownership exists for the automation event-allocation paths. Calendar range
+bucketing itself remains owned by §67.1 and is not counted again below.
+
+### 68.1 Automation event history can remove redundant bounded-list copies across Python state and QML presentation — CONFIRMED / P2 active automation Settings
+
+Paths:
+
+- `automation/manager/store.py`;
+- `modules/settings/AutomationConfig.qml`.
+
+Automation operational history is bounded by:
+
+`EVENT_LIMIT = 100`.
+
+Three independent stages currently allocate more arrays/lists than their final
+contract requires.
+
+#### State normalization
+
+`normalize_state()` currently executes:
+
+`events[-EVENT_LIMIT:]`
+
+and then a list comprehension filtering dictionaries.
+
+That creates:
+
+1. one up-to-100 element suffix slice;
+2. one final normalized event list.
+
+Strict-safe direction:
+
+- compute the same suffix start index;
+- scan the original JSON-loaded list from that index to the end;
+- append only dictionaries to one fresh result list;
+- publish that result exactly as today.
+
+The source is JSON-decoded Python data. There are no custom element getters or
+callbacks, and the final event order is unchanged.
+
+Per normalization:
+
+- temporary suffix list: **1 -> 0**;
+- final normalized list remains one fresh list.
+
+This matters on every Automation Settings status refresh because
+`read_snapshot()` normalizes state before returning it.
+
+#### Event append / cap
+
+`event()` currently assigns:
+
+`state["events"] = (state["events"] + [newEvent])[-EVENT_LIMIT:]`.
+
+That creates a one-element list, a concatenated growing list and the final
+bounded slice when the cap is reached.
+
+A strict-safe fresh-list implementation can:
+
+- allocate one new result list;
+- copy exactly the last `EVENT_LIMIT - 1` existing references when already at
+  cap, otherwise copy all existing references;
+- append the new plain event dictionary;
+- assign that one fresh list back to `state["events"]`.
+
+This preserves:
+
+- a fresh list assignment rather than changing list identity in place;
+- existing event-reference identity/order;
+- exact cap 100;
+- oldest-first retention and newest-at-tail ordering;
+- serialized JSON content.
+
+No caller observes intermediate Python list identity; state is lock-local and
+written only after the mutator completes.
+
+For a capped event append, consumer-visible result construction changes from
+multiple bounded-list allocations to **one fresh <=100 element result list**.
+
+#### QML Recent Activity model
+
+The new Settings page currently binds:
+
+`events.filter(predicate).slice().reverse()`.
+
+`filter()` already returns a fresh array, so the subsequent `slice()` is a
+pure duplicate clone before in-place `reverse()`.
+
+Strict-safe direction:
+
+`events.filter(predicate).reverse()`.
+
+Parity is exact:
+
+- predicate still executes in forward source order;
+- all 100 possible JSON event records are tested exactly as today;
+- the filtered array is fresh, so reversing it cannot mutate the status
+  snapshot;
+- duplicate events, selected-profile filtering and newest-first display order
+  are unchanged.
+
+Per model reevaluation:
+
+- matching-event arrays: **2 -> 1**.
+
+The page's 4-second status timer is already correctly gated by `root.visible`;
+do not describe this finding as hidden-page polling elimination.
+
+### 68.2 Calendar/event presentation can build final merge arrays directly instead of map + staging + concat — CONFIRMED / P1-P2 when event surfaces recompute
+
+Paths include:
+
+- `modules/sidebarRight/events/EventsWidget.qml`;
+- `modules/background/widgets/calendar/CalendarUpcomingWidget.qml`;
+- `modules/sidebarRight/CompactSidebarRightContent.qml`;
+- `modules/sidebarRight/calendar/CalendarDayDetail.qml`;
+- `modules/waffle/notificationCenter/CalendarWidget.qml`.
+
+These consumers repeatedly use the same structural pattern:
+
+1. obtain a fresh local Events query result;
+2. `map()` it to public clone objects;
+3. obtain/build an external-event collection;
+4. create a third merged array with `concat()`;
+5. sort/group that merged array.
+
+Waffle upcoming additionally creates, for each of three days:
+
+- a mapped local array;
+- a mapped external array;
+- a concat result array;
+- then appends the sorted result into the outer event list.
+
+Source proof:
+
+- local Events rows are either object literals created by `addEvent()` or
+  plain JSON records loaded from disk;
+- CalendarSync rows come from the ICS parser or JSON cache;
+- neither source contains getter-bearing QML objects.
+
+Strict-safe direction for each surface:
+
+- keep the same service-query call order;
+- create the final sortable/groupable array before cloning local rows;
+- iterate the local query result in source order and push the exact same
+  `Object.assign()` clone into that final array;
+- only after all local clones are built, perform the external query/work at the
+  same point it occurs today;
+- append external references or the exact same external clones in current order;
+- retain the existing sort/group code unchanged.
+
+This ordering requirement is deliberate. For example, CalendarDayDetail and
+Waffle selected-day paths currently finish every local clone before invoking
+`CalendarSync.getEventsForDate()`; the lossless version must keep that phase
+order rather than categorizing local rows early.
+
+Concrete consumer-owned array reductions:
+
+- EventsWidget / CalendarUpcomingWidget / Compact Upcoming:
+  local mapped array + external staging array + concat result
+  **3 -> 1 final merge array**;
+- CalendarDayDetail selected day:
+  local mapped array + concat result
+  **2 -> 1 merge array** before time grouping;
+- Waffle selected day:
+  local mapped array + concat result
+  **2 -> 1 sortable array**;
+- Waffle three-day upcoming:
+  per day, local mapped + external mapped + concat
+  **3 -> 1 day array**, i.e. **9 -> 3** consumer-owned staging arrays across
+  the three-day build.
+
+Service-return arrays themselves are not counted as removed by this finding.
+
+The clones themselves are still required wherever current UI row isolation
+depends on them; this finding only removes arrays that hold the same references
+temporarily.
+
+### 68.3 §67.1 CalendarSync day-bucket batching applies to additional callers, but is not a new factor — ALREADY OWNED / coverage expansion
+
+Two additional surfaces have the same independent-day-query shape as Compact
+Upcoming:
+
+- `EventsWidget.qml`: 30 calls to `CalendarSync.getEventsForDate()`;
+- `CalendarUpcomingWidget.qml`: 30 calls to the same function;
+- Waffle calendar upcoming additionally performs three per-day calls.
+
+The parameterized batch-day helper described by §67.1 can serve these callers
+while preserving each caller's exact day-major duplication semantics.
+
+Do **not** count this as another optimization factor. It is broader consumer
+coverage of the already-owned §67.1 primitive.
+
+Each caller still needs its own horizon/post-filter parity audit before runtime
+implementation.
+
+### 68.4 Automation service-state batching is not promoted under strict timing semantics — CLOSED
+
+Paths:
+
+- `modules/settings/AutomationConfig.qml`;
+- `automation/manager/control.py`.
+
+While Automation Settings is visible, `status()` runs every four seconds and
+`service_states()` executes three sequential:
+
+`systemctl --user show <unit> ...`
+
+subprocesses.
+
+A single multi-unit `systemctl show` call would reduce child-process count,
+but it changes the observation contract:
+
+- current units are sampled sequentially at three distinct instants;
+- per-unit start/timeout/OSError handling is independent;
+- multi-unit command partial-output/exit semantics differ when one unit is
+  missing or systemd state changes during the query.
+
+Under this project's exact observable-state/timing rule, that is not a
+CONFIRMED lossless optimization.
+
+Status:
+
+- **CLOSED as a blind 3 -> 1 subprocess rewrite**;
+- may be revisited only with an explicitly accepted snapshot-semantics change
+  or a transport that proves equivalent per-unit observation/failure behavior.
+
+Also, the QML 4-second polling Timer is already `running: root.visible`;
+there is no hidden-resident polling leak to claim.
+
+### 68.5 WidgetManagerPanel combined count caching remains unpromoted — NEEDS PARITY
+
+Path:
+
+- `modules/background/widgets/WidgetManagerPanel.qml`.
+
+The panel independently derives active/builtin-visible/custom-visible counts,
+so some DesktopWidgetLayout/Config lookups repeat across bindings.
+
+Combining them into one cached aggregate appears cheaper, but can change:
+
+- which readonly properties emit changed signals;
+- binding dependency capture on Config/DesktopWidgetLayout sources;
+- reevaluation timing for consumers that read only one count.
+
+No persistent/shared aggregate is promoted without signal/dependency parity.
+Invocation-local helper cleanup inside one binding remains possible, but no
+material standalone strict win was proven in this round.
+
+### 68.6 Round-54 conclusion
+
+New strict-lossless groups:
+
+1. automation bounded event-history allocation reduction across state
+   normalization, event append and Recent Activity presentation (§68.1,
+   **CONFIRMED / P2**);
+2. direct final-array construction for calendar/event merge consumers (§68.2,
+   **CONFIRMED / P1-P2 when active**).
+
+Not counted new:
+
+3. §67.1 batch-day CalendarSync helper applies to more event surfaces
+   (§68.3, **ALREADY OWNED / coverage expansion**).
+
+Closed/held:
+
+4. multi-unit systemctl batching changes sampling/failure semantics (§68.4);
+5. WidgetManagerPanel cross-binding aggregate caching lacks signal/dependency
+   parity (§68.5).
+
+No numeric reduction above is an end-to-end Hadalis speedup; all numbers are
+local source-derived allocation/process-shape counts.
+
+No runtime/source implementation is authorized by this handoff.

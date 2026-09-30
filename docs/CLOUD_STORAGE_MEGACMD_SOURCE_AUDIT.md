@@ -1,5 +1,7 @@
 # Cloud Storage / MEGAcmd — source-level audit and implementation blockers (research round 2)
 
+> **Round 3 follow-up (2026-09-30):** Before implementing the 76-command design, read the [protocol, cross-client and SDK decision study](CLOUD_STORAGE_MEGACMD_PROTOCOL_DECISIONS.md). It adds verified MEGA Desktop extension IPC (limited, private—not a supported management API), **remote-folder overlap** and SDK no-lock caveats, a confirmed silent-overwrite hazard in `mega-mv`, and definitive evidence that `mega-login email` cannot safely read a piped password in noninteractive mode. This is documentation research only.
+
 **Status: evidence-backed technical research only. No Cloud Storage QML/Rust/runtime changes and no MEGA account commands executed.**  
 Date: 2026-09-30, Vietnam time. Hadalis `dev` baseline: `0bd28b0009c1e0691a955922b2da2b3c8cbc1e19`. Official MEGAcmd source pinned at [`6505327a5`](https://github.com/meganz/MEGAcmd/tree/6505327a5a7a0e94f26f611f83b024aeeb63582c); official SDK source examined at [`74326bb0`](https://github.com/meganz/sdk/tree/74326bb0aa09b13f0a1ec8eab9611e4c0de98cc6). Read alongside [the full 76-command / ten-section design](CLOUD_STORAGE_MEGACMD_FULL_DESIGN.md), which inventories functionality and UX; this audit records **confirmed source-level constraints, corrections, decisions and concrete implementation gates**.
 

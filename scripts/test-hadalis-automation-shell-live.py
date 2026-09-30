@@ -106,8 +106,9 @@ def main() -> int:
     base = Path(tempfile.mkdtemp(prefix="shell-live-", dir=acceptance))
     fixture = base / "shell"
     fixture.mkdir()
+    qml_root = Path(os.environ.get("HADALIS_TEST_QML_ROOT", str(ROOT))).resolve()
     for name in ("GlobalStates.qml", "assets", "defaults", "modules", "qmldir", "scripts", "services", "translations"):
-        (fixture / name).symlink_to(ROOT / name, target_is_directory=(ROOT / name).is_dir())
+        (fixture / name).symlink_to(qml_root / name, target_is_directory=(qml_root / name).is_dir())
     (fixture / "shell.qml").write_text(QML)
     env = os.environ.copy()
     for field, folder in (("XDG_CONFIG_HOME", "config"), ("XDG_STATE_HOME", "state"),
@@ -168,7 +169,7 @@ def main() -> int:
     after = services()
     assert {u: v["MainPID"] for u,v in after.items()} == {u: v["MainPID"] for u,v in before.items()}, "backend restarted/died with Quickshell"
     _write(base / "result.json", {"sha":subprocess.check_output(["git","rev-parse","HEAD"],cwd=ROOT,text=True).strip(),
-        "frontend_removal":"pass", "private_shell_crash":"SIGKILL", "independent_backend":"pass", "services_before":before,"services_after":after})
+        "qml_source":str(qml_root), "frontend_removal":"pass", "private_shell_crash":"SIGKILL", "independent_backend":"pass", "services_before":before,"services_after":after})
     print(f"PASS: native frontend removal, private recovery receipt and Quickshell crash with all backend PIDs unchanged; {base / 'result.json'}")
     return 0
 

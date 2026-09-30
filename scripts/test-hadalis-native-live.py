@@ -63,6 +63,7 @@ user_message_id:id,dispatched:r.dispatched,dispatched_at_ms:r.dispatched_at_ms,c
                 assert len({i["session"]["conversation_id"] for i in items})==2
                 receipts=observations["receipts"]
                 overlap=all(r and r.get("dispatched_at_ms") and r.get("completed_at_ms") for r in receipts) and max(r["dispatched_at_ms"] for r in receipts)<min(r["completed_at_ms"] for r in receipts)
+                assert overlap, "profiles completed sequentially; actual parallel streams are required"
                 store._write(outer/"result.json",{"profiles":ids,"user_message_ids":uids,"parallel_pending":parallel,
                     "server_stream_overlap":bool(overlap),"restart_without_duplicate":restarted,"before_ui":before,
                     "after_ui":observations,"runtime":state,"source_sha":subprocess.check_output(["git","rev-parse","HEAD"],cwd=ROOT,text=True).strip()})

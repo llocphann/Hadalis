@@ -9,6 +9,7 @@ Maintainer-authorized implementation, 2026-09-30. Target contract and audit:
 - [x] Evidence-driven workflows, private diagnostics and privilege/deployment recovery.
 - [x] Frontend compatibility, regression checks and real Desktop acceptance.
 - [x] Settings follow-up: one Activity viewer, scrollable prompts, compact icon buttons, name/project row and masked per-profile GitHub token stored in system keyring.
+- [x] Shell process cleanup: stop only verified members of the stopped service; preserve independent Quickshell validation/workflow sessions and recheck ownership before escalation.
 - [ ] Future/deferred: migrate the Linux/process-sensitive Automation execution substrate to Rust only after parity and benchmark gates in [`AUTOMATION_RUST_MIGRATION.md`](AUTOMATION_RUST_MIGRATION.md).
 
 Keep uncertain existing submissions and consumed job results. Do not reset

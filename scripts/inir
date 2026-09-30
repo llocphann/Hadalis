@@ -2180,6 +2180,60 @@ kill_wrapper() {
     return 0
 }
 
+# Only the stopped shell service owns these processes. Independent Quickshell
+# sessions, automation validation fixtures and user jobs must survive cleanup.
+inir_cleanup_owns_pid() {
+    local pid="$1" unit_group="$2" hierarchy controllers process_group
+    [[ "$pid" =~ ^[1-9][0-9]*$ && "$unit_group" == */inir.service ]] || return 1
+    while IFS=: read -r hierarchy controllers process_group; do
+        [[ "$process_group" == "$unit_group" || "$process_group" == "$unit_group/"* ]] && return 0
+    done <<< "$(cat "/proc/$pid/cgroup" 2>/dev/null || true)"
+    return 1
+}
+
+cleanup_service_processes() {
+    local service_main_pid="" service_group="" key value pid
+    while IFS='=' read -r key value; do
+        case "$key" in
+            MainPID) service_main_pid="$value" ;;
+            ControlGroup) service_group="$value" ;;
+        esac
+    done <<< "$(systemctl --user show -p MainPID -p ControlGroup inir.service 2>/dev/null || true)"
+    # Missing ownership is not evidence that a process is orphaned. A live
+    # service may have healthy grandchildren, so do not sweep its process tree.
+    [[ "$service_group" == */inir.service ]] || return 0
+    if [[ "$service_main_pid" =~ ^[1-9][0-9]*$ ]] && kill -0 "$service_main_pid" 2>/dev/null; then
+        return 0
+    fi
+
+    while IFS= read -r pid; do
+        inir_cleanup_owns_pid "$pid" "$service_group" || continue
+        kill "$pid" 2>/dev/null || true
+    done < <(pgrep -x 'quickshell|qs' 2>/dev/null || true)
+
+    while IFS= read -r pid; do
+        inir_cleanup_owns_pid "$pid" "$service_group" || continue
+        kill "$pid" 2>/dev/null || true
+    done < <(pgrep -f 'keyboard_lock_state_daemon\.py|/inir-inputd([[:space:]]|$)|nmcli monitor|/usr/bin/swayidle -w' 2>/dev/null || true)
+
+    local thumb_pattern='scripts/thumbnails/(thumbgen-venv\.sh|thumbgen\.py|generate-thumbnails-magick\.sh)'
+    local thumb_pids=()
+    while IFS= read -r pid; do
+        inir_cleanup_owns_pid "$pid" "$service_group" || continue
+        thumb_pids+=("$pid")
+        kill "$pid" 2>/dev/null || true
+    done < <(pgrep -f "$thumb_pattern" 2>/dev/null || true)
+    if (( ${#thumb_pids[@]} > 0 )); then
+        sleep 0.2
+        for pid in "${thumb_pids[@]}"; do
+            kill -0 "$pid" 2>/dev/null || continue
+            # Recheck ownership before escalation, including a reused PID.
+            inir_cleanup_owns_pid "$pid" "$service_group" || continue
+            kill -KILL "$pid" 2>/dev/null || true
+        done
+    fi
+}
+
 # Clean up stale Quickshell runtime entries and orphaned qs processes.
 # Called by ExecStopPost in inir.service after crashes where KillMode=process
 # only terminated the main PID, leaving child processes and runtime artifacts.
@@ -2247,63 +2301,7 @@ cleanup_orphans() {
         done
     fi
 
-    # Phase 4: Kill orphaned quickshell/qs processes not owned by the live service.
-    # Only target qs processes, never user apps.
-    local alive_pids service_main_pid=""
-    service_main_pid="$(systemctl --user show -p MainPID inir.service 2>/dev/null | cut -d= -f2 || true)"
-    alive_pids="$(pgrep -x 'quickshell|qs' 2>/dev/null || true)"
-    if [[ -n "$alive_pids" ]]; then
-        while IFS= read -r pid; do
-            [[ -n "$pid" ]] || continue
-            # Skip the live service PID and its direct children
-            if [[ -n "$service_main_pid" && "$service_main_pid" != "0" ]]; then
-                [[ "$pid" == "$service_main_pid" ]] && continue
-                local ppid
-                ppid="$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ' || true)"
-                [[ "$ppid" == "$service_main_pid" ]] && continue
-            fi
-            kill "$pid" 2>/dev/null || true
-        done <<< "$alive_pids"
-    fi
-
-    # Phase 5: Kill orphaned iNiR helper processes still in inir.service cgroup.
-    # KillMode=process only kills the main QS pid; swayidle, Python/Rust input
-    # daemons and nmcli monitor can be reparented to the
-    # user manager while remaining in
-    # the service cgroup, accumulating across restarts.
-    local _pid _cgroup
-    while IFS= read -r _pid; do
-        [[ -n "$_pid" ]] || continue
-        # Skip processes owned by the live service main pid or its children
-        if [[ -n "$service_main_pid" && "$service_main_pid" != "0" ]]; then
-            local _ppid
-            _ppid="$(ps -o ppid= -p "$_pid" 2>/dev/null | tr -d ' ' || true)"
-            [[ "$_ppid" == "$service_main_pid" ]] && continue
-        fi
-        _cgroup="$(cat /proc/$_pid/cgroup 2>/dev/null || true)"
-        [[ "$_cgroup" == *"inir.service"* ]] || continue
-        kill "$_pid" 2>/dev/null || true
-    done < <(pgrep -f 'keyboard_lock_state_daemon\.py|/inir-inputd([[:space:]]|$)|nmcli monitor|/usr/bin/swayidle -w' 2>/dev/null || true)
-
-    # Phase 6: Thumbnail generation uses a multiprocessing pool. Older runs
-    # could outlive qs because KillMode=process intentionally preserves apps
-    # launched from the shell. Limit cleanup to iNiR's own thumbnail commands
-    # inside this service cgroup; never match arbitrary Python or user jobs.
-    local _thumb_pattern='scripts/thumbnails/(thumbgen-venv\.sh|thumbgen\.py|generate-thumbnails-magick\.sh)'
-    local _thumb_pids=()
-    while IFS= read -r _pid; do
-        [[ -n "$_pid" ]] || continue
-        _thumb_pids+=("$_pid")
-        kill "$_pid" 2>/dev/null || true
-    done < <(pgrep -f "$_thumb_pattern" 2>/dev/null || true)
-
-    if (( ${#_thumb_pids[@]} > 0 )); then
-        sleep 0.2
-        for _pid in "${_thumb_pids[@]}"; do
-            kill -0 "$_pid" 2>/dev/null || continue
-            kill -KILL "$_pid" 2>/dev/null || true
-        done
-    fi
+    cleanup_service_processes
 }
 
 kill_shell() {

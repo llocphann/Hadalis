@@ -117,3 +117,14 @@ masked input/private stdin, profile switching/removal and backend survival
 after the private shell is killed. Screenshot artifacts contain fixture data
 and remain in the private acceptance directory. Automatic five-hour wakeup
 was explicitly excluded by the maintainer; no Codex/Work quota timer is added.
+
+The full validator at `18fe50183414348c27a7d76bef94d21d4d5922c9`
+reported **241 PASS / 33 FAIL / 2 SKIP**. The additional failure compared with
+the previous 32 was a brightness fixture terminated after its PASS marker
+during the shell reload. The unchanged brightness test passed when isolated;
+the full failed log remains failed. Investigation found that the launcher's
+stop cleanup swept every Quickshell PID, including independent fixtures.
+Cleanup now requires the stopped service's exact systemd cgroup, skips healthy
+service trees, fails closed without ownership and rechecks thumbnail ownership
+before escalation. A behavioral regression covers independent workers/sessions,
+healthy descendants, missing ownership and PID reuse.

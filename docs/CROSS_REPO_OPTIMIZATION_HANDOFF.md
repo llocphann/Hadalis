@@ -23591,3 +23591,151 @@ rotate away from Events/Notepad/ThemeService. Prefer another record-scaled
 parser/model or request-completion path with sparse ownership. Weather network
 normalization, AI provider/model catalog secondary paths, or another file-backed
 service can be considered only after handoff duplicate search.
+
+## 100. Round 86 — Waffle WMenu width reduction audit (2026-09-30)
+
+### Snapshot and duplicate-ownership audit
+
+- Authoritative `dev` at round start and immediately before this write:
+  `476a0224ed34ecbcfec430031b513afb9d6da7b4`
+  (`docs(research): audit Events load fusion`).
+- No runtime/product commit intervened after Round 85.
+- The current handoff was searched for `WMenu.qml`,
+  `menuListView.implicitWidth`, `itemAtIndex()` and the exact
+  `Array.from(...).reduce(...)` width derivation. No existing owner was found.
+- Adjacent Waffle Task View collection work was also checked and not recounted:
+  §§41.9-41.16 already own its workspace/window grouping, count and indexing
+  directions.
+- SysTray model partitioning remains owned by the §37/§47/§50 tray work.
+
+### 100.1 WMenu can compute maximum item width without a count-sized temporary array — CONFIRMED / P2-P3 menu layout
+
+Paths:
+
+- `modules/waffle/looks/WMenu.qml`;
+- `modules/waffle/looks/WMenuItem.qml`.
+
+Current ListView width binding:
+
+```qml
+implicitWidth: Array.from({
+    length: count
+}, (_, i) => itemAtIndex(i)?.implicitWidth ?? 0)
+    .reduce((a, b) => a > b ? a : b)
+```
+
+For a menu containing N items, this:
+
+1. reads `count`;
+2. creates an N-element ordinary JS array;
+3. visits indexes 0..N-1 and stores each resolved item width;
+4. makes a second `reduce()` pass over those N numeric values solely to retain
+   the maximum.
+
+The intermediate array is not published or retained.
+
+Strict-safe positive-count direction:
+
+```qml
+implicitWidth: {
+    const n = count
+    if (n === 0) {
+        // Preserve the current empty-reduce behavior rather than silently
+        // inventing a zero-width contract.
+        return Array.from({ length: n },
+            (_, i) => itemAtIndex(i)?.implicitWidth ?? 0)
+            .reduce((a, b) => a > b ? a : b)
+    }
+
+    let maximum = itemAtIndex(0)?.implicitWidth ?? 0
+    for (let i = 1; i < n; ++i) {
+        const width = itemAtIndex(i)?.implicitWidth ?? 0
+        maximum = maximum > width ? maximum : width
+    }
+    return maximum
+}
+```
+
+The exact spelling is illustrative; the important constraints are the captured
+`n`, source-index order, same `?? 0` fallback and unchanged empty path.
+
+Strict-lossless proof:
+
+- **count dependency:** current expression reads the ListView `count` while
+  creating the `Array.from` length. The candidate captures that reactive
+  property exactly once as local `n`; it does not repeatedly reread count in
+  the loop condition.
+- **item read order:** for N > 0, `itemAtIndex(i)` and each item's
+  `implicitWidth` are still read exactly once in ascending index order.
+- **QML dependency capture:** the same item-width properties are touched in the
+  same order. The removed work after/between those reads is ordinary local-array
+  storage/traversal, not an additional QML property dependency.
+- **null/non-instantiated delegates:** the exact optional-chain and `?? 0`
+  behavior remains unchanged.
+- **NaN/infinity/signed-zero behavior:** the current reducer is a left fold of
+  `a > b ? a : b`. Seeding from index 0 and applying that exact expression
+  for indexes 1..N-1 yields the same JavaScript result, including unusual
+  numeric values.
+- **ties:** strict `>` remains unchanged, so equal widths retain the later
+  value exactly as the reducer does. Width value equality makes that
+  observationally identical, including signed-zero behavior under the same
+  comparator/selection expression.
+- **empty menu:** current no-initial-value `reduce()` on an empty array throws.
+  A simple `return 0` rewrite would therefore change behavior. The strict
+  direction explicitly keeps the current expression on N == 0 rather than
+  changing that edge contract.
+- **delegate sizing:** `WMenuItem.implicitWidth` formula and
+  `width: ListView.view?.width` remain untouched.
+- **icon-column alignment:** `_updateHasIcons()` remains a separate on-open
+  scan with unchanged early-exit semantics.
+- **layout/animation:** menu/background implicit width, margins, enter/exit
+  animations and popup positioning consume the same final width.
+
+For N > 0:
+
+- temporary width array: **1 N-element array -> 0**;
+- item-width reads: **N -> N**;
+- max comparisons: **N-1 -> N-1**;
+- array-element stores: **N -> 0**;
+- second traversal over stored widths: **N -> 0**.
+
+This is a local allocation/GC reduction. Menu item counts are usually small, so
+it is not claimed as a whole-shell speedup.
+
+Current checked-in Waffle use includes power menus in the session screen and
+Start page; the shared component can also be reused by future Waffle surfaces.
+
+Classification:
+**CONFIRMED / P2-P3 menu layout**.
+
+### 100.2 Nearby collection candidates checked but already owned
+
+The same sweep rechecked:
+
+- `OverviewNiriWidget.currentOutputInfo` calling
+  `Object.keys(outputs)` twice in its empty-output fallback:
+  already §59.8;
+- redundant sorting of filtered `NiriService.allWorkspaces`:
+  already §41.8;
+- Waffle Task View per-workspace grouping/count/search work:
+  already §§41.9-41.16;
+- SysTray shared partition/index directions:
+  already §§37.3, 47.7 and 50.7.
+
+They are not counted again.
+
+### 100.3 Round-86 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one**:
+
+- WMenu maximum-width direct fold without the count-sized temporary array
+  (§100.1, **CONFIRMED / P2-P3 menu layout**).
+
+No runtime/product/native/script code was modified and no deterministic local
+job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent commits, and
+rotate away from Waffle Task View/tray/Overview ownership. Prefer another
+frequently-reactive UI collection whose exact result is private to one binding
+or one request, or a parser completion path whose intermediate arrays have not
+already been claimed.

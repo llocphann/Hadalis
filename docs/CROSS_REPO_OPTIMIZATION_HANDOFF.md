@@ -20153,3 +20153,199 @@ to a distinct under-covered production path rather than repeatedly reopening
 these lifecycle gates. Prefer Audio/settings-only catalog process work or
 another file-backed/service interaction where a strict local operation
 reduction can be proven without changing state freshness.
+
+
+## 81. Round 67 — Audio catalog, Niri keybind backend and ResourceUsage process audit (2026-09-30)
+
+### Snapshot and ownership audit
+
+- Authoritative `dev` at round start and immediately before this write:
+  `274a15b8f3c0570901b50dd21006bf2cf9c52971` (Round 66).
+- No intervening commit exists after Round 66.
+- Existing ownership was searched before classification:
+  - §26.6 owns Audio Settings-only theme-sound startup enumeration;
+  - §49.11 owns the no-go boundary for blindly sharing Audio PipeWire list
+    partitions;
+  - §59.7 owns Audio PwObjectTracker array construction;
+  - §65.4 owns NiriKeybinds persistent conflict-index rejection;
+  - §3.2 already owns ResourceUsage visible-consumer lifecycle gating.
+- This round does not re-count any of those items.
+
+### 81.1 Audio Settings-only sound catalog remains live, but publication freshness prevents a strict promotion
+
+Paths:
+
+- `services/Audio.qml`;
+- `modules/common/widgets/SoundPicker.qml`;
+- classic and Waffle General Settings consumers.
+
+§26.6 remains source-current:
+
+- `Audio.Component.onCompleted` still performs the required microphone-state
+  refresh and then starts `themeSoundsProc`;
+- `themeSoundsProc` still runs the shell pipeline
+  `ls -> sed -> sort -u`;
+- repository search still finds `Audio.themeSounds` consumed only by the
+  shared `SoundPicker`, itself instantiated by the two Settings families.
+
+So demand-loading the catalog is still a strong startup-process architecture
+lead.
+
+It is not upgraded to CONFIRMED under the current strict standard because
+`Audio.themeSounds` is public singleton state. Moving enumeration from Audio
+construction to first SoundPicker residency changes when that array becomes
+populated and when `themeSoundsChanged` can fire, including for extension QML.
+
+Status: §26.6 remains **ADAPT / P1 startup process candidate**.
+
+The shell pipeline itself can also be replaced only with a compatibility oracle:
+filename suffix stripping, duplicate handling, lexical locale/order, missing
+theme directory, stderr suppression and audio-theme change races are part of
+the existing catalog contract.
+
+### 81.2 NiriKeybinds is already native-first; legacy Python parsing is fallback-only — ALREADY NATIVE / SUPERSEDED
+
+Paths:
+
+- `services/deferred/NiriKeybinds.qml`;
+- `scripts/native-dispatch`;
+- `scripts/niri-config.py`;
+- `scripts/parse_niri_keybinds.py`;
+- existing `inir-native` Niri backend.
+
+The enriched editor/cheatsheet load path is:
+
+`NiriKeybinds.reload()`
+→ `native-dispatch niri get-binds`
+→ `inir-native niri ...` when the Rust backend is available
+→ Python `niri-config.py` only on allowed native fallback.
+
+The separate `parse_niri_keybinds.py` process is invoked only when the enriched
+result cannot be converted to the legacy cheatsheet model or when the enriched
+path fails.
+
+Therefore a new “rewrite Niri keybind parsing in Rust” proposal would duplicate
+existing native ownership and optimize a fallback rather than the primary
+production path.
+
+Rust classification:
+
+- enriched get/set/remove path: **ALREADY NATIVE / SUPERSEDED**;
+- legacy standalone parser: **RUST NOT JUSTIFIED** unless measurements show the
+  fallback is common enough to matter.
+
+Do not count this as a migration opportunity.
+
+### 81.3 ResourceUsage demand initialization still fans out shell utility children — CONDITIONAL process candidate
+
+Path:
+
+- `services/ResourceUsage.qml`.
+
+ResourceUsage lifecycle itself is already strong: no work starts until a
+consumer requests it, and polling auto-stops without persistent leases.
+
+At first demand, however, `ensureRunning()` starts four initialization probes
+in parallel:
+
+- temperature sensor detection;
+- GPU usage-source detection;
+- hybrid-GPU detection;
+- CPU max-frequency detection.
+
+Several of those are Bash scripts that repeatedly spawn small utilities.
+
+Examples from exact current source:
+
+- temperature detection invokes `cat` per hwmon/label, `sed` for selected
+  `*_label -> *_input` paths and `cat | tr` per fallback thermal zone;
+- GPU-source detection invokes `cat` for DRM vendor IDs and may run
+  `timeout ... intel_gpu_top | grep`;
+- hybrid-GPU detection invokes `basename`, `grep` and `cat` for each DRM
+  card;
+- max-frequency detection is
+  `bash -> lscpu -> grep -> awk`.
+
+On NVIDIA, the recurring process-backed GPU poll also uses:
+
+`bash -> nvidia-smi -> head`
+
+at the expensive-GPU cadence, whose normal lower bound is six seconds while
+ResourceUsage is active.
+
+#### Same-language/process-lifecycle direction first
+
+A substantial fraction of initialization fan-out can theoretically stay within
+the existing Bash process:
+
+- Bash file reads instead of `cat`;
+- parameter expansion instead of `basename` / path-only `sed`;
+- Bash regex matching instead of the simple DRM-card `grep`.
+
+This can remove many children without creating a native daemon or changing QML
+ownership.
+
+It is **not yet CONFIRMED** because the current scripts deliberately inherit the
+environment. Replacing external commands with builtins changes observable
+behavior when:
+
+- PATH resolves a different implementation;
+- a utility is absent/unstartable;
+- utility stderr differs;
+- locale/case conversion differs;
+- command/pipeline exit status differs.
+
+The NVIDIA `head` removal has a similar issue: a direct `nvidia-smi` Process
+would change start/failure behavior if the binary disappears after capability
+detection, whereas the current shell can still start and complete its pipeline.
+
+Status: **CONDITIONAL / deterministic process-parity benchmark required**.
+
+#### Native Rust evaluation
+
+A native ResourceUsage probe inside an existing Hadalis Rust binary could:
+
+- enumerate hwmon/thermal/DRM sysfs in-process;
+- remove Bash plus coreutils fan-out;
+- normalize paths without subprocesses;
+- potentially expose one compact machine response for QML.
+
+But Rust is not the first fix while the dominant child-process count may be
+removed by simpler script cleanup, and the current probes are one-shot per
+successful service initialization rather than persistent daemons.
+
+Rust classification: **RUST BENCHMARK REQUIRED**.
+
+Required comparison before promoting Rust:
+
+- first-demand process count and wall CPU on representative AMD, Intel, NVIDIA
+  and hybrid systems;
+- exact selected CPU/GPU sensor paths;
+- NVIDIA/Intel source precedence;
+- inaccessible PMU behavior;
+- missing utilities/binaries;
+- helper stdout/stderr/exit behavior;
+- initialization retry after start failure;
+- dGPU runtime-suspend protection;
+- package/install/fallback behavior.
+
+No Rust performance percentage is claimed.
+
+### 81.4 Round-67 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **zero**.
+
+This round records:
+
+- Audio theme catalog: existing §26.6 remains ADAPT;
+- Niri keybind parsing: primary path is already native-first;
+- ResourceUsage process fan-out: real but conditional, with
+  **RUST BENCHMARK REQUIRED** rather than an automatic rewrite.
+
+No runtime/product/native/script file was modified and no local deterministic
+job was submitted.
+
+Next audit should re-fetch current `dev`, reconcile concurrent changes, then
+rotate to another under-covered production boundary. Prefer wallpaper/image
+analysis or file-backed media artwork where process/cache behavior is user
+interaction hot, while checking §§25/28/59 ownership first.

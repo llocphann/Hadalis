@@ -27,4 +27,6 @@ SettingsChromeEditFrame 1.0 SettingsChromeEditFrame.qml
 SettingsNativeDialogGuard 1.0 SettingsNativeDialogGuard.qml
 FcitxInputSettings 1.0 FcitxInputSettings.qml
 AutomationConfig 1.0 AutomationConfig.qml
+AutomationButton 1.0 AutomationButton.qml
+AutomationEditor 1.0 AutomationEditor.qml
 MonitorVisibilityConfig 1.0 MonitorVisibilityConfig.qml

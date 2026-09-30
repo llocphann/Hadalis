@@ -91,3 +91,29 @@ main Python process at about **13 MiB PSS / 0.22% of one CPU core**. The whole
 scheduler service, including short-lived Node/CDP clients, used **99.5 MiB /
 15.33% of one core** in that sample. This identifies transport overhead; it is
 not a Python-versus-Bash benchmark or an idle/whole-system performance claim.
+
+## Settings and credentials follow-up, 2026-10-01
+
+Activity uses one bounded viewer, switching between profile events and system
+diagnostics. Each prompt has its own scrollable editor; Save, Undo and Default
+stay together. Icon/text groups are centered in single-row action controls.
+Name and next-chat project share a row. The description editor is removed;
+existing description fields and profile/state migration remain compatible.
+
+GitHub tokens are optional, per-profile Secret Service keyring entries. Settings
+uses password echo mode, clears unsaved input on profile changes and sends a
+save only through the control process's stdin. No token is stored in JSON,
+logs, argv, Git URLs or prompts. Status exposes only saved flags. Git's helper
+pipe releases the credential only for the exact GitHub repository and resets
+inherited credential-store helpers; token-bearing operations disable Git
+tracing. Duplicate profiles do not copy credentials. No plaintext fallback is
+provided when the keyring is unavailable. This authenticates local Git only;
+ChatGPT's connector has separate authorization.
+
+Focused tests cover repository-scoped Git credential exchange and a real
+keyring save/lookup/clear with a disposable canary. Native Settings acceptance
+covers complete prompt scrolling, centered icon rows, one Activity view,
+masked input/private stdin, profile switching/removal and backend survival
+after the private shell is killed. Screenshot artifacts contain fixture data
+and remain in the private acceptance directory. Automatic five-hour wakeup
+was explicitly excluded by the maintainer; no Codex/Work quota timer is added.

@@ -27,9 +27,19 @@ ContentPage {
     property string pendingCleanupField: ""
     property string diagnosticText: ""
     property string logMessage: ""
+    property bool showDiagnostics: false
+    property string secretInput: ""
+    readonly property bool tokenSaved: root.snapshot?.credentials?.github?.[root.selectedProfileId] ?? false
+    readonly property var activityEvents: (root.snapshot?.runtime?.events ?? []).filter(e => !root.selectedProfileId || e.profile_id === root.selectedProfileId || e.profile_id === null).slice().reverse()
+    readonly property string activityText: root.activityEvents.map(e => {
+        const name = root.profiles.find(p => p.id === e.profile_id)?.name ?? Translation.tr("System")
+        const time = Qt.formatDateTime(new Date(e.at_unix * 1000), "MM-dd HH:mm:ss")
+        return time + "  " + name + " · " + String(e.kind).replace(/_/g, " ") + (e.detail ? "\n" + e.detail : "")
+    }).join("\n\n")
+    readonly property string visibleLogText: root.showDiagnostics ? root.diagnosticText : root.activityText
     readonly property bool logsBusy: logsProcess.running
     property int nowUnix: Math.floor(Date.now() / 1000)
-    readonly property bool busy: actionProcess.running
+    readonly property bool busy: actionProcess.running || secretProcess.running
     readonly property var profiles: root.snapshot?.config?.profiles ?? []
     readonly property var selectedProfile: root.profiles.find(p => p.id === root.selectedProfileId) ?? null
     readonly property var selectedState: root.snapshot?.runtime?.profiles?.[root.selectedProfileId] ?? null
@@ -115,20 +125,29 @@ ContentPage {
     }
 
     function refreshLogs(): void {
-        if (!root.visible || root.activeSection !== "history" || root.logsBusy) return
+        if (!root.visible || root.activeSection !== "history" || !root.showDiagnostics || root.logsBusy) return
         logsProcess.running = true
     }
 
     function copyLogs(): void {
-        if (!root.diagnosticText.length) return
-        Quickshell.clipboardText = root.diagnosticText
-        root.logMessage = Translation.tr("Diagnostic log copied.")
+        if (!root.visibleLogText.length) return
+        Quickshell.clipboardText = root.visibleLogText
+        root.logMessage = Translation.tr("Copied")
+    }
+
+    function saveToken(): void {
+        if (root.busy || !githubToken.text.length || !root.selectedProfileId) return
+        root.errorText = ""
+        root.secretInput = githubToken.text
+        githubToken.clear()
+        secretProcess.command = ["python3", root.bridge, "github-token-save", root.selectedProfileId]
+        secretProcess.stdinEnabled = true
+        secretProcess.running = true
     }
 
     function loadDraft(): void {
         if (!root.selectedProfile) return
         nameEditor.text = root.selectedProfile.name
-        descriptionEditor.text = root.selectedProfile.description
         projectEditor.text = root.selectedProfile.project_name
         promptEditor.text = root.selectedProfile.prompt
         continuationEditor.text = root.selectedProfile.continuation_prompt
@@ -176,6 +195,7 @@ ContentPage {
     }
 
     onSelectedProfileIdChanged: {
+        githubToken.clear()
         root.cancelConfirmation()
         Qt.callLater(root.loadDraft)
     }
@@ -204,6 +224,27 @@ ContentPage {
         running: root.visible && root.activeSection === "history"
         repeat: true
         onTriggered: root.refreshLogs()
+    }
+
+    Process {
+        id: secretProcess
+        stdinEnabled: true
+        stdout: StdioCollector { id: secretOutput }
+        stderr: StdioCollector { id: secretError }
+        onRunningChanged: if (!running) root.secretInput = ""
+        onStarted: {
+            secretProcess.write(root.secretInput)
+            root.secretInput = ""
+            secretProcess.stdinEnabled = false
+        }
+        onExited: exitCode => {
+            root.secretInput = ""
+            try {
+                const response = JSON.parse(secretOutput.text)
+                if (exitCode !== 0 || !response.ok) root.errorText = response.error ?? Translation.tr("Keyring unavailable")
+            } catch (error) { root.errorText = Translation.tr("Keyring unavailable") }
+            Qt.callLater(root.refresh)
+        }
     }
 
     Process {
@@ -272,8 +313,8 @@ ContentPage {
     SettingsTaskNavigator {
         icon: "smart_toy"
         title: Translation.tr("Automation")
-        description: Translation.tr("Control Hadalis ChatGPT research sessions and their local services.")
-        summary: Translation.tr("Service health · profiles · maintenance · activity")
+        description: ""
+        summary: ""
         currentValue: root.activeSection
         onSelected: value => root.activeSection = value
         options: [
@@ -342,13 +383,12 @@ ContentPage {
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         color: Appearance.colors.colSubtext
                     }
-                    Flow {
+                    RowLayout {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: childrenRect.height
                         spacing: 4
-                        DialogButton { buttonText: Translation.tr("Start"); enabled: !root.busy && serviceRow.service.state !== "active"; onClicked: root.runAction(["service", "start", serviceRow.modelData]) }
-                        DialogButton { buttonText: Translation.tr("Stop"); enabled: !root.busy && serviceRow.service.state === "active"; onClicked: root.runAction(["service", "stop", serviceRow.modelData]) }
-                        DialogButton { buttonText: Translation.tr("Restart"); enabled: !root.busy && serviceRow.service.state !== "unavailable"; onClicked: root.runAction(["service", "restart", serviceRow.modelData]) }
+                        AutomationButton { iconName: "play_arrow"; buttonText: Translation.tr("Start"); enabled: !root.busy && serviceRow.service.state !== "active"; onClicked: root.runAction(["service", "start", serviceRow.modelData]) }
+                        AutomationButton { iconName: "stop"; buttonText: Translation.tr("Stop"); enabled: !root.busy && serviceRow.service.state === "active"; onClicked: root.runAction(["service", "stop", serviceRow.modelData]) }
+                        AutomationButton { iconName: "restart_alt"; buttonText: Translation.tr("Restart"); enabled: !root.busy && serviceRow.service.state !== "unavailable"; onClicked: root.runAction(["service", "restart", serviceRow.modelData]) }
                     }
                 }
             }
@@ -362,16 +402,8 @@ ContentPage {
         icon: "hub"
         title: Translation.tr("Independent workflows")
         SettingsGroup {
-            StyledText {
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                text: Translation.tr("Each profile keeps its own managed chat. You can use other chats and projects while workflows continue.")
-                color: Appearance.colors.colOnSurface
-            }
-            SettingsNote {
-                text: Translation.tr("Profiles progress independently. Waiting for a response or local job does not block another profile. Backend recovery continues when the shell is closed.")
-            }
-            SettingsNote { text: Translation.tr("Local workers: %1 running, limit %2.").arg(root.snapshot?.worker_pool?.running?.length ?? 0).arg(root.snapshot?.worker_pool?.limit ?? 2) }
+            SettingsNote { icon: "forum"; text: Translation.tr("Independent chats · background recovery") }
+            SettingsNote { icon: "memory"; text: Translation.tr("Workers: %1 / %2").arg(root.snapshot?.worker_pool?.running?.length ?? 0).arg(root.snapshot?.worker_pool?.limit ?? 2) }
         }
     }
 
@@ -398,8 +430,8 @@ ContentPage {
                         StyledText { Layout.fillWidth: true; text: profileRow.modelData.name; elide: Text.ElideRight; color: Appearance.colors.colOnSurface }
                         StyledText { Layout.fillWidth: true; text: root.statusLabel(profileRow.run.parked_pending ? profileRow.run.status : (profileRow.modelData.enabled ? profileRow.run.status : "disabled")); font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colSubtext }
                     }
-                    DialogButton { buttonText: Translation.tr("Edit"); onClicked: root.selectedProfileId = profileRow.modelData.id }
-                    DialogButton { buttonText: Translation.tr("Remove"); enabled: !root.busy; onClicked: root.confirmRemoval(profileRow.modelData.id) }
+                    AutomationButton { iconName: "edit"; buttonText: Translation.tr("Edit"); enabled: !root.busy; onClicked: root.selectedProfileId = profileRow.modelData.id }
+                    AutomationButton { iconName: "delete"; buttonText: Translation.tr("Remove"); enabled: !root.busy; onClicked: root.confirmRemoval(profileRow.modelData.id) }
                 }
             }
             SettingsNote {
@@ -411,20 +443,18 @@ ContentPage {
                     ? Translation.tr("Remove this profile and parked recovery state? ChatGPT history stays.")
                     : Translation.tr("Remove this profile? ChatGPT history stays.")
             }
-            Flow {
+            RowLayout {
                 visible: !!root.pendingRemoveId && root.pendingRemoveId === root.selectedProfileId
                 Layout.fillWidth: true
-                Layout.preferredHeight: childrenRect.height
                 spacing: 6
-                DialogButton { buttonText: Translation.tr("Cancel"); onClicked: root.cancelConfirmation() }
-                DialogButton { buttonText: Translation.tr("Confirm remove"); enabled: !root.busy; onClicked: root.applyRemoval() }
+                AutomationButton { iconName: "close"; buttonText: Translation.tr("Cancel"); onClicked: root.cancelConfirmation() }
+                AutomationButton { iconName: "delete_forever"; buttonText: Translation.tr("Confirm"); enabled: !root.busy; onClicked: root.applyRemoval() }
             }
-            Flow {
+            RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: childrenRect.height
                 spacing: 6
-                DialogButton { buttonText: Translation.tr("New profile"); enabled: !root.busy; onClicked: root.runAction(["profile-create", "New automation"]) }
-                DialogButton { buttonText: Translation.tr("Duplicate selected"); enabled: !root.busy && !!root.selectedProfile; onClicked: root.runAction(["profile-duplicate", root.selectedProfileId, root.selectedProfile.name + " copy"]) }
+                AutomationButton { iconName: "add"; buttonText: Translation.tr("New"); hint: Translation.tr("New profile"); enabled: !root.busy; onClicked: root.runAction(["profile-create", "New automation"]) }
+                AutomationButton { iconName: "content_copy"; buttonText: Translation.tr("Duplicate"); enabled: !root.busy && !!root.selectedProfile; onClicked: root.runAction(["profile-duplicate", root.selectedProfileId, root.selectedProfile.name + " copy"]) }
             }
         }
     }
@@ -444,39 +474,54 @@ ContentPage {
                 autoToggle: false
                 onToggledByUser: checked => root.setProfile("enabled", checked)
             }
-            SettingsSwitch { text: Translation.tr("Require GitHub repository access"); checked: root.selectedProfile?.requires_github ?? true; autoToggle: false; onToggledByUser: checked => root.setProfile("requires_github", checked) }
-            SettingsSwitch { text: Translation.tr("Stop when the objective is complete"); checked: root.selectedProfile?.stop_on_done ?? true; autoToggle: false; onToggledByUser: checked => root.setProfile("stop_on_done", checked) }
-            MaterialTextField { id: nameEditor; Layout.fillWidth: true; placeholderText: Translation.tr("Profile name") }
-            MaterialTextField { id: descriptionEditor; Layout.fillWidth: true; placeholderText: Translation.tr("Description (optional)") }
-            SettingsNote { text: Translation.tr("Project changes apply on the next new chat.") }
-            MaterialTextField { id: projectEditor; Layout.fillWidth: true; placeholderText: Translation.tr("ChatGPT project") }
-            Flow {
+            SettingsSwitch { buttonIcon: "code"; text: Translation.tr("Require GitHub"); checked: root.selectedProfile?.requires_github ?? true; autoToggle: false; onToggledByUser: checked => root.setProfile("requires_github", checked) }
+            SettingsSwitch { buttonIcon: "task_alt"; text: Translation.tr("Stop on completion"); checked: root.selectedProfile?.stop_on_done ?? true; autoToggle: false; onToggledByUser: checked => root.setProfile("stop_on_done", checked) }
+            RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: childrenRect.height
-                spacing: 6
-                DialogButton { buttonText: Translation.tr("Save name"); enabled: !root.busy; onClicked: root.setProfile("name", nameEditor.text) }
-                DialogButton { buttonText: Translation.tr("Save description"); enabled: !root.busy; onClicked: root.setProfile("description", descriptionEditor.text) }
-                DialogButton { buttonText: Translation.tr("Save project"); enabled: !root.busy; onClicked: root.setProfile("project_name", projectEditor.text) }
+                spacing: 8
+                MaterialTextField { id: nameEditor; objectName: "automationProfileName"; Layout.fillWidth: true; Layout.preferredWidth: 1; placeholderText: Translation.tr("Profile name") }
+                AutomationButton { iconName: "save"; buttonText: Translation.tr("Save"); hint: Translation.tr("Save name"); enabled: !root.busy; onClicked: root.setProfile("name", nameEditor.text) }
+                MaterialTextField { id: projectEditor; objectName: "automationProjectName"; Layout.fillWidth: true; Layout.preferredWidth: 1; placeholderText: Translation.tr("ChatGPT project") }
+                AutomationButton { iconName: "save"; buttonText: Translation.tr("Save"); hint: Translation.tr("Save project · applies to the next chat"); enabled: !root.busy; onClicked: root.setProfile("project_name", projectEditor.text) }
             }
-            Flow {
+            RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: childrenRect.height
+                spacing: 8
+                MaterialTextField {
+                    id: githubToken
+                    objectName: "automationGithubToken"
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("GitHub token")
+                    echoMode: TextInput.Password
+                    passwordCharacter: "●"
+                    maximumLength: 512
+                    inputMethodHints: Qt.ImhHiddenText | Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
+                    enableSettingsSearch: false
+                    enabled: !root.busy
+                }
+                AutomationButton { iconName: "save"; buttonText: Translation.tr("Save"); hint: Translation.tr("Save token to keyring"); enabled: !root.busy && githubToken.text.length > 0; onClicked: root.saveToken() }
+                AutomationButton { iconName: "key_off"; buttonText: Translation.tr("Clear"); hint: Translation.tr("Remove saved token"); enabled: !root.busy && root.tokenSaved; onClicked: root.runAction(["github-token-clear", root.selectedProfileId]) }
+            }
+            SettingsNote {
+                icon: root.tokenSaved ? "lock" : "key"
+                text: root.tokenSaved ? Translation.tr("Token saved · local Git only") : Translation.tr("Optional · stored in system keyring")
+            }
+            RowLayout {
+                objectName: "automationRunActions"
+                Layout.fillWidth: true
                 spacing: 6
-                DialogButton { buttonText: Translation.tr("Start"); enabled: !root.busy && (root.selectedProfile?.enabled ?? false); onClicked: root.runAction(["profile-action", "start", root.selectedProfileId]) }
-                DialogButton { buttonText: Translation.tr("Pause"); enabled: !root.busy && root.selectedState?.desired === "run"; onClicked: root.runAction(["profile-action", "pause", root.selectedProfileId]) }
-                DialogButton { buttonText: Translation.tr("Resume"); enabled: !root.busy && root.selectedState?.desired === "paused"; onClicked: root.runAction(["profile-action", "resume", root.selectedProfileId]) }
-                DialogButton { buttonText: Translation.tr("Stop"); enabled: !root.busy; onClicked: root.runAction(["profile-action", "stop", root.selectedProfileId]) }
-                DialogButton { buttonText: Translation.tr("Restart"); enabled: !root.busy && (root.selectedProfile?.enabled ?? false); onClicked: root.runAction(["profile-action", "restart", root.selectedProfileId]) }
-                DialogButton { buttonText: Translation.tr("Cancel local job"); visible: !!root.selectedState?.job_id; enabled: !root.busy; onClicked: root.runAction(["job-cancel", root.selectedProfileId]) }
-                DialogButton {
+                AutomationButton { iconName: "play_arrow"; buttonText: Translation.tr("Start"); enabled: !root.busy && (root.selectedProfile?.enabled ?? false); onClicked: root.runAction(["profile-action", "start", root.selectedProfileId]) }
+                AutomationButton { iconName: "pause"; buttonText: Translation.tr("Pause"); enabled: !root.busy && root.selectedState?.desired === "run"; onClicked: root.runAction(["profile-action", "pause", root.selectedProfileId]) }
+                AutomationButton { iconName: "play_pause"; buttonText: Translation.tr("Resume"); enabled: !root.busy && root.selectedState?.desired === "paused"; onClicked: root.runAction(["profile-action", "resume", root.selectedProfileId]) }
+                AutomationButton { iconName: "stop"; buttonText: Translation.tr("Stop"); enabled: !root.busy; onClicked: root.runAction(["profile-action", "stop", root.selectedProfileId]) }
+                AutomationButton { iconName: "restart_alt"; buttonText: Translation.tr("Restart"); enabled: !root.busy && (root.selectedProfile?.enabled ?? false); onClicked: root.runAction(["profile-action", "restart", root.selectedProfileId]) }
+                AutomationButton { iconName: "cancel"; buttonText: Translation.tr("Cancel"); hint: Translation.tr("Cancel local job"); visible: !!root.selectedState?.job_id; enabled: !root.busy; onClicked: root.runAction(["job-cancel", root.selectedProfileId]) }
+                AutomationButton {
+                    iconName: "delete"
                     buttonText: Translation.tr("Remove")
                     enabled: !root.busy
                     onClicked: root.confirmRemoval()
                 }
-            }
-            SettingsNote {
-                visible: !!root.selectedState?.pending
-                text: Translation.tr("Stop waits for the current response. Remove stops tracking this profile and keeps ChatGPT history.")
             }
             SettingsNote {
                 visible: !!root.selectedState?.status_detail
@@ -520,23 +565,30 @@ ContentPage {
         icon: "edit_note"
         title: Translation.tr("Prompts")
         SettingsGroup {
-            StyledText { text: Translation.tr("Bootstrap prompt"); color: Appearance.colors.colOnSurface }
-            MaterialTextArea { id: promptEditor; Layout.fillWidth: true; Layout.preferredHeight: 160; placeholderText: Translation.tr("Initial prompt") }
-            Flow {
-                Layout.fillWidth: true; Layout.preferredHeight: childrenRect.height; spacing: 6
-                DialogButton { buttonText: Translation.tr("Save prompt"); enabled: !root.busy; onClicked: root.setProfile("prompt", promptEditor.text) }
-                DialogButton { buttonText: Translation.tr("Reset to saved"); onClicked: root.loadDraft() }
-                DialogButton { buttonText: Translation.tr("Reset default"); enabled: !root.busy; onClicked: root.runAction(["profile-reset-prompt", root.selectedProfileId, "prompt"]) }
+            StyledText { text: Translation.tr("Initial"); color: Appearance.colors.colOnSurface }
+            AutomationEditor { id: promptEditor; objectName: "automationInitialPrompt" }
+            RowLayout {
+                Layout.fillWidth: true; spacing: 6
+                AutomationButton { iconName: "save"; buttonText: Translation.tr("Save"); enabled: !root.busy; onClicked: root.setProfile("prompt", promptEditor.text) }
+                AutomationButton { iconName: "undo"; buttonText: Translation.tr("Undo"); hint: Translation.tr("Restore saved prompt"); onClicked: promptEditor.text = root.selectedProfile.prompt }
+                AutomationButton { iconName: "restore"; buttonText: Translation.tr("Default"); enabled: !root.busy; onClicked: root.runAction(["profile-reset-prompt", root.selectedProfileId, "prompt"]) }
             }
-            StyledText { text: Translation.tr("Continuation prompt"); color: Appearance.colors.colOnSurface }
-            MaterialTextArea { id: continuationEditor; Layout.fillWidth: true; Layout.preferredHeight: 110 }
-            DialogButton { buttonText: Translation.tr("Save continuation"); enabled: !root.busy; onClicked: root.setProfile("continuation_prompt", continuationEditor.text) }
-            DialogButton { buttonText: Translation.tr("Reset continuation"); enabled: !root.busy; onClicked: root.runAction(["profile-reset-prompt", root.selectedProfileId, "continuation_prompt"]) }
-            StyledText { text: Translation.tr("Rotation prompt"); color: Appearance.colors.colOnSurface }
-            MaterialTextArea { id: rotationEditor; Layout.fillWidth: true; Layout.preferredHeight: 110 }
-            DialogButton { buttonText: Translation.tr("Save rotation"); enabled: !root.busy; onClicked: root.setProfile("rotation_prompt", rotationEditor.text) }
-            DialogButton { buttonText: Translation.tr("Reset rotation"); enabled: !root.busy; onClicked: root.runAction(["profile-reset-prompt", root.selectedProfileId, "rotation_prompt"]) }
-            SettingsNote { text: Translation.tr("Set a multi-step objective. Workflows preserve checkpoints and local evidence across research, coding, testing and recovery. Repository profiles also require GitHub and current dev.") }
+            StyledText { text: Translation.tr("Continuation"); color: Appearance.colors.colOnSurface }
+            AutomationEditor { id: continuationEditor; objectName: "automationContinuationPrompt"; implicitHeight: 160 }
+            RowLayout {
+                Layout.fillWidth: true; spacing: 6
+                AutomationButton { iconName: "save"; buttonText: Translation.tr("Save"); enabled: !root.busy; onClicked: root.setProfile("continuation_prompt", continuationEditor.text) }
+                AutomationButton { iconName: "undo"; buttonText: Translation.tr("Undo"); hint: Translation.tr("Restore saved prompt"); onClicked: continuationEditor.text = root.selectedProfile.continuation_prompt }
+                AutomationButton { iconName: "restore"; buttonText: Translation.tr("Default"); enabled: !root.busy; onClicked: root.runAction(["profile-reset-prompt", root.selectedProfileId, "continuation_prompt"]) }
+            }
+            StyledText { text: Translation.tr("Rotation"); color: Appearance.colors.colOnSurface }
+            AutomationEditor { id: rotationEditor; objectName: "automationRotationPrompt"; implicitHeight: 160 }
+            RowLayout {
+                Layout.fillWidth: true; spacing: 6
+                AutomationButton { iconName: "save"; buttonText: Translation.tr("Save"); enabled: !root.busy; onClicked: root.setProfile("rotation_prompt", rotationEditor.text) }
+                AutomationButton { iconName: "undo"; buttonText: Translation.tr("Undo"); hint: Translation.tr("Restore saved prompt"); onClicked: rotationEditor.text = root.selectedProfile.rotation_prompt }
+                AutomationButton { iconName: "restore"; buttonText: Translation.tr("Default"); enabled: !root.busy; onClicked: root.runAction(["profile-reset-prompt", root.selectedProfileId, "rotation_prompt"]) }
+            }
         }
     }
 
@@ -545,25 +597,25 @@ ContentPage {
         visible: root.activeSection === "profiles" && !!root.selectedProfile
         expanded: false
         icon: "health_and_safety"
-        title: Translation.tr("Advanced recovery and cleanup")
+        title: Translation.tr("Recovery & cleanup")
         SettingsGroup {
             ConfigSpinBox { text: Translation.tr("Retry delay (seconds)"); from: 1; to: 3600; value: root.selectedProfile?.retry_delay_seconds ?? 30; onValueModified: root.setProfile("retry_delay_seconds", value) }
-            SettingsNote { text: Translation.tr("Observation retries automatically with bounded backoff. Uncertain prompts and actions are retained for reconciliation and never resent.") }
-            SettingsNote { text: Translation.tr("Administrator actions require an allowed service and a reason. Authenticate through the system agent or sudo cache. Automation never stores a password.") }
-            SettingsSwitch { text: Translation.tr("Archive completed chats (pending desktop support)"); checked: root.selectedProfile?.archive_completed ?? true; autoToggle: false; onToggledByUser: checked => root.setProfile("archive_completed", checked) }
-            SettingsSwitch { text: Translation.tr("Delete completed chats (pending desktop support)"); checked: root.selectedProfile?.delete_completed ?? false; autoToggle: false; enabled: !(root.selectedProfile?.archive_completed ?? true); onToggledByUser: checked => checked ? root.confirmCleanup("delete_completed", false) : root.setProfile("delete_completed", false) }
+            SettingsNote { icon: "shield"; text: Translation.tr("Uncertain submissions are kept for verification.") }
+            SettingsNote { icon: "admin_panel_settings"; text: Translation.tr("Administrator actions use system authentication.") }
+            SettingsSwitch { buttonIcon: "archive"; text: Translation.tr("Archive completed chats"); checked: root.selectedProfile?.archive_completed ?? true; autoToggle: false; onToggledByUser: checked => root.setProfile("archive_completed", checked) }
+            SettingsSwitch { buttonIcon: "delete"; text: Translation.tr("Delete completed chats"); checked: root.selectedProfile?.delete_completed ?? false; autoToggle: false; enabled: !(root.selectedProfile?.archive_completed ?? true); onToggledByUser: checked => checked ? root.confirmCleanup("delete_completed", false) : root.setProfile("delete_completed", false) }
+            SettingsNote { icon: "info"; text: Translation.tr("Cleanup preferences only · Desktop support pending") }
             SettingsNote {
                 visible: root.pendingCleanupScope === root.selectedProfileId && root.pendingCleanupField === "delete_completed"
                 warning: true
                 text: Translation.tr("Save deletion preference? Chat deletion is not implemented.")
             }
-            Flow {
+            RowLayout {
                 visible: root.pendingCleanupScope === root.selectedProfileId && root.pendingCleanupField === "delete_completed"
                 Layout.fillWidth: true
-                Layout.preferredHeight: childrenRect.height
                 spacing: 6
-                DialogButton { buttonText: Translation.tr("Cancel"); onClicked: root.cancelConfirmation() }
-                DialogButton { buttonText: Translation.tr("Confirm preference"); enabled: !root.busy; onClicked: root.applyCleanup() }
+                AutomationButton { iconName: "close"; buttonText: Translation.tr("Cancel"); onClicked: root.cancelConfirmation() }
+                AutomationButton { iconName: "check"; buttonText: Translation.tr("Confirm"); enabled: !root.busy; onClicked: root.applyCleanup() }
             }
         }
     }
@@ -575,25 +627,24 @@ ContentPage {
         icon: "cleaning_services"
         title: Translation.tr("Session maintenance")
         SettingsGroup {
-            SettingsSwitch { text: Translation.tr("Archive completed sessions (pending desktop support)"); checked: root.snapshot?.config?.maintenance?.archive_completed ?? true; autoToggle: false; onToggledByUser: checked => root.setMaintenance("archive_completed", checked) }
-            SettingsSwitch { text: Translation.tr("Delete completed sessions (pending desktop support)"); checked: root.snapshot?.config?.maintenance?.delete_completed ?? false; autoToggle: false; enabled: !(root.snapshot?.config?.maintenance?.archive_completed ?? true); onToggledByUser: checked => checked ? root.confirmCleanup("delete_completed", true) : root.setMaintenance("delete_completed", false) }
-            SettingsSwitch { text: Translation.tr("Archive old sessions (pending desktop support)"); checked: root.snapshot?.config?.maintenance?.archive_old ?? false; autoToggle: false; onToggledByUser: checked => root.setMaintenance("archive_old", checked) }
-            SettingsSwitch { text: Translation.tr("Clean abandoned sessions (pending desktop support)"); checked: root.snapshot?.config?.maintenance?.cleanup_abandoned ?? false; autoToggle: false; onToggledByUser: checked => root.setMaintenance("cleanup_abandoned", checked) }
-            SettingsSwitch { text: Translation.tr("Recover stuck generation (pending desktop support)"); checked: root.snapshot?.config?.maintenance?.recover_stuck_generation ?? false; autoToggle: false; onToggledByUser: checked => root.setMaintenance("recover_stuck_generation", checked) }
-            SettingsSwitch { text: Translation.tr("Recover stale composer (pending desktop support)"); checked: root.snapshot?.config?.maintenance?.recover_stale_composer ?? false; autoToggle: false; onToggledByUser: checked => root.setMaintenance("recover_stale_composer", checked) }
-            SettingsNote { warning: true; icon: "info"; text: Translation.tr("ChatGPT Desktop has no verified semantic archive or delete control. These preferences persist but no chat is changed. Active or uncertain chats are never cleaned.") }
+            SettingsSwitch { buttonIcon: "archive"; text: Translation.tr("Archive completed"); checked: root.snapshot?.config?.maintenance?.archive_completed ?? true; autoToggle: false; onToggledByUser: checked => root.setMaintenance("archive_completed", checked) }
+            SettingsSwitch { buttonIcon: "delete"; text: Translation.tr("Delete completed"); checked: root.snapshot?.config?.maintenance?.delete_completed ?? false; autoToggle: false; enabled: !(root.snapshot?.config?.maintenance?.archive_completed ?? true); onToggledByUser: checked => checked ? root.confirmCleanup("delete_completed", true) : root.setMaintenance("delete_completed", false) }
+            SettingsSwitch { buttonIcon: "inventory_2"; text: Translation.tr("Archive old chats"); checked: root.snapshot?.config?.maintenance?.archive_old ?? false; autoToggle: false; onToggledByUser: checked => root.setMaintenance("archive_old", checked) }
+            SettingsSwitch { buttonIcon: "cleaning_services"; text: Translation.tr("Clean abandoned"); checked: root.snapshot?.config?.maintenance?.cleanup_abandoned ?? false; autoToggle: false; onToggledByUser: checked => root.setMaintenance("cleanup_abandoned", checked) }
+            SettingsSwitch { buttonIcon: "healing"; text: Translation.tr("Recover generation"); checked: root.snapshot?.config?.maintenance?.recover_stuck_generation ?? false; autoToggle: false; onToggledByUser: checked => root.setMaintenance("recover_stuck_generation", checked) }
+            SettingsSwitch { buttonIcon: "edit_note"; text: Translation.tr("Recover composer"); checked: root.snapshot?.config?.maintenance?.recover_stale_composer ?? false; autoToggle: false; onToggledByUser: checked => root.setMaintenance("recover_stale_composer", checked) }
+            SettingsNote { warning: true; icon: "info"; text: Translation.tr("Preferences saved · Desktop cleanup support pending") }
             SettingsNote {
                 visible: root.pendingCleanupScope === "global" && root.pendingCleanupField === "delete_completed"
                 warning: true
                 text: Translation.tr("Save deletion preference? Chat deletion is not implemented.")
             }
-            Flow {
+            RowLayout {
                 visible: root.pendingCleanupScope === "global" && root.pendingCleanupField === "delete_completed"
                 Layout.fillWidth: true
-                Layout.preferredHeight: childrenRect.height
                 spacing: 6
-                DialogButton { buttonText: Translation.tr("Cancel"); onClicked: root.cancelConfirmation() }
-                DialogButton { buttonText: Translation.tr("Confirm preference"); enabled: !root.busy; onClicked: root.applyCleanup() }
+                AutomationButton { iconName: "close"; buttonText: Translation.tr("Cancel"); onClicked: root.cancelConfirmation() }
+                AutomationButton { iconName: "check"; buttonText: Translation.tr("Confirm"); enabled: !root.busy; onClicked: root.applyCleanup() }
             }
         }
     }
@@ -605,16 +656,29 @@ ContentPage {
         icon: "history"
         title: Translation.tr("Recent activity")
         SettingsGroup {
-            Flow {
+            ConfigSelectionArray {
+                currentValue: root.showDiagnostics ? "diagnostics" : "events"
+                options: [
+                    { displayName: Translation.tr("Events"), icon: "history", value: "events" },
+                    { displayName: Translation.tr("Diagnostics"), icon: "monitor_heart", value: "diagnostics" }
+                ]
+                onSelected: value => {
+                    root.showDiagnostics = value === "diagnostics"
+                    root.logMessage = ""
+                    root.refreshLogs()
+                }
+            }
+            RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: childrenRect.height
                 spacing: 6
-                DialogButton { buttonText: Translation.tr("Refresh logs"); enabled: !root.logsBusy; onClicked: root.refreshLogs() }
-                DialogButton { buttonText: Translation.tr("Copy logs"); enabled: root.diagnosticText.length > 0; onClicked: root.copyLogs() }
-                DialogButton { buttonText: Translation.tr("Export to /tmp"); enabled: !root.busy; onClicked: root.runAction(["logs-export"]) }
+                AutomationButton { iconName: "refresh"; buttonText: Translation.tr("Refresh"); enabled: !root.logsBusy; onClicked: { root.refresh(); root.refreshLogs() } }
+                AutomationButton { iconName: "content_copy"; buttonText: Translation.tr("Copy"); enabled: root.visibleLogText.length > 0; onClicked: root.copyLogs() }
+                AutomationButton { iconName: "download"; buttonText: Translation.tr("Export"); hint: Translation.tr("Export diagnostics to /tmp"); enabled: !root.busy && root.showDiagnostics; onClicked: root.runAction(["logs-export"]) }
             }
             SettingsNote {
-                text: Translation.tr("System logs may contain private data. Review before sharing. Exports use private permissions.")
+                visible: root.showDiagnostics
+                icon: "privacy_tip"
+                text: Translation.tr("Private logs · review before sharing")
             }
             StyledText {
                 visible: root.logMessage.length > 0
@@ -623,34 +687,13 @@ ContentPage {
                 text: root.logMessage
                 color: Appearance.colors.colSecondary
             }
-            ScrollView {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 320
-                clip: true
-                MaterialTextArea {
-                    width: parent.width
-                    readOnly: true
-                    selectByMouse: true
-                    enableSettingsSearch: false
-                    text: root.diagnosticText || Translation.tr("Open Activity or select Refresh logs to load diagnostics.")
-                }
+            AutomationEditor {
+                objectName: "automationActivityLog"
+                implicitHeight: 360
+                readOnly: true
+                enableSettingsSearch: false
+                text: root.visibleLogText || (root.logsBusy ? Translation.tr("Loading…") : Translation.tr("No activity"))
             }
-            StyledText {
-                Layout.fillWidth: true
-                text: root.selectedProfile?.name ?? Translation.tr("Select a profile")
-                font.weight: Font.DemiBold
-                color: Appearance.colors.colOnSurface
-            }
-            Repeater {
-                model: (root.snapshot?.runtime?.events ?? []).filter(e => e.profile_id === root.selectedProfileId || e.profile_id === null).slice().reverse()
-                delegate: RowLayout {
-                    required property var modelData
-                    Layout.fillWidth: true
-                    StyledText { Layout.fillWidth: true; text: modelData.kind + (modelData.detail ? " · " + modelData.detail : ""); wrapMode: Text.WordWrap; color: Appearance.colors.colOnSurface }
-                    StyledText { text: root.when(modelData.at_unix); font.pixelSize: Appearance.font.pixelSize.smallest; color: Appearance.colors.colSubtext }
-                }
-            }
-            SettingsNote { text: Translation.tr("Only the most recent 100 operational events are kept.") }
         }
     }
 
@@ -661,7 +704,7 @@ ContentPage {
         icon: "info"
         title: Translation.tr("Current run")
         SettingsGroup {
-            StyledText { text: Translation.tr("Status: %1").arg(root.statusLabel(root.selectedState?.status ?? "idle")); color: Appearance.colors.colOnSurface }
+            SettingsNote { icon: "monitor_heart"; text: root.statusLabel(root.selectedState?.status ?? "idle") }
             StyledText {
                 visible: !!root.selectedState?.status_detail
                 Layout.fillWidth: true
@@ -669,12 +712,12 @@ ContentPage {
                 wrapMode: Text.WordWrap
                 color: Appearance.colors.colSecondary
             }
-            StyledText { text: Translation.tr("Loop: %1 · Job: %2").arg(root.selectedState?.loop_state || "—").arg(root.selectedState?.job_id || root.selectedState?.last_job_id || "—"); color: Appearance.colors.colOnSurface }
-            StyledText { text: Translation.tr("Elapsed: %1 · Iterations: %2 · Prompts: %3").arg(root.elapsed(root.selectedState?.started_at_unix)).arg(root.selectedState?.iterations ?? 0).arg(root.selectedState?.prompts_sent ?? 0); color: Appearance.colors.colOnSurface }
-            StyledText { text: Translation.tr("Polling errors: %1 · Last result: %2").arg(root.selectedState?.poll_errors ?? 0).arg(root.selectedState?.last_result || "—"); color: Appearance.colors.colOnSurface }
-            StyledText { text: Translation.tr("Accumulated failures: %1").arg(root.selectedState?.failures ?? 0); color: Appearance.colors.colOnSurface }
-            StyledText { text: Translation.tr("Last run: %1").arg(root.when(root.selectedState?.last_run_at_unix)); color: Appearance.colors.colOnSurface }
-            StyledText { text: Translation.tr("Next run: %1").arg(root.when(root.selectedState?.next_run_at_unix)); color: Appearance.colors.colOnSurface }
+            SettingsNote { icon: "terminal"; visible: !!(root.selectedState?.job_id || root.selectedState?.last_job_id); text: root.selectedState?.job_id || root.selectedState?.last_job_id || "" }
+            SettingsNote { icon: "timer"; text: Translation.tr("%1 · %2 iterations · %3 prompts").arg(root.elapsed(root.selectedState?.started_at_unix)).arg(root.selectedState?.iterations ?? 0).arg(root.selectedState?.prompts_sent ?? 0) }
+            SettingsNote { icon: "warning"; visible: (root.selectedState?.poll_errors ?? 0) > 0 || (root.selectedState?.failures ?? 0) > 0; text: Translation.tr("Failures: %1 · Poll errors: %2").arg(root.selectedState?.failures ?? 0).arg(root.selectedState?.poll_errors ?? 0) }
+            SettingsNote { icon: "task_alt"; visible: !!root.selectedState?.last_result; text: root.selectedState?.last_result ?? "" }
+            SettingsNote { icon: "history"; visible: !!root.selectedState?.last_run_at_unix; text: Translation.tr("Last: %1").arg(root.when(root.selectedState?.last_run_at_unix)) }
+            SettingsNote { icon: "schedule"; visible: !!root.selectedState?.next_run_at_unix; text: Translation.tr("Next: %1").arg(root.when(root.selectedState?.next_run_at_unix)) }
             SettingsNote { visible: !!root.selectedState?.last_error; warning: true; icon: "error"; text: root.selectedState?.last_error ?? "" }
         }
     }

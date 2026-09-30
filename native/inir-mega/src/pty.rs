@@ -188,12 +188,15 @@ mod tests {
     use super::*;
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(1);
 
     fn fake_vendor(script: &str) -> std::path::PathBuf {
         let root = std::env::temp_dir().join(format!(
             "inir-mega-pty-{}-{}",
             std::process::id(),
-            Instant::now().elapsed().as_nanos()
+            NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed)
         ));
         fs::create_dir_all(&root).unwrap();
         let path = root.join("fake-vendor");

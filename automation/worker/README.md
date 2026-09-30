@@ -30,6 +30,13 @@ Example:
 
 `base_sha` must equal the first parent of the commit that introduces the job file. This makes a stale or raced GitHub write fail closed instead of silently running against an unexpected repository state.
 
+Serialize jobs with a JSON encoder and validate the resulting document before
+publication. Shell quoting inside an argv string is not JSON escaping. An
+invalid job consumes its ID and gets a terminal result without executing any
+action. Corrected work requires a new ID. Once that result is published, the
+original malformed input may move byte-for-byte to `automation/queue/archive/`
+with an `.invalid.txt` suffix; retain its result and input digest.
+
 The worker:
 
 1. fetches `origin/dev`;

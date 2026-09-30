@@ -14,6 +14,7 @@ Maintainer-authorized implementation, 2026-09-30. Target contract and audit:
 - [x] Restart is consumed once at durable dispatch; cancellation preserves WAIT_RESULT, final receipt and provenance before the fresh chat. Legacy recovery needs an acknowledged chat and an earlier explicit restart event.
 - [x] Failed exec receipts project bounded fixed compiler/QML/test/lockfile error codes to the managed chat while preserving private raw logs; diagnostics include the actual `inir.service` shell unit.
 - [x] Final responses and job receipts share the transition contract: preserve evidence/checkpoint first, then honor rotation, run limits and interval timing after WAIT_RESULT.
+- [x] Consumed malformed Wull job retained byte-for-byte as archived evidence, with its original terminal result and digest; no action replay or job-ID reuse. Job authoring requires JSON serialization/validation before publication.
 - [ ] Future/deferred: migrate the Linux/process-sensitive Automation execution substrate to Rust only after parity and benchmark gates in [`AUTOMATION_RUST_MIGRATION.md`](AUTOMATION_RUST_MIGRATION.md).
 
 Keep uncertain existing submissions and consumed job results. Do not reset
@@ -26,7 +27,9 @@ bounded logs and repairs/reconciles errors while respecting later user Stop/Paus
 Existing profile descriptions remain compatible in config; only their editor
 is removed. Tokens authenticate local Git, not the ChatGPT GitHub connector.
 
-Implementation and focused Automation acceptance are complete. Whole-repository
-validation remains **FAIL**: 241 pass, 32 fail, 2 skip at `e3f91d57b`; the same
-32 failures were present at `bea23fc62`, with no Automation failures. See the
-architecture note for native acceptance and untested environment boundaries.
+Focused Automation regressions pass. The latest completed whole-repository
+validation remains **FAIL**: 246 pass, 33 fail, 2 skip at `bb6370c12`.
+32 failures match the inherited baseline; the additional malformed consumed
+Wull job has now been archived. Revalidate the exact current commit before
+claiming canonical acceptance. See the architecture note for native acceptance
+and untested environment boundaries.

@@ -36,10 +36,6 @@ Singleton {
         Quickshell.execDetached([Quickshell.shellPath("scripts/inir")].concat(args ?? []))
     }
 
-    function applyGlobalStyle(styleId: string): void {
-        ThemeService.setGlobalStyle(styleId)
-    }
-
     function fuzzyQuery(query: string): list<var> {
         if (!query || query.trim() === "") return allActions
         const q = query.toLowerCase().trim()
@@ -312,78 +308,6 @@ Singleton {
             execute: () => {
                 Quickshell.execDetached([Quickshell.shellPath("scripts/colors/random/random_konachan_wall.sh")])
             }
-        },
-        {
-            id: "style-material",
-            name: Translation.tr("Style: Material"),
-            description: Translation.tr("Switch to Material style"),
-            icon: "format_paint",
-            category: "appearance",
-            keywords: ["style", "material", "theme"],
-            execute: () => { root.applyGlobalStyle("material") }
-        },
-        {
-            id: "style-cards",
-            name: Translation.tr("Style: Cards"),
-            description: Translation.tr("Switch to Cards style"),
-            icon: "dashboard",
-            category: "appearance",
-            keywords: ["style", "cards", "theme"],
-            execute: () => { root.applyGlobalStyle("cards") }
-        },
-        {
-            id: "style-aurora",
-            name: Translation.tr("Style: Aurora"),
-            description: Translation.tr("Switch to Aurora style"),
-            icon: "auto_awesome",
-            category: "appearance",
-            keywords: ["style", "aurora", "theme", "blur"],
-            execute: () => { root.applyGlobalStyle("aurora") }
-        },
-        {
-            id: "style-inir",
-            name: Translation.tr("Style: iNiR"),
-            description: Translation.tr("Switch to iNiR style"),
-            icon: "terminal",
-            category: "appearance",
-            keywords: ["style", "inir", "theme"],
-            execute: () => { root.applyGlobalStyle("inir") }
-        },
-        {
-            id: "style-angel",
-            name: Translation.tr("Style: Angel"),
-            description: Translation.tr("Switch to Angel style"),
-            icon: "stars",
-            category: "appearance",
-            keywords: ["style", "angel", "theme", "glass"],
-            execute: () => { root.applyGlobalStyle("angel") }
-        },
-        {
-            id: "style-regalia",
-            name: Translation.tr("Style: Regalia"),
-            description: Translation.tr("Switch to Regalia style"),
-            icon: "event_seat",
-            category: "appearance",
-            keywords: ["style", "regalia", "secretlab", "ti", "tiles", "ivory", "gold", "black", "theme"],
-            execute: () => { root.applyGlobalStyle("regalia") }
-        },
-        {
-            id: "style-zzz",
-            name: Translation.tr("Style: ZZZ"),
-            description: Translation.tr("Switch to ZZZ style"),
-            icon: "bolt",
-            category: "appearance",
-            keywords: ["style", "zzz", "zenless", "theme", "yellow", "hazard"],
-            execute: () => { root.applyGlobalStyle("zzz") }
-        },
-        {
-            id: "style-cookie",
-            name: Translation.tr("Style: Cookie Shapes"),
-            description: Translation.tr("Switch to Cookie Shapes style"),
-            icon: "cookie",
-            category: "appearance",
-            keywords: ["style", "cookie", "shapes", "theme", "expressive", "morph"],
-            execute: () => { root.applyGlobalStyle("cookie") }
         },
     ]
 
@@ -778,6 +702,15 @@ Singleton {
             }
         },
         {
+            id: "switch-family-abyss",
+            name: "Switch to Abyss Panel Family",
+            description: "Use the perimeter liquid shell",
+            icon: "water",
+            category: "settings",
+            keywords: ["family","panel","abyss","liquid","perimeter","layout"],
+            execute: () => root.runLauncher(["panelFamily","set","abyss"])
+        },
+        {
             id: "toggle-control-panel",
             name: Translation.tr("Toggle Quick Settings"),
             description: Translation.tr("Open or close the quick settings panel"),
@@ -868,13 +801,23 @@ Singleton {
     // See scripts/setup/README.md for the @meta header contract and the
     // _scan.sh JSON output format.
     property var _setupTargets: []
+    property bool _setupScanEnabled: false
+
+    function refreshSetupActions(): void {
+        root._setupScanEnabled = true
+        setupScanner.running = false
+        setupScanner.running = true
+    }
 
     FolderListModel {
         id: setupScriptsFolder
         folder: Qt.resolvedUrl(`file://${Directories.scriptsPath}/setup`)
         nameFilters: ["*.sh"]
         showDirs: false; showHidden: false; sortField: FolderListModel.Name
-        onCountChanged: { setupScanner.running = false; setupScanner.running = true }
+        onCountChanged: {
+            if (root._setupScanEnabled)
+                root.refreshSetupActions()
+        }
     }
 
     Process {
@@ -887,8 +830,6 @@ Singleton {
             }
         }
     }
-
-    Component.onCompleted: { setupScanner.running = false; setupScanner.running = true }
 
     function _safeTerminal(): string {
         const t = (Config.options?.apps?.terminal ?? "kitty").trim()

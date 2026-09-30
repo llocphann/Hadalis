@@ -16,9 +16,8 @@ import qs.modules.common.widgets
 
 Scope {
     id: bar
-    // Vertical Hug uses the same structural connected surface as horizontal
-    // Bar; legacy transparent-bar state must not remove its shoulders/shadow.
-    readonly property bool showBarBackground: true
+    // Vertical Hug uses the same structural Bar ownership as horizontal Bar;
+    // its body/shadow stay resident without a compatibility visibility flag.
 
     Variants {
         // For each monitor
@@ -51,7 +50,6 @@ Scope {
                 // unmapping/remapping the native layer surface can strand the
                 // QML Bar contents blank after fullscreen exits.
 
-                property var brightnessMonitor: Brightness.getMonitorForScreen(barLoader.modelData)
                 
                 Timer {
                     id: showBarTimer
@@ -75,6 +73,10 @@ Scope {
                 property bool superShow: false
                 property bool mustShow: hoverRegion.containsMouse || superShow
                     || ShellEditSession.active
+                    || GlobalStates.barPopupHoverHeld(barRoot.outputName)
+                    || (GlobalStates.overviewOpen
+                        && (!GlobalStates.overviewTargetOutput
+                            || GlobalStates.overviewTargetOutput === barRoot.outputName))
                 exclusionMode: ExclusionMode.Ignore
                 exclusiveZone:
                     (GlobalStates.coverflowSelectorOpen || (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))) ? 0 :

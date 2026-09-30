@@ -260,6 +260,9 @@ AbstractBackgroundWidget {
         barsOrigin: Config.getNestedValue("background.widgets.visualizer.barsOrigin", "bottom")
         smoothing: Config.getNestedValue("background.widgets.visualizer.smoothing", 2)
         waveMode: Config.getNestedValue("background.widgets.visualizer.waveMode", "fill")
+        // Large threaded desktop Canvas: avoid tracing/stroking the same wave
+        // a second time after the filled/ribbon path has already been painted.
+        waveOutlineEnabled: false
         lineWidth: Config.getNestedValue("background.widgets.visualizer.lineWidth", 2)
         edgeInset: Config.getNestedValue("background.widgets.visualizer.edgeInset", 0)
         edgeSoftness: Config.getNestedValue("background.widgets.visualizer.edgeSoftness", 28) / 100

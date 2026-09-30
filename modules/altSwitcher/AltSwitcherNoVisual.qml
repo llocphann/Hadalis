@@ -26,7 +26,7 @@ Scope {
         (Config.options?.altSwitcher?.noVisualUi ?? false)
         && root.iiPreset !== "skew"
     readonly property bool routeToVisualIi:
-        !root.waffleFamilyActive && !root.iiNoVisual
+        (Config.options?.panelFamily ?? "ii") === "ii" && !root.iiNoVisual
     readonly property var waffleOptions:
         Config.options?.waffles?.altSwitcher ?? ({})
     readonly property string wafflePreset: waffleOptions.preset ?? "thumbnails"

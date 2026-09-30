@@ -4,12 +4,16 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs
 import qs.modules.common
+import qs.modules.common.functions
 
 Singleton {
     id: root
 
     readonly property bool enabled: Config.options?.sidebar?.music?.enable ?? false
+    readonly property int fallbackPollIntervalMs:
+        GlobalStates.sidebarLeftOpen ? 900 : 30000
     readonly property string configuredLibraryFolder:
         Config.options?.sidebar?.music?.libraryFolder ?? ""
     readonly property string configuredHost:
@@ -46,11 +50,14 @@ Singleton {
     property var libraryTracks: []
     property var playlists: []
     property var folderCollections: []
-    readonly property var collections: [...playlists, ...folderCollections]
+    // "Playlists" is semantically reserved for MPD saved playlists. Folder
+    // navigation is handled independently by the Songs browser.
+    readonly property var collections: playlists
 
     property var activeQueue: []
     property string activeQueueName: ""
     property int currentIndex: -1
+    property int resumeIndex: -1
     property string currentPath: ""
     property string currentUri: ""
     property string currentTitle: ""
@@ -62,7 +69,26 @@ Singleton {
     property real volume: 1
     property bool shuffleMode: false
     property int repeatMode: 0
+    property var _queueRequests: []
     property var _enqueueRequests: []
+    property var _bulkEnqueueRequests: []
+    property var _playlistRequests: []
+    property bool _queuePayloadWriting: false
+    property bool _bulkEnqueuePayloadWriting: false
+    property bool _playlistPayloadWriting: false
+    property bool _nativeMpdEligible: false
+    property bool _nativeBackendChecked: false
+    property bool _mpdSubscriptionActive: false
+
+    // Bulk music actions can easily exceed Linux's per-argument exec limit
+    // when thousands of MPD URIs are serialized into one JSON argv entry.
+    // File-backed payloads keep Process command lines small and deterministic.
+    readonly property string _queuePayloadPath:
+        `${Directories.stateUserPath}/local-music-queue-payload.json`
+    readonly property string _bulkEnqueuePayloadPath:
+        `${Directories.stateUserPath}/local-music-enqueue-payload.json`
+    readonly property string _playlistPayloadPath:
+        `${Directories.stateUserPath}/local-music-playlist-payload.json`
 
     // Local-only lyric state. MPD/MPRIS still own playback; this only reads
     // sidecar .lrc/.txt files next to the resolved local track path.
@@ -108,8 +134,7 @@ Singleton {
     readonly property bool canGoNext:
         hasCurrentTrack && (currentIndex < activeQueue.length - 1 || repeatMode === 2)
 
-    readonly property string _mpdScript: Directories.scriptsPath + "/local_music_mpd.py"
-    readonly property string _lyricsScript: Directories.scriptsPath + "/local_music_lyrics.py"
+    readonly property string nativeDispatchPath: Directories.scriptsPath + "/native-dispatch"
 
     function _trackForIdentity(uri: string, path: string): var {
         const wantedUri = String(uri ?? "")
@@ -170,6 +195,8 @@ Singleton {
         const status = payload.status ?? {}
         mpdState = String(status.state ?? "stop")
         currentIndex = Number(status.song ?? -1)
+        if (currentIndex >= 0)
+            resumeIndex = currentIndex
         currentPosition = Math.max(0, Number(status.elapsed ?? 0) || 0)
         currentDuration = Math.max(0, Number(status.duration ?? 0) || 0)
         const mpdVolume = Number(status.volume)
@@ -187,15 +214,26 @@ Singleton {
         if (current) {
             _applyCurrentTrack(current)
         } else {
-            currentIndex = -1
-            currentUri = ""
-            currentPath = ""
-            currentTitle = ""
-            currentArtist = ""
-            currentAlbum = ""
-            currentArt = ""
-            currentDuration = 0
-            currentPosition = 0
+            const resumable = mpdState === "stop"
+                && resumeIndex >= 0 && resumeIndex < activeQueue.length
+                ? activeQueue[resumeIndex] : null
+            if (resumable) {
+                currentIndex = resumeIndex
+                currentPosition = 0
+                _applyCurrentTrack(resumable)
+            } else {
+                currentIndex = -1
+                currentUri = ""
+                currentPath = ""
+                currentTitle = ""
+                currentArtist = ""
+                currentAlbum = ""
+                currentArt = ""
+                currentDuration = 0
+                currentPosition = 0
+                if (activeQueue.length === 0)
+                    resumeIndex = -1
+            }
         }
     }
 
@@ -231,8 +269,102 @@ Singleton {
         _pendingLyricsPath = ""
         _lyricsProc.requestedPath = path
         _lyricsProc.output = ""
-        _lyricsProc.command = ["python3", _lyricsScript, path]
+        _lyricsProc.command = [root.nativeDispatchPath, "lyrics", path]
         _lyricsProc.running = true
+    }
+
+    function _probeNativeMpd(): void {
+        if (!enabled || _nativeBackendInfoProc.running)
+            return
+        _nativeBackendInfoProc.output = ""
+        _nativeBackendInfoProc.running = true
+    }
+
+    function _startNativeMpdBridge(): void {
+        if (!enabled || !_nativeMpdEligible)
+            return
+
+        if (!_mpdDaemonProc.running) {
+            const command = [
+                root.nativeDispatchPath, "mpd-daemon",
+                "--host", mpdHost,
+                "--port", String(mpdPort)
+            ]
+            if (configuredLibraryFolder.length > 0)
+                command.push("--music-root", configuredLibraryFolder)
+            _mpdDaemonProc.command = command
+            _mpdDaemonProc.running = true
+        }
+
+        mpdSubscribeRetryTimer.restart()
+    }
+
+    function _stopNativeMpdBridge(): void {
+        _mpdSubscriptionActive = false
+        mpdSubscribeRetryTimer.stop()
+        mpdDaemonRetryTimer.stop()
+        if (_mpdSubscriptionProc.running)
+            _mpdSubscriptionProc.running = false
+        if (_mpdDaemonProc.running)
+            _mpdDaemonProc.running = false
+    }
+
+    function _restartNativeMpdBridge(): void {
+        if (!_nativeMpdEligible || !enabled)
+            return
+        _stopNativeMpdBridge()
+        Qt.callLater(root._startNativeMpdBridge)
+    }
+
+    function _handleMpdEvent(line): void {
+        let event
+        try {
+            event = JSON.parse(String(line ?? ""))
+        } catch (e) {
+            return
+        }
+
+        const type = String(event?.type ?? "")
+        if (type === "subscribed") {
+            _mpdSubscriptionActive = true
+            statusRefreshTimer.restart()
+            return
+        }
+
+        if (type === "connection") {
+            if (event.connected === false)
+                mpdConnected = false
+            else
+                statusRefreshTimer.restart()
+            return
+        }
+
+        if (type !== "changed")
+            return
+
+        const subsystems = Array.isArray(event.subsystems)
+            ? event.subsystems.map(value => String(value)) : []
+        if (subsystems.includes("database") || subsystems.includes("stored_playlist")) {
+            playlistRescanTimer.restart()
+            return
+        }
+
+        if (event.payload && typeof event.payload === "object") {
+            root._applyPayload(event.payload, false)
+            return
+        }
+
+        // Transport/state payload generation is fail-soft in the daemon.
+        // Keep the compatibility refresh only when an event arrived without it.
+        statusRefreshTimer.restart()
+    }
+
+    function _configurationChanged(): void {
+        if (!enabled)
+            return
+        if (_nativeMpdEligible)
+            _restartNativeMpdBridge()
+        Qt.callLater(root.rescan)
     }
 
     function setLibraryFolder(path: string): void {
@@ -247,7 +379,7 @@ Singleton {
         error = ""
         MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)
         _scanProc.command = [
-            "python3", _mpdScript, "snapshot",
+            root.nativeDispatchPath, "mpd", "snapshot",
             mpdHost, String(mpdPort), configuredLibraryFolder
         ]
         _scanProc.running = true
@@ -256,7 +388,7 @@ Singleton {
     function refreshStatus(): void {
         if (!enabled || _statusProc.running || _scanProc.running) return
         _statusProc.command = [
-            "python3", _mpdScript, "status",
+            root.nativeDispatchPath, "mpd", "status",
             mpdHost, String(mpdPort), configuredLibraryFolder
         ]
         _statusProc.running = true
@@ -307,11 +439,116 @@ Singleton {
         _enqueueRequests = _enqueueRequests.slice(1)
         _enqueueProc.output = ""
         _enqueueProc.command = [
-            "python3", _mpdScript, "enqueue",
+            root.nativeDispatchPath, "mpd", "enqueue",
             mpdHost, String(mpdPort), configuredLibraryFolder,
             request.playNow ? "1" : "0", String(request.uri)
         ]
         _enqueueProc.running = true
+    }
+
+    function _trackUris(tracks): var {
+        if (!Array.isArray(tracks)) return []
+        const seen = new Set()
+        const uris = []
+        for (const track of tracks) {
+            const uri = String(track?.uri ?? track?.path ?? "").trim()
+            if (!uri || seen.has(uri)) continue
+            seen.add(uri)
+            uris.push(uri)
+        }
+        return uris
+    }
+
+    function enqueueTracks(tracks): void {
+        if (!available) return
+        const uris = _trackUris(tracks)
+        if (uris.length === 0) return
+        _bulkEnqueueRequests = [..._bulkEnqueueRequests, uris]
+        _drainBulkEnqueueRequests()
+    }
+
+    function _drainBulkEnqueueRequests(): void {
+        if (_bulkEnqueueProc.running || _bulkEnqueuePayloadWriting
+                || _bulkEnqueueRequests.length === 0) return
+        _bulkEnqueuePayloadWriting = true
+        bulkEnqueuePayloadFile.setText(JSON.stringify(_bulkEnqueueRequests[0]))
+    }
+
+    function _startBulkEnqueuePayloadProcess(): void {
+        if (!_bulkEnqueuePayloadWriting) return
+        _bulkEnqueuePayloadWriting = false
+        if (_bulkEnqueueRequests.length === 0) return
+
+        _bulkEnqueueRequests = _bulkEnqueueRequests.slice(1)
+        _bulkEnqueueProc.output = ""
+        _bulkEnqueueProc.command = [
+            root.nativeDispatchPath, "mpd", "enqueue-many",
+            mpdHost, String(mpdPort), configuredLibraryFolder,
+            "@" + _bulkEnqueuePayloadPath
+        ]
+        _bulkEnqueueProc.running = true
+    }
+
+    function _failBulkEnqueuePayloadWrite(_error): void {
+        _bulkEnqueuePayloadWriting = false
+        if (_bulkEnqueueRequests.length > 0)
+            _bulkEnqueueRequests = _bulkEnqueueRequests.slice(1)
+        error = "mpd_bulk_enqueue_payload_failed"
+        if (_bulkEnqueueRequests.length > 0)
+            Qt.callLater(root._drainBulkEnqueueRequests)
+    }
+
+    function createPlaylist(name: string, tracks): void {
+        _queuePlaylistRequest("playlist-create", name, tracks)
+    }
+
+    function addTracksToPlaylist(name: string, tracks): void {
+        _queuePlaylistRequest("playlist-add", name, tracks)
+    }
+
+    function _queuePlaylistRequest(mode: string, name: string, tracks): void {
+        if (!available) return
+        const playlistName = String(name ?? "").trim()
+        const uris = _trackUris(tracks)
+        if (!playlistName || uris.length === 0) return
+        _playlistRequests = [..._playlistRequests, {
+            mode: mode,
+            name: playlistName,
+            uris: uris
+        }]
+        _drainPlaylistRequests()
+    }
+
+    function _drainPlaylistRequests(): void {
+        if (_playlistProc.running || _playlistPayloadWriting
+                || _playlistRequests.length === 0) return
+        _playlistPayloadWriting = true
+        playlistPayloadFile.setText(JSON.stringify(_playlistRequests[0].uris))
+    }
+
+    function _startPlaylistPayloadProcess(): void {
+        if (!_playlistPayloadWriting) return
+        _playlistPayloadWriting = false
+        if (_playlistRequests.length === 0) return
+
+        const request = _playlistRequests[0]
+        _playlistRequests = _playlistRequests.slice(1)
+        _playlistProc.output = ""
+        _playlistProc.command = [
+            root.nativeDispatchPath, "mpd", request.mode,
+            mpdHost, String(mpdPort), request.name,
+            "@" + _playlistPayloadPath
+        ]
+        _playlistProc.running = true
+    }
+
+    function _failPlaylistPayloadWrite(_error): void {
+        _playlistPayloadWriting = false
+        if (_playlistRequests.length > 0)
+            _playlistRequests = _playlistRequests.slice(1)
+        error = "mpd_playlist_payload_failed"
+        if (_playlistRequests.length > 0)
+            Qt.callLater(root._drainPlaylistRequests)
     }
 
     function playQueue(queue, index = 0, name = ""): void {
@@ -324,32 +561,83 @@ Singleton {
         activeQueue = valid
         activeQueueName = String(name ?? "")
         currentIndex = index
+        resumeIndex = index
         _applyCurrentTrack(valid[index])
         currentPosition = 0
         error = ""
 
+        _queueRequests = [..._queueRequests, {
+            index: index,
+            uris: valid.map(track => String(track.uri ?? track.path))
+        }]
+        _drainQueueRequests()
+    }
+
+    function _drainQueueRequests(): void {
+        if (_queueProc.running || _queuePayloadWriting
+                || _queueRequests.length === 0) return
+        _queuePayloadWriting = true
+        queuePayloadFile.setText(JSON.stringify(_queueRequests[0].uris))
+    }
+
+    function _startQueuePayloadProcess(): void {
+        if (!_queuePayloadWriting) return
+        _queuePayloadWriting = false
+        if (_queueRequests.length === 0) return
+
+        const request = _queueRequests[0]
+        _queueRequests = _queueRequests.slice(1)
+        _queueProc.output = ""
         _queueProc.command = [
-            "python3", _mpdScript, "queue",
-            mpdHost, String(mpdPort), String(index),
-            JSON.stringify(valid.map(track => String(track.uri ?? track.path)))
+            root.nativeDispatchPath, "mpd", "queue",
+            mpdHost, String(mpdPort), String(request.index),
+            "@" + _queuePayloadPath
         ]
         _queueProc.running = true
     }
 
+    function _failQueuePayloadWrite(_error): void {
+        _queuePayloadWriting = false
+        if (_queueRequests.length > 0)
+            _queueRequests = _queueRequests.slice(1)
+        error = "mpd_queue_payload_failed"
+        if (_queueRequests.length > 0)
+            Qt.callLater(root._drainQueueRequests)
+    }
+
+    function _scheduleStatusFallback(): void {
+        if (!root._mpdSubscriptionActive)
+            statusRefreshTimer.restart()
+    }
+
     function _sendMpd(command: string, args): void {
         Quickshell.execDetached([
-            "python3", _mpdScript, "command",
+            root.nativeDispatchPath, "mpd", "command",
             mpdHost, String(mpdPort), command,
             JSON.stringify(Array.isArray(args) ? args : [])
         ])
-        statusRefreshTimer.restart()
+        root._scheduleStatusFallback()
     }
 
     function togglePlaying(): void {
+        // MPD remains authoritative while stopped. mpd-mpris may disappear
+        // after an idle stop, so Play must wake the queue without the bridge.
+        if (!playing && mpdState === "stop") {
+            const index = currentIndex >= 0 && currentIndex < activeQueue.length
+                ? currentIndex
+                : (resumeIndex >= 0 && resumeIndex < activeQueue.length
+                    ? resumeIndex : (activeQueue.length > 0 ? 0 : -1))
+            if (index >= 0) {
+                resumeIndex = index
+                _sendMpd("play", [index])
+                return
+            }
+        }
+
         const player = mprisPlayer
         if (player && (player.canTogglePlaying ?? false)) {
             player.togglePlaying()
-            statusRefreshTimer.restart()
+            root._scheduleStatusFallback()
             return
         }
         _sendMpd("pause", [playing ? 1 : 0])
@@ -359,7 +647,7 @@ Singleton {
         const player = mprisPlayer
         if (player && MprisController.canGoNextForPlayer(player)) {
             MprisController.nextForPlayer(player, false)
-            statusRefreshTimer.restart()
+            root._scheduleStatusFallback()
             return
         }
         _sendMpd("next", [])
@@ -373,15 +661,17 @@ Singleton {
         const player = mprisPlayer
         if (player && MprisController.canGoPreviousForPlayer(player)) {
             MprisController.previousForPlayer(player, false)
-            statusRefreshTimer.restart()
+            root._scheduleStatusFallback()
             return
         }
         _sendMpd("previous", [])
     }
 
     function jumpTo(index: int): void {
-        if (index >= 0 && index < activeQueue.length)
+        if (index >= 0 && index < activeQueue.length) {
+            resumeIndex = index
             _sendMpd("play", [index])
+        }
     }
 
     function removeQueueTrack(index: int): void {
@@ -405,7 +695,7 @@ Singleton {
         if (player && (player.canSeek ?? false)
                 && (player.positionSupported ?? true)) {
             player.position = target
-            statusRefreshTimer.restart()
+            root._scheduleStatusFallback()
             return
         }
         _sendMpd("seekcur", [target])
@@ -417,7 +707,7 @@ Singleton {
         const player = mprisPlayer
         if (player && (player.volumeSupported ?? false) && (player.canControl ?? false)) {
             player.volume = clamped
-            statusRefreshTimer.restart()
+            root._scheduleStatusFallback()
             return
         }
         _sendMpd("setvol", [Math.round(clamped * 100)])
@@ -429,7 +719,7 @@ Singleton {
         const player = mprisPlayer
         if (player && (player.shuffleSupported ?? false) && (player.canControl ?? false)) {
             player.shuffle = target
-            statusRefreshTimer.restart()
+            root._scheduleStatusFallback()
             return
         }
         _sendMpd("random", [target ? 1 : 0])
@@ -444,18 +734,17 @@ Singleton {
     }
 
     function stop(): void {
-        const player = mprisPlayer
-        if (player && (player.canStop ?? false)) {
-            player.stop()
-            statusRefreshTimer.restart()
-            return
-        }
+        // Keep resume state in the MPD backend even if the MPRIS bridge is
+        // reaped while idle.
+        if (currentIndex >= 0 && currentIndex < activeQueue.length)
+            resumeIndex = currentIndex
         _sendMpd("stop", [])
     }
 
     Component.onCompleted: {
         if (enabled) {
             MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)
+            _probeNativeMpd()
             Qt.callLater(root.rescan)
         }
     }
@@ -463,21 +752,117 @@ Singleton {
     onEnabledChanged: {
         if (enabled) {
             MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)
+            _probeNativeMpd()
             Qt.callLater(root.rescan)
+        } else {
+            _stopNativeMpdBridge()
         }
     }
 
-    onConfiguredLibraryFolderChanged: if (enabled) Qt.callLater(root.rescan)
-    onConfiguredHostChanged: if (enabled) Qt.callLater(root.rescan)
-    onConfiguredPortChanged: if (enabled) Qt.callLater(root.rescan)
+    onConfiguredLibraryFolderChanged: root._configurationChanged()
+    onConfiguredHostChanged: root._configurationChanged()
+    onConfiguredPortChanged: root._configurationChanged()
     onCurrentPathChanged: Qt.callLater(root.refreshLocalLyrics)
+
+    Process {
+        id: _nativeBackendInfoProc
+        property string output: ""
+        command: [root.nativeDispatchPath, "backend-info"]
+
+        stdout: StdioCollector {
+            onStreamFinished: _nativeBackendInfoProc.output = text ?? ""
+        }
+
+        onExited: (code, _status) => {
+            root._nativeBackendChecked = true
+            let mode = ""
+            let mpdReady = false
+            if (code === 0) {
+                const lines = String(_nativeBackendInfoProc.output ?? "").split("\n")
+                for (const rawLine of lines) {
+                    const line = rawLine.trim()
+                    const separator = line.indexOf("=")
+                    if (separator <= 0)
+                        continue
+                    const key = line.substring(0, separator)
+                    const value = line.substring(separator + 1)
+                    if (key === "mode")
+                        mode = value
+                    else if (key === "inir-mpdd")
+                        mpdReady = value === "ready"
+                }
+            }
+
+            root._nativeMpdEligible = mpdReady && (mode === "rust" || mode === "auto")
+            if (root._nativeMpdEligible && root.enabled)
+                root._startNativeMpdBridge()
+            else
+                root._stopNativeMpdBridge()
+        }
+    }
+
+    Process {
+        id: _mpdDaemonProc
+        onExited: (_code, _status) => {
+            root._mpdSubscriptionActive = false
+            if (_mpdSubscriptionProc.running)
+                _mpdSubscriptionProc.running = false
+            if (root.enabled && root._nativeMpdEligible)
+                mpdDaemonRetryTimer.restart()
+        }
+    }
+
+    Process {
+        id: _mpdSubscriptionProc
+        command: [root.nativeDispatchPath, "mpd-subscribe"]
+
+        stdout: SplitParser {
+            onRead: line => root._handleMpdEvent(line)
+        }
+
+        onExited: (_code, _status) => {
+            root._mpdSubscriptionActive = false
+            if (root.enabled && root._nativeMpdEligible)
+                mpdSubscribeRetryTimer.restart()
+        }
+    }
+
+    Timer {
+        id: mpdDaemonRetryTimer
+        interval: 1500
+        repeat: false
+        onTriggered: {
+            if (root.enabled && root._nativeMpdEligible && !_mpdDaemonProc.running)
+                root._startNativeMpdBridge()
+        }
+    }
+
+    Timer {
+        id: mpdSubscribeRetryTimer
+        interval: 500
+        repeat: false
+        onTriggered: {
+            if (root.enabled && root._nativeMpdEligible && !_mpdSubscriptionProc.running)
+                _mpdSubscriptionProc.running = true
+        }
+    }
 
     Timer {
         id: pollTimer
-        interval: 900
+        interval: root.fallbackPollIntervalMs
         repeat: true
-        running: root.enabled
+        running: root.enabled && !root._mpdSubscriptionActive
         onTriggered: root.refreshStatus()
+    }
+
+    Connections {
+        target: GlobalStates
+        function onSidebarLeftOpenChanged(): void {
+            if (GlobalStates.sidebarLeftOpen
+                    && root.enabled
+                    && !root._mpdSubscriptionActive)
+                root.refreshStatus()
+        }
     }
 
     Timer {
@@ -492,6 +877,46 @@ Singleton {
         interval: 2200
         repeat: false
         onTriggered: root.rescan()
+    }
+
+    Timer {
+        id: playlistRescanTimer
+        interval: 220
+        repeat: false
+        onTriggered: {
+            if (_scanProc.running) {
+                restart()
+                return
+            }
+            root.rescan()
+        }
+    }
+
+    FileView {
+        id: queuePayloadFile
+        path: Qt.resolvedUrl(root._queuePayloadPath)
+        watchChanges: false
+        printErrors: false
+        onSaved: root._startQueuePayloadProcess()
+        onSaveFailed: error => root._failQueuePayloadWrite(error)
+    }
+
+    FileView {
+        id: bulkEnqueuePayloadFile
+        path: Qt.resolvedUrl(root._bulkEnqueuePayloadPath)
+        watchChanges: false
+        printErrors: false
+        onSaved: root._startBulkEnqueuePayloadProcess()
+        onSaveFailed: error => root._failBulkEnqueuePayloadWrite(error)
+    }
+
+    FileView {
+        id: playlistPayloadFile
+        path: Qt.resolvedUrl(root._playlistPayloadPath)
+        watchChanges: false
+        printErrors: false
+        onSaved: root._startPlaylistPayloadProcess()
+        onSaveFailed: error => root._failPlaylistPayloadWrite(error)
     }
 
     Process {
@@ -582,11 +1007,13 @@ Singleton {
         }
         onStarted: _queueProc.output = ""
         onExited: (code, _status) => {
-            if (code !== 0) {
+            if (code !== 0)
                 root.error = "mpd_queue_failed"
-                return
-            }
-            statusRefreshTimer.restart()
+            else
+                root._scheduleStatusFallback()
+
+            if (root._queueRequests.length > 0)
+                Qt.callLater(root._drainQueueRequests)
         }
     }
 
@@ -609,6 +1036,52 @@ Singleton {
             }
             if (root._enqueueRequests.length > 0)
                 Qt.callLater(root._drainEnqueueRequests)
+        }
+    }
+
+    Process {
+        id: _bulkEnqueueProc
+        property string output: ""
+        stdout: StdioCollector {
+            onStreamFinished: _bulkEnqueueProc.output = text ?? ""
+        }
+        onStarted: _bulkEnqueueProc.output = ""
+        onExited: (code, _status) => {
+            if (code !== 0) {
+                root.error = "mpd_bulk_enqueue_failed"
+            } else {
+                try {
+                    root._applyPayload(JSON.parse(_bulkEnqueueProc.output || "{}"), false)
+                } catch (e) {
+                    root.error = "mpd_bulk_enqueue_parse_failed"
+                }
+            }
+            if (root._bulkEnqueueRequests.length > 0)
+                Qt.callLater(root._drainBulkEnqueueRequests)
+        }
+    }
+
+    Process {
+        id: _playlistProc
+        property string output: ""
+        stdout: StdioCollector {
+            onStreamFinished: _playlistProc.output = text ?? ""
+        }
+        onStarted: _playlistProc.output = ""
+        onExited: (code, _status) => {
+            if (code !== 0) {
+                try {
+                    const payload = JSON.parse(_playlistProc.output || "{}")
+                    root.error = String(payload.error ?? "mpd_playlist_failed")
+                } catch (e) {
+                    root.error = "mpd_playlist_failed"
+                }
+            } else {
+                root.error = ""
+                playlistRescanTimer.restart()
+            }
+            if (root._playlistRequests.length > 0)
+                Qt.callLater(root._drainPlaylistRequests)
         }
     }
 }

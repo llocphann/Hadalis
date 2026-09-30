@@ -766,18 +766,19 @@ def _extract_block(content, section_name, top_level=False):
 
 
 def _find_block_bounds(content, section_name, top_level=False):
-    pattern = re.compile(rf"(?:^|\n)\s*{re.escape(section_name)}\s*\{{")
-    for match in pattern.finditer(content):
-        if top_level and _brace_depth_before(content, match.start()) != 0:
+    structure = _kdl_structural_view(content)
+    pattern = re.compile(rf"^[ \t]*{re.escape(section_name)}[ \t]*\{{", re.MULTILINE)
+    for match in pattern.finditer(structure):
+        if top_level and _brace_depth_before(structure, match.start()) != 0:
             continue
 
         inner_start = match.end()
         depth = 1
         i = inner_start
-        while i < len(content) and depth > 0:
-            if content[i] == "{":
+        while i < len(structure) and depth > 0:
+            if structure[i] == "{":
                 depth += 1
-            elif content[i] == "}":
+            elif structure[i] == "}":
                 depth -= 1
             i += 1
 
@@ -788,18 +789,44 @@ def _find_block_bounds(content, section_name, top_level=False):
 
 
 def _brace_depth_before(content, pos):
-    depth = 0
-    for ch in content[:pos]:
-        if ch == "{":
-            depth += 1
-        elif ch == "}" and depth > 0:
-            depth -= 1
-    return depth
+    structure = _kdl_structural_view(content)
+    return structure[:pos].count("{") - structure[:pos].count("}")
+
+
+def _kdl_structural_view(content):
+    """Keep structural braces and line positions, masking strings and // comments."""
+    view = []
+    in_string = False
+    escaped = False
+    in_comment = False
+    for index, char in enumerate(content):
+        if char == "\n":
+            in_comment = False
+            view.append(char)
+        elif in_comment:
+            view.append(" ")
+        elif in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            view.append(" ")
+        elif char == '"':
+            in_string = True
+            view.append(" ")
+        elif char == "/" and content[index:index + 2] == "//":
+            in_comment = True
+            view.append(" ")
+        else:
+            view.append(char)
+    return "".join(view)
 
 
 def _has_top_level_flag(block_content, flag_name):
     depth = 0
-    for raw_line in block_content.splitlines():
+    for raw_line in _kdl_structural_view(block_content).splitlines():
         stripped = raw_line.strip()
         if depth == 0 and stripped == flag_name:
             return True
@@ -1029,7 +1056,7 @@ def cmd_get_layout():
         print(json.dumps(result))
         return 0
 
-    content = layout_file.read_text()
+    content = _strip_kdl_line_comments(layout_file.read_text())
     layout_block = _extract_block(content, "layout", top_level=True)
 
     if layout_block:
@@ -1210,7 +1237,7 @@ def cmd_get_animations():
         print(json.dumps(result))
         return 0
 
-    content = anim_file.read_text()
+    content = _strip_kdl_line_comments(anim_file.read_text())
     anim_block = _extract_block(content, "animations", top_level=True)
 
     if anim_block:

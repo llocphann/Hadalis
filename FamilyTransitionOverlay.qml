@@ -126,7 +126,7 @@ Scope {
             fadeOut.stop()
             bgScaleOut.stop()
 
-            root._isWaffle = GlobalStates.familyTransitionDirection === "left"
+            root._isWaffle = GlobalStates.familyTransitionTarget === "waffle"
             root._phase = false
             root._active = true
 
@@ -224,6 +224,15 @@ Scope {
         easing.type: Easing.InOutCubic
         onFinished: {
             root._active = false
+
+            // Normal completion needs the same fail-open ownership as the
+            // watchdog path. If Config reloads the shell root between the family
+            // write and this callback, the parent signal connection may already
+            // be gone. Clear the singleton first so no stale transition survives
+            // and a later family switch can always arm a fresh transition.
+            if (GlobalStates.familyTransitionActive)
+                GlobalStates.familyTransitionActive = false
+
             root.enterComplete()
         }
     }

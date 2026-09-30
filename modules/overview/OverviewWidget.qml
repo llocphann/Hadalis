@@ -14,10 +14,33 @@ import Quickshell.Hyprland
 Item {
     id: root
     required property var panelWindow
+    property bool embeddedSurface: false
+    property bool presentationActive: GlobalStates.overviewOpen
+    // Keep local spatial motion static during popup materialization; once fully
+    // revealed, later workspace/window changes may animate normally.
+    property bool focusIndicatorAnimationReady: true
+    readonly property bool localGeometryAnimationReady:
+        !root.embeddedSurface || root.focusIndicatorAnimationReady
+    property var preferredWorkspaceId: null
+    signal presentationCloseRequested()
+
+    function requestPresentationClose(): void {
+        if (root.embeddedSurface)
+            root.presentationCloseRequested()
+        else
+            GlobalStates.overviewOpen = false
+    }
+
     readonly property HyprlandMonitor monitor: Hyprland.monitorFor(panelWindow.screen)
     readonly property var toplevels: ToplevelManager.toplevels
     readonly property int workspacesShown: (Config.options?.overview?.rows ?? 2) * (Config.options?.overview?.columns ?? 5)
-    readonly property int workspaceGroup: Math.floor((monitor.activeWorkspace?.id - 1) / workspacesShown)
+    readonly property int presentationWorkspaceId: {
+        const preferred = Number(root.preferredWorkspaceId)
+        if (isFinite(preferred) && preferred > 0)
+            return Math.round(preferred)
+        return root.monitor?.activeWorkspace?.id ?? 1
+    }
+    readonly property int workspaceGroup: Math.floor((root.presentationWorkspaceId - 1) / workspacesShown)
     property bool monitorIsFocused: (Hyprland.focusedMonitor?.name == monitor.name)
     property var windows: HyprlandData.windowList
     property var windowByAddress: HyprlandData.windowByAddress
@@ -73,8 +96,10 @@ Item {
     property int draggingFromWorkspace: -1
     property int draggingTargetWorkspace: -1
 
-    implicitWidth: overviewBackground.implicitWidth + Appearance.sizes.elevationMargin * 2
-    implicitHeight: overviewBackground.implicitHeight + Appearance.sizes.elevationMargin * 2
+    readonly property real presentationMargin:
+        root.embeddedSurface ? 0 : Appearance.sizes.elevationMargin
+    implicitWidth: overviewBackground.implicitWidth + root.presentationMargin * 2
+    implicitHeight: overviewBackground.implicitHeight + root.presentationMargin * 2
 
     // Scroll del mouse para subir/bajar de workspace en Hyprland
     WheelHandler {
@@ -106,18 +131,20 @@ Item {
 
     StyledRectangularShadow {
         target: overviewBackground
+        visible: !root.embeddedSurface
     }
     Rectangle { // Background
         id: overviewBackground
         property real padding: 10
         anchors.fill: parent
-        anchors.margins: Appearance.sizes.elevationMargin
+        anchors.margins: root.presentationMargin
 
         implicitWidth: workspaceColumnLayout.implicitWidth + padding * 2
         implicitHeight: workspaceColumnLayout.implicitHeight + padding * 2
-        radius: root.largeWorkspaceRadius + padding
-        color: Appearance.colors.colBackgroundSurfaceContainer
-        border.width: 1
+        radius: root.embeddedSurface ? 0 : (root.largeWorkspaceRadius + padding)
+        color: root.embeddedSurface ? "transparent"
+            : Appearance.colors.colBackgroundSurfaceContainer
+        border.width: root.embeddedSurface ? 0 : 1
         border.color: ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.68)
 
         Column { // Workspaces
@@ -186,7 +213,7 @@ Item {
                                 acceptedButtons: Qt.LeftButton
                                 onPressed: {
                                     if (root.draggingTargetWorkspace === -1) {
-                                        GlobalStates.overviewOpen = false
+                                        root.requestPresentationClose()
                                         if (CompositorService.isHyprland)
                                             Hyprland.dispatch(`workspace ${workspace.workspaceValue}`)
                                     }
@@ -242,16 +269,30 @@ Item {
                 scale: root.scale
                 widgetMonitor: HyprlandData.monitors.find(m => m.id == root.monitor.id)
                 windowData: windowByAddress[address]
+                motionAnimationsEnabled: root.localGeometryAnimationReady
 
                 property bool atInitPosition: (initX == x && initY == y)
 
-                // Offset on the canvas
-                property int workspaceColIndex: (windowData?.workspace.id - 1) % Config.options.overview.columns
-                property int workspaceRowIndex: Math.floor((windowData?.workspace.id - 1) % root.workspacesShown / Config.options.overview.columns)
+                // Offset on the canvas. drag.target mutates x/y directly and
+                // therefore detaches OverviewWindow's x:initX / y:initY bindings.
+                // Hold the destination workspace briefly so the restored bindings
+                // point at the target frame even before HyprlandData catches up.
+                property int pendingOverviewWorkspace: -1
+                readonly property int effectiveWorkspaceId:
+                    pendingOverviewWorkspace > 0
+                        ? pendingOverviewWorkspace
+                        : (windowData?.workspace.id ?? 1)
+                property int workspaceColIndex: (effectiveWorkspaceId - 1) % Config.options.overview.columns
+                property int workspaceRowIndex: Math.floor((effectiveWorkspaceId - 1) % root.workspacesShown / Config.options.overview.columns)
                 xOffset: (root.workspaceImplicitWidth + workspaceSpacing) * workspaceColIndex
                 yOffset: (root.workspaceImplicitHeight + workspaceSpacing) * workspaceRowIndex
                 property real xWithinWorkspaceWidget: Math.max((windowData?.at[0] - (monitor?.x ?? 0) - monitorData?.reserved[0]) * root.scale, 0)
                 property real yWithinWorkspaceWidget: Math.max((windowData?.at[1] - (monitor?.y ?? 0) - monitorData?.reserved[1]) * root.scale, 0)
+
+                function restoreOverviewPosition(): void {
+                    window.x = Qt.binding(function() { return window.initX })
+                    window.y = Qt.binding(function() { return window.initY })
+                }
 
                 // Radius
                 property real minRadius: Appearance.rounding.small
@@ -282,8 +323,14 @@ Item {
                     repeat: false
                     running: false
                     onTriggered: {
-                        window.x = Math.round(xWithinWorkspaceWidget + xOffset)
-                        window.y = Math.round(yWithinWorkspaceWidget + yOffset)
+                        if (window.pendingOverviewWorkspace > 0
+                                && window.windowData?.workspace.id
+                                    === window.pendingOverviewWorkspace)
+                            window.pendingOverviewWorkspace = -1
+                        // Rebind rather than assign coordinates. A plain assignment
+                        // would fix one frame but leave future workspace/layout
+                        // changes detached from initX/initY again.
+                        window.restoreOverviewPosition()
                     }
                 }
 
@@ -316,24 +363,34 @@ Item {
                         window.Drag.active = false
                         root.draggingFromWorkspace = -1
                         if (targetWorkspace !== -1 && targetWorkspace !== windowData?.workspace.id) {
+                            window.pendingOverviewWorkspace = targetWorkspace
+                            // Repair x/y immediately so the preview is contained by
+                            // the destination workspace instead of retaining the raw
+                            // drag coordinate above/below its frame.
+                            window.restoreOverviewPosition()
                             Hyprland.dispatch(`movetoworkspacesilent ${targetWorkspace}, address:${window.windowData?.address}`)
                             updateWindowPosition.restart()
                         }
                         else {
+                            window.pendingOverviewWorkspace = -1
                             if (!window.windowData.floating) {
-                                updateWindowPosition.restart()
+                                window.restoreOverviewPosition()
                                 return
                             }
+                            // Floating windows still use the raw drop position to
+                            // update compositor geometry. Restore the Overview
+                            // bindings only after deriving that compositor target.
                             const percentageX = Math.round((window.x - xOffset) / root.workspaceImplicitWidth * 100)
                             const percentageY = Math.round((window.y - yOffset) / root.workspaceImplicitHeight * 100)
                             Hyprland.dispatch(`movewindowpixel exact ${percentageX}% ${percentageY}%, address:${window.windowData?.address}`)
+                            window.restoreOverviewPosition()
                         }
                     }
                     onClicked: (event) => {
                         if (!windowData || !CompositorService.isHyprland) return;
 
                         if (event.button === Qt.LeftButton) {
-                            GlobalStates.overviewOpen = false
+                            root.requestPresentationClose()
                             Hyprland.dispatch(`focuswindow address:${windowData.address}`)
                             event.accepted = true
                         } else if (event.button === Qt.MiddleButton) {
@@ -379,7 +436,9 @@ Item {
                 border.width: 2
                 border.color: root.activeBorderColor
                 Behavior on x {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveFast.type
@@ -387,7 +446,9 @@ Item {
                     }
                 }
                 Behavior on y {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveFast.type
@@ -395,7 +456,9 @@ Item {
                     }
                 }
                 Behavior on topLeftRadius {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveEnter.type
@@ -403,7 +466,9 @@ Item {
                     }
                 }
                 Behavior on topRightRadius {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveEnter.type
@@ -411,7 +476,9 @@ Item {
                     }
                 }
                 Behavior on bottomLeftRadius {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveEnter.type
@@ -419,7 +486,9 @@ Item {
                     }
                 }
                 Behavior on bottomRightRadius {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveEnter.type

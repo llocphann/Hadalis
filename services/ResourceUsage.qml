@@ -15,6 +15,10 @@ Singleton {
     property bool _runningRequested: false
     property bool _initRequested: false
     property int _persistentConsumers: 0
+    property int _historyConsumers: 0
+    property double _historyTransientUntilMs: 0
+    property int _networkConsumers: 0
+    property double _networkTransientUntilMs: 0
 
     // Auto-stop polling when nothing requested it recently.
     // This prevents the service from running forever after briefly opening a panel.
@@ -49,6 +53,11 @@ Singleton {
     property real cpuUsage: 0
     property var previousCpuStats
     property real gpuUsage: 0
+    property real networkRxBytesPerSec: 0
+    property real networkTxBytesPerSec: 0
+    property real _lastNetworkRxBytes: 0
+    property real _lastNetworkTxBytes: 0
+    property real _lastNetworkSampleMs: 0
 
     // Temperature properties (in Celsius)
     property int cpuTemp: 0
@@ -239,6 +248,8 @@ Singleton {
         }
     }
     function updateHistories() {
+        if (root._historyConsumers <= 0 && Date.now() >= root._historyTransientUntilMs)
+            return
         updateMemoryUsageHistory();
         updateSwapUsageHistory();
         updateCpuUsageHistory();
@@ -260,7 +271,14 @@ Singleton {
         console.warn("[ResourceUsage] Failed to start " + stage + " probe; initialization can retry on the next consumer request")
     }
 
-    function ensureRunning(): void {
+    function ensureRunning(withHistory, withNetwork): void {
+        const historyWanted = withHistory === undefined ? true : !!withHistory
+        const networkWanted = withNetwork === undefined ? true : !!withNetwork
+        const nowMs = Date.now()
+        if (historyWanted)
+            root._historyTransientUntilMs = nowMs + root._autoStopDelayMs
+        if (networkWanted)
+            root._networkTransientUntilMs = nowMs + root._autoStopDelayMs
         root._runningRequested = true;
         if (!root._initRequested) {
             root._initRequested = true;
@@ -286,21 +304,47 @@ Singleton {
 
     // Register a persistent consumer (always-visible panel like bar).
     // While any persistent consumer is registered, auto-stop is disabled.
-    function keepAlive(): void {
-        root._persistentConsumers++;
-        autoStopTimer.stop();
-        ensureRunning();
+    function keepAlive(withHistory, withNetwork): void {
+        const historyWanted = withHistory === undefined ? true : !!withHistory
+        const networkWanted = withNetwork === undefined ? true : !!withNetwork
+        root._persistentConsumers++
+        if (historyWanted)
+            root._historyConsumers++
+        if (networkWanted) {
+            if (root._networkConsumers === 0)
+                root._lastNetworkSampleMs = 0
+            root._networkConsumers++
+        }
+        autoStopTimer.stop()
+        ensureRunning(false, false)
     }
 
-    function releaseKeepAlive(): void {
-        root._persistentConsumers = Math.max(0, root._persistentConsumers - 1);
+    function releaseKeepAlive(withHistory, withNetwork): void {
+        const historyWanted = withHistory === undefined ? true : !!withHistory
+        const networkWanted = withNetwork === undefined ? true : !!withNetwork
+        root._persistentConsumers = Math.max(0, root._persistentConsumers - 1)
+        if (historyWanted)
+            root._historyConsumers = Math.max(0, root._historyConsumers - 1)
+        if (networkWanted) {
+            root._networkConsumers = Math.max(0, root._networkConsumers - 1)
+            if (root._networkConsumers === 0 && Date.now() >= root._networkTransientUntilMs) {
+                root._lastNetworkSampleMs = 0
+                root.networkRxBytesPerSec = 0
+                root.networkTxBytesPerSec = 0
+            }
+        }
         if (root._persistentConsumers === 0 && root._runningRequested)
-            autoStopTimer.restart();
+            autoStopTimer.restart()
     }
 
     function stop(): void {
         root._runningRequested = false;
         root._primed = false;
+        root._lastNetworkSampleMs = 0;
+        root._historyTransientUntilMs = 0;
+        root._networkTransientUntilMs = 0;
+        root.networkRxBytesPerSec = 0;
+        root.networkTxBytesPerSec = 0;
         pollTimer.stop();
         diskPollTimer.stop();
         autoStopTimer.stop();
@@ -335,6 +379,7 @@ Singleton {
         // Reload files
         fileMeminfo.reload();
         fileStat.reload();
+        fileNetDev.reload();
         fileCpuTemp.reload();
         if (!skipGpu) {
             if (root._gpuUsageSource !== "nvidia-smi")
@@ -345,19 +390,85 @@ Singleton {
 
         // Empty text() on first call collapses to 0% via the percentage guards.
         const textMeminfo = fileMeminfo.text();
-        memoryTotal = Number(textMeminfo.match(/MemTotal: *(\d+)/)?.[1] ?? 0);
-        memoryFree = Number(textMeminfo.match(/MemAvailable: *(\d+)/)?.[1] ?? 0);
-        swapTotal = Number(textMeminfo.match(/SwapTotal: *(\d+)/)?.[1] ?? 0);
-        swapFree = Number(textMeminfo.match(/SwapFree: *(\d+)/)?.[1] ?? 0);
+        let nextMemoryTotal = 0
+        let nextMemoryFree = 0
+        let nextSwapTotal = 0
+        let nextSwapFree = 0
+        const meminfoLine = /^(MemTotal|MemAvailable|SwapTotal|SwapFree):\s+(\d+)/gm
+        let meminfoMatch
+        while ((meminfoMatch = meminfoLine.exec(textMeminfo)) !== null) {
+            const value = Number(meminfoMatch[2]) || 0
+            switch (meminfoMatch[1]) {
+            case "MemTotal":
+                nextMemoryTotal = value
+                break
+            case "MemAvailable":
+                nextMemoryFree = value
+                break
+            case "SwapTotal":
+                nextSwapTotal = value
+                break
+            case "SwapFree":
+                nextSwapFree = value
+                break
+            }
+        }
+        memoryTotal = nextMemoryTotal
+        memoryFree = nextMemoryFree
+        swapTotal = nextSwapTotal
+        swapFree = nextSwapFree
+
+        // /proc/net/dev stays cheaply refreshed with the other proc files, but
+        // avoid its split/parse allocations unless a consumer displays throughput.
+        const networkDemanded = root._networkConsumers > 0
+            || Date.now() < root._networkTransientUntilMs
+        if (networkDemanded) {
+            const textNetDev = fileNetDev.text();
+            let totalRx = 0;
+            let totalTx = 0;
+            // Match one interface row directly instead of splitting the whole
+            // file into lines and then allocating a second fields[] array for
+            // every interface. Capture RX bytes and TX bytes only.
+            const netLine = /^\s*([^:\s]+):\s*(\d+)(?:\s+\d+){7}\s+(\d+)(?:\s+\d+){7}\s*$/gm
+            let match
+            while ((match = netLine.exec(textNetDev)) !== null) {
+                if (match[1] === "lo")
+                    continue
+                totalRx += Number(match[2]) || 0
+                totalTx += Number(match[3]) || 0
+            }
+
+            const networkNowMs = Date.now();
+            if (root._lastNetworkSampleMs > 0) {
+                const elapsedSeconds = (networkNowMs - root._lastNetworkSampleMs) / 1000;
+                if (elapsedSeconds > 0) {
+                    root.networkRxBytesPerSec = Math.max(
+                        0, (totalRx - root._lastNetworkRxBytes) / elapsedSeconds);
+                    root.networkTxBytesPerSec = Math.max(
+                        0, (totalTx - root._lastNetworkTxBytes) / elapsedSeconds);
+                }
+            }
+            root._lastNetworkRxBytes = totalRx;
+            root._lastNetworkTxBytes = totalTx;
+            root._lastNetworkSampleMs = networkNowMs;
+        }
 
         // Parse CPU usage
         const textStat = fileStat.text();
         const cpuLine = textStat.match(/^cpu\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/);
         if (cpuLine) {
-            const stats = cpuLine.slice(1).map(Number);
-            const total = stats.reduce((a, b) => a + b, 0);
-            // idle (stats[3]) + iowait (stats[4]) = not working
-            const idle = stats[3] + stats[4];
+            // Avoid slice/map/reduce allocations in the regular sensor poll.
+            // /proc/stat fields here are user,nice,system,idle,iowait,irq,softirq.
+            const user = Number(cpuLine[1]) || 0
+            const nice = Number(cpuLine[2]) || 0
+            const system = Number(cpuLine[3]) || 0
+            const idleRaw = Number(cpuLine[4]) || 0
+            const iowait = Number(cpuLine[5]) || 0
+            const irq = Number(cpuLine[6]) || 0
+            const softirq = Number(cpuLine[7]) || 0
+            const total = user + nice + system + idleRaw + iowait + irq + softirq
+            // idle + iowait = not working
+            const idle = idleRaw + iowait
 
             if (previousCpuStats) {
                 const totalDiff = total - previousCpuStats.total;
@@ -438,6 +549,10 @@ Singleton {
     FileView {
         id: fileStat
         path: "/proc/stat"
+    }
+    FileView {
+        id: fileNetDev
+        path: "/proc/net/dev"
     }
     // Temperature sensors - k10temp for AMD CPU, amdgpu for AMD GPU
     // These paths are auto-detected at startup

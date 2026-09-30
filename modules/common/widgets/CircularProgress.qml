@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import QtQuick.Shapes
 import qs.modules.common
 
@@ -11,12 +12,8 @@ Item {
     property int implicitSize: 30
     property int lineWidth: 2
     property real value: 0
-    property color colPrimary: Appearance.angelEverywhere ? Appearance.angel.colPrimary
-        : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnSecondaryContainer
-    property color colSecondary: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-        : Appearance.inirEverywhere ? Appearance.inir.colLayer2 
-        : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface 
-        : Appearance.colors.colSecondaryContainer
+    property color colPrimary: Appearance.colors.colOnSecondaryContainer
+    property color colSecondary: Appearance.colors.colSecondaryContainer
     property real gapAngle: 360 / 18
     property bool fill: false
     property int fillOverflow: 2
@@ -34,7 +31,8 @@ Item {
     property real startAngle: -90
 
     Behavior on degree {
-        enabled: root.enableAnimation && Appearance.animationsEnabled
+        enabled: root.visible && (root.Window.window?.visible ?? true)
+            && root.enableAnimation && Appearance.animationsEnabled
         NumberAnimation {
             duration: root.animationDuration
             easing.type: root.easingType

@@ -11,6 +11,7 @@ waffle="$repo_root/modules/waffle/settings/WTlpSettingRow.qml"
 general="$repo_root/modules/settings/GeneralConfig.qml"
 general_core="$repo_root/modules/settings/GeneralConfigCore.qml"
 power="$repo_root/modules/settings/TlpPowerSettings.qml"
+waffle_page="$repo_root/modules/waffle/settings/pages/WTlpPage.qml"
 charge_limit="$repo_root/modules/settings/BatteryChargeLimitSettings.qml"
 selection_group_button="$repo_root/modules/common/widgets/SelectionGroupButton.qml"
 registry="$repo_root/modules/settings/SettingsPageRegistry.qml"
@@ -108,6 +109,16 @@ assert_contains 'SettingsPageRegistry.consumeLegacyTlpPowerRedirect()' "$general
     'legacy page-28 state must land on the Power task instead of Audio'
 assert_contains 'property string settingsTaskSection: "power"' "$power" \
     'TLP controls must identify themselves as part of the Power task'
+for page in "$power" "$waffle_page"; do
+    assert_contains 'property bool _tlpDemandRefreshed: false' "$page" \
+        "$(basename "$page") must coalesce demand refreshes per visible session"
+    assert_contains 'onVisibleChanged:' "$page" \
+        "$(basename "$page") must refresh TLP state when shown again"
+    assert_contains 'TlpRuntimeCapabilities.refresh()' "$page" \
+        "$(basename "$page") must refresh runtime capabilities on demand"
+    assert_contains 'TlpSettingsService.refresh()' "$page" \
+        "$(basename "$page") must refresh TLP status on demand"
+done
 assert_contains 'title: Translation.tr("Battery & TLP")' "$power" \
     'the primary TLP card title must remain a stable search target'
 assert_not_contains 'settingsTaskSection: "power"' "$general_core" \
@@ -164,7 +175,7 @@ assert_contains 'function isHiddenLegacyIndex(index: int): bool' "$registry" \
     'the registry must centralize filtering of retired navigation indexes'
 assert_contains 'return index === root.retiredTlpPageIndex || root.isRetiredFeaturePage(index)' "$registry" \
     'the hidden-index invariant must include both the retired TLP page and retired feature pages'
-assert_contains 'pages: category.pages.filter(index => !root.isHiddenLegacyIndex(index))' "$registry" \
+assert_contains 'pages:category.pages.filter(index=>root.isPageApplicable(index))' "$registry" \
     'retired compatibility pages must never reappear in sidebar categories'
 assert_contains 'Persistent.states.settings.iiPage = root.systemPageIndex' "$registry" \
     'persisted legacy page 28 must migrate to System when Persistent becomes available'
@@ -178,8 +189,10 @@ assert_contains 'redirected.label = Translation.tr("Battery & TLP")' "$registry"
     'all retired TLP search entries must target the merged Battery/TLP card'
 assert_contains 'keywords.concat(["system", "settings", "power"])' "$registry" \
     'redirected TLP search must stay discoverable through System settings terms'
-assert_contains 'hidden.push(root.retiredTlpPageIndex)' "$arrangement" \
-    'retired page 28 must stay internal-only in saved arrangements'
+assert_contains 'const retired = SettingsPageRegistryData.legacyHiddenIndexes' "$arrangement" \
+    'saved arrangements must derive hidden compatibility slots from the canonical retired-page list'
+assert_contains 'for (const index of retired)' "$arrangement" \
+    'all retired compatibility pages, including historical page 28, must stay internal-only'
 assert_contains 'GeneralConfig {' "$legacy_tlp" \
     'legacy TlpConfig links must redirect through System settings'
 assert_contains 'activeSection: "power"' "$legacy_tlp" \

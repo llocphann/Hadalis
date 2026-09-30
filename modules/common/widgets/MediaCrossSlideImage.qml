@@ -1,12 +1,12 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
-import Qt5Compat.GraphicalEffects as GE
+import Quickshell.Widgets
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
 
-Rectangle {
+ClippingRectangle {
     id: root
 
     property string source: ""
@@ -52,16 +52,6 @@ Rectangle {
 
     radius: artRadius
     color: "transparent"
-    clip: true
-
-    layer.enabled: true
-    layer.effect: GE.OpacityMask {
-        maskSource: Rectangle {
-            width: root.width
-            height: root.height
-            radius: root.radius
-        }
-    }
 
     function _resetLayer(layer, shown: bool): void {
         layer.x = 0

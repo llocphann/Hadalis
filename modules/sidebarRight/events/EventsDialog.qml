@@ -12,6 +12,76 @@ import Quickshell
 WindowDialog {
     id: root
     backgroundHeight: 600
+    contentSpacing: root.embeddedPresentation ? 4 : 16
+    embeddedBackgroundColor: Appearance.angelEverywhere
+        ? Appearance.angel.colGlassPopup
+        : Appearance.inirEverywhere ? Appearance.inir.colLayer1
+        : Appearance.auroraEverywhere ? Appearance.aurora.colDialogSurface
+        : Appearance.colors.colSurfaceContainerHigh
+
+    component EventSectionHeader: WindowDialogSectionHeader {
+        color: Appearance.colors.colOnSurfaceVariant
+        font.pixelSize: root.embeddedPresentation
+            ? Appearance.font.pixelSize.small
+            : Appearance.font.pixelSize.large
+        font.weight: Font.Medium
+    }
+
+    // Popup-only icon control. Standalone/full EventsDialog keeps its existing
+    // labelled controls; this is rendered only by embeddedPresentation.
+    component CompactEventOptionButton: Button {
+        id: compactButton
+        property string symbol: ""
+        property string tooltipText: ""
+        property bool selectedState: false
+
+        implicitWidth: root.embeddedPresentation ? 30 : 36
+        implicitHeight: root.embeddedPresentation ? 30 : 36
+        padding: 0
+        hoverEnabled: true
+        focusPolicy: Qt.StrongFocus
+        opacity: compactButton.enabled ? 1 : 0.35
+        Accessible.name: tooltipText
+
+        background: Rectangle {
+            radius: Appearance.rounding.small
+            color: compactButton.selectedState
+                ? Appearance.colors.colPrimaryContainer
+                : compactButton.hovered || compactButton.activeFocus
+                    ? Appearance.colors.colLayer2Hover
+                    : Appearance.colors.colLayer2
+            border.width: compactButton.activeFocus ? 1 : 0
+            border.color: Appearance.colors.colPrimary
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: Appearance.animation.elementMoveFast.duration
+                    easing.type: Appearance.animation.elementMoveFast.type
+                    easing.bezierCurve:
+                        Appearance.animation.elementMoveFast.bezierCurve
+                }
+            }
+        }
+
+        contentItem: Item {
+            MaterialSymbol {
+                anchors.centerIn: parent
+                text: compactButton.symbol
+                iconSize: root.embeddedPresentation ? 15 : 18
+                color: compactButton.selectedState
+                    ? Appearance.colors.colOnPrimaryContainer
+                    : Appearance.colors.colOnSurfaceVariant
+            }
+        }
+
+        StyledToolTip {
+            visible: compactButton.hovered
+                && compactButton.tooltipText.length > 0
+            text: compactButton.tooltipText
+            delay: 350
+            position: "top"
+        }
+    }
 
     property var editingEvent: null
     property bool isEditing: editingEvent !== null
@@ -20,11 +90,96 @@ WindowDialog {
     property string eventTitle: ""
     property string eventDescription: ""
     property date eventDate: new Date()
+    // eventTime remains the start-time compatibility property.
     property string eventTime: "12:00"
+    property string eventEndTime: "13:00"
+    property bool allDay: false
     property string eventCategory: "general"
     property string eventPriority: "normal"
     property int reminderMinutes: 15
     property string recurrence: "none"
+    property string compactOptionGroup: ""
+
+    function compactOptionsFor(group) {
+        if (group === "repeat") {
+            return [
+                { displayName: Translation.tr("Event"), icon: "event", value: "none" },
+                { displayName: Translation.tr("Daily"), icon: "today", value: "daily" },
+                { displayName: Translation.tr("Weekly"), icon: "date_range", value: "weekly" },
+                { displayName: Translation.tr("Monthly"), icon: "calendar_month", value: "monthly" },
+                { displayName: Translation.tr("Yearly"), icon: "event_repeat", value: "yearly" }
+            ]
+        }
+        if (group === "category") {
+            return [
+                { displayName: Translation.tr("General"), icon: "event", value: "general" },
+                { displayName: Translation.tr("Birthday"), icon: "cake", value: "birthday" },
+                { displayName: Translation.tr("Meeting"), icon: "groups", value: "meeting" },
+                { displayName: Translation.tr("Deadline"), icon: "flag", value: "deadline" },
+                { displayName: Translation.tr("Reminder"), icon: "notifications", value: "reminder" }
+            ]
+        }
+        if (group === "priority") {
+            return [
+                { displayName: Translation.tr("Low"), icon: "arrow_downward", value: "low" },
+                { displayName: Translation.tr("Normal"), icon: "remove", value: "normal" },
+                { displayName: Translation.tr("High"), icon: "priority_high", value: "high" }
+            ]
+        }
+        return [
+            { displayName: Translation.tr("None"), icon: "notifications_off", value: 0 },
+            { displayName: Translation.tr("5 min"), icon: "alarm", value: 5 },
+            { displayName: Translation.tr("15 min"), icon: "alarm", value: 15 },
+            { displayName: Translation.tr("1 hour"), icon: "alarm", value: 60 },
+            { displayName: Translation.tr("1 day"), icon: "alarm", value: 1440 }
+        ]
+    }
+
+    function compactGroupTitle(group): string {
+        if (group === "repeat") return Translation.tr("Repeat")
+        if (group === "category") return Translation.tr("Category")
+        if (group === "priority") return Translation.tr("Priority")
+        return Translation.tr("Reminder")
+    }
+
+    function compactGroupValue(group) {
+        if (group === "repeat") return root.recurrence
+        if (group === "category") return root.eventCategory
+        if (group === "priority") return root.eventPriority
+        return root.reminderMinutes
+    }
+
+    function compactSelectedOption(group) {
+        const current = root.compactGroupValue(group)
+        const options = root.compactOptionsFor(group)
+        for (let i = 0; i < options.length; ++i) {
+            if (options[i].value == current)
+                return options[i]
+        }
+        return options[0]
+    }
+
+    function compactGroupIcon(group): string {
+        return root.compactSelectedOption(group)?.icon ?? "tune"
+    }
+
+    function compactGroupTooltip(group): string {
+        const selected = root.compactSelectedOption(group)
+        return root.compactGroupTitle(group) + " · "
+            + (selected?.displayName ?? "")
+    }
+
+    function setCompactOption(group, value): void {
+        if (group === "repeat") root.recurrence = value
+        else if (group === "category") root.eventCategory = value
+        else if (group === "priority") root.eventPriority = value
+        else root.reminderMinutes = value
+        root.compactOptionGroup = ""
+    }
+
+    function focusEditor(): void {
+        Qt.callLater(() => titleField.forceActiveFocus())
+    }
 
     function resetForm(): void {
         root.editingEvent = null
@@ -32,71 +187,131 @@ WindowDialog {
         root.eventDescription = ""
         root.eventDate = new Date()
         root.eventTime = "12:00"
+        root.eventEndTime = "13:00"
+        root.allDay = false
         root.eventCategory = "general"
         root.eventPriority = "normal"
         root.reminderMinutes = 15
         root.recurrence = "none"
+        root.compactOptionGroup = ""
     }
 
     function loadEvent(event: var): void {
         root.editingEvent = event
         root.eventTitle = event.title || ""
         root.eventDescription = event.description || ""
-        const dt = new Date(event.dateTime)
-        root.eventDate = dt
-        root.eventTime = dt.getHours().toString().padStart(2, '0') + ":" + dt.getMinutes().toString().padStart(2, '0')
+        const startSource = event.startDate || event.dateTime
+        const startDt = new Date(startSource)
+        const safeStart = isNaN(startDt.getTime()) ? new Date() : startDt
+        const endDt = event.endDate
+            ? new Date(event.endDate)
+            : new Date(safeStart.getTime() + 60 * 60 * 1000)
+        const safeEnd = isNaN(endDt.getTime())
+            ? new Date(safeStart.getTime() + 60 * 60 * 1000) : endDt
+        root.eventDate = safeStart
+        root.eventTime = safeStart.getHours().toString().padStart(2, '0')
+            + ":" + safeStart.getMinutes().toString().padStart(2, '0')
+        root.eventEndTime = safeEnd.getHours().toString().padStart(2, '0')
+            + ":" + safeEnd.getMinutes().toString().padStart(2, '0')
+        root.allDay = event.allDay === true
         root.eventCategory = event.category || "general"
         root.eventPriority = event.priority || "normal"
         root.reminderMinutes = event.reminderMinutes ?? 15
         root.recurrence = event.recurrence || "none"
+        root.compactOptionGroup = ""
     }
 
     function saveEvent(): bool {
         if (!Events.ready || root.eventTitle.trim() === "") return false
 
-        const timeParts = root.eventTime.split(":")
-        const hour = parseInt(timeParts[0]) || 0
-        const minute = parseInt(timeParts[1]) || 0
+        const startParts = root.eventTime.split(":")
+        const endParts = root.eventEndTime.split(":")
+        const startDateTime = new Date(root.eventDate)
+        const endDateTime = new Date(root.eventDate)
 
-        const dateTime = new Date(root.eventDate)
-        dateTime.setHours(hour, minute, 0, 0)
+        if (root.allDay) {
+            startDateTime.setHours(0, 0, 0, 0)
+            endDateTime.setHours(0, 0, 0, 0)
+            endDateTime.setDate(endDateTime.getDate() + 1)
+        } else {
+            startDateTime.setHours(
+                parseInt(startParts[0]) || 0,
+                parseInt(startParts[1]) || 0, 0, 0)
+            endDateTime.setHours(
+                parseInt(endParts[0]) || 0,
+                parseInt(endParts[1]) || 0, 0, 0)
+            // Treat an end time at/before the start as crossing midnight.
+            if (endDateTime.getTime() <= startDateTime.getTime())
+                endDateTime.setDate(endDateTime.getDate() + 1)
+        }
+
+        const startIso = startDateTime.toISOString()
+        const endIso = endDateTime.toISOString()
 
         if (root.isEditing) {
             return Events.updateEvent(root.editingEvent.id, {
                 title: root.eventTitle.trim(),
                 description: root.eventDescription.trim(),
-                dateTime: dateTime.toISOString(),
+                dateTime: startIso,
+                startDate: startIso,
+                endDate: endIso,
+                allDay: root.allDay,
                 category: root.eventCategory,
                 priority: root.eventPriority,
                 reminderMinutes: root.reminderMinutes,
                 recurrence: root.recurrence,
-                notified: false
+                notified: false,
+                reminderNotified: false
             })
         }
 
         return Events.addEvent(
             root.eventTitle.trim(),
             root.eventDescription.trim(),
-            dateTime.toISOString(),
+            startIso,
             root.eventCategory,
             root.eventPriority,
             root.reminderMinutes,
-            root.recurrence
+            root.recurrence,
+            endIso,
+            root.allDay
         ) !== null
     }
 
     WindowDialogTitle {
-        text: root.isEditing ? Translation.tr("Edit Event") : Translation.tr("New Event")
+        Layout.leftMargin: root.embeddedPresentation ? 6 : 0
+        Layout.rightMargin: root.embeddedPresentation ? 6 : 0
+        text: root.isEditing
+            ? Translation.tr("Edit Event")
+            : (root.embeddedPresentation
+                ? Translation.tr("Add Event")
+                : Translation.tr("New Event"))
+        font.pixelSize: root.embeddedPresentation
+            ? Appearance.font.pixelSize.normal
+            : Appearance.font.pixelSize.title
+        font.weight: root.embeddedPresentation ? Font.DemiBold : Font.Medium
     }
 
-    WindowDialogSeparator {}
+    WindowDialogSeparator {
+        visible: !root.embeddedPresentation
+    }
 
     // Scrollable content
     Flickable {
+        id: editorFlickable
         Layout.fillWidth: true
         Layout.fillHeight: true
 
-        contentHeight: formColumn.implicitHeight + 16
+        readonly property real embeddedGap: Math.max(4,
+            (height - basicInfoColumn.implicitHeight
+                - scheduleColumn.implicitHeight
+                - compactOptionDeck.height) / 2)
+
+        contentHeight: root.embeddedPresentation
+            ? Math.max(height, formColumn.implicitHeight)
+            : formColumn.implicitHeight + 16
+        Layout.leftMargin: root.embeddedPresentation ? 6 : 0
+        Layout.rightMargin: root.embeddedPresentation ? 6 : 0
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
@@ -107,84 +322,291 @@ WindowDialog {
         Column {
             id: formColumn
             width: parent.width
-            spacing: 4
+            spacing: root.embeddedPresentation
+                ? editorFlickable.embeddedGap : 4
 
             // ─── Basic Info Section ───────────────────────────────────
-            WindowDialogSectionHeader {
+            EventSectionHeader {
+                visible: !root.embeddedPresentation
                 text: Translation.tr("Basic Info")
             }
 
             WindowDialogSeparator {
+                visible: !root.embeddedPresentation
                 Layout.topMargin: -22
             }
 
             Column {
+                id: basicInfoColumn
                 width: parent.width
-                spacing: 8
-                topPadding: 8
+                spacing: root.embeddedPresentation ? 4 : 8
+                topPadding: root.embeddedPresentation ? 2 : 8
 
                 MaterialTextField {
-                    width: parent.width - 16
+                    id: titleField
+                    width: parent.width - (root.embeddedPresentation ? 8 : 16)
+                    implicitHeight: root.embeddedPresentation ? 36 : 56
                     anchors.horizontalCenter: parent.horizontalCenter
-                    placeholderText: Translation.tr("Event title") + " *"
+                    placeholderText: root.embeddedPresentation
+                        ? Translation.tr("Title") + " *"
+                        : Translation.tr("Event title") + " *"
+                    placeholderTextColor: Appearance.colors.colOnSurface
+                    color: Appearance.colors.colOnSurface
+                    renderType: Text.QtRendering
+                    font.weight: Font.Medium
+                    font.hintingPreference: Font.PreferFullHinting
                     text: root.eventTitle
                     onTextChanged: root.eventTitle = text
                 }
 
                 MaterialTextField {
-                    width: parent.width - 16
+                    width: parent.width - (root.embeddedPresentation ? 8 : 16)
+                    implicitHeight: root.embeddedPresentation ? 36 : 56
                     anchors.horizontalCenter: parent.horizontalCenter
-                    placeholderText: Translation.tr("Description (optional)")
+                    placeholderText: root.embeddedPresentation
+                        ? Translation.tr("Note (opt)")
+                        : Translation.tr("Description (optional)")
                     text: root.eventDescription
                     onTextChanged: root.eventDescription = text
                 }
             }
 
             // ─── Date & Time Section ──────────────────────────────────
-            WindowDialogSectionHeader {
+            EventSectionHeader {
+                visible: !root.embeddedPresentation
                 text: Translation.tr("Date & Time")
-                topPadding: 16
+                topPadding: root.embeddedPresentation ? 0 : 16
             }
 
             WindowDialogSeparator {
+                visible: !root.embeddedPresentation
                 Layout.topMargin: -22
             }
 
             Column {
+                id: scheduleColumn
                 width: parent.width
-                spacing: 0
+                spacing: root.embeddedPresentation ? 3 : 6
+                topPadding: root.embeddedPresentation ? 3 : 0
 
-                // Date picker
+                // Embedded Calendar already owns the date grid above this sheet.
+                // Modal owners keep the self-contained picker.
                 DatePicker {
+                    visible: !root.embeddedPresentation
                     width: parent.width
+                    compact: false
                     selectedDate: root.eventDate
                     onDateSelected: (date) => { root.eventDate = date }
                 }
 
-                // Time input using ConfigTimeInput pattern
-                ConfigTimeInput {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
+                RowLayout {
+                    visible: root.embeddedPresentation
+                    width: parent.width - 8
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 4
+
+                    MaterialSymbol {
+                        text: "calendar_month"
+                        iconSize: 16
+                        color: Appearance.colors.colPrimary
                     }
-                    icon: "schedule"
-                    text: Translation.tr("Time")
-                    value: root.eventTime
-                    onTimeChanged: (newTime) => { root.eventTime = newTime }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: Qt.formatDate(root.eventDate, "ddd, dd MMM yyyy")
+                        color: Appearance.colors.colOnSurface
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.Medium
+                        elide: Text.ElideRight
+                    }
+
+                    CompactEventOptionButton {
+                        Layout.preferredWidth: 30
+                        Layout.preferredHeight: 30
+                        symbol: root.allDay
+                            ? "event_available" : "event_busy"
+                        selectedState: root.allDay
+                        tooltipText: Translation.tr("All day") + " · "
+                            + (root.allDay
+                                ? Translation.tr("On")
+                                : Translation.tr("Off"))
+                        onClicked: root.allDay = !root.allDay
+                    }
+                }
+
+                RowLayout {
+                    visible: !root.embeddedPresentation
+                    width: parent.width - 8
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 8
+
+                    MaterialSymbol {
+                        text: "event_available"
+                        iconSize: 16
+                        color: Appearance.colors.colOnSurfaceVariant
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: Translation.tr("All day")
+                        color: Appearance.colors.colOnSurface
+                        font.pixelSize: Appearance.font.pixelSize.small
+                    }
+
+                    StyledSwitch {
+                        scale: 0.58
+                        checked: root.allDay
+                        onToggled: root.allDay = checked
+                    }
+                }
+
+                RowLayout {
+                    visible: !root.allDay
+                    width: parent.width - (root.embeddedPresentation ? 8 : 0)
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: root.embeddedPresentation ? 6 : 8
+
+                    ConfigTimeInput {
+                        Layout.fillWidth: true
+                        compact: root.embeddedPresentation
+                        icon: "schedule"
+                        text: Translation.tr("Start")
+                        value: root.eventTime
+                        onTimeChanged: (newTime) => { root.eventTime = newTime }
+                    }
+
+                    ConfigTimeInput {
+                        Layout.fillWidth: true
+                        compact: root.embeddedPresentation
+                        icon: "schedule"
+                        text: Translation.tr("End")
+                        value: root.eventEndTime
+                        onTimeChanged: (newTime) => {
+                            root.eventEndTime = newTime
+                        }
+                    }
                 }
             }
 
-            // ─── Category Section ─────────────────────────────────────
-            WindowDialogSectionHeader {
-                text: Translation.tr("Category")
-                topPadding: 16
+            // Embedded Add Event uses one compact icon deck instead of
+            // four labelled option sections. Fixed-size buttons keep spacing
+            // predictable and avoid crowding the time controls above.
+            Item {
+                id: compactOptionDeck
+                visible: root.embeddedPresentation
+                width: parent.width
+                height: 32
+
+                RowLayout {
+                    visible: root.compactOptionGroup === ""
+                    anchors.centerIn: parent
+                    spacing: 8
+
+                    Repeater {
+                        model: [
+                            { key: "repeat" },
+                            { key: "category" },
+                            { key: "priority" },
+                            { key: "reminder" }
+                        ]
+
+                        delegate: CompactEventOptionButton {
+                            required property var modelData
+                            Layout.preferredWidth: 30
+                            Layout.preferredHeight: 30
+                            symbol: root.compactGroupIcon(modelData.key)
+                            tooltipText: root.compactGroupTooltip(modelData.key)
+                            onClicked: root.compactOptionGroup = modelData.key
+                        }
+                    }
+                }
+
+                RowLayout {
+                    visible: root.compactOptionGroup !== ""
+                    anchors.centerIn: parent
+                    spacing: 6
+
+                    CompactEventOptionButton {
+                        Layout.preferredWidth: 30
+                        Layout.preferredHeight: 30
+                        symbol: "arrow_back"
+                        tooltipText: Translation.tr("Back")
+                        onClicked: root.compactOptionGroup = ""
+                    }
+
+                    Repeater {
+                        model: root.compactOptionsFor(
+                            root.compactOptionGroup)
+
+                        delegate: CompactEventOptionButton {
+                            required property var modelData
+                            Layout.preferredWidth: 30
+                            Layout.preferredHeight: 30
+                            symbol: modelData.icon
+                            selectedState: modelData.value
+                                == root.compactGroupValue(
+                                    root.compactOptionGroup)
+                            tooltipText:
+                                root.compactGroupTitle(
+                                    root.compactOptionGroup)
+                                + " · " + modelData.displayName
+                            onClicked: root.setCompactOption(
+                                root.compactOptionGroup,
+                                modelData.value)
+                        }
+                    }
+                }
+            }
+
+            // Repeat is part of scheduling, so keep it next to date/time rather
+            // than burying it below category/priority/reminder settings.
+            EventSectionHeader {
+                visible: !root.embeddedPresentation
+                text: Translation.tr("Repeat")
+                topPadding: root.embeddedPresentation ? 5 : 16
             }
 
             WindowDialogSeparator {
+                visible: !root.embeddedPresentation
                 Layout.topMargin: -22
             }
 
             ConfigSelectionArray {
+                visible: !root.embeddedPresentation
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    leftMargin: 8
+                    rightMargin: 8
+                }
+                enableSettingsSearch: false
+                options: [
+                    // "Event" maps to the existing one-time/non-recurring
+                    // storage value instead of inventing an incompatible mode.
+                    { displayName: Translation.tr("Event"), icon: "event", value: "none" },
+                    { displayName: Translation.tr("Daily"), icon: "today", value: "daily" },
+                    { displayName: Translation.tr("Weekly"), icon: "date_range", value: "weekly" },
+                    { displayName: Translation.tr("Monthly"), icon: "calendar_month", value: "monthly" },
+                    { displayName: Translation.tr("Yearly"), icon: "event_repeat", value: "yearly" }
+                ]
+                currentValue: root.recurrence
+                onSelected: (newValue) => { root.recurrence = newValue }
+            }
+
+            // ─── Category Section ─────────────────────────────────────
+            EventSectionHeader {
+                visible: !root.embeddedPresentation
+                text: Translation.tr("Category")
+                topPadding: root.embeddedPresentation ? 6 : 16
+            }
+
+            WindowDialogSeparator {
+                visible: !root.embeddedPresentation
+                Layout.topMargin: -22
+            }
+
+            ConfigSelectionArray {
+                visible: !root.embeddedPresentation
                 anchors {
                     left: parent.left
                     right: parent.right
@@ -204,16 +626,19 @@ WindowDialog {
             }
 
             // ─── Priority Section ─────────────────────────────────────
-            WindowDialogSectionHeader {
+            EventSectionHeader {
+                visible: !root.embeddedPresentation
                 text: Translation.tr("Priority")
-                topPadding: 16
+                topPadding: root.embeddedPresentation ? 6 : 16
             }
 
             WindowDialogSeparator {
+                visible: !root.embeddedPresentation
                 Layout.topMargin: -22
             }
 
             ConfigSelectionArray {
+                visible: !root.embeddedPresentation
                 anchors {
                     left: parent.left
                     right: parent.right
@@ -231,16 +656,19 @@ WindowDialog {
             }
 
             // ─── Reminder Section ─────────────────────────────────────
-            WindowDialogSectionHeader {
+            EventSectionHeader {
+                visible: !root.embeddedPresentation
                 text: Translation.tr("Reminder")
-                topPadding: 16
+                topPadding: root.embeddedPresentation ? 6 : 16
             }
 
             WindowDialogSeparator {
+                visible: !root.embeddedPresentation
                 Layout.topMargin: -22
             }
 
             ConfigSelectionArray {
+                visible: !root.embeddedPresentation
                 anchors {
                     left: parent.left
                     right: parent.right
@@ -259,47 +687,46 @@ WindowDialog {
                 onSelected: (newValue) => { root.reminderMinutes = newValue }
             }
 
-            // ─── Repeat Section ───────────────────────────────────────
-            WindowDialogSectionHeader {
-                text: Translation.tr("Repeat")
-                topPadding: 16
-            }
-
-            WindowDialogSeparator {
-                Layout.topMargin: -22
-            }
-
-            ConfigSelectionArray {
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                    leftMargin: 8
-                    rightMargin: 8
-                }
-                enableSettingsSearch: false
-                options: [
-                    { displayName: Translation.tr("Never"), icon: "block", value: "none" },
-                    { displayName: Translation.tr("Daily"), icon: "today", value: "daily" },
-                    { displayName: Translation.tr("Weekly"), icon: "date_range", value: "weekly" },
-                    { displayName: Translation.tr("Monthly"), icon: "calendar_month", value: "monthly" },
-                    { displayName: Translation.tr("Yearly"), icon: "event_repeat", value: "yearly" }
-                ]
-                currentValue: root.recurrence
-                onSelected: (newValue) => { root.recurrence = newValue }
-            }
-
             // Bottom padding
-            Item { width: 1; height: 16 }
+            Item {
+                visible: !root.embeddedPresentation
+                width: 1
+                height: 16
+            }
         }
     }
 
-    WindowDialogSeparator {}
+    WindowDialogSeparator {
+        visible: !root.embeddedPresentation
+    }
 
     WindowDialogButtonRow {
+        spacing: root.embeddedPresentation ? 6 : 4
+        Layout.leftMargin: root.embeddedPresentation ? 6 : -8
+        Layout.rightMargin: root.embeddedPresentation ? 6 : -8
+        Layout.bottomMargin: root.embeddedPresentation ? 2 : 0
+
         DialogButton {
-            visible: root.isEditing
+            visible: root.isEditing && !root.embeddedPresentation
             enabled: Events.ready
+            padding: 14
+            implicitHeight: 36
             buttonText: Translation.tr("Delete")
+            onClicked: {
+                if (Events.removeEvent(root.editingEvent.id)) {
+                    root.resetForm()
+                    root.dismiss()
+                }
+            }
+        }
+
+        CompactEventOptionButton {
+            visible: root.embeddedPresentation && root.isEditing
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 30
+            enabled: Events.ready
+            symbol: "delete"
+            tooltipText: Translation.tr("Delete")
             onClicked: {
                 if (Events.removeEvent(root.editingEvent.id)) {
                     root.resetForm()
@@ -311,6 +738,9 @@ WindowDialog {
         Item { Layout.fillWidth: true }
 
         DialogButton {
+            visible: !root.embeddedPresentation
+            padding: 14
+            implicitHeight: 36
             buttonText: Translation.tr("Cancel")
             onClicked: {
                 root.resetForm()
@@ -318,8 +748,43 @@ WindowDialog {
             }
         }
 
+        CompactEventOptionButton {
+            visible: root.embeddedPresentation
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 30
+            symbol: "close"
+            tooltipText: Translation.tr("Cancel")
+            onClicked: {
+                root.resetForm()
+                root.dismiss()
+            }
+        }
+
         DialogButton {
-            buttonText: root.isEditing ? Translation.tr("Save") : Translation.tr("Add Event")
+            visible: !root.embeddedPresentation
+            padding: 14
+            implicitHeight: 36
+            buttonText: root.isEditing
+                ? Translation.tr("Save")
+                : Translation.tr("Add Event")
+            enabled: Events.ready && root.eventTitle.trim() !== ""
+            onClicked: {
+                if (root.saveEvent()) {
+                    root.resetForm()
+                    root.dismiss()
+                }
+            }
+        }
+
+        CompactEventOptionButton {
+            visible: root.embeddedPresentation
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 30
+            symbol: root.isEditing ? "check" : "add_task"
+            selectedState: true
+            tooltipText: root.isEditing
+                ? Translation.tr("Save")
+                : Translation.tr("Add Event")
             enabled: Events.ready && root.eventTitle.trim() !== ""
             onClicked: {
                 if (root.saveEvent()) {

@@ -8,6 +8,7 @@ sidebar="$root/modules/sidebar/SidebarHost.qml"
 screen_edge="$root/modules/screenCorners/ScreenEdges.qml"
 overview="$root/modules/overview/Overview.qml"
 dashboard="$root/modules/overview/OverviewDashboard.qml"
+dock="$root/modules/dock/Dock.qml"
 
 fail() {
     printf 'FAIL: perimeter shared contract: %s\n' "$1" >&2
@@ -19,14 +20,31 @@ for file in \
     ConnectedSurfaceGeometry.qml \
     ConnectedSurfaceConnector.qml \
     ConnectedSurfaceFrame.qml \
-    ConnectedSurfaceJoinFlares.qml \
     ConnectedSurfaceRevealClip.qml \
     ConnectedSurfaceContentHost.qml \
-    ConnectedSurfaceMask.qml; do
+    ConnectedSurfaceMask.qml \
+    ConnectedSurfaceIrisField.qml \
+    ConnectedSurfaceIrisFrame.qml \
+    ConnectedSurfaceBodyMask.qml \
+    ConnectedSurfaceIrisEdgeSurface.qml \
+    IrisField.frag \
+    IrisField.frag.qsb; do
     [[ -f "$common/$file" ]] || fail "missing shared primitive $file"
 done
 
-for primitive in ConnectedSurfaceGeometry ConnectedSurfaceFrame ConnectedSurfaceRevealClip ConnectedSurfaceContentHost ConnectedSurfaceMask; do
+for retired in \
+    "$common/ConnectedSurfaceJoinFlares.qml" \
+    "$common/PerimeterCornerShadow.qml" \
+    "$root/modules/common/widgets/RoundCorner.qml"; do
+    [[ ! -e "$retired" ]] || fail "retired round-wedge primitive still exists: ${retired#$root/}"
+done
+for token in 'ConnectedSurfaceJoinFlares 1.0' 'PerimeterCornerShadow 1.0'; do
+    ! grep -Fq "$token" "$common/qmldir" || fail "retired perimeter export remains: $token"
+done
+! grep -Fq 'RoundCorner 1.0' "$root/modules/common/widgets/qmldir" \
+    || fail 'retired RoundCorner export remains'
+
+for primitive in ConnectedSurfaceGeometry ConnectedSurfaceIrisFrame ConnectedSurfaceRevealClip ConnectedSurfaceContentHost ConnectedSurfaceBodyMask; do
     grep -Fq "$primitive" "$styled" \
         || fail "StyledPopup must keep using $primitive"
 done
@@ -41,47 +59,48 @@ for token in \
     'readonly property real _barSurfaceThickness:' \
     'Appearance.sizes.verticalBarWidth' \
     'Appearance.sizes.barHeight' \
-    'return Qt.rect(barX, mapped.y, thickness, target.height)' \
-    'return Qt.rect(mapped.x, barY, target.width, thickness)'; do
+    'const tangentY = root.centerOnOutput' \
+    'return Qt.rect(barX, tangentY, thickness, localHeight)' \
+    'const tangentX = root.centerOnOutput' \
+    'return Qt.rect(tangentX, barY, localWidth, thickness)' \
+    'readonly property real _popupScreenMargin: root._screenEdgeThickness' \
+    'screenEdge?.physicalShadow?.enabled ?? true' \
+    'Qt.alpha(Appearance.m3colors.m3shadow, root._edgeShadowOpacity)'; do
     grep -Fq "$token" "$styled" \
         || fail "StyledPopup must keep control-centered tangent placement while attaching to the physical Bar edge: $token"
 done
+grep -Fq 'readonly property rect sdfBodyRect:' "$common/ConnectedSurfaceIrisFrame.qml" \
+    || fail 'iRiS tangent joins must weld only the SDF body record'
+grep -Fq 'x: root.sdfBodyRect.x' "$common/ConnectedSurfaceIrisFrame.qml" \
+    || fail 'iRiS popup shape must consume the tangent-welded SDF rect'
 grep -Fq 'property real connectorWidth: PerimeterTokens.connectorWidth' "$common/ConnectedSurfaceGeometry.qml" \
     || fail 'connected geometry must source neck width from PerimeterTokens'
 grep -Fq 'readonly property real connectorWidth: 40' "$common/PerimeterTokens.qml" \
     || fail 'shared connector width token changed unexpectedly'
 for token in \
     'width: Math.max(0, root.effectiveSidebarWidth' \
-    '- Appearance.sizes.elevationMargin)' \
-    'rightMargin: root.isLeftEdge' \
-    '? Appearance.sizes.elevationMargin' \
-    ': 0' \
-    'leftMargin: root.isLeftEdge' \
-    '? 0' \
-    ': Appearance.sizes.elevationMargin'; do
+    '- Appearance.sizes.elevationMargin' \
+    '- root.screenEdgeHoverWidth)' \
+    '? root.screenEdgeHoverWidth' \
+    ': Appearance.sizes.elevationMargin' \
+    'ConnectedSurfaceIrisEdgeSurface {' \
+    'ownerThickness: root.screenEdgeHoverWidth' \
+    'exclusionMode: ExclusionMode.Ignore' \
+    'sidebarContentLoader.x + sidebarContentLoader.animTranslateX' \
+    'progress: root.presentationOpen || sidebarContentLoader.animating ? 1 : 0' \
+    'readonly property real hiddenTranslateDistance:' \
+    'Math.ceil(root.effectiveSidebarWidth) + Math.max(' \
+    'PerimeterTokens.irisFuseDepth' \
+    '? -root.hiddenTranslateDistance' \
+    ': root.hiddenTranslateDistance'; do
     grep -Fq -- "$token" "$sidebar" \
-        || fail "SidebarHost must underlap the full attached Screen Edge band: $token"
+        || fail "SidebarHost must use owner-clipped iRiS Screen Edge composition: $token"
 done
-if grep -Fq 'directEdgeInset' "$sidebar" \
-        || grep -Fq 'screenEdgeThickness' "$sidebar"; then
-    fail 'SidebarHost must not stop the body at the inner Screen Edge boundary'
-fi
 if grep -Fq 'id: sidebarBridgeGeometry' "$sidebar" \
-        || grep -Fq 'ConnectedSurfaceConnector {' "$sidebar"; then
-    fail 'SidebarHost must not retain a visible connector-shaped bridge'
+        || grep -Fq 'ConnectedSurfaceConnector {' "$sidebar" \
+        || grep -Fq 'ConnectedSurfaceJoinFlares {' "$sidebar"; then
+    fail 'SidebarHost must not retain connector/flare patch geometry'
 fi
-
-for token in \
-    'import qs.modules.common.perimeter' \
-    'readonly property real edgeDecorationMargin:' \
-    'PerimeterTokens.joinFlareRadius' \
-    'ConnectedSurfaceJoinFlares {' \
-    'bodyItem: sidebarContentLoader' \
-    'joinLeft: root.isLeftEdge' \
-    'joinRight: !root.isLeftEdge'; do
-    grep -Fq "$token" "$sidebar" \
-        || fail "SidebarHost must render Caelestia-style Screen Edge endpoint flares: $token"
-done
 
 for token in \
     'import qs.modules.common.perimeter' \
@@ -105,15 +124,52 @@ for token in \
     'property bool directBottomAttachment: false' \
     'property bool popupPresented: true' \
     'property real revealProgress: 0' \
+    'property real attachmentThickness:' \
     'id: dashboardSurfaceLayer' \
     '(1 - root.revealProgress) * dashContainer.height' \
     'clip: root.directBottomAttachment' \
-    'ConnectedSurfaceJoinFlares {' \
-    'joinBottom: root.directBottomAttachment' \
-    'blur: root.screenEdgeShadowSize' \
+    'ConnectedSurfaceIrisEdgeSurface {' \
+    'edge: "bottom"' \
+    'ownerThickness: root.attachmentThickness' \
+    'root.height + root.attachmentThickness' \
+    'fillColor: Appearance.colors.colLayer0' \
     'readonly property rect connectedSurfaceRect:'; do
     grep -Fq "$token" "$dashboard" \
-        || fail "OverviewDashboard must behave like a bottom-connected popup: $token"
+        || fail "OverviewDashboard must use the iRiS bottom-owner composition: $token"
+done
+if grep -Fq 'ConnectedSurfaceJoinFlares {' "$dashboard" \
+        || grep -Fq 'joinFlareRadius' "$dashboard"; then
+    fail 'OverviewDashboard must not retain the legacy flare renderer/tokens'
+fi
+
+for token in \
+    'import qs.modules.common.perimeter' \
+    'ConnectedSurfaceIrisEdgeSurface {' \
+    'id: dockIrisSurface' \
+    'edge: root.position' \
+    'ownerThickness: dockRoot.screenEdgeThickness' \
+    'dockMouseArea.x + dockBackground.x + dockConnectedBody.x' \
+    'screenEdge?.physicalShadow?.enabled ?? true' \
+    'screenEdge?.physicalShadow?.size ?? 15' \
+    'screenEdge?.physicalShadow?.opacity ?? 0.70' \
+    'Qt.alpha(Appearance.m3colors.m3shadow, dockRoot.screenEdgeShadowOpacity)'; do
+    grep -Fq "$token" "$dock" \
+        || fail "Dock must use the shared iRiS/Screen Edge shadow contract: $token"
+done
+if grep -Fq 'StyledRectangularShadow {' "$dock"; then
+    fail 'Dock must not retain a detached local shadow beside the shared iRiS field'
+fi
+
+for shared_shadow_surface in "$sidebar" "$dashboard" "$dock"; do
+    grep -Fq 'screenEdge?.physicalShadow?.enabled ?? true' "$shared_shadow_surface" \
+        || fail "${shared_shadow_surface#$root/} lost shared Screen Edge shadow ownership"
+    grep -Fq 'Appearance.m3colors.m3shadow' "$shared_shadow_surface" \
+        || fail "${shared_shadow_surface#$root/} lost Material Screen Edge shadow ink"
+done
+for file in "$root/modules/overview/SearchWidget.qml" "$root/modules/onScreenKeyboard/OnScreenKeyboard.qml" "$common/ConnectedSurfaceFrame.qml"; do
+    if grep -Fq 'ConnectedSurfaceJoinFlares' "$file" || grep -Fq 'joinFlareRadius' "$file"; then
+        fail "${file#$root/} retained legacy round-wedge geometry"
+    fi
 done
 
 for token in \
@@ -126,9 +182,12 @@ for token in \
     'function barOwnsEdge(outputName, edge)' \
     'GlobalStates.widgetEditMode' \
     'Config.options?.bar?.screenList' \
-    '&& !root.barOwnsEdge(outputName, edge)' \
-    'readonly property bool adjacentBarOwned:' \
-    '&& !adjacentBarOwned'; do
+    'function iiBarOwnsEdge(outputName, edge)' \
+    'root.iiBarOwnsEdge(outputName, "left")' \
+    'root.iiBarOwnsEdge(outputName, "right")' \
+    'root.iiBarOwnsEdge(outputName, "top")' \
+    'root.iiBarOwnsEdge(outputName, "bottom")' \
+    '&& !root.barOwnsEdge(outputName, edge)'; do
     grep -Fq "$token" "$screen_edge" \
         || fail "Screen Edge must suppress the Bar-owned edge/corners and share the Material Bar surface token: $token"
 done

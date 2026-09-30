@@ -126,8 +126,9 @@ ii is built for **Niri**. Some features were inherited from the original Hyprlan
 
 ### Window Previews
 
-- **No live previews**: Unlike some shells, ii doesn't capture live window thumbnails. You see app icons, not actual window content.
-- **Workspace snapshots disabled**: The code for workspace screenshots exists but is disabled (too slow/unreliable).
+- **Niri Overview uses cached per-window snapshots only**: decoded PNG previews are kept warm and visible windows receive targeted refreshes when Overview opens. If a snapshot is unavailable or previews are disabled, the app icon remains the fallback.
+- **No Niri live/adaptive preview backend is installed or loaded**: `niri screenshot-window` is used only for bounded one-shot snapshot capture; it is never polled as a video transport.
+- **Workspace screenshots remain disabled**: full-workspace screenshots are not used as a preview substitute because they can capture shell layers and cannot reliably represent occluded/off-workspace windows.
 
 ### Window Matching
 
@@ -137,7 +138,7 @@ ii is built for **Niri**. Some features were inherited from the original Hyprlan
 ### Backdrop & Wallpaper
 
 - **Separate configs**: Material ii and Waffle have independent backdrop/wallpaper settings. If you enable both families, each manages its own background layer.
-- **Niri layer rules required**: The backdrop uses Niri's `place-within-backdrop` layer rule. If your wallpaper doesn't show in overview, check that your `config.kdl` has the layer rules for `quickshell:iiBackdrop` and `quickshell:wBackdrop`.
+- **Niri layer rules required**: The backdrop uses Niri's `place-within-backdrop` layer rule. Abyss intentionally reuses the historical `quickshell:iiBackdrop` namespace so stable/upgraded Niri configs keep working; Waffle uses `quickshell:wBackdrop`. Required migration 052 repairs missing rules on existing installs. If wallpaper is still replaced by a solid color in Niri Overview/hot corners afterward, verify the family backdrop is enabled and inspect the active Niri config for a conflicting custom layer rule.
 - **Migration is automatic**: Switching between families auto-migrates your `enabledPanels` config. You shouldn't need to touch it manually.
 
 ---

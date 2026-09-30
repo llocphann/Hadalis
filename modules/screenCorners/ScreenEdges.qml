@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import qs
 import qs.modules.common
 import qs.modules.common.perimeter
+import qs.modules.bar as Bar
 import qs.services
 import qs.modules.waffle.looks as WaffleLooks
 import QtQuick
@@ -40,9 +41,9 @@ Scope {
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
     readonly property real rounding: PerimeterTokens.frameRadius
 
-    // Physical Screen Edge shadow has its own config owner. Do not reuse
-    // appearance.screenEdge.shadow: that key belongs to connected popup/sidebar
-    // body shadows and must never change the physical perimeter effect.
+    // Public Screen Edge shadow controls also drive ii Bar StyledPopup depth.
+    // Do not reuse appearance.screenEdge.shadow here: that older key remains
+    // for Sidebar/Dashboard/Settings/OSK connected-body shadows.
     readonly property bool physicalShadowEnabled:
         Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
     readonly property int physicalShadowSize: Math.max(0, Math.min(32,
@@ -204,7 +205,13 @@ Scope {
             layer.enabled: frameShape.physicalShadowActive
             layer.effect: MultiEffect {
                 shadowEnabled: frameShape.physicalShadowActive
+                // blurMax alone only sets the kernel ceiling; without
+                // shadowBlur the effect paints no soft falloff into the
+                // workspace at the four inverted rounded corners.
                 blurMax: Math.max(1, root.physicalShadowSize)
+                shadowBlur: 1.0
+                shadowHorizontalOffset: 0
+                shadowVerticalOffset: 0
                 shadowColor: Qt.alpha(
                     Appearance.m3colors.m3shadow,
                     root.physicalShadowOpacity)
@@ -309,6 +316,8 @@ Scope {
     // Transparent compositor reservation only. ScreenEdge pixels are never
     // painted here, so these windows cannot alter the frame/corner silhouette.
     component ReservationWindow: PanelWindow {
+        id: reservationWindow
+
         required property ShellScreen modelData
         required property string edge
 
@@ -316,6 +325,15 @@ Scope {
         readonly property bool horizontal: edge === "top" || edge === "bottom"
         readonly property bool fullscreenCovered: outputName.length > 0
             && GameMode.hasFullscreenOnOutput(outputName)
+        readonly property bool workspaceOverviewEdgeTriggerEnabled:
+            edge === "top"
+            && root.barVertical
+            && !root.waffleFamily
+            && root.iiBarPanelEnabled
+            && GlobalStates.barOpen
+            && !GlobalStates.widgetEditMode
+            && root.iiBarTargetsOutput(outputName)
+            && (Config.options?.overview?.workspaceHover?.enable ?? true)
         readonly property bool mapped: Config.ready
             && !GlobalStates.screenLocked
             && !fullscreenCovered
@@ -350,7 +368,49 @@ Scope {
             height: 0
             visible: false
         }
-        mask: Region { item: emptyReservationInput }
+
+        MouseArea {
+            id: workspaceOverviewHitArea
+            anchors.fill: parent
+            enabled: reservationWindow.workspaceOverviewEdgeTriggerEnabled
+            hoverEnabled: enabled
+            acceptedButtons: Qt.NoButton
+            onContainsMouseChanged: {
+                if (containsMouse && enabled)
+                    workspaceOverviewHoverDelay.restart()
+                else
+                    workspaceOverviewHoverDelay.stop()
+            }
+        }
+
+        Timer {
+            id: workspaceOverviewHoverDelay
+            interval: Config.options?.overview?.workspaceHover?.delayMs ?? 280
+            repeat: false
+            onTriggered: {
+                if (reservationWindow.workspaceOverviewEdgeTriggerEnabled
+                        && workspaceOverviewHitArea.containsMouse)
+                    workspaceEdgeOverview.showWorkspace(null, workspaceOverviewHitArea)
+            }
+        }
+
+        Bar.BarWorkspaceOverview {
+            id: workspaceEdgeOverview
+            dockHovered: reservationWindow.workspaceOverviewEdgeTriggerEnabled
+                && workspaceOverviewHitArea.containsMouse
+            barPosition: "top"
+            attachmentThickness: root.thickness
+        }
+
+        onWorkspaceOverviewEdgeTriggerEnabledChanged: {
+            if (!workspaceOverviewEdgeTriggerEnabled)
+                workspaceEdgeOverview.close()
+        }
+
+        mask: Region {
+            item: reservationWindow.workspaceOverviewEdgeTriggerEnabled
+                ? workspaceOverviewHitArea : emptyReservationInput
+        }
     }
 
     Variants {

@@ -1,6 +1,7 @@
 import qs.modules.common
 import qs.modules.common.functions
 import QtQuick
+import QtQuick.Window
 import QtQuick.Shapes
 import Qt5Compat.GraphicalEffects
 
@@ -40,7 +41,8 @@ Item {
     property real startAngle: -90
 
     Behavior on degree {
-        enabled: root.enableAnimation
+        enabled: root.visible && (root.Window.window?.visible ?? true)
+            && root.enableAnimation
         NumberAnimation {
             duration: root.animationDuration
             easing.type: root.easingType

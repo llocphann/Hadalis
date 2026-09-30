@@ -1,4 +1,5 @@
 pragma Singleton
+import "SettingsNavigation.js" as Navigation
 import QtQuick
 import Quickshell
 import qs.services
@@ -11,15 +12,13 @@ import qs.modules.common
  * Component paths are relative to the shell root — resolve with
  * Quickshell.shellPath(page.component).
  *
- * Historical page slots 18, 19, 21, 27 and 28 intentionally remain in-place
- * so persisted numeric page/category values do not shift. The public registry
- * hides and redirects them; the retired feature slots carry no feature UI or
- * searchable metadata.
+ * Historical page slots stay hidden in place so the appended focused Abyss
+ * pages do not shift stored indices. Navigation consumes only applicable pages.
  */
 Singleton {
     id: root
 
-    readonly property var legacyHiddenIndexes: [18, 19, 21, 27, 28]
+    readonly property var legacyHiddenIndexes: [18, 19, 21, 27, 28, 30, 31]
 
     readonly property var pages: [
         {
@@ -59,7 +58,7 @@ Singleton {
             key: "themes",
             name: Translation.tr("Themes"),
             icon: "palette",
-            desc: Translation.tr("Colors, fonts, styles"),
+            desc: Translation.tr("Material colors, typography and motion"),
             essential: true,
             component: "modules/settings/ThemesConfig.qml"
         },
@@ -254,46 +253,39 @@ Singleton {
             desc: "",
             essential: false,
             component: "modules/settings/GeneralConfig.qml"
-        }
+        },
+        {
+            key: "overview",
+            name: Translation.tr("Overview"),
+            icon: "overview_key",
+            desc: Translation.tr("Workspace hover and workspace preview layout"),
+            essential: false,
+            component: "modules/settings/OverviewConfig.qml"
+        },
+        {key:"_retired-30",name:"",icon:"settings",component:"modules/settings/InterfaceConfig.qml",devNavigationHidden:true},
+        {key:"_retired-31",name:"",icon:"settings",component:"modules/settings/InterfaceConfig.qml",devNavigationHidden:true},
+        {key:"abyss-waves",name:"Waves & Audio",icon:"waves",desc:"Waves, spectrum and interaction",component:"modules/settings/AbyssWavesConfig.qml"},
+        {key:"abyss-popups",name:"Popups",icon:"chat_bubble",desc:"Popup and indicator placement",component:"modules/settings/AbyssPopupsConfig.qml"},
+        {key:"abyss-modules",name:"Modules",icon:"widgets",desc:"Edge modules and behavior",component:"modules/settings/AbyssModulesConfig.qml"},
+        {key:"automation",name:Translation.tr("Automation"),icon:"smart_toy",desc:Translation.tr("ChatGPT sessions and service health"),component:"modules/settings/AutomationConfig.qml"}
     ]
 
+    // v7 information architecture: navigation reflects the user's intent,
+    // not the QML implementation folder or renderer. Historical page slots are
+    // stable for saved routes, search results and existing deep links.
     readonly property var defaultCategories: [
-        { label: Translation.tr("Essentials"), pages: [0] },
-        { label: Translation.tr("Appearance"), pages: [4, 25, 3, 14] },
-        { label: Translation.tr("Shell"), pages: [2, 26, 5, 22, 23, 16, 10, 11, 20] },
-        { label: Translation.tr("System"), pages: [1, 24, 7, 6, 12, 15, 8, 17] },
-        { label: Translation.tr("Reference"), pages: [9, 13] }
+        { label: Translation.tr("Home"), pages: [0] },
+        { label: "Abyss", pages: Config.options?.panelFamily === "abyss" ? [2,32,34,33,22,23,16] : [] },
+        { label: Translation.tr("Appearance"), pages: [4, 3, 25, 8] },
+        { label: Translation.tr("Desktop & Layout"), pages: Config.options?.panelFamily === "abyss" ? [15,5,14,29,10,11] : [15,26,2,22,23,5,16,14,29,10,11] },
+        { label: Translation.tr("System"), pages: [1, 12, 17] },
+        { label: Translation.tr("Features & Services"), pages: Config.options?.panelFamily === "abyss" ? [24, 7, 6, 35] : [24, 7, 6] },
+        { label: Translation.tr("Advanced & Help"), pages: [20, 9, 13] }
     ]
 
-    readonly property var _arrangement: {
-        const fallback = ({ groups: defaultCategories, hidden: [] })
-        const raw = Config.options?.settingsUi?.categories ?? ""
-        if (!raw || raw.length === 0) return fallback
-        let saved
-        try {
-            saved = JSON.parse(raw)
-        } catch (e) {
-            return fallback
-        }
-        const groupsIn = Array.isArray(saved) ? saved : (Array.isArray(saved?.groups) ? saved.groups : null)
-        if (!groupsIn || groupsIn.length === 0) return fallback
-        const hidden = (Array.isArray(saved?.hidden) ? saved.hidden : [])
-            .filter(i => Number.isInteger(i) && i >= 0 && i < pages.length && !legacyHiddenIndexes.includes(i))
-        const seen = new Set(legacyHiddenIndexes.concat(hidden))
-        const out = []
-        for (const c of groupsIn) {
-            if (!c || typeof c.label !== "string") continue
-            const pageIdxs = (Array.isArray(c.pages) ? c.pages : [])
-                .filter(i => Number.isInteger(i) && i >= 0 && i < pages.length && !seen.has(i))
-            pageIdxs.forEach(i => seen.add(i))
-            out.push({ label: c.label, pages: pageIdxs })
-        }
-        const missing = []
-        for (let i = 0; i < pages.length; i++)
-            if (!seen.has(i)) missing.push(i)
-        if (missing.length > 0) out.push({ label: Translation.tr("More"), pages: missing })
-        return out.length > 0 ? ({ groups: out, hidden: hidden }) : fallback
-    }
+    readonly property var _arrangement: Navigation.arrange(
+        Config.options?.settingsUi?.categories ?? "", defaultCategories,
+        pages.length, legacyHiddenIndexes)
     readonly property var categories: _arrangement.groups
     readonly property var hiddenPages: _arrangement.hidden
 
@@ -307,7 +299,6 @@ Singleton {
         target: Translation
         function onLanguageCodeChanged(): void { root._staticSearchIndex = null }
         function onTranslationsChanged(): void { root._staticSearchIndex = null }
-        function onGeneratedTranslationsChanged(): void { root._staticSearchIndex = null }
     }
 
     function searchIndex(): var {
@@ -315,6 +306,20 @@ Singleton {
             return _staticSearchIndex
 
         _staticSearchIndex = [
+        {
+            pageIndex: 35, pageName: root.pages[35].name,
+            section: Translation.tr("Automation"),
+            label: Translation.tr("Automation profiles and service health"),
+            description: Translation.tr("Manage autonomous ChatGPT sessions, schedules and recovery"),
+            keywords: ["automation", "chatgpt", "research", "profile", "schedule", "bridge", "worker", "archive", "history"]
+        },
+        {
+            pageIndex: 7, pageName: root.pages[7].name,
+            section: Translation.tr("To-do & Quick Notes"),
+            label: Translation.tr("To-do & Quick Notes"),
+            description: Translation.tr("Shared vault for tasks and Zettelkasten notes"),
+            keywords: ["todo", "to-do", "quick notes", "zettelkasten", "obsidian", "tasks", "markdown", "vault", "sync", "data"]
+        },
         {
             pageIndex: 28, pageName: root.pages[28].name,
             section: Translation.tr("Power management"),
@@ -351,11 +356,11 @@ Singleton {
             keywords: ["wallpaper", "colors", "palette", "theme", "background"]
         },
         {
-            pageIndex: 0, pageName: root.pages[0].name,
-            section: Translation.tr("Bar & screen"),
-            label: Translation.tr("Bar & screen"),
-            description: Translation.tr("Bar position and screen rounding"),
-            keywords: ["bar", "position", "screen", "round", "corner"]
+            pageIndex: 2, pageName: root.pages[2].name,
+            section: Translation.tr("Appearance & Layout"),
+            label: Translation.tr("Bar position"),
+            description: Translation.tr("Choose the Classic Bar screen edge"),
+            keywords: ["bar", "position", "top", "bottom", "left", "right", "screen", "edge"]
         },
         {
             pageIndex: 0, pageName: root.pages[0].name,
@@ -557,8 +562,8 @@ Singleton {
             pageIndex: 2, pageName: root.pages[2].name,
             section: Translation.tr("Screen Edge"),
             label: Translation.tr("Screen edge shadow"),
-            description: Translation.tr("Configure only the physical Screen Edge shadow"),
-            keywords: ["screen", "edge", "shadow", "physical", "size", "opacity", "blur", "perimeter", "caelestia"]
+            description: Translation.tr("Configure Screen Edge and connected surface shadows"),
+            keywords: ["screen", "edge", "shadow", "popup", "physical", "size", "opacity", "blur", "perimeter", "caelestia"]
         },
         {
             pageIndex: 2, pageName: root.pages[2].name,
@@ -648,8 +653,8 @@ Singleton {
             pageIndex: 2, pageName: root.pages[2].name,
             section: Translation.tr("Bar module layout"),
             label: Translation.tr("Bar module layout"),
-            description: Translation.tr("Reorder and toggle bar modules"),
-            keywords: ["bar", "module", "layout", "order", "reorder", "resources", "media", "clock"]
+            description: Translation.tr("Reorder modules with separate Top/Bottom and Left/Right presets"),
+            keywords: ["bar", "module", "layout", "order", "reorder", "resources", "media", "clock", "vertical", "left", "right", "top", "bottom", "preset"]
         },
         {
             pageIndex: 3, pageName: root.pages[3].name,
@@ -785,13 +790,6 @@ Singleton {
             keywords: ["transparency", "opacity", "translucent", "see-through", "glass"]
         },
         {
-            pageIndex: 0, pageName: root.pages[0].name,
-            section: Translation.tr("Bar & screen"),
-            label: Translation.tr("Fake screen rounding"),
-            description: Translation.tr("Rounded corners for the screen edges"),
-            keywords: ["screen", "rounding", "corners", "fake", "round", "edges"]
-        },
-        {
             pageIndex: 4, pageName: root.pages[4].name,
             section: Translation.tr("Theme Scheduling"),
             label: Translation.tr("Theme schedule"),
@@ -799,8 +797,8 @@ Singleton {
             keywords: ["theme", "schedule", "day", "night", "auto", "switch", "time"]
         },
         {
-            pageIndex: 10, pageName: root.pages[10].name,
-            section: Translation.tr("Display scaling"),
+            pageIndex: 4, pageName: root.pages[4].name,
+            section: Translation.tr("Typography"),
             label: Translation.tr("UI scale (%)"),
             description: Translation.tr("Scale the entire shell UI for HiDPI / 4K monitors"),
             keywords: ["scale", "dpi", "hidpi", "4k", "zoom", "size", "display", "monitor", "resolution"]
@@ -967,6 +965,27 @@ Singleton {
             keywords: ["notification", "margin", "edge", "spacing", "gap"]
         },
         {
+            pageIndex: 5, pageName: root.pages[5].name,
+            section: Translation.tr("Notifications"),
+            label: Translation.tr("Notification center"),
+            description: Translation.tr("Bottom-right hover history popup"),
+            keywords: ["notification", "center", "history", "bottom", "right", "hover", "corner", "popup"]
+        },
+        {
+            pageIndex: 5, pageName: root.pages[5].name,
+            section: Translation.tr("Notifications"),
+            label: Translation.tr("Notification center hover"),
+            description: Translation.tr("Configure hover delay, close grace and corner hit size"),
+            keywords: ["notification", "center", "hover", "delay", "grace", "corner", "size"]
+        },
+        {
+            pageIndex: 5, pageName: root.pages[5].name,
+            section: Translation.tr("Notifications"),
+            label: Translation.tr("Notification center behavior"),
+            description: Translation.tr("Configure read state and fullscreen access"),
+            keywords: ["notification", "center", "read", "toast", "fullscreen", "behavior"]
+        },
+        {
             pageIndex: 6, pageName: root.pages[6].name,
             section: Translation.tr("Region selector (screen snipping/Google Lens)"),
             label: Translation.tr("Region selector"),
@@ -984,8 +1003,8 @@ Singleton {
             pageIndex: 23, pageName: root.pages[23].name,
             section: Translation.tr("Sidebars"),
             label: Translation.tr("Arrange sidebar sections"),
-            description: Translation.tr("Reorder right sidebar sections and balance notifications against widgets"),
-            keywords: ["sidebar", "right", "arrange", "order", "sections", "notifications", "widgets", "resize", "height"]
+            description: Translation.tr("Reorder right sidebar system, slider, toggle and widget sections"),
+            keywords: ["sidebar", "right", "arrange", "order", "sections", "widgets", "drag"]
         },
         {
             pageIndex: 23, pageName: root.pages[23].name,
@@ -993,13 +1012,6 @@ Singleton {
             label: Translation.tr("Arrange sidebar tabs"),
             description: Translation.tr("Reorder the tabs shown in the left sidebar"),
             keywords: ["sidebar", "left", "arrange", "order", "tabs", "drag", "widgets", "ai"]
-        },
-        {
-            pageIndex: 23, pageName: root.pages[23].name,
-            section: Translation.tr("Sidebars"),
-            label: Translation.tr("Collapse notifications when empty"),
-            description: Translation.tr("Shrink the right sidebar when there are no notifications"),
-            keywords: ["sidebar", "notifications", "collapse", "empty", "compact", "shrink"]
         },
         {
             pageIndex: 23, pageName: root.pages[23].name,
@@ -1079,21 +1091,28 @@ Singleton {
             keywords: ["osd", "media", "music", "player", "shortcuts", "track", "fullscreen", "game", "automatic", "skip"]
         },
         {
-            pageIndex: 5, pageName: root.pages[5].name,
+            pageIndex: 29, pageName: root.pages[29].name,
+            section: Translation.tr("Overview"),
+            label: Translation.tr("Workspace hover"),
+            description: Translation.tr("Open the connected workspace Overview from Bar hover"),
+            keywords: ["overview", "workspace", "hover", "bar", "popup", "delay", "preview"]
+        },
+        {
+            pageIndex: 29, pageName: root.pages[29].name,
             section: Translation.tr("Overview"),
             label: Translation.tr("Overview"),
             description: Translation.tr("Overview scale, rows and columns"),
             keywords: ["overview", "grid", "rows", "columns", "scale"]
         },
         {
-            pageIndex: 5, pageName: root.pages[5].name,
+            pageIndex: 29, pageName: root.pages[29].name,
             section: Translation.tr("Overview"),
             label: Translation.tr("Overview scale"),
             description: Translation.tr("Size of workspace thumbnails in overview"),
             keywords: ["overview", "scale", "size", "workspace", "thumbnail"]
         },
         {
-            pageIndex: 5, pageName: root.pages[5].name,
+            pageIndex: 29, pageName: root.pages[29].name,
             section: Translation.tr("Overview"),
             label: Translation.tr("Window previews in overview"),
             description: Translation.tr("Show window thumbnails in overview"),
@@ -1154,6 +1173,13 @@ Singleton {
             label: Translation.tr("Floating tools (Super+G)"),
             description: Translation.tr("Floating image and widgets panel (Super+G)"),
             keywords: ["super+g", "super g", "overlay", "floating", "tools", "widgets", "desktop", "notes", "image", "crosshair", "mixer", "resources", "fps", "recorder"]
+        },
+        {
+            pageIndex: 5, pageName: root.pages[5].name,
+            section: Translation.tr("Bottom-left Quick Notes"),
+            label: Translation.tr("Quick Notes corner"),
+            description: Translation.tr("Hover the bottom-left screen corner to reveal the shared Notepad"),
+            keywords: ["quick notes", "notes", "notepad", "bottom left", "corner", "hover", "screen edge", "popup", "memo", "write", "monitor", "primary", "all monitors"]
         },
         {
             pageIndex: 6, pageName: root.pages[6].name,
@@ -1460,8 +1486,8 @@ Singleton {
             pageIndex: 12, pageName: root.pages[12].name,
             section: Translation.tr("Keyboard"),
             label: Translation.tr("Keyboard"),
-            description: Translation.tr("Keyboard layout and repeat settings"),
-            keywords: ["keyboard", "layout", "repeat", "delay", "rate", "xkb", "input"]
+            description: Translation.tr("Keyboard layout, Fcitx5, Telex and repeat settings"),
+            keywords: ["keyboard", "layout", "repeat", "delay", "rate", "xkb", "input", "fcitx5", "unikey", "telex", "vni", "vietnamese", "unicode", "ime", "typing"]
         },
         {
             pageIndex: 12, pageName: root.pages[12].name,
@@ -1587,12 +1613,13 @@ Singleton {
         { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Shell visibility"), label: Translation.tr("Primary monitor"), description: Translation.tr("Choose the default output for shell popups"), keywords: ["monitor", "display", "primary", "screen", "output"] },
         { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Overview placement"), label: Translation.tr("Active screen only"), description: Translation.tr("Open the overview on the monitor where it was invoked"), keywords: ["overview", "monitor", "screen", "focused", "active", "output"] },
         { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Material shell surfaces"), label: Translation.tr("Bar, dock, sidebars, and media controls"), description: Translation.tr("Choose which monitors show Material shell surfaces"), keywords: ["monitor", "visibility", "bar", "dock", "sidebar", "media", "workspace", "secondary"] },
-        { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Popups"), label: Translation.tr("Notification popups and OSD indicators"), description: Translation.tr("Choose which monitors show notifications and OSD feedback"), keywords: ["monitor", "visibility", "notifications", "osd", "popups", "secondary", "workspace"] },
+        { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Popups"), label: Translation.tr("Notification surfaces and OSD indicators"), description: Translation.tr("Choose which monitors show transient notifications, the notification center and OSD feedback"), keywords: ["monitor", "visibility", "notifications", "center", "history", "osd", "popups", "secondary", "workspace"] },
         { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Desktop widgets"), label: Translation.tr("Desktop widgets"), description: Translation.tr("Choose widget visibility and layout per monitor"), keywords: ["monitor", "visibility", "desktop", "widgets", "layout", "secondary", "workspace"] },
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("Dashboard"), description: Translation.tr("Centered welcome hub panel with configurable widgets"), keywords: ["dashboard", "hub", "welcome", "panel", "home", "greeting"] },
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("Panel width"), description: Translation.tr("Dashboard width as a percentage of the screen"), keywords: ["dashboard", "width", "size", "ratio", "screen"] },
+        { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("Panel height"), description: Translation.tr("Dashboard height as a percentage of the screen"), keywords: ["dashboard", "height", "size", "ratio", "screen", "scroll"] },
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("GitHub username"), description: Translation.tr("GitHub user for the contributions heatmap widget"), keywords: ["dashboard", "github", "contributions", "heatmap", "username", "activity"] },
-        { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("Widgets"), label: Translation.tr("Dashboard widgets"), description: Translation.tr("Place, hide and reorder dashboard widgets per column"), keywords: ["dashboard", "widgets", "layout", "column", "reorder", "clock", "weather", "media", "todo", "calendar", "notifications", "system"] },
+        { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("Canvas"), label: Translation.tr("Dashboard canvas"), description: Translation.tr("Move and resize Dashboard modules freely with grid snapping"), keywords: ["dashboard", "widgets", "modules", "canvas", "grid", "snap", "resize", "move", "weather", "media", "calendar"] },
         {
             pageIndex: 17, pageName: root.pages[17].name,
             section: Translation.tr("How autostart works"),

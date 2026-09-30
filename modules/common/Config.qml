@@ -1,6 +1,7 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 import QtQuick
+import "PanelFamilyPolicy.js" as FamilyPolicy
 import Quickshell
 import Quickshell.Io
 
@@ -273,6 +274,7 @@ Singleton {
     }
     property var _customSnapshotForInject: ({})
     property var _jsonMirror: ({})
+    property bool _styleMigrationWritePending: false
 
     function _cloneObject(obj: var): var {
         try {
@@ -375,7 +377,12 @@ Singleton {
             root._writeInFlight = true;
             root._writeRetries = 0;
             fileReloadTimer.stop();
-            configFileView.writeAdapter();
+            // A migration patches the original document, including keys owned
+            // by optional/custom features that JsonAdapter does not declare.
+            if (root._styleMigrationWritePending) {
+                root._styleMigrationWritePending = false;
+                root._writeMirrorToDisk();
+            } else configFileView.writeAdapter();
             writeFlightGuard.restart();
         }
     }
@@ -430,6 +437,11 @@ Singleton {
                 root._jsonMirror = {};
             }
             root._syncVarProperties();
+            const styleMigration = FamilyPolicy.migrateMaterial(root._jsonMirror);
+            if (Object.keys(styleMigration).length) {
+                root._styleMigrationWritePending = true;
+                root.setNestedValues(styleMigration);
+            }
             root._bumpRevision();
             root.ready = true;
         }
@@ -455,10 +467,102 @@ Singleton {
                 property list<var> outputs: []
             }
 
-            property list<string> enabledPanels: ["iiBar", "iiBackground", "iiBackdrop", "iiCheatsheet", "iiControlPanel", "iiDock", "iiLock", "iiMediaControls", "iiNotificationPopup", "iiOnScreenDisplay", "iiOnScreenKeyboard", "iiOverlay", "iiOverview", "iiPolkit", "iiRegionSelector", "iiScreenCorners", "iiSessionScreen", "iiSidebarLeft", "iiSidebarRight", "iiTilingOverlay", "iiVerticalBar", "iiWallpaperSelector", "iiWallpaperLauncher", "iiCoverflowSelector", "iiClipboard", "iiShellUpdate", "iiDashboard"]
+            property list<string> enabledPanels: FamilyPolicy.abyssPanels
             property list<string> knownPanels: []
-            property string panelFamily: "ii"
+            property list<string> visitedPanelFamilies: []
+            property string panelFamily: "abyss"
+            property int panelStyleVersion: 1
             property bool familyTransitionAnimation: true
+
+            property JsonObject abyss: JsonObject {
+                property string quality: "balanced"
+                property list<var> positions: []
+                property JsonObject sidebars: JsonObject {
+                    property bool hoverEnabled: true
+                }
+                property JsonObject spectrum: JsonObject {
+                    property bool configured: false
+                    property bool enabled: false
+                    property real strength: 0.45
+                    property string edge: "bar"
+                    property string multiMonitorMode: "primary"
+                }
+                property JsonObject perimeter: JsonObject {
+                    property int thickness: 16
+                    property int radius: 34
+                    property bool visibleInFullscreen: false
+                }
+                property JsonObject surface: JsonObject {
+                    property real opacity: 0.78
+                    property real tension: 0.5
+                    property int softness: 24
+                }
+                property JsonObject content: JsonObject {
+                    // -1 follows the Screen Edge material until customized.
+                    property real opacity: -1
+                    property int blurRadius: -1
+                    property real cardOpacity: 0.9
+                }
+                property JsonObject waves: JsonObject {
+                    property real strength: -1
+                    property bool popupTravel: true
+                    property real whitewater: 0.65
+                    property bool enabled: false
+                    property string preset: "balanced"
+                    property real amplitude: 0.6
+                    property real propagation: 0.8
+                    property real speed: 0.55
+                    property real decay: 0.55
+                    property real tension: 0.5
+                    property real viscosity: 0.55
+                    property real rebound: 0.6
+                    property real corner: 0.8
+                    property real hover: 1
+                    property real press: 1
+                    property real open: 1
+                    property real close: 1
+                    property real drag: 1
+                    property bool idle: false
+                    property real small: 0.7
+                    property real large: 1
+                    property real dock: 0.5
+                    property real notifications: 0.3
+                }
+                property JsonObject modules: JsonObject {
+                    property bool configured: false
+                    property list<var> placements: []
+                    property list<var> outputLayouts: []
+                    property real gap: 8
+                    property real size: 1
+                    property JsonObject singleModuleExpansion: JsonObject {
+                        property string top: "edge"
+                        property string right: "edge"
+                        property string bottom: "edge"
+                        property string left: "edge"
+                    }
+                    property JsonObject edgeThicknesses: JsonObject {
+                        property real top: -1
+                        property real right: -1
+                        property real bottom: -1
+                        property real left: -1
+                    }
+                    property JsonObject edgeSizes: JsonObject {
+                        property real top: 1
+                        property real right: 1
+                        property real bottom: 1
+                        property real left: 1
+                    }
+                    property real depth: 36
+                }
+                property JsonObject motion: JsonObject { property real intensity: 0.6 }
+                property JsonObject effects: JsonObject {
+                    property JsonObject blur: JsonObject { property bool enabled: true; property int radius: 10 }
+                    property JsonObject refraction: JsonObject { property bool enabled: false; property real strength: 6 }
+                    property JsonObject glow: JsonObject { property real strength: 0.08 }
+                    property real surfaceHighlight: 0.45
+                    property real shadowStrength: 0.24
+                }
+            }
 
             property JsonObject policies: JsonObject {
                 property int ai: 0
@@ -500,8 +604,9 @@ Singleton {
                         property real opacity: 0.70
                     }
 
-                    // Physical Screen Edge shadow only. Defaults mirror
-                    // Caelestia ContentWindow: enabled, blurMax 15, alpha 0.70.
+                    // Public Screen Edge depth controls. The physical frame and
+                    // ii Bar popups share these values so popup depth matches
+                    // the perimeter. Defaults mirror Caelestia ContentWindow.
                     property JsonObject physicalShadow: JsonObject {
                         property bool enabled: true
                         property int size: 15
@@ -689,7 +794,6 @@ Singleton {
                     property string m3successContainer: "#79740e"
                     property string m3onSuccessContainer: "#d5c4a1"
                 }
-                property int fakeScreenRounding: 2
                 property JsonObject transparency: JsonObject {
                     property bool enable: false
                     property bool automatic: true
@@ -1024,6 +1128,7 @@ Singleton {
                         property int widgetScale: 100
                         property int widgetOpacity: 100
                         property bool showBackground: true
+                property bool showDashboardButton: true
                         property bool useBlur: false
                         property bool showBorder: true
                         property real backgroundOpacity: 0.16
@@ -1615,17 +1720,12 @@ Singleton {
                 property real opacity: 1.0
                 property int cornerStyle: 0
                 property int customRounding: -1
-                property bool floatStyleShadow: true
                 property bool borderless: true
                 property string topLeftIcon: "distro"
                 property bool showBackground: true
                 property bool showScrollHints: true
                 property string leftScrollAction: "brightness"
                 property string rightScrollAction: "volume"
-                property JsonObject blurBackground: JsonObject {
-                    property bool enabled: false
-                    property real overlayOpacity: 0.3
-                }
                 property JsonObject visualizer: JsonObject {
                     property bool enable: false
                     property string multiMonitorMode: "primary"
@@ -1651,6 +1751,9 @@ Singleton {
                     property string dateFontFamily: ""
                     property int datePixelSize: 0
                 }
+                property JsonObject media: JsonObject {
+                    property int width: 180
+                }
                 property JsonObject vignette: JsonObject {
                     property bool enabled: false
                     property real intensity: 0.6
@@ -1658,6 +1761,7 @@ Singleton {
                 }
                 property JsonObject modules: JsonObject {
                     property bool leftSidebarButton: true
+                    property bool distroIcon: true
                     property bool activeWindow: true
                     property bool resources: false
                     property bool media: true
@@ -1682,11 +1786,11 @@ Singleton {
                     property list<string> order: ["resources", "media", "workspaces", "clock", "utilButtons", "battery"]
                 }
                 property JsonObject edgeModulesLayout: JsonObject {
-                    property list<string> leftOrder: ["leftSidebarButton", "activeWindow"]
+                    property list<string> leftOrder: ["leftSidebarButton", "distroIcon", "activeWindow"]
                     property list<string> rightOrder: ["rightSidebarButton", "sysTray", "weather"]
                 }
                 property JsonObject layout: JsonObject {
-                    property list<string> left: ["leftSidebarButton", "activeWindow"]
+                    property list<string> left: ["leftSidebarButton", "distroIcon", "activeWindow"]
                     property list<string> centerLeft: ["resources", "media"]
                     property list<string> center: ["workspaces"]
                     property list<string> centerRight: ["clock", "utilButtons", "battery"]
@@ -1694,6 +1798,15 @@ Singleton {
                     property int spacerWidth: 0
                     property string spacerMode: "auto"
                     property bool migrated: false
+                }
+                property JsonObject verticalLayout: JsonObject {
+                    property list<string> top: ["leftSidebarButton", "distroIcon", "activeWindow", "spacer"]
+                    property list<string> centerTop: ["resources", "media"]
+                    property list<string> center: ["workspaces"]
+                    property list<string> centerBottom: ["clock", "utilButtons", "battery"]
+                    property list<string> bottom: ["weather", "tray", "timer", "shellUpdate", "spacer", "rightSidebarButton"]
+                    property int spacerHeight: 0
+                    property string spacerMode: "auto"
                 }
                 property JsonObject resources: JsonObject {
                     property bool showMemoryIndicator: true
@@ -1725,6 +1838,8 @@ Singleton {
                     property bool showScreenCast: false
                     property string screenCastOutput: "HDMI-A-1"
                     property bool showNotepad: true
+                    property bool showUtilitiesLauncher: true
+                    property list<string> order: ["screenSnip","screenRecord","colorPicker","notepad","keyboard","keyboardLayout","mic","screenCast","darkMode","performance","utilities"]
                 }
                 property JsonObject tray: JsonObject {
                     property bool monochromeIcons: true
@@ -1819,11 +1934,13 @@ Singleton {
                 property bool hoverToReveal: false
                 property bool showOnDesktop: true
                 property bool showBackground: true
+                property bool showDashboardButton: true
                 property bool minimizeUnfocused: false
                 property bool enableBlurGlass: true
                 property bool separatePinnedFromRunning: true
                 property bool notificationBadge: true
                 property list<string> pinnedApps: ["org.gnome.Nautilus", "firefox", "kitty"]
+                property list<string> hiddenPinnedApps: []
                 property list<string> ignoredAppRegexes: []
                 property list<string> screenList: []
                 property bool smartIndicator: true
@@ -1832,7 +1949,6 @@ Singleton {
                 property bool hoverPreview: true
                 property int hoverPreviewDelay: 400
                 property bool keepPreviewOnClick: false
-                property bool enableDragReorder: true
             }
 
             property JsonObject controlPanel: JsonObject {
@@ -1849,7 +1965,6 @@ Singleton {
             }
 
             property JsonObject dashboard: JsonObject {
-                property bool enable: true
                 property bool keepLoaded: false
                 property bool showHeader: true
                 property bool showPowerButtons: true
@@ -1859,11 +1974,28 @@ Singleton {
                     property bool showCardTitles: true
                 }
                 property string subtitle: ""
-                property real widthRatio: 0.62
-                property JsonObject layout: JsonObject {
-                    property list<string> left: ["welcome", "clock", "system", "github"]
-                    property list<string> center: ["notifications", "todo"]
-                    property list<string> right: ["media", "weather", "calendar"]
+                property real widthRatio: 0.72
+                property real heightRatio: 0.72
+                property JsonObject canvas: JsonObject {
+                    property real workspaceWidth: 0
+                    property real workspaceHeight: 0
+                    property int gridSize: 24
+                    property bool snap: true
+                    property bool autoAdjustSize: true
+                    property string gridStyle: "dots"
+                    property list<var> widgets: [
+                        { id: "welcome", x: 0.00, y: 0.00, w: 0.30, h: 0.18, visible: true },
+                        { id: "clock", x: 0.00, y: 0.19, w: 0.30, h: 0.14, visible: true },
+                        { id: "system", x: 0.00, y: 0.34, w: 0.30, h: 0.17, visible: true },
+                        { id: "github", x: 0.00, y: 0.52, w: 0.30, h: 0.12, visible: true },
+                        { id: "notifications", x: 0.31, y: 0.00, w: 0.35, h: 0.25, visible: true },
+                        { id: "agenda", x: 0.31, y: 0.26, w: 0.35, h: 0.13, visible: true },
+                        { id: "todo", x: 0.31, y: 0.40, w: 0.35, h: 0.24, visible: true },
+                        { id: "media", x: 0.67, y: 0.00, w: 0.33, h: 0.62, visible: true },
+                        { id: "weather", x: 0.67, y: 0.64, w: 0.33, h: 0.36, visible: true },
+                        { id: "calendar", x: 0.00, y: 0.65, w: 0.66, h: 0.35, visible: true },
+                        { id: "notes", x: 0.67, y: 0.77, w: 0.33, h: 0.23, visible: false }
+                    ]
                 }
                 property JsonObject github: JsonObject {
                     property string username: ""
@@ -1901,6 +2033,15 @@ Singleton {
                 }
                 property JsonObject antiFlashbang: JsonObject {
                     property bool enable: false
+                    property bool darkOnly: true
+                    property real threshold: 0.30
+                    property real strength: 0.90
+                    property real minMultiplier: 0.12
+                    property int sampleInterval: 500
+                    property real sampleScale: 0.10
+                    property int windowDelay: 30
+                    property int workspaceDelay: 180
+                    property int responseMs: 80
                 }
             }
 
@@ -1996,6 +2137,22 @@ Singleton {
                 property bool useLegacyCounter: true
             }
 
+            // Material notification history surface hosted by the bottom-right
+            // ScreenCorners owner. Transient toast placement remains under
+            // notifications.* so the two surfaces can be configured independently.
+            property JsonObject notificationCenter: JsonObject {
+                property bool enable: true
+                property bool hoverEnable: true
+                property int hoverDelayMs: 220
+                property int closeGraceMs: 280
+                property int cornerSize: 14
+                property int popupWidth: 420
+                property int popupHeight: 560
+                property bool markReadOnOpen: true
+                property bool allowInFullscreen: false
+                property list<string> screenList: []
+            }
+
             property JsonObject osd: JsonObject {
                 property int timeout: 1000
                 property bool mediaEnabled: true
@@ -2020,6 +2177,17 @@ Singleton {
                     property string imageSource: "https://media.tenor.com/H5U5bJzj3oAAAAAi/kukuru.gif"
                     property real scale: 0.5
                 }
+            }
+
+            // Bottom-left hover Quick Notes. The popup reuses Notepad state,
+            // so these values only control presentation/interaction geometry.
+            property JsonObject quickNotes: JsonObject {
+                property bool enable: true
+                property string monitorMode: "all"
+                property int hoverDelayMs: 220
+                property int cornerSize: 14
+                property int popupWidth: 420
+                property int popupHeight: 300
             }
 
             property JsonObject overview: JsonObject {
@@ -2052,13 +2220,10 @@ Singleton {
                 property bool activeScreenOnly: true
                 property bool allAppsGrid: false
                 property string allAppsGridMode: "minimal"
-                property JsonObject dashboard: JsonObject {
-                    property bool enable: false
-                    property bool showToggles: true
-                    property bool showMedia: true
-                    property bool showVolume: true
-                    property bool showWeather: true
-                    property bool showSystem: true
+                property JsonObject workspaceHover: JsonObject {
+                    property bool enable: true
+                    property int delayMs: 280
+                    property int closeDelayMs: 220
                 }
             }
 
@@ -2176,8 +2341,6 @@ Singleton {
                 property string layout: "default"
                 property bool keepRightSidebarLoaded: true
                 property bool keepLeftSidebarLoaded: true
-                property bool instantOpen: false
-                property string animationType: "slide"
                 property bool collapseEmptyNotifications: false
                 property bool collapseWidgetsTab: false
                 property JsonObject shellLayout: JsonObject {
@@ -2252,11 +2415,6 @@ Singleton {
                     property string libraryFolder: ""
                     property string mpdHost: "127.0.0.1"
                     property int mpdPort: 6600
-                    // Deprecated mpv-era compatibility values; runtime MPD state wins.
-                    property bool normalizeVolume: false
-                    property bool shuffleMode: false
-                    property int repeatMode: 0
-                    property int volume: 100
                 }
                 property JsonObject ytmusic: JsonObject {
                     property bool enable: false
@@ -2341,7 +2499,7 @@ Singleton {
                         property bool showLock: true
                     }
                     property JsonObject crypto_settings: JsonObject {
-                        property int refreshInterval: 60
+                        property int refreshInterval: 300
                         property list<string> coins: ["bitcoin", "ethereum"]
                     }
                     property JsonObject worldClock_settings: JsonObject {
@@ -2396,12 +2554,12 @@ Singleton {
                     property bool showBrightness: true
                 }
                 property JsonObject left: JsonObject {
-                    property list<string> tabOrder: ["widgets", "ai", "translator", "anime", "animeSchedule", "wallhaven", "news", "music", "tools", "software"]
+                    property list<string> tabOrder: ["ai", "translator", "anime", "animeSchedule", "news", "music", "tools"]
                 }
                 property JsonObject right: JsonObject {
-                    property list<string> enabledWidgets: ["calendar", "events", "todo", "calculator", "sysmon", "weather"]
+                    property list<string> enabledWidgets: ["calculator", "sysmon"]
                     property list<string> controlsSectionOrder: ["sliders", "toggles", "devices", "media", "quickActions"]
-                    property list<string> sectionOrder: ["system", "sliders", "toggles", "notifications", "widgets"]
+                    property list<string> sectionOrder: ["system", "sliders", "toggles", "widgets"]
                     property string headerStyle: "profile"
                     property string headerBanner: "wallpaper"
                     property string headerBannerPath: ""
@@ -2509,7 +2667,6 @@ Singleton {
             property JsonObject settingsUi: JsonObject {
                 property bool overlayMode: true
                 property string overlayStyle: "rail"
-                property bool easyMode: true
                 property string categories: ""
                 property string chromeLayout: ""
                 property JsonObject overlayAppearance: JsonObject {
@@ -2735,6 +2892,35 @@ Singleton {
                     property bool closeOnSelect: false
                 }
             }
+            property JsonObject todo: JsonObject {
+                property string backend: "internal"
+                property JsonObject obsidian: JsonObject {
+                    property string vaultPath: ""
+                    property string sourceMode: "markdown-note"
+                    property string notePath: "Hadalis/Todo.md"
+                    property string scope: "managed-section"
+                    property JsonObject dailyNote: JsonObject {
+                        property string folder: "00_Capture/01_Journal"
+                        property string format: "YYYY/MMMM/DD-MM-YYYY-dddd"
+                        property string plannerHeading: "Tasks"
+                        property int plannerHeadingLevel: 2
+                        property int defaultDurationMinutes: 30
+                    }
+                    property bool preferTasksPlugin: true
+                    property bool allowBasicOfflineMutation: true
+                }
+            }
+
+            property JsonObject notes: JsonObject {
+                property JsonObject zettelkasten: JsonObject {
+                    // Legacy Quick Notes override, read only as fallback when the
+                    // shared Todo vault is empty. Do not add a second UI field.
+                    property string vaultPath: ""
+                    property string folder: "00_Capture/03_Zettelkasten"
+                    property string defaultType: "Fleeting"
+                }
+            }
+
             property JsonObject workSafety: JsonObject {
                 property JsonObject enable: JsonObject {
                     property bool wallpaper: false

@@ -1,0 +1,17 @@
+{
+  "id": "JOB-SERVICE-ROLLOUT-PROBE-001",
+  "base_sha": "83e20b8399aff5d3c849ea7e20764a3b49727e20",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-c",
+          "import json, os, pathlib, subprocess\ndef run(argv):\n    p=subprocess.run(argv,text=True,capture_output=True,check=False)\n    return {'argv':argv,'exit_code':p.returncode,'stdout':p.stdout,'stderr':p.stderr}\nservices=['hadalis-chatgpt.service','hadalis-worker.service','hadalis-chat-bridge.service']\nout={'job_cwd':os.getcwd(),'parent_pid':os.getppid()}\ntry: out['parent_cwd']=os.readlink(f'/proc/{os.getppid()}/cwd')\nexcept OSError as e: out['parent_cwd_error']=str(e)\nout['units']={}\nfor s in services:\n    out['units'][s]={'show':run(['systemctl','--user','show',s,'--no-pager','--property=LoadState','--property=ActiveState','--property=SubState','--property=FragmentPath','--property=WorkingDirectory','--property=ExecStart']),'cat':run(['systemctl','--user','cat',s,'--no-pager'])}\npc=out.get('parent_cwd')\nif pc:\n    out['parent_git']={\n      'toplevel':run(['git','-C',pc,'rev-parse','--show-toplevel']),\n      'head':run(['git','-C',pc,'rev-parse','HEAD']),\n      'branch':run(['git','-C',pc,'branch','--show-current']),\n      'origin':run(['git','-C',pc,'remote','get-url','origin']),\n      'status':run(['git','-C',pc,'status','--porcelain=v1'])\n    }\nprint(json.dumps(out,indent=2,sort_keys=True))"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    }
+  ]
+}

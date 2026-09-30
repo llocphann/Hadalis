@@ -37,10 +37,11 @@ check_cmd() {
 echo -e "${STY_BLUE}Critical components:${STY_RST}"
 check_cmd "qs" "Quickshell" && HAS_QUICKSHELL=true || HAS_QUICKSHELL=false
 check_cmd "niri" "Niri compositor" && HAS_NIRI=true || HAS_NIRI=false
+check_cmd "cargo" "Rust/Cargo (required to build Hadalis native runtime)" && HAS_CARGO=true || HAS_CARGO=false
 
 echo ""
 echo -e "${STY_BLUE}Build tools:${STY_RST}"
-check_cmd "cargo" "Rust/Cargo" && HAS_CARGO=true || HAS_CARGO=false
+check_cmd "cargo" "Rust/Cargo" >/dev/null || true
 check_cmd "go" "Go" && HAS_GO=true || HAS_GO=false
 check_cmd "cmake" "CMake" && HAS_CMAKE=true || HAS_CMAKE=false
 check_cmd "ninja" "Ninja" && HAS_NINJA=true || HAS_NINJA=false
@@ -348,6 +349,13 @@ if command -v niri &>/dev/null; then
   echo -e "  ${STY_GREEN}✓${STY_RST} Niri installed"
 else
   echo -e "  ${STY_RED}✗${STY_RST} Niri NOT installed - REQUIRED"
+  READY=false
+fi
+
+if command -v cargo &>/dev/null; then
+  echo -e "  ${STY_GREEN}✓${STY_RST} Cargo installed"
+else
+  echo -e "  ${STY_RED}✗${STY_RST} Cargo NOT installed - REQUIRED for the Rust runtime source build"
   READY=false
 fi
 

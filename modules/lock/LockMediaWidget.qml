@@ -22,6 +22,9 @@ Item {
 
     required property MprisPlayer player
     readonly property bool hasPlayer: player && player.trackTitle
+    readonly property bool presentationActive: GlobalStates.screenLocked
+        && root.visible
+        && (root.QsWindow.window?.visible ?? false)
     readonly property string artUrl: player?.trackArtUrl ?? ""
     property string artDownloadLocation: Directories.coverArt
     readonly property bool downloaded: MediaArtwork.ready
@@ -30,7 +33,8 @@ Item {
     // Cava visualizer
     CavaProcess {
         id: cavaProcess
-        active: root.visible && root.hasPlayer && (root.player?.isPlaying ?? false) && Appearance.effectsEnabled
+        active: root.presentationActive && root.hasPlayer
+            && (root.player?.isPlaying ?? false) && Appearance.effectsEnabled
     }
 
     property list<real> visualizerPoints: cavaProcess.points
@@ -441,9 +445,11 @@ Item {
     }
 
     Timer {
-        running: root.player?.playbackState === MprisPlaybackState.Playing
+        running: root.presentationActive
+            && root.player?.playbackState === MprisPlaybackState.Playing
         interval: 1000
         repeat: true
+        triggeredOnStart: true
         onTriggered: root.player?.positionChanged()
     }
 }

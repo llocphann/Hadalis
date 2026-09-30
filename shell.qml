@@ -13,6 +13,7 @@
 //-@ pragma Env QTWEBENGINE_CHROMIUM_FLAGS=--disable-features=ThirdPartyCookieBlocking,StorageAccessAPI
 
 import qs.modules.common
+import "modules/common/PanelFamilyPolicy.js" as FamilyPolicy
 import qs.modules.settings
 
 import QtQuick
@@ -22,6 +23,7 @@ import qs.services
 
 ShellRoot {
     id: root
+
 
     readonly property bool disableHotReload: Quickshell.env("INIR_DISABLE_HOT_RELOAD") === "1"
         || Quickshell.env("INIR_DISABLE_HOT_RELOAD") === "true"
@@ -49,23 +51,49 @@ ShellRoot {
     property var _windowPreviewService
     property var _weatherService
     property var _voiceSearchService
-    property var _fontSyncService
     property var _cavaThemeService
-    // Screen Time must exist for the whole enabled session, not only after its
-    // sidebar page is first opened. It is explicitly materialized after the
-    // first frame and when the user enables tracking later.
+    // Screen Time must exist for the whole enabled session so the Material
+    // notification-center Activity tab has history before it is first opened.
+    // Waffle keeps the existing explicit Screen Time opt-in.
     property var _screenTimeService
     function _ensureScreenTimeService(): void {
         if (GlobalStates.deferredPanelsReady
-                && (Config.options?.sidebar?.screenTime?.enable ?? false))
+                && ((Config.options?.sidebar?.screenTime?.enable ?? false)
+                    || (Config.options?.panelFamily === "abyss"
+                        && (Config.options?.enabledPanels ?? []).includes("abyssNotificationCenter"))
+                    || (Config.options?.panelFamily === "ii"
+                        && (Config.options?.enabledPanels ?? []).includes("iiScreenCorners"))))
             root._screenTimeService = ScreenTime
     }
-    // Tier 4: T+1500ms (background features - updates, sync, content services)
+    // Tier 4: T+1500ms (background features - updates, sync, IPC services)
     property var _shellUpdatesService
     property var _autostartService
     property var _calendarSyncService
-    property var _todoService
-    property var _notepadService
+    property var _fontSyncService
+    property bool _lateFeaturesReady: false
+
+    // Feature-gated deferred services keep their original startup semantics when
+    // enabled, but no longer materialize an otherwise-idle singleton just because
+    // the shell reached a timer milestone.
+    function _ensureDeferredFeatureServices(): void {
+        if (!GlobalStates.deferredPanelsReady)
+            return
+        if (Config.options?.bar?.weather?.enable ?? false)
+            root._weatherService = Weather
+        // CavaTheme also owns the optional cover-art -> external CAVA config
+        // side effect, so keep it resident when that feature is explicitly enabled.
+        if (Config.options?.appearance?.wallpaperTheming?.enableCava ?? false)
+            root._cavaThemeService = CavaTheme
+    }
+
+    function _ensureLateFeatureServices(): void {
+        if (!root._lateFeaturesReady)
+            return
+        if (Config.options?.calendar?.externalSync?.enable ?? false)
+            root._calendarSyncService = CalendarSync
+        if (Config.options?.appearance?.typography?.syncWithSystem ?? true)
+            root._fontSyncService = FontSyncService
+    }
 
     // Boot phase timing (ms since epoch). Written to ~/.cache/inir/last-boot.json
     // when the deferred phase finishes. `inir status` reads this back to show users
@@ -109,6 +137,7 @@ ShellRoot {
             Qt.callLater(() => ThemeService.applyCurrentTheme());
             Qt.callLater(() => IconThemeService.ensureInitialized());
             shellEntryTimer.start();
+            Qt.callLater(root.migrateEnabledPanels);
         }
     }
 
@@ -139,12 +168,11 @@ ShellRoot {
             root._log("[Boot] T+" + (Date.now() - root._bootCompletedAt) + "ms: Tier 3 (display/interaction)");
             root._gameModeService = GameMode;
             root._windowPreviewService = WindowPreviewService;
-            root._weatherService = Weather;
             root._voiceSearchService = VoiceSearch;
-            root._fontSyncService = FontSyncService;
-            root._cavaThemeService = CavaTheme;
+            root._globalActionsService.refreshSetupActions();
             Hyprsunset.load();
             GlobalStates.deferredPanelsReady = true;
+            root._ensureDeferredFeatureServices();
             root._ensureScreenTimeService();
             // Boot greeting: show once per session (singleton preserves bootGreetingDone across hot-reload)
             if (!GlobalStates.bootGreetingDone && (Config.options?.bootGreeting?.enable ?? true)) {
@@ -162,6 +190,8 @@ ShellRoot {
         target: Config
         function onConfigChanged(): void {
             root._ensureScreenTimeService()
+            root._ensureDeferredFeatureServices()
+            root._ensureLateFeatureServices()
         }
     }
 
@@ -176,9 +206,11 @@ ShellRoot {
             root._log("[Boot] T+" + (Date.now() - root._bootCompletedAt) + "ms: Tier 4 (background features)");
             root._shellUpdatesService = ShellUpdates;
             root._autostartService = Autostart;
-            root._calendarSyncService = CalendarSync;
-            root._todoService = Todo;
-            root._notepadService = Notepad;
+            root._lateFeaturesReady = true;
+            root._ensureLateFeatureServices();
+            // Todo/Notepad are pure content storage. Their real UI consumers
+            // instantiate the singletons on first use, so do not force file
+            // reads/watchers into every shell startup.
             root._bootLateFeaturesAt = Date.now();
             root._writeBootPhase();
         }
@@ -248,7 +280,11 @@ ShellRoot {
         if (_migrationDone) return;
         _migrationDone = true;
 
-        const family = Config.options?.panelFamily ?? "ii";
+        const configuredFamily = Config.options?.panelFamily ?? "ii";
+        const family = FamilyPolicy.normalize(configuredFamily);
+        if (configuredFamily !== family) Config.setNestedValue("panelFamily", family);
+        if ((Config.options?.visitedPanelFamilies ?? []).length === 0)
+            Config.setNestedValue("visitedPanelFamilies", [family]);
         let panels = [...(Config.options?.enabledPanels ?? [])];
         let changed = false;
 
@@ -260,11 +296,11 @@ ShellRoot {
         const isFirstRun = known.length === 0;
 
         if (isFirstRun) {
-            // First boot with this logic — seed knownPanels with ALL families' panels.
+            // Seed existing families; Abyss is initialized only on its first visit.
             // This prevents re-adding panels that existing users already disabled,
             // including across family switches.
             const allPanels = [];
-            for (const fam of root.families) {
+            for (const fam of ["ii", "waffle"]) {
                 for (const p of (root.panelFamilies[fam] ?? [])) {
                     if (!allPanels.includes(p)) allPanels.push(p);
                 }
@@ -313,6 +349,27 @@ ShellRoot {
 
         if (changed)
             Config.setNestedValue("enabledPanels", panels)
+        if (family === "abyss") root._ensureFamilyPanels(family)
+    }
+
+    // Presentation-independent OSD routes survive family teardown.
+    IpcHandler {
+        target: "osdVolume"
+        function trigger(): void { GlobalStates.osdRequested("current") }
+        function hide(): void { GlobalStates.osdDismissed() }
+        function toggle(): void { GlobalStates.osdVolumeOpen = !GlobalStates.osdVolumeOpen }
+    }
+    IpcHandler {
+        target: "osdInput"
+        function touchpad(state: string): void {
+            const normalized = state.trim().toLowerCase()
+            if (normalized === "on" || normalized === "off")
+                KeyboardIndicators.showTouchpadPopup(normalized === "on")
+        }
+    }
+    IpcHandler {
+        target: "osd"
+        function trigger(): void { GlobalStates.osdRequested("volume") }
     }
 
     // IPC target "bar" — registered once here (always loaded) instead of inside
@@ -387,6 +444,55 @@ ShellRoot {
     }
 
     IpcHandler {
+        target: "notificationCenter"
+
+        function _isWaffle(): bool {
+            return (Config.options?.panelFamily ?? "ii") === "waffle"
+        }
+
+        function toggle(): string {
+            if (_isWaffle()) {
+                GlobalStates.waffleNotificationCenterOpen =
+                    !GlobalStates.waffleNotificationCenterOpen
+                return GlobalStates.waffleNotificationCenterOpen
+                    ? "ok:open-waffle" : "ok:closed-waffle"
+            }
+            if (!GlobalStates.notificationCenterAvailable)
+                return "error:unavailable"
+            const opened = GlobalStates.toggleNotificationCenter("")
+            return opened ? "ok:open-ii" : "ok:closed-ii"
+        }
+
+        function close(): string {
+            GlobalStates.closeNotificationCenter()
+            GlobalStates.waffleNotificationCenterOpen = false
+            return "ok:closed"
+        }
+
+        function open(): string {
+            if (_isWaffle()) {
+                GlobalStates.waffleNotificationCenterOpen = true
+                return "ok:open-waffle"
+            }
+            return GlobalStates.openNotificationCenter("")
+                ? "ok:open-ii" : "error:unavailable"
+        }
+
+        function status(): string {
+            return JSON.stringify({
+                family: Config.options?.panelFamily ?? "ii",
+                open: _isWaffle()
+                    ? GlobalStates.waffleNotificationCenterOpen
+                    : GlobalStates.notificationCenterOpen,
+                available: _isWaffle()
+                    ? true : GlobalStates.notificationCenterAvailable,
+                output: _isWaffle()
+                    ? "" : GlobalStates.notificationCenterPresentationOutput,
+            })
+        }
+    }
+
+    IpcHandler {
         target: "mediaControls"
         function toggle(): void {
             GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen
@@ -446,6 +552,7 @@ ShellRoot {
         }
     }
 
+
     // IPC for settings - overlay mode or separate window based on config
     // Note: waffle family ALWAYS uses its own window (waffleSettings.qml), never the Material overlay
     IpcHandler {
@@ -458,8 +565,9 @@ ShellRoot {
                 // Waffle always opens its own Win11-style settings window
                 Quickshell.execDetached([Quickshell.shellPath("scripts/inir"),
                     "waffle-settings-window"])
-            } else if (Config.options?.settingsUi?.overlayMode ?? false) {
+            } else if (Config.options?.panelFamily === "abyss" || (Config.options?.settingsUi?.overlayMode ?? false)) {
                 // ii overlay mode — toggle inline panel
+                GlobalStates.settingsOverlayTargetOutput = GlobalStates.resolveOutputName("",[])
                 GlobalStates.settingsOverlayOpen = !GlobalStates.settingsOverlayOpen
             } else {
                 // ii window mode (default) — launch separate process
@@ -492,14 +600,24 @@ ShellRoot {
     // conditional `component:` so only the selected one is ever constructed.
     // Any unrecognised style falls back to the nav rail.
     LazyLoader {
-        active: Config.ready && (Config.options?.settingsUi?.overlayMode ?? false)
+        id: settingsRailLoader
+        readonly property bool loaderConfigured:
+            Config.ready
+            && Config.options?.panelFamily !== "abyss"
+            && (Config.options?.settingsUi?.overlayMode ?? false)
             && (Config.options?.settingsUi?.overlayStyle ?? "rail") !== "focus"
+        active: loaderConfigured
         component: SettingsOverlay {}
     }
 
     LazyLoader {
-        active: Config.ready && (Config.options?.settingsUi?.overlayMode ?? false)
+        id: settingsFocusLoader
+        readonly property bool loaderConfigured:
+            Config.ready
+            && Config.options?.panelFamily !== "abyss"
+            && (Config.options?.settingsUi?.overlayMode ?? false)
             && (Config.options?.settingsUi?.overlayStyle ?? "rail") === "focus"
+        active: loaderConfigured
         component: SettingsFocus {}
     }
 
@@ -513,14 +631,17 @@ ShellRoot {
         && (Config.options?.altSwitcher?.preset ?? "default") !== "skew"
 
     LazyLoader {
+        id: altSwitcherRouterLoader
         active: Config.ready
         source: "modules/altSwitcher/AltSwitcherNoVisual.qml"
     }
 
     LazyLoader {
-        active: Config.ready
-            && (Config.options?.panelFamily ?? "ii") !== "waffle"
+        id: iiAltSwitcherLoader
+        readonly property bool loaderConfigured: Config.ready
+            && root.activePanelFamily === "ii"
             && !root.iiAltSwitcherNoVisual
+        active: loaderConfigured
         source: "modules/altSwitcher/AltSwitcher.qml"
     }
 
@@ -532,9 +653,21 @@ ShellRoot {
     // being torn down — two instances existed and Quickshell dropped one
     // handler per target (region, tiling, wallpaperSelector, coverflowSelector).
     // One owner here is valid whichever family is loaded.
-    LazyLoader { active: Config.ready; source: "modules/regionSelector/RegionSelectorRouter.qml" }
-    LazyLoader { active: Config.ready; source: "modules/tilingOverlay/TilingOverlayRouter.qml" }
-    LazyLoader { active: Config.ready; source: "modules/wallpaperSelector/WallpaperSelectorRouter.qml" }
+    LazyLoader {
+        id: regionSelectorRouterLoader
+        active: Config.ready
+        source: "modules/regionSelector/RegionSelectorRouter.qml"
+    }
+    LazyLoader {
+        id: tilingOverlayRouterLoader
+        active: Config.ready
+        source: "modules/tilingOverlay/TilingOverlayRouter.qml"
+    }
+    LazyLoader {
+        id: wallpaperSelectorRouterLoader
+        active: Config.ready
+        source: "modules/wallpaperSelector/WallpaperSelectorRouter.qml"
+    }
 
     // Same reason as the routers: both panel files declared these, so every
     // family switch registered them twice and Quickshell kept whichever won the
@@ -629,46 +762,131 @@ ShellRoot {
     }
 
     LazyLoader {
-        loading: Config.ready && (Config.options?.panelFamily ?? "ii") !== "waffle"
-        activeAsync: Config.ready && (Config.options?.panelFamily ?? "ii") !== "waffle"
+        id: iiCriticalHostLoader
+        readonly property bool loaderConfigured:
+            Config.ready && root.activePanelFamily === "ii" && root.familyMountReady
+        loading: loaderConfigured
+        activeAsync: loaderConfigured
         source: "modules/ii/critical/ShellIiCriticalPanels.qml"
     }
 
     LazyLoader {
+        id: iiDeferredHostLoader
         readonly property bool enabled: Config.ready
             && GlobalStates.deferredPanelsReady
-            && (Config.options?.panelFamily ?? "ii") !== "waffle"
+            && root.activePanelFamily === "ii"
+            && root.familyMountReady
         loading: enabled
         activeAsync: enabled
         source: "ShellIiPanels.qml"
     }
 
     LazyLoader {
-        loading: Config.ready && (Config.options?.panelFamily ?? "ii") === "waffle"
-        activeAsync: Config.ready && (Config.options?.panelFamily ?? "ii") === "waffle"
+        id: waffleCriticalHostLoader
+        readonly property bool loaderConfigured:
+            Config.ready && (Config.options?.panelFamily ?? "ii") === "waffle" && root.familyMountReady
+        loading: loaderConfigured
+        activeAsync: loaderConfigured
         source: "modules/waffle/critical/ShellWaffleCriticalPanels.qml"
     }
 
     LazyLoader {
+        id: waffleDeferredHostLoader
         readonly property bool enabled: Config.ready
             && GlobalStates.deferredPanelsReady
             && (Config.options?.panelFamily ?? "ii") === "waffle"
+            && root.familyMountReady
         loading: enabled
         activeAsync: enabled
         source: "ShellWafflePanels.qml"
     }
 
+    LazyLoader {
+        id: abyssCriticalHostLoader
+        active: Config.ready && root.activePanelFamily === "abyss" && root.familyMountReady
+        source: "modules/abyss/critical/ShellAbyssCriticalPanels.qml"
+    }
+    LazyLoader {
+        id: abyssDeferredHostLoader
+        readonly property bool enabled: Config.ready && GlobalStates.deferredPanelsReady
+            && root.activePanelFamily === "abyss"
+            && root.familyMountReady
+        loading: enabled
+        activeAsync: enabled
+        source: "ShellAbyssPanels.qml"
+    }
+
     // Close confirmation dialog (always loaded, handles IPC)
-    LazyLoader { active: Config.ready; source: "modules/closeConfirm/CloseConfirm.qml" }
+    LazyLoader {
+        id: closeConfirmLoader
+        active: Config.ready
+        source: "modules/closeConfirm/CloseConfirm.qml"
+    }
 
     // Shared (always loaded via ToastManager)
     ToastManager {}
+
+    readonly property string activePanelFamily: FamilyPolicy.normalize(Config.options?.panelFamily ?? "ii")
+    // Unmount the outgoing tree before constructing the next family. Shared
+    // presentation components (e.g. Background) otherwise register their IPC
+    // target while its old owner is still alive; the new handler is discarded.
+    property string mountedPanelFamily: ""
+    readonly property bool familyMountReady: mountedPanelFamily === activePanelFamily
+    Loader {
+        id: familyWorkAreaGuardLoader
+        // PanelWindow requires a native backend. Keep headless contracts usable.
+        active: Config.ready && !["offscreen","minimal"].includes((Quickshell.env("QT_QPA_PLATFORM") ?? "").split(":")[0])
+        source: "FamilyWorkAreaGuard.qml"
+        onLoaded: item.guarded = Qt.binding(() => !GlobalStates.shellEntryReady || GlobalStates.familyTransitionActive || !root.familyMountReady)
+    }
+    Timer {
+        id: familyMountTimer
+        interval: 1
+        running: Config.ready && !root.familyMountReady
+        onTriggered: root.mountedPanelFamily = root.activePanelFamily
+    }
+
+    // Direct config edits and IPC switching share migration and transient cleanup.
+    onActivePanelFamilyChanged: {
+        if (!Config.ready || !root._migrationDone) return
+        root.closeFamilySurfaces()
+        root._ensureFamilyPanels(root.activePanelFamily)
+        if (Config.options.panelFamily !== root.activePanelFamily)
+            Config.setNestedValue("panelFamily",root.activePanelFamily)
+    }
+    function closeFamilySurfaces(): void {
+        GlobalStates.abyssEditing = false
+        GlobalStates.closeSidebarLeft()
+        GlobalStates.closeSidebarRight()
+        GlobalStates.closeNotificationCenter()
+        GlobalStates.waffleNotificationCenterOpen = false
+        GlobalStates.waffleActionCenterOpen = false
+        GlobalStates.searchOpen = false
+        GlobalStates.waffleWidgetsOpen = false
+        GlobalStates.waffleTaskViewOpen = false
+        GlobalStates.waffleClipboardOpen = false
+        GlobalStates.waffleAltSwitcherOpen = false
+        GlobalStates.mediaControlsOpen = false
+        GlobalStates.abyssPopupKind = ""
+        GlobalStates.clipboardOpen = false
+        GlobalStates.overviewOpen = false
+        GlobalStates.altSwitcherOpen = false
+        GlobalStates.controlPanelOpen = false
+        GlobalStates.dashboardOpen = false
+        GlobalStates.settingsOverlayOpen = false
+        GlobalStates.osdVolumeOpen = false
+        GlobalStates.osdBrightnessOpen = false
+        GlobalStates.osdMicOpen = false
+        GlobalStates.osdMediaOpen = false
+        GlobalStates.osdKeyboardLayoutOpen = false
+        GlobalStates.osdDismissed()
+    }
 
     // === Panel Families ===
     // AltSwitcher controller selection lives above the family loaders. Waffle
     // receives the lightweight shared router; ii receives either that controller
     // or the full visual tree according to its no-visual setting.
-    property list<string> families: ["ii", "waffle"]
+    property list<string> families: ["abyss", "waffle"]
     property var panelFamilies: ({
         "ii": [
             "iiBar", "iiBackground", "iiBackdrop", "iiBootGreeting", "iiCheatsheet", "iiControlPanel", "iiDock", "iiLock",
@@ -677,6 +895,7 @@ ShellRoot {
             "iiSessionScreen", "iiSidebarLeft", "iiSidebarRight", "iiTilingOverlay", "iiVerticalBar",
             "iiWallpaperSelector", "iiWallpaperLauncher", "iiCoverflowSelector", "iiClipboard", "iiShellUpdate", "iiRecordingOsd", "iiDashboard"
         ],
+        "abyss": FamilyPolicy.abyssPanels,
         "waffle": [
             "wBar", "wBackground", "wBackdrop", "wStartMenu", "wActionCenter", "wNotificationCenter", "wNotificationPopup", "wOnScreenDisplay", "wWidgets", "wTaskView", "wLock", "wPolkit", "wSessionScreen",
             // Shared modules that work with waffle
@@ -692,31 +911,17 @@ ShellRoot {
     property bool _transitionInProgress: false
 
     function _ensureFamilyPanels(family: string): void {
-        const basePanels = root.panelFamilies[family] ?? []
-        const currentPanels = Config.options?.enabledPanels ?? []
-
-        if (basePanels.length === 0) return
-        if (currentPanels.length === 0) {
-            Config.setNestedValue("enabledPanels", [...basePanels])
-            return
-        }
-
-        const merged = [...currentPanels]
-        for (const panel of basePanels) {
-            if (!merged.includes(panel)) merged.push(panel)
-        }
-        Config.setNestedValue("enabledPanels", merged)
-
-        // Update knownPanels so the new family's panels are tracked before the user can disable them
-        const known = [...(Config.options?.knownPanels ?? [])]
-        let knownChanged = false
-        for (const panel of basePanels) {
-            if (!known.includes(panel)) {
-                known.push(panel)
-                knownChanged = true
-            }
-        }
-        if (knownChanged) Config.setNestedValue("knownPanels", known)
+        const result = FamilyPolicy.ensure(family, root.panelFamilies[family] ?? [],
+            [...(Config.options?.enabledPanels ?? [])], [...(Config.options?.knownPanels ?? [])],
+            [...(Config.options?.visitedPanelFamilies ?? [])])
+        const updates = {}
+        if (JSON.stringify(result.enabled) !== JSON.stringify(Config.options?.enabledPanels ?? []))
+            updates.enabledPanels = result.enabled
+        if (JSON.stringify(result.known) !== JSON.stringify(Config.options?.knownPanels ?? []))
+            updates.knownPanels = result.known
+        if (JSON.stringify(result.visited) !== JSON.stringify(Config.options?.visitedPanelFamilies ?? []))
+            updates.visitedPanelFamilies = result.visited
+        if (Object.keys(updates).length > 0) Config.setNestedValues(updates)
     }
 
     function cyclePanelFamily() {
@@ -725,12 +930,14 @@ ShellRoot {
         const nextIndex = (currentIndex + 1) % families.length
         const nextFamily = families[nextIndex]
 
-        // Determine direction: ii -> waffle = left, waffle -> ii = right
+        // Preserve directional transitions between the two supported families.
         const direction = nextIndex > currentIndex ? "left" : "right"
         root.startFamilyTransition(nextFamily, direction)
     }
 
     function setPanelFamily(family: string) {
+        if (!["abyss","waffle","ii"].includes(family)) return
+        family = FamilyPolicy.normalize(family)
         const currentFamily = Config.options?.panelFamily ?? "ii"
         if (families.includes(family) && family !== currentFamily) {
             const currentIndex = families.indexOf(currentFamily)
@@ -760,6 +967,7 @@ ShellRoot {
 
         _transitionInProgress = true
         _pendingFamily = targetFamily
+        GlobalStates.familyTransitionTarget = targetFamily
         GlobalStates.familyTransitionDirection = direction
         GlobalStates.familyTransitionActive = true
     }
@@ -780,9 +988,11 @@ ShellRoot {
     // Family transition overlay stays absent outside a real family switch, so
     // the inactive family's visual tree and font/token imports are not retained.
     Loader {
+        id: familyTransitionLoader
         active: Config.ready
             && (GlobalStates.familyTransitionActive || root._transitionInProgress)
-        source: "FamilyTransitionOverlay.qml"
+        source: GlobalStates.familyTransitionTarget === "abyss"
+            ? "modules/abyss/AbyssFamilyTransition.qml" : "FamilyTransitionOverlay.qml"
         onLoaded: {
             item.exitComplete.connect(root.applyPendingFamily)
             item.enterComplete.connect(root.finishFamilyTransition)
@@ -793,5 +1003,10 @@ ShellRoot {
         target: "panelFamily"
         function cycle(): void { root.cyclePanelFamily() }
         function set(family: string): void { root.setPanelFamily(family) }
+    }
+    IpcHandler {
+        target: "abyss"
+        function editLayout(): void { GlobalStates.startAbyssEditing() }
+        function cancelEdit(): void { GlobalStates.abyssEditing = false }
     }
 }

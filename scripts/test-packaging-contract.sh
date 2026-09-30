@@ -48,6 +48,16 @@ for test_script in scripts/test-*.sh; do
   fi
 done
 
+# Production StyledPopup resolves the exact iRiS shader relative to its runtime
+# QML module. The standalone G2 test already caught how a missing local QSB can
+# leave structure green while rendering no field, so packaging must fail closed.
+for iris_asset in \
+  modules/common/perimeter/IrisField.frag \
+  modules/common/perimeter/IrisField.frag.qsb; do
+  grep -Fqx "$iris_asset" <<<"$payload_list" \
+    || fail "runtime payload omits production iRiS shader asset: $iris_asset"
+done
+
 for pair in \
   "$stable_pkg:$stable_srcinfo" \
   "$git_pkg:$git_srcinfo" \
@@ -89,7 +99,9 @@ for required_path in \
   docs/AUDIO_MEDIA.md \
   docs/INSTALL.md \
   docs/PACKAGES.md \
-  docs/RELEASING.md; do
+  docs/RELEASING.md \
+  native/Cargo.toml \
+  native/Cargo.lock; do
   git cat-file -e "$source_ref:$required_path" 2>/dev/null \
     || fail "inir-shell source snapshot lacks $required_path"
 done
@@ -118,6 +130,30 @@ for pair in \
       || fail "$recipe is missing color generator Python dependency: $package"
     grep -Fqx $'\tdepends = '"$package" "$srcinfo" \
       || fail "$srcinfo is missing color generator Python dependency: $package"
+  done
+done
+
+# Rust is now part of the shipped runtime. Direct shell packages therefore
+# need Cargo at build time, must be architecture-specific, and must install all
+# four qualified helpers under the selector-owned runtime directory.
+arch_native_bins=(inir-inputd inir-mpdd inir-native inir-theme)
+for pair in \
+  "$stable_pkg:$stable_srcinfo" \
+  "$git_pkg:$git_srcinfo"; do
+  recipe="${pair%%:*}"
+  srcinfo="${pair#*:}"
+  grep -Eq '^makedepends=\([^)]*cargo' "$recipe" \
+    || fail "$recipe is missing Cargo build dependency"
+  grep -Fqx $'\tmakedepends = cargo' "$srcinfo" \
+    || fail "$srcinfo is missing Cargo build dependency"
+  if grep -Eq '^arch=\(any\)$' "$recipe"; then
+    fail "$recipe still declares architecture-independent output while shipping Rust binaries"
+  fi
+  grep -Fq 'native/bin' "$recipe" \
+    || fail "$recipe does not install native helpers under runtime native/bin"
+  for binary in "${arch_native_bins[@]}"; do
+    grep -Fq "$binary" "$recipe" \
+      || fail "$recipe does not package native binary: $binary"
   done
 done
 

@@ -1,0 +1,68 @@
+{
+  "actions": [
+    {
+      "argv": [
+        "node",
+        "--check",
+        "automation/chat_bridge/desktop_driver.mjs"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "index": 0,
+      "stderr": "",
+      "stderr_truncated": false,
+      "stdout": "",
+      "stdout_truncated": false,
+      "timed_out": false
+    },
+    {
+      "argv": [
+        "node",
+        "--check",
+        "automation/chat_bridge/desktop_cli.mjs"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "index": 1,
+      "stderr": "",
+      "stderr_truncated": false,
+      "stdout": "",
+      "stdout_truncated": false,
+      "timed_out": false
+    },
+    {
+      "argv": [
+        "node",
+        "scripts/test-hadalis-desktop-marker-scan.mjs"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "index": 2,
+      "stderr": "",
+      "stderr_truncated": false,
+      "stdout": "PASS: desktop loop-marker token scanner\n",
+      "stdout_truncated": false,
+      "timed_out": false
+    },
+    {
+      "argv": [
+        "python3",
+        "scripts/test-hadalis-chat-bridge.py"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "index": 3,
+      "stderr": "",
+      "stderr_truncated": false,
+      "stdout": "PASS: Hadalis chat-bridge protocol, state, and deterministic transitions\n",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "0e43623b1fd1e4988b3345ac2a6f545c8aff21a4",
+  "finished_at_unix": 1790720398,
+  "job": "JOB-SERVICE-E2E-FIX-VALIDATE-001",
+  "job_commit": "8b401df9c331e0d0bbce23edb55e15b7625828a1",
+  "started_at_unix": 1790720396,
+  "status": "passed"
+}

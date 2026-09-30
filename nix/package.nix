@@ -3,7 +3,26 @@
 let
   lib = pkgs.lib;
   packageVersion = lib.removeSuffix "\n" (builtins.readFile ../VERSION);
-
+  nativeBackend = pkgs.rustPlatform.buildRustPackage {
+    pname = "inir-native-backend";
+    version = packageVersion;
+    src = lib.cleanSource ../native;
+    cargoLock.lockFile = ../native/Cargo.lock;
+    cargoBuildFlags = [ "--workspace" ];
+    doCheck = false;
+    installPhase = ''
+      runHook preInstall
+      mkdir -p "$out/bin"
+      native_bin="$(find target -type f -path '*/release/inir-native' -perm -0100 -print -quit)"
+      test -n "$native_bin"
+      release="$(dirname "$native_bin")"
+      for binary in inir-inputd inir-mpdd inir-native inir-theme; do
+        test -x "$release/$binary"
+        install -m0755 "$release/$binary" "$out/bin/$binary"
+      done
+      runHook postInstall
+    '';
+  };
   optionalTop = name:
     lib.optional (builtins.hasAttr name pkgs) (builtins.getAttr name pkgs);
 
@@ -167,6 +186,11 @@ pkgs.stdenvNoCC.mkDerivation {
 
     python3 sdata/lib/runtime-payload.py copy --root . --target "$runtime"
 
+    mkdir -p "$runtime/native/bin"
+    for binary in inir-inputd inir-mpdd inir-native inir-theme; do
+      install -m0755 "${nativeBackend}/bin/$binary" "$runtime/native/bin/$binary"
+    done
+
     chmod +x "$runtime/setup" "$runtime/scripts/inir"
     find "$runtime/scripts" -type f \( -name '*.sh' -o -name '*.fish' -o -name '*.py' \) -exec chmod +x {} +
 
@@ -187,18 +211,14 @@ pkgs.stdenvNoCC.mkDerivation {
       "$runtime/setup" \
       "$runtime/scripts/inir" \
       "$runtime/sdata/lib/versioning.sh" \
-      "$runtime/scripts/colors/switchwall.sh" \
-      "$runtime" \
-      "${colorPython}/bin/python3" <<'PY'
+      "$runtime" <<'PY'
 from pathlib import Path
 import sys
 
 setup_path = Path(sys.argv[1])
 launcher_path = Path(sys.argv[2])
 versioning_path = Path(sys.argv[3])
-switchwall_path = Path(sys.argv[4])
-runtime = sys.argv[5]
-color_python = sys.argv[6]
+runtime = sys.argv[4]
 
 setup = setup_path.read_text()
 marker = "sync_launcher_from_repo() {\n"
@@ -267,28 +287,12 @@ if count != 1:
     raise SystemExit("expected exactly one versioning runtime default")
 versioning_path.write_text(versioning.replace(versioning_default, versioning_value, 1))
 
-switchwall = switchwall_path.read_text()
-python_marker = "    # Generate colors and render templates in one unified Python pass\n"
-scss_marker = '    _scss_tmp="$STATE_DIR/user/generated/material_colors.scss.tmp"\n'
-start = switchwall.find(python_marker)
-if start == -1:
-    raise SystemExit("expected switchwall Python selection marker")
-start += len(python_marker)
-end = switchwall.find(scss_marker, start)
-if end == -1:
-    raise SystemExit("expected switchwall SCSS marker")
-python_block = switchwall[start:end]
-if "INIR_VENV" not in python_block or "_ii_python" not in python_block:
-    raise SystemExit("unexpected switchwall Python selection block")
-switchwall = switchwall[:start] + f'    _ii_python="{color_python}"\n\n' + switchwall[end:]
-switchwall_path.write_text(switchwall)
 PY
     grep -Fq 'get_installed_update_strategy 2>/dev/null || true' "$runtime/setup"
     grep -Fq "$runtime" "$runtime/scripts/inir"
     grep -Fq 'Nix-managed installations keep inir.service declarative' "$runtime/scripts/inir"
     grep -Fq 'systemctl --user cat inir.service' "$runtime/scripts/inir"
     grep -Fq "$runtime" "$runtime/sdata/lib/versioning.sh"
-    grep -Fq '_ii_python="${colorPython}/bin/python3"' "$runtime/scripts/colors/switchwall.sh"
 
     cat > "$runtime/version.json" <<'EOF'
 {
@@ -332,14 +336,17 @@ EOF
 
     install -Dm644 README.md "$docs/README.md"
     for doc in docs/*.md; do
-      install -Dm644 "$doc" "$docs/${doc##*/}"
+      install -Dm644 "$doc" "$docs/''${doc##*/}"
     done
     install -Dm644 LICENSE "$out/share/licenses/inir/LICENSE"
 
     runHook postInstall
   '';
 
-  passthru.runtimeDependencies = runtimeDeps;
+  passthru = {
+    runtimeDependencies = runtimeDeps;
+    qmlDependencies = qmlDeps;
+  };
 
   meta = {
     description = "Hadalis desktop shell runtime built on Quickshell";

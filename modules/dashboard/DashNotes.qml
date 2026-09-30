@@ -1,23 +1,24 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
 import qs.modules.sidebarRight.notepad
 
 /**
- * Quick notes card. Reuses the sidebar notepad (tabs, autosave to the shared
- * notepad state) so notes stay in sync across surfaces. Fills column height.
+ * Dashboard Quick Notes card.
+ *
+ * The visual/editor implementation lives in QuickNotesView so Dashboard and
+ * Sidebar Left cannot drift into separate Quick Notes design systems.
  */
 DashCard {
     id: root
-    title: Translation.tr("Notes")
-    icon: "edit_note"
+    title: ""
+    icon: ""
     Layout.fillHeight: true
 
-    NotepadWidget {
+    QuickNotesView {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        Layout.minimumHeight: 180
+        surfaceLocalTabSelection: true
+        showZettelkastenActions: true
+        margin: 0
     }
 }

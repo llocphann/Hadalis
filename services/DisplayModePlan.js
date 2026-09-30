@@ -1,0 +1,59 @@
+// Pure display-mode planning. Runtime execution lives in DisplayMode.qml.
+function normalizedNames(names) {
+    const seen = {};
+    return Array.from(names || []).map(name => String(name || "")).filter(name => {
+        if (!name.length || seen[name]) return false;
+        seen[name] = true;
+        return true;
+    });
+}
+function primary(names, preferred) {
+    names = normalizedNames(names);
+    preferred = String(preferred || "");
+    return names.includes(preferred) ? preferred : (names[0] || "");
+}
+function activeNames(outputs) {
+    return Object.keys(outputs || {}).filter(name => !!outputs[name]?.logical).sort();
+}
+function orderedActions(names, enabled) {
+    names = normalizedNames(names);
+    enabled = normalizedNames(enabled).filter(name => names.includes(name));
+    const enabledSet = {};
+    enabled.forEach(name => enabledSet[name] = true);
+    return enabled.map(name => ({output:name,power:"on"}))
+        .concat(names.filter(name => !enabledSet[name]).map(name => ({output:name,power:"off"})));
+}
+function plan(mode, names, preferredPrimary, secondary, mirrorSource, mirrorTarget) {
+    names = normalizedNames(names);
+    if (!names.length) return {ok:false,error:"No connected outputs are available.",actions:[],targets:[]};
+    const primaryName = primary(names, preferredPrimary);
+    let targets = [];
+    let mirror = null;
+    if (mode === "extend") {
+        targets = names.slice();
+    } else if (mode === "primary-only") {
+        targets = [primaryName];
+    } else if (mode === "second-only") {
+        secondary = String(secondary || "");
+        if (!names.includes(secondary) || secondary === primaryName)
+            return {ok:false,error:"Choose a connected secondary output.",actions:[],targets:[]};
+        targets = [secondary];
+    } else if (mode === "mirror") {
+        mirrorSource = String(mirrorSource || "");
+        mirrorTarget = String(mirrorTarget || "");
+        if (!names.includes(mirrorSource) || !names.includes(mirrorTarget) || mirrorSource === mirrorTarget)
+            return {ok:false,error:"Choose two different connected outputs to mirror.",actions:[],targets:[]};
+        targets = [mirrorSource, mirrorTarget];
+        mirror = {source:mirrorSource,target:mirrorTarget};
+    } else {
+        return {ok:false,error:"Unknown display mode.",actions:[],targets:[]};
+    }
+    return {ok:true,error:"",actions:orderedActions(names,targets),targets:targets,mirror:mirror};
+}
+function restore(names, previouslyActive, preferredPrimary) {
+    names = normalizedNames(names);
+    if (!names.length) return {ok:false,error:"No connected outputs remain for rollback.",actions:[],targets:[]};
+    let targets = normalizedNames(previouslyActive).filter(name => names.includes(name));
+    if (!targets.length) targets = [primary(names,preferredPrimary)];
+    return {ok:true,error:"",actions:orderedActions(names,targets),targets:targets};
+}

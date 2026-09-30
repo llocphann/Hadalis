@@ -5,14 +5,18 @@ Hadalis uses a single-agent development workflow on `dev`.
 ## Working rules
 
 1. Fetch/refetch the current `dev` HEAD before every audit and immediately before every write or ref update. Never assume a previously seen HEAD is current.
-2. Work directly on `dev`. Do not create a PR unless the maintainer explicitly asks for one. Never mutate `stable`.
+2. Work directly on `dev`. Do not create a branch or PR unless the maintainer explicitly asks for one. Never mutate `stable`.
 3. Re-read every file you intend to edit from the current HEAD and avoid overwriting valid concurrent work. Fix forward; do not rewrite shared history.
 4. Keep commits atomic and technical-purpose focused.
 5. Use repository regression tests and the canonical local validator as the primary acceptance path. Do not infer product quality from GitHub Actions state.
 6. Nix support stays in-tree but dedicated Nix validation is deferred/non-blocking for the maintainer workflow.
 7. Waffle is a separate supported shell family. Never classify Waffle as legacy or remove it as ii/Connected Perimeter cleanup.
 8. Prefer behavior/contract tests over implementation-spelling grep assertions. Do not change runtime behavior merely to make a stale test green.
-9. Do not create task-board, bot-number, ownership, collision-boundary, or handoff bureaucracy. Continue the highest-value unresolved work in one agent context.
+9. Use `to-do/` as the single active chatbot task entry point: Cloud Bot is the only reasoning agent and Local Bot is deterministic execution only. Do not create bot-number, ownership, collision-boundary, separate task-board or handoff bureaucracy. Continue the highest-value unresolved work in one agent context.
+
+## Task routing
+
+Read `to-do/README.md` after this file. Keep active work in `to-do/cloud-bot/` or deterministic local dispatch instructions in `to-do/local-bot/`. Technical research remains in `docs/` and archives remain historical. `agent/WORK.md` is a compatibility pointer.
 
 ## Current product priorities
 

@@ -7,11 +7,14 @@ resources_popup="$repo_root/modules/bar/ResourcesPopup.qml"
 status_rings="$repo_root/modules/sidebarLeft/widgets/StatusRings.qml"
 overlay_resources="$repo_root/modules/ii/overlay/resources/Resources.qml"
 sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
+background_sysmon="$repo_root/modules/background/widgets/systemMonitor/SystemMonitorWidget.qml"
 waffle_widgets="$repo_root/modules/waffle/widgets/WidgetsContent.qml"
-overview_dashboard="$repo_root/modules/overview/OverviewDashboard.qml"
+dash_system="$repo_root/modules/dashboard/DashSystem.qml"
 inner_tube_thumbnail="$repo_root/modules/sidebarLeft/innertune/ITThumbnail.qml"
 bar_resources="$repo_root/modules/bar/Resources.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
+resource_monitor="$repo_root/modules/common/widgets/ResourceUsageMonitor.qml"
+widgets_qmldir="$repo_root/modules/common/widgets/qmldir"
 
 fail() {
     printf 'resource usage lifecycle guard failed: %s\n' "$1" >&2
@@ -77,19 +80,59 @@ assert_contains 'root._gpuTempPath = ""' "$temp_block" 'temperature startup fail
 assert_contains 'root._dGpuRuntimeStatusPath = ""' "$hybrid_block" 'hybrid GPU startup failure must clear stale runtime-status path'
 assert_contains 'root.maxAvailableCpuString = "--"' "$cpu_block" 'CPU frequency startup failure must restore unknown display state'
 
-for lifecycle_file in "$resources_popup" "$status_rings" "$overlay_resources" "$sysmon_widget" "$waffle_widgets" "$overview_dashboard" "$bar_resources" "$vertical_bar_resources"; do
+monitor_text="$(cat "$resource_monitor")"
+assert_contains 'readonly property bool monitoring:' "$monitor_text" 'ResourceUsageMonitor must expose presentation-aware demand'
+assert_contains 'root.target.visible' "$monitor_text" 'ResourceUsageMonitor must gate on target visibility'
+assert_contains 'root.target.QsWindow.window.visible' "$monitor_text" 'ResourceUsageMonitor must gate on native window visibility'
+assert_contains 'property bool histories: true' "$monitor_text" 'ResourceUsageMonitor must preserve history sampling by default'
+assert_contains 'ServiceLease {' "$monitor_text" 'ResourceUsageMonitor must delegate lifecycle ownership to ServiceLease'
+assert_contains 'ResourceUsage.keepAlive((demandFlags & 1) !== 0, (demandFlags & 2) !== 0)' "$monitor_text" 'ResourceUsageMonitor must acquire the shared telemetry lease with history/network demand'
+assert_contains 'ResourceUsage.releaseKeepAlive((heldFlags & 1) !== 0, (heldFlags & 2) !== 0)' "$monitor_text" 'ResourceUsageMonitor must release the matching telemetry lease'
+assert_contains 'property int _historyConsumers: 0' "$(cat "$service")" 'ResourceUsage must track history demand independently'
+assert_contains 'root._historyConsumers <= 0' "$(cat "$service")" 'ResourceUsage history updates must be demand-gated'
+assert_contains 'property int _networkConsumers: 0' "$(cat "$service")" 'ResourceUsage must track throughput demand independently'
+assert_contains 'if (networkDemanded)' "$(cat "$service")" 'network throughput parsing must be demand-gated'
+assert_contains 'property bool network: true' "$monitor_text" 'ResourceUsageMonitor must preserve network sampling by default'
+assert_contains 'ResourceUsageMonitor 1.0 ResourceUsageMonitor.qml' "$(cat "$widgets_qmldir")" 'ResourceUsageMonitor must be exported'
+assert_contains 'ServiceLease 1.0 ServiceLease.qml' "$(cat "$widgets_qmldir")" 'ServiceLease must be exported'
+
+for lifecycle_file in "$resources_popup" "$status_rings" "$overlay_resources" "$sysmon_widget" "$waffle_widgets" "$dash_system" "$bar_resources" "$vertical_bar_resources" "$background_sysmon"; do
     lifecycle_text="$(cat "$lifecycle_file")"
-    assert_contains 'ResourceUsage.keepAlive()' "$lifecycle_text" "$lifecycle_file must acquire resource polling only while presented"
-    assert_contains 'ResourceUsage.releaseKeepAlive()' "$lifecycle_text" "$lifecycle_file must release resource polling when hidden or destroyed"
+    assert_contains 'ResourceUsageMonitor {' "$lifecycle_text" "$lifecycle_file must use centralized telemetry lifecycle ownership"
+    assert_not_contains 'ResourceUsage.keepAlive(' "$lifecycle_text" "$lifecycle_file must not duplicate telemetry reference counting"
+    assert_not_contains 'ResourceUsage.releaseKeepAlive(' "$lifecycle_text" "$lifecycle_file must not duplicate telemetry reference counting"
 done
 
-assert_contains 'running: root.panelVisible && root.effectiveIsPlaying' "$(cat "$overview_dashboard")" \
-    'hidden Overview dashboard must stop its media position timer'
 assert_contains 'running: root.isActive && root.isPlaying && root.visible && GlobalStates.sidebarLeftOpen' "$(cat "$inner_tube_thumbnail")" \
     'hidden InnerTune thumbnail must stop its decorative equalizer timer'
-assert_contains 'root.visible && !GameMode.active' "$(cat "$bar_resources")" \
+assert_contains 'active: !GameMode.active' "$(cat "$bar_resources")" \
     'horizontal Bar resource polling must pause during GameMode'
-assert_contains 'root.visible && !GameMode.active' "$(cat "$vertical_bar_resources")" \
+assert_contains 'active: !GameMode.active' "$(cat "$vertical_bar_resources")" \
     'vertical Bar resource polling must pause during GameMode'
+assert_contains 'active: popup.presentationActive' "$(cat "$resources_popup")" \
+    'Bar resource popup must poll only during its visible presentation lifetime'
+assert_contains 'active: GlobalStates.sidebarLeftOpen' "$(cat "$status_rings")" \
+    'left-sidebar status rings must poll only while the sidebar is open'
+assert_contains 'active: GlobalStates.sidebarRightOpen' "$(cat "$sysmon_widget")" \
+    'right-sidebar system monitor must poll only while the sidebar is open'
+assert_contains 'active: GlobalStates.waffleWidgetsOpen' "$(cat "$waffle_widgets")" \
+    'Waffle widgets must poll only while the panel is open'
+
+for scalar_file in "$resources_popup" "$status_rings" "$waffle_widgets" "$bar_resources" "$vertical_bar_resources"; do
+    assert_contains 'histories: false' "$(cat "$scalar_file")" "$scalar_file must not churn history arrays for scalar-only telemetry"
+done
+for graph_file in "$overlay_resources" "$sysmon_widget" "$dash_system"; do
+    assert_not_contains 'histories: false' "$(cat "$graph_file")" "$graph_file must retain history sampling for graphs"
+done
+
+for no_network_file in "$resources_popup" "$status_rings" "$overlay_resources" "$waffle_widgets" "$dash_system" "$bar_resources" "$vertical_bar_resources" "$background_sysmon"; do
+    assert_contains 'network: false' "$(cat "$no_network_file")" "$no_network_file must not request throughput parsing"
+done
+assert_contains 'network: true' "$(cat "$sysmon_widget")" 'SysMon must retain live throughput sampling'
+assert_contains 'histories: root.displayMode === "graph"' "$(cat "$background_sysmon")" \
+    'background system monitor must sample history only in graph mode'
+
+assert_contains 'target: root' "$(cat "$dash_system")" \
+    'Dashboard system telemetry must follow the card presentation lifecycle'
 
 printf 'resource usage and visual idle lifecycle guards: ok\n'

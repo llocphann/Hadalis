@@ -99,7 +99,7 @@ Singleton {
                 QT_SCREEN_SCALE_FACTORS GDK_SCALE GDK_DPI_SCALE \
                 QSG_ATLAS_WIDTH QSG_ATLAS_HEIGHT QT_LOGGING_RULES \
                 QT_QPA_PLATFORMTHEME QT_STYLE_OVERRIDE QS_DISABLE_CRASH_HANDLER \
-                ELECTRON_OZONE_PLATFORM_HINT; do
+                ELECTRON_OZONE_PLATFORM_HINT QT_IM_MODULE XMODIFIERS; do
                 restore_from_manager "$_var"
             done
 

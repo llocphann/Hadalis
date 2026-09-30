@@ -19,7 +19,31 @@ Singleton {
     property string dockTheme: ""  // Separate theme for dock icons
 
     property bool _initialized: false
+    property bool _themesLoaded: false
     property bool _restartQueued: false
+    readonly property string nativeDispatchPath: Quickshell.shellPath("scripts/native-dispatch")
+    readonly property string nativeBackendStatePath: {
+        const stateHome = String(Quickshell.env("XDG_STATE_HOME") ?? "").trim()
+        const base = stateHome.length > 0 ? stateHome : (Quickshell.env("HOME") + "/.local/state")
+        return base + "/inir/native-backend"
+    }
+    property string _nativeBackendState: ""
+    readonly property bool nativeBackendEnabled: {
+        const envMode = String(Quickshell.env("INIR_NATIVE_BACKEND") ?? "").trim()
+        if (envMode.length > 0)
+            return envMode === "rust" || envMode === "auto"
+        const stateMode = root._nativeBackendState.trim()
+        return stateMode === "rust" || stateMode === "auto"
+    }
+
+    FileView {
+        id: nativeBackendStateFile
+        path: root.nativeBackendStatePath
+        watchChanges: true
+        onLoaded: root._nativeBackendState = nativeBackendStateFile.text().trim()
+        onFileChanged: nativeBackendStateFile.reload()
+        onLoadFailed: root._nativeBackendState = ""
+    }
 
     // Smart icon resolution: preserve app-provided identity whenever possible.
     // Only repair the duplicated Electron resources path that is known-broken.
@@ -88,9 +112,6 @@ Singleton {
             return;
         root._initialized = true;
         
-        listThemesProc.running = false
-        listThemesProc.running = true
-        
         // Load system theme
         const savedTheme = Config.ready ? (Config.options?.appearance?.iconTheme ?? "") : ""
         if (savedTheme && String(savedTheme).trim().length > 0) {
@@ -107,6 +128,16 @@ Singleton {
         
         // Load dock theme
         root.dockTheme = Config.options?.appearance?.dockIconTheme ?? ""
+    }
+
+    function ensureThemesLoaded(force = false) {
+        if (listThemesProc.running)
+            return
+        if (root._themesLoaded && !force)
+            return
+
+        listThemesProc.themes = []
+        listThemesProc.running = true
     }
 
     function setTheme(themeName) {
@@ -156,11 +187,22 @@ Singleton {
         restartDelay.restart()
     }
 
-    function _startKdeGlobalsSync(themeName: string, skipRestart: bool): void {
+    function _startLegacyKdeGlobalsSync(themeName: string, skipRestart: bool): void {
         kdeGlobalsUpdateProc.themeName = themeName
         kdeGlobalsUpdateProc.skipRestart = skipRestart
         kdeGlobalsUpdateProc.running = false
         kdeGlobalsUpdateProc.running = true
+    }
+
+    function _startKdeGlobalsSync(themeName: string, skipRestart: bool): void {
+        if (root.nativeBackendEnabled) {
+            nativeIconSyncProc.themeName = themeName
+            nativeIconSyncProc.skipRestart = skipRestart
+            nativeIconSyncProc.running = false
+            nativeIconSyncProc.running = true
+            return
+        }
+        root._startLegacyKdeGlobalsSync(themeName, skipRestart)
     }
 
     function _continueAfterKdeGlobals(themeName: string, skipRestart: bool): void {
@@ -213,6 +255,29 @@ Singleton {
         onExited: (exitCode, exitStatus) => {
             _log("[IconThemeService] gsettings set exited:", exitCode, "theme:", gsettingsSetProc.themeName)
             root._startKdeGlobalsSync(gsettingsSetProc.themeName, gsettingsSetProc.skipRestart)
+        }
+    }
+
+    // Rust test path: update KDE, qt5ct, qt6ct and GTK config files in one
+    // process. If it fails, fall back to the existing Python chain.
+    Process {
+        id: nativeIconSyncProc
+        property string themeName: ""
+        property bool skipRestart: false
+        command: [root.nativeDispatchPath, "desktop-icons", nativeIconSyncProc.themeName]
+
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode === 0) {
+                root._log("[IconThemeService] native icon sync succeeded:", nativeIconSyncProc.themeName)
+                if (!nativeIconSyncProc.skipRestart)
+                    root.queueRestart()
+                return
+            }
+
+            console.warn("[IconThemeService] native icon sync failed; falling back to legacy path:", exitCode, exitStatus)
+            root._startLegacyKdeGlobalsSync(
+                nativeIconSyncProc.themeName,
+                nativeIconSyncProc.skipRestart)
         }
     }
 
@@ -466,11 +531,13 @@ for subdir in ["gtk-3.0", "gtk-4.0"]:
         }
         
         onRunningChanged: {
-            if (!running && themes.length > 0) {
-                const uniqueSorted = Array.from(new Set(themes)).sort()
-                root.availableThemes = uniqueSorted
-                themes = []
-            }
+            if (running)
+                return
+
+            const uniqueSorted = Array.from(new Set(themes)).sort()
+            root.availableThemes = uniqueSorted
+            root._themesLoaded = true
+            themes = []
         }
     }
 }

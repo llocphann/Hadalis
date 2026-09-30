@@ -12,6 +12,15 @@ import qs.services
  */
 MouseArea {
     id: root
+    // A pointer click can retain activeFocus after hover ends. Keep popup
+    // keyboard focus affordance without treating pointer focus as hover.
+    property bool _pointerFocused: false
+    onPressed: root._pointerFocused = true
+    onActiveFocusChanged: {
+        if (!root.activeFocus)
+            root._pointerFocused = false
+    }
+    property bool vertical: false
 
     readonly property bool pinnedToBar: Persistent.states?.timer?.pinnedToBar ?? false
 
@@ -85,8 +94,11 @@ MouseArea {
     }
 
     visible: implicitWidth > 0
-    implicitWidth: (anyActive || showPinnedIdle) ? pill.width + 4 : 0
-    implicitHeight: Appearance.sizes.barHeight
+    implicitWidth: (anyActive || showPinnedIdle)
+        ? (root.vertical ? 34 * Appearance.sizes.barModuleScale : pill.width + 4 * Appearance.sizes.barModuleScale) : 0
+    implicitHeight: root.vertical
+        ? ((anyActive || showPinnedIdle) ? 34 * Appearance.sizes.barModuleScale : 0)
+        : Appearance.sizes.barHeight
 
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
@@ -166,8 +178,8 @@ MouseArea {
     Rectangle {
         id: pill
         anchors.centerIn: parent
-        width: contentRow.implicitWidth + 12
-        height: contentRow.implicitHeight + 8
+        width: root.vertical ? 30 * Appearance.sizes.barModuleScale : contentRow.implicitWidth + 12 * Appearance.sizes.barModuleScale
+        height: root.vertical ? 30 * Appearance.sizes.barModuleScale : contentRow.implicitHeight + 8 * Appearance.sizes.barModuleScale
         radius: height / 2
         scale: root.pressed ? 0.95 : 1.0
         color: {
@@ -201,11 +213,11 @@ MouseArea {
     RowLayout {
         id: contentRow
         anchors.centerIn: pill
-        spacing: 4
+        spacing: 4 * Appearance.sizes.barModuleScale
 
         MaterialSymbol {
             text: root.showPinnedIdle ? "schedule" : root.iconName
-            iconSize: Appearance.font.pixelSize.normal
+            iconSize: Math.round(Appearance.font.pixelSize.normal * Appearance.sizes.barModuleScale)
             color: root.paused
                 ? Appearance.colors.colOnLayer1Inactive
                 : root.accentColor
@@ -220,8 +232,9 @@ MouseArea {
         }
 
         StyledText {
+            visible: !root.vertical
             text: root.showPinnedIdle ? Translation.tr("Timer") : root.timeText
-            font.pixelSize: Appearance.font.pixelSize.small
+            font.pixelSize: Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale)
             color: root.paused
                 ? Appearance.colors.colOnLayer1Inactive
                 : Appearance.colors.colOnLayer1
@@ -230,9 +243,9 @@ MouseArea {
 
         Item {
             Layout.alignment: Qt.AlignVCenter
-            implicitWidth: root.paused ? pauseIcon.implicitWidth : 0
+            implicitWidth: root.paused && !root.vertical ? pauseIcon.implicitWidth : 0
             implicitHeight: pauseIcon.implicitHeight
-            opacity: root.paused ? 1 : 0
+            opacity: root.paused && !root.vertical ? 1 : 0
             visible: opacity > 0
             clip: true
 
@@ -249,7 +262,7 @@ MouseArea {
                 id: pauseIcon
                 anchors.centerIn: parent
                 text: "pause"
-                iconSize: Appearance.font.pixelSize.small
+                iconSize: Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale)
                 color: Appearance.colors.colOnLayer1Inactive
             }
         }
@@ -258,7 +271,7 @@ MouseArea {
     // Tooltip
     TimerIndicatorTooltip {
         hoverTarget: root
-        alternativeVisibleCondition: root.activeFocus
+        alternativeVisibleCondition: root.activeFocus && !root._pointerFocused
         pomodoroActive: root.pomodoroActive
         countdownActive: root.countdownActive
         stopwatchActive: root.stopwatchActive

@@ -63,27 +63,184 @@ Item {
     readonly property bool taskbarEnabled: Config.options?.bar?.modules?.taskbar ?? false
     property real useShortenedForm: (Appearance.sizes.barHellaShortenScreenWidthThreshold >= screen?.width)
         ? 2 : (Appearance.sizes.barShortenScreenWidthThreshold >= screen?.width) ? 1 : 0
-    readonly property int baseCenterSideModuleWidth: (useShortenedForm == 2)
-        ? Appearance.sizes.barCenterSideModuleWidthHellaShortened
-        : (useShortenedForm == 1)
-            ? Appearance.sizes.barCenterSideModuleWidthShortened
-            : Appearance.sizes.barCenterSideModuleWidth
-    readonly property real centerSideMaxWidth: {
-        const total = root.width
-        if (!(total > 0)) return root.baseCenterSideModuleWidth
-        const edge = Math.max(barLeftSideMouseArea.implicitWidth, barRightSideMouseArea.implicitWidth)
-        const wsHalf = middleCenterGroup.width / 2
-        return Math.max(0, total / 2 - edge - wsHalf - 12)
+
+    // Adaptive horizontal packing. Physical-edge inset is independent from
+    // module/zone/pivot spacing, and each half reacts to its own pressure.
+    readonly property real edgeInset: Math.max(4, Appearance.rounding.screenRounding)
+    readonly property real moduleGap: Math.max(2,
+        Math.round(4 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale))
+    readonly property real zoneGapNominal: Math.max(root.moduleGap + 2,
+        Math.round(8 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale))
+    readonly property real zoneGapMinimum: Math.max(2,
+        Math.round(4 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale))
+    readonly property real pivotGapNominal: Math.max(root.moduleGap + 1,
+        Math.round(6 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale))
+    readonly property real pivotGapMinimum: Math.max(2,
+        Math.round(3 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale))
+
+    readonly property bool _leftEdgeHasContent: leftSectionRowLayout.implicitWidth > 1
+    readonly property bool _rightEdgeHasContent: rightSectionRowLayout.implicitWidth > 1
+    readonly property bool _leftCenterHasContent: !leftCenterGroup.empty
+    readonly property bool _rightCenterHasContent: !rightCenterGroupPill.empty
+    readonly property bool _pivotHasContent: !middleCenterGroup.empty
+    readonly property bool _leftZoneGapNeeded: root._leftEdgeHasContent
+        && (root._leftCenterHasContent || root._pivotHasContent)
+    readonly property bool _rightZoneGapNeeded: root._rightEdgeHasContent
+        && (root._rightCenterHasContent || root._pivotHasContent)
+    readonly property bool _leftPivotGapNeeded:
+        root._leftCenterHasContent && root._pivotHasContent
+    readonly property bool _rightPivotGapNeeded:
+        root._rightCenterHasContent && root._pivotHasContent
+    readonly property real _halfWidth: Math.max(0, root.width / 2)
+    readonly property real _pivotHalfWidth: root._pivotHasContent
+        ? middleCenterGroup.contentWidth / 2 : 0
+
+    readonly property real leftNaturalNeed:
+        (root._leftEdgeHasContent
+            ? root.edgeInset + leftSectionRowLayout.implicitWidth : 0)
+        + (root._leftZoneGapNeeded ? root.zoneGapNominal : 0)
+        + (root._leftCenterHasContent ? leftCenterGroup.contentWidth : 0)
+        + (root._leftPivotGapNeeded ? root.pivotGapNominal : 0)
+        + root._pivotHalfWidth
+    readonly property real rightNaturalNeed:
+        (root._rightEdgeHasContent
+            ? root.edgeInset + rightSectionRowLayout.implicitWidth : 0)
+        + (root._rightZoneGapNeeded ? root.zoneGapNominal : 0)
+        + (root._rightCenterHasContent ? rightCenterGroupPill.contentWidth : 0)
+        + (root._rightPivotGapNeeded ? root.pivotGapNominal : 0)
+        + root._pivotHalfWidth
+    readonly property real leftPressure:
+        Math.max(0, root.leftNaturalNeed - root._halfWidth)
+    readonly property real rightPressure:
+        Math.max(0, root.rightNaturalNeed - root._halfWidth)
+
+    readonly property real leftGapCompressionCapacity:
+        (root._leftZoneGapNeeded
+            ? root.zoneGapNominal - root.zoneGapMinimum : 0)
+        + (root._leftPivotGapNeeded
+            ? root.pivotGapNominal - root.pivotGapMinimum : 0)
+    readonly property real rightGapCompressionCapacity:
+        (root._rightZoneGapNeeded
+            ? root.zoneGapNominal - root.zoneGapMinimum : 0)
+        + (root._rightPivotGapNeeded
+            ? root.pivotGapNominal - root.pivotGapMinimum : 0)
+    readonly property real leftGapCompression: root.leftGapCompressionCapacity > 0
+        ? Math.min(1, root.leftPressure / root.leftGapCompressionCapacity) : 0
+    readonly property real rightGapCompression: root.rightGapCompressionCapacity > 0
+        ? Math.min(1, root.rightPressure / root.rightGapCompressionCapacity) : 0
+
+    readonly property real leftZoneGap: root._leftZoneGapNeeded
+        ? root.zoneGapNominal
+            - (root.zoneGapNominal - root.zoneGapMinimum) * root.leftGapCompression
+        : 0
+    readonly property real rightZoneGap: root._rightZoneGapNeeded
+        ? root.zoneGapNominal
+            - (root.zoneGapNominal - root.zoneGapMinimum) * root.rightGapCompression
+        : 0
+    readonly property real leftPivotGap: root._leftPivotGapNeeded
+        ? root.pivotGapNominal
+            - (root.pivotGapNominal - root.pivotGapMinimum) * root.leftGapCompression
+        : 0
+    readonly property real rightPivotGap: root._rightPivotGapNeeded
+        ? root.pivotGapNominal
+            - (root.pivotGapNominal - root.pivotGapMinimum) * root.rightGapCompression
+        : 0
+
+    readonly property real leftCenterMaxWidth: Math.max(0,
+        root._halfWidth - root._pivotHalfWidth
+        - (root._leftEdgeHasContent
+            ? root.edgeInset + leftSectionRowLayout.implicitWidth : 0)
+        - root.leftZoneGap - root.leftPivotGap)
+    readonly property real rightCenterMaxWidth: Math.max(0,
+        root._halfWidth - root._pivotHalfWidth
+        - (root._rightEdgeHasContent
+            ? root.edgeInset + rightSectionRowLayout.implicitWidth : 0)
+        - root.rightZoneGap - root.rightPivotGap)
+
+    function _pillWidth(cw, maxWidth) {
+        const own = Math.max(0, Number(cw) || 0)
+        return own <= 0 ? 0 : Math.min(own, Math.max(0, maxWidth))
     }
-    readonly property real centerPillMirrorSlack: 56 * Appearance.fontSizeScale
-    function _pillWidth(cw) {
-        const lw = leftCenterGroup.empty ? 0 : leftCenterGroup.contentWidth
-        const rw = rightCenterGroupPill.empty ? 0 : rightCenterGroupPill.contentWidth
-        const raw = Math.max(lw, rw)
-        if (raw <= 0) return 0
-        const own = Math.max(0, cw)
-        const mirrored = own > 0 ? Math.min(raw, own + root.centerPillMirrorSlack) : raw
-        return Math.min(mirrored, root.centerSideMaxWidth)
+
+    function _zoneContains(ids, id) {
+        return Array.isArray(ids) && ids.indexOf(id) >= 0
+    }
+    readonly property real _utilityWeightLeft:
+        root._zoneContains(root._leftIds, "utilButtons")
+            || root._zoneContains(root._centerLeftIds, "utilButtons") ? 1
+        : root._zoneContains(root._centerIds, "utilButtons") ? 0.5 : 0
+    readonly property real _utilityWeightRight:
+        root._zoneContains(root._rightIds, "utilButtons")
+            || root._zoneContains(root._centerRightIds, "utilButtons") ? 1
+        : root._zoneContains(root._centerIds, "utilButtons") ? 0.5 : 0
+    readonly property bool _utilityPackingEnabled:
+        root._moduleVisible("utilButtons")
+        && (Config.options?.bar?.verbose ?? true)
+        && (root._utilityWeightLeft > 0 || root._utilityWeightRight > 0)
+    property bool horizontalUtilitiesCompact: false
+    readonly property real utilityExpansionDelta: Math.max(0,
+        utilButtonsMeasure.expandedMainAxisLength
+            - utilButtonsMeasure.compactMainAxisLength)
+    readonly property real leftExpandedPressure: root.leftPressure
+        + (root.horizontalUtilitiesCompact
+            ? root.utilityExpansionDelta * root._utilityWeightLeft : 0)
+    readonly property real rightExpandedPressure: root.rightPressure
+        + (root.horizontalUtilitiesCompact
+            ? root.utilityExpansionDelta * root._utilityWeightRight : 0)
+
+    function _scheduleUtilityPacking(): void {
+        utilityPackingTimer.restart()
+    }
+
+    function _reconcileUtilityPacking(): void {
+        if (!root._utilityPackingEnabled) {
+            if (root.horizontalUtilitiesCompact)
+                root.horizontalUtilitiesCompact = false
+            return
+        }
+
+        const leftNeedsCompact = root._utilityWeightLeft > 0
+            && root.leftExpandedPressure > root.leftGapCompressionCapacity + 0.5
+        const rightNeedsCompact = root._utilityWeightRight > 0
+            && root.rightExpandedPressure > root.rightGapCompressionCapacity + 0.5
+        const needsCompact = leftNeedsCompact || rightNeedsCompact
+
+        if (!root.horizontalUtilitiesCompact) {
+            if (needsCompact)
+                root.horizontalUtilitiesCompact = true
+            return
+        }
+
+        const leftRelaxed = root._utilityWeightLeft <= 0
+            || root.leftExpandedPressure
+                <= Math.max(0, root.leftGapCompressionCapacity - 3)
+        const rightRelaxed = root._utilityWeightRight <= 0
+            || root.rightExpandedPressure
+                <= Math.max(0, root.rightGapCompressionCapacity - 3)
+        if (!needsCompact && leftRelaxed && rightRelaxed)
+            root.horizontalUtilitiesCompact = false
+    }
+
+    onWidthChanged: root._scheduleUtilityPacking()
+    onLeftPressureChanged: root._scheduleUtilityPacking()
+    onRightPressureChanged: root._scheduleUtilityPacking()
+    onUtilityExpansionDeltaChanged: root._scheduleUtilityPacking()
+
+    Timer {
+        id: utilityPackingTimer
+        interval: 16
+        repeat: false
+        onTriggered: root._reconcileUtilityPacking()
+    }
+
+    // Hidden natural-size probe mirrors the real utility enable matrix but
+    // never accepts input and never participates in layout.
+    UtilButtons {
+        id: utilButtonsMeasure
+        visible: false
+        enabled: false
+        vertical: false
+        compactRequested: false
     }
 
     readonly property bool cardStyleEverywhere: false
@@ -147,6 +304,7 @@ Item {
         && root.barSpectrumOutputEnabled
         && !Appearance.gameModeMinimal
         && root.visible
+        && (root.QsWindow.window?.visible ?? false)
     readonly property bool barSpectrumProcessWanted: root.barSpectrumConfigured
         && root.barSpectrumAudioPlaying
     readonly property bool barSpectrumVisible: root.barSpectrumConfigured
@@ -174,6 +332,9 @@ Item {
         Config.options?.bar?.visualizer?.frequencyProfile ?? "flat"
     readonly property real barSpectrumAccentStrength: Math.max(0,
         Math.min(1, (Config.options?.bar?.visualizer?.accentStrength ?? 70) / 100))
+    // Keep the continuous wave's CAVA payload aligned with its bounded scene
+    // resolution. Bars stay density-derived because they are discrete columns.
+    readonly property int barSpectrumWaveSampleCap: 72
     readonly property color barSpectrumColor: root.inirEverywhere ? Appearance.inir.colPrimary
         : root.zzzEverywhere ? Appearance.zzz.accent
         : root.regaliaEverywhere ? Appearance.regalia.hardwarePrimary
@@ -182,8 +343,13 @@ Item {
     CavaProcess {
         id: barCavaProcess
         active: root.barSpectrumProcessWanted
-        sampleCount: Math.max(50,
-            Math.round(Math.max(1, root.width) / root.barSpectrumDensity))
+        sampleCount: {
+            const densityCount = Math.max(50,
+                Math.round(Math.max(1, root.width) / root.barSpectrumDensity))
+            return root.barSpectrumType === "wave"
+                ? Math.min(root.barSpectrumWaveSampleCap, densityCount)
+                : densityCount
+        }
     }
 
     function performScrollAction(action: string, isUp: bool): void {
@@ -273,13 +439,13 @@ Item {
 
     readonly property bool _layoutMigrated: Config.options?.bar?.layout?.migrated === true
     readonly property real _spacerMinimumWidth: Math.max(0,
-        Config.options?.bar?.layout?.spacerWidth ?? 0) * Appearance.fontSizeScale
+        Config.options?.bar?.layout?.spacerWidth ?? 0) * Appearance.fontSizeScale * Appearance.sizes.barModuleScale
     function _zone(name, fallback) {
         const a = Config.options?.bar?.layout?.[name]
         return (root._layoutMigrated && a && a.length >= 0) ? a : fallback
     }
     readonly property var _leftIds: root._zone("left",
-        ["leftSidebarButton", "activeWindow"])
+        ["leftSidebarButton", "distroIcon", "activeWindow"])
     readonly property var _centerLeftIds: root._zone("centerLeft",
         ["resources", "media"])
     readonly property var _centerIds: root._zone("center", ["workspaces"])
@@ -302,7 +468,7 @@ Item {
             return root.taskbarEnabled || root.useShortenedForm === 0;
         if (id === "media") return root.useShortenedForm < 2;
         if (id === "utilButtons")
-            return (Config.options?.bar?.verbose ?? true) && root.useShortenedForm === 0;
+            return Config.options?.bar?.verbose ?? true;
         if (id === "battery") return root.useShortenedForm < 2 && Battery.available;
         if (id === "weather") return Config.options?.bar?.weather?.enable ?? false;
         return true;
@@ -310,6 +476,7 @@ Item {
 
     readonly property var _allComponents: ({
         "leftSidebarButton": leftSidebarButtonComponent,
+        "distroIcon": distroIconComponent,
         "activeWindow": activeWindowComponent,
         "resources": resourcesModuleComponent,
         "media": mediaModuleComponent,
@@ -385,7 +552,8 @@ Item {
         id: utilButtonsModuleComponent
         UtilButtons {
             visible: root._moduleVisible("utilButtons")
-                && ((Config.options?.bar?.verbose ?? true) && root.useShortenedForm === 0)
+                && (Config.options?.bar?.verbose ?? true)
+            compactRequested: root.horizontalUtilitiesCompact
             Layout.alignment: Qt.AlignVCenter
         }
     }
@@ -403,7 +571,7 @@ Item {
         LeftSidebarButton {
             visible: root._moduleVisible("leftSidebarButton")
             Layout.alignment: Qt.AlignVCenter
-            buttonPadding: 5
+            buttonPadding: 5 * Appearance.sizes.barModuleScale
             colBackground: buttonHovered
                 ? (root.auroraEverywhere
                     ? Appearance.aurora.colSubSurfaceHover
@@ -413,11 +581,19 @@ Item {
     }
 
     Component {
+        id: distroIconComponent
+        DistroIcon {
+            visible: root._moduleVisible("distroIcon")
+            Layout.alignment: Qt.AlignVCenter
+        }
+    }
+
+    Component {
         id: activeWindowComponent
         Item {
             id: awWrapper
             property bool fillSlot: true
-            implicitWidth: fillSlot ? 0 : Math.min(_awItem.contentImplicitWidth, 220)
+            implicitWidth: fillSlot ? 0 : Math.min(_awItem.contentImplicitWidth, 220 * Appearance.sizes.barModuleScale)
             implicitHeight: Appearance.sizes.baseBarHeight
             clip: true
             Behavior on implicitWidth {
@@ -447,16 +623,8 @@ Item {
         }
     }
 
-    Loader {
-        // Detached Float/Card shadow is retired. The supported Hug Bar uses the
-        // dedicated inward edge shadow owned by Bar.qml.
-        active: false
-        anchors.fill: barBackground
-        sourceComponent: StyledRectangularShadow {
-            anchors.fill: undefined
-            target: barBackground
-        }
-    }
+    // The physical Screen Edge's single inverted frame owns the inward
+    // shadow, including this Bar's corners. No local duplicate renderer.
 
     Rectangle {
         id: barBackground
@@ -731,10 +899,9 @@ Item {
             accentColor: Appearance.zzz.chromeStroke
         }
 
-        CavaSpectrum {
+        BarCavaVisualizer {
             anchors.fill: parent
             active: root.barSpectrumVisible
-            threadedRendering: true
             points: active ? barCavaProcess.points : []
             normalizationCeiling: active ? barCavaProcess.normalizationCeiling : 100
             visualizerType: root.barSpectrumType
@@ -751,6 +918,7 @@ Item {
             edgeSoftness: root.barSpectrumEdgeSoftness
             frequencyProfile: root.barSpectrumFrequencyProfile
             accentStrength: root.barSpectrumAccentStrength
+            waveStripCap: root.barSpectrumWaveSampleCap
             topLeftRadius: barBackground.topLeftRadius
             topRightRadius: barBackground.topRightRadius
             bottomLeftRadius: barBackground.bottomLeftRadius
@@ -799,9 +967,9 @@ Item {
             anchors.bottom: parent.bottom
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.leftMargin: Appearance.rounding.screenRounding
-            anchors.rightMargin: Appearance.rounding.screenRounding
-            spacing: 10
+            anchors.leftMargin: root.edgeInset
+            anchors.rightMargin: root.leftZoneGap
+            spacing: root.moduleGap
 
             Repeater {
                 model: root._leftIds
@@ -812,6 +980,7 @@ Item {
 
     Item {
         id: middleSection
+        z: root.horizontalUtilitiesCompact ? 2 : 0
         anchors {
             top: parent.top
             bottom: parent.bottom
@@ -829,7 +998,8 @@ Item {
             id: middleCenterGroup
             anchors.verticalCenter: parent.verticalCenter
             anchors.horizontalCenter: parent.horizontalCenter
-            padding: 4
+            padding: 4 * Appearance.sizes.barModuleScale
+            moduleSpacing: root.moduleGap
             visible: !empty
 
             Repeater {
@@ -854,7 +1024,7 @@ Item {
                 && !leftCenterGroup.empty && !middleCenterGroup.empty
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: middleCenterGroup.left
-            anchors.rightMargin: 4
+            anchors.rightMargin: root.leftPivotGap / 2
             height: Appearance.sizes.baseBarHeight / 3
         }
 
@@ -863,10 +1033,15 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: (Config.options?.bar.borderless ?? false)
                 ? leftSeparator.left : middleCenterGroup.left
-            anchors.rightMargin: 4
+            anchors.rightMargin: (Config.options?.bar.borderless ?? false)
+                ? root.leftPivotGap / 2 : root.leftPivotGap
             visible: !empty
-            implicitWidth: empty ? 0 : root._pillWidth(contentWidth)
-            clipContent: true
+            implicitWidth: empty ? 0
+                : root._pillWidth(contentWidth, root.leftCenterMaxWidth)
+            clipContent: !(root.horizontalUtilitiesCompact
+                && root._zoneContains(root._centerLeftIds, "utilButtons"))
+            moduleSpacing: root.moduleGap
+            contentHorizontalAlignment: Qt.AlignRight
 
             Repeater {
                 model: root._centerLeftIds
@@ -890,7 +1065,7 @@ Item {
                 && !rightCenterGroupPill.empty && !middleCenterGroup.empty
             anchors.verticalCenter: parent.verticalCenter
             anchors.left: middleCenterGroup.right
-            anchors.leftMargin: 4
+            anchors.leftMargin: root.rightPivotGap / 2
             height: Appearance.sizes.baseBarHeight / 3
         }
 
@@ -899,7 +1074,8 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             anchors.left: (Config.options?.bar.borderless ?? false)
                 ? rightSeparator.right : middleCenterGroup.right
-            anchors.leftMargin: 4
+            anchors.leftMargin: (Config.options?.bar.borderless ?? false)
+                ? root.rightPivotGap / 2 : root.rightPivotGap
             visible: !rightCenterGroupPill.empty
             implicitWidth: rightCenterGroupPill.empty ? 0 : rightCenterGroupPill.width
             implicitHeight: rightCenterGroupPill.height
@@ -922,8 +1098,12 @@ Item {
                 id: rightCenterGroupPill
                 anchors.verticalCenter: parent.verticalCenter
                 visible: !empty
-                implicitWidth: empty ? 0 : root._pillWidth(contentWidth)
-                clipContent: true
+                implicitWidth: empty ? 0
+                    : root._pillWidth(contentWidth, root.rightCenterMaxWidth)
+                clipContent: !(root.horizontalUtilitiesCompact
+                    && root._zoneContains(root._centerRightIds, "utilButtons"))
+                moduleSpacing: root.moduleGap
+                contentHorizontalAlignment: Qt.AlignLeft
 
                 Repeater {
                     model: root._centerRightIds
@@ -1048,17 +1228,14 @@ Item {
             anchors.bottom: parent.bottom
             anchors.right: parent.right
             anchors.left: parent.left
-            anchors.leftMargin: Appearance.rounding.screenRounding
-            anchors.rightMargin: Appearance.rounding.screenRounding
-            spacing: 5
+            anchors.leftMargin: root.rightZoneGap
+            anchors.rightMargin: root.edgeInset
+            spacing: root.moduleGap
             layoutDirection: Qt.RightToLeft
 
             Repeater {
                 model: root._rightIds
-                delegate: EdgeZoneCell {
-                    zone: "right"
-                    Layout.leftMargin: modelData === "weather" ? 4 : 0
-                }
+                delegate: EdgeZoneCell { zone: "right" }
             }
         }
     }
@@ -1114,17 +1291,16 @@ Item {
             id: rightSidebarButton
             cookieMorphing: true
             visible: root._moduleVisible("rightSidebarButton")
+            Accessible.name: Translation.tr("Toggle right sidebar")
 
             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             Layout.fillWidth: false
-
-            implicitWidth: indicatorsRowLayout.implicitWidth + 10 * 2
-            implicitHeight: indicatorsRowLayout.implicitHeight + 5 * 2
+            implicitWidth: 30 * Appearance.sizes.barModuleScale
+            implicitHeight: 30 * Appearance.sizes.barModuleScale
 
             buttonRadius: Appearance.rounding.full
             colBackground: buttonHovered
-                ? Appearance.colors.colLayer1Hover
-                : "transparent"
+                ? Appearance.colors.colLayer1Hover : "transparent"
             colBackgroundHover: Appearance.colors.colLayer1Hover
             colRipple: Appearance.colors.colLayer1Active
             colBackgroundToggled: Appearance.colors.colSecondaryContainer
@@ -1135,131 +1311,13 @@ Item {
             property color colText: toggled
                 ? Appearance.colors.colOnSecondaryContainer
                 : Appearance.colors.colOnLayer0
+            onPressed: ShellLayoutController.toggleSidebarAtSlot("right")
 
-            Behavior on colText {
-                enabled: Appearance.animationsEnabled
-                ColorAnimation {
-                    duration: Appearance.animation.elementMoveFast.duration
-                    easing.type: Appearance.animation.elementMoveFast.type
-                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                }
-            }
-
-            onPressed: {
-                ShellLayoutController.toggleSidebarAtSlot("right");
-            }
-
-            RowLayout {
-                id: indicatorsRowLayout
+            MaterialSymbol {
                 anchors.centerIn: parent
-                property real realSpacing: 15
-                spacing: 0
-
-                Revealer {
-                    reveal: Audio.sink?.audio?.muted ?? false
-                    Layout.fillHeight: true
-                    Layout.rightMargin: reveal ? indicatorsRowLayout.realSpacing : 0
-                    Behavior on Layout.rightMargin {
-                        animation: NumberAnimation {
-                            duration: Appearance.animation.elementMoveFast.duration
-                            easing.type: Appearance.animation.elementMoveFast.type
-                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                        }
-                    }
-                    MaterialSymbol {
-                        text: "volume_off"
-                        iconSize: Appearance.font.pixelSize.larger
-                        color: rightSidebarButton.colText
-                    }
-                }
-                Revealer {
-                    reveal: Audio.micMuted
-                    Layout.fillHeight: true
-                    Layout.rightMargin: reveal ? indicatorsRowLayout.realSpacing : 0
-                    Behavior on Layout.rightMargin {
-                        animation: NumberAnimation {
-                            duration: Appearance.animation.elementMoveFast.duration
-                            easing.type: Appearance.animation.elementMoveFast.type
-                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                        }
-                    }
-                    MaterialSymbol {
-                        text: "mic_off"
-                        iconSize: Appearance.font.pixelSize.larger
-                        color: rightSidebarButton.colText
-                    }
-                }
-                HyprlandXkbIndicator {
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.rightMargin: KeyboardIndicators.hasPanelIndicators
-                        ? indicatorsRowLayout.realSpacing : 0
-                    color: rightSidebarButton.colText
-                }
-                Revealer {
-                    reveal: Notifications.silent || Notifications.unread > 0
-                    Layout.fillHeight: true
-                    Layout.rightMargin: reveal ? indicatorsRowLayout.realSpacing : 0
-                    implicitHeight: reveal ? notificationUnreadCount.implicitHeight : 0
-                    implicitWidth: reveal ? notificationUnreadCount.implicitWidth : 0
-                    Behavior on Layout.rightMargin {
-                        enabled: Appearance.animationsEnabled
-                        NumberAnimation {
-                            duration: Appearance.animation.elementMoveFast.duration
-                            easing.type: Appearance.animation.elementMoveFast.type
-                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                        }
-                    }
-                    NotificationUnreadCount {
-                        id: notificationUnreadCount
-                    }
-                }
-                MaterialSymbol {
-                    text: Network.materialSymbol
-                    iconSize: Appearance.font.pixelSize.larger
-                    color: rightSidebarButton.colText
-                    Layout.rightMargin: BluetoothStatus.available
-                        ? indicatorsRowLayout.realSpacing : 0
-
-                    HoverHandler {
-                        id: wifiHover
-                        onHoveredChanged: {
-                            if (hovered) Network.refreshActiveNetworkDetails();
-                        }
-                    }
-
-                    StyledToolTip {
-                        extraVisibleCondition: wifiHover.hovered
-                        text: {
-                            if (!Network.wifiEnabled)
-                                return Translation.tr("Wi-Fi is disabled");
-                            if (Network.ethernet)
-                                return Translation.tr("Ethernet connected");
-                            if (!Network.networkName)
-                                return Translation.tr("Not connected");
-                            const connected = Translation.tr("Connected to %1")
-                                .arg(Network.networkName);
-                            const details = Network.accessPointDetails(Network.active, true);
-                            return details.length > 0
-                                ? `${connected} | ${details}` : connected;
-                        }
-                    }
-                }
-                Revealer {
-                    reveal: BluetoothStatus.available
-                    Layout.rightMargin: indicatorsRowLayout.realSpacing
-                    MaterialSymbol {
-                        text: BluetoothStatus.activeIcon
-                        iconSize: Appearance.font.pixelSize.larger
-                        color: rightSidebarButton.colText
-
-                        HoverHandler { id: btHover }
-
-                        StyledToolTip {
-                            extraVisibleCondition: btHover.hovered
-                            text: BluetoothStatus.connectionTooltip()
-                        }
-                    }
-                }
+                text: "right_panel_open"
+                iconSize: Math.round(20 * Appearance.sizes.barModuleScale)
+                color: rightSidebarButton.colText
             }
         }
     }

@@ -18,6 +18,8 @@ Item {
     ClippedFilledCircularProgress {
         id: resourceProgress
         anchors.centerIn: parent
+        implicitSize: Math.round(18 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale)
+        lineWidth: Math.max(1, Math.round(2 * Appearance.sizes.barModuleScale))
         value: percentage
         enableAnimation: false
         colPrimary: root.warning ? Appearance.colors.colError : Appearance.colors.colOnLayer0
@@ -27,7 +29,7 @@ Item {
             font.weight: Font.Medium
             fill: 1
             text: root.iconName
-            iconSize: 13
+            iconSize: Math.round(13 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale)
             color: Appearance.colors.colOnLayer0
         }
     }

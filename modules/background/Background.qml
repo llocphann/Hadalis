@@ -1618,7 +1618,16 @@ Scope {
                     { text: Translation.tr("Edit widgets"), iconName: "edit", monochromeIcon: true,
                         action: () => { GlobalStates.setWidgetEditMode(true) } },
                     { text: Translation.tr("Edit shell layout"), iconName: "dashboard_customize", monochromeIcon: true,
-                        action: () => { ShellEditSession.toggle() } },
+                        action: () => {
+                            // Match the Settings header action for Abyss exactly:
+                            // enter the live Edge editor on the desktop that was
+                            // right-clicked. ShellEditSession remains the legacy /
+                            // Waffle family entrypoint.
+                            if (Config.options?.panelFamily === "abyss")
+                                GlobalStates.startAbyssEditing(bgRoot.screenName)
+                            else
+                                ShellEditSession.enter(bgRoot.screenName)
+                        } },
                     { type: "separator" },
                     { text: Translation.tr("Reload shell"), iconName: "refresh", monochromeIcon: true,
                         action: () => { Quickshell.execDetached(["/usr/bin/bash", Quickshell.shellPath("scripts/restart-shell.sh")]) } }
@@ -2452,7 +2461,8 @@ Scope {
                                 RippleButton {
                                     id: quickWidgetButton
                                     required property var modelData
-                                    readonly property bool widgetEnabled: bgRoot._widgetEnabled(modelData.key, modelData.defaultOn)
+                                    // Repeater delegates can outlive their window's QML context during teardown.
+                                    readonly property bool widgetEnabled: bgRoot?._widgetEnabled(modelData.key, modelData.defaultOn) ?? false
                                     width: 36; height: 36
                                     buttonRadius: Appearance.rounding.full
                                     toggled: widgetEnabled

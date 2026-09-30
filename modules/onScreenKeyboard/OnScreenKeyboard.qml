@@ -25,15 +25,14 @@ Scope { // Scope
     Behavior on _oskRevealProgress {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+            duration: SurfaceMotion.duration
+            easing.type: SurfaceMotion.easingType
         }
     }
 
     Timer {
         id: oskUnloadTimer
-        interval: Appearance.animation.elementMove.duration + 40
+        interval: SurfaceMotion.duration + 40
         repeat: false
         onTriggered: {
             if (!GlobalStates.oskOpen)
@@ -100,6 +99,7 @@ Scope { // Scope
         + (GlobalStates.waffleClipboardOpen           ? (1 << 18) : 0)
         + (GlobalStates.waffleTaskViewOpen            ? (1 << 19) : 0)
         + (GlobalStates.waffleAltSwitcherOpen         ? (1 << 20) : 0)
+        + (GlobalStates.notificationCenterOpen         ? (1 << 21) : 0)
 
     component OskControlButton: GroupButton {
         baseWidth: 40
@@ -205,7 +205,7 @@ Scope { // Scope
             }
 
             // Use the same configurable shadow contract as Screen Edge/Bar.
-            // The body itself underlaps the full edge band; no separate stem exists.
+            // The body underlaps the full edge band; no stem or wedge painter exists.
             StyledRectangularShadow {
                 target: oskBackground
                 // Screen Edge shadow is structural connected chrome, not an
@@ -222,16 +222,6 @@ Scope { // Scope
                 offset: Qt.vector2d(0, 0)
                 color: root.screenEdgeShadowEnabled
                     ? root.screenEdgeShadowColor : "transparent"
-                joinTop: oskRoot.snappedEdge === "top"
-                joinBottom: oskRoot.snappedEdge === "bottom"
-            }
-            ConnectedSurfaceJoinFlares {
-                anchors.fill: parent
-                bodyItem: oskBackground
-                fillColor: oskBackground.color
-                flareRadius: PerimeterTokens.joinFlareRadius
-                progress: root._oskRevealProgress
-                transform: Translate { y: oskRoot.revealOffsetY }
                 joinTop: oskRoot.snappedEdge === "top"
                 joinBottom: oskRoot.snappedEdge === "bottom"
             }
@@ -263,22 +253,9 @@ Scope { // Scope
                 Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
                 Behavior on border.width { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
                 Behavior on border.color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
-                transformOrigin: Item.Center
-                property real initScale: 0.98
-                scale: initScale
-
-                Component.onCompleted: {
-                    initScale = 1.0
-                }
-
-                Behavior on scale {
-                    animation: NumberAnimation {
-                        duration: Appearance.animation.elementMoveFast.duration
-                        easing.type: Appearance.animation.elementMoveFast.type
-                        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                    }
-                }
-
+                // Enter/exit is slide-only, matching connected popups,
+                // Sidebar, Dashboard and Settings. No scale pulse is layered
+                // on top of the edge translation.
                 Behavior on x {
                     enabled: oskBackground.animatePosition
                     NumberAnimation {

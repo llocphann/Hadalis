@@ -15,6 +15,10 @@ import Quickshell.Hyprland
 
 Scope {
     id: root
+    property Item embeddedHost: null
+    readonly property Item presentationContent: sessionLoader.item?.presentationContent ?? null
+    readonly property real desiredWidth: Math.max(550,presentationContent?.implicitWidth ?? 550)
+    readonly property real desiredHeight: (presentationContent?.implicitHeight ?? 530)+70
     property bool _presentedOpen: false
     Component.onCompleted: if (GlobalStates.sessionOpen)
         Qt.callLater(() => { root._presentedOpen = GlobalStates.sessionOpen })
@@ -102,7 +106,8 @@ Scope {
 
         sourceComponent: PanelWindow { // Session menu
             id: sessionRoot
-            visible: GlobalStates.sessionOpen || sessionLoader._sessionClosing
+            readonly property Item presentationContent: contentColumn
+            visible: !root.embeddedHost && (GlobalStates.sessionOpen || sessionLoader._sessionClosing)
             property string subtitle
             
             function hide() {
@@ -138,6 +143,7 @@ Scope {
             }
 
             function ensureWallpaperThumbnail(): void {
+                if (root.embeddedHost) return
                 const path = FileUtils.trimFileProtocol(String(sessionRoot._wallpaperSource ?? ""))
                 if (!path) return
                 if (WallpaperListener.isVideoPath(path) || WallpaperListener.isGifPath(path))
@@ -157,7 +163,7 @@ Scope {
             Image {
                 id: backgroundWallpaper
                 anchors.fill: parent
-                source: sessionRoot._wallpaperPath
+                source: root.embeddedHost ? "" : sessionRoot._wallpaperPath
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
                 cache: false
@@ -229,13 +235,14 @@ Scope {
 
             ColumnLayout { // Content column
                 id: contentColumn
+                parent: root.embeddedHost ?? sessionRoot.contentItem
                 anchors.centerIn: parent
                 spacing: 15
 
                 // Subtle open animation for the session dialog
                 transformOrigin: Item.Center
-                scale: root._presentedOpen ? 1.0 : 0.97
-                opacity: root._presentedOpen ? 1.0 : 0.0
+                scale: root.embeddedHost ? 1 : root._presentedOpen ? 1.0 : 0.97
+                opacity: root.embeddedHost ? 1 : root._presentedOpen ? 1.0 : 0.0
                 Behavior on scale {
                     animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
                 }
@@ -287,7 +294,7 @@ Scope {
                             enabled: Appearance.animationsEnabled
                             ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                         }
-                        text: Translation.tr("Arrow keys to navigate, Enter to select\nEsc or click anywhere to cancel")
+                        text: root.embeddedHost ? Translation.tr("Arrow keys to navigate, Enter to select\nEsc to cancel") : Translation.tr("Arrow keys to navigate, Enter to select\nEsc or click anywhere to cancel")
                     }
                 }
 
@@ -298,7 +305,7 @@ Scope {
 
                     SessionActionButton {
                         id: sessionLock
-                        focus: sessionRoot.visible
+                        focus: root.embeddedHost ? GlobalStates.sessionOpen : sessionRoot.visible
                         buttonIcon: "lock"
                         buttonText: Translation.tr("Lock")
                         onClicked:  { Session.lock(); sessionRoot.hide() }
@@ -387,6 +394,7 @@ Scope {
             }
 
             RowLayout {
+                parent: root.embeddedHost ?? sessionRoot.contentItem
                 anchors {
                     top: contentColumn.bottom
                     topMargin: 10

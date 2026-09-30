@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import QtQuick.Layouts
 import qs.services
 import qs.modules.common
@@ -11,10 +12,22 @@ import qs.modules.common.functions
  */
 MouseArea {
     id: root
+    // A pointer click can retain activeFocus after hover ends. Keep popup
+    // keyboard focus affordance without treating pointer focus as hover.
+    property bool _pointerFocused: false
+    onPressed: root._pointerFocused = true
+    onActiveFocusChanged: {
+        if (!root.activeFocus)
+            root._pointerFocused = false
+    }
+    property bool vertical: false
 
     visible: implicitWidth > 0
-    implicitWidth: (ShellUpdates.showUpdate || ShellUpdates.isUpdating) ? pill.width : 0
-    implicitHeight: Appearance.sizes.barHeight
+    implicitWidth: (ShellUpdates.showUpdate || ShellUpdates.isUpdating)
+        ? (root.vertical ? 34 * Appearance.sizes.barModuleScale : pill.width) : 0
+    implicitHeight: root.vertical
+        ? ((ShellUpdates.showUpdate || ShellUpdates.isUpdating) ? 34 * Appearance.sizes.barModuleScale : 0)
+        : Appearance.sizes.barHeight
 
     Behavior on implicitWidth {
         enabled: Appearance.animationsEnabled
@@ -62,8 +75,8 @@ MouseArea {
     Rectangle {
         id: pill
         anchors.centerIn: parent
-        width: contentRow.implicitWidth + 16
-        height: contentRow.implicitHeight + 8
+        width: root.vertical ? 30 * Appearance.sizes.barModuleScale : contentRow.implicitWidth + 16 * Appearance.sizes.barModuleScale
+        height: root.vertical ? 30 * Appearance.sizes.barModuleScale : contentRow.implicitHeight + 8 * Appearance.sizes.barModuleScale
         radius: height / 2
         scale: (!ShellUpdates.isUpdating && root.pressed) ? 0.93 : ((!ShellUpdates.isUpdating && root.containsMouse) ? 1.03 : 1.0)
         color: {
@@ -98,18 +111,19 @@ MouseArea {
     RowLayout {
         id: contentRow
         anchors.centerIn: pill
-        spacing: 5
+        spacing: 5 * Appearance.sizes.barModuleScale
 
         MaterialSymbol {
             id: updateIcon
-            text: ShellUpdates.isUpdating ? "progress_activity" : "upgrade"
-            iconSize: Appearance.font.pixelSize.normal
+            text: ShellUpdates.isUpdating ? "settings" : "upgrade"
+            iconSize: Math.round(Appearance.font.pixelSize.normal * Appearance.sizes.barModuleScale)
             color: root.accentColor
             Layout.alignment: Qt.AlignVCenter
 
             RotationAnimation on rotation {
                 loops: Animation.Infinite
-                running: ShellUpdates.isUpdating
+                running: ShellUpdates.isUpdating && root.visible
+                    && (root.Window.window?.visible ?? true)
                 from: 0
                 to: 360
                 duration: 1200
@@ -118,12 +132,14 @@ MouseArea {
             SequentialAnimation on opacity {
                 loops: Animation.Infinite
                 running: !ShellUpdates.isUpdating && root.containsMouse
+                    && root.visible && (root.Window.window?.visible ?? true)
                 NumberAnimation { to: 0.5; duration: 800; easing.type: Easing.InOutSine }
                 NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutSine }
             }
         }
 
         StyledText {
+            visible: !root.vertical && text !== ""
             text: {
                 if (ShellUpdates.isUpdating) {
                     if (ShellUpdates.updateStep > 0 && ShellUpdates.updateTotalSteps > 0) {
@@ -135,8 +151,7 @@ MouseArea {
                     ? ShellUpdates.commitsBehind.toString()
                     : "!"
             }
-            visible: text !== ""
-            font.pixelSize: Appearance.font.pixelSize.smaller
+            font.pixelSize: Math.round(Appearance.font.pixelSize.smaller * Appearance.sizes.barModuleScale)
             font.weight: Font.DemiBold
             color: root.accentColor
             Layout.alignment: Qt.AlignVCenter
@@ -147,7 +162,7 @@ MouseArea {
     StyledPopup {
         id: updatePopup
         hoverTarget: root
-        alternativeVisibleCondition: root.activeFocus
+        alternativeVisibleCondition: root.activeFocus && !root._pointerFocused
 
         // Wrapper caps implicitWidth so StyledPopup doesn't grow unbounded
         // (monospace hashes + branch names exceed the visual area otherwise)
@@ -172,28 +187,26 @@ MouseArea {
 
                     MaterialSymbol {
                         anchors.verticalCenter: parent.verticalCenter
-                        fill: 0
-                        font.weight: Font.Medium
-                        text: ShellUpdates.isUpdating ? "progress_activity" : "deployed_code_update"
+                        visible: !ShellUpdates.isUpdating
+                        text: "deployed_code_update"
                         iconSize: Appearance.font.pixelSize.large
                         color: Appearance.colors.colOnSurfaceVariant
-
-                        RotationAnimation on rotation {
-                            loops: Animation.Infinite
-                            running: ShellUpdates.isUpdating && updatePopup.active
-                            from: 0
-                            to: 360
-                            duration: 1200
-                        }
                     }
 
                     StyledText {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: ShellUpdates.isUpdating ? Translation.tr("Updating...") : Translation.tr("iNiR Update")
+                        visible: !ShellUpdates.isUpdating
+                        text: Translation.tr("iNiR Update")
                         font {
                             weight: Font.Medium
                             pixelSize: Appearance.font.pixelSize.normal
                         }
+                        color: Appearance.colors.colOnSurfaceVariant
+                    }
+
+                    LoadingText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: ShellUpdates.isUpdating
                         color: Appearance.colors.colOnSurfaceVariant
                     }
                 }

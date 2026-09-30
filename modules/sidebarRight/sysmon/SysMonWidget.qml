@@ -13,48 +13,19 @@ import "root:"
 Item {
     id: root
     property int margin: 10
-    property bool _resourceUsageHeld: false
-
-    function syncResourceUsageLifecycle(): void {
-        const shouldHold = GlobalStates.sidebarRightOpen
-        if (shouldHold === root._resourceUsageHeld)
-            return
-        if (shouldHold)
-            ResourceUsage.keepAlive()
-        else
-            ResourceUsage.releaseKeepAlive()
-        root._resourceUsageHeld = shouldHold
-    }
-
-    Component.onCompleted: root.syncResourceUsageLifecycle()
-    Component.onDestruction: {
-        if (root._resourceUsageHeld) {
-            root._resourceUsageHeld = false
-            ResourceUsage.releaseKeepAlive()
-        }
-    }
-
-    Connections {
-        target: GlobalStates
-        function onSidebarRightOpenChanged(): void {
-            root.syncResourceUsageLifecycle()
-        }
+    property QtObject resourceMonitor: ResourceUsageMonitor {
+        network: true
+        target: root
+        active: GlobalStates.sidebarRightOpen
     }
 
     // Style tokens
-    readonly property color colText: Appearance.angelEverywhere ? Appearance.angel.colText
-        : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer1
-    readonly property color colTextSecondary: Appearance.angelEverywhere ? Appearance.angel.colTextSecondary
-        : Appearance.inirEverywhere ? Appearance.inir.colTextSecondary : Appearance.colors.colSubtext
-    readonly property color colBg: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-        : Appearance.inirEverywhere ? Appearance.inir.colLayer0
-        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-        : Appearance.colors.colLayer0
-    readonly property color colBorder: Appearance.angelEverywhere ? Appearance.angel.colBorder
-        : Appearance.inirEverywhere ? Appearance.inir.colBorder : Appearance.colors.colLayer0Border
-    readonly property int borderWidth: (Appearance.angelEverywhere || Appearance.inirEverywhere) ? 1 : (Appearance.auroraEverywhere ? 0 : 1)
-    readonly property real radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-        : Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
+    readonly property color colText: Appearance.colors.colOnLayer1
+    readonly property color colTextSecondary: Appearance.colors.colSubtext
+    readonly property color colBg: Appearance.colors.colLayer0
+    readonly property color colBorder: Appearance.colors.colLayer0Border
+    readonly property int borderWidth: 1
+    readonly property real radius: Appearance.rounding.normal
 
     ColumnLayout {
         anchors.fill: parent
@@ -74,12 +45,9 @@ Item {
             
             RippleButton {
                 implicitWidth: 28; implicitHeight: 28
-                buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall : 14
+                buttonRadius: 14
                 colBackground: "transparent"
-                colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                    : Appearance.inirEverywhere ? Appearance.inir.colLayer1Hover
-                    : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                    : Appearance.colors.colLayer1Hover
+                colBackgroundHover: Appearance.colors.colLayer1Hover
                 onClicked: ResourceUsage.ensureRunning()
                 contentItem: MaterialSymbol { anchors.centerIn: parent; text: "refresh"; iconSize: 16; color: root.colTextSecondary }
                 StyledToolTip { text: Translation.tr("Refresh") }
@@ -247,11 +215,8 @@ Item {
 
             Rectangle {
                 anchors.fill: parent
-                radius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall : 4
-                color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                    : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                    : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colLayer1, 0.5)
-                    : Appearance.colors.colLayer1
+                radius: 4
+                color: Appearance.colors.colLayer1
             }
 
             Graph {
@@ -275,10 +240,7 @@ Item {
             Layout.fillWidth: true
             value: progressValue
             highlightColor: progressColor
-            trackColor: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                : Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                : Appearance.colors.colSecondaryContainer
+            trackColor: Appearance.colors.colSecondaryContainer
         }
 
         // Subtext
@@ -296,53 +258,10 @@ Item {
         Layout.fillWidth: true
         spacing: 6
 
-        property string rxSpeed: "0 B/s"
-        property string txSpeed: "0 B/s"
-        property real lastRx: 0
-        property real lastTx: 0
-        property real lastTime: 0
-
-        Timer {
-            running: GlobalStates.sidebarRightOpen
-            interval: 2000
-            repeat: true
-            triggeredOnStart: true
-            onTriggered: netProc.running = true
-        }
-
-        Process {
-            id: netProc
-            command: ["/usr/bin/cat", "/proc/net/dev"]
-            running: false
-            stdout: SplitParser {
-                splitMarker: ""
-                onRead: data => {
-                    const lines = data.split("\n")
-                    let totalRx = 0, totalTx = 0
-                    for (const line of lines) {
-                        if (line.includes(":") && !line.includes("lo:")) {
-                            const parts = line.split(/\s+/).filter(p => p)
-                            if (parts.length >= 10) {
-                                totalRx += parseInt(parts[1]) || 0
-                                totalTx += parseInt(parts[9]) || 0
-                            }
-                        }
-                    }
-
-                    const now = Date.now()
-                    if (netStats.lastTime > 0) {
-                        const dt = (now - netStats.lastTime) / 1000
-                        if (dt > 0) {
-                            netStats.rxSpeed = netStats.formatSpeed((totalRx - netStats.lastRx) / dt)
-                            netStats.txSpeed = netStats.formatSpeed((totalTx - netStats.lastTx) / dt)
-                        }
-                    }
-                    netStats.lastRx = totalRx
-                    netStats.lastTx = totalTx
-                    netStats.lastTime = now
-                }
-            }
-        }
+        readonly property string rxSpeed:
+            formatSpeed(ResourceUsage.networkRxBytesPerSec)
+        readonly property string txSpeed:
+            formatSpeed(ResourceUsage.networkTxBytesPerSec)
 
         function formatSpeed(bytesPerSec) {
             if (bytesPerSec < 1024) return bytesPerSec.toFixed(0) + " B/s"

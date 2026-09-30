@@ -365,7 +365,10 @@ Singleton {
     Timer {
         interval: 120000
         repeat: true
-        running: true
+        // Startup detection remains unconditional. Once settled, keep periodic
+        // status verification only while Hadalis requests or still owns a
+        // charge-limit policy, or while an apply operation is in flight.
+        running: root.enabled || root.managed || root.busy
         onTriggered: root._detect()
     }
 }

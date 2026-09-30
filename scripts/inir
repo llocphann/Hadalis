@@ -1,6 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Qt requires a UTF-8 process locale. Preserve every already-valid user locale,
+# but repair legacy C/ASCII launch environments before Quickshell starts.
+_inir_ensure_utf8_locale() {
+    local charmap=""
+    charmap="$(locale charmap 2>/dev/null || true)"
+    case "${charmap^^}" in
+        UTF-8|UTF8) return ;;
+    esac
+
+    local candidate candidate_map
+    for candidate in C.UTF-8 C.utf8; do
+        candidate_map="$(LC_ALL="$candidate" locale charmap 2>/dev/null || true)"
+        case "${candidate_map^^}" in
+            UTF-8|UTF8)
+                export LC_ALL="$candidate"
+                return
+                ;;
+        esac
+    done
+}
+_inir_ensure_utf8_locale
+
 qs_bin="/usr/bin/qs"
 user_config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/inir"
 system_config_dir="${INIR_SYSTEM_RUNTIME_DIR:-/usr/local/share/quickshell/inir}"
@@ -79,6 +101,7 @@ Quick start:
   inir logs              View runtime logs (--full: all categories, --debug: foreground debug, -f: follow)
   inir status            Shell status info
   inir doctor            Health checks (--perf: runtime graphics/media snapshot)
+  inir input-method start Initialize Fcitx5/Unikey for the desktop session
 
 EOF
 
@@ -113,7 +136,7 @@ Other:
   theme <list-targets|inspect|doctor|apply|scaffold> [args...]
   completions <bash|zsh|fish>
   service <install|uninstall|enable|disable|start|stop|restart|status|logs>
-  repair, path, test-local, settings-window, waffle-settings-window
+  repair, path, test-local, input-method start, settings-window, waffle-settings-window
 EOF
 }
 
@@ -1209,7 +1232,9 @@ _inir_doctor_perf() {
         elif [[ "$proc_comm" == "nmcli" ]]; then
             proc_note="NetworkManager monitor"
         elif [[ "$proc_cmd" == *"keyboard_lock_state_daemon.py"* ]]; then
-            proc_note="keyboard lock daemon"
+            proc_note="keyboard lock daemon (Python)"
+        elif [[ "$proc_comm" == "inir-inputd" || "$proc_cmd" == *"/inir-inputd"* ]]; then
+            proc_note="keyboard input daemon (Rust trial)"
         elif [[ "$proc_comm" == "bash" ]]; then
             proc_note="shell helper"
         else
@@ -1780,7 +1805,7 @@ apply_qt_runtime_env() {
                        DISPLAY XCURSOR_THEME XCURSOR_SIZE \
                        LANG LC_ALL XDG_MENU_PREFIX \
                        ELECTRON_OZONE_PLATFORM_HINT QT_STYLE_OVERRIDE \
-                       GDK_BACKEND; do
+                       QT_IM_MODULE XMODIFIERS GDK_BACKEND; do
             if [[ -z "${!_qs_var:-}" ]]; then
                 _qs_val="$(grep "^${_qs_var}=" <<< "$_qs_sys_env" | head -1 | cut -d= -f2- || true)"
                 [[ -n "$_qs_val" ]] && export "${_qs_var}=${_qs_val}"
@@ -2067,6 +2092,17 @@ ensure_systemd_graphical_env() {
         vars_to_import+=("ELECTRON_OZONE_PLATFORM_HINT=auto")
     fi
 
+    # Qt on Niri uses the Fcitx input context; XWayland clients use XIM.
+    # Do not replace an input method explicitly selected in the user manager.
+    if command -v fcitx5 >/dev/null 2>&1; then
+        if ! grep -q '^QT_IM_MODULE=' <<< "$sys_env" 2>/dev/null && [[ -z "${QT_IM_MODULE+x}" ]]; then
+            vars_to_import+=("QT_IM_MODULE=fcitx")
+        fi
+        if ! grep -q '^XMODIFIERS=' <<< "$sys_env" 2>/dev/null && [[ -z "${XMODIFIERS+x}" ]]; then
+            vars_to_import+=("XMODIFIERS=@im=fcitx")
+        fi
+    fi
+
     # QT_QPA_PLATFORM — tells Qt apps to use the Wayland backend.  Qt usually
     # auto-detects this from WAYLAND_DISPLAY, but some apps (especially those using
     # older Qt builds or custom platform plugin paths) need it explicit.  Portal
@@ -2144,6 +2180,60 @@ kill_wrapper() {
     return 0
 }
 
+# Only the stopped shell service owns these processes. Independent Quickshell
+# sessions, automation validation fixtures and user jobs must survive cleanup.
+inir_cleanup_owns_pid() {
+    local pid="$1" unit_group="$2" hierarchy controllers process_group
+    [[ "$pid" =~ ^[1-9][0-9]*$ && "$unit_group" == */inir.service ]] || return 1
+    while IFS=: read -r hierarchy controllers process_group; do
+        [[ "$process_group" == "$unit_group" || "$process_group" == "$unit_group/"* ]] && return 0
+    done <<< "$(cat "/proc/$pid/cgroup" 2>/dev/null || true)"
+    return 1
+}
+
+cleanup_service_processes() {
+    local service_main_pid="" service_group="" key value pid
+    while IFS='=' read -r key value; do
+        case "$key" in
+            MainPID) service_main_pid="$value" ;;
+            ControlGroup) service_group="$value" ;;
+        esac
+    done <<< "$(systemctl --user show -p MainPID -p ControlGroup inir.service 2>/dev/null || true)"
+    # Missing ownership is not evidence that a process is orphaned. A live
+    # service may have healthy grandchildren, so do not sweep its process tree.
+    [[ "$service_group" == */inir.service ]] || return 0
+    if [[ "$service_main_pid" =~ ^[1-9][0-9]*$ ]] && kill -0 "$service_main_pid" 2>/dev/null; then
+        return 0
+    fi
+
+    while IFS= read -r pid; do
+        inir_cleanup_owns_pid "$pid" "$service_group" || continue
+        kill "$pid" 2>/dev/null || true
+    done < <(pgrep -x 'quickshell|qs' 2>/dev/null || true)
+
+    while IFS= read -r pid; do
+        inir_cleanup_owns_pid "$pid" "$service_group" || continue
+        kill "$pid" 2>/dev/null || true
+    done < <(pgrep -f 'keyboard_lock_state_daemon\.py|/inir-inputd([[:space:]]|$)|nmcli monitor|/usr/bin/swayidle -w' 2>/dev/null || true)
+
+    local thumb_pattern='scripts/thumbnails/(thumbgen-venv\.sh|thumbgen\.py|generate-thumbnails-magick\.sh)'
+    local thumb_pids=()
+    while IFS= read -r pid; do
+        inir_cleanup_owns_pid "$pid" "$service_group" || continue
+        thumb_pids+=("$pid")
+        kill "$pid" 2>/dev/null || true
+    done < <(pgrep -f "$thumb_pattern" 2>/dev/null || true)
+    if (( ${#thumb_pids[@]} > 0 )); then
+        sleep 0.2
+        for pid in "${thumb_pids[@]}"; do
+            kill -0 "$pid" 2>/dev/null || continue
+            # Recheck ownership before escalation, including a reused PID.
+            inir_cleanup_owns_pid "$pid" "$service_group" || continue
+            kill -KILL "$pid" 2>/dev/null || true
+        done
+    fi
+}
+
 # Clean up stale Quickshell runtime entries and orphaned qs processes.
 # Called by ExecStopPost in inir.service after crashes where KillMode=process
 # only terminated the main PID, leaving child processes and runtime artifacts.
@@ -2211,62 +2301,7 @@ cleanup_orphans() {
         done
     fi
 
-    # Phase 4: Kill orphaned quickshell/qs processes not owned by the live service.
-    # Only target qs processes, never user apps.
-    local alive_pids service_main_pid=""
-    service_main_pid="$(systemctl --user show -p MainPID inir.service 2>/dev/null | cut -d= -f2 || true)"
-    alive_pids="$(pgrep -x 'quickshell|qs' 2>/dev/null || true)"
-    if [[ -n "$alive_pids" ]]; then
-        while IFS= read -r pid; do
-            [[ -n "$pid" ]] || continue
-            # Skip the live service PID and its direct children
-            if [[ -n "$service_main_pid" && "$service_main_pid" != "0" ]]; then
-                [[ "$pid" == "$service_main_pid" ]] && continue
-                local ppid
-                ppid="$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ' || true)"
-                [[ "$ppid" == "$service_main_pid" ]] && continue
-            fi
-            kill "$pid" 2>/dev/null || true
-        done <<< "$alive_pids"
-    fi
-
-    # Phase 5: Kill orphaned iNiR helper processes still in inir.service cgroup.
-    # KillMode=process only kills the main QS pid; swayidle, the keyboard daemon,
-    # and nmcli monitor can be reparented to the user manager while remaining in
-    # the service cgroup, accumulating across restarts.
-    local _pid _cgroup
-    while IFS= read -r _pid; do
-        [[ -n "$_pid" ]] || continue
-        # Skip processes owned by the live service main pid or its children
-        if [[ -n "$service_main_pid" && "$service_main_pid" != "0" ]]; then
-            local _ppid
-            _ppid="$(ps -o ppid= -p "$_pid" 2>/dev/null | tr -d ' ' || true)"
-            [[ "$_ppid" == "$service_main_pid" ]] && continue
-        fi
-        _cgroup="$(cat /proc/$_pid/cgroup 2>/dev/null || true)"
-        [[ "$_cgroup" == *"inir.service"* ]] || continue
-        kill "$_pid" 2>/dev/null || true
-    done < <(pgrep -f 'keyboard_lock_state_daemon\.py|nmcli monitor|/usr/bin/swayidle -w' 2>/dev/null || true)
-
-    # Phase 6: Thumbnail generation uses a multiprocessing pool. Older runs
-    # could outlive qs because KillMode=process intentionally preserves apps
-    # launched from the shell. Limit cleanup to iNiR's own thumbnail commands
-    # inside this service cgroup; never match arbitrary Python or user jobs.
-    local _thumb_pattern='scripts/thumbnails/(thumbgen-venv\.sh|thumbgen\.py|generate-thumbnails-magick\.sh)'
-    local _thumb_pids=()
-    while IFS= read -r _pid; do
-        [[ -n "$_pid" ]] || continue
-        _thumb_pids+=("$_pid")
-        kill "$_pid" 2>/dev/null || true
-    done < <(pgrep -f "$_thumb_pattern" 2>/dev/null || true)
-
-    if (( ${#_thumb_pids[@]} > 0 )); then
-        sleep 0.2
-        for _pid in "${_thumb_pids[@]}"; do
-            kill -0 "$_pid" 2>/dev/null || continue
-            kill -KILL "$_pid" 2>/dev/null || true
-        done
-    fi
+    cleanup_service_processes
 }
 
 kill_shell() {
@@ -3274,7 +3309,7 @@ Usage: inir dev audit [--all] [--all-families] [DESTINATION...]
 
 Audit destinations related to changed worktree files, or the destinations
 named explicitly. --all restores the exhaustive audit. The active panel
-family is used by default; --all-families audits both ii and waffle.
+family is used by default; --all-families audits Abyss and Waffle.
 EOF
                 return 0
                 ;;
@@ -3345,6 +3380,8 @@ EOF
     elif git -C "$launcher_root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         while IFS= read -r -d '' changed_path; do
             case "$changed_path" in
+                modules/common/widgets/Notification*.qml)
+                    select_prefix "notification-center"; select_prefix "dashboard" ;;
                 GlobalStates.qml|ShellIiPanels.qml|ShellWafflePanels.qml|shell.qml|settings.qml|waffleSettings.qml|defaults/config.json|modules/common/Config.qml|modules/common/Appearance.qml|modules/common/Looks.qml|modules/common/widgets/*)
                     : ;; # Broad files do not turn a focused audit into an exhaustive one.
                 modules/sidebarLeft/aiChat/*|modules/sidebarLeft/AiChat.qml|modules/sidebarLeft/ApiInputBoxIndicator.qml|services/Ai.qml|services/ai/*)
@@ -3366,7 +3403,9 @@ EOF
                         *Tools*|plugins) select_prefix "sidebar-left/tools" ;;
                         *) : ;;
                     esac ;;
-                modules/sidebarRight/notifications/*) select_prefix "sidebar-right/notifications" ;;
+                modules/notificationCenter/*) select_prefix "notification-center" ;;
+                modules/sidebarRight/notifications/*)
+                    select_prefix "notification-center"; select_prefix "dashboard" ;;
                 modules/sidebarRight/events/*) select_prefix "sidebar-right/events" ;;
                 modules/sidebarRight/todo/*) select_prefix "sidebar-right/todo" ;;
                 modules/sidebarRight/notepad/*) select_prefix "sidebar-right/notepad" ;;
@@ -3392,7 +3431,8 @@ EOF
                     area="${changed_path##*/}"; area="${area%Config.qml}"; select_settings_area "$area" ;;
                 modules/waffle/settings/pages/W*Page.qml)
                     area="${changed_path##*/}"; area="${area#W}"; area="${area%Page.qml}"; select_settings_area "$area" ;;
-                services/Notifications.qml) select_prefix "sidebar-right/notifications"; select_prefix "waffle/notification-center" ;;
+                services/Notifications.qml)
+                    select_prefix "notification-center"; select_prefix "waffle/notification-center"; select_prefix "dashboard" ;;
                 services/Weather.qml) select_prefix "sidebar-right/weather"; select_prefix "dashboard" ;;
                 services/Events.qml|services/Calendar*.qml) select_prefix "sidebar-right/calendar"; select_prefix "sidebar-right/events"; select_prefix "dashboard" ;;
                 services/Todo.qml) select_prefix "sidebar-right/todo"; select_prefix "dashboard" ;;
@@ -3414,7 +3454,7 @@ EOF
     trap '"$qs_bin" -p "$config_dir" ipc call dev close >/dev/null 2>&1 || true; current_family="$(jq -r '\''.panelFamily // "ii"'\'' "$config_file" 2>/dev/null)"; if [[ "$current_family" != "$original_family" ]]; then "$qs_bin" -p "$config_dir" ipc call panelFamily set "$original_family" >/dev/null 2>&1 || true; fi' INT TERM
 
     local families=("$family")
-    $include_all_families && families=(ii waffle)
+    $include_all_families && families=(abyss waffle)
     for family in "${families[@]}"; do
         if [[ "$(jq -r '.panelFamily // "ii"' "$config_file" 2>/dev/null)" != "$family" ]]; then
             response="$("$qs_bin" -p "$config_dir" ipc call panelFamily set "$family" 2>&1 || true)"
@@ -3964,6 +4004,17 @@ case "$command_name" in
         done
         resolve_config_dir
         run_repair "$config_dir"
+        ;;
+    input-method)
+        case "${1:-start}" in
+            start)
+                resolve_config_dir
+                if [[ -f "$config_dir/scripts/input-method/fcitx5-session.sh" ]]; then
+                    bash "$config_dir/scripts/input-method/fcitx5-session.sh"
+                fi
+                ;;
+            *) echo "Usage: inir input-method start" >&2; exit 2 ;;
+        esac
         ;;
     path)
         while [[ $# -gt 0 ]]; do

@@ -41,6 +41,9 @@ Item {
         ? YtMusic.currentArtist : (player?.trackArtist ?? "")
     readonly property bool effectiveIsPlaying: isYtMusicActive
         ? YtMusic.isPlaying : (player?.isPlaying ?? false)
+    readonly property bool positionTickerActive:
+        root.player?.playbackState === MprisPlaybackState.Playing
+        && GlobalStates.controlPanelOpen
 
     property string artDownloadLocation: Directories.coverArt
     readonly property bool downloaded: MediaArtwork.ready
@@ -321,6 +324,35 @@ Item {
                     RippleButton {
                         implicitWidth: root.controlButtonSize
                         implicitHeight: root.controlButtonSize
+                        buttonText: Translation.tr("Shuffle")
+                        enabled: MprisController.shuffleSupported
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: MprisController.hasShuffle
+                            ? ColorUtils.transparentize(root.blendedColors?.colPrimary
+                                ?? Appearance.colors.colPrimary, 0.78)
+                            : "transparent"
+                        colBackgroundHover: ColorUtils.transparentize(
+                            root.blendedColors?.colLayer1 ?? Appearance.colors.colLayer1, 0.5)
+                        colRipple: root.blendedColors?.colLayer1Active
+                            ?? Appearance.colors.colLayer1Active
+                        onClicked: MprisController.toggleShuffleForPlayer(root.player)
+                        contentItem: Item {
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "shuffle"
+                                iconSize: root.controlIconSize
+                                fill: MprisController.hasShuffle ? 1 : 0
+                                color: MprisController.hasShuffle
+                                    ? (root.blendedColors?.colPrimary ?? Appearance.colors.colPrimary)
+                                    : (root.blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0)
+                            }
+                        }
+                        StyledToolTip { text: Translation.tr("Shuffle") }
+                    }
+
+                    RippleButton {
+                        implicitWidth: root.controlButtonSize
+                        implicitHeight: root.controlButtonSize
                         buttonText: Translation.tr("Previous")
                         enabled: MprisController.canGoPrevious
                         buttonRadius: Appearance.rounding.full
@@ -404,6 +436,35 @@ Item {
                         }
                     }
 
+                    RippleButton {
+                        implicitWidth: root.controlButtonSize
+                        implicitHeight: root.controlButtonSize
+                        buttonText: Translation.tr("Repeat")
+                        enabled: MprisController.loopSupported
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: MprisController.loopActive
+                            ? ColorUtils.transparentize(root.blendedColors?.colPrimary
+                                ?? Appearance.colors.colPrimary, 0.78)
+                            : "transparent"
+                        colBackgroundHover: ColorUtils.transparentize(
+                            root.blendedColors?.colLayer1 ?? Appearance.colors.colLayer1, 0.5)
+                        colRipple: root.blendedColors?.colLayer1Active
+                            ?? Appearance.colors.colLayer1Active
+                        onClicked: MprisController.cycleLoopForPlayer(root.player)
+                        contentItem: Item {
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: MprisController.loopTrack ? "repeat_one" : "repeat"
+                                iconSize: root.controlIconSize
+                                fill: MprisController.loopActive ? 1 : 0
+                                color: MprisController.loopActive
+                                    ? (root.blendedColors?.colPrimary ?? Appearance.colors.colPrimary)
+                                    : (root.blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0)
+                            }
+                        }
+                        StyledToolTip { text: Translation.tr("Repeat") }
+                    }
+
                     Item {
                         Layout.fillWidth: true
                     }
@@ -420,9 +481,10 @@ Item {
     }
 
     Timer {
-        running: root.player?.playbackState === MprisPlaybackState.Playing
+        running: root.positionTickerActive
         interval: 1000
         repeat: true
+        triggeredOnStart: true
         onTriggered: root.player?.positionChanged()
     }
 }

@@ -10,6 +10,26 @@ import qs.modules.waffle.settings
 WSettingsPage {
     id: root
 
+    property bool _tlpDemandRefreshed: false
+
+    function _refreshTlpDemand(): void {
+        if (!root.visible || root._tlpDemandRefreshed)
+            return
+        root._tlpDemandRefreshed = true
+        TlpRuntimeCapabilities.refresh()
+        TlpSettingsService.refresh()
+    }
+
+    onVisibleChanged: {
+        if (!visible) {
+            root._tlpDemandRefreshed = false
+            return
+        }
+        root._refreshTlpDemand()
+    }
+
+    Component.onCompleted: root._refreshTlpDemand()
+
     settingsPageIndex: 18
     pageTitle: Translation.tr("Battery")
     pageIcon: "battery-saver"

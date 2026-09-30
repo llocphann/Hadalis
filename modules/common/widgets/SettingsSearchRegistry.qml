@@ -321,26 +321,21 @@ Singleton {
     }
     
     function findSectionControl(pageIndex, title) {
-        var wanted = String(title || "").toLowerCase().trim();
-        if (!wanted.length)
-            return null;
-
-        var loose = null;
-        for (var i = 0; i < _entryStore.length; ++i) {
-            var e = _entryStore[i];
-            if (!e || _removedEntryIds[e.id] || !e.control)
+        const wanted = String(title || "").toLowerCase().split(/[·›]/).pop().trim();
+        if (!wanted) return null;
+        var content = null;
+        for (const e of _entryStore) {
+            if (!e || _removedEntryIds[e.id] || !e.control || e.pageIndex !== pageIndex)
                 continue;
-            if (e.pageIndex !== pageIndex)
-                continue;
-            var label = String(e.label || "").toLowerCase().trim();
-            if (!label.length)
-                continue;
-            if (label === wanted)
+            const label = String(e.label || "").toLowerCase().trim();
+            // A module toggle named Dock is not the Dock section. Prefer the
+            // registered section itself before matching any of its controls.
+            if (label === wanted && collapsibleSections.indexOf(e.control) >= 0)
                 return e.control;
-            if (!loose && (label.indexOf(wanted) >= 0 || wanted.indexOf(label) >= 0))
-                loose = e.control;
+            const section = String(e.section || "").toLowerCase().split(/[·›]/).pop().trim();
+            if (!content && section === wanted) content = e.control;
         }
-        return loose;
+        return content;
     }
 
     function getControlById(optionId) {

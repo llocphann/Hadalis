@@ -2,9 +2,9 @@ import qs.services
 import qs.modules.common
 import QtQuick
 
-// Serpantinum-inspired equalizer renderer adapted to Hadalis' existing
-// CAVA -> PlayerControl -> WaveVisualizer data contract. This stays as the
-// single media visualizer; it deliberately avoids a second CAVA/EQ subsystem.
+// Serpantinum-inspired renderer for PlayerControl's optional decorative
+// CAVA wave. Owners with an integrated analyzer (notably BarMediaPopup's EQ DSP)
+// can suppress this layer without creating a second CAVA/EQ subsystem.
 Item {
     id: root
 
@@ -71,14 +71,16 @@ Item {
         // adding unnecessary per-frame work.
         const passes = Math.min(3, Math.max(0, Math.round(root.smoothing)))
         for (let pass = 0; pass < passes; ++pass) {
-            const next = new Array(count)
+            // This fresh local array is unpublished. Carry old neighbours
+            // across writes so every pass keeps the original stencil/order.
+            let prev = out[0]
+            let curr = out[0]
             for (let i = 0; i < count; ++i) {
-                const prev = i > 0 ? out[i - 1] : out[i]
-                const curr = out[i]
-                const following = i < count - 1 ? out[i + 1] : out[i]
-                next[i] = prev * 0.25 + curr * 0.5 + following * 0.25
+                const following = i < count - 1 ? out[i + 1] : curr
+                out[i] = prev * 0.25 + curr * 0.5 + following * 0.25
+                prev = curr
+                curr = following
             }
-            out = next
         }
         return out
     }

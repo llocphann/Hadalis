@@ -1147,16 +1147,23 @@ if args.render_templates:
         """Convert camelCase to snake_case for compatibility template aliases."""
         return re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\1", name).lower()
 
-    for tok in all_tokens:
+    # Register exact names first, then compatibility aliases. Raw Material
+    # camelCase roles intentionally own their snake_case aliases when an
+    # app-contract key has the same spelling (for example onSurface/on_surface).
+    # Two passes make this deterministic across PYTHONHASHSEED values.
+    token_objects = {}
+    for tok in sorted(all_tokens):
         dk = dark_palette.get(tok, "#000000")
         lt = light_palette.get(tok, "#000000")
         df = default_palette.get(tok, "#000000")
         token_obj = _Token(dk, lt, df)
-        # Register under both camelCase and snake_case keys
+        token_objects[tok] = token_obj
         colors_ns[tok] = token_obj
+
+    for tok in sorted(all_tokens):
         snake = _camel_to_snake(tok)
         if snake != tok:
-            colors_ns[snake] = token_obj
+            colors_ns[snake] = token_objects[tok]
 
     # Regex to resolve {{colors.TOKEN.MODE.PROP}} and {{image}}
     _VAR_RE = re.compile(r"\{\{\s*(.*?)\s*\}\}")

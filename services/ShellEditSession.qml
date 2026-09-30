@@ -11,7 +11,7 @@ import qs.services
 Singleton {
     id: root
 
-    readonly property bool active: GlobalStates.shellLayoutEditMode
+    readonly property bool active: GlobalStates.shellLayoutEditMode || GlobalStates.abyssEditing
     property string targetOutputName: ""
     property string selectedSurfaceId: ""
     property string liftedSurfaceId: ""
@@ -159,6 +159,11 @@ Singleton {
     }
 
     function enter(outputName: string): void {
+        if (Config.options?.panelFamily === "abyss") {
+            root.targetOutputName = root._resolvedOutputName(outputName)
+            GlobalStates.startAbyssEditing(root.targetOutputName)
+            return
+        }
         const resolved = root._resolvedOutputName(outputName)
         if (root.targetOutputName !== resolved) {
             root._clearPending(false)
@@ -177,6 +182,11 @@ Singleton {
     }
 
     function exit(): void {
+        if (GlobalStates.abyssEditing) {
+            GlobalStates.abyssEditing = false
+            root._clearTransient()
+            return
+        }
         if (GlobalStates.shellLayoutEditMode)
             GlobalStates.setShellLayoutEditMode(false)
         else

@@ -7,10 +7,11 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    settingsPageIndex: 2
+    settingsPageIndex: embedded ? 2 : 2
     settingsPageName: Translation.tr("Bar")
 
     property bool isIiActive: Config.options?.panelFamily !== "waffle"
+    readonly property bool abyssContent: root.embedded && Config.options?.panelFamily === "abyss"
     property string activeSection: "appearance"
     property bool spectrumControlsReady: false
 
@@ -40,10 +41,7 @@ ContentPage {
         return true
     }
 
-    readonly property bool isHugStyle: (Config.options?.bar?.cornerStyle ?? 1) === 0
     readonly property bool isVertical: Config.options?.bar?.vertical ?? false
-    readonly property bool isAngel: (Config.options?.appearance?.globalStyle ?? "material") === "angel"
-    readonly property bool showBackground: Config.options?.bar?.showBackground ?? true
     readonly property bool spectrumEnabled: Config.options?.bar?.visualizer?.enable ?? false
     readonly property color workspaceThemeIndicatorColor: Appearance.zzzEverywhere ? Appearance.zzz.accentSoft
         : Appearance.angelEverywhere ? Appearance.angel.colPrimary : Appearance.colors.colPrimary
@@ -62,12 +60,15 @@ ContentPage {
 
     SettingsTaskNavigator {
         icon: "toolbar"
-        title: Translation.tr("Classic Bar")
+        title: root.abyssContent ? Translation.tr("Module behavior") : Translation.tr("Classic Bar")
         description: Translation.tr("Position, surface, behavior, spectrum and modules for the Classic bar.")
         summary: Translation.tr("Appearance · Spectrum · Behavior · Modules")
         currentValue: root.activeSection
         onSelected: value => root.activeSection = value
-        options: [
+        options: root.abyssContent ? [
+            { displayName: Translation.tr("Modules"), icon: "widgets", value: "modules" },
+            { displayName: Translation.tr("Behavior & clock"), icon: "visibility", value: "behavior" }
+        ] : [
             { displayName: Translation.tr("Appearance"), icon: "style", value: "appearance" },
             { displayName: Translation.tr("Audio spectrum"), icon: "graphic_eq", value: "spectrum" },
             { displayName: Translation.tr("Behavior & clock"), icon: "visibility", value: "behavior" },
@@ -102,7 +103,7 @@ ContentPage {
         SettingsGroup {
             SettingsNote {
                 icon: "toolbar"
-                text: Translation.tr("Classic is the only bar appearance. Position and corner style change its geometry without switching renderer families.")
+                text: Translation.tr("Classic Bar uses the Hug surface. Position only changes which screen edge it hugs.")
             }
 
             ContentSubsection {
@@ -124,40 +125,12 @@ ContentPage {
                 }
             }
 
-            ContentSubsection {
-                title: Translation.tr("Corner style")
-
-                ConfigSelectionArray {
-                    currentValue: Config.options?.bar?.cornerStyle ?? 1
-                    onSelected: newValue => {
-                        if (newValue === 0 && root.isAngel) {
-                            Config.setNestedValue("bar.cornerStyle", 1)
-                            return
-                        }
-                        Config.setNestedValue("bar.cornerStyle", newValue)
-                    }
-                    options: [
-                        { displayName: Translation.tr("Hug"), icon: "line_curve", previewKind: "hug", value: 0 },
-                        { displayName: Translation.tr("Float"), icon: "page_header", previewKind: "float", value: 1 },
-                        { displayName: Translation.tr("Rectangle"), icon: "toolbar", previewKind: "rect", value: 2 },
-                        { displayName: Translation.tr("Card"), icon: "branding_watermark", previewKind: "card", value: 3 }
-                    ]
-                }
-
-                SettingsNote {
-                    visible: root.isAngel && root.isHugStyle
-                    warning: true
-                    icon: "sync_problem"
-                    text: Translation.tr("Hug mode is incompatible with the Angel global style; Float is used instead.")
-                }
-            }
-
             ConfigRow {
                 uniform: true
 
                 ConfigSpinBox {
                     icon: "height"
-                    text: Translation.tr("Bar height (px)")
+                    text: root.isVertical ? Translation.tr("Bar width (px)") : Translation.tr("Bar height (px)")
                     value: Config.options?.bar?.height ?? 40
                     from: 24
                     to: 80
@@ -182,13 +155,6 @@ ContentPage {
             ConfigRow {
                 uniform: true
 
-                SettingsSwitch {
-                    buttonIcon: "format_paint"
-                    text: Translation.tr("Show background")
-                    checked: Config.options?.bar?.showBackground ?? true
-                    onCheckedChanged: Config.setNestedValue("bar.showBackground", checked)
-                }
-
                 ConfigSpinBox {
                     icon: "opacity"
                     text: Translation.tr("Background opacity (%)")
@@ -196,39 +162,8 @@ ContentPage {
                     from: 20
                     to: 100
                     stepSize: 5
-                    enabled: root.showBackground
-                    opacity: enabled ? 1 : 0.5
                     onValueChanged: Config.setNestedValue("bar.opacity", value / 100)
                 }
-            }
-
-            ConfigRow {
-                uniform: true
-
-                SettingsSwitch {
-                    buttonIcon: "blur_on"
-                    text: Translation.tr("Blur background")
-                    checked: Config.options?.bar?.blurBackground?.enabled ?? false
-                    enabled: root.showBackground && (Config.options?.performance?.compositorBlur ?? true)
-                    opacity: enabled ? 1 : 0.5
-                    onCheckedChanged: Config.setNestedValue("bar.blurBackground.enabled", checked)
-                }
-
-                ConfigSpinBox {
-                    icon: "opacity"
-                    text: Translation.tr("Blur overlay (%)")
-                    value: Math.round((Config.options?.bar?.blurBackground?.overlayOpacity ?? 0.3) * 100)
-                    from: 0
-                    to: 100
-                    stepSize: 5
-                    enabled: Config.options?.bar?.blurBackground?.enabled ?? false
-                    opacity: enabled ? 1 : 0.5
-                    onValueChanged: Config.setNestedValue("bar.blurBackground.overlayOpacity", value / 100)
-                }
-            }
-
-            ConfigRow {
-                uniform: true
 
                 SettingsSwitch {
                     buttonIcon: "border_clear"
@@ -236,13 +171,86 @@ ContentPage {
                     checked: Config.options?.bar?.borderless ?? true
                     onCheckedChanged: Config.setNestedValue("bar.borderless", checked)
                 }
+            }
+        }
+    }
 
-                SettingsSwitch {
-                    buttonIcon: "shadow"
-                    text: Translation.tr("Float shadow")
-                    checked: Config.options?.bar?.floatStyleShadow ?? true
-                    onCheckedChanged: Config.setNestedValue("bar.floatStyleShadow", checked)
+    SettingsCardSection {
+        settingsTaskSection: "appearance"
+        visible: root.isIiActive && root.activeSection === "appearance"
+        expanded: true
+        icon: "border_outer"
+        title: Translation.tr("Screen Edge")
+
+        SettingsGroup {
+            ConfigRow {
+                uniform: true
+
+                ConfigSpinBox {
+                    icon: "width"
+                    text: Translation.tr("Screen edge width (px)")
+                    value: Config.options?.appearance?.screenEdge?.width ?? 10
+                    from: 1
+                    to: 32
+                    stepSize: 1
+                    onValueChanged: Config.setNestedValue(
+                        "appearance.screenEdge.width", value)
                 }
+
+                ConfigSpinBox {
+                    icon: "rounded_corner"
+                    text: Translation.tr("Corner radius (px)")
+                    value: Config.options?.appearance?.screenEdge?.radius ?? 25
+                    from: 0
+                    to: 96
+                    stepSize: 1
+                    onValueChanged: Config.setNestedValue(
+                        "appearance.screenEdge.radius", value)
+                }
+            }
+
+            SettingsSwitch {
+                buttonIcon: "shadow"
+                text: Translation.tr("Screen edge shadow")
+                checked: Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+                onCheckedChanged: Config.setNestedValue(
+                    "appearance.screenEdge.physicalShadow.enabled", checked)
+            }
+
+            ConfigRow {
+                uniform: true
+
+                ConfigSpinBox {
+                    icon: "blur_on"
+                    text: Translation.tr("Shadow size (px)")
+                    value: Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15
+                    from: 0
+                    to: 32
+                    stepSize: 1
+                    enabled: Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+                    opacity: enabled ? 1 : 0.5
+                    onValueChanged: Config.setNestedValue(
+                        "appearance.screenEdge.physicalShadow.size", value)
+                }
+
+                ConfigSpinBox {
+                    icon: "opacity"
+                    text: Translation.tr("Shadow opacity (%)")
+                    value: Math.round(
+                        (Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70) * 100)
+                    from: 0
+                    to: 100
+                    stepSize: 2
+                    enabled: Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+                    opacity: enabled ? 1 : 0.5
+                    onValueChanged: Config.setNestedValue(
+                        "appearance.screenEdge.physicalShadow.opacity", value / 100)
+                }
+            }
+
+            SettingsNote {
+                icon: "info"
+                text: Translation.tr("These shadow controls apply to the Screen Edge, Bar popups, Dock, Sidebar and Dashboard. The screen edge stays visible on the desktop and maximized windows; true fullscreen and lock screen hide it.")
             }
         }
     }
@@ -512,6 +520,7 @@ ContentPage {
         SettingsGroup {
             ContentSubsection {
                 title: Translation.tr("Visible modules")
+                visible: !root.abyssContent
 
                 ConfigRow {
                     uniform: true
@@ -521,6 +530,16 @@ ContentPage {
                         checked: Config.options?.bar?.modules?.leftSidebarButton ?? true
                         onCheckedChanged: Config.setNestedValue("bar.modules.leftSidebarButton", checked)
                     }
+                    SettingsSwitch {
+                        buttonIcon: "computer"
+                        text: Translation.tr("Distro icon")
+                        checked: Config.options?.bar?.modules?.distroIcon ?? true
+                        onCheckedChanged: Config.setNestedValue("bar.modules.distroIcon", checked)
+                    }
+                }
+
+                ConfigRow {
+                    uniform: true
                     SettingsSwitch {
                         buttonIcon: "window"
                         text: Translation.tr("Active window")
@@ -614,37 +633,81 @@ ContentPage {
                 }
             }
 
+            ContentSubsection {
+                title: Translation.tr("Quick Action Settings")
+                visible: root.abyssContent
+                    || (Config.options?.bar?.modules?.utilButtons ?? false)
+
+                QuickActionSettingsEditor {}
+            }
+
             SettingsNote {
-                visible: root.isVertical
-                icon: "view_column"
-                text: Translation.tr("Left/Right Bar uses a compact fixed vertical order. Module visibility above stays synchronized with the active Bar; the Top/Bottom drag layout is preserved when you switch back.")
+                visible: !root.abyssContent
+                icon: root.isVertical ? "view_column" : "view_stream"
+                text: Translation.tr("Top/Bottom and Left/Right keep separate module layouts; module visibility remains shared.")
             }
 
             ContentSubsection {
-                title: Translation.tr("Bar module layout")
-                visible: !root.isVertical
+                visible: !root.abyssContent
+                title: root.isVertical
+                    ? Translation.tr("Left/Right module layout")
+                    : Translation.tr("Top/Bottom module layout")
 
                 ConfigSpinBox {
-                    icon: "space_bar"
-                    text: Translation.tr("Flexible spacer width")
-                    value: Config.options?.bar?.layout?.spacerWidth ?? 0
+                    icon: root.isVertical ? "height" : "space_bar"
+                    text: root.isVertical
+                        ? Translation.tr("Flexible spacer height")
+                        : Translation.tr("Flexible spacer width")
+                    value: root.isVertical
+                        ? (Config.options?.bar?.verticalLayout?.spacerHeight ?? 0)
+                        : (Config.options?.bar?.layout?.spacerWidth ?? 0)
                     from: 0
                     to: 480
                     stepSize: 8
-                    onValueChanged: Config.setNestedValue("bar.layout.spacerWidth", value)
+                    onValueChanged: Config.setNestedValue(
+                        root.isVertical
+                            ? "bar.verticalLayout.spacerHeight"
+                            : "bar.layout.spacerWidth",
+                        value)
                 }
 
                 ConfigSelectionArray {
-                    currentValue: Config.options?.bar?.layout?.spacerMode ?? "auto"
-                    onSelected: newValue => Config.setNestedValue("bar.layout.spacerMode", newValue)
+                    currentValue: root.isVertical
+                        ? (Config.options?.bar?.verticalLayout?.spacerMode ?? "auto")
+                        : (Config.options?.bar?.layout?.spacerMode ?? "auto")
+                    onSelected: newValue => Config.setNestedValue(
+                        root.isVertical
+                            ? "bar.verticalLayout.spacerMode"
+                            : "bar.layout.spacerMode",
+                        newValue)
                     options: [
                         { displayName: Translation.tr("Smart"), icon: "auto_awesome", value: "auto" },
-                        { displayName: Translation.tr("Always elastic"), icon: "width_full", value: "fill" },
-                        { displayName: Translation.tr("Fixed width"), icon: "width_normal", value: "fixed" }
+                        { displayName: Translation.tr("Always elastic"), icon: root.isVertical ? "height" : "width_full", value: "fill" },
+                        { displayName: root.isVertical ? Translation.tr("Fixed height") : Translation.tr("Fixed width"),
+                          icon: root.isVertical ? "height" : "width_normal", value: "fixed" }
                     ]
                 }
 
-                BarModuleOrderEditor {}
+                BarModuleOrderEditor {
+                    verticalPreset: root.isVertical
+                }
+            }
+
+            ContentSubsection {
+                title: Translation.tr("Media")
+                visible: !root.isVertical
+
+                ConfigSpinBox {
+                    icon: "width_normal"
+                    text: Translation.tr("Media width (px)")
+                    value: Config.options?.bar?.media?.width ?? 180
+                    from: 120
+                    to: 320
+                    stepSize: 10
+                    enabled: root.abyssContent || (Config.options?.bar?.modules?.media ?? true)
+                    opacity: enabled ? 1 : 0.5
+                    onValueChanged: Config.setNestedValue("bar.media.width", value)
+                }
             }
 
             ContentSubsection {
@@ -717,7 +780,6 @@ ContentPage {
 
             ContentSubsection {
                 title: Translation.tr("Resources")
-                visible: !(Config.options?.settingsUi?.easyMode ?? false)
 
                 ConfigRow {
                     uniform: true

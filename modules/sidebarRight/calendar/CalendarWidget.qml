@@ -20,6 +20,7 @@ Item {
     // Two states: "month" (grid + upcoming) and "day" (day detail)
     property string viewState: "month"
     property var selectedDate: null
+    property bool dashboardAdaptive: false
 
     // Trigger to force recomputation when events change
     property int _eventsTrigger: 0
@@ -170,7 +171,9 @@ Item {
             id: monthView
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.top: parent.top
+            anchors.top: root.dashboardAdaptive ? undefined : parent.top
+            anchors.verticalCenter: root.dashboardAdaptive
+                ? parent.verticalCenter : undefined
             implicitHeight: monthColumn.implicitHeight
             opacity: root.viewState === "month" ? 1 : 0
             visible: opacity > 0
@@ -209,7 +212,11 @@ Item {
                     locale: root.locale
                     calendarCells: root.monthCells
                     responsive: true
-                    responsiveMaxCellSize: 42
+                    responsiveMinCellSize: root.dashboardAdaptive ? 24 : 30
+                    responsiveMaxCellSize: root.dashboardAdaptive ? 56 : 42
+                    responsiveAvailableHeight: root.dashboardAdaptive
+                        ? Math.max(0, root.height - 8) : 0
+                    autoWeekNumbers: root.dashboardAdaptive
                     interactiveDays: true
                     showEventDots: true
 

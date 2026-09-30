@@ -4,6 +4,7 @@ singleton Ai 1.0 Ai.qml
 singleton AppCatalog 1.0 AppCatalog.qml
 singleton AppLauncher 1.0 AppLauncher.qml
 singleton AppSearch 1.0 AppSearch.qml
+AntiFlashbangSampler 1.0 AntiFlashbangSampler.qml
 singleton Audio 1.0 Audio.qml
 singleton Autostart 1.0 Autostart.qml
 singleton Battery 1.0 Battery.qml
@@ -19,6 +20,7 @@ singleton CustomWidgets 1.0 CustomWidgets.qml
 DankSocket 1.0 DankSocket.qml
 singleton DateTime 1.0 DateTime.qml
 singleton DeviceStatePersistence 1.0 DeviceStatePersistence.qml
+singleton DisplayMode 1.0 DisplayMode.qml
 singleton DesktopItems 1.0 DesktopItems.qml
 singleton DesktopWidgetLayout 1.0 DesktopWidgetLayout.qml
 singleton DevNavigation 1.0 DevNavigation.qml
@@ -27,13 +29,12 @@ singleton FirstRunExperience 1.0 FirstRunExperience.qml
 singleton FontSyncService 1.0 FontSyncService.qml
 singleton GameMode 1.0 GameMode.qml
 singleton GlobalActions 1.0 GlobalActions.qml
-HyprlandData 1.0 HyprlandData.qml
+singleton HyprlandData 1.0 HyprlandData.qml
 singleton Hyprsunset 1.0 Hyprsunset.qml
 singleton IconThemeService 1.0 IconThemeService.qml
 singleton Idle 1.0 Idle.qml
 singleton KeyboardIndicators 1.0 KeyboardIndicators.qml
 singleton LyricsService 1.0 LyricsService.qml
-singleton MascotChaos 1.0 MascotChaos.qml
 singleton MaterialThemeLoader 1.0 MaterialThemeLoader.qml
 singleton MemoryPressureService 1.0 MemoryPressureService.qml
 singleton MinimizedWindows 1.0 MinimizedWindows.qml
@@ -61,6 +62,9 @@ singleton SystemInfo 1.0 SystemInfo.qml
 singleton TaskbarApps 1.0 TaskbarApps.qml
 singleton ThemeService 1.0 ThemeService.qml
 singleton TimerService 1.0 TimerService.qml
+InternalTodoBackend 1.0 InternalTodoBackend.qml
+ObsidianTodoBackend 1.0 ObsidianTodoBackend.qml
+DailyNoteTodoBackend 1.0 DailyNoteTodoBackend.qml
 singleton Todo 1.0 Todo.qml
 singleton Translation 1.0 Translation.qml
 singleton TrayService 1.0 TrayService.qml
@@ -73,4 +77,5 @@ singleton Weather 1.0 Weather.qml
 singleton WidgetPowerManager 1.0 WidgetPowerManager.qml
 singleton WindowPreviewService 1.0 WindowPreviewService.qml
 singleton WorldClock 1.0 WorldClock.qml
+singleton Zettelkasten 1.0 Zettelkasten.qml
 singleton YtMusic 1.0 YtMusic.qml

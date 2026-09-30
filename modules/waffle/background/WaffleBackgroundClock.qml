@@ -211,7 +211,8 @@ AbstractWidget {
 
     SystemClock {
         id: displayClock
-        precision: root.showSeconds || GlobalStates.screenLocked ? SystemClock.Seconds : SystemClock.Minutes
+        precision: (root.showSeconds || GlobalStates.screenLocked) && root.clockEnabled
+            ? SystemClock.Seconds : SystemClock.Minutes
     }
 
     Process {

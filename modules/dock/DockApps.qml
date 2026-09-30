@@ -14,15 +14,6 @@ Item {
     id: root
     property bool _sortingConsumerAcquired: false
 
-    // Debug logging gated behind QS_DEBUG env var (project convention)
-    function _log(...args): void {
-        if (Quickshell.env("QS_DEBUG") === "1") console.log("[DockDrag]", ...args);
-    }
-
-    property real maxWindowPreviewHeight: 200
-    property real maxWindowPreviewWidth: 300
-    property real windowControlsHeight: 30
-    property real buttonPadding: 5
     property bool vertical: false
     property string dockPosition: "bottom"
     property var parentWindow: null
@@ -33,223 +24,43 @@ Item {
     property Item lastHoveredButton
     property bool buttonHovered: false
     property bool contextMenuOpen: false
-    property bool requestDockShow: dockPreviewPopup.visible || contextMenuOpen || dragActive
+    property bool requestDockShow: contextMenuOpen
+    property var abyssMenuPresenter: null
+    property var abyssMenuHoverPresenter: null
 
-    readonly property Item previewAnchorItem: dockPreviewPopup.visible ? dockPreviewPopup.anchorItem : null
+    signal closeAllContextMenus(var exceptOwner)
 
-    signal closeAllContextMenus()
-
-    property bool _suppressNextClick: false
-
-    function showPreviewPopup(appEntry: var, button: Item): void {
-        if (Config.options?.dock?.hoverPreview === false) return
-        dockPreviewPopup.show(appEntry, button)
+    readonly property real axisExtent: {
+        const values = root.dockItems ?? []
+        let extent = 0
+        for (const item of values)
+            extent += item?.appId === "SEPARATOR" ? 8 : 50
+        if (values.length > 1)
+            extent += (values.length - 1) * 2
+        return extent
     }
-
     Layout.fillHeight: !vertical
     Layout.fillWidth: vertical
-    implicitWidth: listView.contentWidth
-    implicitHeight: listView.contentHeight
+    implicitWidth: vertical ? 50 : axisExtent
+    implicitHeight: vertical ? axisExtent : 50
 
-    readonly property bool dragEnabled: Config.options?.dock?.enableDragReorder ?? true
-    property bool dragActive: false
-    property int dragIndex: -1
-    property int dropTargetIndex: -1
-    property string dragAppId: ""
-    property real dragStartX: 0
-    property real dragStartY: 0
-    property real dragCurrentX: 0
-    property real dragCurrentY: 0
-
-    property bool dropSettlingActive: false
-    property string dropSettleId: ""
-    property int dropSettleIndex: -1
-    property real dropSettleOffsetX: 0
-    property real dropSettleOffsetY: 0
-
-    readonly property real dragThreshold: 18
-
-    function getDragDisplacement(itemIndex: int): real {
-        if (!dragActive || dragIndex < 0 || dropTargetIndex < 0) return 0
-        if (itemIndex === dragIndex) return 0
-
-        const draggedItem = listView.itemAtIndex(dragIndex)
-        const step = draggedItem
-            ? (vertical ? draggedItem.height : draggedItem.width) + listView.spacing
-            : 50 + listView.spacing
-
-        if (dragIndex < dropTargetIndex) {
-            if (itemIndex > dragIndex && itemIndex <= dropTargetIndex) {
-                return -step
-            }
-        } else if (dragIndex > dropTargetIndex) {
-            if (itemIndex >= dropTargetIndex && itemIndex < dragIndex) {
-                return step
-            }
-        }
-        return 0
+    function openAbyssContextMenu(model, button): bool {
+        if (!root.abyssMenuPresenter || !button)
+            return false
+        const point = button.mapToItem(root, button.width / 2, button.height / 2)
+        const ownerId = String(button.appToplevel?.uniqueId
+            ?? button.appToplevel?.originalAppId
+            ?? button.appToplevel?.appId ?? "")
+        root.abyssMenuPresenter(model, point.x, point.y, ownerId)
+        return true
     }
-
-    function startDrag(index: int, appId: string, globalX: real, globalY: real): void {
-        if (!dragEnabled) return
-
-        dockPreviewPopup.close()
-        closeAllContextMenus()
-
-        dragIndex = index
-        dragAppId = appId
-        dragStartX = globalX
-        dragStartY = globalY
-        dragCurrentX = globalX
-        dragCurrentY = globalY
-        dropTargetIndex = index
-        dragActive = true
-        _log(`START index=${index} appId=${appId} pos=(${globalX.toFixed(0)},${globalY.toFixed(0)})`)
-    }
-
-    function updateDrag(globalX: real, globalY: real): void {
-        if (!dragActive || dragIndex < 0) return
-        dragCurrentX = globalX
-        dragCurrentY = globalY
-
-        const count = dockItems.length
-        if (count === 0) return
-
-        let bestIndex = dropTargetIndex
-        let bestDist = Infinity
-
-        for (let i = 0; i < count; i++) {
-            const item = listView.itemAtIndex(i)
-            if (!item) continue
-
-            const midX = item.x + item.width / 2
-            const midY = item.y + item.height / 2
-
-            const dist = vertical
-                ? Math.abs(globalY - midY)
-                : Math.abs(globalX - midX)
-
-            if (dist < bestDist) {
-                bestDist = dist
-                bestIndex = i
-            }
-        }
-
-        if (bestIndex >= 0 && bestIndex < count && dockItems[bestIndex].appId === "SEPARATOR") {
-            const movingForward = vertical ? (globalY > dragStartY) : (globalX > dragStartX)
-            if (movingForward && bestIndex + 1 < count) bestIndex++
-            else if (!movingForward && bestIndex - 1 >= 0) bestIndex--
-        }
-
-        if (dropTargetIndex !== bestIndex) {
-            _log(`UPDATE dropTarget=${bestIndex} (was ${dropTargetIndex})`)
-        }
-        dropTargetIndex = bestIndex
-    }
-
-    function endDrag(): void {
-        if (!dragActive) return
-
-        const draggedItem = dockItems[dragIndex]
-        dropSettleId = draggedItem?.uniqueId ?? dragAppId
-        dropSettleIndex = dragIndex
-        dropSettleOffsetX = 0
-        dropSettleOffsetY = 0
-        dropSettlingActive = true
-
-        _log(`END dragIndex=${dragIndex} dropTarget=${dropTargetIndex} reorder=${dragIndex !== dropTargetIndex}`)
-        if (dragIndex >= 0 && dropTargetIndex >= 0 && dragIndex !== dropTargetIndex) {
-            _applyReorder(dragIndex, dropTargetIndex)
-        }
-
-        _resetDragState(false)
-        dropSettleResetTimer.restart()
-    }
-
-    function cancelDrag(): void {
-        _resetDragState(true)
-    }
-
-    function _resetDragState(clearDropSettle = true): void {
-        dragActive = false
-        dragIndex = -1
-        dropTargetIndex = -1
-        dragAppId = ""
-        dragStartX = 0
-        dragStartY = 0
-        dragCurrentX = 0
-        dragCurrentY = 0
-        if (clearDropSettle) {
-            dropSettleResetTimer.stop()
-            dropSettlingActive = false
-            dropSettleId = ""
-            dropSettleIndex = -1
-            dropSettleOffsetX = 0
-            dropSettleOffsetY = 0
-        }
-    }
-
-    Timer {
-        id: dropSettleResetTimer
-        interval: 2
-        repeat: false
-        onTriggered: {
-            dropSettlingActive = false
-            dropSettleId = ""
-            dropSettleIndex = -1
-            dropSettleOffsetX = 0
-            dropSettleOffsetY = 0
-        }
-    }
-
-    function _applyReorder(fromIdx: int, toIdx: int): void {
-        const fromItem = dockItems[fromIdx]
-        const toItem = dockItems[toIdx]
-
-        if (!fromItem || !toItem) return
-
-        const fromAppId = fromItem.originalAppId ?? fromItem.appId
-        const toAppId = toItem.originalAppId ?? toItem.appId
-
-        if (toAppId === "SEPARATOR" || fromAppId === "SEPARATOR") return
-
-        const fromIsRunning = (fromItem.toplevels?.length ?? 0) > 0
-        const toIsRunning = (toItem.toplevels?.length ?? 0) > 0
-        let pinnedApps = [...(Config.options?.dock?.pinnedApps ?? [])]
-
-        const fromIsPinned = fromItem.pinned
-        const toIsPinned = toItem.pinned
-
-        if (fromIsRunning && toIsRunning
-                && (root.separatePinnedFromRunning || (!fromIsPinned && !toIsPinned))) {
-            const fromRunningId = fromAppId.toLowerCase()
-            const toRunningId = toAppId.toLowerCase()
-            const fromRunningIdx = _runningAppOrder.indexOf(fromRunningId)
-            const toRunningIdx = _runningAppOrder.indexOf(toRunningId)
-            if (fromRunningIdx >= 0 && toRunningIdx >= 0) {
-                const [moved] = _runningAppOrder.splice(fromRunningIdx, 1)
-                const insertIdx = toRunningIdx
-                _runningAppOrder.splice(insertIdx, 0, moved)
-                root.rebuildDockItems()
-            }
+    function setAbyssContextMenuHover(button, hovered): void {
+        if (!root.abyssMenuHoverPresenter || !button)
             return
-        }
-
-        if (fromIsPinned && toIsPinned) {
-            const realFromIdx = pinnedApps.findIndex(p => p.toLowerCase() === fromAppId.toLowerCase())
-            const realToIdx = pinnedApps.findIndex(p => p.toLowerCase() === toAppId.toLowerCase())
-
-            if (realFromIdx >= 0 && realToIdx >= 0) {
-                const [moved] = pinnedApps.splice(realFromIdx, 1)
-                pinnedApps.splice(realToIdx, 0, moved)
-                Config.setNestedValue("dock.pinnedApps", pinnedApps)
-            }
-        } else if (!fromIsPinned && toIsPinned) {
-            const realToIdx = pinnedApps.findIndex(p => p.toLowerCase() === toAppId.toLowerCase())
-            const insertIdx = toIdx < fromIdx ? realToIdx : realToIdx + 1
-            pinnedApps.splice(insertIdx, 0, fromAppId)
-            Config.setNestedValue("dock.pinnedApps", pinnedApps)
-        }
+        const ownerId = String(button.appToplevel?.uniqueId
+            ?? button.appToplevel?.originalAppId
+            ?? button.appToplevel?.appId ?? "")
+        root.abyssMenuHoverPresenter(ownerId, hovered)
     }
 
     property var dockItems: []
@@ -315,6 +126,11 @@ Item {
 
     function _doRebuildDockItems() {
         const pinnedApps = Config.options?.dock?.pinnedApps ?? [];
+        const pinnedIds = new Set(pinnedApps.map(id => String(id ?? "").toLowerCase()));
+        const hiddenPinnedIds = new Set((Config.options?.dock?.hiddenPinnedApps ?? [])
+            .map(id => String(id ?? "").toLowerCase()));
+        const visiblePinnedApps = pinnedApps.filter(appId =>
+            !hiddenPinnedIds.has(String(appId ?? "").toLowerCase()));
         const ignoredRegexes = _getIgnoredRegexes();
         const separatePinnedFromRunning = root.separatePinnedFromRunning;
 
@@ -348,6 +164,9 @@ Item {
             const effectiveId = AppSearch.resolveWindowIdentity(toplevel);
             const lowerAppId = effectiveId.toLowerCase();
 
+            if (pinnedIds.has(lowerAppId) && hiddenPinnedIds.has(lowerAppId))
+                continue;
+
             if (ignoredRegexes.some(re => re.test(effectiveId))) {
                 continue;
             }
@@ -374,7 +193,7 @@ Item {
         let order = 0;
 
         if (!separatePinnedFromRunning) {
-            for (const appId of pinnedApps) {
+            for (const appId of visiblePinnedApps) {
                 const lowerAppId = appId.toLowerCase();
                 const runningEntry = runningAppsMap.get(lowerAppId);
                 if (!runningEntry && !AppSearch.lookupDesktopEntry(appId))
@@ -418,7 +237,7 @@ Item {
                 });
             }
         } else {
-            for (const appId of pinnedApps) {
+            for (const appId of visiblePinnedApps) {
                 const lowerAppId = appId.toLowerCase();
                 if (!runningAppsMap.has(lowerAppId)) {
                     if (!AppSearch.lookupDesktopEntry(appId))
@@ -457,9 +276,19 @@ Item {
                     entry: entry
                 });
             }
+            const pinnedOrder = new Map()
+            for (let i = 0; i < visiblePinnedApps.length; i++)
+                pinnedOrder.set(visiblePinnedApps[i].toLowerCase(), i)
+
             sortedRunningApps.sort((a, b) => {
+                const aPinned = pinnedOrder.has(a.lowerAppId)
+                const bPinned = pinnedOrder.has(b.lowerAppId)
+                if (aPinned && bPinned)
+                    return pinnedOrder.get(a.lowerAppId) - pinnedOrder.get(b.lowerAppId)
+                if (aPinned !== bPinned)
+                    return aPinned ? -1 : 1
                 return root._runningAppOrder.indexOf(a.lowerAppId)
-                    - root._runningAppOrder.indexOf(b.lowerAppId);
+                    - root._runningAppOrder.indexOf(b.lowerAppId)
             });
 
             for (const {lowerAppId, entry} of sortedRunningApps) {
@@ -467,7 +296,7 @@ Item {
                     uniqueId: "app-" + lowerAppId,
                     appId: lowerAppId,
                     toplevels: entry.toplevels,
-                    pinned: pinnedApps.some(p => p.toLowerCase() === lowerAppId),
+                    pinned: pinnedIds.has(lowerAppId),
                     originalAppId: entry.appId,
                     section: "running",
                     order: order++
@@ -506,6 +335,9 @@ Item {
         function onPinnedAppsChanged() {
             root.rebuildDockItems()
         }
+        function onHiddenPinnedAppsChanged() {
+            root.rebuildDockItems()
+        }
         function onIgnoredAppRegexesChanged() {
             root.rebuildDockItems()
         }
@@ -530,7 +362,22 @@ Item {
         }
     }
 
-    onEnabledChanged: syncSortingDemand()
+    function refreshAxisLayout(): void {
+        root.closeAllContextMenus(null)
+        root.rebuildDockItems()
+        Qt.callLater(() => {
+            listView.forceLayout()
+            listView.positionViewAtBeginning()
+            Qt.callLater(() => listView.forceLayout())
+        })
+    }
+
+    onVerticalChanged: root.refreshAxisLayout()
+    onDockPositionChanged: root.refreshAxisLayout()
+    onEnabledChanged: {
+        syncSortingDemand()
+        if (enabled) root.refreshAxisLayout()
+    }
     Component.onCompleted: syncSortingDemand()
     Component.onDestruction: {
         if (_sortingConsumerAcquired)
@@ -539,17 +386,17 @@ Item {
 
     StyledListView {
         id: listView
+        anchors.fill: parent
         spacing: 2
         orientation: root.vertical ? ListView.Vertical : ListView.Horizontal
-        anchors {
-            top: root.vertical ? undefined : parent.top
-            bottom: root.vertical ? undefined : parent.bottom
-            left: root.vertical ? parent.left : undefined
-            right: root.vertical ? parent.right : undefined
-        }
-        implicitWidth: contentWidth
-        implicitHeight: contentHeight
+        implicitWidth: root.implicitWidth
+        implicitHeight: root.implicitHeight
+        // Dock item counts are small. Keep every delegate resident so an
+        // orientation switch cannot strand a virtualized horizontal viewport
+        // while the same ListView becomes vertical (or vice versa).
+        cacheBuffer: Math.max(256, root.axisExtent + 100)
         interactive: false
+        clip: false
 
         Behavior on implicitWidth {
             enabled: Appearance.animationsEnabled
@@ -560,7 +407,7 @@ Item {
             animation: NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve }
         }
 
-        readonly property bool _animOk: Appearance.animationsEnabled && !root.dragActive
+        readonly property bool _animOk: Appearance.animationsEnabled
 
         add: Transition {
             enabled: listView._animOk
@@ -587,9 +434,7 @@ Item {
             required property int index
             appToplevel: modelData
             appListRoot: root
-            listIndex: index
             vertical: root.vertical
-            dockPosition: root.dockPosition
 
             anchors.verticalCenter: !root.vertical ? parent?.verticalCenter : undefined
             anchors.horizontalCenter: root.vertical ? parent?.horizontalCenter : undefined
@@ -599,179 +444,7 @@ Item {
             leftInset: 0
             rightInset: 0
 
-            readonly property bool isBeingDragged: root.dragActive && root.dragIndex === index
-            readonly property bool isDropTarget: root.dragActive && root.dropTargetIndex === index && root.dragIndex !== index
-            readonly property bool isDropSettling: !isBeingDragged && root.dropSettleId !== "" && root.dropSettleId === appToplevel?.uniqueId
-            readonly property real dragDisplacement: root.getDragDisplacement(index)
-
-            property real _dragOffsetX: isBeingDragged ? (root.dragCurrentX - root.dragStartX) : 0
-            property real _dragOffsetY: isBeingDragged ? (root.dragCurrentY - root.dragStartY) : 0
-
-            transform: Translate {
-                id: dockDelegateTranslate
-                x: dockDelegate.isBeingDragged
-                    ? (root.vertical ? 0 : dockDelegate._dragOffsetX)
-                    : dockDelegate.isDropSettling
-                        ? (root.vertical ? 0 : root.dropSettleOffsetX)
-                        : (root.vertical ? 0 : dockDelegate.dragDisplacement)
-                y: dockDelegate.isBeingDragged
-                    ? (root.vertical ? dockDelegate._dragOffsetY : 0)
-                    : dockDelegate.isDropSettling
-                        ? (root.vertical ? root.dropSettleOffsetY : 0)
-                        : (root.vertical ? dockDelegate.dragDisplacement : 0)
-
-                Behavior on x {
-                    enabled: Appearance.animationsEnabled && !root.dropSettlingActive && !dockDelegate.isBeingDragged && !dockDelegate.isDropSettling
-                    NumberAnimation {
-                        duration: Appearance.animation.elementResize.duration
-                        easing.type: Appearance.animation.elementResize.type
-                        easing.bezierCurve: Appearance.animation.elementResize.bezierCurve
-                    }
-                }
-                Behavior on y {
-                    enabled: Appearance.animationsEnabled && !root.dropSettlingActive && !dockDelegate.isBeingDragged && !dockDelegate.isDropSettling
-                    NumberAnimation {
-                        duration: Appearance.animation.elementResize.duration
-                        easing.type: Appearance.animation.elementResize.type
-                        easing.bezierCurve: Appearance.animation.elementResize.bezierCurve
-                    }
-                }
-            }
-
-            z: isBeingDragged ? 100 : 0
-            scale: isBeingDragged ? 1.08 : (dockDelegate.appIsActive ? 1.05 : 1.0)
-
-            opacity: isBeingDragged ? 0.8
-                   : root.dragActive ? 0.85 : 1.0
-            Behavior on opacity {
-                enabled: Appearance.animationsEnabled
-                NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-            }
-
-            Rectangle {
-                id: insertionLine
-                visible: dockDelegate.isDropTarget && !dockDelegate.isSeparator
-                z: 50
-
-                readonly property bool forward: root.dragIndex >= 0
-                    && root.dragIndex < root.dropTargetIndex
-
-                width: root.vertical ? (parent.width * 0.55) : 3
-                height: root.vertical ? 3 : (parent.height * 0.55)
-                radius: 1.5
-
-                x: root.vertical
-                    ? (parent.width - width) / 2
-                    : (forward
-                        ? parent.width + (listView.spacing - width) / 2
-                        : -(listView.spacing + width) / 2)
-                y: root.vertical
-                    ? (forward
-                        ? parent.height + (listView.spacing - height) / 2
-                        : -(listView.spacing + height) / 2)
-                    : (parent.height - height) / 2
-
-                color: root.zzzStyle ? Appearance.zzz.tertiary
-                     : root.inirStyle ? Appearance.inir.colPrimary
-                     : Appearance.colors.colPrimary
-                Behavior on color {
-                    enabled: Appearance.animationsEnabled
-                    ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                }
-
-                opacity: dockDelegate.isDropTarget ? 0.9 : 0
-
-                Behavior on opacity {
-                    enabled: Appearance.animationsEnabled
-                    NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                }
-            }
-
-            property real _pressMouseX: 0
-            property real _pressMouseY: 0
-            property bool _hasPressPos: false
-            property bool _dragPrimed: false
-            property bool _longPressTriggered: false
-
-            downAction: event => {
-                if (!root.dragEnabled || dockDelegate.isSeparator) return
-                _longPressTriggered = false
-                _dragPrimed = false
-                _pressMouseX = event.x
-                _pressMouseY = event.y
-                _hasPressPos = true
-                _dockPrimeTimer.restart()
-            }
-
-            moveAction: (event) => {
-                if (!dockDelegate.down) return
-                if (!_hasPressPos) return
-
-                const dx = event.x - _pressMouseX
-                const dy = event.y - _pressMouseY
-                const dist2 = dx * dx + dy * dy
-
-                if (_dockPrimeTimer.running && !_dragPrimed) {
-                    if (dist2 > root.dragThreshold * root.dragThreshold) {
-                        _dockPrimeTimer.stop()
-                    }
-                    return
-                }
-
-                if (_dragPrimed && !root.dragActive
-                        && dist2 > root.dragThreshold * root.dragThreshold) {
-                    _longPressTriggered = true
-                    const listPos = dockDelegate.mapToItem(listView, _pressMouseX, _pressMouseY)
-                    const appId = dockDelegate.appToplevel?.originalAppId
-                        ?? dockDelegate.appToplevel?.appId ?? ""
-                    root.startDrag(dockDelegate.index, appId, listPos.x, listPos.y)
-                }
-
-                if (root.dragActive && root.dragIndex === dockDelegate.index) {
-                    const listPos = dockDelegate.mapToItem(listView, event.x, event.y)
-                    root.updateDrag(listPos.x, listPos.y)
-                }
-            }
-
-            releaseAction: () => {
-                _dockPrimeTimer.stop()
-                _dragPrimed = false
-                if (dockDelegate._longPressTriggered) {
-                    if (root.dragActive && root.dragIndex === dockDelegate.index) {
-                        root.endDrag()
-                    }
-                    root._suppressNextClick = true
-                    Qt.callLater(() => {
-                        if (root._suppressNextClick)
-                            root._suppressNextClick = false
-                    })
-                    dockDelegate._longPressTriggered = false
-                }
-            }
-
-            Timer {
-                id: _dockPrimeTimer
-                interval: 180
-                onTriggered: {
-                    dockDelegate._dragPrimed = true
-                }
-            }
-
-            onHoverPreviewRequested: {
-                if (!root.dragActive) {
-                    root.showPreviewPopup(appToplevel, this)
-                }
-            }
-            onHoverPreviewDismissed: {
-                dockPreviewPopup.close()
-            }
         }
     }
 
-    DockPreview {
-        id: dockPreviewPopup
-        dockHovered: root.buttonHovered
-        dockPosition: root.dockPosition
-        anchor.window: root.parentWindow
-    }
 }

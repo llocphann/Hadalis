@@ -39,29 +39,14 @@ StyledPopup {
         }
     }
 
-    property bool _resourceUsageHeld: false
-
-    function syncResourceUsageLifecycle(): void {
-        if (popup.active === popup._resourceUsageHeld)
-            return
-        if (popup.active)
-            ResourceUsage.keepAlive()
-        else
-            ResourceUsage.releaseKeepAlive()
-        popup._resourceUsageHeld = popup.active
+    property QtObject resourceMonitor: ResourceUsageMonitor {
+        network: false
+        histories: false
+        active: popup.presentationActive
     }
 
-    Component.onCompleted: popup.syncResourceUsageLifecycle()
-    Component.onDestruction: {
-        if (popup._resourceUsageHeld) {
-            popup._resourceUsageHeld = false
-            ResourceUsage.releaseKeepAlive()
-        }
-    }
-
-    onActiveChanged: {
-        popup.syncResourceUsageLifecycle()
-        if (popup.active)
+    onPresentationActiveChanged: {
+        if (popup.presentationActive)
             ThinkFanService.refresh()
     }
 
@@ -70,6 +55,10 @@ StyledPopup {
         required property string icon
         required property string label
         required property string value
+        property string minimumValueSample: ""
+        // Keep the value cell width stable for changing percentages while
+        // allowing compact rows to place the text directly after the label.
+        property int valueHorizontalAlignment: Text.AlignRight
         spacing: 4
 
         MaterialSymbol {
@@ -82,8 +71,14 @@ StyledPopup {
             color: Appearance.colors.colOnSurfaceVariant
         }
         StyledText {
+            id: minimumValueText
+            visible: false
+            text: resourceItem.minimumValueSample
+        }
+        StyledText {
             Layout.fillWidth: true
-            horizontalAlignment: Text.AlignRight
+            Layout.minimumWidth: minimumValueText.implicitWidth
+            horizontalAlignment: resourceItem.valueHorizontalAlignment
             visible: resourceItem.value !== ""
             color: Appearance.colors.colOnSurfaceVariant
             text: resourceItem.value
@@ -179,14 +174,19 @@ StyledPopup {
 
                 ResourceHeaderItem {
                     icon: "planner_review"
-                    label: "CPU"
+                    label: Translation.tr("Load")
                 }
                 Column {
                     spacing: 4
                     ResourceItem {
                         icon: "bolt"
-                        label: Translation.tr("Load:")
+                        label: Translation.tr("CPU:")
                         value: `${Math.round(ResourceUsage.cpuUsage * 100)}%`
+                        // Keep the existing reserved "99%" cell so popup
+                        // geometry never changes, but align the live value to
+                        // the cell's leading edge to remove the visual gap.
+                        minimumValueSample: "99%"
+                        valueHorizontalAlignment: Text.AlignLeft
                     }
                     ResourceItem {
                         icon: "memory_alt"
@@ -264,6 +264,13 @@ StyledPopup {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 4
 
+                    MaterialSymbol {
+                        text: "speed"
+                        iconSize: Appearance.font.pixelSize.large
+                        color: Appearance.colors.colOnSurfaceVariant
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
                     StyledText {
                         text: Translation.tr("RPM:")
                         font.pixelSize: Appearance.font.pixelSize.small
@@ -290,6 +297,13 @@ StyledPopup {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 4
+
+                    MaterialSymbol {
+                        text: "tune"
+                        iconSize: Appearance.font.pixelSize.large
+                        color: Appearance.colors.colOnSurfaceVariant
+                        Layout.alignment: Qt.AlignVCenter
+                    }
 
                     StyledText {
                         text: Translation.tr("Level:")

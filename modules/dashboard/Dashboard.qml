@@ -11,6 +11,41 @@ import Quickshell.Hyprland
 Scope {
     id: root
     property bool _presentedOpen: false
+    property bool _contentPresented: GlobalStates.dashboardOpen
+    property bool _renderUpdatesNeeded: GlobalStates.dashboardOpen
+
+    function beginPresentation(): void {
+        _hideContentTimer.stop()
+        _renderSuspendTimer.stop()
+        root._renderUpdatesNeeded = true
+        root._contentPresented = true
+        root._presentedOpen = false
+
+        if (!Appearance.animationsEnabled) {
+            root._presentedOpen = true
+            return
+        }
+
+        // The Dashboard window itself stays mapped after first use. Paint one
+        // real closed frame at dashboardOffset before entering the open state,
+        // so the only visible entrance is the immutable slide transition.
+        _presentationTimer.restart()
+    }
+
+    function beginDismissal(): void {
+        _presentationTimer.stop()
+        root._presentedOpen = false
+
+        if (!Appearance.animationsEnabled) {
+            root._contentPresented = false
+            root._renderUpdatesNeeded = false
+            return
+        }
+
+        _hideContentTimer.restart()
+        _renderSuspendTimer.restart()
+    }
+
     readonly property real screenWidth: panelRoot.screen?.width ?? 1920
     readonly property real screenHeight: panelRoot.screen?.height ?? 1080
     readonly property real safePadding: Math.max(
@@ -24,37 +59,57 @@ Scope {
         + ((Config.options?.bar?.bottom ?? false) ? barReservedSpace : 0)
     readonly property real availablePanelHeight: Math.max(360, screenHeight - topReservedSpace - bottomReservedSpace)
     readonly property real availablePanelWidth: Math.max(480, screenWidth - safePadding * 2)
-    readonly property real widthRatio: Math.min(0.9, Math.max(0.4, Config.options?.dashboard?.widthRatio ?? 0.62))
+    readonly property real widthRatio: Math.min(0.9, Math.max(0.4, Config.options?.dashboard?.widthRatio ?? 0.72))
+    readonly property real heightRatio: Math.min(0.9, Math.max(0.45, Config.options?.dashboard?.heightRatio ?? 0.72))
     readonly property real panelWidth: Math.round(Math.min(availablePanelWidth, screenWidth * widthRatio))
-    readonly property real panelHeight: Math.round(Math.min(availablePanelHeight, 860))
+    readonly property real panelHeight: Math.round(Math.min(availablePanelHeight, screenHeight * heightRatio))
 
     PanelWindow {
         id: panelRoot
 
         Component.onCompleted: {
-            visible = GlobalStates.dashboardOpen
             if (GlobalStates.dashboardOpen)
-                Qt.callLater(() => { root._presentedOpen = GlobalStates.dashboardOpen })
+                root.beginPresentation()
         }
 
         Connections {
             target: GlobalStates
             function onDashboardOpenChanged() {
-                if (GlobalStates.dashboardOpen) {
-                    _closeTimer.stop()
-                    panelRoot.visible = true
-                    Qt.callLater(() => { root._presentedOpen = GlobalStates.dashboardOpen })
-                } else {
-                    root._presentedOpen = false
-                    _closeTimer.restart()
-                }
+                if (GlobalStates.dashboardOpen)
+                    root.beginPresentation()
+                else
+                    root.beginDismissal()
             }
         }
 
         Timer {
-            id: _closeTimer
-            interval: 250
-            onTriggered: panelRoot.visible = false
+            id: _presentationTimer
+            interval: 16
+            repeat: false
+            onTriggered: {
+                if (GlobalStates.dashboardOpen)
+                    root._presentedOpen = true
+            }
+        }
+
+        Timer {
+            id: _hideContentTimer
+            interval: SurfaceMotion.dashboardExitDuration + 16
+            repeat: false
+            onTriggered: {
+                if (!GlobalStates.dashboardOpen)
+                    root._contentPresented = false
+            }
+        }
+
+        Timer {
+            id: _renderSuspendTimer
+            interval: SurfaceMotion.dashboardExitDuration + 16
+            repeat: false
+            onTriggered: {
+                if (!GlobalStates.dashboardOpen)
+                    root._renderUpdatesNeeded = false
+            }
         }
 
         function hide() {
@@ -68,6 +123,11 @@ Scope {
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: GlobalStates.dashboardOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         color: "transparent"
+        // Keep the native layer-shell surface mapped after first use. Mapping
+        // and unmapping a fullscreen Overlay lets the compositor substitute its
+        // own map effect, which visually masked the Dashboard slide.
+        visible: true
+        updatesEnabled: root._renderUpdatesNeeded
 
         anchors {
             top: true
@@ -79,15 +139,36 @@ Scope {
         CompositorFocusGrab {
             id: grab
             windows: [ panelRoot ]
-            active: CompositorService.isHyprland && panelRoot.visible
+            active: CompositorService.isHyprland
+                && GlobalStates.dashboardOpen && panelRoot.visible
             onCleared: () => {
                 if (!active) panelRoot.hide()
             }
         }
 
+        Item {
+            id: dashboardInputArea
+            anchors.fill: parent
+        }
+
+        Item {
+            id: emptyDashboardInputArea
+            width: 0
+            height: 0
+        }
+
+        Region {
+            id: dashboardInputRegion
+            item: GlobalStates.dashboardOpen
+                ? dashboardInputArea : emptyDashboardInputArea
+        }
+
+        mask: dashboardInputRegion
+
         // Backdrop click to close
         MouseArea {
             anchors.fill: parent
+            enabled: GlobalStates.dashboardOpen
             onClicked: mouse => {
                 const localPos = mapToItem(contentLoader, mouse.x, mouse.y)
                 if (localPos.x < 0 || localPos.x > contentLoader.width
@@ -99,21 +180,27 @@ Scope {
 
         Loader {
             id: contentLoader
-            active: GlobalStates.dashboardOpen || (Config.options?.dashboard?.keepLoaded ?? false)
+            // The outer iiDashboard loader is retained after first use. Keep
+            // the widget tree mounted and hide only its paint after the exit
+            // slide so long-idle reopens reuse the same live component state.
+            active: true
+            visible: root._contentPresented
 
-            // Shell desaturation effect
-            layer.enabled: Appearance.shouldDesaturate("overlays") && contentLoader.visible
+            // Keep the top-level Dashboard out of an extra FBO during motion.
+            // Media artwork already owns nested mask/effect layers; wrapping the
+            // whole Dashboard in another transient layer can snapshot partially
+            // resolved artwork and produce a cyan/blank flash during the slide.
+            layer.enabled: Appearance.shouldDesaturate("overlays")
+                && contentLoader.visible
             layer.effect: ShellDesaturationEffect {}
 
-            property real panelTranslateY: 18
+            property real panelTranslateY: SurfaceMotion.dashboardOffset
             states: [
                 State {
                     name: "open"
                     when: root._presentedOpen
                     PropertyChanges {
                         target: contentLoader
-                        opacity: 1
-                        scale: 1
                         panelTranslateY: 0
                     }
                 },
@@ -122,9 +209,7 @@ Scope {
                     when: !root._presentedOpen
                     PropertyChanges {
                         target: contentLoader
-                        opacity: 0
-                        scale: 0.96
-                        panelTranslateY: 18
+                        panelTranslateY: SurfaceMotion.dashboardOffset
                     }
                 }
             ]
@@ -132,55 +217,21 @@ Scope {
                 Transition {
                     to: "open"
                     enabled: Appearance.animationsEnabled
-                    ParallelAnimation {
-                        NumberAnimation {
-                            target: contentLoader
-                            property: "opacity"
-                            duration: Math.round((Appearance.animation?.elementMoveEnter?.duration ?? 400) * 0.7)
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.standardDecel ?? [0, 0, 0, 1, 1, 1]
-                        }
-                        NumberAnimation {
-                            target: contentLoader
-                            property: "scale"
-                            duration: Appearance.animation?.elementMoveEnter?.duration ?? 400
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel ?? [0.05, 0.7, 0.1, 1, 1, 1]
-                        }
-                        NumberAnimation {
-                            target: contentLoader
-                            property: "panelTranslateY"
-                            duration: Appearance.animation?.elementMoveEnter?.duration ?? 400
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedDecel ?? [0.05, 0.7, 0.1, 1, 1, 1]
-                        }
+                    NumberAnimation {
+                        target: contentLoader
+                        property: "panelTranslateY"
+                        duration: SurfaceMotion.dashboardEnterDuration
+                        easing.type: SurfaceMotion.dashboardEnterEasingType
                     }
                 },
                 Transition {
                     to: "closed"
                     enabled: Appearance.animationsEnabled
-                    ParallelAnimation {
-                        NumberAnimation {
-                            target: contentLoader
-                            property: "opacity"
-                            duration: Math.round((Appearance.animation?.elementMoveExit?.duration ?? 200) * 0.7)
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.standardAccel ?? [0.3, 0, 1, 1, 1, 1]
-                        }
-                        NumberAnimation {
-                            target: contentLoader
-                            property: "scale"
-                            duration: Appearance.animation?.elementMoveExit?.duration ?? 200
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedAccel ?? [0.3, 0, 0.8, 0.15, 1, 1]
-                        }
-                        NumberAnimation {
-                            target: contentLoader
-                            property: "panelTranslateY"
-                            duration: Appearance.animation?.elementMoveExit?.duration ?? 200
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves?.emphasizedAccel ?? [0.3, 0, 0.8, 0.15, 1, 1]
-                        }
+                    NumberAnimation {
+                        target: contentLoader
+                        property: "panelTranslateY"
+                        duration: SurfaceMotion.dashboardExitDuration
+                        easing.type: SurfaceMotion.dashboardExitEasingType
                     }
                 }
             ]
@@ -190,10 +241,15 @@ Scope {
             anchors.verticalCenterOffset: Math.round((root.topReservedSpace - root.bottomReservedSpace) / 2)
 
             width: root.panelWidth
-            height: root.panelHeight
+            readonly property real editToolbarReserve:
+                (item?.editMode ?? false)
+                    ? Math.max(0, Number(item?.editToolbarHeight ?? 0) - 1)
+                    : 0
+            height: Math.min(root.availablePanelHeight,
+                root.panelHeight + contentLoader.editToolbarReserve)
 
-            opacity: 0
-            scale: 0.96
+            opacity: 1
+            scale: 1
             transform: Translate { y: contentLoader.panelTranslateY }
 
             focus: GlobalStates.dashboardOpen
@@ -203,9 +259,39 @@ Scope {
                 }
             }
 
-            sourceComponent: DashboardContent {
-                screenWidth: panelRoot.screen?.width ?? 1920
-                screenHeight: panelRoot.screen?.height ?? 1080
+            sourceComponent: Item {
+                id: standaloneDashboardHost
+
+                property alias editMode: standaloneContent.editMode
+                readonly property real editToolbarHeight:
+                    standaloneEditToolbar.implicitHeight
+
+                DashboardContent {
+                    id: standaloneContent
+                    // Keep media/equalizer presentation alive through the full
+                    // exit slide; _contentPresented drops only after the card is
+                    // no longer visible.
+                    presentationActive: root._contentPresented
+                    x: 0
+                    y: standaloneEditToolbar.visible
+                        ? Math.max(0, standaloneEditToolbar.height - 1)
+                        : 0
+                    width: parent.width
+                    height: Math.max(0, parent.height - y)
+                    screenWidth: panelRoot.screen?.width ?? 1920
+                    screenHeight: panelRoot.screen?.height ?? 1080
+                }
+
+                DashboardEditToolbar {
+                    id: standaloneEditToolbar
+                    z: 8
+                    canvasController: standaloneContent.canvasController
+                    width: Math.min(
+                        standaloneEditToolbar.implicitWidth,
+                        Math.max(1, standaloneContent.width - 32))
+                    x: Math.round((parent.width - width) / 2)
+                    y: 0
+                }
             }
         }
     }

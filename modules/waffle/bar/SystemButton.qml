@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import QtQuick.Layouts
 import qs
 import qs.services
@@ -57,7 +58,8 @@ BarButton {
                         anchors { top: parent.top; right: parent.right; topMargin: -1; rightMargin: -1 }
 
                         SequentialAnimation on opacity {
-                            running: RecorderStatus.isRecording
+                            running: RecorderStatus.isRecording && root.visible
+                                && (root.Window.window?.visible ?? true)
                             loops: Animation.Infinite
                             NumberAnimation { to: 0.5; duration: 1200 }
                             NumberAnimation { to: 1.0; duration: 1200 }
@@ -92,6 +94,7 @@ BarButton {
 
                         SequentialAnimation on opacity {
                             running: micHoverArea.micInUse && !Audio.micMuted
+                                && root.visible && (root.Window.window?.visible ?? true)
                             loops: Animation.Infinite
                             NumberAnimation { to: 0.5; duration: 1200 }
                             NumberAnimation { to: 1.0; duration: 1200 }

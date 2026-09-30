@@ -5,32 +5,14 @@ import QtQuick.Layouts
 import Quickshell
 import qs.services
 import qs.modules.common
-import qs.modules.common.functions
 import qs.modules.common.widgets
 
 Item {
     id: root
     readonly property bool usePasswordChars: !(PolkitService.flow?.responseVisible ?? false)
-    readonly property color authSurface: Appearance.cookieEverywhere
-        ? Appearance.cookie.secondaryFace
-        : Appearance.zzzEverywhere ? Appearance.zzz.paperAlt
-        : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-        : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-        : Appearance.colors.colLayer2
-    readonly property color authBorder: Appearance.cookieEverywhere
-        ? Appearance.cookie.borderColor
-        : Appearance.zzzEverywhere ? Appearance.zzz.hairlineStrong
-        : Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-        : Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle
-        : Appearance.auroraEverywhere ? Appearance.aurora.colPopupBorder
-        : Appearance.colors.colOutlineVariant
-    readonly property int authRadius: Appearance.cookieEverywhere
-        ? Appearance.cookie.roundNormal
-        : Appearance.zzzEverywhere ? Appearance.zzz.controlRadius
-        : Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-        : Appearance.inirEverywhere ? Appearance.inir.roundingSmall
-        : Appearance.rounding.small
+    readonly property color authSurface: Appearance.colors.colLayer2
+    readonly property color authBorder: Appearance.colors.colOutlineVariant
+    readonly property int authRadius: Appearance.rounding.small
 
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Escape) {
@@ -71,11 +53,6 @@ Item {
         id: dialog
         anchors.centerIn: parent
         backgroundWidth: 460
-        zzzLabel: "AUTH"
-        zzzIndex: "PK"
-        zzzGhostText: "AUTH"
-        zzzAccentColor: Appearance.zzz.secondary
-        zzzShowTicks: true
         show: false
         Component.onCompleted: show = true
 
@@ -92,24 +69,8 @@ Item {
                 border.width: 1
                 border.color: root.authBorder
 
-                ZzzSurfaceAccent {
-                    showSticker: true
-                    cornerRadius: parent.radius
-                }
-
-                ZzzGlyphBadge {
-                    anchors.centerIn: parent
-                    visible: Appearance.zzzEverywhere
-                    badgeSize: 34
-                    symbol: PolkitService.batteryChargeLimitRequest ? "battery_saver" : "security"
-                    accentColor: Appearance.zzz.secondary
-                    inkColor: Appearance.zzz.onSecondary
-                    filled: true
-                }
-
                 MaterialSymbol {
                     anchors.centerIn: parent
-                    visible: !Appearance.zzzEverywhere
                     iconSize: 28
                     text: PolkitService.batteryChargeLimitRequest ? "battery_saver" : "security"
                     fill: 1
@@ -123,9 +84,7 @@ Item {
 
                 WindowDialogTitle {
                     Layout.fillWidth: true
-                    text: Appearance.zzzEverywhere
-                        ? Translation.tr("Authentication").toUpperCase()
-                        : Translation.tr("Authentication")
+                    text: Translation.tr("Authentication")
                 }
 
                 StyledText {
@@ -202,15 +161,10 @@ Item {
             DialogButton {
                 enabled: PolkitService.interactionAvailable
                 buttonText: Translation.tr("OK")
-                colBackground: Appearance.zzzEverywhere
-                    ? Appearance.zzz.secondary : Appearance.colors.colPrimary
-                colBackgroundHover: Appearance.zzzEverywhere
-                    ? ColorUtils.mix(Appearance.zzz.secondary, Appearance.zzz.onSecondary, 0.88)
-                    : Appearance.colors.colPrimaryHover
-                colRipple: Appearance.zzzEverywhere
-                    ? Appearance.zzz.accentSoft : Appearance.colors.colPrimaryActive
-                colText: Appearance.zzzEverywhere
-                    ? Appearance.zzz.onSecondary : Appearance.colors.colOnPrimary
+                colBackground: Appearance.colors.colPrimary
+                colBackgroundHover: Appearance.colors.colPrimaryHover
+                colRipple: Appearance.colors.colPrimaryActive
+                colText: Appearance.colors.colOnPrimary
                 onClicked: root.submit()
             }
         }

@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.UPower
 import qs.modules.common
 import qs.modules.common.functions
@@ -58,6 +59,51 @@ Singleton {
     property real energyRate: UPower.displayDevice.changeRate
     property real timeToEmpty: UPower.displayDevice.timeToEmpty
     property real timeToFull: UPower.displayDevice.timeToFull
+
+    // The display device aggregates charge state but does not expose cycle
+    // count. Use the matching physical UPower battery for health and its
+    // native sysfs name for the kernel's cycle_count, when available.
+    readonly property var physicalBattery: {
+        const devices = UPower.devices?.values ?? []
+        for (let i = 0; i < devices.length; ++i) {
+            const device = devices[i]
+            if (device?.isLaptopBattery && device?.powerSupply && device?.isPresent)
+                return device
+        }
+        return null
+    }
+    readonly property string cycleCountPath: {
+        const name = String(root.physicalBattery?.nativePath ?? "")
+        return /^[A-Za-z0-9_-]+$/.test(name)
+            ? `/sys/class/power_supply/${name}/cycle_count` : ""
+    }
+    property int chargeCycles: -1
+    onCycleCountPathChanged: root.chargeCycles = -1
+    readonly property real wearPercentage: {
+        const device = root.physicalBattery
+        const health = Number(device?.healthPercentage)
+        return device?.healthSupported && Number.isFinite(health)
+            && health >= 0 && health <= 100
+            ? Math.max(0, 100 - health) : -1
+    }
+
+    FileView {
+        id: cycleCountFile
+        path: root.cycleCountPath
+        onLoaded: {
+            const raw = cycleCountFile.text().trim()
+            root.chargeCycles = /^\d+$/.test(raw) ? Number(raw) : -1
+        }
+        onLoadFailed: root.chargeCycles = -1
+    }
+
+    Timer {
+        interval: 15 * 60 * 1000
+        running: root.available && root.cycleCountPath.length > 0
+            && root.chargeCycles >= 0
+        repeat: true
+        onTriggered: cycleCountFile.reload()
+    }
 
     // ─── Charge limit ───
     readonly property bool chargeLimitEnabled: {

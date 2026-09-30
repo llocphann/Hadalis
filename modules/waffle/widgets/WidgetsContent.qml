@@ -19,35 +19,34 @@ WBarAttachedPanelContent {
     revealFromSides: true
     revealFromLeft: true
 
-    property bool _resourceUsageHeld: false
-
-    function syncResourceUsageLifecycle(): void {
-        const shouldHold = GlobalStates.waffleWidgetsOpen
-        if (shouldHold === root._resourceUsageHeld)
-            return
-        if (shouldHold)
-            ResourceUsage.keepAlive()
-        else
-            ResourceUsage.releaseKeepAlive()
-        root._resourceUsageHeld = shouldHold
-    }
-
-    Component.onCompleted: root.syncResourceUsageLifecycle()
-    Component.onDestruction: {
-        if (root._resourceUsageHeld) {
-            root._resourceUsageHeld = false
-            ResourceUsage.releaseKeepAlive()
-        }
-    }
-
-    Connections {
-        target: GlobalStates
-        function onWaffleWidgetsOpenChanged(): void {
-            root.syncResourceUsageLifecycle()
-        }
+    property QtObject resourceMonitor: ResourceUsageMonitor {
+        network: false
+        histories: false
+        target: root
+        active: GlobalStates.waffleWidgetsOpen
     }
 
     readonly property bool barAtBottom: Config.options?.waffles?.bar?.bottom ?? false
+    readonly property bool recorderStatusDemandWanted:
+        GlobalStates.waffleWidgetsOpen
+        && (Config.options?.waffles?.widgetsPanel?.showScreenRecord ?? true)
+    property bool _recorderStatusDemandRegistered: false
+
+    function syncRecorderStatusDemand(): void {
+        const wanted = root.recorderStatusDemandWanted
+        if (wanted === root._recorderStatusDemandRegistered)
+            return
+        root._recorderStatusDemandRegistered = wanted
+        RecorderStatus.setFastStatusDemand("waffle-widgets-recorder", wanted)
+    }
+
+    onRecorderStatusDemandWantedChanged: root.syncRecorderStatusDemand()
+    Component.onCompleted: root.syncRecorderStatusDemand()
+    Component.onDestruction: {
+        if (root._recorderStatusDemandRegistered)
+            RecorderStatus.setFastStatusDemand("waffle-widgets-recorder", false)
+    }
+
     readonly property var quickActionDefinitions: [
         { id: "files", icon: "folder", label: Translation.tr("Files"), show: Config.options?.waffles?.widgetsPanel?.showFiles ?? true },
         { id: "terminal", icon: "terminal", label: Translation.tr("Terminal"), show: Config.options?.waffles?.widgetsPanel?.showTerminal ?? true },
@@ -107,10 +106,6 @@ WBarAttachedPanelContent {
 
         WPane {
             Layout.fillWidth: true
-            screenX: root.panelScreenX + root.visualMargin * 2
-            screenY: root.panelScreenY + root.visualMargin * 2
-            screenWidth: root._screenW
-            screenHeight: root._screenH
             contentItem: WidgetsPaneContent {}
         }
     }

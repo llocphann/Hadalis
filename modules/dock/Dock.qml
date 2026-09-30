@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import qs
 import qs.services
 import qs.modules.common
+import qs.modules.common.perimeter
 import qs.modules.common.models
 import qs.modules.common.widgets
 import qs.modules.common.functions
@@ -81,6 +82,20 @@ Scope {
                 readonly property real dockHeight: editThicknessPreview >= 0
                     ? editThicknessPreview
                     : (Config.options?.dock?.height ?? 70)
+                readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
+                    Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+                readonly property bool screenEdgeShadowEnabled:
+                    Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+                readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32,
+                    Math.round(Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15)))
+                readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(1.0,
+                    Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70)))
+                readonly property color screenEdgeShadowColor:
+                    Qt.alpha(Appearance.m3colors.m3shadow, dockRoot.screenEdgeShadowOpacity)
+                readonly property real edgeDecorationMargin: Math.max(
+                    Appearance.sizes.elevationMargin,
+                    PerimeterTokens.irisFuseDepth,
+                    dockRoot.screenEdgeShadowEnabled ? dockRoot.screenEdgeShadowSize + 2 : 0)
 
                 function beginDockResize(): void {
                     const baseline = Config.options?.dock?.height ?? 70
@@ -133,23 +148,33 @@ Scope {
                     right: !root.isLeft || !root.isVertical
                 }
 
-                exclusiveZone: root.pinned ? (dockHeight + Appearance.sizes.elevationMargin) : 0
+                // Visual-only edge surface. Reservation is owned by the
+                // separate transparent dock-reservation window below so setting
+                // an exclusiveZone can never switch this visual back to Normal
+                // exclusion/work-area coordinates.
                 implicitWidth: root.isVertical
-                    ? (dockHeight + Appearance.sizes.elevationMargin + Appearance.sizes.hyprlandGapsOut)
-                    : dockBackground.implicitWidth
+                    ? (dockHeight + Appearance.sizes.elevationMargin
+                        + dockRoot.screenEdgeThickness)
+                    : (dockBackground.implicitWidth
+                        + dockRoot.edgeDecorationMargin * 2)
                 implicitHeight: root.isVertical
-                    ? dockBackground.implicitHeight
-                    : (dockHeight + Appearance.sizes.elevationMargin + Appearance.sizes.hyprlandGapsOut)
+                    ? (dockBackground.implicitHeight
+                        + dockRoot.edgeDecorationMargin * 2)
+                    : (dockHeight + Appearance.sizes.elevationMargin
+                        + dockRoot.screenEdgeThickness)
 
                 WlrLayershell.namespace: "quickshell:dock"
+                WlrLayershell.layer: WlrLayer.Overlay
+                WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+                // Physical-output coordinates are required by the connected
+                // iRiS geometry. Never assign exclusiveZone on this window.
+                exclusionMode: ExclusionMode.Ignore
                 color: "transparent"
 
                 readonly property string nativeBlurTopology:
                     !(root.zzzEverywhere && !Appearance.zzz.round)
                     ? Appearance.blurTopology.roundedRectangle
                     : Appearance.blurTopology.unsupported
-                readonly property bool nativeBlurGeometryExact:
-                    Appearance.blurTopologyExact(dockRoot.nativeBlurTopology)
                 readonly property bool nativeBlurActive: Appearance.useCompositorBlur(
                         "dock", dockRoot.nativeBlurTopology)
                     && (Config.options?.dock?.showBackground ?? true)
@@ -165,8 +190,37 @@ Scope {
                     item: dockMouseArea
                 }
 
+                ConnectedSurfaceIrisEdgeSurface {
+                    id: dockIrisSurface
+                    z: 0
+                    anchors.fill: parent
+                    visible: dockVisualBackground.visible
+                    edge: root.position
+                    ownerThickness: dockRoot.screenEdgeThickness
+                    paintOverlap: Math.min(
+                        PerimeterTokens.seamOverlap,
+                        Math.max(0, dockRoot.screenEdgeThickness - 1))
+                    outputRect: Qt.rect(0, 0, dockRoot.width, dockRoot.height)
+                    bodyRect: Qt.rect(
+                        dockMouseArea.x + dockBackground.x + dockConnectedBody.x,
+                        dockMouseArea.y + dockBackground.y + dockConnectedBody.y,
+                        dockConnectedBody.width,
+                        dockConnectedBody.height)
+                    bodyRadius: dockVisualBackground.radius
+                    fillColor: dockVisualBackground.irisFillColor
+                    borderColor: dockVisualBackground.irisBorderColor
+                    borderWidth: dockVisualBackground.irisBorderWidth
+                    progress: 1
+                    shadowEnabled: dockRoot.screenEdgeShadowEnabled
+                        && dockRoot.screenEdgeShadowSize > 0
+                        && dockRoot.screenEdgeShadowOpacity > 0
+                    shadowExtent: dockRoot.screenEdgeShadowSize
+                    shadowColor: dockRoot.screenEdgeShadowColor
+                }
+
                 MouseArea {
                     id: dockMouseArea
+                    z: 1
                     hoverEnabled: true
                     acceptedButtons: Qt.NoButton
 
@@ -205,33 +259,29 @@ Scope {
                     Behavior on anchors.topMargin {
                         enabled: Appearance.animationsEnabled
                         animation: NumberAnimation {
-                            duration: Appearance.animation.elementMoveEnter.duration
-                            easing.type: Appearance.animation.elementMoveEnter.type
-                            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+                            duration: SurfaceMotion.duration
+                            easing.type: SurfaceMotion.easingType
                         }
                     }
                     Behavior on anchors.bottomMargin {
                         enabled: Appearance.animationsEnabled
                         animation: NumberAnimation {
-                            duration: Appearance.animation.elementMoveEnter.duration
-                            easing.type: Appearance.animation.elementMoveEnter.type
-                            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+                            duration: SurfaceMotion.duration
+                            easing.type: SurfaceMotion.easingType
                         }
                     }
                     Behavior on anchors.leftMargin {
                         enabled: Appearance.animationsEnabled
                         animation: NumberAnimation {
-                            duration: Appearance.animation.elementMoveEnter.duration
-                            easing.type: Appearance.animation.elementMoveEnter.type
-                            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+                            duration: SurfaceMotion.duration
+                            easing.type: SurfaceMotion.easingType
                         }
                     }
                     Behavior on anchors.rightMargin {
                         enabled: Appearance.animationsEnabled
                         animation: NumberAnimation {
-                            duration: Appearance.animation.elementMoveEnter.duration
-                            easing.type: Appearance.animation.elementMoveEnter.type
-                            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+                            duration: SurfaceMotion.duration
+                            easing.type: SurfaceMotion.easingType
                         }
                     }
 
@@ -241,6 +291,7 @@ Scope {
 
                         Item {
                             id: dockBackground
+                            z: 2
 
                             layer.enabled: Appearance.shouldDesaturate("dock") && dockBackground.visible
                             layer.effect: ShellDesaturationEffect {}
@@ -263,11 +314,25 @@ Scope {
                             width: implicitWidth
                             height: implicitHeight
 
-                            StyledRectangularShadow {
-                                target: dockVisualBackground
-                                visible: (Config.options?.dock?.showBackground ?? true)
-                                    && !Appearance.gameModeMinimal
-                                    && !root.zzzEverywhere
+                            // Single connected-body geometry, mirroring the
+                            // screenshot controls: one resting rect ends exactly
+                            // at the Screen Edge inner boundary. The visual plate
+                            // and iRiS field both consume this same item.
+                            Item {
+                                id: dockConnectedBody
+                                anchors.fill: parent
+                                anchors.topMargin: root.isTop
+                                    ? dockRoot.screenEdgeThickness
+                                    : (root.isVertical ? 0 : Appearance.sizes.elevationMargin)
+                                anchors.bottomMargin: root.position === "bottom"
+                                    ? dockRoot.screenEdgeThickness
+                                    : (root.isVertical ? 0 : Appearance.sizes.elevationMargin)
+                                anchors.leftMargin: root.isLeft
+                                    ? dockRoot.screenEdgeThickness
+                                    : (root.isVertical ? Appearance.sizes.elevationMargin : 0)
+                                anchors.rightMargin: root.position === "right"
+                                    ? dockRoot.screenEdgeThickness
+                                    : (root.isVertical ? Appearance.sizes.elevationMargin : 0)
                             }
 
                             Rectangle {
@@ -285,6 +350,36 @@ Scope {
                                     root.surfaceDialect === "inir"
                                 readonly property bool gameModeMinimal:
                                     Appearance.gameModeMinimal
+                                // In dark non-glass Material/iNiR presentation, use
+                                // the same base surface token as the physical Screen
+                                // Edge so the joined seam cannot read as two colors.
+                                readonly property bool matchDarkPhysicalEdge:
+                                    Appearance.m3colors.darkmode
+                                    && !auroraEverywhere
+                                    && !root.zzzEverywhere
+                                    && !regaliaEverywhere
+                                // The iRiS field owns the connected silhouette. Some
+                                // dialect-specific body plates intentionally use a
+                                // transparent Rectangle base, so expose the effective
+                                // shell paint separately instead of making the weld
+                                // disappear while the body remains visible.
+                                readonly property color irisFillColor: root.zzzEverywhere
+                                    ? ColorUtils.applyAlpha(
+                                        Appearance.zzz.chromeAlt,
+                                        zzzGlassActive
+                                            ? (Appearance.zzz.dark ? 0.66 : 0.72)
+                                            : 1)
+                                    : regaliaEverywhere
+                                        ? Appearance.regalia.barSurfaceFloating
+                                        : color
+                                readonly property color irisBorderColor: root.zzzEverywhere
+                                    ? Appearance.zzz.hairline
+                                    : regaliaEverywhere
+                                        ? "transparent"
+                                        : border.color
+                                readonly property real irisBorderWidth: root.zzzEverywhere
+                                    ? 1
+                                    : regaliaEverywhere ? 0 : border.width
                                 readonly property string wallpaperUrl: {
                                     const _dep1 = WallpaperListener.multiMonitorEnabled
                                     const _dep2 = WallpaperListener.effectivePerMonitor
@@ -309,19 +404,7 @@ Scope {
                                         0.8) || Appearance.colors.colSecondaryContainer
                                 }
 
-                                anchors.fill: parent
-                                anchors.topMargin: root.isTop
-                                    ? Appearance.sizes.hyprlandGapsOut
-                                    : (root.isVertical ? 0 : Appearance.sizes.elevationMargin)
-                                anchors.bottomMargin: root.position === "bottom"
-                                    ? Appearance.sizes.hyprlandGapsOut
-                                    : (root.isVertical ? 0 : Appearance.sizes.elevationMargin)
-                                anchors.leftMargin: root.isLeft
-                                    ? Appearance.sizes.hyprlandGapsOut
-                                    : (root.isVertical ? Appearance.sizes.elevationMargin : 0)
-                                anchors.rightMargin: root.position === "right"
-                                    ? Appearance.sizes.hyprlandGapsOut
-                                    : (root.isVertical ? Appearance.sizes.elevationMargin : 0)
+                                anchors.fill: dockConnectedBody
 
                                 visible: (Config.options?.dock?.showBackground ?? true)
                                     && !gameModeMinimal
@@ -333,12 +416,14 @@ Scope {
                                                 ?? Appearance.colors.colLayer0),
                                             dockRoot.nativeBlurActive ? 0.46 : 1)
                                         : inirEverywhere
-                                            ? Appearance.inir.colLayer1
+                                            ? (matchDarkPhysicalEdge
+                                                ? Appearance.colors.colLayer0
+                                                : Appearance.inir.colLayer1)
                                             : Appearance.colors.colLayer0
                                 border.width: root.zzzEverywhere || regaliaEverywhere
                                     ? 0
                                     : angelEverywhere
-                                        ? Appearance.angel.panelBorderWidth : 1
+                                        ? Appearance.angel.panelBorderWidth : 0
                                 border.color: root.zzzEverywhere || regaliaEverywhere
                                     ? "transparent"
                                     : angelEverywhere
@@ -355,6 +440,11 @@ Scope {
                                             : inirEverywhere
                                                 ? Appearance.inir.roundingNormal
                                                 : Appearance.rounding.large
+                                // Keep the body plate on the same rounded
+                                // rectangle as the iRiS SDF record. Squaring the
+                                // edge-facing corners here overpaints the smooth
+                                // union fillets and makes Dock read as a detached
+                                // island even though the SDF weld is present.
 
                                 Behavior on color {
                                     enabled: Appearance.animationsEnabled
@@ -515,14 +605,13 @@ Scope {
                                 DockApps {
                                     id: dockApps
                                     enabled: !root.isVertical
-                                    buttonPadding: dockRow.padding
                                     vertical: false
                                     dockPosition: root.position
                                     parentWindow: dockRoot
                                 }
                                 DockButton {
+                                    visible: Config.options?.dock?.showDashboardButton ?? true
                                     vertical: false
-                                    dockPosition: root.position
                                     onClicked: GlobalStates.toggleOverview(
                                         dockRoot.screen?.name ?? "")
                                     contentItem: MaterialSymbol {
@@ -554,14 +643,13 @@ Scope {
                                 DockApps {
                                     id: dockAppsVertical
                                     enabled: root.isVertical
-                                    buttonPadding: dockColumn.padding
                                     vertical: true
                                     dockPosition: root.position
                                     parentWindow: dockRoot
                                 }
                                 DockButton {
+                                    visible: Config.options?.dock?.showDashboardButton ?? true
                                     vertical: true
-                                    dockPosition: root.position
                                     onClicked: GlobalStates.toggleOverview(
                                         dockRoot.screen?.name ?? "")
                                     contentItem: MaterialSymbol {
@@ -659,4 +747,79 @@ Scope {
             }
         }
     }
+
+    // Work-area reservation is intentionally decoupled from Dock rendering.
+    // Quickshell's exclusiveZone setter switches a layer surface back to
+    // Normal exclusion; keeping it on a transparent Top-layer window lets the
+    // visual Dock remain an Overlay/Ignore surface in physical-output space.
+    Variants {
+        model: {
+            const screens = Quickshell.screens;
+            const list = Config.options?.dock?.screenList ?? [];
+            if (!list || list.length === 0)
+                return screens;
+            const matchedScreens = screens.filter(screen => {
+                const screenName = screen?.name ?? "";
+                return screenName.length > 0 && list.includes(screenName);
+            });
+            return matchedScreens.length > 0 ? matchedScreens : screens;
+        }
+
+        PanelWindow {
+            id: dockReservationWindow
+            required property var modelData
+
+            readonly property bool horizontal:
+                root.position === "top" || root.position === "bottom"
+            readonly property real reservationThickness:
+                Math.max(0, Number(Config.options?.dock?.height ?? 70)
+                    + Appearance.sizes.elevationMargin)
+            readonly property bool mapped:
+                root.pinned
+                && !GlobalStates.screenLocked
+                && !GlobalStates.widgetEditMode
+
+            screen: modelData
+            visible: mapped
+            updatesEnabled: mapped
+            color: "transparent"
+
+            // This window paints nothing. Its only responsibility is preserving
+            // the Dock's existing pinned work-area reservation.
+            exclusiveZone: mapped ? reservationThickness : 0
+            implicitWidth: horizontal ? 1 : reservationThickness
+            implicitHeight: horizontal ? reservationThickness : 1
+
+            WlrLayershell.namespace: "quickshell:dock-reservation"
+            WlrLayershell.layer: WlrLayer.Top
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+
+            anchors {
+                top: root.position === "top"
+                    || root.position === "left"
+                    || root.position === "right"
+                bottom: root.position === "bottom"
+                    || root.position === "left"
+                    || root.position === "right"
+                left: root.position === "left"
+                    || root.position === "top"
+                    || root.position === "bottom"
+                right: root.position === "right"
+                    || root.position === "top"
+                    || root.position === "bottom"
+            }
+
+            Item {
+                id: emptyDockReservationInput
+                width: 0
+                height: 0
+                visible: false
+            }
+
+            mask: Region {
+                item: emptyDockReservationInput
+            }
+        }
+    }
+
 }

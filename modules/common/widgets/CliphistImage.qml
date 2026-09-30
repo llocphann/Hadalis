@@ -24,7 +24,7 @@ Rectangle {
     property int entryNumber: {
         if (!root.entry)
             return 0;
-        const match = root.entry.match(/^(\d+)\t/);
+        const match = root.entry.match(/^\s*(\d+)(?:\t|\s+)/);
         return match ? parseInt(match[1]) : 0;
     }
     property int imageWidth: {
@@ -73,7 +73,7 @@ Rectangle {
                 exit 0
             fi
             _tmp='${imageDecodeFilePath}'.$$
-            if echo '${StringUtils.shellSingleQuoteEscape(root.entry)}' | ${Cliphist.cliphistBinary} decode > "$_tmp" && [ -s "$_tmp" ]; then
+            if ${Cliphist.decodeCommand(root.entry)} > "$_tmp" && [ -s "$_tmp" ]; then
                 /usr/bin/mv -f "$_tmp" '${imageDecodeFilePath}'
             else
                 /usr/bin/rm -f "$_tmp"

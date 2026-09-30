@@ -33,9 +33,10 @@ Singleton {
     readonly property int _subscribers: _legacySubscribers + _sampleRequests.length
     readonly property bool active: _subscribers > 0
 
-    property list<real> points: []
-    property real framePeak: 0
-    property real frameAverage: 0
+    // SplitParser already gives us a JS array per frame. Keep that identity
+    // through the shared service instead of converting every CAVA frame into a
+    // typed QML sequence before broadcasting it to consumers.
+    property var points: []
     property real normalizationCeiling: 100
     property bool audioSignalActive: false
     // Real PipeWire streams frequently peak in the 20-100 range even though
@@ -163,12 +164,16 @@ Singleton {
 
         let peak = 0
         let sum = 0
+        let frameChanged = parsed.length !== root.points.length
         for (let i = 0; i < parsed.length; ++i) {
-            const value = Number(parsed[i]) || 0
+            const value = parsed[i]
             peak = Math.max(peak, value)
             sum += value
+            if (!frameChanged && value !== root.points[i])
+                frameChanged = true
         }
 
+        const average = sum / parsed.length
         const target = Math.max(root.normalizationFloor, peak * 1.15)
         const nextCeiling = target >= root.normalizationCeiling
             ? target
@@ -180,13 +185,14 @@ Singleton {
         // points, so no paint can pair a loud frame with a stale low ceiling.
         if (ceilingRises)
             root.normalizationCeiling = nextCeiling
-        root.framePeak = peak
-        root.frameAverage = sum / parsed.length
-        root.points = parsed
+
+        if (frameChanged)
+            root.points = parsed
+
         if (!ceilingRises)
             root.normalizationCeiling = nextCeiling
 
-        if (peak >= 2 || root.frameAverage >= 0.35) {
+        if (peak >= 2 || average >= 0.35) {
             signalRelease.stop()
             root.audioSignalActive = true
         } else if (root.audioSignalActive && !signalRelease.running) {
@@ -257,8 +263,6 @@ Singleton {
         onTriggered: {
             if (!root.active && !cavaProc.running) {
                 root.points = []
-                root.framePeak = 0
-                root.frameAverage = 0
                 root.normalizationCeiling = root.normalizationFloor
             }
         }
@@ -341,13 +345,17 @@ Singleton {
         }
         stdout: SplitParser {
             onRead: data => {
-                const fields = data.split(";")
-                const parsed = []
-                for (let i = 0; i < fields.length; ++i) {
-                    const value = parseFloat(fields[i])
+                // SplitParser already gives us one frame-sized string. Reuse
+                // the split array itself as the numeric frame instead of
+                // allocating a second parsed[] array at CAVA framerate.
+                const parsed = data.split(";")
+                let writeIndex = 0
+                for (let i = 0; i < parsed.length; ++i) {
+                    const value = parseFloat(parsed[i])
                     if (!isNaN(value))
-                        parsed.push(value)
+                        parsed[writeIndex++] = value
                 }
+                parsed.length = writeIndex
                 root._publishFrame(parsed)
             }
         }

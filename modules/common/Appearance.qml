@@ -93,8 +93,6 @@ Singleton {
         return explicitDialect.length > 0 ? explicitDialect : root.globalStyle
     }
 
-    readonly property bool _auroraLightMode: false
-
     // GameMode integration - disable effects/animations when fullscreen detected
     property bool _gameModeActive: GameMode?.active ?? false
     property bool _gameModeDisablesEffects: _gameModeActive && (GameMode?.disableEffects ?? true)
@@ -512,9 +510,10 @@ Singleton {
         property color colTooltip: m3colors.m3inverseSurface
         property color colOnTooltip: m3colors.m3inverseOnSurface
         property color colScrim: ColorUtils.transparentize(m3colors.m3scrim, 0.5)
-        property color colShadow: m3colors.transparent
-            ? "transparent"
-            : ColorUtils.transparentize(m3colors.m3shadow, 0.7)
+        // Surface transparency must not erase elevation. Shadow ink is a
+        // separate physical layer, including in transparent Material themes.
+        // Callers that expose a shadow-opacity setting apply it explicitly.
+        property color colShadow: Qt.alpha(m3colors.m3shadow, 0.45)
         property color colOutline: m3colors.m3outline
         property color colOutlineVariant: m3colors.m3outlineVariant
         property color colError: m3colors.m3error
@@ -791,18 +790,15 @@ Singleton {
     aurora: QtObject {
         // Aurora glass effect - configurable transparency
         // All values read from Config for live reactivity via Aurora Style Editor
-        // Light mode: reduce transparency slightly for better contrast on light wallpapers
-        readonly property real _lightFactor: root._auroraLightMode ? 0.75 : 1.0
-
         // Transparency levels — read from Config with revision dependency for live reactivity
         // Config.revision forces re-evaluation when setNestedValue writes (JS bracket notation
         // on nested JsonObjects doesn't trigger QML property notifications)
         readonly property var _cfg: { Config.revision; return Config.options?.appearance?.aurora?.transparency ?? null }
-        readonly property real overlayTransparentize: (_cfg?.overlay ?? 0.30) * _lightFactor
-        readonly property real subSurfaceTransparentize: (_cfg?.subSurface ?? 0.42) * _lightFactor
-        readonly property real popupTransparentize: (_cfg?.popup ?? 0.32) * _lightFactor
-        readonly property real tooltipTransparentize: (_cfg?.tooltip ?? 0.28) * _lightFactor
-        readonly property real layerTransparentize: (_cfg?.layer ?? 0.32) * _lightFactor
+        readonly property real overlayTransparentize: (_cfg?.overlay ?? 0.30)
+        readonly property real subSurfaceTransparentize: (_cfg?.subSurface ?? 0.42)
+        readonly property real popupTransparentize: (_cfg?.popup ?? 0.32)
+        readonly property real tooltipTransparentize: (_cfg?.tooltip ?? 0.28)
+        readonly property real layerTransparentize: (_cfg?.layer ?? 0.32)
         
         // === Main Panel Overlay (Layer 0) ===
         readonly property color colOverlay: ColorUtils.transparentize(root.colors.colLayer0Base, overlayTransparentize)
@@ -840,8 +836,6 @@ Singleton {
         readonly property color colPopupBorder: ColorUtils.transparentize(root.colors.colOutline, 0.7)
         readonly property color colTextSecondary: ColorUtils.transparentize(root.colors.colOnLayer1, 0.3)
         
-        // Legacy alias for backward compatibility
-        readonly property real popupSurfaceTransparentize: popupTransparentize
     }
 
     inir: QtObject {
@@ -1131,12 +1125,10 @@ Singleton {
         readonly property real vignetteStrength: Config.options?.appearance?.angel?.blur?.vignetteStrength ?? 0.4
 
         // ─── GLASS TRANSPARENCY (higher = more see-through) ───
-        // Light mode: reduce glass transparency for better contrast on light wallpapers
-        readonly property real _lightFactor: root._auroraLightMode ? 0.75 : 1.0
-        readonly property real panelTransparentize: (Config.options?.appearance?.angel?.transparency?.panel ?? 0.28) * _lightFactor
-        readonly property real cardTransparentize: (Config.options?.appearance?.angel?.transparency?.card ?? 0.40) * _lightFactor
-        readonly property real popupTransparentize: (Config.options?.appearance?.angel?.transparency?.popup ?? 0.28) * _lightFactor
-        readonly property real tooltipTransparentize: (Config.options?.appearance?.angel?.transparency?.tooltip ?? 0.25) * _lightFactor
+        readonly property real panelTransparentize: (Config.options?.appearance?.angel?.transparency?.panel ?? 0.28)
+        readonly property real cardTransparentize: (Config.options?.appearance?.angel?.transparency?.card ?? 0.40)
+        readonly property real popupTransparentize: (Config.options?.appearance?.angel?.transparency?.popup ?? 0.28)
+        readonly property real tooltipTransparentize: (Config.options?.appearance?.angel?.transparency?.tooltip ?? 0.25)
 
         // ─── LAYER SYSTEM (glass variants derived from m3colors) ───
         readonly property color colGlassPanel: ColorUtils.transparentize(
@@ -1240,13 +1232,13 @@ Singleton {
         readonly property color colGlowStrong: ColorUtils.transparentize(
             root.m3colors.m3primary, Math.min(1, glowStrongOpacity / colorStrength))
 
-        // ─── TEXT COLORS (light mode: use ink colors for warmth/contrast on glass) ───
-        readonly property color colText: root._auroraLightMode ? root.colors._inkPrimary : root.m3colors.m3onSurface
-        readonly property color colTextSecondary: root._auroraLightMode ? root.colors._inkSecondary : root.m3colors.m3onSurfaceVariant
+        // ─── TEXT COLORS ───
+        readonly property color colText: root.m3colors.m3onSurface
+        readonly property color colTextSecondary: root.m3colors.m3onSurfaceVariant
         readonly property color colTextMuted: ColorUtils.transparentize(
-            root._auroraLightMode ? root.colors._inkMuted : root.m3colors.m3onSurfaceVariant, 0.3)
+            root.m3colors.m3onSurfaceVariant, 0.3)
         readonly property color colTextDim: ColorUtils.transparentize(
-            root._auroraLightMode ? root.colors._inkMuted : root.m3colors.m3outline, 0.1)
+            root.m3colors.m3outline, 0.1)
 
         // ─── PRIMARY/ACCENT ───
         readonly property color colPrimary: root.m3colors.m3primary
@@ -1627,7 +1619,10 @@ Singleton {
          property real spacingSmall: Math.round(8 * root.fontSizeScale)
          property real spacingMedium: Math.round(12 * root.fontSizeScale)
          property real spacingLarge: Math.round(16 * root.fontSizeScale)
-        property real baseBarHeight: Math.round(Math.max(24, Math.min(80, (Config.options?.bar?.height ?? 40))) * root.fontSizeScale)
+        // Cross-axis thickness drives every Classic Bar module. Font size is
+        // a separate accessibility scale, so the 40px default stays at 1.0.
+        property real barModuleScale: Math.max(24, Math.min(80, Config.options?.bar?.height ?? 40)) / 40
+        property real baseBarHeight: Math.round(40 * barModuleScale * root.fontSizeScale)
         // Hug is the sole supported Classic Bar geometry; persisted legacy
         // cornerStyle values must never add detached float gaps to runtime size.
         property real barHeight: baseBarHeight
@@ -1648,7 +1643,7 @@ Singleton {
         property real searchWidth: Math.round(360 * root.fontSizeScale)
         property real sidebarWidth: Math.round(460 * root.fontSizeScale)
         property real sidebarWidthExtended: Math.round(750 * root.fontSizeScale)
-        property real baseVerticalBarWidth: Math.round(46 * root.fontSizeScale)
+        property real baseVerticalBarWidth: Math.round(46 * root.fontSizeScale * barModuleScale)
         property real verticalBarWidth: baseVerticalBarWidth
         // Legacy selector fixed-card sizing (kept for compatibility; skwd-wall selector computes layout internally)
         property real wallpaperSelectorWidth: 1200

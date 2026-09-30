@@ -1,2 +1,3 @@
 module qs
 singleton GlobalStates 1.0 GlobalStates.qml
+FamilyWorkAreaHold 1.0 FamilyWorkAreaHold.qml

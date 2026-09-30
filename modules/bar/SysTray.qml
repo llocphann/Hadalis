@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Services.SystemTray
+import qs.services
 
 Item {
     id: root
@@ -41,8 +42,12 @@ Item {
         else overflowAutoCloseTimer.restart();
     }
 
-    // Signal to close all tray menus before opening a new one
+    // Signal to close all tray menus before opening a new one.
     signal closeAllTrayMenus()
+    // Abyss consumes this and opens its connected Wi-Fi/Bluetooth body at the
+    // System Tray module anchor. Other families ignore it.
+    signal hoverPopupRequested(string kind)
+    signal connectivityHoverChanged(string kind, bool hovered)
 
     property bool smartTray: Config.options.bar.tray.filterPassive
     
@@ -51,8 +56,10 @@ Item {
         return item && item.id;
     }
     
+    // The native Fcitx5 SNI is an always-visible member of this tray group.
+    property list<var> fcitxItems: SystemTray.items.values.filter(i => TrayService.isFcitxItem(i))
     property list<var> itemsInUserList: SystemTray.items.values.filter(i => {
-        if (!isValidItem(i)) return false;
+        if (!isValidItem(i) || TrayService.isFcitxItem(i)) return false;
         const id = (i.id || "").toLowerCase();
         const title = (i.title || "").toLowerCase();
         const isSpotify = id.indexOf("spotify") !== -1 || title.indexOf("spotify") !== -1;
@@ -60,7 +67,7 @@ Item {
                 && (!smartTray || i.status !== Status.Passive || isSpotify);
     })
     property list<var> itemsNotInUserList: SystemTray.items.values.filter(i => {
-        if (!isValidItem(i)) return false;
+        if (!isValidItem(i) || TrayService.isFcitxItem(i)) return false;
         const id = (i.id || "").toLowerCase();
         const title = (i.title || "").toLowerCase();
         const isSpotify = id.indexOf("spotify") !== -1 || title.indexOf("spotify") !== -1;
@@ -69,7 +76,7 @@ Item {
     })
 
     property bool invertPins: Config.options?.bar?.tray?.invertPinnedItems ?? false
-    property list<var> pinnedItems: invertPins ? itemsNotInUserList : itemsInUserList
+    property list<var> pinnedItems: root.fcitxItems.concat(invertPins ? itemsNotInUserList : itemsInUserList)
     property list<var> unpinnedItems: invertPins ? itemsInUserList : itemsNotInUserList
     onUnpinnedItemsChanged: {
         if (unpinnedItems.length == 0) root.closeOverflowMenu();
@@ -121,8 +128,8 @@ Item {
         id: gridLayout
         columns: root.vertical ? 1 : -1
         anchors.fill: parent
-        rowSpacing: 8
-        columnSpacing: 15
+        rowSpacing: 8 * Appearance.sizes.barModuleScale
+        columnSpacing: 15 * Appearance.sizes.barModuleScale
 
         RippleButton {
             id: trayOverflowButton
@@ -136,8 +143,8 @@ Item {
 
             Layout.fillHeight: !root.vertical
             Layout.fillWidth: root.vertical
-            background.implicitWidth: 24
-            background.implicitHeight: 24
+            background.implicitWidth: 24 * Appearance.sizes.barModuleScale
+            background.implicitHeight: 24 * Appearance.sizes.barModuleScale
             background.anchors.centerIn: this
             colBackgroundToggled: Appearance.colors.colSecondaryContainer
             colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
@@ -145,7 +152,7 @@ Item {
 
             contentItem: MaterialSymbol {
                 anchors.centerIn: parent
-                iconSize: Appearance.font.pixelSize.larger
+                iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale)
                 text: "expand_more"
                 horizontalAlignment: Text.AlignHCenter
                 color: root.trayOverflowOpen
@@ -181,6 +188,7 @@ Item {
                         delegate: SysTrayItem {
                             required property SystemTrayItem modelData
                             item: modelData
+                            sizeScale: 1
                             trayParent: root
                             Layout.fillHeight: !root.vertical
                             Layout.fillWidth: root.vertical
@@ -212,10 +220,18 @@ Item {
 
         StyledText {
             Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
-            font.pixelSize: Appearance.font.pixelSize.larger
+            font.pixelSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale)
             color: Appearance.colors.colSubtext
             text: "•"
             visible: root.showSeparator && SystemTray.items.values.length > 0
+        }
+
+        BarStatusIndicators {
+            vertical: root.vertical
+            Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
+            onHoverPopupRequested: kind => root.hoverPopupRequested(kind)
+            onConnectivityHoverChanged: (kind, hovered) =>
+                root.connectivityHoverChanged(kind, hovered)
         }
     }
 }

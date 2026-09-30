@@ -1,9 +1,11 @@
 import qs.services
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.common.widgets
 import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Shapes
 import QtQuick.Layouts
 import Quickshell
 
@@ -31,6 +33,10 @@ Item {
     readonly property color _colTextSecondary: Appearance.angelEverywhere ? Appearance.angel.colTextSecondary
         : Appearance.inirEverywhere ? Appearance.inir.colTextSecondary
         : Appearance.colors.colSubtext
+    readonly property color _colAccent: Appearance.angelEverywhere ? Appearance.angel.colPrimary
+        : Appearance.inirEverywhere ? Appearance.inir.colPrimary
+        : Appearance.colors.colPrimary
+    readonly property color _colTrack: ColorUtils.transparentize(root._colTextSecondary, 0.82)
 
     property bool settingsOpen: false
 
@@ -146,12 +152,8 @@ Item {
     StyledFlickable {
         id: flickable
         anchors.fill: parent
-        // In compactMode: contentHeight matches column so no scrolling occurs;
-        // centering is done via anchors.verticalCenter on the column itself.
-        // contentHeight is always flickable.height when centering is active,
-        // so the flickable never scrolls and the y offset can center freely.
-        // When content is taller than the flickable (e.g. settings panel open),
-        // contentHeight grows to fit and normal scrolling kicks in.
+        // The settings face replaces the dial, keeping all duration controls
+        // within the compact popup's normal height.
         contentHeight: (root.centerMode && contentColumn.implicitHeight <= flickable.height)
             ? flickable.height
             : contentColumn.implicitHeight
@@ -169,67 +171,187 @@ Item {
                 ? Math.max(0, (flickable.height - implicitHeight) / 2)
                 : 0
 
-            // The Pomodoro timer circle
-            CircularProgress {
+            // Open orbital focus arc: intentionally not a generic 360° timer
+            // ring. The bottom gap carries the session rhythm and keeps the time
+            // readout visually lighter in compact Dashboard layouts.
+            Item {
+                id: focusDial
+                visible: !root.settingsOpen
                 Layout.alignment: Qt.AlignHCenter
-                lineWidth: 8
-                value: {
-                    return TimerService.pomodoroSecondsLeft / TimerService.pomodoroLapDuration;
-                }
-                // Responsive size: adapt to available height, capped at 200
-                implicitSize: root.compactMode
-                    ? Math.min(200, Math.max(120, flickable.height * 0.32))
-                    : 200
-                enableAnimation: true
+                Layout.preferredWidth: root.compactMode
+                    ? Math.min(184, Math.max(146,
+                        Math.min(flickable.width * 0.52, flickable.height * 0.54)))
+                    : 190
+                Layout.preferredHeight: Layout.preferredWidth
+                Layout.bottomMargin: 2
 
-                ColumnLayout {
-                    anchors.centerIn: parent
-                    spacing: 0
+                readonly property real rawProgress:
+                    TimerService.pomodoroLapDuration > 0
+                        ? Math.max(0, Math.min(1,
+                            TimerService.pomodoroSecondsLeft
+                                / TimerService.pomodoroLapDuration))
+                        : 0
+                property real displayProgress: rawProgress
+                readonly property real orbitStrokeWidth: 5
+                // Preserve sub-pixel geometry for the curve renderer instead
+                // of quantizing the ellipse to whole pixels at compact sizes.
+                readonly property real arcCenterX: width / 2
+                readonly property real arcCenterY: height / 2 - 4
+                readonly property real arcRadiusX:
+                    Math.max(48, Math.min(width / 2 - 14, 84))
+                readonly property real arcRadiusY:
+                    Math.max(34, arcRadiusX * 0.66)
+                readonly property real startAngle: 155
+                readonly property real sweepAngle: 230
 
-                    StyledText {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: {
-                            let minutes = Math.floor(TimerService.pomodoroSecondsLeft / 60).toString().padStart(2, '0');
-                            let seconds = Math.floor(TimerService.pomodoroSecondsLeft % 60).toString().padStart(2, '0');
-                            return `${minutes}:${seconds}`;
-                        }
-                        font.pixelSize: Math.round(40 * Appearance.fontSizeScale)
-                        color: Appearance.angelEverywhere ? Appearance.angel.colText
-                            : Appearance.inirEverywhere ? Appearance.inir.colText
-                            : Appearance.colors.colOnSurface
+                Behavior on displayProgress {
+                    enabled: Appearance.animationsEnabled
+                    NumberAnimation {
+                        duration: 220
+                        easing.type: Easing.OutCubic
                     }
-                    StyledText {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: TimerService.pomodoroLongBreak ? Translation.tr("Long break") : TimerService.pomodoroBreak ? Translation.tr("Break") : Translation.tr("Focus")
-                        font.pixelSize: Appearance.font.pixelSize.normal
-                        color: root._colTextSecondary
+                }
+
+                Shape {
+                    anchors.fill: parent
+                    antialiasing: true
+                    preferredRendererType: Shape.CurveRenderer
+
+                    ShapePath {
+                        fillColor: "transparent"
+                        strokeColor: root._colTrack
+                        strokeWidth: focusDial.orbitStrokeWidth
+                        capStyle: ShapePath.RoundCap
+
+                        PathAngleArc {
+                            centerX: focusDial.arcCenterX
+                            centerY: focusDial.arcCenterY
+                            radiusX: focusDial.arcRadiusX
+                            radiusY: focusDial.arcRadiusY
+                            startAngle: focusDial.startAngle
+                            sweepAngle: focusDial.sweepAngle
+                        }
+                    }
+
+                    ShapePath {
+                        fillColor: "transparent"
+                        strokeColor: root._colAccent
+                        strokeWidth: focusDial.orbitStrokeWidth
+                        capStyle: ShapePath.RoundCap
+
+                        PathAngleArc {
+                            centerX: focusDial.arcCenterX
+                            centerY: focusDial.arcCenterY
+                            radiusX: focusDial.arcRadiusX
+                            radiusY: focusDial.arcRadiusY
+                            startAngle: focusDial.startAngle
+                            sweepAngle: focusDial.sweepAngle
+                                * focusDial.displayProgress
+                        }
                     }
                 }
 
                 Rectangle {
-                    radius: Appearance.rounding.full
-                    color: root._colLayer
+                    readonly property real angle:
+                        (focusDial.startAngle
+                            + focusDial.sweepAngle * focusDial.displayProgress)
+                            * Math.PI / 180
+                    width: 8
+                    height: 8
+                    radius: width / 2
+                    color: root._colAccent
+                    border.width: 1
+                    border.color: root._colLayer
+                    visible: focusDial.displayProgress > 0.002
+                    x: focusDial.arcCenterX
+                        + focusDial.arcRadiusX * Math.cos(angle) - width / 2
+                    y: focusDial.arcCenterY
+                        + focusDial.arcRadiusY * Math.sin(angle) - height / 2
+                }
 
-                    anchors {
-                        right: parent.right
-                        bottom: parent.bottom
-                    }
-                    implicitWidth: 36
-                    implicitHeight: implicitWidth
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    anchors.verticalCenterOffset: root.compactMode ? 9 : 8
+                    spacing: 3
 
                     StyledText {
-                        id: cycleText
-                        anchors.centerIn: parent
+                        Layout.alignment: Qt.AlignHCenter
+                        text: {
+                            const minutes = Math.floor(
+                                TimerService.pomodoroSecondsLeft / 60)
+                                .toString().padStart(2, '0')
+                            const seconds = Math.floor(
+                                TimerService.pomodoroSecondsLeft % 60)
+                                .toString().padStart(2, '0')
+                            return `${minutes}:${seconds}`
+                        }
+                        font.pixelSize: Math.round(
+                            (root.compactMode ? 31 : 34)
+                                * Appearance.fontSizeScale)
+                        font.weight: Font.Medium
+                        font.family: Appearance.font.family.numbers
                         color: root._colText
-                        text: TimerService.pomodoroCycle + 1
+                    }
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: TimerService.pomodoroLongBreak
+                            ? Translation.tr("Long break")
+                            : TimerService.pomodoroBreak
+                                ? Translation.tr("Break")
+                                : Translation.tr("Focus")
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.Medium
+                        color: root._colTextSecondary
+                    }
+
+                    Row {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.topMargin: 7
+                        spacing: 5
+
+                        Repeater {
+                            model: Math.max(1,
+                                TimerService.cyclesBeforeLongBreak)
+
+                            Rectangle {
+                                required property int index
+                                readonly property bool current:
+                                    index === TimerService.pomodoroCycle
+                                readonly property bool complete:
+                                    index < TimerService.pomodoroCycle
+                                width: current ? 15 : 5
+                                height: 5
+                                radius: height / 2
+                                color: current || complete
+                                    ? root._colAccent : root._colTrack
+
+                                Behavior on width {
+                                    enabled: Appearance.animationsEnabled
+                                    NumberAnimation {
+                                        duration: Appearance.animation.elementMoveFast.duration
+                                    }
+                                }
+                                Behavior on color {
+                                    enabled: Appearance.animationsEnabled
+                                    ColorAnimation {
+                                        duration: Appearance.animation.elementMoveFast.duration
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
 
             // Start/Pause + Reset buttons
             RowLayout {
-                Layout.alignment: Qt.AlignHCenter
+                Layout.fillWidth: true
+                Layout.leftMargin: 6
+                Layout.rightMargin: 6
                 spacing: 10
+
+                Item { Layout.fillWidth: true }
 
                 RippleButton {
                     contentItem: StyledText {
@@ -295,41 +417,36 @@ Item {
                             : Appearance.colors.colOnErrorContainer
                     }
                 }
-            }
 
-            // ── Settings gear button ──
-            // Uses Layout.maximumHeight:0 + clip:true when hidden so it contributes
-            // zero to implicitHeight and doesn't shift the vertical center point.
-            Item {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.topMargin: !TimerService.pomodoroRunning ? 8 : 0
-                Layout.preferredHeight: 36
-                Layout.preferredWidth: 36
-                Layout.maximumHeight: !TimerService.pomodoroRunning ? 36 : 0
-                clip: true
+                Item { Layout.fillWidth: true }
 
                 RippleButton {
-                    anchors.fill: parent
-                    buttonRadius: Appearance.rounding.full
-                    colBackground: "transparent"
-                    colBackgroundHover: root._colLayerHover
-                    colRipple: root._colLayerActive
+                    implicitWidth: 36
+                    implicitHeight: 36
+                    buttonRadius: height / 2
+                    enabled: !TimerService.pomodoroRunning
+                    colBackground: root.settingsOpen
+                        ? Appearance.colors.colPrimaryContainer
+                        : root._colLayer
+                    colBackgroundHover: Appearance.colors.colPrimaryContainerHover
                     onClicked: root.settingsOpen = !root.settingsOpen
+
                     contentItem: MaterialSymbol {
                         anchors.centerIn: parent
-                        text: root.settingsOpen ? "keyboard_arrow_up" : "settings"
+                        text: root.settingsOpen ? "close" : "tune"
                         iconSize: 20
-                        color: root._colTextSecondary
+                        color: root.settingsOpen
+                            ? Appearance.colors.colOnPrimaryContainer
+                            : root._colText
                     }
+
                     StyledToolTip {
                         text: Translation.tr("Customize timer")
                     }
                 }
             }
 
-            // ── Collapsible settings panel ──
-            // Layout.maximumHeight:0 when hidden → zero contribution to implicitHeight.
-            // When open, flickable.contentHeight grows via the binding above and scrolls.
+            // The compact settings face uses the dial's space in this viewport.
             Item {
                 Layout.fillWidth: true
                 Layout.leftMargin: 8
@@ -342,7 +459,7 @@ Item {
                 clip: true
 
                 Behavior on Layout.maximumHeight {
-                    enabled: Appearance.animationsEnabled
+                    enabled: Appearance.animationsEnabled && !root.compactMode
                     animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
 
@@ -362,16 +479,6 @@ Item {
                     id: settingsInner
                     anchors { fill: parent; margins: 8 }
                     spacing: 6
-
-                    StyledText {
-                        Layout.fillWidth: true
-                        text: Translation.tr("Focus → Break → Focus → Break → ... → Long break")
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: root._colTextSecondary
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
-                        Layout.bottomMargin: 2
-                    }
 
                     AdjustRow {
                         icon: "target"

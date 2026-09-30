@@ -8,39 +8,52 @@ import Quickshell
 
 StyledListView { // Scrollable window
     id: root
+    // Compatibility flag for transient toast callers. New surfaces can choose
+    // history/transient data independently from popup/embedded presentation.
     property bool popup: false
+    property string dataMode: popup ? "transient" : "history"
+    property bool popupPresentation: popup
+    // History surfaces may prefer full notification content. Overflow belongs
+    // to the ListView, so cards are not collapsed merely because they share a
+    // group; the user can still collapse a group explicitly.
+    property bool preferExpanded: false
+    property bool modernCards: false
+    property bool compactCards: false
+    property bool compactActions: false
     // History-only filter; popups are never filtered.
     property string filterQuery: ""
+    signal externalLinkOpened()
+    signal notificationActionInvoked()
 
-    spacing: 3
+    spacing: modernCards ? (compactCards ? 6 : 8) : 3
 
     // Sidebar: full transitions with pop-in; Popup: lightweight entrance only
-    popin: !popup
-    animateAppearance: !popup
+    popin: !popupPresentation
+    animateAppearance: !popupPresentation
 
     // Popup entrance: opacity fade + horizontal slide (no height change to avoid Wayland stair-stepping)
     add: Transition {
-        enabled: root.popup || root.animateAppearance
+        enabled: root.popupPresentation || root.animateAppearance
         NumberAnimation {
             property: "opacity"
             from: 0; to: 1
-            duration: root.popup ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMove.duration
-            easing.type: root.popup ? Appearance.animation.elementMoveFast.type : Appearance.animation.elementMove.type
-            easing.bezierCurve: root.popup ? Appearance.animation.elementMoveFast.bezierCurve : Appearance.animation.elementMove.bezierCurve
+            duration: root.popupPresentation ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMove.duration
+            easing.type: root.popupPresentation ? Appearance.animation.elementMoveFast.type : Appearance.animation.elementMove.type
+            easing.bezierCurve: root.popupPresentation ? Appearance.animation.elementMoveFast.bezierCurve : Appearance.animation.elementMove.bezierCurve
         }
         NumberAnimation {
-            property: root.popup ? "x" : "scale"
-            from: root.popup ? 24 : 0; to: root.popup ? 0 : 1
-            duration: root.popup ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMove.duration
-            easing.type: root.popup ? Appearance.animation.elementMoveFast.type : Appearance.animation.elementMove.type
-            easing.bezierCurve: root.popup ? Appearance.animation.elementMoveFast.bezierCurve : Appearance.animation.elementMove.bezierCurve
+            property: root.popupPresentation ? "x" : "scale"
+            from: root.popupPresentation ? 24 : 0; to: root.popupPresentation ? 0 : 1
+            duration: root.popupPresentation ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMove.duration
+            easing.type: root.popupPresentation ? Appearance.animation.elementMoveFast.type : Appearance.animation.elementMove.type
+            easing.bezierCurve: root.popupPresentation ? Appearance.animation.elementMoveFast.bezierCurve : Appearance.animation.elementMove.bezierCurve
         }
     }
 
     // Custom removeDisplaced for popup mode: smooth gap-filling when a group is dismissed.
     // Uses elementMoveFast for snappy feel without Wayland stair-stepping.
     removeDisplaced: Transition {
-        enabled: root.popup
+        enabled: root.popupPresentation
         NumberAnimation {
             property: "y"
             duration: Appearance.animation.elementMoveFast.duration
@@ -57,18 +70,24 @@ StyledListView { // Scrollable window
     }
 
     model: ScriptModel {
-        values: root.popup
+        values: root.dataMode === "transient"
             ? Notifications.popupAppNameList
             : Notifications.appNamesMatching(root.filterQuery)
     }
     delegate: NotificationGroup {
         required property int index
         required property var modelData
-        popup: root.popup
+        popup: root.popupPresentation
+        expandedByDefault: root.preferExpanded
+        modernLayout: root.modernCards
+        compactLayout: root.compactCards
+        compactActions: root.compactActions
         anchors.left: parent?.left
         anchors.right: parent?.right
-        notificationGroup: popup ?
-            Notifications.popupGroupsByAppName[modelData] :
-            Notifications.groupsByAppName[modelData]
+        notificationGroup: root.dataMode === "transient"
+            ? Notifications.popupGroupsByAppName[modelData]
+            : Notifications.groupsByAppName[modelData]
+        onExternalLinkOpened: root.externalLinkOpened()
+        onNotificationActionInvoked: root.notificationActionInvoked()
     }
 }

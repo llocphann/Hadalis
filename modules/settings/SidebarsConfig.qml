@@ -16,7 +16,7 @@ ContentPage {
         if (Quickshell.env("QS_DEBUG") === "1") console.log(...args);
     }
 
-    settingsPageIndex: 23
+    settingsPageIndex: embedded ? 2 : 23
     settingsPageName: Translation.tr("Sidebars")
 
     property bool isIiActive: Config.options?.panelFamily !== "waffle"
@@ -39,34 +39,47 @@ ContentPage {
         ]
     }
 
+    component SidebarSize: ContentSubsection {
+        id:sizing
+        required property string role
+        readonly property var state:ShellLayoutController.currentState(role,"")
+        WindowDialogSlider {
+            text:"Width";Layout.fillWidth:true;from:320;to:900;stepSize:1
+            value:sizing.state.width;valueText:Math.round(value)+" px"
+            onMoved:ShellLayoutController.setProperty(sizing.role,"thickness",value,"")
+        }
+        ConfigSelectionArray {
+            currentValue:sizing.state.sizeMode === "custom" ? "custom" : "fit"
+            options:[{displayName:"Fit content",value:"fit"},{displayName:"Custom height",value:"custom"}]
+            onSelected:value=>ShellLayoutController.setProperty(sizing.role,"sizeMode",value,"")
+        }
+        WindowDialogSlider {
+            text:"Height";Layout.fillWidth:true;from:320;to:2160;stepSize:1
+            visible:sizing.state.sizeMode === "custom"
+            value:sizing.state.customHeight;valueText:Math.round(value)+" px"
+            onMoved:ShellLayoutController.setProperty(sizing.role,"height",value,"")
+        }
+    }
     SettingsCardSection {
         settingsTaskSection: "general"
-        visible: root.isIiActive && !(Config.options?.settingsUi?.easyMode ?? false) && root.activeSection === "general"
+        visible: root.isIiActive && root.activeSection === "general"
         expanded: true
         icon: "tune"
         title: Translation.tr("General")
 
         SettingsGroup {
+            SidebarSize { role:"featureSidebar";title:"Left Sidebar size" }
+            SidebarSize { role:"systemSidebar";title:"Right Sidebar size" }
             ContentSubsection {
                 title: Translation.tr("General")
 
                 SettingsSwitch {
-                    buttonIcon: "unfold_less"
-                    text: Translation.tr("Collapse notifications when empty")
-                    checked: Config.options.sidebar?.collapseEmptyNotifications ?? false
-                    onCheckedChanged: Config.setNestedValue("sidebar.collapseEmptyNotifications", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Shrink the right sidebar when there are no notifications")
-                    }
-                }
-
-                SettingsSwitch {
                     buttonIcon: "fit_screen"
-                    text: Translation.tr("Fit left sidebar to widgets")
+                    text: Translation.tr("Fit left sidebar to content")
                     checked: Config.options.sidebar?.collapseWidgetsTab ?? false
                     onCheckedChanged: Config.setNestedValue("sidebar.collapseWidgetsTab", checked)
                     StyledToolTip {
-                        text: Translation.tr("Shrink the left sidebar to its content on the Widgets tab instead of full height")
+                        text: Translation.tr("Shrink the left sidebar to a tab's preferred content height when available")
                     }
                 }
 
@@ -82,59 +95,6 @@ ContentPage {
                 wrapMode: Text.WordWrap
             }
 
-            SettingsSwitch {
-                buttonIcon: "animation"
-                text: Translation.tr("Instant sidebar opening")
-                checked: Config.options.sidebar?.instantOpen ?? false
-                onCheckedChanged: Config.setNestedValue("sidebar.instantOpen", checked)
-                StyledToolTip {
-                    text: Translation.tr("Skips the slide animation to reduce stutter under load.")
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                visible: !(Config.options?.sidebar?.instantOpen ?? false)
-                spacing: 4
-
-                RowLayout {
-                    spacing: 8
-                    MaterialSymbol {
-                        text: "swipe_right"
-                        iconSize: Appearance.font.pixelSize.hugeass
-                        color: Appearance.m3colors?.m3OnSurface ?? Appearance.colors.colOnLayer1
-                    }
-                    StyledText {
-                        text: Translation.tr("Sidebar animation")
-                        font.pixelSize: Appearance.font.pixelSize.normal
-                        color: Appearance.m3colors?.m3OnSurface ?? Appearance.colors.colOnLayer1
-                    }
-                }
-
-                StyledComboBox {
-                    Layout.fillWidth: true
-                    readonly property var animOptions: [
-                        { displayName: Translation.tr("Slide"), value: "slide" },
-                        { displayName: Translation.tr("Fade"), value: "fade" },
-                        { displayName: Translation.tr("Pop"), value: "pop" },
-                        { displayName: Translation.tr("Reveal"), value: "reveal" },
-                        { displayName: Translation.tr("Swing"), value: "swing" },
-                        { displayName: Translation.tr("Drop"), value: "drop" },
-                        { displayName: Translation.tr("Elastic"), value: "elastic" }
-                    ]
-                    model: animOptions
-                    textRole: "displayName"
-                    currentIndex: {
-                        const current = Config.options?.sidebar?.animationType ?? "slide"
-                        const idx = animOptions.findIndex(o => o.value === current)
-                        return idx >= 0 ? idx : 0
-                    }
-                    onActivated: index => {
-                        if (index >= 0 && index < animOptions.length)
-                            Config.setNestedValue("sidebar.animationType", animOptions[index].value)
-                    }
-                }
-            }
 
             SettingsSwitch {
                 buttonIcon: "folder_open"
@@ -142,7 +102,7 @@ ContentPage {
                 checked: Config.options.sidebar?.openFolderOnDownload ?? false
                 onCheckedChanged: Config.setNestedValue("sidebar.openFolderOnDownload", checked)
                 StyledToolTip {
-                    text: Translation.tr("Open file manager when downloading wallpapers from Wallhaven or Booru")
+                    text: Translation.tr("Open the file manager after downloading a wallpaper")
                 }
             }
             }
@@ -162,7 +122,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "left"
-        visible: root.isIiActive && !(Config.options?.settingsUi?.easyMode ?? false) && root.activeSection === "left"
+        visible: root.isIiActive && root.activeSection === "left"
         expanded: true
         icon: "first_page"
         title: Translation.tr("Left sidebar")
@@ -172,28 +132,15 @@ ContentPage {
                 title: Translation.tr("Left Sidebar")
                 tooltip: Translation.tr("Choose which tabs appear in the left sidebar")
 
-                SettingsSwitch {
-                    buttonIcon: "widgets"
-                    text: Translation.tr("Widgets")
-                    checked: Config.options.sidebar?.widgets?.enable ?? true
-                    onCheckedChanged: Config.setNestedValue("sidebar.widgets.enable", checked)
+                RippleButtonWithIcon {
+                    Layout.fillWidth: true
+                    materialIcon: "neurology"
+                    mainText: Translation.tr("AI Chat") + " · "
+                        + ((Config.options?.policies?.ai ?? 0) === 0
+                            ? Translation.tr("Off") : Translation.tr("On"))
+                    onClicked: SettingsPageRegistry.navigateToKey("ai", "Privacy")
                     StyledToolTip {
-                        text: Translation.tr("Dashboard with clock, weather, media controls and quick actions")
-                    }
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "neurology"
-                    text: Translation.tr("AI Chat")
-                    readonly property int currentAiPolicy: Config.options?.policies?.ai ?? 0
-                    checked: currentAiPolicy !== 0
-                    onCheckedChanged: {
-                        // Preserve "Local only" (2) if it was set, otherwise use "Yes" (1)
-                        const newValue = checked ? (currentAiPolicy === 2 ? 2 : 1) : 0
-                        Config.setNestedValue("policies.ai", newValue)
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Chat with AI assistants (OpenAI, Gemini, local models)")
+                        text: Translation.tr("Configure AI availability in AI → Privacy")
                     }
                 }
 
@@ -207,28 +154,15 @@ ContentPage {
                     }
                 }
 
-                SettingsSwitch {
-                    buttonIcon: "bookmark_heart"
-                    text: Translation.tr("Anime")
-                    readonly property int currentWeebPolicy: Config.options?.policies?.weeb ?? 0
-                    checked: currentWeebPolicy !== 0
-                    onCheckedChanged: {
-                        // Preserve "Closet" (2) if it was set, otherwise use "Yes" (1)
-                        const newValue = checked ? (currentWeebPolicy === 2 ? 2 : 1) : 0
-                        Config.setNestedValue("policies.weeb", newValue)
-                    }
+                RippleButtonWithIcon {
+                    Layout.fillWidth: true
+                    materialIcon: "bookmark_heart"
+                    mainText: Translation.tr("Anime") + " · "
+                        + ((Config.options?.policies?.weeb ?? 0) === 0
+                            ? Translation.tr("Off") : Translation.tr("On"))
+                    onClicked: SettingsPageRegistry.navigateToKey("system", "Policies")
                     StyledToolTip {
-                        text: Translation.tr("Browse anime artwork from booru sites")
-                    }
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "image"
-                    text: Translation.tr("Wallhaven")
-                    checked: Config.options.sidebar?.wallhaven?.enable ?? true
-                    onCheckedChanged: Config.setNestedValue("sidebar.wallhaven.enable", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Browse and download wallpapers from Wallhaven")
+                        text: Translation.tr("Configure content visibility in System → Safety")
                     }
                 }
 
@@ -263,16 +197,6 @@ ContentPage {
                 }
 
                 SettingsSwitch {
-                    buttonIcon: "store"
-                    text: Translation.tr("Software")
-                    checked: Config.options.sidebar?.software?.enable ?? false
-                    onCheckedChanged: Config.setNestedValue("sidebar.software.enable", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Browse and install curated companion apps")
-                    }
-                }
-
-                SettingsSwitch {
                     buttonIcon: "library_music"
                     text: Translation.tr("Music")
                     checked: Config.options.sidebar?.music?.enable ?? false
@@ -297,7 +221,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "right"
-        visible: root.isIiActive && !(Config.options?.settingsUi?.easyMode ?? false) && root.activeSection === "right"
+        visible: root.isIiActive && root.activeSection === "right"
         expanded: true
         icon: "last_page"
         title: Translation.tr("Right sidebar")
@@ -387,7 +311,7 @@ ContentPage {
                 title: Translation.tr("Right Sidebar")
                 tooltip: Translation.tr("Toggle which widgets appear in the right sidebar")
 
-                readonly property var defaults: ["calendar", "todo", "notepad", "calculator", "sysmon", "weather", "timer"]
+                readonly property var defaults: ["calculator", "sysmon"]
 
                 function isEnabled(widgetId) {
                     return (Config.options?.sidebar?.right?.enabledWidgets ?? defaults).includes(widgetId)
@@ -412,43 +336,6 @@ ContentPage {
                 }
 
                 SettingsSwitch {
-                    buttonIcon: "calendar_month"
-                    text: Translation.tr("Calendar")
-                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("calendar")
-                    onClicked: {
-                        // checked ya fue invertido por ConfigSwitch.onClicked
-                        rightSidebarWidgets.setWidget("calendar", checked)
-                    }
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "event_upcoming"
-                    text: Translation.tr("Events")
-                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("events")
-                    onClicked: {
-                        rightSidebarWidgets.setWidget("events", checked)
-                    }
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "done_outline"
-                    text: Translation.tr("To Do")
-                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("todo")
-                    onClicked: {
-                        rightSidebarWidgets.setWidget("todo", checked)
-                    }
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "edit_note"
-                    text: Translation.tr("Notepad")
-                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("notepad")
-                    onClicked: {
-                        rightSidebarWidgets.setWidget("notepad", checked)
-                    }
-                }
-
-                SettingsSwitch {
                     buttonIcon: "calculate"
                     text: Translation.tr("Calculator")
                     Component.onCompleted: checked = rightSidebarWidgets.isEnabled("calculator")
@@ -466,33 +353,6 @@ ContentPage {
                     }
                 }
 
-                SettingsSwitch {
-                    buttonIcon: "partly_cloudy_day"
-                    text: Translation.tr("Weather")
-                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("weather")
-                    onClicked: {
-                        rightSidebarWidgets.setWidget("weather", checked)
-                    }
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "schedule"
-                    text: Translation.tr("Timer")
-                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("timer")
-                    onClicked: {
-                        rightSidebarWidgets.setWidget("timer", checked)
-                    }
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "av_timer"
-                    text: Translation.tr("Screen Time")
-                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("screentime")
-                    onClicked: {
-                        rightSidebarWidgets.setWidget("screentime", checked)
-                        Config.setNestedValue("sidebar.screenTime.enable", checked)
-                    }
-                }
             }
 
             ContentSubsection {
@@ -588,7 +448,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "media"
-        visible: root.isIiActive && !(Config.options?.settingsUi?.easyMode ?? false) && root.activeSection === "media"
+        visible: root.isIiActive && root.activeSection === "media"
         expanded: true
         icon: "music_note"
         title: Translation.tr("Media & content")
@@ -637,6 +497,8 @@ ContentPage {
                     MaterialTextField {
                         Layout.fillWidth: true
                         readOnly: true
+                        // A wrapped read-only path must not derive preferred width from its assigned layout width.
+                        implicitWidth: 220
                         text: LocalMusic.libraryFolder
                     }
 
@@ -802,63 +664,12 @@ ContentPage {
             }
 
 
-            ContentSubsection {
-                title: Translation.tr("Wallhaven")
-                visible: Config.options.sidebar?.wallhaven?.enable ?? true
-
-                ConfigSpinBox {
-                    icon: "format_list_numbered"
-                    text: Translation.tr("Results per page")
-                    value: Config.options.sidebar?.wallhaven?.limit ?? 24
-                    from: 12
-                    to: 72
-                    stepSize: 4
-                    onValueChanged: Config.setNestedValue("sidebar.wallhaven.limit", value)
-                    StyledToolTip {
-                        text: Translation.tr("Number of wallpapers to fetch per request")
-                    }
-                }
-
-                ConfigRow {
-                    Layout.fillWidth: true
-                    spacing: 6
-
-                    MaterialSymbol {
-                        text: "key"
-                        iconSize: Appearance.font.pixelSize.larger
-                        color: Appearance.colors.colSubtext
-                    }
-                    StyledText {
-                        text: Translation.tr("API key")
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        color: Appearance.colors.colOnSurface
-                    }
-                    MaterialTextField {
-                        id: wallhavenApiInput
-                        Layout.fillWidth: true
-                        placeholderText: Translation.tr("Optional - for NSFW content")
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        color: Appearance.colors.colOnSurface
-                        placeholderTextColor: Appearance.colors.colSubtext
-                        echoMode: TextInput.Password
-                        text: Config.options.sidebar?.wallhaven?.apiKey ?? ""
-                        background: Rectangle {
-                            color: Appearance.colors.colLayer1
-                            radius: Appearance.rounding.small
-                            border.width: wallhavenApiInput.activeFocus ? 2 : 1
-                            border.color: wallhavenApiInput.activeFocus ? Appearance.colors.colPrimary : Appearance.colors.colLayer0Border
-                        }
-                        onTextChanged: Config.setNestedValue("sidebar.wallhaven.apiKey", text)
-                    }
-                }
-            }
-
         }
     }
 
     SettingsCardSection {
         settingsTaskSection: "open"
-        visible: root.isIiActive && !(Config.options?.settingsUi?.easyMode ?? false) && root.activeSection === "open"
+        visible: root.isIiActive && root.activeSection === "open"
         expanded: true
         icon: "swipe"
         title: Translation.tr("Opening")
@@ -866,15 +677,15 @@ ContentPage {
         SettingsGroup {
             ContentSubsection {
                 title: Translation.tr("Side edge open")
-                tooltip: Translation.tr("Open the left or right sidebar by touching that screen edge")
+                tooltip: Config.options?.panelFamily === "abyss" ? "Hover the middle of the left or right Screen Edge. Move into the sidebar to keep it open; moving away closes a hover-opened sidebar." : Translation.tr("Open the left or right sidebar by touching that screen edge")
 
                 ConfigRow {
                     uniform: true
                     SettingsSwitch {
                         buttonIcon: "dock_to_left"
                         text: Translation.tr("Hover screen edges")
-                        checked: Config.options?.sidebar?.edgeOpen?.enable ?? false
-                        onCheckedChanged: Config.setNestedValue("sidebar.edgeOpen.enable", checked)
+                        checked: Config.options?.panelFamily === "abyss" ? (Config.options?.abyss?.sidebars?.hoverEnabled ?? true) : (Config.options?.sidebar?.edgeOpen?.enable ?? false)
+                        onCheckedChanged: Config.setNestedValue(Config.options?.panelFamily === "abyss" ? "abyss.sidebars.hoverEnabled" : "sidebar.edgeOpen.enable", checked)
                     }
                     ConfigSpinBox {
                         icon: "width"
@@ -883,7 +694,7 @@ ContentPage {
                         from: 1
                         to: 12
                         stepSize: 1
-                        enabled: Config.options?.sidebar?.edgeOpen?.enable ?? false
+                        enabled: Config.options?.panelFamily === "abyss" ? (Config.options?.abyss?.sidebars?.hoverEnabled ?? true) : (Config.options?.sidebar?.edgeOpen?.enable ?? false)
                         opacity: enabled ? 1 : 0.5
                         onValueChanged: Config.setNestedValue("sidebar.edgeOpen.regionWidth", value)
                     }
@@ -892,6 +703,7 @@ ContentPage {
 
 
             ContentSubsection {
+                visible: Config.options?.panelFamily !== "abyss"
                 title: Translation.tr("Corner open")
                 tooltip: Translation.tr("Allows you to open sidebars by clicking or hovering screen corners regardless of bar position")
                 ConfigRow {

@@ -26,27 +26,14 @@ Item {
 
     readonly property int activeIndex: LyricsService.activeIndex
     readonly property bool hasLyrics: LyricsService.status === "ok" && LyricsService.lyricsLines.length > 0
-    property bool _subscribed: false
 
-    function syncSubscription(): void {
-        const shouldSubscribe = root.visible;
-        if (shouldSubscribe === root._subscribed)
-            return;
-
-        root._subscribed = shouldSubscribe;
-        if (shouldSubscribe)
-            LyricsService.subscribe();
-        else
-            LyricsService.unsubscribe();
-    }
-
-    onVisibleChanged: root.syncSubscription()
-    Component.onCompleted: root.syncSubscription()
-    Component.onDestruction: {
-        if (root._subscribed) {
-            root._subscribed = false;
-            LyricsService.unsubscribe();
+    property QtObject _lyricsLease: ServiceLease {
+        active: root.visible
+        acquire: () => {
+            LyricsService.subscribe()
+            return true
         }
+        release: () => LyricsService.unsubscribe()
     }
 
     Item {
@@ -72,12 +59,10 @@ Item {
             width: Math.min(parent.width, 260)
             spacing: 10
 
-            MaterialLoadingIndicator {
+            LoadingText {
                 Layout.alignment: Qt.AlignHCenter
                 visible: placeholder.isLoading
-                loading: visible
-                color: root.indicatorColor
-                implicitSize: 30
+                color: ColorUtils.applyAlpha(root.textColor, 0.85)
             }
 
             MaterialSymbol {
@@ -94,8 +79,8 @@ Item {
                 wrapMode: Text.WordWrap
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 color: ColorUtils.applyAlpha(root.textColor, 0.85)
-                text: placeholder.isLoading ? Translation.tr("Looking for lyrics")
-                    : placeholder.isNoTrack ? Translation.tr("Nothing playing")
+                visible: !placeholder.isLoading
+                text: placeholder.isNoTrack ? Translation.tr("Nothing playing")
                     : Translation.tr("No synced lyrics for this track")
             }
         }

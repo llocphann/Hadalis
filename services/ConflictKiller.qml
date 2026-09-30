@@ -21,10 +21,7 @@ Singleton {
         id: conflictCheckDelay
         interval: 1500
         repeat: false
-        onTriggered: {
-            pidofTraysProc.running = true
-            pidofNotifsProc.running = true
-        }
+        onTriggered: conflictProbe.running = true
     }
 
     Connections {
@@ -43,7 +40,7 @@ Singleton {
     }
 
     function _maybeHandleConflicts(): void {
-        if (pidofTraysProc.running || pidofNotifsProc.running)
+        if (conflictProbe.running)
             return
 
         const conflictingTrays = root._traysConflict
@@ -67,43 +64,46 @@ Singleton {
     property bool _notifsConflict: false
 
     Process {
-        id: pidofTraysProc
+        id: conflictProbe
         property bool startObserved: false
-        command: ["/usr/bin/pidof", "kded6"]
-        onRunningChanged: {
-            if (pidofTraysProc.running) {
-                pidofTraysProc.startObserved = false
-                return
-            }
-            if (pidofTraysProc.startObserved)
-                return
-            root._traysConflict = false
-            root._maybeHandleConflicts()
-        }
-        onStarted: pidofTraysProc.startObserved = true
-        onExited: (exitCode, exitStatus) => {
-            root._traysConflict = (exitCode === 0)
-            root._maybeHandleConflicts()
-        }
-    }
+        command: [
+            "/bin/sh", "-c",
+            "trays=0; notifs=0; " +
+            "for comm in /proc/[0-9]*/comm; do " +
+            "[ -r \"$comm\" ] || continue; " +
+            "IFS= read -r name < \"$comm\" || continue; " +
+            "case \"$name\" in " +
+            "kded6) trays=1 ;; " +
+            "mako|dunst) notifs=1 ;; " +
+            "esac; " +
+            "[ \"$trays\" -eq 1 ] && [ \"$notifs\" -eq 1 ] && break; " +
+            "done; " +
+            "printf '%s\\t%s\\n' \"$trays\" \"$notifs\""
+        ]
 
-    Process {
-        id: pidofNotifsProc
-        property bool startObserved: false
-        command: ["/usr/bin/pidof", "mako", "dunst"]
+        stdout: StdioCollector {
+            id: conflictProbeOutput
+        }
+
         onRunningChanged: {
-            if (pidofNotifsProc.running) {
-                pidofNotifsProc.startObserved = false
+            if (conflictProbe.running) {
+                conflictProbe.startObserved = false
                 return
             }
-            if (pidofNotifsProc.startObserved)
+            if (conflictProbe.startObserved)
                 return
+
+            root._traysConflict = false
             root._notifsConflict = false
             root._maybeHandleConflicts()
         }
-        onStarted: pidofNotifsProc.startObserved = true
+
+        onStarted: conflictProbe.startObserved = true
+
         onExited: (exitCode, exitStatus) => {
-            root._notifsConflict = (exitCode === 0)
+            const fields = String(conflictProbeOutput.text ?? "").trim().split("\t")
+            root._traysConflict = exitCode === 0 && fields[0] === "1"
+            root._notifsConflict = exitCode === 0 && fields[1] === "1"
             root._maybeHandleConflicts()
         }
     }

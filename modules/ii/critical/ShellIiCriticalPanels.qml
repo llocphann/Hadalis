@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
+import qs.services
 import qs.modules.common
 
 Item {
@@ -10,16 +11,19 @@ Item {
     readonly property bool barVertical: Config.options?.bar?.vertical ?? false
 
     component CriticalPanelLoader: LazyLoader {
+        id: criticalPanelLoader
         required property string identifier
         property bool extraCondition: true
-        active: Config.ready
+        readonly property bool enabledPanel: Config.ready
             && (Config.options?.enabledPanels ?? []).includes(identifier)
             && extraCondition
+        active: enabledPanel
     }
 
     // Screen edge is shell chrome, not a replacement runtime. Keep it on a URL
     // boundary so a presentation regression cannot make the critical root fail.
     LazyLoader {
+        id: screenEdgesLoader
         active: Config.ready
         source: Qt.resolvedUrl("../../screenCorners/ScreenEdges.qml")
     }

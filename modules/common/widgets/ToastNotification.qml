@@ -14,8 +14,14 @@ Item {
     property string icon: "info"
     property bool isError: false
     property int duration: 3000
-    property string source: "system" // "quickshell" or "niri"
+    property string source: "system" // "reload", "error", or another system source
+    // Successful reload toasts are informational and self-dismiss through the
+    // existing progress timer. Errors retain explicit dismissal/copy actions.
+    readonly property bool showDismissButton: root.source !== "reload"
     property color accentColor: Appearance.colors.colPrimary
+    // Connected hosts provide the outer iRiS plate/shadow. Keep this component
+    // as the interactive/content layer so reload toasts can become one attached block.
+    property bool connectedSurface: false
     property bool copied: false
 
     signal dismissed()
@@ -23,19 +29,20 @@ Item {
 
     implicitWidth: card.width
     implicitHeight: card.height
-    layer.enabled: Appearance.effectsEnabled
+    layer.enabled: Appearance.effectsEnabled && !root.connectedSurface
 
     GlassBackground {
         id: card
 
         width: contentLayout.implicitWidth + 32
         height: contentLayout.implicitHeight + 20
-        radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal : Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
-        fallbackColor: Appearance.colors.colLayer1
-        inirColor: Appearance.inir.colLayer2
+        radius: Appearance.rounding.normal
+        fallbackColor: root.connectedSurface ? "transparent" : Appearance.colors.colLayer1
+        inirColor: root.connectedSurface ? "transparent" : Appearance.inir.colLayer2
         auroraTransparency: Appearance.aurora.popupTransparentize
-        border.width: 1
-        border.color: root.isError ? (Appearance.inirEverywhere ? Appearance.inir.colError : Appearance.colors.colError) : (Appearance.angelEverywhere ? Appearance.angel.colBorder : Appearance.inirEverywhere ? Appearance.inir.colBorder : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipBorder : Appearance.colors.colOutlineVariant)
+        wallpaperBackdropEnabled: !root.connectedSurface
+        border.width: root.connectedSurface ? 0 : 1
+        border.color: root.isError ? Appearance.colors.colError : Appearance.colors.colOutlineVariant
         Component.onCompleted: progressAnim.start()
 
         MouseArea {
@@ -53,34 +60,17 @@ Item {
             anchors.leftMargin: 20
             spacing: 10
 
-            // Focal status badge. The toast body remains a stable content
-            // pebble; Cookie reserves the organic shape for this compact role.
             Item {
-                implicitWidth: Appearance.cookieEverywhere ? 30 : 20
+                implicitWidth: 20
                 implicitHeight: implicitWidth
-
-                CookieFace {
-                    anchors.fill: parent
-                    visible: Appearance.cookieEverywhere
-                    role: "badge"
-                    color: root.isError
-                        ? Appearance.colors.colErrorContainer
-                        : Appearance.colors.colPrimaryContainer
-                }
 
                 MaterialSymbol {
                     anchors.centerIn: parent
                     text: root.icon
                     iconSize: 20
-                    color: Appearance.cookieEverywhere
-                        ? (root.isError
-                            ? Appearance.colors.colOnErrorContainer
-                            : Appearance.colors.colOnPrimaryContainer)
-                        : root.isError
-                            ? (Appearance.inirEverywhere ? Appearance.inir.colError : Appearance.colors.colError)
-                            : (Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                                : Appearance.inirEverywhere ? Appearance.inir.colPrimary
-                                : Appearance.colors.colOnLayer1)
+                    color: root.isError
+                        ? Appearance.colors.colError
+                        : Appearance.colors.colOnLayer1
                 }
             }
 
@@ -113,10 +103,10 @@ Item {
                 visible: root.isError && root.message !== ""
                 implicitWidth: 28
                 implicitHeight: 28
-                buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall : Appearance.rounding.small
+                buttonRadius: Appearance.rounding.small
                 colBackground: "transparent"
                 colBackgroundHover: Appearance.colLayer2Hover
-                colRipple: Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive : Qt.rgba(0, 0, 0, 0.15)
+                colRipple: Qt.rgba(0, 0, 0, 0.15)
                 onClicked: {
                     if (Quickshell.env("QS_DEBUG") === "1") console.log("[Toast] Copying to clipboard:", root.message.substring(0, 50));
                     copyProcess.running = true;
@@ -143,14 +133,16 @@ Item {
 
             }
 
-            // Close button
+            // Close button. Reload-success toasts intentionally rely on the
+            // existing timeout/progress contract instead of an extra X affordance.
             RippleButton {
+                visible: root.showDismissButton
                 implicitWidth: 28
                 implicitHeight: 28
-                buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall : Appearance.rounding.small
+                buttonRadius: Appearance.rounding.small
                 colBackground: "transparent"
                 colBackgroundHover: Appearance.colLayer2Hover
-                colRipple: Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive : Qt.rgba(0, 0, 0, 0.15)
+                colRipple: Qt.rgba(0, 0, 0, 0.15)
                 onClicked: root.dismissed()
 
                 contentItem: MaterialSymbol {
@@ -172,8 +164,8 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottomMargin: 6
             height: 3
-            radius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall : Appearance.rounding.unsharpen
-            color: root.isError ? Appearance.colors.colError : Appearance.angelEverywhere ? Appearance.angel.colPrimary : Appearance.colors.colPrimary
+            radius: Appearance.rounding.unsharpen
+            color: root.isError ? Appearance.colors.colError : Appearance.colors.colPrimary
 
             PropertyAnimation {
                 id: progressAnim

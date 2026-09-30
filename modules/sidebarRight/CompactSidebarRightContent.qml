@@ -6,20 +6,23 @@
 //
 // Sections:
 //   0 = Controls  (sliders + quick toggles)
-//   1 = Notifications
-//   2+ = Widgets  (calendar / events / todo / notepad / calc / sysmon / timer)
+//   1+ = Widgets  (calendar / events / todo / notepad / calc / sysmon / timer)
+//
+// Notification history is intentionally owned by the standalone bottom-right
+// Notification Center; the compact sidebar keeps only notification policy
+// controls such as Do Not Disturb.
 //
 // Global Theme chrome is Material-only; the explicit Ricelin island skin remains supported.
 
 import qs
 import qs.services
+import qs.services.deferred
 import qs.modules.common
 import qs.modules.common.perimeter
 import qs.modules.common.models
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.mediaControls
-import qs.modules.pill
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -44,7 +47,6 @@ import qs.modules.sidebarRight.notepad
 import qs.modules.sidebarRight.calculator
 import qs.modules.sidebarRight.sysmon
 import qs.modules.sidebarRight.events
-import qs.modules.sidebarRight.screenTime
 import qs.modules.sidebarRight.weather
 
 Item {
@@ -57,7 +59,10 @@ Item {
     property int screenHeight: 1080
     property var panelScreen: null
     property real panelScreenY: Appearance.sizes.hyprlandGapsOut
-    readonly property color connectedSurfaceColor: bg.color
+    property bool externalConnectedSurface: false
+    readonly property color connectedSurfaceColor:
+        bg.cardStyle ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0
+    readonly property real connectedSurfaceRadius: bg.radius
     property bool panelVisible: false
     property bool geometryPreviewActive: false
     property string attachedEdge: "right"
@@ -118,12 +123,46 @@ Item {
         Config.setNestedValue("sidebar.right.controlsSectionOrder", order)
     }
 
-    // Active section index — persisted
-    property int activeSection: Persistent.states?.sidebar?.compactGroup?.tab ?? 0
+    // Persist a stable section id. Older builds stored a numeric tab index;
+    // migration below maps the retired Notifications slot away once.
+    property int activeSection: 0
+    property bool compactSectionRestored: false
+
+    function persistActiveSection(): void {
+        if (!root.compactSectionRestored)
+            return
+        const state = Persistent.states?.sidebar?.compactGroup
+        const section = root.sections[root.activeSection]
+        if (!state || !section)
+            return
+        state.sectionId = section.id
+        // Keep the legacy field coherent for downgrade compatibility, but it is
+        // no longer authoritative.
+        state.tab = root.activeSection
+    }
+
+    function restoreActiveSection(): void {
+        const state = Persistent.states?.sidebar?.compactGroup
+        let idx = -1
+        const savedId = String(state?.sectionId ?? "")
+        if (savedId.length > 0)
+            idx = root.sections.findIndex(section => section.id === savedId)
+
+        if (idx < 0 && savedId.length === 0) {
+            const legacy = Math.max(0, Number(state?.tab ?? 0))
+            // Old order: controls=0, notifications=1, widgets started at 2.
+            // New order: controls=0, widgets start at 1.
+            idx = legacy <= 1 ? 0 : legacy - 1
+        }
+
+        root.activeSection = Math.max(0,
+            Math.min(idx < 0 ? 0 : idx, Math.max(0, root.sections.length - 1)))
+        root.compactSectionRestored = true
+        root.persistActiveSection()
+    }
 
     onActiveSectionChanged: {
-        if (Persistent.states?.sidebar?.compactGroup)
-            Persistent.states.sidebar.compactGroup.tab = activeSection
+        root.persistActiveSection()
         Qt.callLater(() => {
             // Focus the newly active section's content
             const idx = activeSection
@@ -136,6 +175,15 @@ Item {
         })
     }
 
+    onSectionsChanged: {
+        if (!root.compactSectionRestored)
+            return
+        const savedId = String(
+            Persistent.states?.sidebar?.compactGroup?.sectionId ?? "")
+        const idx = root.sections.findIndex(section => section.id === savedId)
+        root.activeSection = idx >= 0 ? idx : 0
+    }
+
     function handleRequestedWidget(): void {
         const w = GlobalStates.sidebarRightRequestedWidget
         if (!w) return
@@ -146,6 +194,7 @@ Item {
 
     Component.onCompleted: {
         Notifications.ensureInitialized()
+        restoreActiveSection()
         handleRequestedWidget()
     }
 
@@ -156,9 +205,6 @@ Item {
         }
     }
 
-    // Notification count for badge
-    readonly property int notificationCount: Notifications.list?.length ?? 0
-
     property int configVersion: 0
     Connections {
         target: Config
@@ -167,8 +213,7 @@ Item {
 
     // ── Section definitions ───────────────────────────────────────
     readonly property var baseSections: [
-        { id: "controls",      icon: "tune",          label: Translation.tr("Controls")      },
-        { id: "notifications", icon: "notifications", label: Translation.tr("Notifications") },
+        { id: "controls", icon: "tune", label: Translation.tr("Controls") },
     ]
 
     component CompactContentSurface: Rectangle {
@@ -508,28 +553,6 @@ Item {
         }
     }
     Component {
-        id: screenTimeComponent
-        Item {
-            anchors.fill: parent
-
-            StyledRectangularShadow {
-                target: screenTimeSurface
-                visible: false
-                blur: 0.35 * Appearance.sizes.elevationMargin
-            }
-
-            CompactContentSurface {
-                id: screenTimeSurface
-                anchors.fill: parent
-
-                ScreenTimeWidget {
-                    anchors.fill: parent
-                    anchors.margins: root.compactGridSpacing
-                }
-            }
-        }
-    }
-    Component {
         id: weatherDetailComponent
         Item {
             anchors.fill: parent
@@ -671,23 +694,12 @@ Item {
 
     readonly property var widgetSections: {
         root.configVersion // Force dependency
-        const enabled = Config.options?.sidebar?.right?.enabledWidgets ?? ["calendar", "todo", "notepad", "calculator", "sysmon", "weather", "timer"]
+        const enabled = Config.options?.sidebar?.right?.enabledWidgets ?? ["calculator", "sysmon"]
         const all = [
-            {id: "calendar",   icon: "calendar_month", label: Translation.tr("Calendar"),   component: calendarComponent},
-            {id: "events",     icon: "event_upcoming", label: Translation.tr("Events"),     component: eventsComponent},
-            {id: "todo",       icon: "done_outline",  label: Translation.tr("To Do"),      component: todoComponent},
-            {id: "notepad",    icon: "edit_note",     label: Translation.tr("Notepad"),    component: notepadComponent},
             {id: "calculator", icon: "calculate",     label: Translation.tr("Calc"),       component: calculatorComponent},
             {id: "sysmon",     icon: "monitor_heart", label: Translation.tr("System"),     component: sysmonComponent},
-            {id: "weather",    icon: "light_mode", label: Translation.tr("Weather"), component: weatherDetailComponent},
-            {id: "timer",      icon: "schedule",      label: Translation.tr("Timer"),      component: timerComponent},
-            {id: "screentime", icon: "av_timer",      label: Translation.tr("Screen Time"), component: screenTimeComponent},
         ]
-        return all.filter(w => {
-            if (w.id === "screentime" && !(Config.options?.sidebar?.screenTime?.enable ?? false))
-                return false
-            return enabled.includes(w.id)
-        })
+        return all.filter(w => enabled.includes(w.id))
     }
 
     readonly property var sections: baseSections.concat(widgetSections)
@@ -738,16 +750,16 @@ Item {
         color: ColorUtils.applyAlpha(Appearance.colors.colShadow,
             Math.max(0, Math.min(1.0,
                 Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70))))
-        visible: root.panelVisible
+        visible: root.panelVisible && !root.externalConnectedSurface
             && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
             && !Appearance.gameModeMinimal
         joinLeft: root.attachedEdge === "left"
         joinRight: root.attachedEdge === "right"
     }
 
-    IslandPanel {
+    RicelinSurface {
         anchors.fill: bg
-        visible: bg.islandStyle
+        visible: !root.externalConnectedSurface && bg.islandStyle
         radius: bg.radius
         glassEnabled: true
         screen: root.panelScreen ?? root.QsWindow?.window?.screen ?? null
@@ -776,7 +788,9 @@ Item {
         readonly property color colDarkSurfaceActive:
             ColorUtils.transparentize(Appearance.colors.colLayer1Active, 0.18)
 
-        color: (gameModeMinimal || islandStyle) ? "transparent"
+        color: root.externalConnectedSurface
+            ? "transparent"
+            : (gameModeMinimal || islandStyle) ? "transparent"
             : (cardStyle ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0)
 
         // Compact and default sidebars share one borderless Screen Edge seam.
@@ -964,7 +978,6 @@ Item {
                             implicitHeight: root.compactNavItemHeight
 
                             readonly property bool isActive: root.activeSection === navItem.index
-                            readonly property bool isNotifications: navItem.modelData.id === "notifications"
 
                             // Button background (active highlight provided by navIndicator behind)
                             Rectangle {
@@ -995,47 +1008,6 @@ Item {
                                     Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
                                 }
 
-                                // ── Notification badge ──────────
-                                Rectangle {
-                                    id: notifBadge
-                                    visible: opacity > 0
-                                    opacity: (navItem.isNotifications && root.notificationCount > 0 && !navItem.isActive) ? 1 : 0
-                                    Behavior on opacity {
-                                        enabled: Appearance.animationsEnabled
-                                        NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                                    }
-                                    anchors {
-                                        top: parent.top
-                                        right: parent.right
-                                        topMargin: 2
-                                        rightMargin: 2
-                                    }
-                                    width: Math.max(16, badgeLabel.implicitWidth + 8)
-                                    height: 16
-                                    radius: 8
-                                    color: Appearance.colors.colPrimary
-
-                                    StyledText {
-                                        id: badgeLabel
-                                        anchors.centerIn: parent
-                                        text: root.notificationCount > 99 ? "99+" : root.notificationCount.toString()
-                                        font.pixelSize: 9
-                                        font.weight: Font.Bold
-                                        font.family: Appearance.font.family.numbers
-                                        color: Appearance.colors.colOnPrimary
-                                    }
-
-                                    // Subtle entrance animation
-                                    scale: visible ? 1.0 : 0.0
-                                    Behavior on scale {
-                                        enabled: Appearance.animationsEnabled
-                                        NumberAnimation {
-                                            duration: Appearance.animation.elementMoveFast.duration
-                                            easing.type: Easing.OutBack
-                                        }
-                                    }
-                                }
-
                                 MouseArea {
                                     id: navMA
                                     anchors.fill: parent
@@ -1046,9 +1018,7 @@ Item {
                                 BubbleToolTip {
                                     visible: navMA.containsMouse
                                     position: "left"
-                                    text: navItem.isNotifications && root.notificationCount > 0
-                                        ? navItem.modelData.label + " (" + root.notificationCount + ")"
-                                        : navItem.modelData.label
+                                    text: navItem.modelData.label
                                 }
                             }
                         }
@@ -1188,7 +1158,7 @@ Item {
                         anchors.fill: parent
 
                         readonly property bool isCurrent: root.activeSection === sectionItem.index
-                        readonly property bool isBase: sectionItem.modelData.id === "controls" || sectionItem.modelData.id === "notifications"
+                        readonly property bool isBase: sectionItem.modelData.id === "controls"
                         property alias sectionLoader: sectionContentLoader
 
                         // Crossfade opacity
@@ -1226,8 +1196,6 @@ Item {
                             sourceComponent: {
                                 if (sectionItem.modelData.id === "controls")
                                     return controlsSectionComponent
-                                if (sectionItem.modelData.id === "notifications")
-                                    return notificationsSectionComponent
                                 // Widget sections — use component from data
                                 return sectionItem.modelData.component ?? null
                             }
@@ -1624,59 +1592,6 @@ Item {
         }
     }
 
-    Component {
-        id: notificationsSectionComponent
-        Item {
-            ColumnLayout {
-                anchors {
-                    fill: parent
-                    margins: root.compactContentPadding
-                }
-                spacing: root.compactContentPadding
-
-                // Section header with notification count + actions
-                SectionHeader {
-                    headerText: Translation.tr("Notifications")
-                    headerIcon: "notifications"
-                    badgeText: root.notificationCount > 0 ? root.notificationCount.toString() : ""
-                    // DND toggle
-                    showAction: true
-                    actionIcon: Notifications.silent ? "notifications_off" : "notifications_active"
-                    actionTooltip: Notifications.silent ? Translation.tr("Unmute notifications") : Translation.tr("Mute notifications")
-                    actionToggled: Notifications.silent
-                    onActionClicked: Notifications.silent = !Notifications.silent
-                    // Clear all button
-                    showSecondaryAction: root.notificationCount > 0
-                    secondaryActionIcon: "delete_sweep"
-                    secondaryActionTooltip: Translation.tr("Clear all notifications")
-                    onSecondaryActionClicked: Notifications.discardAllNotifications()
-                }
-
-                // Notification list or empty state
-                Item {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-
-                    // Notification list
-                    CenterWidgetGroup {
-                        anchors.fill: parent
-                        opacity: root.notificationCount > 0 ? 1 : 0
-                        visible: opacity > 0
-                        Behavior on opacity { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Easing.OutCubic } }
-                    }
-
-                    // Enhanced empty state placeholder
-                    EmptyNotificationsPlaceholder {
-                        anchors.fill: parent
-                        opacity: root.notificationCount === 0 ? 1 : 0
-                        visible: opacity > 0
-                        Behavior on opacity { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Easing.OutCubic } }
-                    }
-                }
-            }
-        }
-    }
-
     // ── Dialogs (identical to SidebarRightContent) ────────────────
     ToggleDialog {
         shownPropertyString: "showAudioOutputDialog"
@@ -1899,70 +1814,6 @@ Item {
                     text: sectionHeader.actionTooltip
                 }
             }
-            }
-        }
-    }
-
-    // ── Empty Notifications Placeholder ───────────────────────────
-    component EmptyNotificationsPlaceholder: Item {
-        id: emptyPlaceholder
-
-        ColumnLayout {
-            anchors.centerIn: parent
-            width: Math.min(parent.width - 32, 280)
-            spacing: 12
-
-            MaterialPlaceholderMessage {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.fillWidth: true
-                maximumWidth: 280
-                compact: true
-                shown: emptyPlaceholder.visible
-                icon: Notifications.silent ? "notifications_off" : "notifications_active"
-                text: Notifications.silent ? Translation.tr("Muted") : Translation.tr("All caught up")
-                shape: MaterialShape.Shape.Ghostish
-            }
-
-            RippleButton {
-                id: dndChip
-                Layout.alignment: Qt.AlignHCenter
-                implicitHeight: 32
-                implicitWidth: dndChipContent.implicitWidth + 20
-                buttonRadius: Appearance.rounding.full
-                colBackground: Notifications.silent
-                    ? Appearance.colors.colSecondaryContainer
-                    : bg.colDarkSurface
-                colBackgroundHover: Notifications.silent
-                    ? Appearance.colors.colSecondaryContainerHover
-                    : bg.colDarkSurfaceHover
-                colRipple: Notifications.silent
-                    ? Appearance.colors.colSecondaryContainerActive
-                    : bg.colDarkSurfaceActive
-                onClicked: Notifications.silent = !Notifications.silent
-
-                contentItem: RowLayout {
-                    id: dndChipContent
-                    anchors.centerIn: parent
-                    spacing: 6
-
-                    MaterialSymbol {
-                        text: Notifications.silent ? "notifications_active" : "notifications_off"
-                        iconSize: 16
-                        color: Notifications.silent
-                            ? Appearance.colors.colOnSecondaryContainer
-                            : Appearance.colors.colSubtext
-                    }
-
-                    StyledText {
-                        text: Notifications.silent
-                            ? Translation.tr("Enable notifications")
-                            : Translation.tr("Enable DND")
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: Notifications.silent
-                            ? Appearance.colors.colOnSecondaryContainer
-                            : Appearance.colors.colOnLayer1
-                    }
-                }
             }
         }
     }

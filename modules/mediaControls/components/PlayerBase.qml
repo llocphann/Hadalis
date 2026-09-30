@@ -41,12 +41,14 @@ QtObject {
     // Artwork motion is keyed only by real art identity. Metadata-only updates
     // must not move the cover, or one track change animates twice.
     readonly property string mediaTransitionKey: (root.effectiveArtUrl ?? "").split("?")[0].split("#")[0]
-    readonly property real effectivePosition: isYtMusicPlayer 
-        ? YtMusic.currentPosition 
-        : (player?.position ?? 0)
     readonly property real effectiveLength: isYtMusicPlayer 
         ? YtMusic.currentDuration 
         : (player?.length ?? 0)
+    readonly property real _rawEffectivePosition: isYtMusicPlayer
+        ? YtMusic.currentPosition
+        : (player?.position ?? 0)
+    readonly property real effectivePosition: StringUtils.boundedMediaPosition(
+        root._rawEffectivePosition, root.effectiveLength)
     readonly property bool effectiveIsPlaying: isYtMusicPlayer 
         ? YtMusic.isPlaying 
         : (player?.isPlaying ?? false)
@@ -194,10 +196,11 @@ QtObject {
     property var positionUpdateTimer: Timer {
         running: root.positionUpdatesActive
             && root.player?.playbackState === MprisPlaybackState.Playing
-        // Four bounded updates per second are enough for a continuous timeline
-        // once PlayerProgress interpolates between samples.
-        interval: 250
+        // PlayerProgress interpolates continuously between samples, so two
+        // bounded MPRIS refreshes per second are enough while halving wakeups.
+        interval: 500
         repeat: true
+        triggeredOnStart: true
         onTriggered: root.player?.positionChanged()
     }
 }

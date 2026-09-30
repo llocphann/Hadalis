@@ -15,26 +15,10 @@ StyledOverlayWidget {
     minimumWidth: 300
     minimumHeight: 200
 
-    property bool _resourceUsageHeld: false
-
-    function syncResourceUsageLifecycle(): void {
-        if (root.visible === root._resourceUsageHeld)
-            return
-        if (root.visible)
-            ResourceUsage.keepAlive()
-        else
-            ResourceUsage.releaseKeepAlive()
-        root._resourceUsageHeld = root.visible
+    property QtObject resourceMonitor: ResourceUsageMonitor {
+        network: false
+        target: root
     }
-
-    Component.onCompleted: root.syncResourceUsageLifecycle()
-    Component.onDestruction: {
-        if (root._resourceUsageHeld) {
-            root._resourceUsageHeld = false
-            ResourceUsage.releaseKeepAlive()
-        }
-    }
-    onVisibleChanged: root.syncResourceUsageLifecycle()
 
     property list<var> resources: [
         {
@@ -154,7 +138,7 @@ StyledOverlayWidget {
             // the plotted line, not the track behind it.
             color: Appearance.zzzEverywhere ? Appearance.zzz.bg3 : Appearance.colors.colSecondaryContainer
             Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
-            layer.enabled: true
+            layer.enabled: root.visible && (root.QsWindow.window?.visible ?? false)
             layer.effect: OpacityMask {
                 maskSource: Rectangle {
                     width: graphBg.width

@@ -88,7 +88,10 @@ ContentPage {
         }
 
         function syncLoadingState(): void {
-            const shouldCount = requested && status === Loader.Loading
+            // A requested asynchronous Loader can remain Null briefly before
+            // activating. Count that gap too, not only Loader.Loading.
+            const shouldCount = requested && resident
+                && (status === Loader.Null || status === Loader.Loading)
             if (shouldCount === _countedLoading)
                 return
             root._taskLoadingCount = Math.max(0, root._taskLoadingCount + (shouldCount ? 1 : -1))
@@ -108,6 +111,7 @@ ContentPage {
             syncLoadingState()
         }
         onStatusChanged: syncLoadingState()
+        onResidentChanged: syncLoadingState()
         Component.onCompleted: {
             if (requested)
                 resident = true
@@ -1525,7 +1529,6 @@ ContentPage {
 
     SettingsTaskLoadingState {
         loading: root._taskLoadingCount > 0
-        text: Translation.tr("Loading section…")
     }
 
     SettingsCardSection {

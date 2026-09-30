@@ -17,6 +17,7 @@ Singleton {
         target: Config.options?.windows
         function onAppIdentityRulesChanged() {
             root._identityRulesRevision++
+            refreshApps.restart()
         }
     }
 
@@ -26,14 +27,16 @@ Singleton {
     }
 
     onSortingEnabledChanged: syncSortingDemand()
-    Component.onCompleted: syncSortingDemand()
+    Component.onCompleted: { syncSortingDemand(); refreshApps.restart() }
     Component.onDestruction:
         CompositorService.setSortingConsumer("waffleTaskbar", false)
 
     function _stringArray(value): var {
-        if (!Array.isArray(value))
+        // Config exposes QML list<string>, which is a sequence but not a JS Array.
+        if (!value || typeof value === "string"
+                || !Number.isInteger(value.length) || value.length < 0)
             return []
-        return value.map(item => String(item ?? "").trim())
+        return Array.from(value, item => String(item ?? "").trim())
             .filter(item => item.length > 0)
     }
 
@@ -63,7 +66,22 @@ Singleton {
         Config.setNestedValue(["dock", "pinnedApps"], next)
     }
 
-    property list<var> apps: {
+    property list<var> apps: []
+    // Resolve identity/cache dependencies outside a property binding. Lazy
+    // AppSearch and compositor enrichment may emit changes during resolution;
+    // coalescing them avoids re-entering the public apps binding.
+    Timer { id: refreshApps; interval: 16; repeat: false; onTriggered: root.apps = root.computeApps() }
+    Connections { target: CompositorService; function onSortedToplevelsChanged(): void { refreshApps.restart() } }
+    Connections { target: ToplevelManager.toplevels; function onValuesChanged(): void { refreshApps.restart() } }
+    Connections { target: AppSearch; function onListChanged(): void { refreshApps.restart() } }
+    Connections {
+        target: Config.options?.dock
+        function onPinnedAppsChanged(): void { refreshApps.restart() }
+        function onIgnoredAppRegexesChanged(): void { refreshApps.restart() }
+    }
+    Connections { target: Config; function onOptionsChanged(): void { refreshApps.restart() }
+        function onReadyChanged(): void { refreshApps.restart() } }
+    function computeApps(): var {
         const identityRulesRevision = root._identityRulesRevision;
         var map = new Map();
         let hasResolvedPinnedApps = false;

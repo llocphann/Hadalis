@@ -1,7 +1,9 @@
+import qs
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.common.perimeter
+import qs.services
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
@@ -10,14 +12,96 @@ LazyLoader {
     id: root
 
     property Item hoverTarget
+    // Optional semantic kind used only when a mature popup is rehosted by the
+    // Abyss output field. Battery naturally inherits "battery" from its owning
+    // module; Launcher uses this override because its visual module is distroIcon.
+    property string liquidPresentationKind: ""
+    // The same feature/content can be hosted by the output's Abyss field.
+    // No second native popup, connector painter or feature implementation.
+    property Item embeddedHost: null
+    function liquidAnchor(item) {
+        for (let ancestor = item; ancestor; ancestor = ancestor.parent)
+            if (ancestor.liquidController) return ancestor
+        return null
+    }
+    readonly property Item _liquidAnchor: liquidAnchor(hoverTarget)
+    readonly property var _liquidController: embeddedHost ? null : _liquidAnchor?.liquidController ?? null
+    property var _hostedController: null
+    property bool _liquidDismissed: false
+    property bool _liquidSemanticHold: false
+    readonly property bool presentationActive: embeddedHost ? embeddedHost.visible
+        : _liquidController ? _anchorReady && _liquidController.presented
+            && (requestedVisible || _lingerVisible) : active
+    function syncLiquidPresentation(): void {
+        if (_hostedController && (_hostedController !== _liquidController || !presentationActive)) {
+            _hostedController.releasePopup(root)
+            _hostedController = null
+        }
+        if (!_liquidController || !presentationActive || !contentItem) return
+        _hostedController = _liquidController
+        _hostedController.presentPopup(root)
+    }
+    function dismissPresentation(): void {
+        _liquidDismissed = true
+        _liquidSemanticHold = false
+        _bodyHovered = false; _contentHovered = false
+        _lingerVisible = false
+        offsetScale = 1
+        requestClose()
+    }
+    property QtObject _liquidPresentationConnections: Connections {
+        target: root
+        function onPresentationActiveChanged() { root.syncLiquidPresentation(); root._syncBarAutoHideLease() }
+        function onContentItemChanged() { root.syncLiquidPresentation() }
+        function on_LiquidControllerChanged() { root.syncLiquidPresentation() }
+    }
+    function syncEmbeddedContent(): void {
+        if (!embeddedHost || !contentItem) return
+        contentItem.parent = embeddedHost
+        contentItem.x = 0; contentItem.y = 0
+        contentItem.width = Qt.binding(() => embeddedHost.width)
+        contentItem.height = Qt.binding(() => embeddedHost.height)
+    }
+    onEmbeddedHostChanged: syncEmbeddedContent()
+    onContentItemChanged: syncEmbeddedContent()
     // Optional rect in hoverTarget-local coordinates. The target itself remains
     // the real visual/source control for output ownership; this rect only narrows
     // tangent placement (for example a right-click point inside a broad Bar zone).
     property var anchorRect: null
+    // Some large connected surfaces (notably workspace Overview) should keep
+    // their Bar ownership but use the output midpoint for tangent placement.
+    // This changes only placement; the real hoverTarget still owns screen,
+    // edge, hover-transfer and cross-axis attachment.
+    property bool centerOnOutput: false
+    // Edge-hosted hot-corner anchors live in tiny layer-shell windows whose
+    // local coordinates start at zero even when the window is physically on the
+    // output's trailing edge. Let those callers pin tangent placement to the
+    // output start/end without weakening hoverTarget screen ownership.
+    property string tangentEdgeOverride: ""
+    property string attachmentEdgeOverride: ""
+    property real attachmentThicknessOverride: -1
     property bool hoverActivates: true
+    property bool barAutoHideHoldEnabled: true
+    property int _barPopupHoverLeaseId: 0
     property bool alternativeVisibleCondition: false
     property bool closeOnOutsideClick: false
+    // Keep the outside-click catcher below the popup when a surface needs to
+    // remain pointer-interactive after the catcher maps (for example a text
+    // editor that enters focus mode after its first click).
+    property bool outsideClickBackdropBelowPopup: false
     property bool keyboardFocus: false
+    // Allow a visible popup to participate in compositor click-to-focus without
+    // proactively stealing focus. This mirrors the working sticky-note and
+    // background editor contract: WlrKeyboardFocus.OnDemand is armed before the
+    // first click, while explicit keyboardFocus remains false until the surface
+    // actually owns the editor.
+    property bool keyboardFocusOnDemand: false
+    // Some click-activated editors become keyboard owners only after the
+    // pointer event that requested editing has already reached the popup.
+    // OnDemand cannot retroactively focus that first click on Niri, so those
+    // surfaces may opt into Exclusive focus once keyboardFocus flips true.
+    // The default remains OnDemand for existing focused popups such as Media.
+    property bool exclusiveKeyboardFocus: false
     property bool _bodyHovered: false
     property bool _contentHovered: false
     readonly property bool popupHovered: root._bodyHovered || root._contentHovered
@@ -34,30 +118,44 @@ LazyLoader {
 
     readonly property bool _barVertical: Config.options?.bar?.vertical ?? false
     readonly property bool _trailingEdge: Config.options?.bar?.bottom ?? false
-    readonly property string _attachmentEdge: root._barVertical
+    readonly property string _defaultAttachmentEdge: root._barVertical
         ? (root._trailingEdge ? "right" : "left")
         : (root._trailingEdge ? "bottom" : "top")
-    // Source controls own tangent placement; the Bar owns the cross-axis edge.
-    // This follows the Caelestia composition principle where differently sized
-    // controls point at one panel boundary instead of creating uneven stems.
-    readonly property real _barSurfaceThickness: root._barVertical
-        ? Appearance.sizes.verticalBarWidth
-        : Appearance.sizes.barHeight
+    readonly property string _attachmentEdge:
+        root._liquidAnchor?.attachedEdge ?? (["top", "bottom", "left", "right"].includes(root.attachmentEdgeOverride)
+            ? root.attachmentEdgeOverride : root._defaultAttachmentEdge)
+    readonly property bool _attachmentVertical:
+        root._attachmentEdge === "left" || root._attachmentEdge === "right"
+    readonly property bool _attachmentTrailing:
+        root._attachmentEdge === "right" || root._attachmentEdge === "bottom"
+    // Source controls own tangent placement; the attached surface owns the
+    // cross-axis edge. Existing Bar callers keep canonical Bar thickness while
+    // Screen Edge callers may provide the physical frame thickness.
+    readonly property real _barSurfaceThickness:
+        root._liquidController?.edgeInsets?.[root._attachmentEdge]
+            ?? (root.attachmentThicknessOverride > 0
+            ? root.attachmentThicknessOverride
+            : (root._attachmentVertical
+                ? Appearance.sizes.verticalBarWidth
+                : Appearance.sizes.barHeight))
     readonly property real _contentPadding: 14
     readonly property real _screenEdgeThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
-    // Caelestia clamps panel tangent placement to the physical border's inner
-    // boundary. The old -seamOverlap inset made corner-attached popups sit 2 px
-    // inside the frame and changed the apparent fillet geometry.
+    // Placement stops at the real Screen Edge inner boundary. Tangent welding
+    // is SDF-only inside ConnectedSurfaceIrisFrame, so content/input never need
+    // to live underneath the physical Screen Edge just to keep the fillet.
     readonly property real _popupScreenMargin: root._screenEdgeThickness
+    // Share the public Screen Edge shadow controls and raw Material shadow ink.
+    // colShadow can become transparent in transparent-material modes, which made
+    // popup depth disappear even while the physical Screen Edge shadow remained.
     readonly property bool _edgeShadowEnabled:
-        Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
+        Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
     readonly property real _edgeShadowExtent: Math.max(0, Math.min(32,
-        Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
+        Math.round(Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15)))
     readonly property real _edgeShadowOpacity: Math.max(0, Math.min(1.0,
-        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70)))
+        Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70)))
     readonly property color _edgeShadowColor:
-        ColorUtils.applyAlpha(Appearance.colors.colShadow, root._edgeShadowOpacity)
+        Qt.alpha(Appearance.m3colors.m3shadow, root._edgeShadowOpacity)
 
     // The visual anchor is the authority for output/window ownership. StyledPopup
     // itself is a LazyLoader and is not a visual child of the bar, so resolving
@@ -70,6 +168,8 @@ LazyLoader {
     readonly property var _anchorScreen: root._anchorWindow
         ? root._anchorWindow.screen : null
     readonly property bool _anchorReady: root.hoverTarget !== null
+        && root.hoverTarget.visible
+        && root.hoverTarget.enabled
         && root._anchorWindow !== null
         && root._anchorScreen !== null
         && root.hoverTarget.width > 0
@@ -79,11 +179,17 @@ LazyLoader {
     // semantic popup state; `active` includes only the short retract tail. While
     // hover-activated, the body itself also counts as the request so the pointer
     // can travel from the bar through the connected shoulder without collapse.
-    readonly property bool requestedVisible: root.alternativeVisibleCondition
+    readonly property bool _rawVisibleRequest: root.alternativeVisibleCondition
         || (root.hoverActivates && (
             (root.hoverTarget
                 && (root.hoverTarget.containsMouse ?? root.hoverTarget.buttonHovered ?? false))
             || root.popupHovered))
+    readonly property bool requestedVisible: !root._liquidDismissed && root._rawVisibleRequest
+    // Abyss semantic ownership includes only the 90 ms compositor hand-off
+    // grace, never the visual retract tail.
+    readonly property bool liquidSemanticVisible:
+        root.requestedVisible || root._liquidSemanticHold
+    on_RawVisibleRequestChanged: if (!root._rawVisibleRequest) root._liquidDismissed = false
     property bool _lingerVisible: false
     // Match Caelestia's panel wrappers: one normalized offsetScale drives the
     // whole slide and reverses naturally from its current value. Geometry keeps
@@ -102,7 +208,45 @@ LazyLoader {
 
     signal requestClose()
 
-    active: root._anchorReady && (root.requestedVisible || root._lingerVisible)
+    active: !root.embeddedHost && !root._liquidController && root._anchorReady && (root.requestedVisible || root._lingerVisible)
+
+    function _syncBarAutoHideLease(): void {
+        if (root._barPopupHoverLeaseId <= 0)
+            return
+        GlobalStates.setBarPopupHoverLease(root._barPopupHoverLeaseId,
+            String(root._anchorScreen?.name ?? ""),
+            root.barAutoHideHoldEnabled && root.presentationActive && root._anchorReady)
+    }
+
+    on_AnchorScreenChanged: root._syncBarAutoHideLease()
+    onBarAutoHideHoldEnabledChanged: root._syncBarAutoHideLease()
+
+    // Hover handlers belong to the lazily-created presentation window. Their
+    // last true state must not survive eviction, anchor replacement or a
+    // hidden bar: otherwise requestedVisible can resurrect a stale popup.
+    onActiveChanged: {
+        if (root._liquidController) return
+        root._syncBarAutoHideLease()
+        if (active) {
+            // A hidden anchor can become ready while requestedVisible was
+            // already true; resume the reveal without waiting for a new hover.
+            if (root.requestedVisible && !root._lingerVisible)
+                root._syncRequestedVisibility()
+            return
+        }
+        root._bodyHovered = false
+        root._contentHovered = false
+        root._liquidSemanticHold = false
+        root._lingerVisible = false
+        root.offsetScale = 1
+    }
+    onHoverTargetChanged: {
+        root._liquidDismissed = false
+        root._liquidSemanticHold = false
+        root._bodyHovered = false
+        root._contentHovered = false
+        root._syncBarAutoHideLease()
+    }
 
     function _beginRetract(): void {
         if (!root._lingerVisible)
@@ -117,6 +261,7 @@ LazyLoader {
     function _syncRequestedVisibility(): void {
         if (root.requestedVisible) {
             const alreadyResident = root._lingerVisible
+            root._liquidSemanticHold = false
             hoverTransferTimer.stop()
             retractTimer.stop()
             root._lingerVisible = true
@@ -146,6 +291,7 @@ LazyLoader {
         // shared seam. Give that hand-off a short grace period so a transient
         // all-false hover state cannot start a retract/reopen oscillation.
         if (root.hoverActivates) {
+            root._liquidSemanticHold = true
             hoverTransferTimer.restart()
             return
         }
@@ -154,17 +300,25 @@ LazyLoader {
     }
 
     onRequestedVisibleChanged: root._syncRequestedVisibility()
-    Component.onCompleted: root._syncRequestedVisibility()
+    Component.onCompleted: {
+        root.syncEmbeddedContent()
+        root._barPopupHoverLeaseId = GlobalStates.allocateBarPopupHoverLease()
+        root._syncBarAutoHideLease()
+        root._syncRequestedVisibility()
+        root.syncLiquidPresentation()
+    }
+    Component.onDestruction: {
+        if (root._hostedController) root._hostedController.releasePopup(root, false)
+        GlobalStates.setBarPopupHoverLease(root._barPopupHoverLeaseId, "", false)
+    }
 
-    // Caelestia's wrappers use one default-spatial animation for both enter and
-    // exit instead of separate accelerate/decelerate curves. Hadalis already
-    // ships the same expressive-default-spatial token as elementMove.
+    // Immutable ii surface-motion contract: slide only, monotonic, no
+    // spring/back/overshoot and no theme/config curve override.
     Behavior on offsetScale {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+            duration: SurfaceMotion.duration
+            easing.type: SurfaceMotion.easingType
         }
     }
 
@@ -176,6 +330,7 @@ LazyLoader {
         interval: 90
         repeat: false
         onTriggered: {
+            root._liquidSemanticHold = false
             if (!root.requestedVisible)
                 root._beginRetract()
         }
@@ -183,7 +338,7 @@ LazyLoader {
 
     property QtObject _retractTimerObject: Timer {
         id: retractTimer
-        interval: Math.max(1, Appearance.animation.elementMove.duration + 16)
+        interval: Math.max(1, SurfaceMotion.duration + 16)
         repeat: false
         onTriggered: {
             if (!root.requestedVisible && root.offsetScale >= 0.999)
@@ -219,17 +374,31 @@ LazyLoader {
         const thickness = Math.max(1, Number(root._barSurfaceThickness ?? 1))
 
         // Preserve the source/sub-rect tangent center/extent, but normalize the
-        // cross-axis boundary to the real Bar surface. A click-point rect can
-        // therefore position a context menu without becoming the ownership anchor.
-        if (root._barVertical) {
-            const barX = root._trailingEdge
+        // cross-axis boundary to the real Bar surface. Large surfaces may opt
+        // into the output midpoint without replacing the real Bar ownership
+        // anchor — important for workspace Overview, which should be visually
+        // centered even when the hovered workspace button sits near an edge.
+        if (root._attachmentVertical) {
+            const barX = root._attachmentTrailing
                 ? Math.max(0, outputWidth - thickness) : 0
-            return Qt.rect(barX, mapped.y, thickness, localHeight)
+            const tangentY = root.centerOnOutput
+                ? Math.max(0, (outputHeight - localHeight) / 2)
+                : root.tangentEdgeOverride === "start" ? 0
+                : root.tangentEdgeOverride === "end"
+                    ? Math.max(0, outputHeight - localHeight)
+                : mapped.y
+            return Qt.rect(barX, tangentY, thickness, localHeight)
         }
 
-        const barY = root._trailingEdge
+        const barY = root._attachmentTrailing
             ? Math.max(0, outputHeight - thickness) : 0
-        return Qt.rect(mapped.x, barY, localWidth, thickness)
+        const tangentX = root.centerOnOutput
+            ? Math.max(0, (outputWidth - localWidth) / 2)
+            : root.tangentEdgeOverride === "start" ? 0
+            : root.tangentEdgeOverride === "end"
+                ? Math.max(0, outputWidth - localWidth)
+            : mapped.x
+        return Qt.rect(tangentX, barY, localWidth, thickness)
     }
 
     // Fullscreen transparent backdrop for Niri to detect clicks outside
@@ -242,7 +411,11 @@ LazyLoader {
         color: Qt.rgba(0, 0, 0, 1/255)
         exclusiveZone: 0
         exclusionMode: ExclusionMode.Ignore
-        WlrLayershell.layer: WlrLayer.Overlay
+        // The output field is already Overlay while hosting this content. A
+        // separately mapped Overlay catcher could cover its valid input and
+        // dismiss an inside click before a tab or button ever receives it.
+        WlrLayershell.layer: root._liquidController !== null || root.outsideClickBackdropBelowPopup
+            ? WlrLayer.Top : WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell:popup-catcher"
         anchors { top: true; bottom: true; left: true; right: true }
         MouseArea {
@@ -260,7 +433,8 @@ LazyLoader {
         exclusionMode: ExclusionMode.Ignore
         exclusiveZone: 0
         visible: root.active
-        focusable: root.keyboardFocus && root.requestedVisible
+        focusable: root.requestedVisible
+            && (root.keyboardFocus || root.keyboardFocusOnDemand)
 
         anchors {
             top: true
@@ -271,8 +445,13 @@ LazyLoader {
 
         WlrLayershell.namespace: "quickshell:popup"
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: root.keyboardFocus && root.requestedVisible
-            ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: !root.requestedVisible
+            ? WlrKeyboardFocus.None
+            : root.keyboardFocus && root.exclusiveKeyboardFocus
+                ? WlrKeyboardFocus.Exclusive
+                : (root.keyboardFocus || root.keyboardFocusOnDemand)
+                    ? WlrKeyboardFocus.OnDemand
+                    : WlrKeyboardFocus.None
 
         Component.onCompleted: root.presentationWindow = popupWindow
         Component.onDestruction: {
@@ -285,7 +464,12 @@ LazyLoader {
         // the shared popup so focused surfaces (notably Media) do not fall back
         // to a detached-window implementation just to own keyboard focus.
         CompositorFocusGrab {
-            active: root.keyboardFocus && root.requestedVisible
+            // Layer-shell keyboard interactivity is authoritative on Niri.
+            // CompositorFocusGrab is the Hyprland compatibility path only; if
+            // activated on Niri it can immediately clear and undo a legitimate
+            // TextArea focus transition.
+            active: CompositorService.isHyprland
+                && root.keyboardFocus && root.requestedVisible
             windows: [popupWindow]
             onCleared: root.requestClose()
         }
@@ -306,12 +490,10 @@ LazyLoader {
             // Caelestia composes popouts directly into the edge surface. Keep
             // the shared geometry, but remove the detached neck/gap entirely.
             connectorLength: 0
-            // Separate layer-shell surfaces cannot reproduce Caelestia's SDF
-            // border sink by overlapping under the Bar: the reveal clip would
-            // cut that overlap away and leave a pinched shoulder. Start the
-            // popup exactly at the attachment boundary so the flattened flare
-            // owns the full visible contact width.
-            seamOverlap: 0
+            // Match the accepted G2 morphology: the SDF body overlaps its
+            // primary owner by the locked weld depth, while reveal/paint/input
+            // clipping still starts at the real Bar/Screen Edge boundary.
+            seamOverlap: PerimeterTokens.irisWeldDepth
             progress: root.revealProgress
             devicePixelRatio: popupWindow.devicePixelRatio
         }
@@ -344,15 +526,15 @@ LazyLoader {
             id: popupRevealClip
             geometry: geometry
 
-            ConnectedSurfaceFrame {
+            ConnectedSurfaceIrisFrame {
                 id: frame
                 anchors.fill: parent
                 geometry: geometry
                 fillColor: root._surfaceColor
                 borderColor: root._borderColor
                 borderWidth: root._borderWidth
-                connectorBorderWidth: 0
-                connectorVisible: false
+                fuseDepth: PerimeterTokens.irisFuseDepth
+                externalFrameThickness: root._screenEdgeThickness
                 // Own hover on the complete popup body, including its visual
                 // padding, but not on the reveal viewport's empty screen area.
                 // This closes the Bar→popup dead zone without turning the whole
@@ -372,10 +554,6 @@ LazyLoader {
                     || directEdgeAttachment.atLeft
                 joinRight: root._attachmentEdge === "right"
                     || directEdgeAttachment.atRight
-                shadowTop: !frame.joinTop
-                shadowBottom: !frame.joinBottom
-                shadowLeft: !frame.joinLeft
-                shadowRight: !frame.joinRight
             }
 
             ConnectedSurfaceContentHost {
@@ -389,7 +567,7 @@ LazyLoader {
                 // Track the actual content plane as well as the decorative body.
                 // Interactive children (notably StyledSwitch/MouseArea controls)
                 // sit above ConnectedSurfaceFrame and can otherwise make the
-                // frame's HoverHandler report a transient leave while the pointer
+                // iRiS body's HoverHandler report a transient leave while the pointer
                 // is still visibly inside the popup, causing retract/reopen jitter.
                 HoverHandler {
                     enabled: root.active
@@ -398,11 +576,11 @@ LazyLoader {
             }
         }
 
-        ConnectedSurfaceMask {
+        ConnectedSurfaceBodyMask {
             id: connectedMask
             geometry: geometry
             bodyItem: frame.bodyItem
-            connectorItem: frame.connectorItem
+            visibleBodyRect: frame.visibleBodyRect
             inputEnabled: root.requestedVisible
                 || (root.hoverActivates && root._lingerVisible)
         }

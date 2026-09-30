@@ -19,6 +19,7 @@ Loader {
     property real padding: 4
     property bool noSmoothClosing: false
     property bool closeOnFocusLost: true
+    property bool keyboardGrab: true
     property bool closeOnHoverLost: true
     property bool closeOnHoverLostAfterEntered: false
     property int closeOnHoverLostDelay: 500  // ms before closing when hover lost (waffle uses 500)
@@ -26,13 +27,19 @@ Loader {
     property bool closeOnOutsideClick: false
     property var anchorRect: null
     property var popupAdjustment: null
-    property bool scaleContent: Appearance.motion.popupReveal.enableScale
+    property bool scaleContent: Config.options?.panelFamily === "abyss" ? false : Appearance.motion.popupReveal.enableScale
     signal focusCleared()
 
     property real visualMargin: 8
     property bool popupAbove: true  // true = popup appears above anchor, false = below
     property int popupSide: 0  // For horizontal popup: Edges.Left or Edges.Right, 0 = vertical
     property real ambientShadowWidth: 1
+    property color panelFallbackColor: Config.options?.panelFamily === "abyss"
+        ? Qt.alpha(Appearance.colors.colLayer2Base,.92)
+        : Appearance.colors.colSurfaceContainer
+    property real panelRadius: Appearance.rounding.normal
+    property real panelBorderWidth: Config.options?.panelFamily === "abyss" ? 0 : 1
+    property color panelBorderColor: Appearance.colors.colSurfaceContainerHighest
     readonly property bool hasIcons: model.some(item => item.iconName !== undefined && item.iconName !== "")
 
     onFocusCleared: {
@@ -76,7 +83,7 @@ Loader {
     sourceComponent: PopupWindow {
         id: popupWindow
         visible: true
-        grabFocus: CompositorService.isNiri
+        grabFocus: root.keyboardGrab && CompositorService.isNiri
         property bool closing: false
         property bool popupWasHovered: false
 
@@ -232,12 +239,12 @@ Loader {
                 leftMargin: popupWindow.isHorizontalPopup && !popupWindow.isLeftSide ? popupWindow.sourceEdgeMargin : (root.ambientShadowWidth + root.visualMargin)
                 rightMargin: popupWindow.isHorizontalPopup && popupWindow.isLeftSide ? popupWindow.sourceEdgeMargin : (root.ambientShadowWidth + root.visualMargin)
             }
-            fallbackColor: Appearance.colors.colSurfaceContainer
+            fallbackColor: root.panelFallbackColor
             inirColor: Appearance.inir.colLayer2
             auroraTransparency: Appearance.aurora.popupTransparentize
-            radius: Appearance.rounding.normal
-            border.width: 1
-            border.color: Appearance.colors.colSurfaceContainerHighest
+            radius: root.panelRadius
+            border.width: root.panelBorderWidth
+            border.color: root.panelBorderColor
             opacity: Appearance.motion.popupReveal.enableFade ? (shown ? 1 : 0) : 1
             scale: shown ? 1
                 : (root.scaleContent

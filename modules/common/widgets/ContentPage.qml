@@ -5,14 +5,17 @@ import qs.modules.common.widgets
 
 StyledFlickable {
     id: root
-    property real bottomContentPadding: 48
+    property bool embedded: false
+    property real bottomContentPadding: embedded ? 0 : 48
     // Metadatos opcionales para páginas de Settings
     property int settingsPageIndex: -1
     property string settingsPageName: ""
 
     default property alias contentData: contentColumn.data
 
-    clip: true
+    clip: !embedded
+    interactive: !embedded
+    implicitHeight: embedded ? contentHeight + 1 : 0
     contentHeight: contentColumn.implicitHeight + root.bottomContentPadding
     implicitWidth: contentColumn.implicitWidth
 
@@ -21,6 +24,7 @@ StyledFlickable {
     // margins; beyond the cap, center instead of stretching indefinitely.
     readonly property real maxContentWidth: Math.min(1200, Math.max(880, root.width - 64))
     readonly property real _horizontalMargin: {
+        if (root.embedded) return 0
         const w = root.width
         if (w > maxContentWidth + 64) return (w - maxContentWidth) / 2
         if (w > 900) return 32
@@ -34,7 +38,7 @@ StyledFlickable {
             top: parent.top
             left: parent.left
             right: parent.right
-            topMargin: 16
+            topMargin: root.embedded ? 0 : 16
             bottomMargin: 16
             leftMargin: root._horizontalMargin
             rightMargin: root._horizontalMargin

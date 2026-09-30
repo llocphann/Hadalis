@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
+import "SettingsPageLoadingState.js" as PageLoadState
 
 Item {
     id: root
@@ -25,10 +26,12 @@ Item {
     readonly property bool loading: {
         void(_statusRevision)
         const currentLoader = _loaderFor(_currentIndex)
-        if (currentLoader?.status === Loader.Loading)
-            return true
         const pendingLoader = _loaderFor(_pendingIndex)
-        return pendingLoader?.status === Loader.Loading
+        return PageLoadState.shouldShow(
+            loadEnabled, requestedIndex, pages.length,
+            _sourceFor(requestedIndex) !== "",
+            _errorIndex, _currentIndex, currentLoader?.status ?? Loader.Null,
+            _pendingIndex, pendingLoader?.status ?? Loader.Null, Loader.Ready)
     }
 
     property int _currentIndex: -1
@@ -39,13 +42,24 @@ Item {
     property var _lruIndices: []
     property int _statusRevision: 0
     property int _errorIndex: -1
+    // Invalidate deferred page work whenever navigation/reset moves on. A
+    // callback queued by a destroyed Settings generation must never operate on
+    // a newly reopened pending Loader.
+    property int _requestGeneration: 0
 
     clip: _transitionRunning
 
     function _sourceFor(index) {
         if (index < 0 || index >= pages.length)
             return ""
-        return pages[index]?.component ?? ""
+        const source = pages[index]?.component ?? ""
+        // Settings chrome resolves registry-relative pages through
+        // Quickshell.shellPath(), yielding absolute local paths. Loader URLs on
+        // file:// can reuse Qt's compiled QML disk cache across page eviction
+        // and re-entry instead of recompiling through the shell VFS path.
+        if (source.startsWith("/"))
+            return "file://" + source
+        return source
     }
 
     function _loaderFor(index) {
@@ -111,6 +125,7 @@ Item {
     }
 
     function _reset() {
+        _requestGeneration++
         switchAnimation.stop()
         _transitionRunning = false
         _currentIndex = -1
@@ -122,12 +137,30 @@ Item {
         _statusRevision++
     }
 
-    function _requestPage() {
+    function _scheduleRequestPage() {
+        const generation = ++_requestGeneration
+        Qt.callLater(function() {
+            if (generation !== root._requestGeneration)
+                return
+            root._requestPage(generation)
+        })
+    }
+
+    function _requestPage(generation) {
+        if (generation !== undefined
+                && generation !== root._requestGeneration)
+            return
         if (!loadEnabled || requestedIndex < 0 || requestedIndex >= pages.length)
             return
 
-        if (_transitionRunning)
+        if (_transitionRunning) {
             switchAnimation.complete()
+            // complete() may finish the old swap and schedule a newer request.
+            // Do not let this now-stale invocation continue into that request.
+            if (generation !== undefined
+                    && generation !== root._requestGeneration)
+                return
+        }
 
         if (_currentIndex < 0) {
             _currentIndex = requestedIndex
@@ -174,10 +207,15 @@ Item {
         // keeps completed revisits cheap without blocking navigation on creation.
         _retain(_pendingIndex)
 
+        const pendingIndex = _pendingIndex
+        const pendingGeneration = _requestGeneration
         Qt.callLater(function() {
-            const loader = root._loaderFor(root._pendingIndex)
+            if (pendingGeneration !== root._requestGeneration
+                    || pendingIndex !== root._pendingIndex)
+                return
+            const loader = root._loaderFor(pendingIndex)
             if (loader)
-                root._handleStatus(root._pendingIndex, loader.status)
+                root._handleStatus(pendingIndex, loader.status)
         })
     }
 
@@ -220,7 +258,7 @@ Item {
                 staleLoader.x = 0
             }
             _pendingIndex = -1
-            Qt.callLater(root._requestPage)
+            root._scheduleRequestPage()
             return
         }
 
@@ -268,22 +306,23 @@ Item {
         _trimCache()
 
         if (requestedIndex !== _currentIndex)
-            Qt.callLater(root._requestPage)
+            root._scheduleRequestPage()
     }
 
-    onRequestedIndexChanged: Qt.callLater(root._requestPage)
+    onRequestedIndexChanged: {
+        root._scheduleRequestPage()
+    }
     onLoadEnabledChanged: {
         if (loadEnabled)
-            Qt.callLater(root._requestPage)
+            root._scheduleRequestPage()
         else
             _reset()
     }
     onCacheLimitChanged: _trimCache()
     Component.onCompleted: {
         SettingsArrangement.migrateLegacyPageIndices()
-        Qt.callLater(root._requestPage)
+        root._scheduleRequestPage()
     }
-
     Connections {
         target: Config
         function onReadyChanged(): void {
@@ -311,6 +350,9 @@ Item {
                 && !root._transitionRunning
             z: index === root._pendingIndex ? 1 : 0
             layer.enabled: root._transitionRunning && visible
+
+            // Register each real Loader without forcing item creation. Cached
+            // pages remain loaded-hidden; evicted pages become unloaded.
 
             onStatusChanged: root._handleStatus(index, status)
             onActiveChanged: {
@@ -373,7 +415,7 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 materialIcon: "refresh"
                 mainText: Translation.tr("Retry")
-                onClicked: root._requestPage()
+                onClicked: root._scheduleRequestPage()
             }
         }
     }

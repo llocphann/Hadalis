@@ -14,9 +14,9 @@ import qs.modules.sessionScreen
 import qs.modules.wallpaperSelector
 import qs.modules.wallpaperLauncher
 import qs.modules.ii.overlay
-import qs.modules.clipboard as ClipboardModule
 
 import qs.modules.waffle.actionCenter
+import qs.modules.waffle.looks
 import qs.modules.waffle.altSwitcher as WaffleAltSwitcherModule
 import qs.modules.waffle.background as WaffleBackgroundModule
 import qs.modules.waffle.bar as WaffleBarModule
@@ -51,47 +51,43 @@ Item {
 
     // Immediate panels — visible at first frame or must catch early events
     component PanelLoader: LazyLoader {
+        id: panelLoader
         required property string identifier
         property bool extraCondition: true
-        active: Config.ready && (Config.options?.enabledPanels ?? []).includes(identifier) && extraCondition
+        readonly property bool enabledPanel: Config.ready
+            && (Config.options?.enabledPanels ?? []).includes(identifier)
+            && extraCondition
+        active: enabledPanel
     }
 
     // Deferred panels — loaded asynchronously after first frame to reduce boot contention
     component DeferredPanelLoader: LazyLoader {
+        id: deferredPanelLoader
         required property string identifier
         property bool extraCondition: true
-        loading: Config.ready && GlobalStates.shellEntryReady
-            && (Config.options?.enabledPanels ?? []).includes(identifier) && extraCondition
-        activeAsync: Config.ready && GlobalStates.deferredPanelsReady && (Config.options?.enabledPanels ?? []).includes(identifier) && extraCondition
+        readonly property bool enabledPanel: Config.ready
+            && (Config.options?.enabledPanels ?? []).includes(identifier)
+            && extraCondition
+        loading: Config.ready && GlobalStates.shellEntryReady && enabledPanel
+        activeAsync: Config.ready && GlobalStates.deferredPanelsReady && enabledPanel
     }
 
     component OnDemandPanelLoader: LazyLoader {
         id: onDemandLoader
         required property string identifier
         required property bool open
-        property bool retainAfterUse: false
-        property bool used: false
         property int closeGraceMs: 250
-        property int retainIdleMs: 5 * 60 * 1000
         property bool resident: open
         property Timer closeGrace: Timer {
             interval: onDemandLoader.closeGraceMs
-            onTriggered: onDemandLoader.resident = onDemandLoader.open
-        }
-        property Timer retainIdle: Timer {
-            interval: onDemandLoader.retainIdleMs
             onTriggered: onDemandLoader.resident = onDemandLoader.open
         }
         readonly property bool enabledPanel: Config.ready
             && (Config.options?.enabledPanels ?? []).includes(identifier)
         onOpenChanged: {
             if (open) {
-                used = true
                 closeGrace.stop()
-                retainIdle.stop()
                 resident = true
-            } else if (retainAfterUse && used) {
-                retainIdle.restart()
             } else {
                 closeGrace.restart()
             }
@@ -107,8 +103,8 @@ Item {
     PanelLoader { identifier: "wOnScreenDisplay"; component: WaffleOSDModule.WaffleOSD {} }
 
     // === Deferred panels ===
-    OnDemandPanelLoader { identifier: "wStartMenu"; open: GlobalStates.searchOpen; retainAfterUse: true; component: WaffleStartMenu {} }
-    OnDemandPanelLoader { identifier: "wActionCenter"; open: GlobalStates.waffleActionCenterOpen; retainAfterUse: true; component: WaffleActionCenter {} }
+    OnDemandPanelLoader { identifier: "wStartMenu"; open: GlobalStates.searchOpen; component: WaffleStartMenu {} }
+    OnDemandPanelLoader { identifier: "wActionCenter"; open: GlobalStates.waffleActionCenterOpen; closeGraceMs: Looks.transition.enabled ? Looks.transition.duration.medium + 40 : 40; component: WaffleActionCenter {} }
     OnDemandPanelLoader { identifier: "wNotificationCenter"; open: GlobalStates.waffleNotificationCenterOpen; component: WaffleNotificationCenter {} }
     OnDemandPanelLoader { identifier: "wWidgets"; open: GlobalStates.waffleWidgetsOpen && (Config.options?.waffles?.modules?.widgets ?? true); component: WaffleWidgets {} }
     DeferredPanelLoader { identifier: "wLock"; component: Lock {} }
@@ -121,15 +117,14 @@ Item {
     OnDemandPanelLoader { identifier: "iiCheatsheet"; open: GlobalStates.cheatsheetOpen; component: Cheatsheet {} }
     OnDemandPanelLoader { identifier: "iiOnScreenKeyboard"; open: GlobalStates.oskOpen; component: OnScreenKeyboard {} }
     OnDemandPanelLoader { identifier: "iiOverlay"; open: GlobalStates.overlayOpen || OverlayContext.hasPinnedWidgets || OverlayContext.nativeDialogOpen; component: Overlay {} }
-    OnDemandPanelLoader { identifier: "iiOverview"; open: GlobalStates.overviewOpen; retainAfterUse: true; closeGraceMs: 300; component: Overview {} }
+    OnDemandPanelLoader { identifier: "iiOverview"; open: GlobalStates.overviewOpen; closeGraceMs: Appearance.animation.elementMoveExit.duration + 80; component: Overview {} }
 
     DeferredPanelLoader { identifier: "iiRegionSelector"; component: RegionSelector {} }
     DeferredPanelLoader { identifier: "iiScreenCorners"; component: ScreenCorners {} }
 
-    OnDemandPanelLoader { identifier: "iiWallpaperSelector"; open: GlobalStates.wallpaperSelectorOpen; retainAfterUse: true; closeGraceMs: 250; component: WallpaperSelector {} }
-    OnDemandPanelLoader { identifier: "iiWallpaperLauncher"; open: GlobalStates.wallpaperLauncherOpen; retainAfterUse: true; closeGraceMs: 250; component: WallpaperLauncher {} }
-    OnDemandPanelLoader { identifier: "iiCoverflowSelector"; open: GlobalStates.coverflowSelectorOpen; retainAfterUse: true; closeGraceMs: 300; component: WallpaperCoverflow {} }
-    DeferredPanelLoader { identifier: "iiClipboard"; extraCondition: Config.options?.panelFamily !== "waffle"; component: ClipboardModule.ClipboardPanel {} }
+    OnDemandPanelLoader { identifier: "iiWallpaperSelector"; open: GlobalStates.wallpaperSelectorOpen; closeGraceMs: 250; component: WallpaperSelector {} }
+    OnDemandPanelLoader { identifier: "iiWallpaperLauncher"; open: GlobalStates.wallpaperLauncherOpen; closeGraceMs: Appearance.animationsEnabled ? Math.max(240, Appearance.animation.elementMoveExit.duration + 60) : 40; component: WallpaperLauncher {} }
+    OnDemandPanelLoader { identifier: "iiCoverflowSelector"; open: GlobalStates.coverflowSelectorOpen; closeGraceMs: Appearance.animationsEnabled ? Appearance.calcEffectiveDuration(450) + 40 : 40; component: WallpaperCoverflow {} }
     OnDemandPanelLoader { identifier: "iiRecordingOsd"; open: RecorderStatus.isRecording; closeGraceMs: 250; component: RecordingOsd {} }
 
     OnDemandPanelLoader {
@@ -140,6 +135,7 @@ Item {
     }
 
     LazyLoader {
+        id: waffleClipboardLoader
         loading: Config.ready && GlobalStates.shellEntryReady
             && Config.options?.panelFamily === "waffle"
         activeAsync: Config.ready && GlobalStates.deferredPanelsReady && Config.options?.panelFamily === "waffle"
@@ -147,6 +143,7 @@ Item {
     }
 
     LazyLoader {
+        id: waffleAltSwitcherLoader
         loading: Config.ready && GlobalStates.shellEntryReady
             && Config.options?.panelFamily === "waffle"
             && root.waffleAltSwitcherVisual

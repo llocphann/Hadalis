@@ -394,15 +394,21 @@ AbstractBackgroundWidget {
                 ? animatedImage.status === AnimatedImage.Error
                 : slot.isStaticImage && staticImage.status === Image.Error)
 
+        function _videoPlayer(): var {
+            return videoPlayerLoader.item
+        }
+
         function syncVideoPlayback(): void {
             if (!slot.isVideo || slot.sourcePath.length === 0) return
+            const player = slot._videoPlayer()
+            if (!player) return
             if (slot.shouldPlay && root.powerActive && root.visible) {
-                videoPlayer.play()
+                player.play()
             } else if (slot.videoHasFrame) {
-                videoPlayer.pause()
+                player.pause()
             } else {
                 // Decode one frame before pausing to avoid a black surface.
-                videoPlayer.play()
+                player.play()
             }
         }
 
@@ -463,14 +469,22 @@ AbstractBackgroundWidget {
             }
         }
 
-        MediaPlayer {
-            id: videoPlayer
-            source: slot.isVideo ? root.fileUrl(slot.sourcePath) : ""
-            videoOutput: videoOutput
-            loops: MediaPlayer.Infinite
-            onSourceChanged: {
-                slot.videoHasFrame = false
-                Qt.callLater(slot.syncVideoPlayback)
+        // MediaSlot also serves static images and GIFs. Construct the
+        // QtMultimedia pipeline only while this slot actually owns a video;
+        // outgoing video slots stay alive until staleSlotCleanup clears them.
+        Loader {
+            id: videoPlayerLoader
+            active: slot.isVideo && slot.sourcePath.length > 0
+            asynchronous: false
+            onLoaded: slot.syncVideoPlayback()
+            sourceComponent: MediaPlayer {
+                source: root.fileUrl(slot.sourcePath)
+                videoOutput: videoOutput
+                loops: MediaPlayer.Infinite
+                onSourceChanged: {
+                    slot.videoHasFrame = false
+                    Qt.callLater(slot.syncVideoPlayback)
+                }
             }
         }
     }

@@ -1,8 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Effects
-import Quickshell
 import Qt5Compat.GraphicalEffects as GE
 import qs
 import qs.services
@@ -34,8 +32,7 @@ AbstractOverlayWidget {
     readonly property string materialSymbol: modelData.materialSymbol ?? "widgets"
     property string title: identifier.replace(/([A-Z])/g, " $1").replace(/^./, function(str){ return str.toUpperCase(); })
     property var persistentStateEntry: Persistent.states.overlay[identifier]
-    property real radius: Appearance.regaliaEverywhere
-        ? Appearance.regalia.roundLarge : Appearance.rounding.windowRounding
+    property real radius: Appearance.rounding.windowRounding
     property real minimumWidth: contentItem.implicitWidth
     property real minimumHeight: contentItem.implicitHeight
     property real resizeMargin: 8
@@ -202,74 +199,14 @@ AbstractOverlayWidget {
             fill: parent
             margins: root.resizeMargin
         }
-        color: {
-            if (Appearance.angelEverywhere || Appearance.regaliaEverywhere)
-                return "transparent"
-            const baseColor = Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                            : Appearance.auroraEverywhere ? Appearance.colors.colLayer1Base
-                            : Appearance.colors.colLayer1
-            return root.fancyBorders && GlobalStates.overlayOpen
-                ? ColorUtils.applyAlpha(baseColor, root.panelBaseOpacity)
-                : "transparent"
-        }
-        radius: Appearance.regaliaEverywhere ? Appearance.regalia.roundLarge
-            : Appearance.angelEverywhere ? Appearance.angel.roundingNormal : root.radius
-        border.color: Appearance.regaliaEverywhere ? "transparent"
-            : Appearance.angelEverywhere ? Appearance.angel.colBorder
-            : ColorUtils.transparentize(Appearance.colors.colOutlineVariant, GlobalStates.overlayOpen ? 0 : 1)
-        border.width: Appearance.regaliaEverywhere ? 0
-            : Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : 1
+        color: root.fancyBorders && GlobalStates.overlayOpen
+            ? ColorUtils.applyAlpha(Appearance.colors.colLayer1, root.panelBaseOpacity)
+            : "transparent"
+        radius: root.radius
+        border.color: ColorUtils.transparentize(
+            Appearance.colors.colOutlineVariant, GlobalStates.overlayOpen ? 0 : 1)
+        border.width: 1
         clip: true
-
-        RegaliaPlate {
-            anchors.fill: parent
-            visible: root.fancyBorders && Appearance.regaliaEverywhere && GlobalStates.overlayOpen
-            opacity: root.panelBaseOpacity
-            fillColor: Appearance.regalia.bg1
-            radius: border.radius
-            inset: Appearance.regalia.panelInset
-            deepFrame: true
-            glassEnabled: true
-        }
-
-        // Wallpaper blur for angel style — same technique as GlassBackground
-        Image {
-            id: widgetBlurWallpaper
-            x: -(root.x + root.resizeMargin)
-            y: -(root.y + root.resizeMargin)
-            width: Quickshell.screens[0]?.width ?? 1920
-            height: Quickshell.screens[0]?.height ?? 1080
-            visible: root.fancyBorders && Appearance.angelEverywhere && GlobalStates.overlayOpen
-            opacity: root.panelBaseOpacity
-            source: visible ? Wallpapers.effectiveWallpaperUrl : ""
-            fillMode: Image.PreserveAspectCrop
-            cache: true
-            sourceSize.width: Quickshell.screens[0]?.width ?? 1920
-            sourceSize.height: Quickshell.screens[0]?.height ?? 1080
-            asynchronous: true
-            layer.enabled: Appearance.effectsEnabled && Appearance.angelEverywhere
-            layer.effect: MultiEffect {
-                source: widgetBlurWallpaper
-                anchors.fill: source
-                saturation: Appearance.angel.blurSaturation * Appearance.angel.colorStrength
-                blurEnabled: Appearance.effectsEnabled
-                blurMax: 64
-                blur: Appearance.effectsEnabled ? Appearance.angel.blurIntensity : 0
-            }
-        }
-        Rectangle {
-            anchors.fill: parent
-            visible: root.fancyBorders && Appearance.angelEverywhere && GlobalStates.overlayOpen
-            color: ColorUtils.applyAlpha(
-                ColorUtils.transparentize(Appearance.colors.colLayer0Base, Appearance.angel.overlayOpacity),
-                root.panelBaseOpacity)
-        }
-
-        AngelPartialBorder {
-            targetRadius: border.radius
-            visible: root.fancyBorders && Appearance.angelEverywhere && GlobalStates.overlayOpen
-            coverage: 0.5
-        }
 
         layer.enabled: GlobalStates.overlayOpen && root.fancyBorders
         layer.effect: GE.OpacityMask {
@@ -293,11 +230,7 @@ AbstractOverlayWidget {
                 Layout.fillWidth: true
                 implicitWidth: titleBarRow.implicitWidth + root.padding * 2
                 implicitHeight: titleBarRow.implicitHeight + root.padding * 2
-                color: root.fancyBorders || Appearance.regaliaEverywhere ? "transparent"
-                     : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                     : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                     : Appearance.auroraEverywhere ? Appearance.colors.colLayer1Base
-                     : Appearance.colors.colLayer1
+                color: root.fancyBorders ? "transparent" : Appearance.colors.colLayer1
                 // border.color: Appearance.colors.colOutlineVariant
                 // border.width: 1
                 Behavior on opacity {
@@ -388,12 +321,9 @@ AbstractOverlayWidget {
         implicitWidth: implicitHeight
         padding: 0
 
-        colBackgroundToggled: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-            : Appearance.colors.colSecondaryContainer
-        colBackgroundToggledHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
-            : Appearance.colors.colSecondaryContainerHover
-        colRippleToggled: Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
-            : Appearance.colors.colSecondaryContainerActive
+        colBackgroundToggled: Appearance.colors.colSecondaryContainer
+        colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
+        colRippleToggled: Appearance.colors.colSecondaryContainerActive
 
         contentItem: Item {
             anchors.centerIn: parent
@@ -408,8 +338,8 @@ AbstractOverlayWidget {
                 fill: titlebarButton.toggled
                 animateFill: true
                 color: titlebarButton.toggled
-                    ? (Appearance.angelEverywhere ? Appearance.angel.colPrimary : Appearance.colors.colOnSecondaryContainer)
-                    : (Appearance.angelEverywhere ? Appearance.angel.colText : Appearance.colors.colOnSurface)
+                    ? Appearance.colors.colOnSecondaryContainer
+                    : Appearance.colors.colOnSurface
             }
         }
     }

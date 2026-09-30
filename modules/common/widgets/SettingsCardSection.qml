@@ -12,6 +12,9 @@ Item {
     property string icon: ""
     property bool expanded: true
     property bool collapsible: true
+    // Embedded consumers can reuse only the section content without inheriting
+    // Settings' collapsible title/drop-down chrome.
+    property bool showHeader: true
     property int animationDuration: Appearance.animation.elementMove.duration
     property string settingsTaskSection: ""
     default property alias contentData: sectionContent.data
@@ -88,7 +91,7 @@ Item {
     // Subtle Material left accent bar when expanded.
     Rectangle {
         id: accentBar
-        visible: true
+        visible: root.showHeader
         anchors {
             left: card.left
             top: card.top
@@ -124,7 +127,7 @@ Item {
         implicitHeight: cardColumn.implicitHeight + SettingsMaterialPreset.cardPadding * 2
         radius: SettingsMaterialPreset.cardRadius
         color: SettingsMaterialPreset.cardColor
-        border.width: 1
+        border.width: Config.options?.panelFamily === "abyss" ? 0 : 1
         border.color: SettingsMaterialPreset.cardBorderColor
 
         Behavior on color {
@@ -152,6 +155,7 @@ Item {
 
             Rectangle {
                 id: headerBackground
+                visible: root.showHeader
                 Layout.fillWidth: true
                 implicitHeight: headerRow.implicitHeight + SettingsMaterialPreset.headerPaddingY * 2
                 radius: SettingsMaterialPreset.headerRadius

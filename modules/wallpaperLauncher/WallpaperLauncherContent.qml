@@ -77,7 +77,7 @@ FocusScope {
 
     function _commitMode(nextMode: string): void {
         GlobalStates.wallpaperLauncherMode = nextMode
-        searchField.text = ""
+        GlobalStates.wallpaperLauncherSearchText = ""
         Qt.callLater(carousel.syncCurrentIndexAndPreview)
     }
 
@@ -163,8 +163,8 @@ FocusScope {
             searchField.forceActiveFocus()
             event.accepted = true
         } else if (event.text.length > 0 && !(event.modifiers & Qt.ControlModifier)) {
-            searchField.text += event.text
-            searchField.cursorPosition = searchField.text.length
+            GlobalStates.wallpaperLauncherSearchText += event.text
+            searchField.cursorPosition = GlobalStates.wallpaperLauncherSearchText.length
             searchField.forceActiveFocus()
             event.accepted = true
         }
@@ -251,10 +251,10 @@ FocusScope {
                 }
 
                 IconToolbarButton {
-                    visible: root.mode === "animated"
+                    visible: root.mode === "animated" && !root.loading
                     implicitWidth: Appearance.sizes.baseBarHeight
                     implicitHeight: Appearance.sizes.baseBarHeight
-                    text: root.loading ? "progress_activity" : "refresh"
+                    text: "refresh"
                     enabled: !root.loading
                     onClicked: {
                         root.refreshLibrary(true)
@@ -263,10 +263,8 @@ FocusScope {
                     StyledToolTip { text: Translation.tr("Refresh animated wallpapers") }
                 }
 
-                StyledText {
+                LoadingText {
                     visible: root.loading
-                    text: Translation.tr("Processing...")
-                    font.pixelSize: Appearance.font.pixelSize.smaller
                     color: Appearance.colors.colSecondary
                 }
             }
@@ -375,6 +373,11 @@ FocusScope {
                     Layout.fillWidth: true
                     implicitHeight: Appearance.sizes.baseBarHeight
                     leftPadding: Appearance.sizes.spacingLarge * 2
+                    text: GlobalStates.wallpaperLauncherSearchText
+                    onTextChanged: {
+                        if (GlobalStates.wallpaperLauncherSearchText !== text)
+                            GlobalStates.wallpaperLauncherSearchText = text
+                    }
                     placeholderText: Translation.tr("Search wallpapers")
                     Keys.onPressed: event => {
                         if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {

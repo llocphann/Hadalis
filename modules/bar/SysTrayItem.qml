@@ -12,6 +12,12 @@ MouseArea {
     id: root
     required property SystemTrayItem item
     property var trayParent: null  // Reference to SysTray for closing other menus
+    // The overflow popup shares this component, but keeps its own native size.
+    property real sizeScale: Appearance.sizes.barModuleScale
+    // Fcitx belongs to the compact monochrome status-icon family, even if
+    // other tray apps use their original multicolor artwork.
+    readonly property bool useMonochromeIcon: TrayService.isFcitxItem(root.item)
+        || (Config.options?.bar?.tray?.monochromeIcons ?? false)
     property bool targetMenuOpen: false
     property bool keyboardMenuMode: false
 
@@ -22,8 +28,8 @@ MouseArea {
     cursorShape: Qt.PointingHandCursor
     acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
     activeFocusOnTab: true
-    implicitWidth: 18
-    implicitHeight: 18
+    implicitWidth: 18 * root.sizeScale
+    implicitHeight: 18 * root.sizeScale
 
     Accessible.role: Accessible.Button
     Accessible.name: root.item?.tooltipTitle || root.item?.title || Translation.tr("System tray item")
@@ -80,6 +86,7 @@ MouseArea {
         event.accepted = true;
     }
     onEntered: {
+        if (Config.options?.panelFamily === "abyss") { hoverMenu.restart();return }
         if (!item) return;
         const tooltipTitle = item.tooltipTitle ?? "";
         const title = item.title ?? "";
@@ -89,6 +96,15 @@ MouseArea {
                 : (title.length > 0 ? title : "");
         if (tooltip.text.length === 0) return;
         if (tooltipDescription.length > 0) tooltip.text += " • " + tooltipDescription;
+    }
+
+    onExited: hoverMenu.stop()
+    Timer {
+        id: hoverMenu
+        interval: 350
+        onTriggered: if(root.containsMouse && !root.pressed
+                && Config.options?.panelFamily === "abyss")
+            root.openContextMenu(false)
     }
 
     // Listen for close signal from parent tray
@@ -134,7 +150,7 @@ MouseArea {
 
     IconImage {
         id: trayIcon
-        visible: !(Config.options?.bar?.tray?.monochromeIcons ?? false)
+        visible: !root.useMonochromeIcon
         source: root.item?.icon ?? ""
         anchors.centerIn: parent
         width: parent.width
@@ -142,7 +158,7 @@ MouseArea {
     }
 
     Loader {
-        active: Config.options?.bar?.tray?.monochromeIcons ?? false
+        active: root.useMonochromeIcon
         anchors.centerIn: parent
         width: root.width
         height: root.height
@@ -170,7 +186,7 @@ MouseArea {
 
     PopupToolTip {
         id: tooltip
-        extraVisibleCondition: root.containsMouse
+        extraVisibleCondition: root.containsMouse && Config.options?.panelFamily !== "abyss"
         alternativeVisibleCondition: extraVisibleCondition
         anchorEdges: (Config.options?.bar?.vertical ?? false)
             ? ((Config.options?.bar?.bottom ?? false) ? Edges.Left : Edges.Right)

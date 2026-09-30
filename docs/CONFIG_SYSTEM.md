@@ -22,11 +22,21 @@ Changes you make in the file are picked up automatically within 50ms. No restart
 
 ### Fresh-install profile
 
-A new configuration starts deliberately quiet. Settings opens in Focused mode, the left sidebar contains one curated Widgets tab, and the right sidebar starts with connectivity, sliders, notifications, and four daily tools: Calendar, To Do, Calculator, and System Monitor. Weather, desktop widgets, notification sounds, news feeds, wallpaper search, AI, and anime integrations stay off until you enable them.
+A new configuration starts deliberately quiet. Settings opens in Focused mode, the left sidebar contains one curated Widgets tab, and the right sidebar starts with connectivity, sliders, notification-policy controls, and four daily tools: Calendar, To Do, Calculator, and System Monitor. Notification history itself lives in the standalone bottom-right Notification Center. Weather, desktop widgets, notification sounds, news feeds, wallpaper search, AI, and anime integrations stay off until you enable them.
 
 The Welcome wizard exposes only choices that materially affect the first session. Advanced styles, additional sidebar tabs, and specialized modules remain available in the full Settings view.
 
 ## For contributors
+
+### Panel family and Abyss
+
+`panelFamily` accepts `ii` (default), `waffle` and `abyss`. Unknown values normalize to `ii`. Select it in Settings → Modules → Panel Style or with `inir panelFamily set abyss`; switching preserves disabled panels using `knownPanels` and `visitedPanelFamilies` rather than replacing `enabledPanels` on every visit.
+
+Settings → Modules → **Abyss Style** groups Performance, Surface, Motion, Refraction & Glass, Perimeter, Bar & Dock, and Panels. The `abyss.*` namespace contains `quality`, `surface.opacity/tension/softness`, `motion.intensity`, `perimeter.thickness/radius/visibleInFullscreen`, and `effects.blur/refraction/glow/surfaceHighlight`. Sensible defaults live in both the typed schema and `defaults/config.json`.
+
+Abyss reuses `bar.vertical/bottom`, orientation-specific module layouts and visibility, `dock.position/height/pins`, and each feature's `screenList`. An empty output list means all connected outputs; stale selections safely fall back to connected outputs. Persistent pinned docks reserve depth, hover docks do not. Fullscreen releases reservations by default. Global reduced motion and effects gating still apply.
+
+Performance omits the wallpaper texture, refraction, glow and shadow. Balanced permits static-wallpaper blur; Quality permits enabled refraction and a restrained settle. Glass follows static wallpaper only; GIF/video or a missing image uses the palette surface. It does not blur application contents.
 
 ### The sync rule
 
@@ -152,16 +162,16 @@ matching icon, name, launcher, and taskbar grouping are used.
 
 ### Bar layout
 
-`bar.layout` controls the modular ii bar:
+The modular ii Bar stores two independent placement presets:
 
-- `left`
-- `centerLeft`
-- `center`
-- `centerRight`
-- `right`
-- `migrated`
+- `bar.layout` for Top/Bottom: `left`, `centerLeft`, `center`, `centerRight`, `right`
+- `bar.verticalLayout` for Left/Right: `top`, `centerTop`, `center`, `centerBottom`, `bottom`
 
-Each zone is an array of module ids. Use Settings -> Bar -> Bar module layout unless you are debugging. The editor writes through `Config.setNestedValue`, so changes persist. The old `bar.modulesLayout`, `bar.edgeModulesLayout`, and `bar.modulesPlacement` keys are legacy compatibility only.
+In both presets, `center` is reserved for Workspaces and remains the physical pivot. Horizontal flexible spacers use `bar.layout.spacerWidth`; vertical flexible spacers use `bar.verticalLayout.spacerHeight`. Each preset has its own `spacerMode`.
+
+Module visibility is intentionally shared through `bar.modules.*`, so switching orientation changes placement without creating a second enable/disable state. Use Settings -> Bar -> Bar module layout unless you are debugging. The editor writes through `Config.setNestedValue`, so changes persist. `bar.verticalLayout` is an additive schema key with defaults, so existing configs do not need a migration.
+
+The old `bar.modulesLayout`, `bar.edgeModulesLayout`, and `bar.modulesPlacement` keys are legacy compatibility only.
 
 `bar.height` and `bar.opacity` control the bar size and background fill. They do not resize every widget independently; components still use the normal `Appearance` sizing tokens.
 
@@ -183,15 +193,19 @@ Semantic ii sidebar roles use:
 - the matching `sidebar.shellLayout.system.*` keys
 
 `feature` is the AI, media, tools and Widgets role historically opened by the
-`sidebarLeft` IPC target. `system` is the quick controls, notifications and
-utility role historically opened by `sidebarRight`. Their IPC meaning does not
-change when the roles swap physical edges.
+`sidebarLeft` IPC target. `system` is the quick controls, notification-policy
+and utility role historically opened by `sidebarRight`; notification history
+itself belongs to the standalone bottom-right Notification Center. Their IPC
+meaning does not change when the roles swap physical edges.
 
 Desktop widgets keep their original free/zone editor and independent
 `widgetEditMode`. Persistent layer-shell surfaces use the separate Shell Layout
-editor and move between advertised edge slots. Enter it from the desktop
-context menu, Settings -> Shell Layout, or `inir shellLayout open`. Its own
-layer-shell HUD stays above the edited panels and does not reuse the widget
+editor and move between advertised edge slots. For Abyss, the desktop context
+menu's **Edit shell layout** action intentionally enters the same output-local
+live Abyss Edge editor as the Settings header's **Edit Abyss layout** button.
+Other families continue through the shared Shell Layout controller from the
+desktop context menu, Settings -> Shell Layout, or `inir shellLayout open`.
+The editor HUD stays above the edited panels and does not reuse the widget
 canvas or toolbar. Drag any highlighted surface toward a screen edge: legal
 edges light up as full strips, a chip follows the pointer with the drop
 result, and releasing on a strip commits the move. Dropping a surface on an
@@ -244,8 +258,9 @@ tabs can contract while unbounded tabs return to full height.
 
 These keys are append-only additions. Existing configs without them retain the
 historical feature-left and system-right layout, so no migration script is
-needed. `collapseWidgetsTab` and `collapseEmptyNotifications` remain legacy
-content-aware compatibility options.
+needed. `collapseWidgetsTab` remains the legacy feature-sidebar fit option.
+`collapseEmptyNotifications` is retained only for old-config compatibility;
+notification history no longer lives in the system sidebar.
 
 ### Right sidebar header
 
@@ -262,19 +277,17 @@ For the profile style, `sidebar.right.headerBanner` accepts `wallpaper`, `custom
 
 Known ids include:
 
-`calendar`, `events`, `todo`, `notepad`, `calculator`, `sysmon`, `weather`, `timer`, `screentime`
-
-`screentime` is only shown when `sidebar.screenTime.enable` is true. The list can contain it while the service is off; the UI filters it out so disabled tracking does not leave a dead card.
+`calendar`, `events`, `todo`, `notepad`, `calculator`, `sysmon`, `weather`, `timer`
 
 ### Screen Time
 
-`sidebar.screenTime`:
+`sidebar.screenTime` remains the historical configuration namespace:
 
-- `enable`: starts/stops tracking
+- `enable`: explicit opt-in used by Waffle Screen Time
 - `pollIntervalSeconds`: focused-window sampling interval
 - `retentionDays`: how long local daily JSON is kept
 
-Screen Time is local-only. It records app ids/names and seconds, not window titles.
+Material ii no longer exposes Screen Time as a right-Sidebar widget. Its bottom-right notification-center **Activity** tab owns the compact usage summary and automatically keeps tracking active while `iiScreenCorners` is enabled. Screen Time is local-only and records app ids/names and seconds, not window titles.
 
 ### World Clock
 

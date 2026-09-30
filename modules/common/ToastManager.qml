@@ -2,8 +2,10 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
+import qs
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.perimeter
 import qs.services
 
 Scope {
@@ -14,6 +16,84 @@ Scope {
     property int maxToasts: 5
     property int toastSpacing: 8
     readonly property bool suppressOnScreenToasts: (GameMode?.active ?? false) || (GameMode?.hasAnyFullscreenWindow ?? false)
+    readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+    readonly property bool topBarOwnsEdge:
+        (Config.options?.panelFamily ?? "ii") === "ii"
+        && !(Config.options?.bar?.vertical ?? false)
+        && !(Config.options?.bar?.bottom ?? false)
+        && GlobalStates.barOpen
+        && !(Config.options?.bar?.autoHide?.enable ?? false)
+        && (Config.options?.enabledPanels ?? []).includes("iiBar")
+    readonly property real topOwnerThickness: topBarOwnsEdge
+        ? Appearance.sizes.barHeight : screenEdgeThickness
+    readonly property bool edgeShadowEnabled:
+        Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+    readonly property real edgeShadowSize: Math.max(0, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15)))
+    readonly property real edgeShadowOpacity: Math.max(0, Math.min(1.0,
+        Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70)))
+    readonly property color edgeShadowColor:
+        Qt.alpha(Appearance.m3colors.m3shadow, root.edgeShadowOpacity)
+    // When a real top Bar owns the attachment edge, keep the toast's right
+    // side free instead of welding it into the physical right Screen Edge.
+    // Leave enough room for the iRiS fuse/AA reach so it cannot visually touch
+    // that tangent owner. If the Bar is elsewhere, the toast falls back to the
+    // top-right Screen Edge corner and intentionally joins the right frame.
+    readonly property real topBarFreeRightInset: Math.max(
+        PerimeterTokens.irisFuseDepth + 2,
+        root.edgeShadowEnabled ? root.edgeShadowSize + 2 : 0)
+    readonly property real edgeDecorationMargin: Math.max(
+        8,
+        PerimeterTokens.irisFuseDepth,
+        root.edgeShadowEnabled ? root.edgeShadowSize + 2 : 0)
+    readonly property real toastBodyPadding: 8
+    readonly property bool useAbyssPresentation:
+        (Config.options?.panelFamily ?? "ii") === "abyss"
+        && (Config.options?.enabledPanels ?? []).includes("abyssPerimeter")
+    property string presentationOutputName: ""
+
+    Component.onCompleted: GlobalStates.toastManager = root
+    Component.onDestruction: {
+        if (GlobalStates.toastManager === root)
+            GlobalStates.toastManager = null
+    }
+    onUseAbyssPresentationChanged: {
+        if (root.useAbyssPresentation) {
+            popupLoader.active = false
+            if (root.toasts.length > 0 && !root.presentationOutputName)
+                root.presentationOutputName = GlobalStates.resolveOutputName("", [])
+        } else if (root.toasts.length > 0) {
+            popupLoader.loading = true
+        }
+    }
+
+    // Match StyledPopup's immutable ii motion contract: the whole connected
+    // surface slides under its owner. Individual toast content never fades,
+    // scales or morphs independently.
+    property real surfaceOffsetScale: 1
+    readonly property real surfaceRevealProgress: 1 - root.surfaceOffsetScale
+    property var _pendingSurfaceRemovalId: null
+
+    Behavior on surfaceOffsetScale {
+        enabled: Appearance.animationsEnabled
+        NumberAnimation {
+            duration: SurfaceMotion.duration
+            easing.type: SurfaceMotion.easingType
+        }
+    }
+
+    Timer {
+        id: surfaceRetractTimer
+        interval: Math.max(1, SurfaceMotion.duration + 16)
+        repeat: false
+        onTriggered: {
+            const pendingId = root._pendingSurfaceRemovalId
+            root._pendingSurfaceRemovalId = null
+            if (pendingId !== null && root.surfaceOffsetScale >= 0.999)
+                root.removeToast(pendingId)
+        }
+    }
     
     // Unified reload tracking - only show ONE toast per reload event
     property real _lastReloadToastTime: 0
@@ -36,12 +116,39 @@ Scope {
         return true
     }
     
+    function _revealSurface(wasEmpty) {
+        const reversingRetract = root._pendingSurfaceRemovalId !== null
+        surfaceRetractTimer.stop()
+        root._pendingSurfaceRemovalId = null
+
+        if (!Appearance.animationsEnabled) {
+            root.surfaceOffsetScale = 0
+            return
+        }
+
+        if (!wasEmpty || reversingRetract) {
+            // Reverse naturally from the current slide position if a new toast
+            // arrives during retract; do not replay or snap the animation.
+            root.surfaceOffsetScale = 0
+            return
+        }
+
+        root.surfaceOffsetScale = 1
+        Qt.callLater(() => {
+            if (root.toasts.length > 0)
+                root.surfaceOffsetScale = 0
+        })
+    }
+
     function addToast(title, message, icon, isError, duration, source, accentColor) {
         // Prevent duplicates: if same source and title already visible, ignore
         if (toasts.some(t => t.source === source && t.title === title)) {
             return
         }
-        
+
+        const wasEmpty = toasts.length === 0
+        if (wasEmpty)
+            root.presentationOutputName = GlobalStates.resolveOutputName("", [])
         const toast = {
             id: Date.now(),
             title: title,
@@ -52,21 +159,39 @@ Scope {
             source: source || "system",
             accentColor: accentColor || Appearance.colors.colPrimary
         }
-        
+
         toasts = [...toasts, toast]
-        
+
         if (toasts.length > maxToasts) {
             toasts = toasts.slice(-maxToasts)
         }
-        
-        popupLoader.loading = true
+
+        if (!root.useAbyssPresentation)
+            popupLoader.loading = true
+        root._revealSurface(wasEmpty)
     }
-    
+
     function removeToast(id) {
         toasts = toasts.filter(t => t.id !== id)
         if (toasts.length === 0) {
+            root.surfaceOffsetScale = 1
+            root.presentationOutputName = ""
             popupLoader.active = false
         }
+    }
+
+    function dismissToast(id) {
+        if (!toasts.some(t => t.id === id))
+            return
+
+        if (toasts.length > 1 || !Appearance.animationsEnabled) {
+            root.removeToast(id)
+            return
+        }
+
+        root._pendingSurfaceRemovalId = id
+        root.surfaceOffsetScale = 1
+        surfaceRetractTimer.restart()
     }
     
     // Show the pending reload toast
@@ -100,7 +225,7 @@ Scope {
             )
         } else if (source === "niri") {
             root.addToast(
-                "Niri config reloaded",
+                "Niri Reloaded",
                 "",
                 "settings",
                 false,
@@ -195,107 +320,123 @@ Scope {
         PanelWindow {
             id: popup
             visible: root.toasts.length > 0 && !root.suppressOnScreenToasts
-            exclusiveZone: 0
+            // Visual-only Overlay: never set exclusiveZone here. Quickshell's
+            // exclusiveZone setter switches exclusionMode back to Normal,
+            // which made Niri configure this window to the remaining work area
+            // instead of the physical output.
+            exclusionMode: ExclusionMode.Ignore
             anchors.top: true
+            anchors.bottom: true
             anchors.left: true
             anchors.right: true
-            margins.top: 10
-            
+
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.namespace: "quickshell:toast-manager"
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-            
-            mask: Region {
-                item: toastColumn
-            }
-            
-            implicitHeight: toastColumn.implicitHeight + 20
             color: "transparent"
-            
-            ColumnLayout {
-                id: toastColumn
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: parent.top
-                anchors.topMargin: 10
-                spacing: root.toastSpacing
-                
-                Repeater {
-                    model: root.toasts
-                    
-                    delegate: ToastNotification {
-                        required property var modelData
-                        required property int index
-                        
-                        title: modelData.title
-                        message: modelData.message
-                        icon: modelData.icon
-                        isError: modelData.isError
-                        duration: modelData.duration
-                        source: modelData.source
-                        accentColor: modelData.accentColor
-                        
-                        opacity: 1
-                        scale: 1
-                        
-                        Component.onCompleted: {
-                            if (Appearance.animationsEnabled) {
-                                entryAnim.start()
+
+            // Mirror BatteryPopup/StyledPopup production geometry. A one-pixel
+            // logical anchor at the Bar's top-right edge is enough to make the
+            // shared geometry clamp the body to the right Screen Edge while the
+            // top owner remains the full Bar (or Screen Edge fallback).
+            ConnectedSurfaceGeometry {
+                id: toastGeometry
+                edge: "top"
+                alignment: "end"
+                outputRect: Qt.rect(0, 0, popup.width, popup.height)
+                anchorRect: Qt.rect(
+                    Math.max(0,
+                        popup.width
+                        - root.screenEdgeThickness
+                        - (root.topBarOwnsEdge ? root.topBarFreeRightInset : 0)
+                        - 1),
+                    0,
+                    1,
+                    root.topOwnerThickness)
+                bodySize: Qt.size(
+                    Math.max(1, toastColumn.implicitWidth
+                        + root.toastBodyPadding * 2),
+                    Math.max(1, toastColumn.implicitHeight
+                        + root.toastBodyPadding * 2))
+                outerRadius: PerimeterTokens.popupRadius
+                screenMargin: root.screenEdgeThickness
+                connectorLength: 0
+                seamOverlap: PerimeterTokens.irisWeldDepth
+                progress: root.surfaceRevealProgress
+                devicePixelRatio: popup.devicePixelRatio
+            }
+
+            ConnectedSurfaceRevealClip {
+                id: toastRevealClip
+                geometry: toastGeometry
+
+                ConnectedSurfaceIrisFrame {
+                    id: toastFrame
+                    anchors.fill: parent
+                    geometry: toastGeometry
+                    fillColor: Appearance.colors.colLayer0
+                    borderColor: Appearance.colors.colLayer0Border
+                    borderWidth: 0
+                    fuseDepth: PerimeterTokens.irisFuseDepth
+                    externalFrameThickness: root.screenEdgeThickness
+                    shadowEnabled: root.edgeShadowEnabled
+                        && root.edgeShadowSize > 0
+                        && root.edgeShadowOpacity > 0
+                    shadowExtent: root.edgeShadowSize
+                    shadowColor: root.edgeShadowColor
+                    // Primary top owner is Bar when it is actually
+                    // present at the top; otherwise it is the top Screen Edge.
+                    // Only the Screen-Edge fallback is allowed to weld into the
+                    // tangent right frame.
+                    joinTop: true
+                    joinRight: !root.topBarOwnsEdge
+                }
+
+                ConnectedSurfaceContentHost {
+                    id: toastContentHost
+                    geometry: toastGeometry
+                    padding: root.toastBodyPadding
+
+                    ColumnLayout {
+                        id: toastColumn
+                        anchors.fill: parent
+                        spacing: root.toastSpacing
+
+                        Repeater {
+                            model: root.toasts
+
+                            delegate: ToastNotification {
+                                required property var modelData
+                                required property int index
+
+                                connectedSurface: true
+                                title: modelData.title
+                                message: modelData.message
+                                icon: modelData.icon
+                                isError: modelData.isError
+                                duration: modelData.duration
+                                source: modelData.source
+                                accentColor: modelData.accentColor
+
+                                opacity: 1
+                                scale: 1
+
+                                onDismissed: root.dismissToast(modelData.id)
                             }
-                        }
-                        
-                        ParallelAnimation {
-                            id: entryAnim
-                            NumberAnimation {
-                                target: parent
-                                property: "opacity"
-                                from: 0
-                                to: 1
-                                duration: Appearance.animation.elementMoveFast.duration
-                                easing.type: Appearance.animation.elementMoveFast.type
-                                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                            }
-                            NumberAnimation {
-                                target: parent
-                                property: "scale"
-                                from: 0.9
-                                to: 1
-                                duration: Appearance.animation.elementMoveFast.duration
-                                easing.type: Appearance.animation.elementMoveFast.type
-                                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                            }
-                        }
-                        
-                        onDismissed: {
-                            if (Appearance.animationsEnabled) {
-                                exitAnim.start()
-                            } else {
-                                root.removeToast(modelData.id)
-                            }
-                        }
-                        
-                        ParallelAnimation {
-                            id: exitAnim
-                            NumberAnimation {
-                                target: parent
-                                property: "opacity"
-                                to: 0
-                                duration: Appearance.animation.elementMoveExit.duration
-                                easing.type: Appearance.animation.elementMoveExit.type
-                                easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
-                            }
-                            NumberAnimation {
-                                target: parent
-                                property: "scale"
-                                to: 0.9
-                                duration: Appearance.animation.elementMoveExit.duration
-                                easing.type: Appearance.animation.elementMoveExit.type
-                                easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
-                            }
-                            onFinished: root.removeToast(modelData.id)
                         }
                     }
                 }
             }
+
+            ConnectedSurfaceBodyMask {
+                id: toastMask
+                geometry: toastGeometry
+                bodyItem: toastFrame.bodyItem
+                visibleBodyRect: toastFrame.visibleBodyRect
+                inputEnabled: popup.visible
+            }
+
+            mask: toastMask
         }
     }
 }

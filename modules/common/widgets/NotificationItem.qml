@@ -1,5 +1,6 @@
 import qs
 import qs.modules.common
+import qs.modules.common.widgets
 import qs.services
 import qs.modules.common.functions
 import QtQuick
@@ -13,9 +14,15 @@ Item { // Notification item area
     property var notificationObject
     property bool expanded: false
     property bool popup: false
+    property bool modernLayout: false
+    property bool compactActions: false
+    signal externalLinkOpened()
+    signal notificationActionInvoked()
     property bool onlyNotification: false
     property real fontSize: Appearance.font.pixelSize.small
-    property real padding: onlyNotification ? 0 : 8
+    property real padding: modernLayout
+        ? (compactActions ? 8 : 10)
+        : (onlyNotification ? 0 : 8)
     property real summaryElideRatio: 0.85
 
     // Animation tokens — use fast timing for dismiss in all modes
@@ -122,11 +129,8 @@ Item { // Notification item area
         id: background
         width: parent.width
         anchors.left: parent.left
-        radius: Appearance.regaliaEverywhere ? Appearance.regalia.roundSmall
-            : Appearance.zzzEverywhere ? Appearance.zzz.controlRadius
-            : Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-            : Appearance.inirEverywhere ? Appearance.inir.roundingSmall
-            : Appearance.rounding.small
+        radius: root.modernLayout
+            ? Appearance.rounding.normal : Appearance.rounding.small
         anchors.leftMargin: root.xOffset
 
         Behavior on radius {
@@ -143,31 +147,19 @@ Item { // Notification item area
             }
         }
 
-        color: (expanded && !onlyNotification) ?
-            Appearance.regaliaEverywhere ? "transparent" :
-            Appearance.zzzEverywhere ? (root.notificationCritical ? Appearance.zzz.secondary : Appearance.zzz.chrome) :
-            root.notificationCritical ?
-                ColorUtils.mix(Appearance.colors.colSecondaryContainer, Appearance.colors.colLayer2, 0.35) :
-                (Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                    : Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                    : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                    : Appearance.colors.colLayer3) :
-            "transparent"
-        border.width: (expanded && !onlyNotification && Appearance.zzzEverywhere) ? Appearance.zzz.borderThick
-            : (expanded && !onlyNotification && (Appearance.angelEverywhere || Appearance.auroraEverywhere || Appearance.inirEverywhere)) ? 1 : 0
-        border.color: Appearance.zzzEverywhere ? Appearance.zzz.hairlineStrong
-            : Appearance.angelEverywhere ? Appearance.angel.colBorder
-            : Appearance.inirEverywhere ? Appearance.inir.colBorder
-            : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colOutline, 0.8)
-            : Appearance.colors.colLayer0Border
-
-        RegaliaPlate {
-            anchors.fill: parent
-            visible: Appearance.regaliaEverywhere && root.expanded && !root.onlyNotification
-            radius: background.radius
-            fillColor: root.notificationCritical ? Appearance.regalia.signalPlate : Appearance.regalia.bg2
-            elevated: true
-        }
+        color: root.modernLayout
+            ? (root.notificationCritical
+                ? ColorUtils.mix(Appearance.colors.colSecondaryContainer,
+                    Appearance.colors.colLayer2, 0.35)
+                : Appearance.colors.colLayer3)
+            : ((expanded && !onlyNotification)
+                ? (root.notificationCritical
+                    ? ColorUtils.mix(Appearance.colors.colSecondaryContainer,
+                        Appearance.colors.colLayer2, 0.35)
+                    : Appearance.colors.colLayer3)
+                : "transparent")
+        border.width: 0
+        border.color: Appearance.colors.colLayer0Border
 
         Behavior on color {
             enabled: Appearance.animationsEnabled
@@ -182,7 +174,9 @@ Item { // Notification item area
             ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }
 
-        implicitHeight: expanded ? (contentColumn.implicitHeight + root.padding * 2) : summaryRow.implicitHeight
+        implicitHeight: (expanded || root.modernLayout)
+            ? (contentColumn.implicitHeight + root.padding * 2)
+            : summaryRow.implicitHeight
         Behavior on implicitHeight {
             // Sidebar: subtle fast transition; Popup: instant (window resize handled by parent)
             enabled: !root.popup && Appearance.animationsEnabled
@@ -198,7 +192,7 @@ Item { // Notification item area
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.margins: expanded ? root.padding : 0
+            anchors.margins: (root.modernLayout || expanded) ? root.padding : 0
             spacing: 3
 
             Behavior on anchors.margins {
@@ -217,7 +211,7 @@ Item { // Notification item area
                     Layout.fillWidth: summaryTextMetrics.width >= contentColumn.width * root.summaryElideRatio
                     visible: !root.onlyNotification
                     font.pixelSize: root.fontSize
-                    color: Appearance.zzzEverywhere ? Appearance.zzz.ink : Appearance.colors.colOnLayer3
+                    color: Appearance.colors.colOnLayer3
                     Behavior on color {
                         enabled: Appearance.animationsEnabled
                         ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -234,7 +228,9 @@ Item { // Notification item area
                         animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                     }
                     font.pixelSize: root.fontSize
-                    color: Appearance.zzzEverywhere ? Appearance.zzz.inkMuted : Appearance.colors.colSubtext
+                    color: root.modernLayout
+                        ? Appearance.colors.colOnLayer3
+                        : Appearance.colors.colSubtext
                     Behavior on color {
                         enabled: Appearance.animationsEnabled
                         ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -261,7 +257,9 @@ Item { // Notification item area
                     }
                     Layout.fillWidth: true
                     font.pixelSize: root.fontSize
-                    color: Appearance.zzzEverywhere ? Appearance.zzz.inkMuted : Appearance.colors.colSubtext
+                    color: root.modernLayout
+                        ? Appearance.colors.colOnLayer3
+                        : Appearance.colors.colSubtext
                     Behavior on color {
                         enabled: Appearance.animationsEnabled
                         ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -275,7 +273,7 @@ Item { // Notification item area
 
                     onLinkActivated: (link) => {
                         Qt.openUrlExternally(link)
-                        GlobalStates.sidebarRightOpen = false
+                        root.externalLinkOpened()
                     }
 
                     PointingHandLinkHover {}
@@ -286,13 +284,12 @@ Item { // Notification item area
                     implicitWidth: actionsFlickable.implicitWidth
                     implicitHeight: actionsFlickable.implicitHeight
 
-                    layer.enabled: true
+                    layer.enabled: !root.modernLayout
                     layer.effect: OpacityMask {
                         maskSource: Rectangle {
                             width: actionsFlickable.width
                             height: actionsFlickable.height
-                            radius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-                                : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.small
+                            radius: Appearance.rounding.small
                         }
                     }
 
@@ -305,7 +302,7 @@ Item { // Notification item area
                         id: actionsFlickable
                         anchors.fill: parent
                         implicitHeight: actionRowLayout.implicitHeight
-                        contentWidth: actionRowLayout.implicitWidth
+                        contentWidth: Math.max(width, actionRowLayout.implicitWidth)
 
                         Behavior on opacity {
                             enabled: Appearance.animationsEnabled
@@ -322,28 +319,45 @@ Item { // Notification item area
 
                         RowLayout {
                             id: actionRowLayout
+                            width: Math.max(actionsFlickable.width, implicitWidth)
                             Layout.alignment: Qt.AlignBottom
-                            spacing: 4
+                            spacing: root.modernLayout ? 6 : 4
+
+                            Item {
+                                visible: root.modernLayout
+                                Layout.fillWidth: true
+                                implicitWidth: 1
+                            }
 
                             NotificationActionButton {
-                                Layout.fillWidth: true
+                                Layout.fillWidth: !root.modernLayout
                                 buttonText: Translation.tr("Close")
                                 urgency: root.notificationObject?.urgency ?? NotificationUrgency.Normal
-                                implicitWidth: !root.hasNotificationActions ? (Math.max(0, actionsFlickable.width - actionRowLayout.spacing) / 2) :
-                                    ((contentItem?.implicitWidth ?? 0) + (leftPadding ?? 0) + (rightPadding ?? 0))
+                                implicitWidth: root.modernLayout
+                                    ? (root.compactActions ? 28 : 34)
+                                    : (!root.hasNotificationActions
+                                        ? (Math.max(0, actionsFlickable.width - actionRowLayout.spacing) / 2)
+                                        : ((contentItem?.implicitWidth ?? 0)
+                                            + (leftPadding ?? 0) + (rightPadding ?? 0)))
+
+                                implicitHeight: root.modernLayout
+                                    && root.compactActions ? 28 : 34
 
                                 onClicked: {
                                     root.destroyWithAnimation()
                                 }
 
                                 contentItem: MaterialSymbol {
-                                    iconSize: Appearance.font.pixelSize.larger
+                                    iconSize: root.compactActions
+                                        ? 15 : Appearance.font.pixelSize.larger
                                     horizontalAlignment: Text.AlignHCenter
                                     color: root.notificationCritical
                                         ? Appearance.colors.colOnSecondaryContainer
                                         : Appearance.colors.colOnLayer3
                                     text: "close"
                                 }
+
+                                StyledToolTip { text: Translation.tr("Dismiss") }
                             }
 
                             Repeater {
@@ -351,21 +365,32 @@ Item { // Notification item area
                                 model: notificationObject?.actions ?? []
                                 NotificationActionButton {
                                     required property var modelData
-                                    Layout.fillWidth: true
+                                    Layout.fillWidth: !root.modernLayout
+                                    implicitHeight: root.modernLayout
+                                        && root.compactActions ? 28 : 34
                                     buttonText: String(modelData?.text ?? "")
                                     urgency: root.notificationObject?.urgency ?? NotificationUrgency.Normal
                                     onClicked: {
-                                        Notifications.attemptInvokeAction(notificationObject.notificationId, modelData.identifier);
+                                        Notifications.attemptInvokeAction(
+                                            notificationObject.notificationId,
+                                            modelData.identifier)
+                                        root.notificationActionInvoked()
                                     }
                                 }
                             }
 
                             NotificationActionButton {
-                                Layout.fillWidth: true
+                                Layout.fillWidth: !root.modernLayout
                                 buttonText: Translation.tr("Copy notification")
                                 urgency: root.notificationObject?.urgency ?? NotificationUrgency.Normal
-                                implicitWidth: !root.hasNotificationActions ? (Math.max(0, actionsFlickable.width - actionRowLayout.spacing) / 2) :
-                                    ((contentItem?.implicitWidth ?? 0) + (leftPadding ?? 0) + (rightPadding ?? 0))
+                                implicitWidth: root.modernLayout
+                                    ? (root.compactActions ? 28 : 34)
+                                    : (!root.hasNotificationActions
+                                        ? (Math.max(0, actionsFlickable.width - actionRowLayout.spacing) / 2)
+                                        : ((contentItem?.implicitWidth ?? 0)
+                                            + (leftPadding ?? 0) + (rightPadding ?? 0)))
+                                implicitHeight: root.modernLayout
+                                    && root.compactActions ? 28 : 34
 
                                 onClicked: {
                                     Quickshell.execDetached(["wl-copy", notificationObject?.body ?? ""])
@@ -384,13 +409,16 @@ Item { // Notification item area
 
                                 contentItem: MaterialSymbol {
                                     id: copyIcon
-                                    iconSize: Appearance.font.pixelSize.larger
+                                    iconSize: root.compactActions
+                                        ? 15 : Appearance.font.pixelSize.larger
                                     horizontalAlignment: Text.AlignHCenter
                                     color: root.notificationCritical
                                         ? Appearance.colors.colOnSecondaryContainer
                                         : Appearance.colors.colOnLayer3
                                     text: "content_copy"
                                 }
+
+                                StyledToolTip { text: Translation.tr("Copy") }
                             }
 
                         }

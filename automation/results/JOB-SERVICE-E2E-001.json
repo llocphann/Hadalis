@@ -1,0 +1,24 @@
+{
+  "actions": [
+    {
+      "argv": [
+        "python3",
+        "scripts/test-hadalis-chat-bridge.py"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "index": 0,
+      "stderr": "",
+      "stderr_truncated": false,
+      "stdout": "PASS: Hadalis chat-bridge protocol, state, and deterministic transitions\n",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "502bf06aa997bf599d304750d4bc5be787591b44",
+  "finished_at_unix": 1790720035,
+  "job": "JOB-SERVICE-E2E-001",
+  "job_commit": "25c59edee693bbf63089d15fb31a38588f0f0ba8",
+  "started_at_unix": 1790720034,
+  "status": "passed"
+}

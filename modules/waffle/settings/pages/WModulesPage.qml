@@ -93,7 +93,8 @@ WSettingsPage {
             currentValue: Config.options?.panelFamily ?? "waffle"
             options: [
                 { value: "ii", displayName: Translation.tr("Material (ii)") },
-                { value: "waffle", displayName: Translation.tr("Windows 11 (Waffle)") }
+                { value: "waffle", displayName: Translation.tr("Windows 11 (Waffle)") },
+                { value: "abyss", displayName: "Abyss" }
             ]
             onSelected: newValue => {
                 if (newValue !== Config.options?.panelFamily) {
@@ -208,14 +209,6 @@ WSettingsPage {
     WSettingsCard {
         title: Translation.tr("Sidebars")
         icon: "panel-left-expand"
-
-        WSettingsSwitch {
-            label: Translation.tr("Collapse notifications when empty")
-            icon: "panel-left-contract"
-            description: Translation.tr("Shrink the right sidebar when there are no notifications")
-            checked: Config.options?.sidebar?.collapseEmptyNotifications ?? false
-            onCheckedChanged: Config.setNestedValue("sidebar.collapseEmptyNotifications", checked)
-        }
 
         WSettingsSwitch {
             label: Translation.tr("Fit left sidebar to widgets")

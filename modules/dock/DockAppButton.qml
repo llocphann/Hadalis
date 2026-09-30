@@ -2,7 +2,6 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
-import qs.modules.pill
 import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Layouts
@@ -15,8 +14,8 @@ DockButton {
     id: root
     property var appToplevel
     property var appListRoot
-    property int listIndex: -1       // set by the DockApps delegate (required property int index)
     property int lastFocused: -1
+    property bool hoverContextOpen: false
     property real iconSize: Config.options?.dock?.iconSize ?? 35
     property real countDotWidth: 10
     property real countDotHeight: 4
@@ -92,9 +91,7 @@ DockButton {
     }
     property bool hasWindows: toplevels.length > 0
     surfaceDialect: Appearance.surfaceDialectFor("")
-    property bool pillStyle: false
     property bool islandStyle: root.surfaceDialect === "island"
-    property bool macosStyle: false
 
     readonly property int notificationCount: {
         if (root.isSeparator || (Config.options?.dock?.notificationBadge ?? true) === false)
@@ -105,20 +102,22 @@ DockButton {
         ])
     }
 
-    // Hover preview signals
-    signal hoverPreviewRequested()
-    signal hoverPreviewDismissed()
-
-    // Timer for hover delay before showing preview
-    property alias hoverTimer: hoverDelayTimer
+    // Dock hover has one semantic result: the app popup/context menu.
+    // Bar/Workspace preview surfaces remain independent WindowPreviewService users.
     Timer {
         id: hoverDelayTimer
-        interval: Config.options?.dock?.hoverPreviewDelay ?? 400
+        interval: 400
         onTriggered: {
-            if (root.hasWindows && root.buttonHovered) {
-                root.hoverPreviewRequested()
-            }
+            if (root.buttonHovered && !root.down
+                    && !root.pointerDragActive
+                    && !root.appListRoot?.dragActive)
+                root.showContextMenu(true)
         }
+    }
+
+    Component.onDestruction: {
+        if (root.abyssStyle && root.appListRoot)
+            root.appListRoot.setAbyssContextMenuHover(root, false)
     }
 
     // Determine focused window index for smart indicator.
@@ -135,9 +134,8 @@ DockButton {
         return 0;
     }
 
-    // Subtle highlight for active app (disabled in macOS and pill modes —
-    // macOS uses magnify, pill uses its own background highlight)
-    scale: (!macosStyle && !pillStyle && appIsActive)
+    // Subtle highlight for the canonical Panel app button.
+    scale: appIsActive
         ? (root.regaliaStyle ? 1.0 : root.zzzStyle ? 1.02 : 1.05) : 1.0
     Behavior on scale {
         enabled: Appearance.animationsEnabled
@@ -145,8 +143,8 @@ DockButton {
     }
 
     transform: Translate {
-        y: (root.zzzStyle || root.islandStyle) && !root.macosStyle && !root.pillStyle && root.buttonHovered && !root.vertical ? -3 : 0
-        x: (root.zzzStyle || root.islandStyle) && !root.macosStyle && !root.pillStyle && root.buttonHovered && root.vertical ? -3 : 0
+        y: (root.zzzStyle || root.islandStyle) && root.buttonHovered && !root.vertical ? -3 : 0
+        x: (root.zzzStyle || root.islandStyle) && root.buttonHovered && root.vertical ? -3 : 0
         Behavior on y {
             enabled: Appearance.animationsEnabled
             NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Easing.OutBack; easing.overshoot: 2.2 }
@@ -199,21 +197,18 @@ DockButton {
     implicitWidth: isSeparator ? (vertical ? separatorSize : 8) : (vertical ? 50 : (implicitHeight - topInset - bottomInset))
     implicitHeight: isSeparator ? (vertical ? 8 : separatorSize) : 50
 
-    // In pill mode, hide the default RippleButton hover background — DockPillItem provides its own.
-    // In macOS mode, also hide it — DockMacItem provides visual feedback via magnify.
-    background.visible: !isSeparator && !pillStyle && !macosStyle
+    background.visible: !isSeparator
 
-    // Suppress ripple/hover bg in macOS mode so no colored rect appears under icon
     // Island mode hovers like a Ricelin row: a faint cream frame fill with a
     // vermilion-tinted press, instead of the global style's hover chain.
-    colBackgroundHover: macosStyle ? "transparent" : root.islandStyle ? PillTheme.frameBg
+    colBackgroundHover: root.islandStyle ? Qt.alpha(Appearance.colors.colOnLayer0, 0.055)
         : (root.regaliaStyle ? Appearance.regalia.hoverPlate
         : root.zzzStyle ? "transparent"
         : root.angelStyle ? Appearance.angel.colGlassCard
         : root.inirStyle ? Appearance.inir.colLayer1Hover
         : root.auroraStyle ? Appearance.aurora.colSubSurface
         : Appearance.colors.colLayer0Hover)
-    colRipple: macosStyle ? "transparent" : root.islandStyle ? Qt.alpha(PillTheme.vermLit, 0.18)
+    colRipple: root.islandStyle ? Qt.alpha(Appearance.colors.colPrimary, 0.18)
         : (root.regaliaStyle ? Appearance.regalia.pressPlate
         : root.zzzStyle ? ColorUtils.applyAlpha(Appearance.zzz.accent, 0.22)
         : root.angelStyle ? Appearance.angel.colGlassCardActive
@@ -234,44 +229,10 @@ DockButton {
         : root.appIsActive ? ColorUtils.applyAlpha(Appearance.zzz.sticker, 0.65)
         : "transparent"
 
-    // Pill background (replaces shared panel for this item)
-    DockPillItem {
-        id: pillBackground
-        anchors.fill: parent
-        visible: pillStyle && !isSeparator && !Appearance.gameModeMinimal
-        surfaceDialect: root.surfaceDialect
-        appIsActive: root.appIsActive
-        hasWindows: root.hasWindows
-        windowCount: toplevels.length
-        focusedWindowIndex: root.focusedWindowIndex
-        vertical: root.vertical
-        countDotWidth: root.countDotWidth
-        countDotHeight: root.countDotHeight
-    }
-
-    // macOS-style icon wrapper: magnify effect + multi-window indicator dots
-    DockMacItem {
-        id: macItem
-        anchors.fill: parent
-        visible: macosStyle && !isSeparator && !Appearance.gameModeMinimal
-        surfaceDialect: root.surfaceDialect
-        appIsActive: root.appIsActive
-        hasWindows: root.hasWindows
-        buttonHovered: root.buttonHovered
-        previewVisible: root.appListRoot?.previewAnchorItem === root
-        vertical: root.vertical
-        neighborDistance: {
-            const hi = root.appListRoot?.macHoveredIndex ?? -1
-            return (hi < 0 || root.listIndex < 0) ? 99 : Math.abs(root.listIndex - hi)
-        }
-        windowCount: toplevels.length
-        focusedWindowIndex: root.focusedWindowIndex
-    }
-
     // Hover shadow (disabled for angel — whole dock already has escalonado)
     StyledRectangularShadow {
-        target: root.pillStyle ? pillBackground : root.background
-        visible: !root.angelStyle && !root.zzzStyle && !root.macosStyle
+        target: root.background
+        visible: !root.angelStyle && !root.zzzStyle
         opacity: root.buttonHovered && !root.isSeparator
             ? (Appearance.m3colors.darkmode ? 0.18 : 0.35) : 0
         spread: 0
@@ -294,26 +255,26 @@ DockButton {
         }
     }
 
-    // Use RippleButton's built-in buttonHovered instead of separate MouseArea
+    // Use RippleButton's built-in hover state. Pinned-only and running apps
+    // expose the same popup behavior.
     onButtonHoveredChanged: {
-        if (toplevels.length > 0) {
-            if (buttonHovered) {
-                appListRoot.lastHoveredButton = root
-                appListRoot.buttonHovered = true
-                // Start hover timer for preview
-                if (Config.options?.dock?.hoverPreview !== false) {
-                    hoverDelayTimer.restart()
-                }
-            } else {
-                if (appListRoot.lastHoveredButton === root) {
-                    appListRoot.buttonHovered = false
-                }
-                hoverDelayTimer.stop()
-                // Don't dismiss preview here - let the popup's timer handle it
-                // This allows mouse to move from button to popup without closing
+        if (buttonHovered && !root.isSeparator) {
+            hoverDelayTimer.restart()
+            if (root.appListRoot) {
+                root.appListRoot.lastHoveredButton = root
+                root.appListRoot.buttonHovered = true
+                if (root.abyssStyle)
+                    root.appListRoot.setAbyssContextMenuHover(root, true)
             }
-        } else {
-            hoverDelayTimer.stop()
+            return
+        }
+
+        hoverDelayTimer.stop()
+        if (root.appListRoot) {
+            if (root.abyssStyle)
+                root.appListRoot.setAbyssContextMenuHover(root, false)
+            if (root.appListRoot.lastHoveredButton === root)
+                root.appListRoot.buttonHovered = false
         }
     }
 
@@ -377,19 +338,12 @@ DockButton {
     }
 
     onClicked: {
-        // Suppress the click that RippleButton fires after a drag-release
-        if (appListRoot?._suppressNextClick) {
-            appListRoot._suppressNextClick = false
-            return
-        }
         if (root.notificationCount > 0) {
             Notifications.markReadForApp([
                 appToplevel?.originalAppId ?? appToplevel?.appId,
                 root.desktopEntry?.name
             ])
         }
-        // macOS click micro-pulse
-        if (macosStyle) macItem.clickPulse()
         // Sin ventanas abiertas: lanzar nueva instancia desde desktop entry o fallbacks
         if (toplevels.length === 0) {
             launchFromDesktopEntry();
@@ -426,15 +380,25 @@ DockButton {
         showContextMenu()
     }
 
-    function showContextMenu(): void {
-        root.appListRoot.closeAllContextMenus()
-        root.appListRoot.contextMenuOpen = true
-        root.hoverPreviewDismissed()
+    function showContextMenu(fromHover): void {
+        root.hoverContextOpen=fromHover===true
+        const snapshot = root.buildContextMenuModel()
         hoverDelayTimer.stop()
+
+        // Abyss owns one connected popup field. Rehost Dock menus there instead
+        // of creating a detached PopupWindow that visually floats above it.
+        if (root.abyssStyle
+                && root.appListRoot?.openAbyssContextMenu(snapshot, root)) {
+            root.appListRoot.closeAllContextMenus(root)
+            return
+        }
+
+        root.appListRoot.closeAllContextMenus(root)
+        root.appListRoot.contextMenuOpen = true
         // Snapshot the entries. A live binding on `toplevels` re-evaluates on
         // every window/title event, which resets the menu's Repeater and kills
         // the hover state of the item under the cursor.
-        contextMenu.model = root.buildContextMenuModel()
+        contextMenu.model = snapshot
         contextMenu.requestOpen()
     }
 
@@ -573,13 +537,15 @@ DockButton {
 
     Connections {
         target: root.appListRoot
-        function onCloseAllContextMenus() {
-            contextMenu.close()
+        function onCloseAllContextMenus(exceptOwner) {
+            if (exceptOwner !== root)
+                contextMenu.close()
         }
     }
 
     DockContextMenu {
         id: contextMenu
+        keyboardGrab: !root.hoverContextOpen
         anchorItem: root
         anchorHovered: root.buttonHovered
 
@@ -593,18 +559,6 @@ DockButton {
           sourceComponent: Item {
               id: contentRoot
               anchors.centerIn: parent
-
-              // Cache the item into an FBO layer if shaders are present AND animating.
-              // This completely eliminates the horrific 100% CPU/GPU spike when macOS
-              // hover magnify continually rescales the Desaturate and ColorOverlay shaders.
-              layer.enabled: root.macosStyle && (Config.options?.dock?.monochromeIcons ?? false)
-              layer.smooth: true
-
-              // macOS magnify: scale around the bottom centre so icons grow upward.
-              // Animation is driven by DockMacItem's own Behavior on _magnifyScale —
-              // no extra Behavior needed here.
-              scale:           root.macosStyle ? macItem.iconScale : 1.0
-              transformOrigin: root.vertical ? Item.Right : Item.Bottom
 
             Loader {
                 id: iconImageLoader
@@ -746,20 +700,14 @@ DockButton {
                   }
               }
 
-              // Smart indicator: shows window count and which is focused
-              // Hidden in macOS and pill modes — those render their own indicators
+              // Smart indicator: shows window count and which is focused.
               Loader {
-                  active: root.hasWindows && !root.isSeparator && !root.macosStyle && !root.pillStyle
+                  active: root.hasWindows && !root.isSeparator
                 anchors {
                     top: iconImageLoader.bottom
                     topMargin: 2
                     horizontalCenter: parent.horizontalCenter
                 }
-
-                // Config options
-                property bool smartIndicator: Config.options?.dock?.smartIndicator !== false
-                property bool showAllDots: Config.options?.dock?.showAllWindowDots !== false
-                property int maxDots: Config.options?.dock?.maxIndicatorDots ?? 5
 
                 sourceComponent: Row {
                     spacing: 3
@@ -804,11 +752,11 @@ DockButton {
                             // thread for the focused window, whispered cream siblings.
                             // Island opt-in outranks the zzz accent chain.
                             color: isFocusedWindow
-                                   ? (root.islandStyle ? PillTheme.vermLit
+                                   ? (root.islandStyle ? Appearance.colors.colPrimary
                                    : root.zzzStyle ? Appearance.zzz.accent
                                    : root.angelStyle ? Appearance.angel.colPrimary
                                    : root.inirStyle ? Appearance.inir.colPrimary : Appearance.colors.colPrimary)
-                                   : root.islandStyle ? Qt.alpha(PillTheme.cream, 0.25)
+                                   : root.islandStyle ? Qt.alpha(Appearance.colors.colOnLayer0, 0.25)
                                    : ColorUtils.transparentize(root.zzzStyle ? Appearance.zzz.ink
                                    : root.angelStyle ? Appearance.angel.colTextSecondary
                                    : root.inirStyle ? Appearance.inir.colText : Appearance.colors.colOnLayer0, 0.65)
@@ -828,7 +776,7 @@ DockButton {
                         }
                     }
 
-                    // Fallback: single indicator when showAllDots is off and app is inactive
+                    // Fallback: single indicator when all-window dots are disabled and the app is inactive
                     Rectangle {
                         opacity: (!root.appIsActive && root.hasWindows && Config.options?.dock?.showAllWindowDots === false) ? 1 : 0
                         visible: opacity > 0
@@ -836,7 +784,7 @@ DockButton {
                         height: (root.zzzStyle || root.islandStyle) ? 3 : (root.angelStyle ? 2 : 5)
                         radius: root.zzzStyle ? Math.min(width, height) / 2
                             : root.angelStyle ? 0 : Math.min(width, height) / 2
-                        color: root.islandStyle ? Qt.alpha(PillTheme.cream, 0.25)
+                        color: root.islandStyle ? Qt.alpha(Appearance.colors.colOnLayer0, 0.25)
                             : ColorUtils.transparentize(root.zzzStyle ? Appearance.zzz.ink
                             : root.angelStyle ? Appearance.angel.colTextSecondary
                             : root.inirStyle ? Appearance.inir.colText : Appearance.colors.colOnLayer0,

@@ -20,6 +20,7 @@ depends=(
   ripgrep
   jq
   python
+  cargo
   xdg-user-dirs
   xdg-utils
   rsync

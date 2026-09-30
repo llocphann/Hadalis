@@ -301,13 +301,9 @@ Item {
                 }
                 delegate: ApiCommandButton {
                     id: tagButton
-                    colBackground: Appearance.angelEverywhere
-                        ? (tagSuggestions.selectedIndex === index ? Appearance.angel.colGlassCardHover : Appearance.angel.colGlassCard)
-                        : Appearance.auroraEverywhere
-                        ? (tagSuggestions.selectedIndex === index ? Appearance.aurora.colSubSurface : "transparent")
-                        : Appearance.zzzEverywhere
-                        ? (tagSuggestions.selectedIndex === index ? Appearance.zzz.sticker : "transparent")
-                        : (tagSuggestions.selectedIndex === index ? Appearance.colors.colSecondaryContainerHover : Appearance.colors.colSecondaryContainer)
+                    colBackground: tagSuggestions.selectedIndex === index
+                        ? Appearance.colors.colSecondaryContainerHover
+                        : Appearance.colors.colSecondaryContainer
                     bounce: false
                     contentItem: RowLayout {
                         anchors.centerIn: parent
@@ -315,8 +311,7 @@ Item {
                         StyledText {
                             Layout.fillWidth: false
                             font.pixelSize: Appearance.font.pixelSize.small
-                            color: Appearance.zzzEverywhere && tagSuggestions.selectedIndex === index
-                                ? Appearance.zzz.onSticker : Appearance.colors.colOnSecondaryContainer
+                            color: Appearance.colors.colOnSecondaryContainer
                             horizontalAlignment: Text.AlignRight
                             text: modelData.displayName ?? modelData.name
                         }
@@ -324,8 +319,7 @@ Item {
                             Layout.fillWidth: false
                             visible: modelData.count !== undefined
                             font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.zzzEverywhere && tagSuggestions.selectedIndex === index
-                                ? Appearance.zzz.onSticker : Appearance.colors.colOnSecondaryContainer
+                            color: Appearance.colors.colOnSecondaryContainer
                             horizontalAlignment: Text.AlignLeft
                             text: modelData.count ?? ""
                         }
@@ -367,13 +361,12 @@ Item {
             id: tagInputContainer
             property real columnSpacing: 5
             Layout.fillWidth: true
-            radius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius : Appearance.rounding.normal - root.padding
+            radius: Appearance.rounding.normal - root.padding
             Behavior on radius {
                 enabled: Appearance.animationsEnabled
                 NumberAnimation { duration: Appearance.animation.elementMoveFast.duration }
             }
-            color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                : Appearance.inirEverywhere ? Appearance.inir.colLayer2 : Appearance.auroraEverywhere ? Appearance.aurora.colElevatedSurface : Appearance.colors.colLayer2
+            color: Appearance.colors.colLayer2
             implicitWidth: tagInputField.implicitWidth
             implicitHeight: Math.max(inputFieldRowLayout.implicitHeight + inputFieldRowLayout.anchors.topMargin 
                 + commandButtonsRow.implicitHeight + commandButtonsRow.anchors.bottomMargin + columnSpacing, 45)
@@ -493,7 +486,7 @@ Item {
                     Layout.rightMargin: 5
                     implicitWidth: 40
                     implicitHeight: 40
-                    buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius : Appearance.rounding.small
+                    buttonRadius: Appearance.rounding.small
                     enabled: tagInputField.text.length > 0
                     toggled: enabled
 
@@ -512,7 +505,7 @@ Item {
                         horizontalAlignment: Text.AlignHCenter
                         iconSize: 22
                         color: sendButton.enabled
-                            ? (Appearance.zzzEverywhere ? Appearance.zzz.onSticker : Appearance.colors.colOnPrimary)
+                            ? Appearance.colors.colOnPrimary
                             : Appearance.colors.colOnLayer2Disabled
                         text: "arrow_upward"
                     }
@@ -603,8 +596,7 @@ Item {
                         delegate: ApiCommandButton {
                             property string commandRepresentation: `${root.commandPrefix}${modelData.name}`
                             buttonText: commandRepresentation
-                            colBackground: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                                : Appearance.auroraEverywhere ? "transparent" : Appearance.colors.colLayer2
+                            colBackground: Appearance.colors.colLayer2
 
                             downAction: () => {
                                 if (modelData.sendDirectly) {

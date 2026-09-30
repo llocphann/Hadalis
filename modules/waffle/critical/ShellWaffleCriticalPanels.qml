@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
+import qs.services
 import qs.modules.common
 import qs.modules.waffle.background as WaffleBackgroundModule
 import qs.modules.waffle.bar as WaffleBarModule
@@ -11,11 +12,13 @@ Item {
     id: root
 
     component CriticalPanelLoader: LazyLoader {
+        id: criticalPanelLoader
         required property string identifier
         property bool extraCondition: true
-        active: Config.ready
+        readonly property bool enabledPanel: Config.ready
             && (Config.options?.enabledPanels ?? []).includes(identifier)
             && extraCondition
+        active: enabledPanel
     }
 
     CriticalPanelLoader {

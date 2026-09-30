@@ -1,396 +1,369 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 
+import QtQuick
+import Quickshell
 import qs.modules.common
-import Quickshell;
-import Quickshell.Io;
-import QtQuick;
 
 /**
- * Simple to-do list manager with two-way text file sync.
+ * Todo service facade.
  *
- * Backend: todo.json (JSON array of {content, done} objects)
- * Mirror:  todo.txt  (human-editable markdown-checkbox format)
- *
- * todo.txt format:
- *   - [ ] Undone task
- *   - [x] Done task
- *   # Comment (ignored)
- *   Plain text (treated as undone task)
- *
- * Sync model:
- *   UI action  -> update list -> write json + txt
- *   txt edited -> parse       -> update list -> write json (skip txt to avoid loop)
- *
- * Implementation note:
- *   FileView.setText() caches content internally; subsequent reload()+text()
- *   returns the cached buffer, NOT fresh disk content.  To read the actual
- *   file after an external edit we run `cat` via Process + StdioCollector,
- *   which always reads from disk.
+ * Existing installs remain on InternalTodoBackend because the append-only
+ * config default is "internal". Obsidian becomes canonical only after the
+ * backend value is explicitly changed by a setup/migration flow (or by an
+ * advanced user editing config directly).
  */
 Singleton {
     id: root
 
-    function _log(...args): void {
-        if (Quickshell.env("QS_DEBUG") === "1") console.log(...args);
+    readonly property string requestedBackend:
+        String(Config.options?.todo?.backend ?? "internal")
+    // Shared vault for Todo and Zettelkasten. Older installations may have
+    // configured only the former Quick Notes override; reuse it when the
+    // canonical Todo vault is empty rather than losing their capture target.
+    // New edits write todo.obsidian.vaultPath and retire the legacy override.
+    readonly property string sharedVaultPath: {
+        const canonical = String(Config.options?.todo?.obsidian?.vaultPath ?? "").trim()
+        return canonical.length > 0
+            ? canonical
+            : String(Config.options?.notes?.zettelkasten?.vaultPath ?? "").trim()
+    }
+    readonly property bool useObsidian: root.requestedBackend === "obsidian"
+    readonly property string backend: root.useObsidian ? "obsidian" : "internal"
+    readonly property string obsidianSourceMode:
+        String(Config.options?.todo?.obsidian?.sourceMode ?? "markdown-note")
+    // One heading-based Markdown task source is the normal path. The old
+    // managed-marker backend remains only as a persisted compatibility mode.
+    readonly property bool useLegacyManagedNote:
+        root.obsidianSourceMode === "managed-note"
+    readonly property bool useMarkdownNote:
+        !root.useLegacyManagedNote
+    readonly property var obsidianBackend:
+        root.useLegacyManagedNote ? obsidian : dailyObsidian
+
+    // Setup is deliberately separate from canonical ownership. While this is
+    // true the Obsidian backend may scan/initialize/preview, but public Todo
+    // consumers continue to see the internal backend until activation commits.
+    property bool _obsidianSetupActive: false
+    property bool _activateAfterMigration: false
+    property bool _migrationInFlight: false
+    readonly property bool obsidianSetupActive: root._obsidianSetupActive
+    readonly property bool obsidianConfigured: root.obsidianBackend.configured
+    readonly property bool obsidianReady: root.obsidianBackend.ready
+    readonly property bool obsidianBusy: root.obsidianBackend.busy
+    readonly property string obsidianErrorCode: root.obsidianBackend.errorCode
+    readonly property string obsidianErrorMessage: root.obsidianBackend.errorMessage
+    readonly property var obsidianCapabilities: root.obsidianBackend.capabilities
+    readonly property var obsidianMigrationPreview: root.obsidianBackend.migrationPreview
+    readonly property var obsidianList: root.obsidianBackend.list
+    readonly property string obsidianNoteFullPath: root.obsidianBackend.noteFullPath
+    readonly property bool internalPersistenceBusy: internal.persistenceBusy
+
+    readonly property var list: root.useObsidian ? root.obsidianBackend.list : internal.list
+    readonly property bool ready: root.useObsidian ? root.obsidianBackend.ready : internal.ready
+    readonly property bool busy: root.useObsidian ? root.obsidianBackend.busy : root._migrationInFlight
+    readonly property string errorMessage: root.useObsidian ? root.obsidianBackend.errorMessage : ""
+    readonly property string errorCode: root.useObsidian ? root.obsidianBackend.errorCode : ""
+    readonly property var capabilities: root.useObsidian
+        ? root.obsidianBackend.capabilities
+        : ({
+            backend: "internal",
+            noteReadable: true,
+            noteWritable: true,
+            richMutationAvailable: false,
+            lastError: ""
+        })
+    readonly property string sourceLabel: {
+        if (!root.useObsidian)
+            return "Hadalis"
+        if (root.useMarkdownNote)
+            return "Obsidian · Markdown"
+        return "Obsidian · " + String(Config.options?.todo?.obsidian?.notePath ?? "")
+    }
+    readonly property int internalItemCount: internal.list.length
+
+    // Compatibility paths remain the internal store paths. New UI must use
+    // openSource() instead of assuming Todo.txtFilePath is canonical.
+    property alias filePath: internal.filePath
+    property alias txtFilePath: internal.txtFilePath
+
+    InternalTodoBackend {
+        id: internal
     }
 
-    property string filePath: Directories.todoPath
-    property string txtFilePath: Directories.todoTxtPath
-    property var list: []
-    property bool ready: false
+    ObsidianTodoBackend {
+        id: obsidian
+        active: (root.useObsidian || root._obsidianSetupActive) && root.useLegacyManagedNote
+        vaultPath: root.sharedVaultPath
+        notePath: String(Config.options?.todo?.obsidian?.notePath ?? "Hadalis/Todo.md")
+        preferTasksPlugin: Config.options?.todo?.obsidian?.preferTasksPlugin ?? true
+        allowBasicOfflineMutation:
+            Config.options?.todo?.obsidian?.allowBasicOfflineMutation ?? true
+    }
 
-    // Guard flag: when true, skip writing txt back (because we're
-    // processing a txt change and the file is already up-to-date)
-    property bool _suppressTxtWrite: false
+    DailyNoteTodoBackend {
+        id: dailyObsidian
+        active: (root.useObsidian || root._obsidianSetupActive) && root.useMarkdownNote
+        vaultPath: root.sharedVaultPath
+        folder: String(Config.options?.todo?.obsidian?.dailyNote?.folder
+            ?? "00_Capture/01_Journal")
+        noteFormat: String(Config.options?.todo?.obsidian?.dailyNote?.format
+            ?? "YYYY/MMMM/DD-MM-YYYY-dddd")
+        plannerHeading: String(Config.options?.todo?.obsidian?.dailyNote?.plannerHeading
+            ?? "Tasks")
+        plannerHeadingLevel: Number(
+            Config.options?.todo?.obsidian?.dailyNote?.plannerHeadingLevel ?? 2)
+        defaultDurationMinutes: Number(
+            Config.options?.todo?.obsidian?.dailyNote?.defaultDurationMinutes ?? 30)
+    }
 
-    // Startup guard: ignore txt onFileChanged until initial write settles.
-    // Without this, the watcher can catch a truncated/empty intermediate state
-    // from the initial setText() and destroy the list.
-    property bool _startupLock: true
+    Connections {
+        target: root.obsidianBackend
 
-    // Fresh-start directory creation is asynchronous. Keep UI edits in memory
-    // until storage is ready, then persist the latest list once.
-    property bool _storageInitializing: false
-
-    // FileView emits onLoaded after setText(). Serialize canonical JSON writes
-    // so a stale self-write callback cannot rehydrate an older list while a
-    // newer UI/external-text edit is waiting to be persisted.
-    property bool _jsonSaving: false
-    property bool _jsonSaveQueued: false
-
-    // --- Public API ---
-
-    function _normalizeList(value) {
-        if (!Array.isArray(value)) return []
-        const normalized = []
-        for (let i = 0; i < value.length; i++) {
-            const item = value[i]
-            if (!item || typeof item !== "object" || Array.isArray(item))
-                continue
-            normalized.push({
-                "content": String(item.content ?? ""),
-                "done": item.done === true
-            })
+        function onMigrationFinished(success, payload): void {
+            root._migrationInFlight = false
+            if (!success)
+                root._activateAfterMigration = false
         }
-        return normalized
+
+        function onMigrationCommitted(payload): void {
+            root._migrationInFlight = false
+            if (!root._activateAfterMigration)
+                return
+            root._activateAfterMigration = false
+
+            // The migration helper has already re-scanned the canonical note
+            // and ObsidianTodoBackend applied that fresh payload before this
+            // signal is emitted. Only now may ownership move to Obsidian.
+            Config.setNestedValue("todo.backend", "obsidian")
+            root._obsidianSetupActive = false
+        }
     }
+
+    function _itemAt(index): var {
+        if (!Number.isInteger(index) || index < 0 || index >= root.list.length)
+            return null
+        return root.list[index]
+    }
+
+    function beginObsidianSetup(): bool {
+        if (root.useObsidian)
+            return true
+        root._activateAfterMigration = false
+        root._obsidianSetupActive = true
+        Qt.callLater(() => root.obsidianBackend.reload())
+        return true
+    }
+
+    function cancelObsidianSetup(): void {
+        if (root.useObsidian || root._migrationInFlight)
+            return
+        root._activateAfterMigration = false
+        root._obsidianSetupActive = false
+    }
+
+    function refreshObsidianSetup(): bool {
+        if (!root.useObsidian && !root._obsidianSetupActive)
+            return false
+        root.obsidianBackend.reload()
+        return true
+    }
+
+    function initializeSection() {
+        if (!root.useObsidian && !root._obsidianSetupActive)
+            return false
+        return root.obsidianBackend.initializeSection()
+    }
+
+    function previewInternalToObsidian(): bool {
+        if ((!root.useObsidian && !root._obsidianSetupActive)
+                || !internal.ready
+                || internal.persistenceBusy)
+            return false
+        return root.obsidianBackend.previewInternal(internal.filePath)
+    }
+
+    function migrateInternalToObsidian(expectedInternalSha) {
+        if ((!root.useObsidian && !root._obsidianSetupActive)
+                || !internal.ready
+                || internal.persistenceBusy
+                || root._migrationInFlight)
+            return false
+
+        const staging = !root.useObsidian
+        root._activateAfterMigration = staging
+        const started = root.obsidianBackend.migrateInternal(
+            internal.filePath,
+            String(expectedInternalSha ?? "")
+        )
+        if (started)
+            root._migrationInFlight = staging
+        else
+            root._activateAfterMigration = false
+        return started
+    }
+
+    function activateObsidian(): bool {
+        if (root.useObsidian)
+            return true
+        if (!root._obsidianSetupActive || !root.obsidianBackend.ready || root.obsidianBackend.busy)
+            return false
+
+        Config.setNestedValue("todo.backend", "obsidian")
+        root._activateAfterMigration = false
+        root._obsidianSetupActive = false
+        return true
+    }
+
+    function reactivateInternal(): bool {
+        if (root._migrationInFlight)
+            return false
+        root._activateAfterMigration = false
+        root._obsidianSetupActive = false
+        Config.setNestedValue("todo.backend", "internal")
+        return true
+    }
+
 
     function addItem(item) {
-        if (!root.ready) return false
-        const normalized = root._normalizeList([item])
-        if (normalized.length === 0) return false
-        list.push(normalized[0])
-        root.list = list.slice(0)
-        _persistAll()
-        return true
+        if (!root.useObsidian) {
+            if (root._migrationInFlight)
+                return false
+            return internal.addItem(item)
+        }
+        const content = String(item?.content ?? item?.description ?? "")
+        return root.useMarkdownNote
+            ? dailyObsidian.addTask(content, "", "")
+            : obsidian.addTask(content)
     }
 
     function addTask(desc) {
-        return addItem({ "content": desc, "done": false })
+        return root.addTaskWithTime(desc, "", "")
     }
 
-    function markDone(index) {
-        if (!root.ready) return false
-        if (index >= 0 && index < list.length) {
-            list[index].done = true
-            root.list = list.slice(0)
-            _persistAll()
-            return true
+    function addTaskWithTime(desc, startTime, endTime) {
+        if (!root.useObsidian) {
+            if (root._migrationInFlight)
+                return false
+            return internal.addTask(desc)
         }
-        return false
+        const content = String(desc ?? "")
+        if (root.useMarkdownNote)
+            return dailyObsidian.addTask(
+                content,
+                String(startTime ?? ""),
+                String(endTime ?? "")
+            )
+        return obsidian.addTask(content)
+    }
+
+    function toggleTask(taskId) {
+        if (!root.useObsidian) {
+            if (root._migrationInFlight)
+                return false
+            const id = String(taskId ?? "")
+            for (let i = 0; i < internal.list.length; ++i) {
+                if (String(internal.list[i]?.id ?? "") === id) {
+                    if (internal.list[i]?.done)
+                        return internal.markUnfinished(i)
+                    return internal.markDone(i)
+                }
+            }
+            return false
+        }
+        return root.obsidianBackend.toggleTask(String(taskId ?? ""))
+    }
+
+    function deleteTask(taskId) {
+        if (!root.useObsidian) {
+            if (root._migrationInFlight)
+                return false
+            const id = String(taskId ?? "")
+            for (let i = 0; i < internal.list.length; ++i) {
+                if (String(internal.list[i]?.id ?? "") === id)
+                    return internal.deleteItem(i)
+            }
+            return false
+        }
+        return root.obsidianBackend.deleteTask(String(taskId ?? ""))
+    }
+
+    // Compatibility wrappers for the existing TodoWidget/Dashboard delegates.
+    // They resolve the current item first so Obsidian never mutates by index.
+    function markDone(index) {
+        if (!root.useObsidian) {
+            if (root._migrationInFlight)
+                return false
+            return internal.markDone(index)
+        }
+        const item = root._itemAt(index)
+        if (!item)
+            return false
+        if (item.done === true)
+            return true
+        return root.obsidianBackend.toggleTask(String(item.id ?? ""))
     }
 
     function markUnfinished(index) {
-        if (!root.ready) return false
-        if (index >= 0 && index < list.length) {
-            list[index].done = false
-            root.list = list.slice(0)
-            _persistAll()
-            return true
+        if (!root.useObsidian) {
+            if (root._migrationInFlight)
+                return false
+            return internal.markUnfinished(index)
         }
-        return false
+        const item = root._itemAt(index)
+        if (!item)
+            return false
+        if (item.done !== true)
+            return true
+        return root.obsidianBackend.toggleTask(String(item.id ?? ""))
     }
 
     function deleteItem(index) {
-        if (!root.ready) return false
-        if (index >= 0 && index < list.length) {
-            list.splice(index, 1)
-            root.list = list.slice(0)
-            _persistAll()
-            return true
+        if (!root.useObsidian) {
+            if (root._migrationInFlight)
+                return false
+            return internal.deleteItem(index)
         }
-        return false
+        const item = root._itemAt(index)
+        if (!item)
+            return false
+        return root.obsidianBackend.deleteTask(String(item.id ?? ""))
     }
 
     function refresh() {
-        root.ready = false
-        todoFileView.reload()
+        if (root.useObsidian)
+            root.obsidianBackend.reload()
+        else
+            internal.refresh()
     }
 
-    // --- Persistence helpers ---
-
-    function _saveJson() {
-        if (root._storageInitializing)
-            return
-        if (root._jsonSaving) {
-            root._jsonSaveQueued = true
-            return
-        }
-        root._jsonSaving = true
-        todoFileView.setText(JSON.stringify(root.list))
+    function reload() {
+        root.refresh()
     }
 
-    function _persistAll() {
-        if (root._storageInitializing)
-            return
-        root._saveJson()
-        if (!root._suppressTxtWrite) {
-            _writeTxt()
-        }
-    }
-
-    function _writeTxt() {
-        let lines = []
-        for (let i = 0; i < root.list.length; i++) {
-            const item = root.list[i]
-            const checkbox = item.done ? "[x]" : "[ ]"
-            lines.push("- " + checkbox + " " + (item.content ?? ""))
-        }
-        txtFileView.setText(lines.join("\n") + "\n")
-    }
-
-    function _finishMissingInitialization(): void {
-        root._storageInitializing = false
-        root.ready = true
-        root._persistAll()
-        startupUnlock.start()
-    }
-
-    function _ensureStorageDirectories(): void {
-        const jsonParent = root.filePath.substring(0, root.filePath.lastIndexOf('/'))
-        const txtParent = root.txtFilePath.substring(0, root.txtFilePath.lastIndexOf('/'))
-        const dirs = []
-        if (jsonParent.length > 0)
-            dirs.push(jsonParent)
-        if (txtParent.length > 0 && txtParent !== jsonParent)
-            dirs.push(txtParent)
-        if (dirs.length === 0) {
-            root._finishMissingInitialization()
-            return
-        }
-        if (todoInitDirProc.running)
-            return
-        todoInitDirProc.command = ["/usr/bin/mkdir", "-p"].concat(dirs)
-        todoInitDirProc.attempted = true
-        todoInitDirProc.running = true
-    }
-
-    // --- Text file parsing ---
-
-    function _parseTxt(text) {
-        if (!text || text.trim().length === 0) return []
-
-        const lines = text.split("\n")
-        let tasks = []
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim()
-            // Skip empty lines and comments
-            if (line.length === 0 || line.startsWith("#")) continue
-
-            let content = ""
-            let done = false
-
-            // Match: - [x] text  or  [x] text
-            const doneMatch = line.match(/^(?:-\s*)?\[x\]\s*(.*)$/i)
-            if (doneMatch) {
-                content = doneMatch[1].trim()
-                done = true
-            } else {
-                // Match: - [ ] text  or  [ ] text
-                const undoneMatch = line.match(/^(?:-\s*)?\[\s?\]\s*(.*)$/)
-                if (undoneMatch) {
-                    content = undoneMatch[1].trim()
-                    done = false
-                } else {
-                    // Match: - text (dash prefix, no checkbox)
-                    const dashMatch = line.match(/^-\s+(.+)$/)
-                    if (dashMatch) {
-                        content = dashMatch[1].trim()
-                        done = false
-                    } else {
-                        // Plain text line = undone task
-                        content = line
-                        done = false
-                    }
-                }
-            }
-
-            if (content.length > 0) {
-                tasks.push({ "content": content, "done": done })
-            }
-        }
-        return tasks
-    }
-
-    // --- Startup ---
-
-    Component.onCompleted: {
-        refresh()
-    }
-
-    // --- JSON FileView (canonical backend) ---
-
-    FileView {
-        id: todoFileView
-        path: Qt.resolvedUrl(root.filePath)
-        onLoaded: {
-            if (root._jsonSaving) {
-                root._jsonSaving = false
-                if (root._jsonSaveQueued) {
-                    root._jsonSaveQueued = false
-                    Qt.callLater(() => root._saveJson())
-                }
-                return
-            }
-
-            const fileContents = todoFileView.text()
-            try {
-                root.list = root._normalizeList(JSON.parse(fileContents))
-            } catch (e) {
-                console.log("[Todo] JSON parse error, resetting list:", e)
-                root.list = []
-            }
-            root.ready = true
-            _log("[Todo] JSON loaded,", root.list.length, "tasks")
-            // Generate txt mirror from loaded JSON, then unlock after settling
-            root._writeTxt()
-            startupUnlock.start()
-        }
-        onLoadFailed: (error) => {
-            if (error == FileViewError.FileNotFound) {
-                console.log("[Todo] JSON not found, creating new file.")
-                root.list = []
-                root._storageInitializing = true
-                root._ensureStorageDirectories()
-            } else {
-                console.log("[Todo] Error loading JSON:", error)
-            }
-        }
-    }
-
-    Process {
-        id: todoInitDirProc
-        property bool attempted: false
-        property bool startObserved: false
-        running: false
-
-        onRunningChanged: {
-            if (todoInitDirProc.running) {
-                todoInitDirProc.startObserved = false
-                return
-            }
-            if (!todoInitDirProc.attempted || todoInitDirProc.startObserved)
-                return
-            todoInitDirProc.attempted = false
-            root._storageInitializing = false
-            root.ready = true
-            console.warn("[Todo] Failed to start storage directory creation")
-            root._persistAll()
-            startupUnlock.start()
-        }
-
-        onStarted: todoInitDirProc.startObserved = true
-
-        onExited: (exitCode, exitStatus) => {
-            todoInitDirProc.attempted = false
-            if (exitCode === 0) {
-                root._finishMissingInitialization()
-            } else {
-                root._storageInitializing = false
-                root.ready = true
-                console.warn("[Todo] Failed to create storage directories, exit code:", exitCode)
-                root._persistAll()
-                startupUnlock.start()
-            }
-        }
-    }
-
-    // --- TXT FileView (write + watch) ---
-    // setText() for writing; onFileChanged for external edit detection.
-    // Never call text()/reload() on this — see txtCatProc below.
-
-    FileView {
-        id: txtFileView
-        path: Qt.resolvedUrl(root.txtFilePath)
-        watchChanges: true
-        onFileChanged: {
-            if (!root._startupLock) {
-                txtDebounce.restart()
-            }
-        }
-        onLoadFailed: (error) => {
-            if (error == FileViewError.FileNotFound) {
-                _log("[Todo] txt not found, will be created on next list change")
-            }
-        }
-    }
-
-    // --- Startup unlock timer ---
-
-    Timer {
-        id: startupUnlock
-        interval: 800
-        repeat: false
-        onTriggered: {
-            root._startupLock = false
-            _log("[Todo] txt sync unlocked")
-        }
-    }
-
-    // --- Debounce for external txt edits ---
-
-    Timer {
-        id: txtDebounce
-        interval: 300
-        repeat: false
-        onTriggered: {
-            // Read actual disk content via Process (avoids FileView stale buffer)
-            txtCatProc.running = true
-        }
-    }
-
-    // --- Process to read txt from disk (bypasses FileView cache) ---
-
-    Process {
-        id: txtCatProc
-        running: false
-        command: ["cat", root.txtFilePath]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const txtContent = text ?? ""
-                const parsed = root._parseTxt(txtContent)
-
-                if (root._listsEqual(root.list, parsed)) return
-
-                _log("[Todo] txt changed externally:", parsed.length, "tasks")
-                root._suppressTxtWrite = true
-                root.list = parsed
-                root._saveJson()
-                root._suppressTxtWrite = false
-            }
-        }
-    }
-
-    // --- Comparison helper ---
-
-    function _listsEqual(a, b) {
-        if (!a || !b) return false
-        if (a.length !== b.length) return false
-        for (let i = 0; i < a.length; i++) {
-            if ((a[i].content ?? "") !== (b[i].content ?? "")) return false
-            if (!!a[i].done !== !!b[i].done) return false
-        }
+    function openObsidianSource(): bool {
+        if ((!root.useObsidian && !root._obsidianSetupActive)
+                || !root.obsidianBackend.noteFullPath
+                || root.obsidianBackend.noteFullPath.length === 0)
+            return false
+        const uri = "obsidian://open?path=" + encodeURIComponent(root.obsidianBackend.noteFullPath)
+        Quickshell.execDetached(["xdg-open", uri])
         return true
+    }
+
+    function openSource(taskId) {
+        if (!root.useObsidian) {
+            Quickshell.execDetached(["xdg-open", internal.txtFilePath])
+            return true
+        }
+        return root.openObsidianSource()
+    }
+
+    onUseObsidianChanged: {
+        if (root.useObsidian) {
+            root._migrationInFlight = false
+            root._activateAfterMigration = false
+            root._obsidianSetupActive = false
+        }
     }
 }

@@ -79,25 +79,50 @@ Singleton {
     function redactedLogLocationName(_name): string { return "[redacted]" }
     function redactedLogCoordinates(_lat, _lon): string { return "[redacted]" }
 
+    property int _requestGeneration: 0
+
+    function _cancelRunningRequests(): void {
+        const requests = [
+            gpsLocator,
+            ipLocator,
+            fallbackLocator,
+            forwardGeocoder,
+            reverseGeocoder,
+            fetcher,
+            openMeteoFetcher,
+            airQualityFetcher
+        ]
+        for (let i = 0; i < requests.length; ++i) {
+            if (requests[i].running)
+                requests[i].running = false
+        }
+    }
+
+    function _advanceRequestGeneration(): void {
+        root._requestGeneration++
+        retryTimer.stop()
+        root._cancelRunningRequests()
+    }
+
+    function _startRequest(proc): void {
+        proc.generation = root._requestGeneration
+        proc.running = true
+    }
+
+    function _requestIsCurrent(proc): bool {
+        return proc.generation === root._requestGeneration
+    }
+
     function isNightNow(): bool {
         const h = new Date().getHours();
         return h < 6 || h >= 18;
     }
 
     // ── Live sun/moon context ─────────────────────────────────────────────
-    // Ticks once a minute so sun progress and moon age stay current without a
-    // weather refresh. Raw ms, never gated on animationsEnabled (P0-10).
-    property int _clockTick: 0
-    Timer {
-        id: clockTickTimer
-        interval: 60000
-        repeat: true
-        // Weather's live sun/moon context is only consumed when the weather
-        // service itself is enabled. Do not keep a global minute wakeup alive
-        // for users that disable weather entirely.
-        running: root.enabled
-        onTriggered: root._clockTick++
-    }
+    // Reuse the shared DateTime minute tick instead of owning another 60-second
+    // timer. The conditional keeps Weather out of that dependency graph while
+    // the service is disabled.
+    readonly property int _clockMinute: root.enabled ? DateTime.clock.minutes : -1
 
     // Parse "HH:MM", "H:MM", or "hh:MM AM/PM" into minutes-of-day; -1 if unknown.
     function _timeToMinutes(s): int {
@@ -118,7 +143,7 @@ Singleton {
 
     // 0..1 progress from sunrise to sunset (0 before sunrise, 1 after sunset).
     readonly property real sunProgress: {
-        root._clockTick // recompute every minute
+        root._clockMinute // recompute every minute
         const sr = root._timeToMinutes(root.data?.sunrise)
         const ss = root._timeToMinutes(root.data?.sunset)
         if (sr < 0 || ss < 0 || ss <= sr) return 0
@@ -128,7 +153,7 @@ Singleton {
         return (nowMin - sr) / (ss - sr)
     }
     readonly property string sunState: {
-        root._clockTick
+        root._clockMinute
         const sr = root._timeToMinutes(root.data?.sunrise)
         const ss = root._timeToMinutes(root.data?.sunset)
         if (sr < 0 || ss < 0) return root.isNightNow() ? "night" : "day"
@@ -139,7 +164,7 @@ Singleton {
     // Local lunar phase from the synodic cycle. Open-Meteo does not expose moon
     // phase, so this is computed honestly rather than faked from an API field.
     readonly property real moonAge: {
-        root._clockTick
+        root._clockMinute
         const now = new Date()
         const ref = Date.UTC(2000, 0, 6, 18, 14, 0) // known new moon (UTC)
         const synodic = 29.530588853
@@ -286,15 +311,18 @@ Singleton {
         result.forecast = forecast
         if (forecast.length > 0) { result.tempMax = forecast[0].hi; result.tempMin = forecast[0].lo }
 
-        // Hourly: flatten today+tomorrow, keep upcoming 3-hourly slots
+        // Hourly: flatten today+tomorrow and keep eight 3-hour buckets,
+        // starting with the bucket that contains "now". The orbital concept
+        // treats that elapsed bucket as the active liquid pod.
         let hourly = []
         const nowH = new Date().getHours()
+        const currentBucket = Math.floor(nowH / 3) * 3
         for (let di = 0; di < Math.min(2, days.length); di++) {
             const hrs = days[di]?.hourly ?? []
             for (let hi2 = 0; hi2 < hrs.length; hi2++) {
                 const h = hrs[hi2]
                 const hour = Math.floor(parseInt(h.time ?? "0") / 100)
-                if (di === 0 && hour < nowH - 1) continue
+                if (di === 0 && hour < currentBucket) continue
                 hourly.push({
                     label: (hour < 10 ? "0" + hour : "" + hour) + ":00",
                     temp: (uscs ? h.tempF : h.tempC) + "°",
@@ -389,12 +417,16 @@ Singleton {
         const hTimes = apiData?.hourly?.time ?? []
         const hTemps = apiData?.hourly?.temperature_2m ?? []
         const hCodes = apiData?.hourly?.weather_code ?? []
-        const nowMs = new Date().getTime()
+        const now = new Date()
+        const bucketStart = new Date(now)
+        bucketStart.setMinutes(0, 0, 0)
+        bucketStart.setHours(Math.floor(now.getHours() / 3) * 3)
         let hourly = []
         for (let i = 0; i < hTimes.length && hourly.length < 8; i++) {
             const t = new Date(hTimes[i])
-            if (isNaN(t.getTime()) || t.getTime() < nowMs - 3600000) continue
+            if (isNaN(t.getTime()) || t.getTime() < bucketStart.getTime()) continue
             const hour = t.getHours()
+            if (hour % 3 !== 0) continue
             hourly.push({
                 label: Qt.formatTime(t, "hh:mm"),
                 temp: Math.round(hTemps[i] ?? 0) + "°",
@@ -435,7 +467,7 @@ Singleton {
             + "&visibility_unit=" + visUnit
 
         openMeteoFetcher.command = ["/usr/bin/curl", "-s", "--max-time", "15", url]
-        openMeteoFetcher.running = true
+        root._startRequest(openMeteoFetcher)
     }
 
     // Air quality — separate Open-Meteo endpoint. Best-effort: requires
@@ -451,7 +483,7 @@ Singleton {
             + "&timezone=auto"
 
         airQualityFetcher.command = ["/usr/bin/curl", "-s", "--max-time", "15", url]
-        airQualityFetcher.running = true
+        root._startRequest(airQualityFetcher)
     }
 
     function _markAqiUnavailable(): void {
@@ -500,7 +532,7 @@ Singleton {
                 // Reverse geocode to get a nice city name
                 reverseGeocoder.command = ["/usr/bin/curl", "-s", "--max-time", "10",
                     "https://nominatim.openstreetmap.org/reverse?format=json&lat=" + root.configLat + "&lon=" + root.configLon + "&zoom=10&accept-language=en"];
-                reverseGeocoder.running = true;
+                root._startRequest(reverseGeocoder);
             } else {
                 root.fetchWeather();
             }
@@ -513,13 +545,13 @@ Singleton {
             const q = encodeURIComponent(root.configCity);
             forwardGeocoder.command = ["/usr/bin/curl", "-s", "--max-time", "10",
                 "https://nominatim.openstreetmap.org/search?format=jsonv2&q=" + q + "&limit=5&addressdetails=1&accept-language=es,en"];
-            forwardGeocoder.running = true;
+            root._startRequest(forwardGeocoder);
             return;
         }
 
         if (root.enableGPS) {
             console.info("[Weather] Trying GPS via geoclue...");
-            gpsLocator.running = true;
+            root._startRequest(gpsLocator);
             return;
         }
 
@@ -531,7 +563,7 @@ Singleton {
     function getLocation(): void {
         if (ipLocator.running) return;
         console.info("[Weather] Getting location from IP...");
-        ipLocator.running = true;
+        root._startRequest(ipLocator);
     }
 
     // Step 2: Fetch weather using coordinates (precise) or city name (fallback)
@@ -552,13 +584,13 @@ Singleton {
         }
         const cmd = `curl -s --max-time 15 'https://wttr.in/${query}?format=j1'`;
         fetcher.command = ["/usr/bin/bash", "-c", cmd];
-        fetcher.running = true;
+        root._startRequest(fetcher);
     }
 
     function hasRunningRequests(): bool {
         return gpsLocator.running || ipLocator.running || fallbackLocator.running
             || forwardGeocoder.running || reverseGeocoder.running
-            || fetcher.running || openMeteoFetcher.running;
+            || fetcher.running || openMeteoFetcher.running || airQualityFetcher.running;
     }
 
     function getData(): void {
@@ -572,7 +604,10 @@ Singleton {
     // Force refresh (useful for settings UI "refresh now" button)
     function forceRefresh(): void {
         console.info("[Weather] Force refresh requested");
+        root._advanceRequestGeneration()
         root._forceRefreshPending = false;
+        root._locationRefreshPending = false;
+        root._unitRefreshPending = false;
         root.location = { valid: false, lat: 0, lon: 0, name: "" };
         root._retryCount = 0;
         root._emptyResponseCount = 0;
@@ -594,6 +629,8 @@ Singleton {
     property int _primaryFailCount: 0
     property double _primaryFailUntil: 0  // timestamp (ms) until which primary is skipped
     property bool _forceRefreshPending: false
+    property bool _locationRefreshPending: false
+    property bool _unitRefreshPending: false
     Timer {
         id: retryTimer
         // Exponential backoff: 5s, 10s, 20s, 40s, 80s
@@ -618,15 +655,27 @@ Singleton {
         interval: 350
         repeat: true
         onTriggered: {
-            if (!root._forceRefreshPending) {
-                pendingForceRefreshTimer.stop();
-                return;
+            const hasPending = root._forceRefreshPending
+                || root._locationRefreshPending
+                || root._unitRefreshPending
+            if (!hasPending) {
+                pendingForceRefreshTimer.stop()
+                return
             }
             if (root.hasRunningRequests())
-                return;
-            root._forceRefreshPending = false;
-            pendingForceRefreshTimer.stop();
-            root.resolveLocation();
+                return
+
+            const resolveAgain = root._forceRefreshPending || root._locationRefreshPending
+            const refreshWeather = root._unitRefreshPending
+            root._forceRefreshPending = false
+            root._locationRefreshPending = false
+            root._unitRefreshPending = false
+            pendingForceRefreshTimer.stop()
+
+            if (resolveAgain)
+                root.resolveLocation()
+            else if (refreshWeather && root.location.valid)
+                root.fetchWeather()
         }
     }
 
@@ -639,8 +688,15 @@ Singleton {
             root._lastCity = root.configCity;
             root._lastLat = root.configLat;
             root._lastLon = root.configLon;
+            root._advanceRequestGeneration()
             root.location = { valid: false, lat: 0, lon: 0, name: "" };
-            root.resolveLocation();
+            if (root.hasRunningRequests()) {
+                root._locationRefreshPending = true
+                pendingForceRefreshTimer.restart()
+            } else {
+                root._locationRefreshPending = false
+                root.resolveLocation()
+            }
         }
     }
 
@@ -668,7 +724,16 @@ Singleton {
         }
     }
     onUseUSCSChanged: {
-        if (root.location.valid) fetchWeather();
+        if (!root.location.valid)
+            return
+        root._advanceRequestGeneration()
+        root._unitRefreshPending = true
+        if (root.hasRunningRequests()) {
+            pendingForceRefreshTimer.restart()
+        } else {
+            root._unitRefreshPending = false
+            root.fetchWeather()
+        }
     }
 
     // Re-resolve when manual location config changes (debounced)
@@ -704,11 +769,14 @@ Singleton {
     // Forward geocoder: city name → coordinates + validated name
     Process {
         id: forwardGeocoder
+        property int generation: 0
         command: ["/usr/bin/curl", "-s", "--max-time", "10", ""]
         stdout: StdioCollector {
             onStreamFinished: {
+                if (!root._requestIsCurrent(forwardGeocoder))
+                    return
                 if (text.length === 0) {
-                    console.warn("[Weather] Forward geocode empty, falling back to city name");
+                    console.info("[Weather] Forward geocode empty, falling back to city name");
                     root.location = { valid: true, lat: 0, lon: 0, name: root.configCity };
                     root.fetchWeather();
                     return;
@@ -785,9 +853,12 @@ Singleton {
     // Reverse geocoder: coordinates → city name
     Process {
         id: reverseGeocoder
+        property int generation: 0
         command: ["/usr/bin/curl", "-s", "--max-time", "10", ""]
         stdout: StdioCollector {
             onStreamFinished: {
+                if (!root._requestIsCurrent(reverseGeocoder))
+                    return
                 if (text.length === 0) {
                     root.fetchWeather();
                     return;
@@ -822,11 +893,14 @@ Singleton {
     // GPS via geoclue (where-am-i command)
     Process {
         id: gpsLocator
+        property int generation: 0
         property bool _handledFallback: false
         command: ["/usr/bin/bash", "-c", "where-am-i -t 10 2>/dev/null | grep -oP '(Latitude|Longitude):\\s*\\K[\\d.-]+' | head -2 | paste -sd' '"]
         onRunningChanged: if (running) _handledFallback = false
         stdout: StdioCollector {
             onStreamFinished: {
+                if (!root._requestIsCurrent(gpsLocator))
+                    return
                 if (text.trim().length === 0) {
                     console.warn("[Weather] GPS failed, falling back to IP");
                     gpsLocator._handledFallback = true;
@@ -843,7 +917,7 @@ Singleton {
                         // Reverse geocode for display name
                         reverseGeocoder.command = ["/usr/bin/curl", "-s", "--max-time", "10",
                             "https://nominatim.openstreetmap.org/reverse?format=json&lat=" + lat + "&lon=" + lon + "&zoom=10&accept-language=en"];
-                        reverseGeocoder.running = true;
+                        root._startRequest(reverseGeocoder);
                         return;
                     }
                 }
@@ -853,6 +927,8 @@ Singleton {
             }
         }
         onExited: (code) => {
+            if (!root._requestIsCurrent(gpsLocator))
+                return
             if (code !== 0 && !root.location.valid && !gpsLocator._handledFallback) {
                 console.warn("[Weather] GPS process failed (code " + code + "), falling back to IP");
                 gpsLocator._handledFallback = true;
@@ -864,12 +940,15 @@ Singleton {
     // IP geolocation (ip-api.com - accurate)
     Process {
         id: ipLocator
+        property int generation: 0
         command: ["/usr/bin/curl", "-s", "--max-time", "10", "http://ip-api.com/json/?fields=lat,lon,city,regionName,countryCode"]
         stdout: StdioCollector {
             onStreamFinished: {
+                if (!root._requestIsCurrent(ipLocator))
+                    return
                 if (text.length === 0) {
                     console.warn("[Weather] IP location empty, trying fallback");
-                    fallbackLocator.running = true;
+                    root._startRequest(fallbackLocator);
                     return;
                 }
                 try {
@@ -885,18 +964,20 @@ Singleton {
                         console.info("[Weather] Location:", root.redactedLogLocationName(root.location.name));
                         root.fetchWeather();
                     } else {
-                        fallbackLocator.running = true;
+                        root._startRequest(fallbackLocator);
                     }
                 } catch (e) {
                     console.error("[Weather] IP location error:", e.message);
-                    fallbackLocator.running = true;
+                    root._startRequest(fallbackLocator);
                 }
             }
         }
         onExited: (code) => {
+            if (!root._requestIsCurrent(ipLocator))
+                return
             if (code !== 0) {
                 console.warn("[Weather] IP location failed, trying fallback");
-                fallbackLocator.running = true;
+                root._startRequest(fallbackLocator);
             }
         }
     }
@@ -904,9 +985,12 @@ Singleton {
     // Fallback: ipwho.is
     Process {
         id: fallbackLocator
+        property int generation: 0
         command: ["/usr/bin/curl", "-s", "--max-time", "10", "https://ipwho.is/"]
         stdout: StdioCollector {
             onStreamFinished: {
+                if (!root._requestIsCurrent(fallbackLocator))
+                    return
                 if (text.length === 0) return;
                 try {
                     const data = JSON.parse(text);
@@ -930,6 +1014,8 @@ Singleton {
             }
         }
         onExited: (code) => {
+            if (!root._requestIsCurrent(fallbackLocator))
+                return
             // If fallback also fails, schedule retry
             if (code !== 0 && !root.location.valid) {
                 retryTimer.start();
@@ -940,12 +1026,15 @@ Singleton {
     // Weather fetcher
     Process {
         id: fetcher
+        property int generation: 0
         // Guard: prevent double fallback invocation from both onStreamFinished and onExited
         property bool _fallbackTriggered: false
         command: ["/usr/bin/bash", "-c", ""]
         onRunningChanged: if (running) _fallbackTriggered = false
         stdout: StdioCollector {
             onStreamFinished: {
+                if (!root._requestIsCurrent(fetcher))
+                    return
                 const payload = text.trim();
                 if (payload.length === 0) {
                     root._emptyResponseCount++;
@@ -1007,6 +1096,8 @@ Singleton {
             }
         }
         onExited: (code) => {
+            if (!root._requestIsCurrent(fetcher))
+                return
             if (code !== 0 && !fetcher._fallbackTriggered) {
                 fetcher._fallbackTriggered = true;
                 root._primaryFailCount++;
@@ -1019,9 +1110,12 @@ Singleton {
 
     Process {
         id: openMeteoFetcher
+        property int generation: 0
         command: ["/usr/bin/curl", "-s", "--max-time", "15", ""]
         stdout: StdioCollector {
             onStreamFinished: {
+                if (!root._requestIsCurrent(openMeteoFetcher))
+                    return
                 const payload = text.trim()
                 if (payload.length === 0) {
                     retryTimer.start()
@@ -1037,6 +1131,8 @@ Singleton {
             }
         }
         onExited: (code) => {
+            if (!root._requestIsCurrent(openMeteoFetcher))
+                return
             if (code !== 0) {
                 console.warn("[Weather] Open-Meteo fetch failed, code:", code)
                 retryTimer.start()
@@ -1048,9 +1144,12 @@ Singleton {
     // (so a flaky AQI endpoint can't disturb the working weather loop).
     Process {
         id: airQualityFetcher
+        property int generation: 0
         command: ["/usr/bin/curl", "-s", "--max-time", "15", ""]
         stdout: StdioCollector {
             onStreamFinished: {
+                if (!root._requestIsCurrent(airQualityFetcher))
+                    return
                 const payload = text.trim()
                 if (payload.length === 0 || !payload.startsWith("{")) {
                     root._markAqiUnavailable()
@@ -1065,6 +1164,8 @@ Singleton {
             }
         }
         onExited: (code) => {
+            if (!root._requestIsCurrent(airQualityFetcher))
+                return
             if (code !== 0) {
                 console.info("[Weather] Air quality fetch failed (non-fatal), code:", code)
                 root._markAqiUnavailable()

@@ -13,6 +13,7 @@ import qs.services
 import qs.modules.settings
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.perimeter
 import qs.modules.common.functions as CF
 
 /**
@@ -33,19 +34,19 @@ Scope {
 
     property bool settingsOpen: GlobalStates.settingsOverlayOpen ?? false
 
-    // Keep the PanelWindow alive briefly after close so the scrim can fade
-    // out. Mirrors SettingsOverlay: without it the Loader tears down the
-    // instant settingsOpen flips and the backdrop cuts to black.
+    // Keep the PanelWindow alive through the card's exit slide. Mirrors the
+    // rail overlay: backdrop/scrim snap and top-level Settings motion slides.
     property bool _panelLoaded: settingsOpen || _closeAnimRunning
     property bool _closeAnimRunning: false
     property real _surfaceReveal: settingsOpen ? 1 : 0
+    readonly property real _screenEdgeThickness: Math.max(1, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
 
     Behavior on _surfaceReveal {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+            duration: SurfaceMotion.duration
+            easing.type: SurfaceMotion.easingType
         }
     }
 
@@ -53,7 +54,7 @@ Scope {
     property int level: 0
     property int currentPage: -1
 
-    readonly property bool easyMode: Config.options?.settingsUi?.easyMode ?? false
+
 
     // Component paths are registry-relative; resolve to absolute shell URLs
     // so the host's Loaders work regardless of where this file lives.
@@ -76,13 +77,8 @@ Scope {
                     root._surfaceReveal = 1;
             });
             root.clearSearch();
-            const requested = GlobalStates.settingsOverlayRequestedPage ?? -1;
-            if (requested >= 0 && requested < root.pages.length) {
-                root.openPage(requested);
-                GlobalStates.settingsOverlayRequestedPage = -1;
-            } else {
+            if (!root.consumeSettingsDeepLink())
                 root.level = 0;
-            }
         } else {
             _surfaceReveal = 0;
             _closeAnimRunning = true;
@@ -92,7 +88,7 @@ Scope {
 
     Timer {
         id: closeAnimTimer
-        interval: Appearance.animation.elementMove.duration + 40
+        interval: SurfaceMotion.duration + 40
         repeat: false
         onTriggered: root._closeAnimRunning = false
     }
@@ -108,9 +104,52 @@ Scope {
         root.level = 0;
     }
 
-    function setEasyMode(enabled: bool): void {
-        Config.setNestedValue("settingsUi.easyMode", enabled === true);
+    Connections {
+        target: SettingsPageRegistry
+        function onNavigateRequested(pageIndex, section) {
+            if (!root.settingsOpen) return
+            if (section.length > 0)
+                root.openSearchResult({ pageIndex: pageIndex,
+                    section: section, label: section, isSection: true })
+            else
+                root.openPage(pageIndex)
+        }
     }
+
+    function consumeSettingsDeepLink(): bool {
+        if (!root.settingsOpen)
+            return false
+        const requestedPage = GlobalStates.settingsOverlayRequestedPage ?? -1
+        const requestedSection = String(
+            GlobalStates.settingsOverlayRequestedSection ?? "").trim()
+        // Section and page are written as two property changes. While the
+        // overlay is already open, the section signal can arrive first; keep
+        // it pending until the page target is available so the deep link is
+        // consumed atomically.
+        if (requestedPage < 0)
+            return false
+
+        GlobalStates.settingsOverlayRequestedPage = -1
+        GlobalStates.settingsOverlayRequestedSection = ""
+
+        if (requestedPage >= 0 && requestedSection.length > 0) {
+            root.openSearchResult({
+                pageIndex: requestedPage,
+                pageName: "",
+                section: requestedSection,
+                label: requestedSection,
+                isSection: true
+            })
+            return true
+        }
+        if (requestedPage >= 0) {
+            root.openPage(requestedPage)
+            return true
+        }
+        return false
+    }
+
+
 
     // Switch chrome without going hunting for the option that controls it.
     // "focus" and "rail" swap the two overlay loaders in shell.qml, which are
@@ -140,7 +179,7 @@ Scope {
                 var idx = cat.pages[p];
                 if (idx < 0 || idx >= pages.length)
                     continue;
-                if (easyMode && pages[idx].essential !== true)
+                if (!SettingsPageRegistry.isPageApplicable(idx))
                     continue;
                 var entry = Object.assign({}, pages[idx]);
                 entry.realIndex = idx;
@@ -196,14 +235,6 @@ Scope {
         return root._groupShapes[index % root._groupShapes.length];
     }
 
-    // Bounce off a page that easy mode just hid
-    onEasyModeChanged: {
-        if (easyMode && currentPage >= 0 && pages[currentPage]?.essential !== true)
-            goHome();
-        if (searchText.length > 0)
-            recomputeSearch();
-    }
-
     // ── Search ──
     property string searchText: ""
     property var searchResults: []
@@ -226,17 +257,10 @@ Scope {
         }
 
         var terms = q.split(/\s+/).filter(t => t.length > 0);
-        var isWaffle = Config.options?.panelFamily === "waffle";
-        var wafflePage = SettingsPageRegistry.pages.findIndex(
-            p => String(p.component || "").indexOf("WaffleConfig.qml") >= 0);
         var results = [];
 
         function allowed(pageIndex) {
-            if (pageIndex < 0 || pageIndex >= root.pages.length)
-                return false;
-            if (wafflePage >= 0 && pageIndex === wafflePage && !isWaffle)
-                return false;
-            if (root.easyMode && root.pages[pageIndex].essential !== true)
+            if (!SettingsPageRegistry.isPageApplicable(pageIndex))
                 return false;
             return true;
         }
@@ -404,13 +428,12 @@ Scope {
     Connections {
         target: GlobalStates
         // Also fires while the panel is already open, which is how
-        // `settingsNav page` navigates instead of only picking the landing page.
+        // settings deep links navigate instead of only picking the landing page.
         function onSettingsOverlayRequestedPageChanged() {
-            const requested = GlobalStates.settingsOverlayRequestedPage ?? -1;
-            if (requested < 0 || !root.settingsOpen)
-                return;
-            root.openPage(requested);
-            GlobalStates.settingsOverlayRequestedPage = -1;
+            root.consumeSettingsDeepLink()
+        }
+        function onSettingsOverlayRequestedSectionChanged() {
+            root.consumeSettingsDeepLink()
         }
     }
 
@@ -470,10 +493,6 @@ Scope {
                     auroraTransparency: 0.35
 
                     opacity: (GlobalStates.settingsOverlayOpen ?? false) ? 1 : 0
-                    Behavior on opacity {
-                        enabled: Appearance.animationsEnabled
-                        NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                    }
                 }
             }
 
@@ -564,23 +583,16 @@ Scope {
                     && !GlobalStates.settingsNativeDialogOpen
             }
 
-            // ── Scrim ──
-            Rectangle {
+            // Dim only the workspace, never the physical Screen Edge or the
+            // translucent connected body. The card cutout follows its slide.
+            SettingsWorkspaceScrim {
                 id: scrimBg
                 anchors.fill: parent
-                color: Appearance.colors.colScrim
-                opacity: (GlobalStates.settingsOverlayOpen ?? false)
+                outputName: String(settingsPanel.screen?.name ?? "")
+                cardRect: Qt.rect(card.x, card.y, card.width, card.height)
+                cardRadius: card.radius
+                dim: (GlobalStates.settingsOverlayOpen ?? false)
                     ? (Config.options?.settingsUi?.overlayAppearance?.scrimDim ?? 35) / 100 : 0
-                visible: opacity > 0
-
-                Behavior on opacity {
-                    enabled: Appearance.animationsEnabled
-                    animation: NumberAnimation {
-                        duration: Appearance.animation.elementMoveFast.duration
-                        easing.type: Appearance.animation.elementMoveFast.type
-                        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                    }
-                }
             }
 
             // Sibling of the scrim on purpose: scrimBg goes invisible at
@@ -594,33 +606,39 @@ Scope {
             }
 
             // ── Bottom-connected settings popup ──
-            StyledRectangularShadow {
-                target: card
-                visible: (root.settingsOpen || root._closeAnimRunning)
-                    && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
-                    && Number(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15) > 0
-                    && Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70) > 0
-                blur: Math.max(0, Math.min(32,
-                    Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
-                spread: 0
-                offset: Qt.vector2d(0, 0)
-                color: (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
-                    ? ColorUtils.applyAlpha(Appearance.colors.colShadow,
-                        Math.max(0, Math.min(1.0,
-                            Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70))))
-                    : "transparent"
-                joinBottom: true
+            ConnectedSurfaceIrisEdgeSurface {
+                id: settingsIrisSurface
+                z: 1
+                anchors.fill: parent
+                edge: "bottom"
+                ownerThickness: root._screenEdgeThickness
+                outputRect: Qt.rect(0, 0, settingsPanel.width, settingsPanel.height)
+                bodyRect: Qt.rect(card.x, card.y, card.width, card.height)
+                bodyRadius: card.radius
+                fillColor: card.surfaceFillColor
+                progress: root.settingsOpen || root._closeAnimRunning ? 1 : 0
+                // Connected Settings is another Screen Edge-owned surface:
+                // use the same physical elevation controls as Popups/Sidebars.
+                shadowEnabled: Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+                shadowExtent: Math.max(0, Math.min(32,
+                    Math.round(Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15)))
+                shadowColor: Qt.alpha(Appearance.m3colors.m3shadow,
+                    Math.max(0, Math.min(1.0,
+                        Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70))))
             }
 
             Rectangle {
                 id: card
 
-                // Same legibility clamp as the rail host — see SettingsOverlay.
+                // Keep the connected Material body identical to physical Screen Edge
+                // and normal ii Bar. Legacy backdrop branches may still read
+                // panelBgOpacity below, but they must not tint this structural fill.
                 readonly property real panelBgOpacity: Math.max(0.6,
                     Config.options?.settingsUi?.overlayAppearance?.backgroundOpacity ?? 1.0)
+                readonly property color surfaceFillColor: Appearance.colors.colLayer0
 
                 anchors.horizontalCenter: parent.horizontalCenter
-                y: settingsPanel.height - height
+                y: settingsPanel.height - root._screenEdgeThickness - height
                     + (1 - root._surfaceReveal) * height
                 width: Math.min(
                     1560,
@@ -637,15 +655,9 @@ Scope {
                       : Appearance.rounding.windowRounding
                 bottomLeftRadius: 0
                 bottomRightRadius: 0
-                // Same contract as the rail overlay: backgroundOpacity lands on
-                // the fill alpha (solid) or the blur transparentize (glass),
-                // never on Item opacity, which children inherit.
-                color: Appearance.auroraEverywhere || Appearance.regaliaEverywhere ? "transparent"
-                     : CF.ColorUtils.applyAlpha(
-                         Appearance.inirEverywhere ? Appearance.inir.colLayer0
-                       : Appearance.zzzEverywhere ? Appearance.zzz.chrome
-                       : Appearance.colors.colLayer0Base,
-                         card.panelBgOpacity)
+                // Preserve the connected Material fill exactly as colLayer0.
+                // panelBgOpacity is retained only for legacy backdrop compatibility.
+                color: "transparent"
                 // angel's panel tokens, not its card tokens: this rectangle is
                 // the panel now that the body carries its own plate, and the
                 // rail host draws the equivalent surface the same way.
@@ -677,6 +689,7 @@ Scope {
                 // Keep the card mapped while the bottom-edge exit slide runs.
                 opacity: 1
                 visible: root.settingsOpen || root._closeAnimRunning
+                z: 2
 
                 RegaliaPlate {
                     anchors.fill: parent
@@ -1087,15 +1100,16 @@ Scope {
 
                                         Keys.onPressed: event => {
                                             if (event.key === Qt.Key_Down && root.searchResults.length > 0) {
-                                                resultsList.forceActiveFocus();
-                                                if (resultsList.currentIndex < 0)
-                                                    resultsList.currentIndex = 0;
-                                                event.accepted = true;
+                                                focusLiveSearch.focusResults()
+                                                event.accepted = true
                                             } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
                                                     && root.searchResults.length > 0) {
-                                                var i = Math.max(0, resultsList.currentIndex);
-                                                root.openSearchResult(root.searchResults[i]);
-                                                event.accepted = true;
+                                                focusLiveSearch.activateCurrent()
+                                                event.accepted = true
+                                            } else if (event.key === Qt.Key_Escape
+                                                    && root.searchText.length > 0) {
+                                                root.clearSearch()
+                                                event.accepted = true
                                             }
                                         }
                                     }
@@ -1171,26 +1185,20 @@ Scope {
                         }
 
                         RippleButton {
-                            implicitWidth: 34
-                            implicitHeight: 34
-                            buttonRadius: Appearance.rounding.full
-                            colBackground: "transparent"
-                            colBackgroundHover: Appearance.colors.colLayer1Hover
-                            onClicked: root.setEasyMode(!root.easyMode)
-                            contentItem: MaterialSymbol {
-                                anchors.centerIn: parent
-                                text: root.easyMode ? "school" : "tune"
-                                iconSize: 19
-                                color: root.easyMode ? Appearance.colors.colPrimary
-                                     : Appearance.colors.colOnSurfaceVariant
+                            id: editAbyssLayout
+                            visible: Config.options?.panelFamily === "abyss"
+                            implicitWidth: 36; implicitHeight: 36
+                            onClicked: GlobalStates.startAbyssEditing()
+                            contentItem: MaterialSymbol { text:"edit";iconSize:20;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter;color:Appearance.colors.colOnSurfaceVariant }
+                            StyledToolTip { text:"Edit Abyss layout" }
                             }
-                            StyledToolTip {
-                                text: root.easyMode
-                                    ? Translation.tr("Easy mode — click to show all settings")
-                                    : Translation.tr("Advanced mode — click to switch to Easy mode (essentials only)")
-                            }
-                        }
 
+                        RippleButton {
+                            implicitWidth:36;implicitHeight:36
+                            onClicked:Quickshell.execDetached([Quickshell.shellPath("scripts/inir"),"lock","activate"])
+                            contentItem:MaterialSymbol { text:"lock";iconSize:20;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter;color:Appearance.colors.colOnSurfaceVariant }
+                            StyledToolTip { text:"Lock" }
+                        }
                         RippleButton {
                             implicitWidth: 34
                             implicitHeight: 34
@@ -1235,10 +1243,10 @@ Scope {
                     Item {
                         id: homeView
                         anchors.fill: parent
-                        x: root.level === 0 ? 0 : -body.slide
-                        opacity: root.level === 0 ? 1 : 0
-                        visible: opacity > 0
-                        enabled: root.level === 0
+                        x: root.level === 0 && root.searchText.trim().length === 0 ? 0 : -body.slide
+                        opacity: root.level === 0 && root.searchText.trim().length === 0 ? 1 : 0
+                        visible: opacity > 0 && root.searchText.trim().length === 0
+                        enabled: root.level === 0 && root.searchText.trim().length === 0
 
                         Behavior on x {
                             enabled: Appearance.animationsEnabled
@@ -1562,10 +1570,10 @@ Scope {
                     Item {
                         id: pageView
                         anchors.fill: parent
-                        x: root.level === 1 ? 0 : body.slide
-                        opacity: root.level === 1 ? 1 : 0
-                        visible: opacity > 0
-                        enabled: root.level === 1
+                        x: root.level === 1 && root.searchText.trim().length === 0 ? 0 : body.slide
+                        opacity: root.level === 1 && root.searchText.trim().length === 0 ? 1 : 0
+                        visible: opacity > 0 && root.searchText.trim().length === 0
+                        enabled: root.level === 1 && root.searchText.trim().length === 0
 
                         Behavior on x {
                             enabled: Appearance.animationsEnabled
@@ -2129,187 +2137,27 @@ Scope {
 
                             SettingsPageLoadingOverlay {
                                 anchors.fill: parent
-                                loading: pageHost.loading
-                                text: Translation.tr("Loading page…")
+                                loading: pageHost.loading && !pageHost.error
                                 z: 15
                             }
                         }
                     }
                 }
 
-                // ── Search results ──
-                MouseArea {
+                // Search has its own full-width content view, in the same body
+                // as the home grid and page host, without a modal hit target.
+                SettingsLiveSearchResults {
+                    id: focusLiveSearch
                     anchors.fill: parent
-                    visible: root.searchResults.length > 0
-                    onClicked: root.clearSearch()
-                    z: 90
+                    z: 20
+                    query: root.searchText
+                    results: root.searchResults
+                    searchField: focusSearchField
+                    iconForPage: index => SettingsPageRegistry.iconForPage(index)
+                    onActivated: entry => root.openSearchResult(entry)
+                    onCloseRequested: root.clearSearch()
                 }
 
-                // Without this a query that matches nothing just showed an empty
-                // grid, which reads as the search being broken.
-                Rectangle {
-                    id: noResultsPill
-                    visible: root.searchText.length > 0 && root.searchResults.length === 0
-                    z: 100
-                    anchors.top: header.bottom
-                    anchors.topMargin: 6
-                    anchors.right: parent.right
-                    anchors.rightMargin: 14
-                    width: noResultsRow.implicitWidth + 26
-                    height: 36
-                    radius: Appearance.rounding.full
-                    color: Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                         : Appearance.zzzEverywhere ? Appearance.zzz.bg2
-                         : Appearance.colors.colLayer1
-                    border.width: 1
-                    border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                        : Appearance.inirEverywhere ? Appearance.inir.colBorder
-                        : Appearance.m3colors.m3outlineVariant
-
-                    RowLayout {
-                        id: noResultsRow
-                        anchors.centerIn: parent
-                        spacing: 8
-
-                        MaterialSymbol {
-                            text: "search_off"
-                            iconSize: 18
-                            color: Appearance.colors.colSubtext
-                        }
-
-                        StyledText {
-                            text: Translation.tr("No results found")
-                            color: Appearance.colors.colSubtext
-                            font.pixelSize: Appearance.font.pixelSize.small
-                        }
-                    }
-                }
-
-                Rectangle {
-                    id: resultsCard
-                    visible: root.searchText.length > 0 && root.searchResults.length > 0
-                    z: 100
-                    width: Math.min(420, card.width - 28)
-                    height: Math.min(resultsList.contentHeight + 12, 360)
-                    anchors.top: header.bottom
-                    anchors.topMargin: 6
-                    anchors.right: parent.right
-                    anchors.rightMargin: 14
-                    radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                          : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
-                          : Appearance.rounding.normal
-                    color: Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                         : Appearance.zzzEverywhere ? Appearance.zzz.bg2
-                         : Appearance.colors.colLayer1
-                    border.width: 1
-                    border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                        : Appearance.inirEverywhere ? Appearance.inir.colBorder
-                        : Appearance.m3colors.m3outlineVariant
-
-                    ListView {
-                        id: resultsList
-                        anchors.fill: parent
-                        anchors.margins: 6
-                        spacing: 2
-                        model: root.searchResults
-                        clip: true
-                        currentIndex: 0
-                        boundsBehavior: Flickable.StopAtBounds
-
-                        Keys.onPressed: event => {
-                            if (event.key === Qt.Key_Up) {
-                                if (resultsList.currentIndex > 0)
-                                    resultsList.currentIndex--;
-                                else
-                                    focusSearchField.forceActiveFocus();
-                                event.accepted = true;
-                            } else if (event.key === Qt.Key_Down) {
-                                if (resultsList.currentIndex < resultsList.count - 1)
-                                    resultsList.currentIndex++;
-                                event.accepted = true;
-                            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                if (resultsList.currentIndex >= 0)
-                                    root.openSearchResult(root.searchResults[resultsList.currentIndex]);
-                                event.accepted = true;
-                            }
-                        }
-
-                        delegate: RippleButton {
-                            id: resultRow
-                            required property var modelData
-                            required property int index
-
-                            width: resultsList.width
-                            implicitHeight: 46
-                            buttonRadius: Appearance.inirEverywhere ? Appearance.inir.roundingSmall
-                                        : Appearance.rounding.small
-                            // A wash of the accent, not the accent container. The
-                            // container pairs with an on-container ink this row
-                            // does not use, so under zzz the selected result came
-                            // out light-on-orange. A low alpha keeps the row's own
-                            // ink readable in every style. headerHoverColor is not
-                            // an option here either — under zzz it resolves to the
-                            // same bg2 this results card is painted with.
-                            colBackground: resultRow.index === resultsList.currentIndex
-                                ? CF.ColorUtils.applyAlpha(SettingsMaterialPreset.accentColor, 0.16)
-                                : "transparent"
-                            colBackgroundHover: CF.ColorUtils.applyAlpha(
-                                SettingsMaterialPreset.accentColor, 0.09)
-
-                            Keys.forwardTo: [resultsList]
-                            onClicked: root.openSearchResult(resultRow.modelData)
-
-                            contentItem: RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 10
-                                anchors.rightMargin: 10
-                                spacing: 10
-
-                                MaterialSymbol {
-                                    text: SettingsPageRegistry.iconForPage(resultRow.modelData.pageIndex)
-                                    iconSize: 18
-                                    color: resultRow.index === resultsList.currentIndex
-                                        ? SettingsMaterialPreset.accentColor
-                                        : (Appearance.zzzEverywhere ? Appearance.zzz.inkMuted
-                                          : Appearance.colors.colOnSurfaceVariant)
-                                }
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    Layout.minimumWidth: 0
-                                    spacing: 1
-
-                                    Text {
-                                        Layout.fillWidth: true
-                                        Layout.minimumWidth: 0
-                                        text: resultRow.modelData.labelHighlighted || resultRow.modelData.label || ""
-                                        textFormat: Text.StyledText
-                                        color: Appearance.zzzEverywhere ? Appearance.zzz.ink
-                                             : Appearance.colors.colOnLayer1
-                                        elide: Text.ElideRight
-                                        wrapMode: Text.NoWrap
-                                        font {
-                                            family: Appearance.font.family.main
-                                            pixelSize: Appearance.font.pixelSize.small
-                                            weight: Font.Medium
-                                        }
-                                    }
-
-                                    StyledText {
-                                        Layout.fillWidth: true
-                                        Layout.minimumWidth: 0
-                                        text: resultRow.modelData.pageName || ""
-                                        color: Appearance.colors.colSubtext
-                                        font.pixelSize: Appearance.font.pixelSize.smaller
-                                        elide: Text.ElideRight
-                                        wrapMode: Text.NoWrap
-                                        opacity: 0.9
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }

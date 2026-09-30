@@ -39,6 +39,7 @@ Singleton {
     // ── Script paths ──────────────────────────────────────────────────────
     readonly property string parserScript: FileUtils.trimFileProtocol(Qt.resolvedUrl("../../scripts/parse_niri_keybinds.py"))
     readonly property string niriConfigScript: FileUtils.trimFileProtocol(Qt.resolvedUrl("../../scripts/niri-config.py"))
+    readonly property string nativeDispatchPath: FileUtils.trimFileProtocol(Qt.resolvedUrl("../../scripts/native-dispatch"))
 
     // Internal: pending key combos tracked for signal emission
     property string _pendingSetCombo: ""
@@ -46,9 +47,76 @@ Singleton {
 
     // ── Public API ────────────────────────────────────────────────────────
 
+    function _legacyKeybind(bind): var {
+        const parts = String(bind?.key_combo ?? "").split("+").filter(part => part.length > 0)
+        if (parts.length === 0)
+            return null
+
+        let key = parts[parts.length - 1]
+        const mods = parts.slice(0, -1).map(part => part === "Mod" ? "Super" : part)
+        if (key.startsWith("XF86Audio")) {
+            key = key.replace("XF86Audio", "")
+                .replace("RaiseVolume", "Vol+")
+                .replace("LowerVolume", "Vol-")
+        } else if (key.startsWith("XF86MonBrightness")) {
+            key = key.replace("XF86MonBrightness", "Brightness")
+                .replace("Up", "+")
+                .replace("Down", "-")
+        } else if (key.startsWith("XF86")) {
+            key = key.replace("XF86", "")
+        }
+
+        return {
+            mods: mods,
+            key: key,
+            comment: String(bind?.description ?? bind?.action ?? "")
+        }
+    }
+
+    function _applyLegacyFromEnriched(result): bool {
+        const binds = Array.isArray(result?.binds) ? result.binds : []
+        const categories = Array.isArray(result?.categories) ? result.categories : []
+        const children = []
+
+        for (const category of categories) {
+            const indices = Array.isArray(category?.binds) ? category.binds : []
+            const keybinds = []
+            for (const rawIndex of indices) {
+                const index = Number(rawIndex)
+                if (!Number.isInteger(index) || index < 0 || index >= binds.length)
+                    continue
+                const bind = binds[index]
+                if (bind?.commented === true)
+                    continue
+                const legacy = root._legacyKeybind(bind)
+                if (legacy)
+                    keybinds.push(legacy)
+            }
+            if (keybinds.length > 0) {
+                children.push({
+                    name: String(category?.name ?? "Other"),
+                    children: [{ keybinds: keybinds }]
+                })
+            }
+        }
+
+        if (children.length === 0)
+            return false
+
+        root.keybinds = { children: children }
+        root.configPath = String(result?.config_file ?? "")
+        root.loaded = true
+        return true
+    }
+
+    function _runLegacyFallback(): void {
+        if (!keybindParser.running)
+            keybindParser.running = true
+    }
+
     function reload(): void {
-        keybindParser.running = true
-        enrichedBindsLoader.running = true
+        if (!enrichedBindsLoader.running)
+            enrichedBindsLoader.running = true
     }
 
     function setBind(keyCombo: string, action: string, options: string): void {
@@ -57,7 +125,7 @@ Singleton {
             return
         }
         root._pendingSetCombo = keyCombo
-        const args = ["/usr/bin/python3", root.niriConfigScript, "set-bind", keyCombo, action]
+        const args = [root.nativeDispatchPath, "niri", "set-bind", keyCombo, action]
         if (options && options.length > 0)
             args.push("--options", options)
         setBindProcess.command = args
@@ -70,7 +138,7 @@ Singleton {
             return
         }
         root._pendingRemoveCombo = keyCombo
-        removeBindProcess.command = ["/usr/bin/python3", root.niriConfigScript, "remove-bind", keyCombo]
+        removeBindProcess.command = [root.nativeDispatchPath, "niri", "remove-bind", keyCombo]
         removeBindProcess.running = true
     }
 
@@ -119,7 +187,7 @@ Singleton {
     // ── Enriched binds loader (niri-config.py get-binds) ─────────────────
     Process {
         id: enrichedBindsLoader
-        command: ["/usr/bin/python3", root.niriConfigScript, "get-binds"]
+        command: [root.nativeDispatchPath, "niri", "get-binds"]
         running: false
 
         stdout: StdioCollector {
@@ -140,13 +208,17 @@ Singleton {
                     } else {
                         root.allBinds = result.binds ?? []
                         root.enrichedCategories = result.categories ?? []
+                        if (!root._applyLegacyFromEnriched(result))
+                            root._runLegacyFallback()
                         console.info("[NiriKeybinds] get-binds loaded", root.allBinds.length, "binds")
                     }
                 } catch (e) {
                     console.warn("[NiriKeybinds] get-binds JSON parse error:", e)
+                    root._runLegacyFallback()
                 }
             } else if (exitCode !== 0) {
-                console.warn("[NiriKeybinds] get-binds failed (exit", exitCode + "), niri-config.py may not support get-binds yet")
+                console.warn("[NiriKeybinds] get-binds failed (exit", exitCode + "), falling back to legacy parser")
+                root._runLegacyFallback()
             }
         }
     }

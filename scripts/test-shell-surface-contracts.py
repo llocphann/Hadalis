@@ -23,18 +23,19 @@ def main() -> None:
           "README must retain the maintainer-approved single-owner perimeter contract")
 
     styled_popup = read("modules/bar/StyledPopup.qml")
+    iris_frame = read("modules/common/perimeter/ConnectedSurfaceIrisFrame.qml")
+    iris_edge_surface = read("modules/common/perimeter/ConnectedSurfaceIrisEdgeSurface.qml")
     for token in (
         "qs.modules.common.perimeter",
         "ConnectedSurfaceGeometry",
-        "ConnectedSurfaceFrame",
+        "ConnectedSurfaceIrisFrame",
         "ConnectedSurfaceRevealClip",
         "ConnectedSurfaceContentHost",
-        "ConnectedSurfaceMask",
+        "ConnectedSurfaceBodyMask",
         "mask: connectedMask",
         "ExclusionMode.Ignore",
         "Appearance.colors.colLayer0",
         "PerimeterTokens.popupRadius",
-        "geometry.revealProgress",
         "CompositorFocusGrab",
         "WlrKeyboardFocus.OnDemand",
         "requestedVisible",
@@ -62,16 +63,29 @@ def main() -> None:
           and "Appearance.regalia.barSurfaceFloating" not in styled_popup,
           "Connected bar popouts must use the Hug surface family only")
 
+    for token in (
+        "property real ownerPaintOverlap: 0",
+        "root.clipExternalOwners(root.rawPaintBounds, root.ownerPaintOverlap)",
+        "root.clipExternalOwners(root.body, 0)",
+        "root.clipExternalOwners(root.rawShadowBounds, 0)",
+    ):
+        check(token in iris_frame,
+              f"iRiS paint-only owner overlap contract missing: {token}")
+    check("property real paintOverlap: 0" in iris_edge_surface
+          and "ownerPaintOverlap: root.paintOverlap" in iris_edge_surface,
+          "Direct iRiS edge adapter must expose opt-in paint-only seam overlap")
+    check("property real tangentFrameThickness: ownerThickness" in iris_edge_surface
+          and "externalFrameThickness: root.tangentFrameThickness" in iris_edge_surface,
+          "Direct iRiS edge adapter must separate primary-owner and tangent-frame thickness")
+
     perimeter_tokens = read("modules/common/perimeter/PerimeterTokens.qml")
     for token in (
         "const revision = Config.revision",
         "Config.options?.appearance?.screenEdge?.radius ?? 25",
         "Math.max(0, Math.min(96",
-        "readonly property real smoothUnionRadius: 20",
+        "readonly property real irisFuseDepth: 30",
+        "readonly property real irisWeldDepth: 3",
         "readonly property real popupRadius: 28",
-        "readonly property real joinFlareRadius: frameRadius",
-        "readonly property real joinFlareCrossScale: 0.55",
-        "CONNECTED-SURFACE-OUTWARD-FLARE-LOCK",
     ):
         check(token in perimeter_tokens,
               f"Perimeter geometry token missing: {token}")
@@ -79,9 +93,11 @@ def main() -> None:
           "Connected surfaces must not reintroduce inward attached-body corner rounding")
 
     geometry = read("modules/common/perimeter/ConnectedSurfaceGeometry.qml")
-    for edge in ("top", "bottom", "left", "right"):
+    for edge in ("top", "bottom", "left"):
         check(f'edge === "{edge}"' in geometry,
               f"ConnectedSurfaceGeometry missing {edge} edge handling")
+    check("PerimeterTopology.edges.includes(edge)" in geometry,
+          "ConnectedSurfaceGeometry must validate the implicit right-edge fallback through shared topology")
     for token in (
         "seamOverlap",
         "effectiveSeamOverlap",
@@ -104,10 +120,10 @@ def main() -> None:
     check("Math.max(Math.max(0, connectorWidth), anchorTangentExtent)" not in geometry,
           "Connected popup neck width must not expand or shrink with the source control width")
     check("(1 - motionProgress) * crossBodyExtent" in geometry,
-          "Connected popup motion must translate the complete body with the expressive spatial scalar")
+          "Connected popup motion must translate the complete body with its spatial scalar")
     check("readonly property real revealProgress: clamp(progress, 0, 1)" in geometry
           and "readonly property real motionProgress:" in geometry,
-          "Connected popup must clamp semantic reveal while preserving spatial overshoot for translation")
+          "Connected popup must clamp semantic reveal while preserving continuous translation state")
     check("readonly property rect revealClipRect:" in geometry,
           "Connected popup reveal must expose a fixed resting-edge clip")
     check("readonly property rect visibleBodyRect:" in geometry,
@@ -121,11 +137,30 @@ def main() -> None:
     check("tangentAnimationOffset" not in geometry
           and "tangentRevealDirection" not in geometry,
           "Connected popup slide must remain on the attachment axis like Caelestia wrappers")
-    check("seamOverlap: 0" in styled_popup,
-          "Bar popup must start exactly at the attachment boundary so the flat shoulder is fully visible")
+    check("seamOverlap: PerimeterTokens.irisWeldDepth" in styled_popup,
+          "Bar popup SDF must preserve the primary-owner weld while the reveal clip keeps owner pixels hidden")
+    check("readonly property real _popupScreenMargin: root._screenEdgeThickness" in styled_popup
+          and "readonly property rect sdfBodyRect:" in iris_frame,
+          "Tangent-clamped Bar popups must stop at the real Screen Edge boundary and weld only their SDF record")
     check("ConnectedSurfaceRevealClip {" in styled_popup
           and "opacity: 1" in styled_popup,
           "Connected popup must use pure slide-under clipping instead of staged fade/scale")
+
+    # Bottom-left Quick Notes is interaction/popup ownership only. It must
+    # consume the shared StyledPopup/iRiS presentation path and never become a
+    # second physical Screen Edge painter.
+    quick_notes_popup = read("modules/screenCorners/QuickNotesPopup.qml")
+    screen_corners = read("modules/screenCorners/ScreenCorners.qml")
+    screen_edges = read("modules/screenCorners/ScreenEdges.qml")
+    check("Bar.StyledPopup {" in quick_notes_popup
+          and "attachmentEdgeOverride: root.cornerAttachmentEdge" in quick_notes_popup
+          and "attachmentThicknessOverride: root.cornerAttachmentThickness" in quick_notes_popup,
+          "Quick Notes must remain a shared connected popup attached to the real corner owner")
+    check('property string quickNotesEditorOutput: ""' in screen_corners
+          and "screenCorners.quickNotesEditorOutput === outputName" in screen_corners,
+          "Quick Notes keyboard focus ownership must remain exclusive across outputs")
+    check("QuickNotes" not in screen_edges and "quickNotes" not in screen_edges,
+          "Quick Notes must never paint or modify the locked physical Screen Edge")
 
     content_host = read("modules/common/perimeter/ConnectedSurfaceContentHost.qml")
     for token in ("geometry.animatedBodyRect", "effectivePadding", "clip: true"):
@@ -140,15 +175,21 @@ def main() -> None:
     check("connectorSourceExtent" in connector,
           "ConnectedSurfaceConnector must narrow toward the real bar anchor")
 
-    join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
-    for token in (
-        "readonly property point bodyOrigin:",
-        "root.bodyItem.mapToItem(root, 0, 0)",
-        "root.bodyOrigin.x",
-        "root.bodyOrigin.y",
+    for retired_path in (
+        "modules/common/perimeter/ConnectedSurfaceJoinFlares.qml",
+        "modules/common/perimeter/PerimeterCornerShadow.qml",
+        "modules/common/widgets/RoundCorner.qml",
     ):
-        check(token in join_flares,
-              f"Join flares must map nested body coordinates into their host: {token}")
+        check(not (ROOT / retired_path).exists(),
+              f"Retired round-wedge geometry must be absent: {retired_path}")
+    iris_edge = read("modules/common/perimeter/ConnectedSurfaceIrisEdgeSurface.qml")
+    for token in (
+        "readonly property rect weldedBodyRect:",
+        "property real ownerThickness: 10",
+        "ConnectedSurfaceIrisFrame {",
+        "externalFrameThickness: root.tangentFrameThickness",
+    ):
+        check(token in iris_edge, f"iRiS edge adapter contract missing: {token}")
 
     check("hoverEnabled: root.active" in styled_popup
           and "onBodyHoveredChanged: root._bodyHovered = bodyHovered" in styled_popup
@@ -159,23 +200,180 @@ def main() -> None:
           and "hoverTransferTimer.restart()" in styled_popup,
           "StyledPopup must debounce the compositor leave/enter hand-off across Bar and popup windows")
 
-    round_corner = read("modules/common/widgets/RoundCorner.qml")
-    check("PathCubic {" in round_corner
-          and "PathAngleArc {" not in round_corner
-          and "readonly property real _k: 0.5522847498307936" in round_corner,
-          "Screen Edge/Bar inverse corners must use the shared circular cubic geometry")
-    for token in (
-        "RoundCorner.CornerEnum.TopLeft",
-        "RoundCorner.CornerEnum.TopRight",
-        "RoundCorner.CornerEnum.BottomLeft",
-        "RoundCorner.CornerEnum.BottomRight",
+    check("root.hoverTarget.visible" in styled_popup
+          and "onActiveChanged: {" in styled_popup
+          and "root._bodyHovered = false" in styled_popup
+          and "root._contentHovered = false" in styled_popup
+          and "onHoverTargetChanged: {" in styled_popup,
+          "Connected popup must drop stale hover when anchor or presentation is evicted")
+    for indicator in (
+        "modules/bar/weather/WeatherBar.qml",
+        "modules/bar/ShellUpdateIndicator.qml",
+        "modules/bar/TimerIndicator.qml",
     ):
-        check(token in round_corner,
-              f"RoundCorner must preserve all four orientations: {token}")
-    check("id: shadowCanvas" in round_corner
-          and "ctx.arc(" in round_corner
-          and "property real shadowExtent: 0" in round_corner,
-          "RoundCorner must carry the inward shadow around the circular arc")
+        source = read(indicator)
+        check("property bool _pointerFocused: false" in source
+              and "onPressed: root._pointerFocused = true" in source
+              and "onActiveFocusChanged:" in source
+              and "alternativeVisibleCondition: root.activeFocus && !root._pointerFocused" in source,
+              f"{indicator} must distinguish keyboard focus from sticky pointer focus")
+    tooltip = read("modules/common/widgets/PopupToolTip.qml")
+    check("property bool useParentHover: true" in tooltip
+          and "if (parent.containsMouse !== undefined)" in tooltip
+          and "return false" in tooltip,
+          "Shared tooltip must fail closed for unknown parent hover state")
+    waffle_tile = read("modules/waffle/altSwitcher/WaffleAltSwitcherTile.qml")
+    check("useParentHover: false" in waffle_tile
+          and "externalHoverState: compactMouse.containsMouse" in waffle_tile
+          and "externalPressedState: compactMouse.pressed" in waffle_tile,
+          "Waffle compact tile must explicitly route hover/press from its child MouseArea")
+
+    # Auxiliary edge-attached surfaces refined after the iRiS migration must
+    # keep using the same production connected-surface vocabulary. These guards
+    # intentionally check presentation ownership only; feature/IPC lifecycle
+    # remains owned by each subsystem.
+    region_selection = read("modules/regionSelector/RegionSelection.qml")
+    for token in (
+        "ConnectedSurfaceIrisEdgeSurface {",
+        'edge: "bottom"',
+        "ownerThickness: root.screenEdgeThickness",
+        "physicalShadow?.enabled ?? true",
+        "progress: 1",
+        "enableShadow: false",
+        "transparent: true",
+        "readonly property bool screenshotIiBarActive:",
+        "readonly property string screenshotIiBarEdge:",
+        "id: selectionVisualViewport",
+        "x: root.screenshotLeftOwnerInset",
+        "y: root.screenshotTopOwnerInset",
+        "clip: true",
+        "layer.effect: GE.OpacityMask {",
+        "PerimeterTokens.frameRadius",
+        "paintOverlap: Math.min(",
+        "PerimeterTokens.seamOverlap",
+    ):
+        check(token in region_selection,
+              f"Region selector connected Screen Edge controls missing: {token}")
+    check("opacity: regionSelectionControls.opacity" not in region_selection,
+          "Region selector outer iRiS shell must not fade with toolbar content")
+
+    osd = read("modules/onScreenDisplay/OnScreenDisplay.qml")
+    for token in (
+        "ConnectedSurfaceIrisFrame {",
+        "ConnectedSurfaceBodyMask {",
+        "seamOverlap: PerimeterTokens.irisWeldDepth",
+        "fuseDepth: PerimeterTokens.irisFuseDepth",
+        "visibleBodyRect: statusFrame.visibleBodyRect",
+        "physicalShadow?.enabled ?? true",
+        "Appearance.m3colors.m3shadow",
+    ):
+        check(token in osd,
+              f"Compact IPC/OSD popup iRiS contract missing: {token}")
+    check("ConnectedSurfaceFrame {" not in osd
+          and "ConnectedSurfaceMask {" not in osd,
+          "Compact IPC/OSD popups must not restore the legacy connected frame/mask")
+
+    clipboard_panel = read("modules/clipboard/ClipboardPanel.qml")
+    for token in (
+        "qs.modules.common.perimeter",
+        "ConnectedSurfaceGeometry {",
+        'edge: "bottom"',
+        "ConnectedSurfaceRevealClip {",
+        "ConnectedSurfaceIrisFrame {",
+        "ConnectedSurfaceContentHost {",
+        "PerimeterTokens.popupRadius",
+        "screenMargin: root._screenEdgeThickness",
+        "connectorLength: 0",
+        "seamOverlap: PerimeterTokens.irisWeldDepth",
+        "externalFrameThickness: root._screenEdgeThickness",
+        "physicalShadow?.enabled ?? true",
+        "Appearance.m3colors.m3shadow",
+        "duration: SurfaceMotion.duration",
+        "easing.type: SurfaceMotion.easingType",
+        "root._bottomOwnerThickness(outputName)",
+    ):
+        check(token in clipboard_panel,
+              f"Clipboard connected bottom-surface contract missing: {token}")
+    check("GlassBackground {" not in clipboard_panel,
+          "Clipboard history must not keep the detached legacy GlassBackground shell")
+
+    toast_manager = read("modules/common/ToastManager.qml")
+    toast_notification = read("modules/common/widgets/ToastNotification.qml")
+    check("\nimport qs\n" in toast_manager
+          and "GlobalStates.barOpen" in toast_manager,
+          "ToastManager must import root qs before consuming GlobalStates")
+    for token in (
+        "property real surfaceOffsetScale: 1",
+        "readonly property real surfaceRevealProgress: 1 - root.surfaceOffsetScale",
+        "Behavior on surfaceOffsetScale",
+        "duration: SurfaceMotion.duration",
+        "easing.type: SurfaceMotion.easingType",
+        "progress: root.surfaceRevealProgress",
+        "onDismissed: root.dismissToast(modelData.id)",
+    ):
+        check(token in toast_manager,
+              f"Reload toast slide-motion contract missing: {token}")
+    check('property: "opacity"' not in toast_manager
+          and 'property: "scale"' not in toast_manager
+          and "ParallelAnimation {" not in toast_manager
+          and "entryAnim" not in toast_manager
+          and "exitAnim" not in toast_manager,
+          "Reload toast must stay slide-only with no fade/scale delegate animation")
+    for token in (
+        '"Niri Reloaded"',
+        "ConnectedSurfaceGeometry {",
+        "id: toastGeometry",
+        'edge: "top"',
+        'alignment: "end"',
+        "root.topOwnerThickness",
+        "screenMargin: root.screenEdgeThickness",
+        "connectorLength: 0",
+        "seamOverlap: PerimeterTokens.irisWeldDepth",
+        "ConnectedSurfaceRevealClip {",
+        "ConnectedSurfaceIrisFrame {",
+        "externalFrameThickness: root.screenEdgeThickness",
+        "joinTop: true",
+        "joinRight: !root.topBarOwnsEdge",
+        "readonly property real topBarFreeRightInset: Math.max(",
+        "PerimeterTokens.irisFuseDepth + 2",
+        "root.edgeShadowEnabled ? root.edgeShadowSize + 2 : 0",
+        "root.topBarOwnsEdge ? root.topBarFreeRightInset : 0",
+        "ConnectedSurfaceContentHost {",
+        "ConnectedSurfaceBodyMask {",
+        "visibleBodyRect: toastFrame.visibleBodyRect",
+        "exclusionMode: ExclusionMode.Ignore",
+        "connectedSurface: true",
+        "physicalShadow?.enabled ?? true",
+        "Appearance.m3colors.m3shadow",
+    ):
+        check(token in toast_manager,
+              f"Top-right connected reload toast contract missing: {token}")
+    check('"Niri config reloaded"' not in toast_manager,
+          "Legacy Niri reload toast title must stay retired")
+    check("joinRight: true" not in toast_manager
+          and "joinRight: !root.topBarOwnsEdge" in toast_manager,
+          "Reload toast must prefer a real top Bar; right Screen Edge welding is fallback-only")
+    check("ConnectedSurfaceIrisEdgeSurface {" not in toast_manager
+          and "popup.width - width - root.edgeDecorationMargin" not in toast_manager
+          and "x: Math.max(root.edgeDecorationMargin," not in toast_manager,
+          "Reload toast must reuse StyledPopup geometry instead of the detached direct-edge host")
+    toast_popup_start = toast_manager.index("PanelWindow {\n            id: popup")
+    toast_geometry_start = toast_manager.index("ConnectedSurfaceGeometry {", toast_popup_start)
+    check(toast_popup_start >= 0 and toast_geometry_start > toast_popup_start,
+          "Reload toast visual PanelWindow must exist before its connected geometry")
+    toast_popup_contract = toast_manager[toast_popup_start:toast_geometry_start]
+    check("exclusiveZone:" not in toast_popup_contract
+          and "exclusionMode: ExclusionMode.Ignore" in toast_popup_contract
+          and "WlrLayershell.layer: WlrLayer.Overlay" in toast_popup_contract,
+          "Reload toast visual window must stay full-output Overlay/Ignore with no exclusive-zone setter")
+    check("\n    property bool connectedSurface: false\n" in toast_notification
+          and "\n    property bool copied: false\n" in toast_notification
+          and "layer.enabled: Appearance.effectsEnabled && !root.connectedSurface" in toast_notification
+          and "wallpaperBackdropEnabled: !root.connectedSurface" in toast_notification,
+          "Toast content must expose real host-owned connected-surface properties")
+    check("\\\\n    property bool connectedSurface: false" not in toast_notification
+          and "\\\\n    property bool copied: false" not in toast_notification,
+          "Toast connected-surface properties must not be escaped into a line comment")
 
     screen_edge = read("modules/screenCorners/ScreenEdges.qml")
     check("Config.options?.appearance?.screenEdge?.width ?? 10" in screen_edge,
@@ -201,9 +399,11 @@ def main() -> None:
     check("GameMode.hasFullscreenOnOutput(outputName)" in reservation_window_block
           and "!fullscreenCovered" in reservation_window_block,
           "Transparent Screen Edge reservation windows may release work-area reservations during fullscreen")
-    check("mask: Region { item: emptyFrameInput }" in screen_edge
-          and "mask: Region { item: emptyReservationInput }" in screen_edge,
-          "Screen Edge frame and reservation surfaces must remain completely click-through")
+    check("mask: Region { item: emptyFrameInput }" in screen_edge,
+          "Painted Screen Edge frame must remain completely click-through")
+    check("workspaceOverviewEdgeTriggerEnabled" in screen_edge
+          and "? workspaceOverviewHitArea : emptyReservationInput" in screen_edge,
+          "Reservation surfaces may accept input only for the explicit vertical-Bar Top-edge Overview trigger")
     for retired_shadow_geometry in (
         "id: edgeShadow",
         "shadowExtent",
@@ -224,6 +424,9 @@ def main() -> None:
           and "layer.effect: MultiEffect {" in screen_edge
           and "shadowEnabled: frameShape.physicalShadowActive" in screen_edge
           and "blurMax: Math.max(1, root.physicalShadowSize)" in screen_edge
+          and "shadowBlur: 1.0" in screen_edge
+          and "shadowHorizontalOffset: 0" in screen_edge
+          and "shadowVerticalOffset: 0" in screen_edge
           and "Appearance.m3colors.m3shadow" in screen_edge,
           "Physical Screen Edge must own one dedicated Caelestia-style shadow effect")
     check("component FrameWindow: PanelWindow" in screen_edge
@@ -325,16 +528,20 @@ def main() -> None:
         "GlobalStates.sidebarRightPresentationOutput",
         "PanelWindow {",
         "width: Math.max(0, root.effectiveSidebarWidth",
-        "- Appearance.sizes.elevationMargin)",
+        "- Appearance.sizes.elevationMargin",
+        "- root.screenEdgeHoverWidth)",
         "rightMargin: root.isLeftEdge",
         "? Appearance.sizes.elevationMargin",
-        ": 0",
+        ": root.screenEdgeHoverWidth",
         "leftMargin: root.isLeftEdge",
-        "? 0",
+        "? root.screenEdgeHoverWidth",
         ": Appearance.sizes.elevationMargin",
+        "readonly property real screenEdgePaintOverlap: Math.min(",
+        "PerimeterTokens.seamOverlap",
+        "paintOverlap: root.screenEdgePaintOverlap",
     ):
         check(token in sidebar_host,
-              f"Sidebar physical-edge underlap contract missing: {token}")
+              f"Sidebar Screen Edge boundary contract missing: {token}")
     for retired in (
         "ConnectedSurfaceConnector",
         "sidebarBridgeGeometry",
@@ -343,19 +550,91 @@ def main() -> None:
     ):
         check(retired not in sidebar_host,
               f"Sidebar must not stop at an inner-edge inset or restore a connector: {retired}")
-    check('property: "animTranslateX"' in sidebar_host
-          and 'property: "animTranslateY"' in sidebar_host
-          and "Appearance.animation?.elementMove?.duration ?? 500" in sidebar_host
-          and "Appearance.animation?.elementMove?.bezierCurve" in sidebar_host,
-          "Sidebar slide translation must use the default-spatial motion token")
+    check(sidebar_host.count('property: "animTranslateX"') == 2
+          and "SurfaceMotion.duration" in sidebar_host
+          and "SurfaceMotion.easingType" in sidebar_host
+          and 'readonly property string animationType: SurfaceMotion.mode' in sidebar_host,
+          "Sidebar presentation must use the immutable slide-only SurfaceMotion contract")
+
+    dock = read("modules/dock/Dock.qml")
+    dock_apps = read("modules/dock/DockApps.qml")
+    for dead_dock_apps_api in (
+        "maxWindowPreviewHeight",
+        "maxWindowPreviewWidth",
+        "windowControlsHeight",
+        "buttonPadding",
+        "previewAnchorItem",
+    ):
+        check(dead_dock_apps_api not in dock_apps
+              and dead_dock_apps_api not in dock,
+              f"Dock must not retain unused app-list API: {dead_dock_apps_api}")
+    for token in (
+        "import qs.modules.common.perimeter",
+        "duration: SurfaceMotion.duration",
+        "easing.type: SurfaceMotion.easingType",
+        "ConnectedSurfaceIrisEdgeSurface {",
+        "id: dockIrisSurface",
+        "edge: root.position",
+        "ownerThickness: dockRoot.screenEdgeThickness",
+        "exclusionMode: ExclusionMode.Ignore",
+        'WlrLayershell.layer: WlrLayer.Overlay',
+        'WlrLayershell.namespace: "quickshell:dock-reservation"',
+        "exclusiveZone: mapped ? reservationThickness : 0",
+        "id: dockConnectedBody",
+        "anchors.fill: dockConnectedBody",
+        "paintOverlap: Math.min(",
+        "PerimeterTokens.seamOverlap",
+        "dockMouseArea.x + dockBackground.x + dockConnectedBody.x",
+        "dockRoot.edgeDecorationMargin * 2",
+        "? dockRoot.screenEdgeThickness",
+        "screenEdge?.physicalShadow?.enabled ?? true",
+        "screenEdge?.physicalShadow?.size ?? 15",
+        "screenEdge?.physicalShadow?.opacity ?? 0.70",
+        "Qt.alpha(Appearance.m3colors.m3shadow, dockRoot.screenEdgeShadowOpacity)",
+        "fillColor: dockVisualBackground.irisFillColor",
+        "borderColor: dockVisualBackground.irisBorderColor",
+        "borderWidth: dockVisualBackground.irisBorderWidth",
+        "readonly property color irisFillColor:",
+        "readonly property bool matchDarkPhysicalEdge:",
+        "Appearance.m3colors.darkmode",
+        "? Appearance.colors.colLayer0",
+        ": Appearance.inir.colLayer1",
+    ):
+        check(token in dock,
+              f"Dock iRiS Screen Edge / shadow contract missing: {token}")
+    check("nativeBlurGeometryExact" not in dock,
+          "Dock must not retain an unused blur-proof compatibility alias")
+    for stale_corner_override in (
+        'topLeftRadius: (root.isTop || root.isLeft) ? 0 : radius',
+        'topRightRadius: (root.isTop || root.position === "right") ? 0 : radius',
+        'bottomLeftRadius: (root.position === "bottom" || root.isLeft) ? 0 : radius',
+        'bottomRightRadius: (root.position === "bottom" || root.position === "right") ? 0 : radius',
+    ):
+        check(stale_corner_override not in dock,
+              f"Dock body must not overpaint iRiS weld fillets: {stale_corner_override}")
+    check("StyledRectangularShadow {" not in dock,
+          "Dock must not retain its detached local shadow after iRiS cutover")
+    dock_visual_start = dock.index("sourceComponent: PanelWindow {")
+    dock_reservation_start = dock.index("PanelWindow {\n            id: dockReservationWindow")
+    check(dock_visual_start >= 0 and dock_reservation_start > dock_visual_start,
+          "Dock must keep visual and reservation layer-shell roles separate")
+    dock_visual_block = dock[dock_visual_start:dock_reservation_start]
+    check("exclusiveZone:" not in dock_visual_block
+          and 'WlrLayershell.layer: WlrLayer.Overlay' in dock_visual_block
+          and "exclusionMode: ExclusionMode.Ignore" in dock_visual_block,
+          "Dock visual window must remain Overlay/Ignore with no exclusive-zone setter")
+    check("screenEdgePaintOverlap" not in dock
+          and "paintOverlap: dockRoot." not in dock,
+          "Dock seam overlap must stay local to the shared connected body, not a second offset state")
+    check(dock.count("duration: SurfaceMotion.duration") >= 4
+          and "Appearance.animation.elementMoveEnter.duration" not in dock,
+          "Dock reveal/retract must use the same immutable slide motion as connected popups")
 
     osk = read("modules/onScreenKeyboard/OnScreenKeyboard.qml")
     for token in (
         "targetY = 0",
         "targetY = ph - kh",
         "y: parent ? parent.height - height : 0",
-        "ConnectedSurfaceJoinFlares {",
-        "flareRadius: PerimeterTokens.joinFlareRadius",
         'joinTop: oskRoot.snappedEdge === "top"',
         'joinBottom: oskRoot.snappedEdge === "bottom"',
     ):
@@ -368,16 +647,18 @@ def main() -> None:
           and 'bottomLeftRadius: oskRoot.snappedEdge === "bottom" ? 0 : radius' in osk
           and 'bottomRightRadius: oskRoot.snappedEdge === "bottom" ? 0 : radius' in osk
           and "PerimeterTokens.attachedCornerRadius" not in osk,
-          "OSK attached body edge must stay square; outward flare owns Screen Edge contact rounding")
-    check("Appearance.animation.elementMove.duration" in osk
-          and "Appearance.animation.elementMove.bezierCurve" in osk,
-          "OSK attached-edge slide must use the default-spatial motion token")
+          "OSK attached body edge must stay square without a legacy endpoint wedge")
+    check("SurfaceMotion.duration" in osk
+          and "SurfaceMotion.easingType" in osk,
+          "OSK attached-edge slide must use the immutable connected-surface motion token")
+    check("property real initScale:" not in osk
+          and "Behavior on scale" not in osk,
+          "OSK enter/exit must stay slide-only without a second scale animation")
     for token in (
         "property bool _oskResident:",
         "property real _oskRevealProgress:",
         "readonly property real revealOffsetY:",
         "transform: Translate { y: oskRoot.revealOffsetY }",
-        "progress: root._oskRevealProgress",
     ):
         check(token in osk,
               f"OSK must stay resident and slide through its attached edge: {token}")
@@ -397,24 +678,21 @@ def main() -> None:
           "Rejected curved perimeter-shadow stitching must stay removed from Screen Edge")
 
     for token in (
-        "id: sidebarEdgeFlares",
-        "tracksBodyTranslation",
-        "JoinFlares maps bodyItem through mapToItem()",
+        "readonly property real hiddenTranslateDistance:",
+        "Math.ceil(root.effectiveSidebarWidth) + Math.max(",
+        "PerimeterTokens.irisFuseDepth",
+        "? -root.hiddenTranslateDistance",
+        ": root.hiddenTranslateDistance",
+        "ConnectedSurfaceIrisEdgeSurface {",
+        "id: sidebarIrisSurface",
+        "ownerThickness: root.screenEdgeHoverWidth",
+        "paintOverlap: root.screenEdgePaintOverlap",
+        "exclusionMode: ExclusionMode.Ignore",
     ):
-        check(token in sidebar_host,
-              f"Sidebar Screen Edge shoulders must follow the mapped body once: {token}")
-    sidebar_flare_start = sidebar_host.index("id: sidebarEdgeFlares")
-    sidebar_flare_end = sidebar_host.index("ShellEditSurfaceFrame", sidebar_flare_start)
-    sidebar_flare_block = sidebar_host[sidebar_flare_start:sidebar_flare_end]
-    check("transform: Translate" not in sidebar_flare_block,
-          "Sidebar flares must not double-apply the Loader translation after mapToItem()")
-    check("shadowEnabled:" not in sidebar_flare_block
-          and "shadowExtent:" not in sidebar_flare_block
-          and "shadowColor:" not in sidebar_flare_block,
-          "Sidebar Caelestia shoulders must remain fill-only; body shadow owns depth")
-    check("PerimeterTokens.joinFlareRadius" in sidebar_host
-          and "root.screenEdgeShadowEnabled ? root.screenEdgeShadowSize + 2 : 0" in sidebar_host,
-          "Sidebar native host must reserve room for the larger of flare and configured Screen Edge shadow")
+        check(token in sidebar_host, f"Sidebar iRiS/full-hide contract missing: {token}")
+    for retired in ("ConnectedSurfaceJoinFlares", "joinFlareRadius", "sidebarEdgeFlares"):
+        check(retired not in sidebar_host,
+              f"Sidebar must not retain retired wedge geometry: {retired}")
 
     media_popup = read("modules/mediaControls/BarMediaPopup.qml")
     check("EqualizerPanel {" in media_popup,
@@ -433,7 +711,7 @@ def main() -> None:
               f"{rounded_sidebar_path} must not round attached body corners inward")
         check('root.attachedEdge === "left" ? 0 : radius' in rounded_sidebar
               or 'root.attachedEdge === "right" ? 0 : radius' in rounded_sidebar,
-              f"{rounded_sidebar_path} attached body edge must stay square for outward flare ownership")
+              f"{rounded_sidebar_path} attached body edge must stay square at the owner seam")
 
     compact_sidebar = read("modules/sidebarRight/CompactSidebarRightContent.qml")
     check("import qs.modules.mediaControls" in compact_sidebar
@@ -453,19 +731,21 @@ def main() -> None:
         "modules/settings/SettingsFocus.qml",
     ):
         settings_surface = read(settings_path)
+        if settings_path.endswith("SettingsOverlay.qml"):
+            settings_surface += read("modules/settings/SettingsOverlayNativeHost.qml")
         for token in (
             "PolkitService.active ? WlrLayer.Top : WlrLayer.Overlay",
-            "y: settingsPanel.height - height",
-            "StyledRectangularShadow {",
-            "joinBottom: true",
+            "ConnectedSurfaceIrisEdgeSurface {",
+            'edge: "bottom"',
+            "ownerThickness: root._screenEdgeThickness",
             "bottomLeftRadius: 0",
             "bottomRightRadius: 0",
+            'color: "transparent"',
         ):
             check(token in settings_surface,
-                  f"{settings_path} must remain a square bottom-connected popup below Polkit: {token}")
-        check("ConnectedSurfaceJoinFlares {" not in settings_surface
-              and "PerimeterTokens.joinFlareRadius" not in settings_surface,
-              f"{settings_path} must not paint full-overlay endpoint flares that float beside the centered Settings card")
+                  f"{settings_path} iRiS bottom-attachment contract missing: {token}")
+        check("ConnectedSurfaceJoinFlares" not in settings_surface,
+              f"{settings_path} must not restore legacy endpoint wedge geometry")
 
     settings_overlay = read("modules/settings/SettingsOverlay.qml")
     settings_focus = read("modules/settings/SettingsFocus.qml")
@@ -477,41 +757,132 @@ def main() -> None:
           and "settingsPanel.width * 0.88" in settings_focus
           and "settingsPanel.height * 0.92" in settings_focus,
           "Focus Settings overlay must use the enlarged bottom-connected footprint")
+    check("Appearance.colors.colLayer0" in settings_overlay
+          and "Appearance.colors.colLayer0" in settings_focus,
+          "Connected Settings body fill must share the Material Screen Edge/Bar colLayer0 family")
+    check("Appearance.colors.colLayer0Base" not in settings_overlay,
+          "Rail Settings overlay must not use the detached base tone for its connected body")
+
     for settings_surface in (settings_overlay, settings_focus):
-        check("Appearance.animation.elementMove.duration" in settings_surface
-              and "Appearance.animation.elementMove.bezierCurve" in settings_surface,
-              "Connected Settings overlays must use the Caelestia-style default-spatial slide")
-        check("Appearance.colors.colShadow" in settings_surface
-              and "screenEdge?.shadow?.size" in settings_surface
-              and "screenEdge?.shadow?.opacity" in settings_surface,
-              "Connected Settings overlays must share the Screen Edge shadow contract")
-        check("ConnectedSurfaceJoinFlares {" not in settings_surface,
-              "Settings must not reintroduce floating endpoint shoulder geometry inside the full-screen overlay")
+        check("SurfaceMotion.duration" in settings_surface
+              and "SurfaceMotion.easingType" in settings_surface,
+              "Connected Settings overlays must use the immutable slide-only SurfaceMotion contract")
+        check("Appearance.m3colors.m3shadow" in settings_surface
+              and "screenEdge?.physicalShadow?.enabled" in settings_surface
+              and "screenEdge?.physicalShadow?.size" in settings_surface
+              and "screenEdge?.physicalShadow?.opacity" in settings_surface
+              and "shadowExtent:" in settings_surface,
+              "Connected Settings iRiS surfaces must share the physical Screen Edge shadow controls")
+        check("ConnectedSurfaceJoinFlares" not in settings_surface,
+              "Settings must not reintroduce floating endpoint wedge geometry")
+
+    search_widget = read("modules/overview/SearchWidget.qml")
+    check("property bool directBottomAttachment: false" in search_widget
+          and "readonly property rect connectedSurfaceRect:" in search_widget
+          and "bottomLeftRadius: root.directBottomAttachment && root.showResults ? 0 : radius" in search_widget
+          and "bottomRightRadius: root.directBottomAttachment && root.showResults ? 0 : radius" in search_widget
+          and "ConnectedSurfaceJoinFlares" not in search_widget
+          and "joinFlareRadius" not in search_widget,
+          "Applications search must keep a square direct seam without legacy endpoint wedges")
 
     dashboard = read("modules/overview/OverviewDashboard.qml")
-    check("Rectangle {\n        id: dashContainer" in dashboard
-          and "color: Appearance.colors.colLayer0" in dashboard
-          and "GlassBackground {\n        id: dashContainer" not in dashboard
-          and "readonly property bool useWallpaperBackdrop: false" in dashboard,
-          "Dashboard connected body must be a plain solid Material surface without glass tint")
-    check("PerimeterTokens.attachedCornerRadius" not in dashboard
-          and "bottomLeftRadius: root.directBottomAttachment ? 0 : radius" in dashboard
-          and "bottomRightRadius: root.directBottomAttachment ? 0 : radius" in dashboard,
-          "Dashboard attached body edge must stay square; outward flare owns the Bar/Screen Edge shoulder")
-    check("Appearance.animation.elementMove.duration" in dashboard
-          and "Appearance.animation.elementMove.bezierCurve" in dashboard,
-          "Dashboard connected slide must use the default-spatial motion token")
-    check("Appearance.colors.colShadow" in dashboard
-          and "Appearance.m3colors.m3shadow" not in dashboard,
-          "Dashboard connected shadow must use the same themed shadow ink as Screen Edge and Bar")
-    check("import qs.modules.mediaControls" in dashboard
-          and "EqualizerPanel {" in dashboard
-          and "id: dashboardEqualizer" in dashboard,
-          "Dashboard Media must expose the shared Equalizer DSP panel")
+    check("import qs.modules.dashboard" in dashboard
+          and "DashboardContent {" in dashboard
+          and "SearchWidget {" in dashboard
+          and "embeddedSurface: true" in dashboard,
+          "Launcher Dashboard must be one shared three-column/search surface")
+    check("Config.options?.dashboard?.widthRatio" in dashboard
+          and "Config.options?.dashboard?.heightRatio" in dashboard
+          and "root.presentingSearch" in dashboard
+          and "root.searchOnlyHeight : root.configuredHeight" in dashboard,
+          "Launcher Dashboard must consume Dashboard width/height settings")
+    check("property real dashboardProgress: 1" in dashboard
+          and "opacity: root.dashboardOpacity" in dashboard
+          and "resultsOpacity: root.searchResultsOpacity" in dashboard,
+          "Dashboard-to-search transition must use the shared crossfade/height-resize progress")
+    check("SurfaceMotion.duration" in dashboard
+          and "SurfaceMotion.easingType" in dashboard,
+          "Dashboard connected motion must use immutable SurfaceMotion")
+    check("ConnectedSurfaceIrisEdgeSurface {" in dashboard
+          and "id: dashboardIrisSurface" in dashboard
+          and "ownerThickness: root.attachmentThickness" in dashboard
+          and "PerimeterTokens.irisFuseDepth" in dashboard
+          and "id: dashboardSurfaceLayer" in dashboard
+          and "z: 2" in dashboard
+          and "ConnectedSurfaceJoinFlares" not in dashboard,
+          "Dashboard bottom attachment must keep content above the iRiS plate without legacy wedge geometry")
+    dashboard_content = read("modules/dashboard/DashboardContent.qml")
+    dashboard_canvas = read("modules/dashboard/DashboardCanvas.qml")
+    dashboard_grid = read("modules/dashboard/DashboardEditGrid.qml")
+    dashboard_card = read("modules/dashboard/DashCard.qml")
+    check("DashboardCanvas {" in dashboard_content
+          and "DashboardHeader {" in dashboard_content
+          and "WidgetColumn" not in dashboard_content,
+          "Dashboard must use the freeform canvas instead of fixed columns")
+    check('color: root.embeddedSurface ? "transparent" : Appearance.colors.colLayer0' in dashboard_content
+          and 'radius: root.embeddedSurface ? 0 : Appearance.rounding.large' in dashboard_content
+          and "border.width: 0" in dashboard_content,
+          "Dashboard outer surface must reuse the canonical Material popup/sidebar background")
+    check('Config.options?.panelFamily === "abyss" ? AbyssStyle.contentLayer : Appearance.colors.colLayer1' in dashboard_card
+          and "Appearance.colors.colSurfaceContainerHigh" not in dashboard_card,
+          "Dashboard cards must use the adjustable Abyss content layer and retain Sidebar layer-1 for Waffle")
+    for retired_dashboard_surface in (
+        "ColorQuantizer {",
+        "AdaptedMaterialScheme {",
+        "ZzzPanelBackdrop {",
+        "ZzzPlate {",
+        "id: blurredWallpaper",
+        "useWallpaperBackdrop",
+        "wallpaperDominantColor",
+        "Appearance.auroraEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.zzzEverywhere",
+    ):
+        check(retired_dashboard_surface not in dashboard_content,
+              f"Dashboard must not introduce a separate background style: {retired_dashboard_surface}")
+    check('Config.options?.dashboard?.canvas?.widgets' in dashboard_canvas
+          and "function beginMove(" in dashboard_canvas
+          and "function beginResize(" in dashboard_canvas
+          and "function finishInteraction(" in dashboard_canvas,
+          "Dashboard canvas must persist free move/resize geometry")
+    for edge in ('"n"', '"s"', '"e"', '"w"', '"nw"', '"ne"', '"sw"', '"se"'):
+        check(f"edge: {edge}" in dashboard_canvas,
+              f"Dashboard canvas missing resize handle {edge}")
+    check("DashboardEditGrid {" in dashboard_canvas
+          and 'Config.options?.dashboard?.canvas?.gridStyle' in dashboard_canvas
+          and 'Config.options?.dashboard?.canvas?.gridSize' in dashboard_canvas
+          and 'Config.options?.dashboard?.canvas?.snap' in dashboard_canvas,
+          "Dashboard Edit mode must expose configurable grid and snapping")
+    check('property string gridStyle: "dots"' in dashboard_grid
+          and 'gridStyle === "lines"' in dashboard_grid
+          and 'gridStyle === "cross"' in dashboard_grid,
+          "Dashboard edit grid must keep dots/lines/cross rendering modes")
+    check("enabled: !root.editMode" in dashboard_canvas
+          and "visible: root.editMode" in dashboard_canvas,
+          "Dashboard modules must only be movable/resizable in explicit Edit mode")
+    check("Flickable {" not in dashboard_content
+          and "Flickable {" not in dashboard_canvas
+          and '=== "abyss"' in dashboard_canvas,
+          "Dashboard stays bounded without a scrolling or expanded workspace")
+    dashboard_toolbar = read("modules/dashboard/DashboardEditToolbar.qml")
+    check("id: editToolbar" not in dashboard_canvas
+          and "DashboardEditToolbar {" in dashboard
+          and "x: Math.round(dashContainer.x" in dashboard
+          and "y: root.embeddedSurface ? 0 : Math.round(dashContainer.y - height + 1)" in dashboard,
+          "Dashboard edit toolbar must stay centered and attached above the Dashboard canvas")
+    check("bottomLeftRadius: 0" in dashboard_toolbar
+          and "bottomRightRadius: 0" in dashboard_toolbar,
+          "Dashboard edit toolbar must visually join the Dashboard top edge")
     overview_runtime = read("modules/overview/Overview.qml")
-    check("opacity: root.dashboardPresentationMode" in overview_runtime
-          and '? 0 : (root._presentedOpen ? 1 : 0)' in overview_runtime,
-          "Dashboard popup mode must not inherit the full-screen Overview scrim")
+    check("readonly property bool applicationsPresentationMode:" in overview_runtime
+          and "dashboardPanel.item.connectedSurfaceRect" in overview_runtime
+          and "searchingText: root.searchingText" in overview_runtime,
+          "Search and Dashboard must share one bottom-connected launcher surface")
+    check("SearchWidget {\n                    id: searchWidget" not in overview_runtime,
+          "Overview must not keep a second floating SearchWidget above Dashboard")
+    check("opacity: root.taskViewMode" in overview_runtime,
+          "Launcher search must not use the old Overview fade path")
 
     critical_panels = read("modules/ii/critical/ShellIiCriticalPanels.qml")
     check('../../screenCorners/ScreenEdges.qml' in critical_panels,
@@ -521,14 +892,76 @@ def main() -> None:
     check("PerimeterRuntime.qml" not in critical_panels,
           "Full iiPerimeter runtime must not be booted by the critical shell")
 
+    iris_frame = read("modules/common/perimeter/ConnectedSurfaceIrisFrame.qml")
+    iris_field = read("modules/common/perimeter/ConnectedSurfaceIrisField.qml")
+    iris_frag = read("modules/common/perimeter/IrisField.frag")
+    iris_mask = read("modules/common/perimeter/ConnectedSurfaceBodyMask.qml")
+    for token in (
+        "function clipExternalOwners(raw, primaryOverlap)",
+        "readonly property rect visibleBodyRect:",
+        "readonly property rect sdfBodyRect:",
+        "x: root.sdfBodyRect.x",
+        "y: root.sdfBodyRect.y",
+        "readonly property var ownerShape:",
+        "readonly property var frameStartShape: !root.tangentStartJoined",
+        "readonly property var frameEndShape: !root.tangentEndJoined",
+        "readonly property var popupShape:",
+        "readonly property bool needsEndJoinAux:",
+        "ShaderEffectSource {",
+        "id: shadowMaskField",
+        "shapes: field.shapes",
+        "sourceItem: shadowMaskField",
+        "sourceRect: root.rawShadowBounds",
+        "id: blurredShadow",
+        "source: shadowTextureSource",
+        "blurEnabled: true",
+        "autoPaddingEnabled: false",
+        "sourceItem: blurredShadow",
+        "hideSource: true",
+        "smooth: true",
+        "ConnectedSurfaceIrisField {",
+        "readonly property bool bodyHovered: bodyHover.hovered",
+    ):
+        check(token in iris_frame,
+              f"Production iRiS frame contract missing: {token}")
+    check("ConnectedSurfaceJoinFlares" not in iris_frame
+          and "ConnectedSurfaceConnector" not in iris_frame
+          and "RectangularShadow {" not in iris_frame,
+          "Connected shadow must use the same smooth-union SDF instead of patch or box shadow geometry")
+    check('fragmentShader: Qt.resolvedUrl("IrisField.frag.qsb")' in iris_field
+          and "readonly property vector4d viewport:" in iris_field
+          and "pass.x, pass.y" in iris_field,
+          "Production iRiS field must use the locked local QSB with output-local viewport coordinates")
+    for token in (
+        "float roundedBoxCorners(",
+        "float tangentAwareBody(",
+        "primaryRelation > 0.5 && tangentRelation > 0.5",
+        "also < -0.5 || also > 0.5",
+    ):
+        check(token in iris_frag,
+              f"Production tangent-contact shader contract missing: {token}")
+    check("tangentQuarterFillet" not in iris_frag
+          and "tangentContribution" not in iris_frag
+          and "tangentShoulder" not in iris_frag
+          and "outsideEllipse" not in iris_frag,
+          "Experimental tangent-corner shader paths must stay out of production")
+    check("_sourceStrip" not in iris_mask
+          and "_middleStrip" not in iris_mask
+          and "_bodyStrip" not in iris_mask
+          and "visibleBodyRect" in iris_mask,
+          "StyledPopup iRiS input must be body-only rather than the retired connector-strip approximation")
+    check("ConnectedSurfaceFrame {" not in styled_popup
+          and "ConnectedSurfaceMask {" not in styled_popup,
+          "ii StyledPopup must not silently retain the legacy flare/mask renderer after iRiS cutover")
+
     frame = read("modules/common/perimeter/ConnectedSurfaceFrame.qml")
     check("property real connectorBorderWidth: 0" in frame,
           "ConnectedSurfaceFrame must default the connector outline off at the seam")
     check("strokeWidth: root.connectorBorderWidth" in frame,
           "ConnectedSurfaceFrame must route connector outline width through its seam policy")
-    check("ConnectedSurfaceJoinFlares {" in frame
-          and "flareRadius: root.joinFlareRadius" in frame,
-          "ConnectedSurfaceFrame must preserve the circular direct-edge shoulder contract")
+    check("ConnectedSurfaceJoinFlares" not in frame
+          and "joinFlareRadius" not in frame,
+          "ConnectedSurfaceFrame must not retain the retired round-wedge painter")
     check("opacity: root.geometry.progress" not in frame,
           "ConnectedSurfaceFrame must morph geometry instead of fading the whole surface")
     check("attachedCornerRadius" not in frame
@@ -536,7 +969,7 @@ def main() -> None:
           and "topRightRadius: (root.joinTop || root.joinRight) ? 0 : surfaceRadius" in frame
           and "bottomLeftRadius: (root.joinBottom || root.joinLeft) ? 0 : surfaceRadius" in frame
           and "bottomRightRadius: (root.joinBottom || root.joinRight) ? 0 : surfaceRadius" in frame,
-          "Shared connected popup body must stay square on attached edges; outward flare owns contact curvature")
+          "Shared connected popup body must stay square on attached edges without a wedge painter")
     check("property bool hoverEnabled: false" in frame
           and "readonly property bool bodyHovered: bodyHover.hovered" in frame
           and "HoverHandler {" in frame,
@@ -544,43 +977,8 @@ def main() -> None:
     generic_shadow = read("modules/common/widgets/StyledRectangularShadow.qml")
     check("property color color: Appearance.colors.colShadow" in generic_shadow,
           "Shared rectangular shadow must use the proven themed shell shadow source")
-    check("cached: true" in generic_shadow,
-          "Shared rectangular shadow must retain the prior stable cached renderer")
-
-    join_flares = read("modules/common/perimeter/ConnectedSurfaceJoinFlares.qml")
-    for token in (
-        "component Flare: Canvas {",
-        "const k = 0.5522847498",
-        'corner === "topLeft"',
-        'corner === "topRight"',
-        'corner === "bottomLeft"',
-        'corner === "bottomRight"',
-        'corner === "leftTop"',
-        'corner === "leftBottom"',
-        'corner === "rightTop"',
-        'corner === "rightBottom"',
-        "root.bodyItem.mapToItem(root, 0, 0)",
-        "visible: root.reveal > 0.001 && root.radius > 0",
-    ):
-        check(token in join_flares,
-              f"Connected-surface shoulder baseline missing: {token}")
-    check("component Flare: RoundCorner" not in join_flares
-          and "PerimeterCornerShadow" not in join_flares
-          and "property bool shadowEnabled" not in join_flares
-          and "property real shadowExtent" not in join_flares
-          and "property color shadowColor" not in join_flares,
-          "Connected-surface shoulders must remain on the clean pre-experiment baseline")
-    check("root.radius * Math.max(0.20, Math.min(1, root.crossScale))" in join_flares
-          and "width: root.radius" in join_flares
-          and "height: root.depth" in join_flares,
-          "Connected-surface shoulders must keep the prior broad-tangent/compressed-depth geometry")
-    check("CONNECTED-SURFACE-OUTWARD-FLARE-LOCK" in join_flares
-          and "CONNECTED-SURFACE-OUTWARD-FLARE-LOCK" in perimeter_tokens,
-          "Connected popup contact geometry must retain the outward-flare lock marker")
-    check("readonly property real joinFlareRadius: frameRadius" in perimeter_tokens,
-          "Outward flare tangent radius must follow the Screen Edge/Bar Border Radius setting")
-    check(") * root.reveal" not in join_flares,
-          "Connected shoulder radius must stay fully formed during reveal")
+    check("cached: !(root.joinTop || root.joinBottom" in generic_shadow,
+          "Connected moving shadows must remain live; stationary cards may cache")
 
     mask = read("modules/common/perimeter/ConnectedSurfaceMask.qml")
     for token in ("_sourceStrip", "_middleStrip", "_bodyStrip", "connectorSourceExtent"):
@@ -619,8 +1017,11 @@ def main() -> None:
         ):
             check(retired_geometry not in runtime,
                   f"Bar runtime must not retain physical Screen Edge geometry/shadow: {retired_geometry}")
-        check("readonly property bool showBarBackground: true" in runtime,
-              "Supported Hug Bar chrome must remain structurally present")
+        check("showBarBackground" not in runtime,
+              "Supported Hug Bar chrome must not depend on a dead visibility alias")
+        for dead_root_probe in ("brightnessMonitor", "useShortenedForm", "centerSideModuleWidth"):
+            check(dead_root_probe not in runtime,
+                  f"Bar root must not retain unused sizing/state probe: {dead_root_probe}")
         check("Appearance.animation.elementMove.duration" in runtime
               and "Appearance.animation.elementMove.bezierCurve" in runtime,
               "Bar auto-hide slide must use the default-spatial motion token")
@@ -629,9 +1030,10 @@ def main() -> None:
           and "visible: !gameModeMinimal" not in bar_content,
           "Horizontal Hug body must remain structural across fullscreen/GameMode")
     check("id: barBackground" in vertical_bar_content
-          and "visible: !root.isIslands" in vertical_bar_content
-          and "visible: !root.gameModeMinimal && !root.isIslands" not in vertical_bar_content,
-          "Vertical Hug body must remain structural across fullscreen/GameMode")
+          and "visible: true" in vertical_bar_content
+          and "isIslands" not in vertical_bar_content
+          and "appearanceStyle" not in vertical_bar_content,
+          "Vertical Hug body must remain structural without retired Islands routing")
     module_shown_start = bar_content.index("function _moduleShown")
     module_shown_end = bar_content.index("\n    }", module_shown_start)
     module_shown_block = bar_content[module_shown_start:module_shown_end]
@@ -646,14 +1048,20 @@ def main() -> None:
           "Vertical Hug body must ignore persisted retired cornerStyle at runtime")
     check("(Config.options?.bar?.cornerStyle ?? 0) === 0" not in vertical_bar_runtime,
           "Vertical Hug shoulders must not depend on legacy cornerStyle state")
-    for fullscreen_bar_surface in (bar_runtime, vertical_bar_runtime):
-        check("FULLSCREEN-BAR-LIFECYCLE-LOCK (maintainer approved 2026-09-19)" in fullscreen_bar_surface,
-              "Bar fullscreen lifecycle lock marker must remain present")
-        check("fullscreenCovered" not in fullscreen_bar_surface
-              and "visible: !fullscreenCovered" not in fullscreen_bar_surface
-              and "updatesEnabled: !fullscreenCovered" not in fullscreen_bar_surface
-              and "GameMode.hasFullscreenOnOutput" not in fullscreen_bar_surface,
-              "Bar PanelWindow must stay mapped/updating across fullscreen; compositor stacking owns coverage")
+    check("readonly property bool fullscreenCovered:" in bar_runtime
+          and "GameMode.hasFullscreenOnOutput(barRoot.outputName)" in bar_runtime
+          and "item: barRoot.fullscreenCovered ? emptyMask : hoverMaskRegion" in bar_runtime
+          and "enabled: !barRoot.fullscreenCovered" in bar_runtime
+          and "opacity: barRoot.fullscreenCovered ? 0 : 1" in bar_runtime,
+          "Horizontal Bar fullscreen lifecycle must keep the window mapped while sleeping input/paint")
+    check("visible: !fullscreenCovered" not in bar_runtime
+          and "updatesEnabled: !fullscreenCovered" not in bar_runtime,
+          "Horizontal Bar must not unmap or disable window updates across fullscreen")
+    check("fullscreenCovered" not in vertical_bar_runtime
+          and "visible: !fullscreenCovered" not in vertical_bar_runtime
+          and "updatesEnabled: !fullscreenCovered" not in vertical_bar_runtime
+          and "GameMode.hasFullscreenOnOutput" not in vertical_bar_runtime,
+          "Vertical Bar must not gain a fullscreen mapping gate")
     for bar_surface in (bar_runtime, vertical_bar_runtime, bar_content, vertical_bar_content):
         for forbidden_corner_owner in (
             "PerimeterTokens.frameRadius",
@@ -668,12 +1076,25 @@ def main() -> None:
     media = read("modules/bar/Media.qml")
     check("PopupWindow" not in media,
           "Bar Media must not restore detached PopupWindow surfaces")
-    check(media.count("StyledPopup {") >= 2,
-          "Bar Media wheel HUD and expanded controls must both use StyledPopup")
+    check(media.count("StyledPopup {") >= 1,
+          "Bar Media expanded controls must use the connected StyledPopup")
     check("BarMediaPopup {" in media,
           "Bar Media must preserve its expanded control content inside the connected surface")
-    check("keyboardFocus: true" in media,
-          "Expanded Media connected popout must preserve keyboard focus")
+    check("hoverActivates: true" in media
+          and "keyboardFocus: root.barMediaPopupVisible" in media,
+          "Media hover popup must not steal keyboard focus unless explicitly pinned")
+    for token in (
+        "readonly property real restingX: overflowing",
+        "Math.max(0, (width - titleText.implicitWidth) / 2)",
+        "x: titleScroller.restingX",
+        "horizontalAlignment: titleScroller.overflowing",
+        "? Text.AlignLeft : Text.AlignHCenter",
+        "marqueeRow.x = titleScroller.restingX",
+    ):
+        check(token in media,
+              f"Bar Media short-title centering contract missing: {token}")
+    check("width: titleScroller.overflowing ? implicitWidth : titleScroller.width" not in media,
+          "Short Bar Media titles must not stretch back to the old left-aligned label width")
 
     taskbar_preview = read("modules/bar/BarTaskbarPreview.qml")
     check("StyledPopup {" in taskbar_preview,
@@ -708,8 +1129,10 @@ def main() -> None:
               f"{path} must not restore a detached PopupWindow surface")
 
     bar_runtime = read("modules/bar/Bar.qml")
-    check('Config.setNestedValue("bar.cornerStyle", 0)' in bar_runtime,
-          "Classic Bar startup must normalize persisted legacy corner styles to Hug")
+    check("cornerStyle" not in bar_runtime
+          and "appearance?.globalStyle" not in bar_runtime
+          and "rebuildKey" not in bar_runtime,
+          "Live Classic Bar must leave legacy normalization to SettingsPageRegistry")
     config_qml = read("modules/common/Config.qml")
     defaults_json = read("defaults/config.json")
     appearance_qml = read("modules/common/Appearance.qml")
@@ -741,41 +1164,67 @@ def main() -> None:
           "Shared Bar sizing must not branch on retired cornerStyle")
     check("Config.options?.bar?.cornerStyle" not in shell_layout,
           "Shell layout reservation must not branch on retired cornerStyle")
+    check("appearanceStyle" not in shell_layout
+          and "bar?.pill" not in shell_layout
+          and "bar.pill" not in shell_layout,
+          "Shell layout reservation must use canonical Hug geometry only")
+    # The active Hug renderer still shares internal geometry/color paths with
+    # historical styles. Keep bridge inputs frozen to canonical Hug values until
+    # those renderer paths are split; never reconnect them to persisted config.
+    for canonical_bar_bridge in (
+        "readonly property int cornerStyle: 0",
+        "readonly property bool floatingStyle: false",
+        "readonly property bool cardStyleEverywhere: false",
+        "readonly property bool zzzDetachedRounded: false",
+        "readonly property real barMargin: 0",
+        "readonly property bool nativeBlurGeometryExact",
+    ):
+        check(canonical_bar_bridge in bar_content,
+              f"Horizontal Hug bridge lost its canonical frozen input: {canonical_bar_bridge}")
     for retired_runtime_token in ("effectiveCornerStyle", "floatStyleShadow", "barFillInner"):
         check(retired_runtime_token not in bar_runtime,
               f"Classic Bar runtime must not retain retired corner-style branch: {retired_runtime_token}")
+    for retired_surface_key in ("floatStyleShadow", "blurBackground"):
+        check(retired_surface_key not in config_qml
+              and retired_surface_key not in defaults_json,
+              f"Retired Bar surface config must not remain in schema/defaults: {retired_surface_key}")
+    bar_surface_cleanup = read("sdata/migrations/045-retired-bar-surface-state.sh")
+    check("del(.bar.floatStyleShadow, .bar.blurBackground)" in bar_surface_cleanup,
+          "Migration 045 must remove persisted retired Bar surface state")
 
-    bar_settings = read("modules/settings/BarConfigHugOnly.qml")
-    quick_settings = read("modules/settings/QuickConfigHugOnly.qml")
-    check('Translation.tr("Corner style")' in bar_settings
-          and 'Translation.tr("Float shadow")' in bar_settings,
-          "Public Bar settings must suppress retired corner-style and float-shadow controls")
-    check('Translation.tr("Bar style")' in quick_settings,
-          "Quick settings must suppress the retired Bar style selector")
-    check("_hugUiReady" not in bar_settings
-          and "opacity: root._hugUiReady" not in bar_settings
-          and "onTriggered: root._applyHugOnlyUi(root)" in bar_settings,
-          "Public Bar settings must remain visible while the compatibility pruning pass runs")
-    check("_hugUiReady" not in quick_settings
-          and "opacity: root._hugUiReady" not in quick_settings
-          and "onTriggered: root._applyHugOnlyUi(root)" in quick_settings,
-          "Quick settings must remain visible while the Hug compatibility pruning pass runs")
+    bar_settings = read("modules/settings/BarConfig.qml")
+    bar_settings_compact = " ".join(bar_settings.split())
+    bar_settings_dense = "".join(bar_settings.split())
+    quick_settings = read("modules/settings/QuickConfig.qml")
+    for retired_bar_control in (
+        'Translation.tr("Corner style")',
+        'Translation.tr("Float shadow")',
+        'Translation.tr("Show background")',
+        "Config.options?.bar?.blurBackground",
+        'Config.setNestedValue("bar.blurBackground',
+    ):
+        check(retired_bar_control not in bar_settings,
+              f"Canonical Bar settings must not instantiate retired UI: {retired_bar_control}")
+    check('Translation.tr("Bar style")' not in quick_settings
+          and 'settingsTaskSection: "screen"' not in quick_settings
+          and 'Config.setNestedValue("bar.vertical"' not in quick_settings,
+          "Canonical Quick settings must not recreate Bar/backdrop ownership")
     check('Config.options?.appearance?.screenEdge?.width ?? 10' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.width", value)' in bar_settings,
+          and 'Config.setNestedValue("appearance.screenEdge.width",value)' in bar_settings_dense,
           "Bar settings must expose persistent Screen Edge width with a 10px default")
     check('Config.options?.appearance?.screenEdge?.radius ?? 25' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.radius", value)' in bar_settings
+          and 'Config.setNestedValue("appearance.screenEdge.radius",value)' in bar_settings_dense
           and 'Translation.tr("Corner radius (px)")' in bar_settings
           and 'from: 0' in bar_settings
           and 'to: 96' in bar_settings,
           "Bar settings must expose the shared Screen Edge/Bar radius with a 25px default")
     check('appearance.screenEdge.shadow' not in bar_settings
           and 'Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.enabled", checked)' in bar_settings
+          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.enabled",checked)' in bar_settings_dense
           and 'Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.size", value)' in bar_settings
+          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.size",value)' in bar_settings_dense
           and 'Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.opacity", value / 100)' in bar_settings,
+          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.opacity",value/100)' in bar_settings_dense,
           "Screen Edge settings must control only the dedicated physical shadow owner")
 
     dock_config = read("modules/settings/DockConfig.qml")
@@ -787,6 +1236,89 @@ def main() -> None:
           "Waffle must remain a separate panel family rather than a Dock style")
     check("Dock uses the Panel surface style." in dock_config,
           "Dock settings must describe Panel as the canonical surface style")
+    for retired_dock_component in (
+        "DockPillItem.qml",
+        "DockMacItem.qml",
+        "DockMacBackground.qml",
+    ):
+        check(not (ROOT / "modules/dock" / retired_dock_component).exists(),
+              f"Retired Dock style component must stay absent: {retired_dock_component}")
+    dock_app_button = read("modules/dock/DockAppButton.qml")
+    dock_button = read("modules/dock/DockButton.qml")
+    dock_window_preview = read("modules/dock/DockWindowPreview.qml")
+    dock_qmldir = read("modules/dock/qmldir")
+    check(not (ROOT / "modules/dock/DockSeparator.qml").exists()
+          and "DockSeparator" not in dock_qmldir,
+          "Unused DockSeparator component must stay removed")
+    check("property string dockPosition:" not in dock_button
+          and dock.count("dockPosition: root.position") == 2,
+          "Dock buttons must not retain the unused position API while DockApps keeps preview placement")
+    check("property alias hoverTimer:" not in dock_app_button,
+          "Dock app buttons must not export an unused hover timer alias")
+    for dead_preview_api in ("previewWidthConstraint", "previewHeightConstraint"):
+        check(dead_preview_api not in dock_window_preview,
+              f"Dock window preview must not retain unused constraint API: {dead_preview_api}")
+    for retired_preview_style in (
+        "Appearance.regaliaEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.zzzEverywhere",
+        "Appearance.regalia.",
+        "Appearance.inir.",
+        "Appearance.zzz.",
+        "RegaliaControlFace",
+    ):
+        check(retired_preview_style not in dock_window_preview,
+              f"Dock window preview must use Material chrome directly: {retired_preview_style}")
+    for retired_dock_token in (
+        "pillStyle",
+        "macosStyle",
+        "DockPillItem",
+        "DockMacItem",
+        "macHoveredIndex",
+    ):
+        check(retired_dock_token not in dock_app_button,
+              f"Canonical Dock app button must not branch on retired style: {retired_dock_token}")
+    for dead_dock_button_api in (
+        "property int listIndex:",
+        "property bool smartIndicator:",
+        "property bool showAllDots:",
+        "property int maxDots:",
+    ):
+        check(dead_dock_button_api not in dock_app_button,
+              f"Dock app button must not retain unused delegate API: {dead_dock_button_api}")
+
+    check(not (ROOT / "modules/pill").exists(),
+          "Retired Pill compatibility module must stay absent")
+    check("qs.modules.pill" not in dock_app_button
+          and "PillTheme" not in dock_app_button
+          and "Appearance.colors.colPrimary" in dock_app_button,
+          "Dock Ricelin interactions must consume active Appearance tokens directly")
+    for ricelin_consumer in (
+        "modules/overview/SearchWidget.qml",
+        "modules/sidebarLeft/SidebarLeftContent.qml",
+        "modules/sidebarRight/SidebarRightContent.qml",
+        "modules/sidebarRight/CompactSidebarRightContent.qml",
+    ):
+        source = read(ricelin_consumer)
+        check("qs.modules.pill" not in source
+              and "IslandPanel" not in source
+              and "RicelinSurface {" in source,
+              f"{ricelin_consumer} must use the canonical active Ricelin surface directly")
+
+    check(not (ROOT / "services/MascotChaos.qml").exists(),
+          "Retired MascotChaos service must stay absent")
+    services_qmldir = read("services/qmldir")
+    check("MascotChaos" not in services_qmldir,
+          "Retired MascotChaos service must not be exported")
+    for mascot_consumer in (
+        "modules/waffle/bar/WaffleBar.qml",
+        "modules/background/widgets/AbstractBackgroundWidget.qml",
+    ):
+        source = read(mascot_consumer)
+        check("MascotChaos" not in source
+              and "_chaos" not in source
+              and "_quake" not in source,
+              f"{mascot_consumer} must not retain dead mascot response machinery")
 
     settings_registry = read("modules/settings/SettingsPageRegistry.qml")
     check('Config.setNestedValue("dock.style", "panel")' in settings_registry,
@@ -804,26 +1336,20 @@ def main() -> None:
     check('Config.setNestedValue("sidebar.style", "panel")' in settings_registry
           and 'Config.setNestedValue("sidebar.cardStyle", false)' in settings_registry,
           "Legacy Sidebar Island/Card values must normalize to Panel/non-card")
-    check('component: "modules/settings/BarConfigHugOnly.qml"' in settings_registry,
-          "Public Bar settings must route through the Hug-only facade")
-    bar_hug_config = read("modules/settings/BarConfigHugOnly.qml")
-    check('text === Translation.tr("Show background")' in bar_hug_config,
-          "Hug-only Bar settings must hide the retired transparent-background toggle")
-    check('component: "modules/settings/QuickConfigHugOnly.qml"' in settings_registry,
-          "Public Quick settings must route through the Hug-only facade")
-    check('entry.label !== Translation.tr("Corner style")' in settings_registry,
-          "Settings search must not expose the retired Bar corner-style selector")
+    check("BarConfigHugOnly" not in settings_registry
+          and "QuickConfigHugOnly" not in settings_registry,
+          "Settings registry must route canonical Quick/Bar pages without compatibility facades")
     settings_registry_data = read("modules/settings/SettingsPageRegistryData.qml")
     check('label: Translation.tr("Bar background")' not in settings_registry_data,
           "Settings search source must not retain the retired Bar background toggle")
     check('label: Translation.tr("Sidebar style")' not in settings_registry_data,
           "Settings search source must not retain the retired Sidebar surface selector")
     check('label: Translation.tr("Corner radius (px)")' in settings_registry_data
-          and 'description: Translation.tr("Set Screen Edge, Bar and attached popup corner radius")' in settings_registry_data,
-          "Settings search must expose the shared Screen Edge/Bar/attached-popup corner radius")
+          and 'description: Translation.tr("Set Screen Edge, Bar and outward popup contact radius")' in settings_registry_data,
+          "Settings search must expose the shared Screen Edge/Bar/popup contact radius")
     check('label: Translation.tr("Screen edge shadow")' in settings_registry_data
-          and 'description: Translation.tr("Configure only the physical Screen Edge shadow")' in settings_registry_data,
-          "Settings search must expose the dedicated physical Screen Edge shadow controls")
+          and 'description: Translation.tr("Configure Screen Edge and connected surface shadows")' in settings_registry_data,
+          "Settings search must expose the shared Screen Edge/connected-surface shadow controls")
 
     for connected_shadow_path in (
         "modules/sidebarLeft/SidebarLeftContent.qml",
@@ -838,16 +1364,35 @@ def main() -> None:
         check("physicalShadow" not in connected_shadow_source,
               f"{connected_shadow_path} must not consume the physical Screen Edge shadow owner")
 
-    for independent_connected_shadow_path in (
-        "modules/sidebar/SidebarHost.qml",
-        "modules/overview/OverviewDashboard.qml",
+    for shared_settings_shadow_path in (
         "modules/settings/SettingsOverlay.qml",
         "modules/settings/SettingsFocus.qml",
-        "modules/bar/StyledPopup.qml",
     ):
-        independent_connected_shadow_source = read(independent_connected_shadow_path)
-        check("physicalShadow" not in independent_connected_shadow_source,
-              f"{independent_connected_shadow_path} must remain independent from the physical Screen Edge shadow owner")
+        shared_settings_shadow_source = read(shared_settings_shadow_path)
+        check("screenEdge?.physicalShadow?.enabled ?? true" in shared_settings_shadow_source
+              and "screenEdge?.physicalShadow?.size ?? 15" in shared_settings_shadow_source
+              and "screenEdge?.physicalShadow?.opacity ?? 0.70" in shared_settings_shadow_source
+              and "Appearance.m3colors.m3shadow" in shared_settings_shadow_source,
+              f"{shared_settings_shadow_path} must use the same physical elevation tokens")
+
+    check("screenEdge?.physicalShadow?.enabled ?? true" in styled_popup
+          and "screenEdge?.physicalShadow?.size ?? 15" in styled_popup
+          and "screenEdge?.physicalShadow?.opacity ?? 0.70" in styled_popup
+          and "Qt.alpha(Appearance.m3colors.m3shadow, root._edgeShadowOpacity)" in styled_popup
+          and "screenEdge?.shadow?.enabled" not in styled_popup,
+          "All ii Bar StyledPopup surfaces must share the visible Screen Edge shadow controls and ink")
+
+    for shared_edge_shadow_source, label in (
+        (sidebar_host, "SidebarHost"),
+        (dashboard, "OverviewDashboard"),
+        (dock, "Dock"),
+    ):
+        check("screenEdge?.physicalShadow?.enabled ?? true" in shared_edge_shadow_source
+              and "screenEdge?.physicalShadow?.size ?? 15" in shared_edge_shadow_source
+              and "screenEdge?.physicalShadow?.opacity ?? 0.70" in shared_edge_shadow_source
+              and "Appearance.m3colors.m3shadow" in shared_edge_shadow_source,
+              f"{label} must share the visible Screen Edge shadow controls and Material shadow ink")
+
 
     osk_shadow = read("modules/onScreenKeyboard/OnScreenKeyboard.qml")
     check("visible: root._oskResident" in osk_shadow

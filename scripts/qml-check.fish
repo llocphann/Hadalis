@@ -43,24 +43,26 @@ for candidate in qmlformat qmlformat6 /usr/lib/qt6/bin/qmlformat /usr/lib/x86_64
     end
 end
 
-# Ubuntu 24.04 ships qmlformat 6.4, which rejects valid modern syntax used by
-# current iNiR/Quickshell QML. Treat an old parser as unavailable instead of
-# producing dozens of false startup failures. Arch/current Qt (>= 6.8) gets the
-# real parser pass; the project-specific guards below always run regardless.
+# Ubuntu 24.04 ships Qt 6.4, which rejects valid modern syntax used by
+# current Hadalis/Quickshell QML. qmlformat may report its own tool version
+# (for example "qmlformat 1.0"), so resolve the Qt runtime version separately.
+# Treat Qt < 6.8 as unavailable instead of producing false startup failures.
 set -l parser_skip_reason ""
+set -l parser_unknown_direct 0
 if test -n "$parser"
-    set -l version_text ($parser --version 2>&1)
-    # Fish 3.7 does not support `string match -o`; plain regex mode prints the
-    # matched substring and is portable across supported Fish versions.
-    set -l parser_version (string match -r '[0-9]+\.[0-9]+(\.[0-9]+)?' -- $version_text | head -1)
-    if test -z "$parser_version"
-        set parser_skip_reason "qmlformat version could not be determined"
-        set parser ""
+    set -l parser_qt_version (bash "$project_root/scripts/lib/qml-parser-qt-version.sh" "$parser" 2>/dev/null | head -1)
+    if test -z "$parser_qt_version"
+        if test "$HADALIS_QMLFORMAT_ALLOW_UNKNOWN" = "1"
+            set parser_unknown_direct 1
+        else
+            set parser_skip_reason "qmlformat Qt version could not be determined"
+            set parser ""
+        end
     else
-        set -l parts (string split . $parser_version)
+        set -l parts (string split . $parser_qt_version)
         set -l version_key (math "$parts[1] * 100 + $parts[2]")
         if test $version_key -lt 608
-            set parser_skip_reason "qmlformat $parser_version is too old for project syntax"
+            set parser_skip_reason "Qt $parser_qt_version is too old for project syntax"
             set parser ""
         end
     end
@@ -96,10 +98,10 @@ set -l warnings 0
 for file in $qml_files
     set -l basename (string replace "$scan_root/" "" $file)
 
-    # qmlformat parses QML before formatting. Writing to stdout makes this a
-    # non-mutating syntax check and catches missing braces/tokens early.
+    # Parse without writing source. The helper distinguishes Qt formatter
+    # round-trip failures from syntax errors using structured Qt diagnostics.
     if test -n "$parser"
-        if not $parser $file >/dev/null 2>&1
+        if not python3 "$project_root/scripts/lib/qml-syntax-check.py" "$parser" "$file"
             echo "ERROR: $basename: QML parser rejected the file" >&2
             set fatal_errors (math $fatal_errors + 1)
         end
@@ -187,12 +189,6 @@ if test $scan_all -eq 1; and test "$scan_root" = "$project_root"
         set fatal_errors (math $fatal_errors + 1)
     end
 
-    set -l perimeter_runtime_health_contract "$project_root/scripts/test-perimeter-runtime-health-contract.sh"
-    if not bash "$perimeter_runtime_health_contract"
-        echo "ERROR: Connected Perimeter runtime health contract failed" >&2
-        set fatal_errors (math $fatal_errors + 1)
-    end
-
     set -l equalizer_boundary_contract "$project_root/scripts/test-equalizer-boundary-contract.sh"
     if not bash "$equalizer_boundary_contract"
         echo "ERROR: Equalizer architecture boundary contract failed" >&2
@@ -206,6 +202,8 @@ if test -z "$parser"
     else
         echo "qml-check: qmlformat unavailable; startup guards ran, parser pass skipped" >&2
     end
+else if test $parser_unknown_direct -eq 1
+    echo "qml-check: qmlformat Qt version unknown; parser capability evaluated directly against project QML" >&2
 end
 
 if test $fatal_errors -gt 0

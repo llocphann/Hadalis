@@ -28,22 +28,22 @@ fail() {
 runtime="$stage/runtime"
 manifest="$runtime/.inir-manifest"
 retired_module_dir="$runtime/modules/retired-orphan-fixture"
-live_pill_dir="$runtime/modules/pill"
-mkdir -p "$retired_module_dir" "$live_pill_dir" "$runtime/scripts"
+live_module_dir="$runtime/modules/dock"
+mkdir -p "$retired_module_dir" "$live_module_dir" "$runtime/scripts"
 
 # Build the expected installed manifest from the same canonical payload policy
 # used by setup, then add files representing an older mixed runtime tree. Use a
-# deliberately nonexistent module name for the retired fixture: modules/pill is
-# a live theme-only module and must survive cleanup when its canonical files are
-# present in the installed tree.
+# deliberately nonexistent module name for the retired fixture. Pair it with
+# the canonical Dock module so the survival half of this test exercises active
+# runtime code rather than depending on a retired compatibility bridge.
 generate_manifest "$repo_root" "$manifest" \
     || fail 'could not generate runtime manifest fixture'
 printf '%s\n' 'import QtQuick' > "$runtime/RetiredRoot.qml"
 printf '%s\n' 'import QtQuick' > "$retired_module_dir/Stale.qml"
 printf '%s\n' '# retired source-only contract' > "$runtime/scripts/test-packaging-contract.sh"
 printf '%s\n' '# private excluded artifact' > "$runtime/scripts/test-local-private.sh"
-cp "$repo_root/modules/pill/PillTheme.qml" "$live_pill_dir/PillTheme.qml"
-cp "$repo_root/modules/pill/qmldir" "$live_pill_dir/qmldir"
+cp "$repo_root/modules/dock/DockButton.qml" "$live_module_dir/DockButton.qml"
+cp "$repo_root/modules/dock/qmldir" "$live_module_dir/qmldir"
 
 cleanup_orphans "$runtime" "$manifest" \
     || fail 'runtime orphan cleanup helper failed'
@@ -61,10 +61,10 @@ done
     || fail 'runtime orphan cleanup deleted an excluded private/test artifact'
 [[ ! -d "$retired_module_dir" ]] \
     || fail 'runtime orphan cleanup left the retired empty module directory'
-cmp -s "$repo_root/modules/pill/PillTheme.qml" "$live_pill_dir/PillTheme.qml" \
-    || fail 'runtime orphan cleanup changed or removed the live PillTheme module'
-cmp -s "$repo_root/modules/pill/qmldir" "$live_pill_dir/qmldir" \
-    || fail 'runtime orphan cleanup changed or removed the live pill qmldir'
+cmp -s "$repo_root/modules/dock/DockButton.qml" "$live_module_dir/DockButton.qml" \
+    || fail 'runtime orphan cleanup changed or removed the live Dock module'
+cmp -s "$repo_root/modules/dock/qmldir" "$live_module_dir/qmldir" \
+    || fail 'runtime orphan cleanup changed or removed the live Dock qmldir'
 
 # The source-install refresh path must run the same managed-orphan cleanup even
 # when setup is recovering an existing/partial runtime through `install` rather

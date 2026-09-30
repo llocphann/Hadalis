@@ -21,39 +21,169 @@ Singleton {
     property list<string> entries: []
     property int _readAttempts: 0
     property bool _refreshQueued: false
-    readonly property var preparedEntries: entries.map(a => ({
-        name: Fuzzy.prepare(`${a.replace(/^\s*\S+\s+/, "")}`),
-        entry: a
-    }))
+    property int _entriesRevision: 0
+    property int _preparedEntriesRevision: -1
+    property var _preparedEntriesCache: []
+    property int _filterEntriesRevision: -1
+    property var _filterEntriesCache: []
+
+    onEntriesChanged: {
+        root._entriesRevision++
+        root._preparedEntriesRevision = -1
+        root._preparedEntriesCache = []
+        root._filterEntriesRevision = -1
+        root._filterEntriesCache = []
+    }
+
+    function filterEntries(): var {
+        if (root._filterEntriesRevision === root._entriesRevision)
+            return root._filterEntriesCache
+
+        const source = root.entries
+        const prepared = new Array(source.length)
+        for (let i = 0; i < source.length; ++i) {
+            const entry = source[i]
+            let cleaned = StringUtils.cleanCliphistEntry(entry)
+            if (root.entryIsImage(entry))
+                cleaned = cleaned.replace(/^\s*\[\[.*?\]\]\s*/, "")
+            const unwrapped = StringUtils.cliphistMarkupPreview(cleaned)
+            if (unwrapped !== cleaned)
+                cleaned = unwrapped.length > 0 ? unwrapped : Translation.tr("Rich text")
+            prepared[i] = {
+                entry: entry,
+                iiKey: StringUtils.sanitizeDisplayText(cleaned).trim().toLowerCase(),
+                waffleKey: cleaned.trim().toLowerCase()
+            }
+        }
+        root._filterEntriesCache = prepared
+        root._filterEntriesRevision = root._entriesRevision
+        return prepared
+    }
+
+    function _ensurePreparedEntries(): var {
+        if (root._preparedEntriesRevision === root._entriesRevision)
+            return root._preparedEntriesCache
+
+        const source = root.entries
+        const prepared = new Array(source.length)
+        for (let i = 0; i < source.length; ++i) {
+            const entry = source[i]
+            prepared[i] = {
+                name: Fuzzy.prepare(`${entry.replace(/^\s*\S+\s+/, "")}`),
+                entry: entry
+            }
+        }
+        root._preparedEntriesCache = prepared
+        root._preparedEntriesRevision = root._entriesRevision
+        return prepared
+    }
 
     function _log(...args): void {
         if (Quickshell.env("QS_DEBUG") === "1") console.log(...args);
     }
 
-    function fuzzyQuery(search: string): var {
+    function _entriesEqual(nextEntries): bool {
+        if (!nextEntries || nextEntries.length !== root.entries.length)
+            return false
+        for (let i = 0; i < nextEntries.length; ++i) {
+            if (nextEntries[i] !== root.entries[i])
+                return false
+        }
+        return true
+    }
+
+    function _insertTopScored(top, candidate, limit): void {
+        let low = 0
+        let high = top.length
+        while (low < high) {
+            const mid = (low + high) >> 1
+            if (candidate.score > top[mid].score)
+                high = mid
+            else
+                low = mid + 1
+        }
+        top.splice(low, 0, candidate)
+        if (top.length > limit)
+            top.pop()
+    }
+
+    function fuzzyQuery(search: string, limit): var {
         if (search.trim() === "") {
-            return entries.slice(0, root.maxEntries);
+            const count = limit > 0 ? Math.min(limit, root.maxEntries) : root.maxEntries
+            return entries.slice(0, count);
         }
         if (root.sloppySearch) {
-            const results = entries.slice(0, Math.min(100, root.maxEntries)).map(str => ({
-                entry: str,
-                score: Levendist.computeTextMatchScore(str.toLowerCase(), search.toLowerCase())
-            })).filter(item => item.score > root.scoreThreshold)
-                .sort((a, b) => b.score - a.score)
-            return results
-                .map(item => item.entry)
+            const searchLower = search.toLowerCase()
+            const count = Math.min(100, root.maxEntries)
+            if (limit > 0) {
+                const top = []
+                for (let i = 0; i < count; ++i) {
+                    const entry = entries[i]
+                    const score = Levendist.computeTextMatchScore(
+                        entry.toLowerCase(), searchLower)
+                    if (score > root.scoreThreshold)
+                        root._insertTopScored(top,
+                            { entry: entry, score: score }, limit)
+                }
+                return top.map(item => item.entry)
+            }
+
+            const results = new Array(count)
+            let resultCount = 0
+            for (let i = 0; i < count; ++i) {
+                const entry = entries[i]
+                const score = Levendist.computeTextMatchScore(
+                    entry.toLowerCase(), searchLower)
+                if (score > root.scoreThreshold)
+                    results[resultCount++] = { entry: entry, score: score }
+            }
+            results.length = resultCount
+            results.sort((a, b) => b.score - a.score)
+            return results.map(item => item.entry)
         }
 
-        return Fuzzy.go(search, preparedEntries, {
+        const results = Fuzzy.go(search, root._ensurePreparedEntries(), {
             all: true,
-            key: "name"
-        }).map(r => {
+            key: "name",
+            limit: limit > 0 ? limit : undefined
+        })
+        return results.map(r => {
             return r.obj.entry
         });
     }
 
-    function entryIsImage(entry) {
-        return !!(/^\d+\t\[\[.*binary data.*\d+x\d+.*\]\]$/.test(entry))
+    function entryIsImage(entry): bool {
+        const raw = String(entry ?? "")
+        // cliphist versions/builds do not all render the list separator the
+        // same way. Classify the preview payload itself instead of requiring
+        // exactly "ID<TAB>metadata". This also covers the owner's observed
+        // "[[ binary data ... png 1194x863 ]]" rows.
+        const preview = raw.replace(/^\s*\d+(?:\t|\s+)/, "").trim()
+        // Owner cliphist output can append/retain extra preview material around
+        // the binary marker. Treat the marker as the authoritative signal
+        // instead of requiring it to occupy the whole list line.
+        if (!/\[\[\s*binary data\b[\s\S]*?\]\]/i.test(preview))
+            return false
+        return /\b(?:image\/[a-z0-9.+-]+|png|jpe?g|webp|gif|bmp|tiff?|avif|heic|heif)\b/i.test(preview)
+            || /\b\d{1,6}\s*[x×]\s*\d{1,6}\b/i.test(preview)
+    }
+
+    function entryImageMime(entry): string {
+        if (!root.entryIsImage(entry))
+            return ""
+        const preview = String(entry ?? "")
+            .replace(/^\s*\d+(?:\t|\s+)/, "").toLowerCase()
+        if (/\b(?:png|image\/png)\b/.test(preview)) return "image/png"
+        if (/\b(?:jpe?g|image\/jpe?g)\b/.test(preview)) return "image/jpeg"
+        if (/\b(?:webp|image\/webp)\b/.test(preview)) return "image/webp"
+        if (/\b(?:gif|image\/gif)\b/.test(preview)) return "image/gif"
+        if (/\b(?:bmp|image\/bmp)\b/.test(preview)) return "image/bmp"
+        if (/\b(?:tiff?|image\/tiff?)\b/.test(preview)) return "image/tiff"
+        if (/\b(?:avif|image\/avif)\b/.test(preview)) return "image/avif"
+        if (/\b(?:heic|image\/heic)\b/.test(preview)) return "image/heic"
+        if (/\b(?:heif|image\/heif)\b/.test(preview)) return "image/heif"
+        const explicit = preview.match(/\b(image\/[a-z0-9.+-]+)\b/)
+        return explicit ? explicit[1] : ""
     }
 
     function entryId(entry): string {
@@ -65,7 +195,7 @@ Singleton {
     // hold it, and they outlive the fix — so clean on the way out as well. The
     // filter forwards anything that is not a browser text/html payload byte for
     // byte, which keeps images intact.
-    readonly property string _markupFilter: `'${Directories.scriptsPath}/clipboard-store.py' --filter`
+    readonly property string _markupFilter: `'${Directories.scriptsPath}/native-dispatch' clipboard-store --filter`
 
     function decodeCommand(entry): string {
         if (root.cliphistBinary.includes("cliphist")) {
@@ -77,6 +207,14 @@ Singleton {
 
         const entryNumber = String(entry ?? "").split("\t")[0]
         return `${root.cliphistBinary} decode ${entryNumber} | ${root._markupFilter}`
+    }
+
+    function wlCopyCommand(entry): string {
+        const mime = root.entryImageMime(entry)
+        const typeArg = mime.length > 0
+            ? ` --type '${StringUtils.shellSingleQuoteEscape(mime)}'`
+            : ""
+        return `${root.decodeCommand(entry)} | /usr/bin/wl-copy${typeArg}`
     }
 
     function refresh() {
@@ -92,12 +230,14 @@ Singleton {
         root._log("[Cliphist] copy()", String(entry).slice(0, 120))
         root._selfCopy = true
         selfCopyResetTimer.restart()
-        Quickshell.execDetached(["/usr/bin/bash", "-c", `${root.decodeCommand(entry)} | /usr/bin/wl-copy`]);
+        Quickshell.execDetached(["/usr/bin/bash", "-c",
+            root.wlCopyCommand(entry)]);
     }
 
     function paste(entry) {
         root._selfCopy = true
-        Quickshell.execDetached(["/usr/bin/bash", "-c", `${root.decodeCommand(entry)} | /usr/bin/wl-copy\n${root.pressPasteCommand}`]);
+        Quickshell.execDetached(["/usr/bin/bash", "-c",
+            `${root.wlCopyCommand(entry)}\n${root.pressPasteCommand}`]);
     }
 
     function superpaste(count, isImage = false) {
@@ -106,7 +246,8 @@ Singleton {
             if (!isImage) return true;
             return entryIsImage(entry);
         }).slice(0, count)
-        const pasteCommands = [...targetEntries].reverse().map(entry => `${root.decodeCommand(entry)} | /usr/bin/wl-copy\n/usr/bin/sleep ${root.pasteDelay}\n${root.pressPasteCommand}`)
+        const pasteCommands = [...targetEntries].reverse().map(entry =>
+            `${root.wlCopyCommand(entry)}\n/usr/bin/sleep ${root.pasteDelay}\n${root.pressPasteCommand}`)
         // Act
         Quickshell.execDetached(["/usr/bin/bash", "-c", pasteCommands.join(`\n/usr/bin/sleep ${root.pasteDelay}\n`)]);
     }
@@ -300,8 +441,11 @@ Singleton {
 
         onExited: (exitCode, exitStatus) => {
             if (exitCode === 0) {
-                // Cap the number of entries we keep to avoid heavy models
-                root.entries = readProc.buffer.slice(0, root.maxEntries)
+                // Cap the number of entries we keep and do not emit a false
+                // entriesChanged when an explicit refresh returns the same list.
+                const nextEntries = readProc.buffer.slice(0, root.maxEntries)
+                if (!root._entriesEqual(nextEntries))
+                    root.entries = nextEntries
                 root._readAttempts = 0
                 if (root._refreshQueued) {
                     root._refreshQueued = false

@@ -120,7 +120,7 @@ if failed:
 schema_checks = {
     "schema settings rail": 'property string overlayStyle: "rail"' in schema,
     "schema iNiR Alt+Tab opt-in": "property bool altSwitcher: false" in schema.split(
-        "property JsonObject modules: JsonObject {", 1)[1].split(
+        "\n            property JsonObject modules: JsonObject {", 1)[1].split(
         "property JsonObject appearance: JsonObject {", 1)[0],
     "schema dock enabled": "property bool enable: true" in schema.split(
         "property JsonObject dock: JsonObject {", 1)[1].split(

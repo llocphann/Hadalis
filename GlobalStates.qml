@@ -2,6 +2,7 @@ pragma Singleton
 pragma ComponentBehavior: Bound
 
 import qs.modules.common
+import "modules/common/PanelFamilyPolicy.js" as FamilyPolicy
 import qs.services
 import QtQuick
 import Quickshell
@@ -19,9 +20,51 @@ Singleton {
     property bool bootGreetingDone: false
     property bool startupLockDone: false
     property bool barOpen: true
+    // Each connected Bar popup holds its output's auto-hide Bar until its
+    // retract animation finishes. A keyed lease keeps simultaneous popups on
+    // different outputs from releasing one another's hold.
+    property int _nextBarPopupLeaseId: 0
+    property var _barPopupHoverLeases: ({})
+
+    function allocateBarPopupHoverLease(): int {
+        root._nextBarPopupLeaseId++
+        return root._nextBarPopupLeaseId
+    }
+
+    function setBarPopupHoverLease(leaseId: int, outputName: string, held: bool): void {
+        if (leaseId <= 0)
+            return
+        const key = String(leaseId)
+        const name = held ? String(outputName ?? "") : ""
+        const previous = root._barPopupHoverLeases[key] ?? ""
+        if (previous === name)
+            return
+        const next = Object.assign({}, root._barPopupHoverLeases)
+        if (name.length > 0)
+            next[key] = name
+        else
+            delete next[key]
+        root._barPopupHoverLeases = next
+    }
+
+    function barPopupHoverHeld(outputName: string): bool {
+        const name = String(outputName ?? "")
+        if (!name)
+            return false
+        const leases = root._barPopupHoverLeases
+        for (const key in leases) {
+            if (leases[key] === name)
+                return true
+        }
+        return false
+    }
     property bool crosshairOpen: false
     property bool sidebarLeftOpen: false
     property string sidebarLeftTargetOutput: ""
+    // Hover/clickless opens are leases, not sticky semantic opens. Abyss uses
+    // this to slide a sidebar away after the pointer leaves while shortcuts,
+    // clicks and IPC keep their existing explicit lifetime.
+    property bool sidebarLeftTransient: false
     property bool sidebarLeftExpanded: false
     // A left-sidebar feature requests the panel stay open through implicit closes
     // (backdrop click / focus loss) and yield keyboard focus — e.g. the InnerTune
@@ -30,7 +73,96 @@ Singleton {
     property bool aiChatDetached: false
     property bool sidebarRightOpen: false
     property string sidebarRightTargetOutput: ""
+    property bool sidebarRightTransient: false
+    // Material notification center: explicit opens are held independently
+    // from transient bottom-right hover ownership published by the popup.
+    property bool notificationCenterExplicitOpen: false
+    property string notificationCenterTargetOutput: ""
+    property string notificationCenterHoverOutput: ""
+    readonly property bool notificationCenterAvailable:
+        (Config.options?.panelFamily ?? "ii") !== "waffle"
+        && (Config.options?.notificationCenter?.enable ?? true)
+        && ((Config.options?.panelFamily === "abyss")
+            ? (Config.options?.enabledPanels ?? []).includes("abyssNotificationCenter")
+            : (Config.options?.enabledPanels ?? []).includes("iiScreenCorners"))
+    readonly property bool notificationCenterOpen:
+        root.notificationCenterAvailable
+        && (root.notificationCenterExplicitOpen
+            || root.notificationCenterHoverOutput.length > 0)
+
+    // Hover ownership is tied to a concrete output. If that monitor disappears
+    // while the pointer-owned popup is alive, do not leave a stale lease that
+    // keeps notificationCenterOpen true and suppresses transient toasts.
+    Connections {
+        target: Quickshell
+        function onScreensChanged(): void {
+            const hoverOutput = root.notificationCenterHoverOutput
+            const connected = Quickshell.screens.map(
+                screen => String(screen?.name ?? ""))
+            if (hoverOutput && !connected.includes(hoverOutput))
+                root.notificationCenterHoverOutput = ""
+
+            const oldLeases = root._barPopupHoverLeases
+            const nextLeases = {}
+            for (const key in oldLeases) {
+                if (connected.includes(oldLeases[key]))
+                    nextLeases[key] = oldLeases[key]
+            }
+            if (Object.keys(nextLeases).length !== Object.keys(oldLeases).length)
+                root._barPopupHoverLeases = nextLeases
+        }
+    }
+
+    // Shell-lifetime ToastManager publishes itself here only as a presentation
+    // bridge. Queue/debounce/cooldown ownership remains in ToastManager.
+    property var toastManager: null
+
+    property string abyssPopupKind: ""
+    property string abyssPopupTargetOutput: ""
+    property string abyssPopupEdge: ""
+    property real abyssPopupAlong: 0
+    // Dock application menus are rehosted by the same connected Abyss popup
+    // body as Bar popups. The model intentionally stays runtime-only because
+    // its actions are live function closures owned by DockAppButton.
+    property var abyssDockMenuModel: []
+    property string abyssDockMenuOwnerId: ""
+    property bool abyssDockMenuTriggerHovered: false
+    property string abyssClipboardTargetOutput: ""
+    property bool abyssEditing: false
+    property string abyssEditorTargetOutput: ""
+    function startAbyssEditing(outputName): void {
+        if (Config.options?.panelFamily !== "abyss" || root.screenLocked) return
+        // The Abyss live Edge editor is a mutually-exclusive desktop editing
+        // mode. Clear stale generic shell-layout/widget editor state first so
+        // every entrypoint (Settings header, desktop context menu, IPC) lands
+        // in the same editor instead of toggling or stacking two edit modes.
+        root.setShellLayoutEditMode(false)
+        root.setWidgetEditMode(false)
+        root.abyssEditorTargetOutput = root.resolveOutputName(String(outputName ?? ""),[])
+        root.sessionOpen = false
+        root.cheatsheetOpen = false
+        ShellUpdates.closeOverlay()
+        root.wallpaperSelectorOpen = false
+        root.wallpaperLauncherOpen = false
+        root.coverflowSelectorOpen = false
+        root.settingsOverlayOpen = false
+        root.dashboardOpen = false
+        root.controlPanelOpen = false
+        root.overviewOpen = false
+        root.clipboardOpen = false
+        root.closeSidebarLeft()
+        root.closeSidebarRight()
+        root.closeNotificationCenter()
+        root.abyssPopupKind = ""
+        root.mediaControlsOpen = false
+        root.abyssEditing = true
+    }
     property bool mediaControlsOpen: false
+    signal osdRequested(string kind)
+    signal osdDismissed()
+    property string abyssOsdKind: "volume"
+    property string abyssOsdMessage: ""
+    property string abyssOsdHoverOutput: ""
     property bool osdBrightnessOpen: false
     property bool osdVolumeOpen: false
     property bool osdMicOpen: false
@@ -60,24 +192,39 @@ Singleton {
     property var activeContextMenu: null
     property bool clipboardOpen: false
     property bool settingsOverlayOpen: false
+    property string settingsOverlayTargetOutput: ""
+    readonly property string settingsOverlayPresentationOutput: root.resolveOutputName(settingsOverlayTargetOutput,[])
     property int settingsOverlayRequestedPage: -1 // Set before opening to navigate to a specific page
+    property string settingsOverlayRequestedSection: "" // Optional deep-link target inside the requested page
     property int settingsOverlayCurrentPage: -1 // Published by whichever overlay chrome is loaded
     property var _settingsNativeDialogs: ({})
     readonly property bool settingsNativeDialogOpen:
         Object.keys(root._settingsNativeDialogs).length > 0
 
     function openSettingsPage(index: int): void {
+        root.openSettingsSection(index, "")
+    }
+
+    function openSettingsSection(index: int, section: string): void {
+        const route = FamilyPolicy.settingsRoute(Config.options?.panelFamily,index,section)
+        index = route.pageIndex
+        const targetSection = route.section.trim()
         const isWaffle = Config.options?.panelFamily === "waffle"
             && Config.options?.waffles?.settings?.useMaterialStyle !== true
         if (isWaffle) {
             Quickshell.execDetached([Quickshell.shellPath("scripts/inir"),
                 "waffle-settings-window"])
-        } else if (Config.options?.settingsUi?.overlayMode ?? false) {
+        } else if (Config.options?.panelFamily === "abyss" || (Config.options?.settingsUi?.overlayMode ?? false)) {
+            root.settingsOverlayTargetOutput = root.resolveOutputName("",[])
+            root.settingsOverlayRequestedSection = targetSection
             root.settingsOverlayRequestedPage = index
             root.settingsOverlayOpen = true
         } else {
-            Quickshell.execDetached(["/usr/bin/env", `QS_SETTINGS_PAGE=${index}`,
-                Quickshell.shellPath("scripts/inir"), "settings-window"])
+            const command = ["/usr/bin/env", `QS_SETTINGS_PAGE=${index}`]
+            if (targetSection.length > 0)
+                command.push("QS_SETTINGS_SECTION=" + targetSection)
+            command.push(Quickshell.shellPath("scripts/inir"), "settings-window")
+            Quickshell.execDetached(command)
         }
     }
 
@@ -134,6 +281,7 @@ Singleton {
     property bool wallpaperSelectorOpen: false
     property bool wallpaperLauncherOpen: false
     property string wallpaperLauncherMode: "static"
+    property string wallpaperLauncherSearchText: ""
     property bool widgetEditMode: false
     property string selectedDesktopWidget: ""
     property string selectedDesktopItem: ""
@@ -256,6 +404,7 @@ Singleton {
     property bool waffleClipboardOpen: false
     property bool waffleTaskViewOpen: false
     // Panel family transition animation state
+    property string familyTransitionTarget: "ii"
     property bool familyTransitionActive: false
     property string familyTransitionDirection: "left" // "left" = current exits left, new enters from right
 
@@ -322,6 +471,10 @@ Singleton {
         root.resolveOutputName(root.sidebarRightTargetOutput,
             Config.options?.sidebar?.screenList ?? [])
 
+    readonly property string notificationCenterPresentationOutput:
+        root.resolveOutputName(root.notificationCenterTargetOutput,
+            Config.options?.notificationCenter?.screenList ?? [])
+
     function openOverview(outputName): void {
         overviewMode = "default"
         overviewTargetOutput = root.resolveOutputName(outputName, [])
@@ -355,14 +508,16 @@ Singleton {
             root.openTaskView(resolved)
     }
 
-    function openSidebarLeft(outputName): void {
+    function openSidebarLeft(outputName, transient): void {
         sidebarLeftTargetOutput = root.resolveOutputName(outputName,
             Config.options?.sidebar?.screenList ?? [])
+        sidebarLeftTransient = transient === true
         sidebarLeftOpen = true
     }
 
     function closeSidebarLeft(): void {
         sidebarLeftOpen = false
+        sidebarLeftTransient = false
     }
 
     function toggleSidebarLeft(outputName): void {
@@ -371,17 +526,59 @@ Singleton {
         if (sidebarLeftOpen && sidebarLeftPresentationOutput === resolved)
             root.closeSidebarLeft()
         else
-            root.openSidebarLeft(resolved)
+            root.openSidebarLeft(resolved, false)
     }
 
-    function openSidebarRight(outputName): void {
+    function openSidebarRight(outputName, transient): void {
         sidebarRightTargetOutput = root.resolveOutputName(outputName,
             Config.options?.sidebar?.screenList ?? [])
+        sidebarRightTransient = transient === true
         sidebarRightOpen = true
+    }
+
+    function openNotificationCenter(outputName): bool {
+        if (!root.notificationCenterAvailable)
+            return false
+        notificationCenterTargetOutput = root.resolveOutputName(outputName,
+            Config.options?.notificationCenter?.screenList ?? [])
+        notificationCenterExplicitOpen = true
+        return true
+    }
+
+    function closeNotificationCenter(): void {
+        notificationCenterExplicitOpen = false
+        notificationCenterTargetOutput = ""
+        notificationCenterHoverOutput = ""
+    }
+
+    function toggleNotificationCenter(outputName): bool {
+        if (!root.notificationCenterAvailable)
+            return false
+        const resolved = root.resolveOutputName(outputName,
+            Config.options?.notificationCenter?.screenList ?? [])
+        if (notificationCenterExplicitOpen
+                && notificationCenterPresentationOutput === resolved) {
+            root.closeNotificationCenter()
+            return false
+        }
+        return root.openNotificationCenter(resolved)
+    }
+
+    function setNotificationCenterHoverOutput(outputName, open): void {
+        const name = String(outputName ?? "")
+        if (!open) {
+            if (notificationCenterHoverOutput === name)
+                notificationCenterHoverOutput = ""
+            return
+        }
+        if (!root.notificationCenterAvailable || name.length === 0)
+            return
+        notificationCenterHoverOutput = name
     }
 
     function closeSidebarRight(): void {
         sidebarRightOpen = false
+        sidebarRightTransient = false
     }
 
     function toggleSidebarRight(outputName): void {
@@ -390,7 +587,7 @@ Singleton {
         if (sidebarRightOpen && sidebarRightPresentationOutput === resolved)
             root.closeSidebarRight()
         else
-            root.openSidebarRight(resolved)
+            root.openSidebarRight(resolved, false)
     }
 
     onOverviewOpenChanged: {
@@ -466,10 +663,36 @@ Singleton {
         if (sidebarRightOpen && sidebarRightTargetOutput.length === 0)
             sidebarRightTargetOutput = root.resolveOutputName("",
                 Config.options?.sidebar?.screenList ?? [])
-        if (sidebarRightOpen) {
+    }
+
+    onNotificationCenterAvailableChanged: {
+        if (!notificationCenterAvailable)
+            root.closeNotificationCenter()
+    }
+
+    onNotificationCenterOpenChanged: {
+        if (!notificationCenterOpen)
+            return
+        // Let output policy settle first. An explicit request can be rejected
+        // immediately by the target ScreenCorners host (for example while a
+        // fullscreen app owns that output); such an invisible request must not
+        // consume unread state.
+        Qt.callLater(() => {
+            if (!root.notificationCenterOpen
+                    || !(Config.options?.notificationCenter?.markReadOnOpen ?? true))
+                return
+            // The current backend models unread state as the transient popup flag.
+            // Preserve the legacy "viewing history consumes the toast" behavior as
+            // one truthful setting rather than exposing two controls that cannot be
+            // independent without a separate persisted read-state model.
             Notifications.timeoutAll()
             Notifications.markAllRead()
-        }
+        })
+    }
+
+    onScreenLockedChanged: {
+        if (screenLocked)
+            root.closeNotificationCenter()
     }
 
     property real screenZoom: 1

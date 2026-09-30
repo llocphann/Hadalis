@@ -31,15 +31,19 @@ Item {
     // Signals
     signal seekRequested(real seconds)
     
+    readonly property real boundedPosition: StringUtils.boundedMediaPosition(
+        root.position, root.length)
     readonly property real progressValue: length > 0
-        ? Math.max(0, Math.min(1, position / length)) : 0
+        ? Math.max(0, Math.min(1, boundedPosition / length)) : 0
     readonly property bool waveAnimationActive: root.enableWavy && root.isPlaying
         && root.visible && Appearance.animationsEnabled
     property real displayedProgress: progressValue
 
     Behavior on displayedProgress {
         enabled: Appearance.animationsEnabled && root.isPlaying
-        NumberAnimation { duration: 250; easing.type: Easing.Linear }
+        // Match PlayerBase's 500 ms sample cadence so the bar keeps moving
+        // continuously instead of pausing between lower-frequency updates.
+        NumberAnimation { duration: 500; easing.type: Easing.Linear }
     }
 
     // Seekable slider

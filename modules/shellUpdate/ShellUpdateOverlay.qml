@@ -14,6 +14,10 @@ import Quickshell.Services.Notifications
 
 Scope {
     id: root
+    property Item embeddedHost: null
+    readonly property Item presentationContent: card
+    readonly property real desiredWidth: 640
+    readonly property real desiredHeight: contentLayout.implicitHeight+2
 
     readonly property bool isOpen: ShellUpdates.overlayOpen
     readonly property bool hasUpdate: ShellUpdates.hasUpdate
@@ -136,12 +140,12 @@ Scope {
 
     PanelWindow {
         id: window
-        visible: root.isOpen
+        visible: !root.embeddedHost && root.isOpen
         exclusionMode: ExclusionMode.Ignore
         color: "transparent"
         WlrLayershell.namespace: "quickshell:shellUpdate"
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: root.isOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: !root.embeddedHost && root.isOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
         anchors {
             top: true
@@ -166,12 +170,13 @@ Scope {
         // Glassmorphism backdrop
         Item {
             anchors.fill: parent
-            visible: root.isOpen
+            visible: !root.embeddedHost && root.isOpen
 
             Image {
                 id: wallpaperSource
                 anchors.fill: parent
                 source: {
+                    if (root.embeddedHost) return ""
                     const wpPath = Config.options?.background?.wallpaperPath ?? ""
                     const isVideo = wpPath.endsWith(".mp4") || wpPath.endsWith(".webm") || wpPath.endsWith(".mkv") || wpPath.endsWith(".avi") || wpPath.endsWith(".mov")
                     return isVideo ? (Config.options?.background?.thumbnailPath ?? wpPath) : wpPath
@@ -193,7 +198,7 @@ Scope {
                 blurMultiplier: 1.0
                 saturation: (Appearance.effectsEnabled && !Appearance.inirEverywhere) ? 0.2 : 0
                 visible: !Appearance.inirEverywhere
-                opacity: root.isOpen ? 1 : 0
+                opacity: root.embeddedHost ? 1 : root.isOpen ? 1 : 0
 
                 Behavior on opacity {
                     enabled: Appearance.animationsEnabled
@@ -210,7 +215,7 @@ Scope {
                 color: Appearance.inirEverywhere
                     ? ColorUtils.applyAlpha(root.layerColor, 0.95)
                     : ColorUtils.applyAlpha(root.layerColor, 0.85)
-                opacity: root.isOpen ? 1 : 0
+                opacity: root.embeddedHost ? 1 : root.isOpen ? 1 : 0
 
                 Behavior on color {
                     enabled: Appearance.animationsEnabled
@@ -246,15 +251,17 @@ Scope {
         }
 
         StyledRectangularShadow {
+            parent: card.parent
             target: card
             radius: card.radius
-            visible: Appearance.angelEverywhere || !Appearance.auroraEverywhere
+            visible: !root.embeddedHost && (Appearance.angelEverywhere || !Appearance.auroraEverywhere)
         }
 
         // Main card
         ZzzPlate {
+            parent: card.parent
             anchors.fill: card
-            visible: root._zzz
+            visible: !root.embeddedHost && root._zzz
             fillColor: Appearance.colors.colLayer0
             strokeColor: Appearance.zzz.borderColor
             strokeWidth: Appearance.zzz.hairlineThick
@@ -263,11 +270,14 @@ Scope {
 
         Rectangle {
             id: card
+            parent: root.embeddedHost ?? window.contentItem
+            focus: root.embeddedHost && root.isOpen
+            Keys.onEscapePressed: event => { ShellUpdates.closeOverlay(); event.accepted = true }
             anchors.centerIn: parent
-            width: Math.min(parent.width - 80, 640)
-            height: Math.min(parent.height - 80, contentLayout.implicitHeight + 2)
-            color: root._zzz ? "transparent" : root.layerColor
-            border.width: root._zzz ? 0 : 1
+            width: root.embeddedHost ? parent.width : Math.min(parent.width - 80, 640)
+            height: root.embeddedHost ? parent.height : Math.min(parent.height - 80, contentLayout.implicitHeight + 2)
+            color: root.embeddedHost || root._zzz ? "transparent" : root.layerColor
+            border.width: root.embeddedHost || root._zzz ? 0 : 1
             border.color: root.borderColor
             radius: root.cardRadius
             clip: true
@@ -281,8 +291,8 @@ Scope {
                 animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
             }
 
-            scale: root.isOpen ? 1.0 : 0.95
-            opacity: root.isOpen ? 1 : 0
+            scale: root.embeddedHost ? 1 : root.isOpen ? 1.0 : 0.95
+            opacity: root.embeddedHost ? 1 : root.isOpen ? 1 : 0
 
             Behavior on scale {
                 enabled: Appearance.animationsEnabled
@@ -1435,22 +1445,11 @@ Scope {
                             anchors.centerIn: parent
                             spacing: 6
 
-                            // Spinner when updating
-                            MaterialSymbol {
+                            LoadingText {
                                 visible: ShellUpdates.isUpdating
-                                text: "progress_activity"
-                                iconSize: Appearance.font.pixelSize.small
+                                font.pixelSize: Appearance.font.pixelSize.small
                                 color: Appearance.colors.colOnPrimary
-
-                                RotationAnimation on rotation {
-                                    running: ShellUpdates.isUpdating
-                                    loops: Animation.Infinite
-                                    from: 0
-                                    to: 360
-                                    duration: 1000
-                                }
                             }
-
                             MaterialSymbol {
                                 visible: !ShellUpdates.isUpdating
                                 text: "upgrade"
@@ -1458,11 +1457,8 @@ Scope {
                                 color: Appearance.colors.colOnPrimary
                             }
                             StyledText {
-                                text: ShellUpdates.isUpdating
-                                    ? (ShellUpdates.updateStepMessage.length > 0
-                                        ? Translation.tr(ShellUpdates.updateStepMessage) + "..."
-                                        : Translation.tr("Updating..."))
-                                    : Translation.tr("Update Now")
+                                visible: !ShellUpdates.isUpdating
+                                text: Translation.tr("Update Now")
                                 font {
                                     pixelSize: Appearance.font.pixelSize.small
                                     weight: Font.DemiBold

@@ -201,7 +201,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "safety"
-        visible: root.activeSection === "safety" && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "safety"
         expanded: true
         icon: "rule"
         title: Translation.tr("Policies")
@@ -209,23 +209,18 @@ ContentPage {
         SettingsGroup {
             ConfigRow {
                 Layout.alignment: Qt.AlignTop
-                
+
                 ContentSubsection {
                     title: Translation.tr("AI")
-                    tooltip: Translation.tr("Control AI features availability")
-                    ConfigSelectionArray {
-                        currentValue: Config.options?.policies?.ai ?? 0
-                        onSelected: newValue => {
-                            Config.setNestedValue("policies.ai", newValue);
-                        }
-                        options: [
-                            { displayName: Translation.tr("No"), icon: "close", value: 0 },
-                            { displayName: Translation.tr("Yes"), icon: "check", value: 1 },
-                            { displayName: Translation.tr("Local only"), icon: "sync_saved_locally", value: 2 }
-                        ]
+
+                    RippleButtonWithIcon {
+                        Layout.fillWidth: true
+                        materialIcon: "neurology"
+                        mainText: Translation.tr("AI privacy settings")
+                        onClicked: SettingsPageRegistry.navigateToKey("ai", "Privacy")
                     }
                 }
-                
+
                 ContentSubsection {
                     title: Translation.tr("Weeb")
                     tooltip: Translation.tr("Control anime content visibility")
@@ -361,7 +356,7 @@ ContentPage {
             }
         }
     }
-    
+
     SettingsCardSection {
         settingsTaskSection: "locale"
         visible: root.activeSection === "locale"
@@ -533,7 +528,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "input"
-        visible: root.activeSection === "input" && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "input"
         expanded: true
         icon: "select_window"
         title: Translation.tr("Window Management")
@@ -556,7 +551,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "safety"
-        visible: root.activeSection === "safety" && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "safety"
         expanded: true
         icon: "work_alert"
         title: Translation.tr("Work safety")

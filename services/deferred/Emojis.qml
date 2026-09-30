@@ -21,26 +21,86 @@ Singleton {
     property bool sloppySearch: Config.options?.search?.sloppy ?? false
     property real scoreThreshold: 0.2
 
-    readonly property var preparedEntries: list.map(a => ({
-        name: Fuzzy.prepare(`${a}`),
-        entry: a
-    }))
+    property int _listRevision: 0
+    property int _preparedRevision: -1
+    property var _preparedEntriesCache: []
 
-    function fuzzyQuery(search: string): var {
+    onListChanged: {
+        root._listRevision++
+        root._preparedRevision = -1
+        root._preparedEntriesCache = []
+    }
+
+    function _ensurePreparedEntries(): var {
+        if (root._preparedRevision === root._listRevision)
+            return root._preparedEntriesCache
+
+        const source = root.list
+        const prepared = new Array(source.length)
+        for (let i = 0; i < source.length; ++i) {
+            const entry = source[i]
+            prepared[i] = {
+                name: Fuzzy.prepare(`${entry}`),
+                entry: entry
+            }
+        }
+        root._preparedEntriesCache = prepared
+        root._preparedRevision = root._listRevision
+        return prepared
+    }
+
+    function _insertTopScored(top, candidate, limit): void {
+        let low = 0
+        let high = top.length
+        while (low < high) {
+            const mid = (low + high) >> 1
+            if (candidate.score > top[mid].score)
+                high = mid
+            else
+                low = mid + 1
+        }
+        top.splice(low, 0, candidate)
+        if (top.length > limit)
+            top.pop()
+    }
+
+    function fuzzyQuery(search: string, limit): var {
         if (root.sloppySearch) {
-            const results = root.list.slice(0, 100).map(str => ({
-                entry: str,
-                score: Levendist.computeTextMatchScore(str.toLowerCase(), search.toLowerCase())
-            })).filter(item => item.score > root.scoreThreshold)
-                .sort((a, b) => b.score - a.score)
-            return results
-                .map(item => item.entry)
+            const searchLower = search.toLowerCase()
+            const count = Math.min(100, root.list.length)
+            if (limit > 0) {
+                const top = []
+                for (let i = 0; i < count; ++i) {
+                    const entry = root.list[i]
+                    const score = Levendist.computeTextMatchScore(
+                        entry.toLowerCase(), searchLower)
+                    if (score > root.scoreThreshold)
+                        root._insertTopScored(top,
+                            { entry: entry, score: score }, limit)
+                }
+                return top.map(item => item.entry)
+            }
+
+            const results = new Array(count)
+            let resultCount = 0
+            for (let i = 0; i < count; ++i) {
+                const entry = root.list[i]
+                const score = Levendist.computeTextMatchScore(
+                    entry.toLowerCase(), searchLower)
+                if (score > root.scoreThreshold)
+                    results[resultCount++] = { entry: entry, score: score }
+            }
+            results.length = resultCount
+            results.sort((a, b) => b.score - a.score)
+            return results.map(item => item.entry)
         }
 
-        return Fuzzy.go(search, preparedEntries, {
+        const results = Fuzzy.go(search, root._ensurePreparedEntries(), {
             all: true,
-            key: "name"
-        }).map(r => {
+            key: "name",
+            limit: limit > 0 ? limit : undefined
+        })
+        return results.map(r => {
             return r.obj.entry
         });
     }

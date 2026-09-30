@@ -24,7 +24,7 @@ expect_guard_failure() {
 
 # Incident class 1: an always-loaded file imports a local qs.* module whose
 # directory disappeared from source/runtime. This must fail even without a QML
-# parser, matching the qmlscanner modules/pill failure mode.
+# parser, matching the qmlscanner failure mode for any removed local module.
 case_root="$stage/missing-module"
 mkdir -p "$case_root/modules/panel"
 cat > "$case_root/modules/panel/Panel.qml" <<'QML'
@@ -113,5 +113,6 @@ QML
 bash "$guard" "$case_root" >/dev/null \
     || fail 'guard rejected restored MascotImage consumer with owner-module import'
 
+
 printf '%s\n' '1..1'
-printf '%s\n' 'ok 1 - local QML resolution guard catches missing modules, retired types, and missing owner imports for restored critical types'
+printf '%s\n' 'ok 1 - local QML resolution guard catches missing modules, retired types, missing owner imports'

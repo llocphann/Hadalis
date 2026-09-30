@@ -1,0 +1,121 @@
+name: Native Rust staging
+
+on:
+  push:
+    paths:
+      - 'native/**'
+      - 'scripts/native-dispatch'
+      - 'scripts/native-cutover-benchmark.sh'
+      - 'scripts/test-native-selector-contract.sh'
+      - 'scripts/test-native-selector-behavior.sh'
+      - 'scripts/test-native-production-contract.sh'
+      - 'scripts/native-backend'
+      - 'sdata/migrations/050-rust-native-default.sh'
+      - 'scripts/benchmark-python-vs-rust.sh'
+      - 'scripts/test-native-benchmark-deep-contract.sh'
+      - 'native/scripts/check-niri-customizations.py'
+      - 'scripts/inir'
+      - 'services/KeyboardIndicators.qml'
+      - 'services/NiriService.qml'
+      - 'services/LocalMusic.qml'
+      - 'services/IconThemeService.qml'
+      - 'services/Wallpapers.qml'
+      - 'services/deferred/Cliphist.qml'
+      - 'services/deferred/NiriKeybinds.qml'
+      - 'modules/onScreenKeyboard/PhysicalKeyboardFeedback.qml'
+      - 'modules/settings/NiriConfig.qml'
+      - 'modules/settings/MonitorVisibilityConfig.qml'
+      - 'scripts/colors/generate_colors_material.py'
+      - 'scripts/colors/switchwall.sh'
+      - 'scripts/colors/applycolor.sh'
+      - 'defaults/niri/config.d/50-startup.kdl'
+      - 'sdata/migrations/049-native-clipboard-selector.sh'
+      - '.github/workflows/native-rust.yml'
+  pull_request:
+    paths:
+      - 'native/**'
+      - 'scripts/native-dispatch'
+      - 'scripts/test-native-selector-behavior.sh'
+      - 'scripts/test-native-production-contract.sh'
+      - 'scripts/native-backend'
+      - 'sdata/migrations/050-rust-native-default.sh'
+      - 'native/scripts/check-niri-customizations.py'
+      - 'scripts/colors/generate_colors_material.py'
+      - 'scripts/colors/switchwall.sh'
+      - 'scripts/colors/applycolor.sh'
+      - '.github/workflows/native-rust.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-rust-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust 1.95
+        uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          components: rustfmt, clippy
+
+      - name: Assert production native selector boundary
+        run: |
+          python3 native/scripts/assert-dormant.py
+          bash -n scripts/native-dispatch
+          bash -n scripts/native-cutover-benchmark.sh
+          bash -n scripts/benchmark-python-vs-rust.sh
+          bash -n scripts/colors/switchwall.sh
+          bash -n scripts/colors/applycolor.sh
+          bash -n sdata/migrations/049-native-clipboard-selector.sh
+          bash scripts/test-native-selector-contract.sh
+          bash scripts/test-native-selector-behavior.sh
+          bash scripts/test-native-production-contract.sh
+          bash -n scripts/native-backend
+          bash -n native/scripts/install-runtime.sh
+          bash -n sdata/migrations/050-rust-native-default.sh
+          bash scripts/test-native-benchmark-deep-contract.sh
+
+      - name: Rustfmt
+        run: cargo fmt --manifest-path native/Cargo.toml --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --locked --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings
+
+      - name: Unit tests
+        run: cargo test --locked --manifest-path native/Cargo.toml --workspace --all-targets
+
+      - name: Niri customization parity fixtures
+        run: |
+          cargo build --locked --manifest-path native/Cargo.toml -p inir-native
+          python3 native/scripts/check-niri-customizations.py native/target/debug/inir-native
+          python3 native/scripts/check-niri-write-parity.py native/target/debug/inir-native
+
+      - name: MPD isolated status and mutation parity
+        run: |
+          cargo build --locked --manifest-path native/Cargo.toml -p inir-mpdd
+          python3 native/scripts/check-mpd-mutation-parity.py native/target/debug/inir-mpdd
+
+      - name: Clipboard isolated parity
+        run: |
+          cargo build --locked --manifest-path native/Cargo.toml -p inir-native
+          python3 native/scripts/check-clipboard-parity.py native/target/debug/inir-native
+
+      - name: Desktop icon configuration parity
+        run: |
+          cargo build --locked --manifest-path native/Cargo.toml -p inir-native
+          python3 native/scripts/check-desktop-icon-parity.py native/target/debug/inir-native
+
+      - name: Install Python theme parity dependencies
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy pillow materialyoucolor
+
+      - name: Theme image, template and consumer parity
+        run: |
+          cargo build --locked --manifest-path native/Cargo.toml -p inir-theme
+          python3 native/scripts/check-theme-parity.py native/target/debug/inir-theme

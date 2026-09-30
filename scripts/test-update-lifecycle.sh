@@ -228,27 +228,66 @@ if restart < 0 or version < restart or success < version:
     raise SystemExit('update completion ordering must be restart -> version metadata -> success')
 PY
 
-# Arch's checkupdates uses exit 2 for the normal "nothing to update" state.
-# Keep the availability probe self-contained in the declared shell dependency
-# instead of requiring the separate `which` package.
-grep -Fq 'command: ["/usr/bin/sh", "-c", "command -v checkupdates >/dev/null 2>&1"]' "$updates_service" \
-    || fail 'updates availability probe still depends on an external which executable'
-if grep -Fq 'command: ["which", "checkupdates"]' "$updates_service"; then
-    fail 'updates availability probe regressed to the undeclared which dependency'
-fi
-python3 - "$updates_service" <<'PY'
+# Execute the current checkupdates lifecycle. Spawning the real checker is the
+# availability probe; no separate which/command-v process is needed.
+python3 - "$updates_service" <<'PY_UPDATES'
 from pathlib import Path
+import json
+import subprocess
 import sys
 
 text = Path(sys.argv[1]).read_text()
 process = text.split('id: checkUpdatesProc', 1)[1]
-on_exit = process.split('onExited:', 1)[1]
-no_updates = on_exit.find('if (exitCode === 2)')
-clear_count = on_exit.find('root.count = 0;', no_updates)
-error_branch = on_exit.find('if (exitCode !== 0)', no_updates)
-if no_updates < 0 or clear_count < no_updates or error_branch < clear_count:
-    raise SystemExit('checkupdates exit 2 must clear stale count before the genuine error branch')
-PY
+assert 'command: ["checkupdates"]' in process
+assert 'command: ["which", "checkupdates"]' not in text
+
+def body(marker):
+    tail = process.split(marker, 1)[1]
+    start = tail.index('{')
+    depth = 1
+    for end in range(start + 1, len(tail)):
+        if tail[end] == '{': depth += 1
+        elif tail[end] == '}': depth -= 1
+        if depth == 0: return tail[start+1:end]
+    raise AssertionError('unclosed lifecycle handler')
+
+handlers = {
+    'runningChanged': body('onRunningChanged:'),
+    'started': body('onStarted:'),
+    'exited': body('onExited:'),
+}
+program = """
+const assert = require('node:assert/strict');
+const root = {count: 7, available: true};
+const checkUpdatesProc = {running: false, startObserved: false, timedOut: false};
+const events = [];
+const updateCheckTimeout = {stop: () => events.push('stop'), restart: () => events.push('restart')};
+const console = {warn: () => events.push('warn'), error: () => events.push('error')};
+"""
+for name, source in handlers.items():
+    args = 'exitCode, exitStatus' if name == 'exited' else ''
+    program += f'function {name}({args}) {{ {source} }}\n'
+program += """
+runningChanged(); // executable missing or failed spawn
+assert.equal(root.available, false); assert.equal(root.count, 0);
+checkUpdatesProc.running = true; checkUpdatesProc.startObserved = true;
+runningChanged(); assert.equal(checkUpdatesProc.startObserved, false);
+started(); assert(root.available); assert(checkUpdatesProc.startObserved);
+assert.equal(events.at(-1), 'restart');
+root.count = 7; checkUpdatesProc.running = false;
+runningChanged(); assert.equal(root.count, 7); assert(root.available);
+for (const code of [0,2,1,127]) {
+    root.count = 7; events.length = 0;
+    exited(code, 0);
+    assert.equal(root.count, code === 0 ? 7 : 0);
+    assert.equal(events.includes('error'), code !== 0 && code !== 2);
+}
+root.count = 7; events.length = 0; checkUpdatesProc.timedOut = true;
+exited(15, 1); assert.equal(root.count, 0); assert(events.includes('warn'));
+assert(!events.includes('error'));
+"""
+subprocess.run(['node', '-e', program], check=True)
+PY_UPDATES
 
 # Runtime payload manifest must exclude source-only tests/tooling while retaining
 # actual launch/runtime files. This prevents install/update payload drift.

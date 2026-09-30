@@ -69,8 +69,8 @@ Item {
     WPane {
         id: dialog
         anchors.centerIn: parent
-        radius: Looks.cookieEverywhere ? Looks.radius.xLarge : Looks.radius.large
-        borderColor: Looks.glassActive ? Looks.colors.tooltipBorder : Looks.colors.bg2Border
+        radius: Looks.radius.large
+        borderColor: Looks.colors.bg2Border
 
         scale: 0.96
         opacity: 0
@@ -122,7 +122,7 @@ Item {
                                 Layout.preferredWidth: Looks.dp(48)
                                 Layout.preferredHeight: Looks.dp(48)
                                 Layout.alignment: Qt.AlignTop
-                                radius: Looks.cookieEverywhere ? height / 2 : Looks.radius.large
+                                radius: Looks.radius.large
                                 color: Looks.colors.bg1
                                 border.width: 1
                                 border.color: Looks.colors.bg2Border
@@ -196,7 +196,6 @@ Item {
                             horizontalPadding: Looks.dp(14)
                             verticalPadding: Looks.dp(5)
                             text: Translation.tr("Cancel")
-                            cookieMorphing: Looks.cookieEverywhere
                             onClicked: root.cancel()
                         }
 
@@ -208,7 +207,6 @@ Item {
                             text: Translation.tr("Close")
                             icon.name: "dismiss"
                             forceShowIcon: true
-                            cookieMorphing: Looks.cookieEverywhere
                             colBackground: Looks.colors.danger
                             colBackgroundHover: Looks.colors.dangerActive
                             colBackgroundActive: Looks.colors.dangerActive

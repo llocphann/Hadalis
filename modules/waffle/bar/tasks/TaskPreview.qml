@@ -34,7 +34,6 @@ BarPopup {
     function show(appEntry: var, button: Item): void {
         root.appEntry = appEntry
         root.anchorItem = button
-        root.updateAnchor()
         root.open()
     }
 

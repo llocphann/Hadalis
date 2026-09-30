@@ -227,7 +227,11 @@ Item {
                 anchors.bottom: parent.bottom
 
                 readonly property int windowId: root.windowData?.id ?? 0
-                property string previewUrl: ""
+                // Reactive to both compositor identity and cache/session invalidation.
+            readonly property string previewUrl: {
+                const cached = WindowPreviewService.previewCache[previewArea.windowId]
+                return cached ? WindowPreviewService.getPreviewUrl(previewArea.windowId) : ""
+            }
 
                 // Loading shimmer effect
                 Rectangle {
@@ -301,45 +305,6 @@ Item {
                     }
                 }
 
-                // Listen for preview updates
-                Connections {
-                    target: WindowPreviewService
-                    function onPreviewUpdated(updatedId: int): void {
-                        if (updatedId === previewArea.windowId) {
-                            const url = WindowPreviewService.getPreviewUrl(updatedId)
-                            previewArea.previewUrl = url
-                        }
-                    }
-                    function onCaptureComplete(): void {
-                        // Refresh URL in case cache changed
-                        const url = WindowPreviewService.getPreviewUrl(previewArea.windowId)
-                        if (url) {
-                            previewArea.previewUrl = url
-                        }
-                    }
-                }
-
-                // Also watch for previewCache changes directly
-                Connections {
-                    target: WindowPreviewService
-                    function onPreviewCacheChanged(): void {
-                        if (!previewArea.previewUrl) {
-                            const url = WindowPreviewService.getPreviewUrl(previewArea.windowId)
-                            if (url) previewArea.previewUrl = url
-                        }
-                    }
-                }
-
-                // Check if preview already exists on load
-                Component.onCompleted: {
-                    // Delay slightly to ensure service is ready
-                    Qt.callLater(() => {
-                        const url = WindowPreviewService.getPreviewUrl(windowId)
-                        if (url) {
-                            previewUrl = url
-                        }
-                    })
-                }
             }
         }
 

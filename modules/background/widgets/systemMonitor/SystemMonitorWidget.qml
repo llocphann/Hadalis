@@ -284,24 +284,11 @@ AbstractBackgroundWidget {
     // Animation duration for smooth value transitions
     readonly property int _animDuration: Appearance.animation.elementMove.duration
 
-    property bool _holdingResourceUsage: false
-    function _syncResourceUsage(): void {
-        const shouldHold = root._active && root.visible && root.powerActive;
-        if (shouldHold && !root._holdingResourceUsage) {
-            root._holdingResourceUsage = true;
-            ResourceUsage.keepAlive();
-        } else if (!shouldHold && root._holdingResourceUsage) {
-            root._holdingResourceUsage = false;
-            ResourceUsage.releaseKeepAlive();
-        }
-    }
-    on_ActiveChanged: root._syncResourceUsage()
-    onVisibleChanged: root._syncResourceUsage()
-    onPowerActiveChanged: root._syncResourceUsage()
-    Component.onCompleted: root._syncResourceUsage()
-    Component.onDestruction: if (root._holdingResourceUsage) {
-        root._holdingResourceUsage = false;
-        ResourceUsage.releaseKeepAlive();
+    property QtObject resourceMonitor: ResourceUsageMonitor {
+        target: root
+        active: root._active && root.powerActive
+        histories: root.displayMode === "graph"
+        network: false
     }
 
     WidgetSurface {

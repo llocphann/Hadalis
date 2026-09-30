@@ -172,8 +172,15 @@ Singleton {
 
     // Cached - rebuilt with debounce to avoid UI freeze on DesktopEntries updates
     property var _cachedList: []
+    property var _cachedNameLowers: []
     property var _cachedPreppedNames: []
     property var _cachedPreppedIcons: []
+    property int _cacheRevision: 0
+    property int _preppedNamesRevision: -1
+    property int _preppedIconsRevision: -1
+    // Plain JS memo fields have no QML NOTIFY signal. Lazy construction from a
+    // property binding must not synchronously invalidate that same binding.
+    property var _lazyPrepared: ({namesRevision:-1,iconsRevision:-1,names:[],icons:[]})
     // Reverse-lookup maps for matching running windows to desktop entries
     // Key: lowercased startupClass/exec-basename/desktop-id-stem → DesktopEntry
     property var _startupClassMap: ({})
@@ -203,8 +210,12 @@ Singleton {
         const entries = Array.from(DesktopEntries.applications.values)
             .sort((a, b) => a.name.localeCompare(b.name))
         _cachedList = entries
-        _cachedPreppedNames = entries.map(a => ({ name: Fuzzy.prepare(`${a.name} `), entry: a }))
-        _cachedPreppedIcons = entries.map(a => ({ name: Fuzzy.prepare(`${a.icon} `), entry: a }))
+        _cachedNameLowers = entries.map(entry => (entry.name ?? "").toLowerCase())
+        _cachedPreppedNames = []
+        _cachedPreppedIcons = []
+        _cacheRevision++
+        _preppedNamesRevision = -1
+        _preppedIconsRevision = -1
 
         // Build reverse-lookup maps for matching toplevel appIds to desktop entries.
         // This is how we find icons for AppImages, Electron apps, and other apps whose
@@ -255,35 +266,109 @@ Singleton {
         _desktopIdStemMap = idMap;
     }
 
-    function fuzzyQuery(search: string): var {
+    function _ensurePreppedNames(): var {
+        if (root._lazyPrepared.namesRevision === root._cacheRevision)
+            return root._lazyPrepared.names
+
+        const entries = root._cachedList
+        const prepared = new Array(entries.length)
+        for (let i = 0; i < entries.length; ++i) {
+            prepared[i] = {
+                name: Fuzzy.prepare(`${entries[i].name} `),
+                nameLower: root._cachedNameLowers[i] ?? "",
+                entry: entries[i]
+            }
+        }
+        const revision = root._cacheRevision
+        root._lazyPrepared.names = prepared
+        root._lazyPrepared.namesRevision = revision
+        Qt.callLater(() => {
+            if (root._cacheRevision !== revision) return
+            root._cachedPreppedNames = prepared
+            root._preppedNamesRevision = revision
+        })
+        return prepared
+    }
+
+    function _ensurePreppedIcons(): var {
+        if (root._lazyPrepared.iconsRevision === root._cacheRevision)
+            return root._lazyPrepared.icons
+
+        const entries = root._cachedList
+        const prepared = new Array(entries.length)
+        for (let i = 0; i < entries.length; ++i) {
+            prepared[i] = {
+                name: Fuzzy.prepare(`${entries[i].icon} `),
+                entry: entries[i]
+            }
+        }
+        const revision = root._cacheRevision
+        root._lazyPrepared.icons = prepared
+        root._lazyPrepared.iconsRevision = revision
+        Qt.callLater(() => {
+            if (root._cacheRevision !== revision) return
+            root._cachedPreppedIcons = prepared
+            root._preppedIconsRevision = revision
+        })
+        return prepared
+    }
+
+    function _insertTopScored(top, candidate, limit): void {
+        let low = 0
+        let high = top.length
+        while (low < high) {
+            const mid = (low + high) >> 1
+            if (candidate.score > top[mid].score)
+                high = mid
+            else
+                low = mid + 1
+        }
+        top.splice(low, 0, candidate)
+        if (top.length > limit)
+            top.pop()
+    }
+
+    function fuzzyQuery(search: string, limit): var {
         if (_cachedList.length === 0) return []
         if (!search || search.trim() === "") return []
 
         const searchLower = search.toLowerCase().trim()
 
-        // Fast path: exact prefix match gets priority
-        const exactPrefixMatches = _cachedList.filter(obj =>
-            obj.name?.toLowerCase().startsWith(searchLower)
-        )
-
         if (root.sloppySearch) {
-            // Levenshtein-based scoring
-            const results = _cachedList.map(obj => {
-                const nameLower = obj.name?.toLowerCase() ?? ""
+            // Levenshtein-based scoring. When a caller only needs a small
+            // prefix of the ranking, keep that prefix sorted incrementally
+            // instead of allocating and sorting the full result set.
+            if (limit > 0) {
+                const top = []
+                for (let index = 0; index < _cachedList.length; ++index) {
+                    const obj = _cachedList[index]
+                    const nameLower = _cachedNameLowers[index] ?? ""
+                    let score = Levendist.computeScore(nameLower, searchLower)
+
+                    if (nameLower.startsWith(searchLower))
+                        score += 0.3
+                    else if (nameLower.includes(" " + searchLower) || nameLower.includes("-" + searchLower))
+                        score += 0.15
+                    else if (nameLower.includes(searchLower))
+                        score += 0.1
+
+                    score = Math.min(1.0, score)
+                    if (score > root.scoreThreshold)
+                        root._insertTopScored(top, { entry: obj, score: score }, limit)
+                }
+                return top.map(item => root._decorateEntry(item.entry))
+            }
+
+            const results = _cachedList.map((obj, index) => {
+                const nameLower = _cachedNameLowers[index] ?? ""
                 let score = Levendist.computeScore(nameLower, searchLower)
 
-                // Boost for prefix match
-                if (nameLower.startsWith(searchLower)) {
+                if (nameLower.startsWith(searchLower))
                     score += 0.3
-                }
-                // Boost for word boundary match
-                else if (nameLower.includes(" " + searchLower) || nameLower.includes("-" + searchLower)) {
+                else if (nameLower.includes(" " + searchLower) || nameLower.includes("-" + searchLower))
                     score += 0.15
-                }
-                // Boost for contains
-                else if (nameLower.includes(searchLower)) {
+                else if (nameLower.includes(searchLower))
                     score += 0.1
-                }
 
                 return { entry: obj, score: Math.min(1.0, score) }
             }).filter(item => item.score > root.scoreThreshold)
@@ -293,30 +378,46 @@ Singleton {
         }
 
         // Hybrid approach: combine fuzzysort with smart scoring
-        const fuzzyResults = Fuzzy.go(search, preppedNames, {
+        const fuzzyResults = Fuzzy.go(search, root._ensurePreppedNames(), {
             all: true,
             key: "name",
             threshold: -10000 // Get all results, we'll filter ourselves
         })
 
-        // Score and sort results
+        // Apply Hadalis' custom boosts after fuzzysort. Keep only the
+        // requested top-K when a bounded caller (launcher/icon lookup) asks for
+        // it; unlimited callers preserve the original full-sort behavior.
+        if (limit > 0) {
+            const top = []
+            for (let i = 0; i < fuzzyResults.length; ++i) {
+                const r = fuzzyResults[i]
+                const entry = r.obj.entry
+                const nameLower = r.obj.nameLower ?? ""
+                let score = r.score
+
+                if (nameLower.startsWith(searchLower))
+                    score += 50000
+                else if (nameLower.includes(" " + searchLower) || nameLower.includes("-" + searchLower))
+                    score += 20000
+                else if (nameLower.includes(searchLower))
+                    score += 10000
+
+                root._insertTopScored(top, { entry: entry, score: score }, limit)
+            }
+            return top.map(item => root._decorateEntry(item.entry))
+        }
+
         const scoredResults = fuzzyResults.map(r => {
             const entry = r.obj.entry
-            const nameLower = entry.name?.toLowerCase() ?? ""
+            const nameLower = r.obj.nameLower ?? ""
             let score = r.score
 
-            // Significant boost for exact prefix match
-            if (nameLower.startsWith(searchLower)) {
+            if (nameLower.startsWith(searchLower))
                 score += 50000
-            }
-            // Boost for word start match
-            else if (nameLower.includes(" " + searchLower) || nameLower.includes("-" + searchLower)) {
+            else if (nameLower.includes(" " + searchLower) || nameLower.includes("-" + searchLower))
                 score += 20000
-            }
-            // Small boost for substring match
-            else if (nameLower.includes(searchLower)) {
+            else if (nameLower.includes(searchLower))
                 score += 10000
-            }
 
             return { entry, score }
         }).sort((a, b) => b.score - a.score)
@@ -659,21 +760,25 @@ Singleton {
             if (iconExists(candidate)) return candidate;
         }
 
-        // Search in desktop entries
-        if (_cachedPreppedIcons.length > 0) {
-            const iconSearchResults = Fuzzy.go(str, preppedIcons, {
+        // Search in desktop entries only after cheaper direct/icon-theme
+        // heuristics fail. Building this fuzzy index at shell startup is wasted
+        // work for the common case.
+        const preparedIcons = root._ensurePreppedIcons()
+        if (preparedIcons.length > 0) {
+            const iconSearchResults = Fuzzy.go(str, preparedIcons, {
                 all: true,
-                key: "name"
-            }).map(r => r.obj.entry);
+                key: "name",
+                limit: 1
+            });
             if (iconSearchResults.length > 0) {
-                const guess = iconSearchResults[0].icon
+                const guess = iconSearchResults[0].obj.entry.icon
                 if (iconExists(guess)) {
                     return guess;
                 }
             }
         }
 
-        const nameSearchResults = root.fuzzyQuery(str);
+        const nameSearchResults = root.fuzzyQuery(str, 1);
         if (nameSearchResults.length > 0) {
             const guess = nameSearchResults[0].icon
             if (iconExists(guess)) {

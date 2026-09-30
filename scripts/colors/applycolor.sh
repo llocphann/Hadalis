@@ -23,16 +23,62 @@ main() {
 
   local modules=()
   local enabled_targets=0
-  local manifest_path target_id module_path
-  for manifest_path in "${manifests[@]}"; do
-    target_manifest_enabled "$manifest_path" || continue
-    enabled_targets=$((enabled_targets + 1))
-    target_id="$(basename "$manifest_path" .json)"
-    module_path="$(resolve_target_module_path "$target_id" || true)"
-    [[ -n "$module_path" ]] || continue
-    modules+=("$module_path")
-  done
+  local manifest_path target_id module_path module_name enabled
 
+  if (( ${#manifests[@]} > 0 )) && command -v jq >/dev/null 2>&1; then
+    # Parse every target manifest in one jq process. When config exists, load
+    # it once as well instead of spawning jq separately for every configKey.
+    local jq_program='
+      . as $manifest
+      | ($manifest.configKey // "") as $key
+      | (if $key == "" then true
+         elif ($config | length) == 0 then true
+         else ($config[0] | getpath($key | split("."))) as $value
+           | if $value == null then true else $value end
+         end) as $enabled
+      | [($enabled | tostring), ($manifest.module // "")] | @tsv
+    '
+    local jq_rows=""
+    local jq_ok=1
+    if [[ -f "$CONFIG_FILE" ]]; then
+      if ! jq_rows="$(jq -r --slurpfile config "$CONFIG_FILE" "$jq_program" "${manifests[@]}" 2>/dev/null)"; then
+        jq_ok=0
+      fi
+    elif ! jq_rows="$(jq -r --argjson config '[]' "$jq_program" "${manifests[@]}" 2>/dev/null)"; then
+      jq_ok=0
+    fi
+
+    if (( jq_ok == 1 )); then
+      while IFS=$'\t' read -r enabled module_name; do
+        [[ -n "$enabled" ]] || continue
+        [[ "$enabled" != "false" ]] || continue
+        enabled_targets=$((enabled_targets + 1))
+        [[ -n "$module_name" ]] || continue
+        module_path="$MODULES_DIR/$module_name"
+        [[ -f "$module_path" ]] || continue
+        modules+=("$module_path")
+      done <<< "$jq_rows"
+    else
+      for manifest_path in "${manifests[@]}"; do
+        target_manifest_enabled "$manifest_path" || continue
+        enabled_targets=$((enabled_targets + 1))
+        target_id="$(basename "$manifest_path" .json)"
+        module_path="$(resolve_target_module_path "$target_id" || true)"
+        [[ -n "$module_path" ]] || continue
+        modules+=("$module_path")
+      done
+    fi
+  else
+    # Compatibility fallback for minimal installations without jq.
+    for manifest_path in "${manifests[@]}"; do
+      target_manifest_enabled "$manifest_path" || continue
+      enabled_targets=$((enabled_targets + 1))
+      target_id="$(basename "$manifest_path" .json)"
+      module_path="$(resolve_target_module_path "$target_id" || true)"
+      [[ -n "$module_path" ]] || continue
+      modules+=("$module_path")
+    done
+  fi
   if [[ ${#modules[@]} -eq 0 && ${#manifests[@]} -eq 0 ]]; then
     while IFS= read -r module_path; do
       [[ -n "$module_path" ]] || continue

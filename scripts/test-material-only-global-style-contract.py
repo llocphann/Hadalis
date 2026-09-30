@@ -19,6 +19,60 @@ ACTIVE_WINDOW = ROOT / "modules" / "bar" / "ActiveWindow.qml"
 RESOURCE = ROOT / "modules" / "bar" / "Resource.qml"
 CLIPPED_PROGRESS_BAR = ROOT / "modules" / "common" / "widgets" / "ClippedProgressBar.qml"
 STYLED_PROGRESS_BAR = ROOT / "modules" / "common" / "widgets" / "StyledProgressBar.qml"
+MATERIAL_SYMBOL = ROOT / "modules" / "common" / "widgets" / "MaterialSymbol.qml"
+TOOLBAR_TEXT_FIELD = ROOT / "modules" / "common" / "widgets" / "ToolbarTextField.qml"
+TOOLBAR_TAB_BUTTON = ROOT / "modules" / "common" / "widgets" / "ToolbarTabButton.qml"
+TOOLBAR_TAB_BAR = ROOT / "modules" / "common" / "widgets" / "ToolbarTabBar.qml"
+MATERIAL_TEXT_AREA = ROOT / "modules" / "common" / "widgets" / "MaterialTextArea.qml"
+STYLED_DROP_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledDropShadow.qml"
+CIRCULAR_PROGRESS = ROOT / "modules" / "common" / "widgets" / "CircularProgress.qml"
+SECONDARY_TAB_BAR = ROOT / "modules" / "common" / "widgets" / "SecondaryTabBar.qml"
+SCROLL_TO_BOTTOM_BUTTON = ROOT / "modules" / "sidebarLeft" / "ScrollToBottomButton.qml"
+PAGE_PLACEHOLDER = ROOT / "modules" / "common" / "widgets" / "PagePlaceholder.qml"
+SELECTION_DIALOG = ROOT / "modules" / "common" / "widgets" / "SelectionDialog.qml"
+TOAST_NOTIFICATION = ROOT / "modules" / "common" / "widgets" / "ToastNotification.qml"
+WINDOW_DIALOG = ROOT / "modules" / "common" / "widgets" / "WindowDialog.qml"
+CHEATSHEET_KEYBIND_ROW = ROOT / "modules" / "cheatsheet" / "CheatsheetKeybindRow.qml"
+STATUS_RINGS = ROOT / "modules" / "sidebarLeft" / "widgets" / "StatusRings.qml"
+QUICK_LAUNCH = ROOT / "modules" / "sidebarLeft" / "widgets" / "QuickLaunch.qml"
+EVENT_CARD = ROOT / "modules" / "sidebarRight" / "events" / "EventCard.qml"
+SYSMON_WIDGET = ROOT / "modules" / "sidebarRight" / "sysmon" / "SysMonWidget.qml"
+STOPWATCH = ROOT / "modules" / "sidebarRight" / "pomodoro" / "Stopwatch.qml"
+CENTER_WIDGET_GROUP = ROOT / "modules" / "sidebarRight" / "CenterWidgetGroup.qml"
+WEB_APP_VIEW = ROOT / "modules" / "sidebarLeft" / "plugins" / "WebAppView.qml"
+PLUGINS_TAB = ROOT / "modules" / "sidebarLeft" / "plugins" / "PluginsTab.qml"
+ANIME = ROOT / "modules" / "sidebarLeft" / "Anime.qml"
+BOORU_RESPONSE = ROOT / "modules" / "sidebarLeft" / "anime" / "BooruResponse.qml"
+STYLED_OVERLAY_WIDGET = ROOT / "modules" / "ii" / "overlay" / "StyledOverlayWidget.qml"
+FILTER_CHIP = ROOT / "modules" / "common" / "widgets" / "FilterChip.qml"
+GROUP_BUTTON = ROOT / "modules" / "common" / "widgets" / "GroupButton.qml"
+NAVIGATION_RAIL_BUTTON = ROOT / "modules" / "common" / "widgets" / "NavigationRailButton.qml"
+INPUT_CHIP = ROOT / "modules" / "common" / "widgets" / "InputChip.qml"
+SELECTION_GROUP_BUTTON = ROOT / "modules" / "common" / "widgets" / "SelectionGroupButton.qml"
+MATERIAL_PLACEHOLDER_MESSAGE = ROOT / "modules" / "common" / "widgets" / "MaterialPlaceholderMessage.qml"
+NOTIFICATION_ITEM = ROOT / "modules" / "common" / "widgets" / "NotificationItem.qml"
+NOTIFICATION_GROUP = ROOT / "modules" / "common" / "widgets" / "NotificationGroup.qml"
+NOTIFICATION_ACTION_BUTTON = ROOT / "modules" / "common" / "widgets" / "NotificationActionButton.qml"
+NOTIFICATION_GROUP_EXPAND_BUTTON = ROOT / "modules" / "common" / "widgets" / "NotificationGroupExpandButton.qml"
+NOTIFICATION_APP_ICON = ROOT / "modules" / "common" / "widgets" / "NotificationAppIcon.qml"
+CONTENT_SUBSECTION_LABEL = ROOT / "modules" / "common" / "widgets" / "ContentSubsectionLabel.qml"
+KEYBOARD_FOCUS_RING = ROOT / "modules" / "common" / "widgets" / "KeyboardFocusRing.qml"
+KEYBOARD_KEY = ROOT / "modules" / "common" / "widgets" / "KeyboardKey.qml"
+MATERIAL_SHAPE_SYMBOL = ROOT / "modules" / "common" / "widgets" / "MaterialShapeWrappedMaterialSymbol.qml"
+FLOATING_ACTION_BUTTON = ROOT / "modules" / "common" / "widgets" / "FloatingActionButton.qml"
+DATE_PICKER = ROOT / "modules" / "common" / "widgets" / "DatePicker.qml"
+DIALOG_BUTTON = ROOT / "modules" / "common" / "widgets" / "DialogButton.qml"
+DIALOG_LIST_ITEM = ROOT / "modules" / "common" / "widgets" / "DialogListItem.qml"
+ICON_TOOLBAR_BUTTON = ROOT / "modules" / "common" / "widgets" / "IconToolbarButton.qml"
+COLLAPSIBLE_SECTION = ROOT / "modules" / "common" / "widgets" / "CollapsibleSection.qml"
+CONTENT_SECTION = ROOT / "modules" / "common" / "widgets" / "ContentSection.qml"
+MATERIAL_TEXT_FIELD = ROOT / "modules" / "common" / "widgets" / "MaterialTextField.qml"
+STYLED_TEXT_AREA = ROOT / "modules" / "common" / "widgets" / "StyledTextArea.qml"
+TOOLBAR_BUTTON = ROOT / "modules" / "common" / "widgets" / "ToolbarButton.qml"
+NOTICE_BOX = ROOT / "modules" / "common" / "widgets" / "NoticeBox.qml"
+RIPPLE_BUTTON_WITH_ICON = ROOT / "modules" / "common" / "widgets" / "RippleButtonWithIcon.qml"
+STYLED_TOOLTIP_CONTENT = ROOT / "modules" / "common" / "widgets" / "StyledToolTipContent.qml"
+TOOLBAR = ROOT / "modules" / "common" / "widgets" / "Toolbar.qml"
 TIMER_INDICATOR = ROOT / "modules" / "bar" / "TimerIndicator.qml"
 SHELL_UPDATE_INDICATOR = ROOT / "modules" / "bar" / "ShellUpdateIndicator.qml"
 UTIL_BUTTONS = ROOT / "modules" / "bar" / "UtilButtons.qml"
@@ -51,6 +105,7 @@ SETTINGS_GROUP = ROOT / "modules" / "common" / "widgets" / "SettingsGroup.qml"
 STYLED_TEXT_INPUT = ROOT / "modules" / "common" / "widgets" / "StyledTextInput.qml"
 STYLED_SLIDER = ROOT / "modules" / "common" / "widgets" / "StyledSlider.qml"
 SETTINGS_OVERLAY = ROOT / "modules" / "settings" / "SettingsOverlay.qml"
+SETTINGS_LIVE_SEARCH_RESULTS = ROOT / "modules" / "common" / "widgets" / "SettingsLiveSearchResults.qml"
 SETTINGS_WINDOW = ROOT / "settings.qml"
 CONTROL_PANEL_DATE_TIME = ROOT / "modules" / "controlPanel" / "DateTimeHeader.qml"
 CONTROL_PANEL_WALLPAPER = ROOT / "modules" / "controlPanel" / "WallpaperSection.qml"
@@ -76,8 +131,10 @@ OVERVIEW_SEARCH_WIDGET = ROOT / "modules" / "overview" / "SearchWidget.qml"
 OVERVIEW_ACTION_MODE_VIEW = ROOT / "modules" / "overview" / "ActionModeView.qml"
 OVERVIEW_ALL_APPS_GRID = ROOT / "modules" / "overview" / "OverviewAllAppsGrid.qml"
 OVERVIEW_DASHBOARD = ROOT / "modules" / "overview" / "OverviewDashboard.qml"
+DASHBOARD_CONTENT = ROOT / "modules" / "dashboard" / "DashboardContent.qml"
 OVERVIEW_NIRI_WIDGET = ROOT / "modules" / "overview" / "OverviewNiriWidget.qml"
 OVERVIEW_WIDGET = ROOT / "modules" / "overview" / "OverviewWidget.qml"
+WELCOME = ROOT / "welcome.qml"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -110,6 +167,60 @@ def main() -> None:
     resource = RESOURCE.read_text(encoding="utf-8")
     clipped_progress_bar = CLIPPED_PROGRESS_BAR.read_text(encoding="utf-8")
     styled_progress_bar = STYLED_PROGRESS_BAR.read_text(encoding="utf-8")
+    material_symbol = MATERIAL_SYMBOL.read_text(encoding="utf-8")
+    toolbar_text_field = TOOLBAR_TEXT_FIELD.read_text(encoding="utf-8")
+    toolbar_tab_button = TOOLBAR_TAB_BUTTON.read_text(encoding="utf-8")
+    toolbar_tab_bar = TOOLBAR_TAB_BAR.read_text(encoding="utf-8")
+    material_text_area = MATERIAL_TEXT_AREA.read_text(encoding="utf-8")
+    styled_drop_shadow = STYLED_DROP_SHADOW.read_text(encoding="utf-8")
+    circular_progress = CIRCULAR_PROGRESS.read_text(encoding="utf-8")
+    secondary_tab_bar = SECONDARY_TAB_BAR.read_text(encoding="utf-8")
+    scroll_to_bottom_button = SCROLL_TO_BOTTOM_BUTTON.read_text(encoding="utf-8")
+    page_placeholder = PAGE_PLACEHOLDER.read_text(encoding="utf-8")
+    selection_dialog = SELECTION_DIALOG.read_text(encoding="utf-8")
+    toast_notification = TOAST_NOTIFICATION.read_text(encoding="utf-8")
+    window_dialog = WINDOW_DIALOG.read_text(encoding="utf-8")
+    cheatsheet_keybind_row = CHEATSHEET_KEYBIND_ROW.read_text(encoding="utf-8")
+    status_rings = STATUS_RINGS.read_text(encoding="utf-8")
+    quick_launch = QUICK_LAUNCH.read_text(encoding="utf-8")
+    event_card = EVENT_CARD.read_text(encoding="utf-8")
+    sysmon_widget = SYSMON_WIDGET.read_text(encoding="utf-8")
+    stopwatch = STOPWATCH.read_text(encoding="utf-8")
+    center_widget_group = CENTER_WIDGET_GROUP.read_text(encoding="utf-8")
+    web_app_view = WEB_APP_VIEW.read_text(encoding="utf-8")
+    plugins_tab = PLUGINS_TAB.read_text(encoding="utf-8")
+    anime = ANIME.read_text(encoding="utf-8")
+    booru_response = BOORU_RESPONSE.read_text(encoding="utf-8")
+    styled_overlay_widget = STYLED_OVERLAY_WIDGET.read_text(encoding="utf-8")
+    filter_chip = FILTER_CHIP.read_text(encoding="utf-8")
+    group_button = GROUP_BUTTON.read_text(encoding="utf-8")
+    navigation_rail_button = NAVIGATION_RAIL_BUTTON.read_text(encoding="utf-8")
+    input_chip = INPUT_CHIP.read_text(encoding="utf-8")
+    selection_group_button = SELECTION_GROUP_BUTTON.read_text(encoding="utf-8")
+    material_placeholder_message = MATERIAL_PLACEHOLDER_MESSAGE.read_text(encoding="utf-8")
+    notification_item = NOTIFICATION_ITEM.read_text(encoding="utf-8")
+    notification_group = NOTIFICATION_GROUP.read_text(encoding="utf-8")
+    notification_action_button = NOTIFICATION_ACTION_BUTTON.read_text(encoding="utf-8")
+    notification_group_expand_button = NOTIFICATION_GROUP_EXPAND_BUTTON.read_text(encoding="utf-8")
+    notification_app_icon = NOTIFICATION_APP_ICON.read_text(encoding="utf-8")
+    content_subsection_label = CONTENT_SUBSECTION_LABEL.read_text(encoding="utf-8")
+    keyboard_focus_ring = KEYBOARD_FOCUS_RING.read_text(encoding="utf-8")
+    keyboard_key = KEYBOARD_KEY.read_text(encoding="utf-8")
+    material_shape_symbol = MATERIAL_SHAPE_SYMBOL.read_text(encoding="utf-8")
+    floating_action_button = FLOATING_ACTION_BUTTON.read_text(encoding="utf-8")
+    date_picker = DATE_PICKER.read_text(encoding="utf-8")
+    dialog_button = DIALOG_BUTTON.read_text(encoding="utf-8")
+    dialog_list_item = DIALOG_LIST_ITEM.read_text(encoding="utf-8")
+    icon_toolbar_button = ICON_TOOLBAR_BUTTON.read_text(encoding="utf-8")
+    collapsible_section = COLLAPSIBLE_SECTION.read_text(encoding="utf-8")
+    content_section = CONTENT_SECTION.read_text(encoding="utf-8")
+    material_text_field = MATERIAL_TEXT_FIELD.read_text(encoding="utf-8")
+    styled_text_area = STYLED_TEXT_AREA.read_text(encoding="utf-8")
+    toolbar_button = TOOLBAR_BUTTON.read_text(encoding="utf-8")
+    notice_box = NOTICE_BOX.read_text(encoding="utf-8")
+    ripple_button_with_icon = RIPPLE_BUTTON_WITH_ICON.read_text(encoding="utf-8")
+    styled_tooltip_content = STYLED_TOOLTIP_CONTENT.read_text(encoding="utf-8")
+    toolbar = TOOLBAR.read_text(encoding="utf-8")
     timer_indicator = TIMER_INDICATOR.read_text(encoding="utf-8")
     shell_update_indicator = SHELL_UPDATE_INDICATOR.read_text(encoding="utf-8")
     util_buttons = UTIL_BUTTONS.read_text(encoding="utf-8")
@@ -146,6 +257,7 @@ def main() -> None:
     styled_text_input = STYLED_TEXT_INPUT.read_text(encoding="utf-8")
     styled_slider = STYLED_SLIDER.read_text(encoding="utf-8")
     settings_overlay = SETTINGS_OVERLAY.read_text(encoding="utf-8")
+    settings_live_search_results = SETTINGS_LIVE_SEARCH_RESULTS.read_text(encoding="utf-8")
     settings_window = SETTINGS_WINDOW.read_text(encoding="utf-8")
     control_panel_date_time = CONTROL_PANEL_DATE_TIME.read_text(encoding="utf-8")
     control_panel_wallpaper = CONTROL_PANEL_WALLPAPER.read_text(encoding="utf-8")
@@ -171,8 +283,10 @@ def main() -> None:
     overview_action_mode_view = OVERVIEW_ACTION_MODE_VIEW.read_text(encoding="utf-8")
     overview_all_apps_grid = OVERVIEW_ALL_APPS_GRID.read_text(encoding="utf-8")
     overview_dashboard = OVERVIEW_DASHBOARD.read_text(encoding="utf-8")
+    dashboard_content = DASHBOARD_CONTENT.read_text(encoding="utf-8")
     overview_niri_widget = OVERVIEW_NIRI_WIDGET.read_text(encoding="utf-8")
     overview_widget = OVERVIEW_WIDGET.read_text(encoding="utf-8")
+    welcome = WELCOME.read_text(encoding="utf-8")
 
     # Runtime must never expose a persisted legacy shell-wide style, even during
     # singleton initialization before ThemeService has normalized config on disk.
@@ -194,9 +308,14 @@ def main() -> None:
         "readonly property bool regaliaEverywhere: false",
         "readonly property bool zzzEverywhere: false",
         "readonly property bool cookieEverywhere: false",
-        "readonly property bool _auroraLightMode: false",
     ):
         require(appearance, token, "Appearance.qml compatibility boundary")
+    for token in (
+        "_auroraLightMode",
+        "popupSurfaceTransparentize",
+    ):
+        forbid(appearance, token, "Appearance.qml retired compatibility")
+
     for token in (
         'globalStyle === "inir"',
         'globalStyle === "angel"',
@@ -205,6 +324,567 @@ def main() -> None:
         'globalStyle === "cookie"',
     ):
         forbid(appearance, token, "Appearance.qml")
+
+    for token in (
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.angelEverywhere",
+        "id: auroraBlurSource",
+    ):
+        forbid(welcome, token, "welcome.qml")
+    for token in (
+        "radius: Appearance.rounding.large",
+        "color: Appearance.colors.colLayer1Base",
+    ):
+        require(welcome, token, "welcome.qml Material chrome")
+
+    shared_material_primitives = {
+        "MaterialSymbol.qml": material_symbol,
+        "ToolbarTextField.qml": toolbar_text_field,
+        "ToolbarTabButton.qml": toolbar_tab_button,
+        "ToolbarTabBar.qml": toolbar_tab_bar,
+        "MaterialTextArea.qml": material_text_area,
+        "StyledDropShadow.qml": styled_drop_shadow,
+        "CircularProgress.qml": circular_progress,
+        "SecondaryTabBar.qml": secondary_tab_bar,
+        "ScrollToBottomButton.qml": scroll_to_bottom_button,
+        "PagePlaceholder.qml": page_placeholder,
+        "SelectionDialog.qml": selection_dialog,
+        "ToastNotification.qml": toast_notification,
+        "WindowDialog.qml": window_dialog,
+        "CheatsheetKeybindRow.qml": cheatsheet_keybind_row,
+        "StatusRings.qml": status_rings,
+        "QuickLaunch.qml": quick_launch,
+        "EventCard.qml": event_card,
+        "SysMonWidget.qml": sysmon_widget,
+        "Stopwatch.qml": stopwatch,
+        "CenterWidgetGroup.qml": center_widget_group,
+        "WebAppView.qml": web_app_view,
+        "PluginsTab.qml": plugins_tab,
+        "Anime.qml": anime,
+        "BooruResponse.qml": booru_response,
+        "StyledOverlayWidget.qml": styled_overlay_widget,
+        "FilterChip.qml": filter_chip,
+        "GroupButton.qml": group_button,
+        "NavigationRailButton.qml": navigation_rail_button,
+        "InputChip.qml": input_chip,
+        "SelectionGroupButton.qml": selection_group_button,
+        "MaterialPlaceholderMessage.qml": material_placeholder_message,
+        "NotificationItem.qml": notification_item,
+        "NotificationGroup.qml": notification_group,
+        "NotificationActionButton.qml": notification_action_button,
+        "NotificationGroupExpandButton.qml": notification_group_expand_button,
+        "NotificationAppIcon.qml": notification_app_icon,
+        "ContentSubsectionLabel.qml": content_subsection_label,
+        "KeyboardFocusRing.qml": keyboard_focus_ring,
+        "KeyboardKey.qml": keyboard_key,
+        "MaterialShapeWrappedMaterialSymbol.qml": material_shape_symbol,
+        "FloatingActionButton.qml": floating_action_button,
+        "DatePicker.qml": date_picker,
+        "DialogButton.qml": dialog_button,
+        "DialogListItem.qml": dialog_list_item,
+        "IconToolbarButton.qml": icon_toolbar_button,
+        "CollapsibleSection.qml": collapsible_section,
+        "ContentSection.qml": content_section,
+        "MaterialTextField.qml": material_text_field,
+        "StyledTextArea.qml": styled_text_area,
+        "ToolbarButton.qml": toolbar_button,
+        "NoticeBox.qml": notice_box,
+        "RippleButtonWithIcon.qml": ripple_button_with_icon,
+        "StyledToolTipContent.qml": styled_tooltip_content,
+        "Toolbar.qml": toolbar,
+    }
+    for source, source_text in shared_material_primitives.items():
+        for token in (
+            "Appearance.inirEverywhere",
+            "Appearance.auroraEverywhere",
+            "Appearance.angelEverywhere",
+            "Appearance.regaliaEverywhere",
+            "Appearance.zzzEverywhere",
+            "Appearance.cookieEverywhere",
+        ):
+            forbid(source_text, token, source)
+
+    for token in (
+        "readonly property real effectiveFill: animateFill",
+        "enabled: root.animateFill && Appearance.animationsEnabled",
+    ):
+        require(material_symbol, token, "MaterialSymbol.qml")
+    for token in (
+        "leftPadding: 10",
+        "placeholderTextColor: Appearance.colors.colSubtext",
+        "color: Appearance.colors.colOnLayer1",
+        "radius: Appearance.rounding.full",
+    ):
+        require(toolbar_text_field, token, "ToolbarTextField.qml")
+    forbid(toolbar_text_field, "RegaliaControlFace {", "ToolbarTextField.qml")
+    for token in (
+        "implicitHeight: 40",
+        "buttonRadius: height / 2",
+        "cookieMorphing: false",
+        "text: root.text",
+        "font.family: Appearance.font.family.main",
+    ):
+        require(toolbar_tab_button, token, "ToolbarTabButton.qml")
+    for token in (
+        "height: 40",
+        "color: Appearance.colors.colSurfaceContainer",
+        "color: Appearance.colors.colSecondaryContainer",
+        "implicitHeight: targetItem ? targetItem.implicitHeight : 0",
+        "color: Appearance.colors.colPrimary",
+    ):
+        require(toolbar_tab_bar, token, "ToolbarTabBar.qml")
+    for token in (
+        "Material.accent: Appearance.colors.colPrimary",
+        "Material.background: Appearance.colors.colLayer1",
+        "Material.foreground: Appearance.colors.colOnSurface",
+        "selectedTextColor: Appearance.colors.colOnSecondaryContainer",
+    ):
+        require(material_text_area, token, "MaterialTextArea.qml")
+    forbid(material_text_area, "RegaliaControlFace {", "MaterialTextArea.qml")
+    require(
+        styled_drop_shadow,
+        "visible: Appearance.effectsEnabled",
+        "StyledDropShadow.qml",
+    )
+
+    for token in (
+        "property color colPrimary: Appearance.colors.colOnSecondaryContainer",
+        "property color colSecondary: Appearance.colors.colSecondaryContainer",
+    ):
+        require(circular_progress, token, "CircularProgress.qml")
+    for token in (
+        "color: Appearance.colors.colPrimary",
+        "color: Appearance.colors.colOutlineVariant",
+    ):
+        require(secondary_tab_bar, token, "SecondaryTabBar.qml")
+    for token in (
+        ": Appearance.colors.colSecondary",
+        ": Appearance.colors.colSecondaryHover",
+        ": Appearance.colors.colSecondaryActive",
+        "color: Appearance.colors.colOnSecondary",
+    ):
+        require(scroll_to_bottom_button, token, "ScrollToBottomButton.qml")
+    for token in (
+        "spacing: 5",
+        "MaterialShapeWrappedMaterialSymbol {",
+        "visible: !placeholderMascot.visible",
+        "color: Appearance.colors.colOutline",
+    ):
+        require(page_placeholder, token, "PagePlaceholder.qml")
+    forbid(page_placeholder, "Appearance.inir.", "PagePlaceholder.qml")
+
+    for token in (
+        "color: Appearance.colors.colSurfaceContainerHigh",
+        "radius: Appearance.rounding.normal",
+        "color: Appearance.colors.colOnSurface",
+        "color: Appearance.colors.colOutline",
+    ):
+        require(selection_dialog, token, "SelectionDialog.qml")
+    for token in (
+        "radius: Appearance.rounding.normal",
+        "border.color: root.isError ? Appearance.colors.colError : Appearance.colors.colOutlineVariant",
+        "implicitWidth: 20",
+        "color: root.isError",
+        "buttonRadius: Appearance.rounding.small",
+        "colRipple: Qt.rgba(0, 0, 0, 0.15)",
+    ):
+        require(toast_notification, token, "ToastNotification.qml")
+    forbid(toast_notification, "CookieFace {", "ToastNotification.qml")
+
+    for token in (
+        "radius: Appearance.rounding.large",
+        "fallbackColor: Appearance.colors.colSurfaceContainerHigh",
+        'border.color: "transparent"',
+        "readonly property real contentPad: Math.max(radius, Appearance.sizes.spacingLarge)",
+    ):
+        require(window_dialog, token, "WindowDialog.qml")
+    for token in ("RegaliaPlate {", "ZzzPanelBackdrop {"):
+        forbid(window_dialog, token, "WindowDialog.qml")
+
+    for token in (
+        "color: hovered ? Appearance.colors.colLayer2Hover",
+        "radius: Appearance.rounding.verysmall",
+        "color: Appearance.colors.colSubtext",
+        "color: Appearance.colors.colOnLayer1",
+        "color: Appearance.colors.colOutlineVariant",
+        "opacity: 0.3",
+    ):
+        require(cheatsheet_keybind_row, token, "CheatsheetKeybindRow.qml")
+    for token in (
+        "ResourceUsage.cpuUsage >= 0.9 ? Appearance.colors.colError",
+        "Battery.isCritical ? Appearance.colors.colError",
+        "property color ringColor: Appearance.colors.colPrimary",
+        "border.color: Appearance.colors.colLayer2",
+        "font.weight: Font.Medium",
+        "font.italic: false",
+    ):
+        require(status_rings, token, "StatusRings.qml")
+    for token in (
+        "buttonRadius: Appearance.rounding.full",
+        "colBackground: isRunning ? Appearance.colors.colPrimaryContainer",
+        "colBackgroundHover: isRunning",
+        "colRipple: isRunning",
+        "width: 6",
+        "height: 6",
+        "radius: 3",
+    ):
+        require(quick_launch, token, "QuickLaunch.qml")
+
+    for token in (
+        "readonly property color colPrimary: Appearance.colors.colPrimary",
+        "readonly property color colText: Appearance.colors.colOnLayer1",
+        "readonly property color colBadge: ColorUtils.transparentize(Appearance.colors.colPrimary, 0.90)",
+        "visible: true",
+        "radius: Appearance.rounding.small",
+        "colBackgroundHover: Appearance.colors.colLayer1Hover",
+    ):
+        require(event_card, token, "EventCard.qml")
+    forbid(event_card, "AngelPartialBorder {", "EventCard.qml")
+    for token in (
+        "readonly property color colText: Appearance.colors.colOnLayer1",
+        "readonly property color colBg: Appearance.colors.colLayer0",
+        "readonly property int borderWidth: 1",
+        "readonly property real radius: Appearance.rounding.normal",
+        "colBackgroundHover: Appearance.colors.colLayer1Hover",
+        "trackColor: Appearance.colors.colSecondaryContainer",
+    ):
+        require(sysmon_widget, token, "SysMonWidget.qml")
+
+    for token in (
+        "color: Appearance.colors.colOnSurface",
+        "color: Appearance.colors.colSubtext",
+        "color: Appearance.colors.colLayer2",
+        "buttonRadius: Appearance.rounding.full",
+        "? Appearance.colors.colSecondaryContainer",
+        "? Appearance.colors.colOnSecondaryContainer",
+        "colBackground: Appearance.colors.colLayer2",
+        "colBackgroundHover: Appearance.colors.colLayer2Hover",
+        "colRipple: Appearance.colors.colLayer2Active",
+    ):
+        require(stopwatch, token, "Stopwatch.qml")
+    forbid(stopwatch, "Qt5Compat.GraphicalEffects", "Stopwatch.qml")
+
+    for token in (
+        "radius: Appearance.rounding.normal",
+        "color: Appearance.colors.colLayer1",
+        "border.width: 0",
+        'border.color: "transparent"',
+    ):
+        require(center_widget_group, token, "CenterWidgetGroup.qml")
+    forbid(center_widget_group, "AngelPartialBorder {", "CenterWidgetGroup.qml")
+    for source, source_text in (
+        ("WebAppView.qml", web_app_view),
+        ("PluginsTab.qml", plugins_tab),
+    ):
+        for token in (
+            "readonly property color colText: Appearance.colors.colOnLayer1",
+            "readonly property color colTextSecondary: Appearance.colors.colSubtext",
+            "readonly property color colBg: Appearance.colors.colLayer1",
+            "readonly property color colBgHover: Appearance.colors.colLayer1Hover",
+            "readonly property color colBorder: Appearance.colors.colLayer0Border",
+        ):
+            require(source_text, token, source)
+    require(web_app_view, "border.width: 0", "WebAppView.qml")
+    require(web_app_view, "color: Appearance.colors.colLayer0", "WebAppView.qml")
+    require(plugins_tab, "border.width: 0", "PluginsTab.qml")
+    require(plugins_tab, "color: Appearance.colors.colLayer0", "PluginsTab.qml")
+
+    for token in (
+        "colBackground: tagSuggestions.selectedIndex === index",
+        "color: Appearance.colors.colOnSecondaryContainer",
+        "radius: Appearance.rounding.normal - root.padding",
+        "color: Appearance.colors.colLayer2",
+        "buttonRadius: Appearance.rounding.small",
+        "? Appearance.colors.colOnPrimary",
+    ):
+        require(anime, token, "Anime.qml")
+    for token in (
+        'color: cleanLayout ? "transparent" : Appearance.colors.colLayer1',
+        "color: Appearance.colors.colSecondaryContainer",
+        "colBackground: Appearance.colors.colSurfaceContainerHighest",
+        "colBackgroundHover: Appearance.colors.colSurfaceContainerHighestHover",
+        "colRipple: Appearance.colors.colSurfaceContainerHighestActive",
+    ):
+        require(booru_response, token, "BooruResponse.qml")
+
+    for token in (
+        "property real radius: Appearance.rounding.windowRounding",
+        "ColorUtils.applyAlpha(Appearance.colors.colLayer1, root.panelBaseOpacity)",
+        "border.width: 1",
+        'color: root.fancyBorders ? "transparent" : Appearance.colors.colLayer1',
+        "colBackgroundToggled: Appearance.colors.colSecondaryContainer",
+        "colRippleToggled: Appearance.colors.colSecondaryContainerActive",
+        "GE.OpacityMask {",
+    ):
+        require(styled_overlay_widget, token, "StyledOverlayWidget.qml")
+    for token in (
+        "RegaliaPlate {",
+        "AngelPartialBorder {",
+        "id: widgetBlurWallpaper",
+        "MultiEffect {",
+        "import QtQuick.Effects",
+        "import Quickshell",
+    ):
+        forbid(styled_overlay_widget, token, "StyledOverlayWidget.qml")
+
+    for token in (
+        "+ (icon.visible ? icon.implicitWidth + 6 : 0)",
+        "implicitHeight: 30",
+        "buttonRadius: height / 2",
+        "readonly property color _restFill: root.selected",
+        "readonly property color _hoverFill: root.selected",
+        "border.width: root.visualFocus ? 2",
+        "spacing: icon.visible ? 6 : 0",
+    ):
+        require(filter_chip, token, "FilterChip.qml")
+
+    for token in (
+        "property bool bounce: true",
+        "property real baseHeight: contentItem.implicitHeight + verticalPadding * 2",
+        "property color colBackgroundHover: Appearance.colors.colLayer1Hover",
+        "property color colBackgroundToggled: Appearance.colors.colPrimary",
+        "color: root.waveFace ? \"transparent\" : root.color",
+        "color: Appearance.colors.colOnLayer0",
+    ):
+        require(group_button, token, "GroupButton.qml")
+    for token in ("RegaliaControlFace {", "CookieFace {", "buttonBackground.cookieFace"):
+        forbid(group_button, token, "GroupButton.qml")
+    for token in (
+        "color: Appearance.colors.colPrimary",
+        "radius: Appearance.rounding.full",
+        "color: Appearance.colors.colOnPrimary",
+        "color: toggled ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer1",
+        "scale: root.down ? 0.82 : 1",
+        "color: Appearance.colors.colOnLayer1",
+    ):
+        require(navigation_rail_button, token, "NavigationRailButton.qml")
+    forbid(navigation_rail_button, "RegaliaControlFace {", "NavigationRailButton.qml")
+
+    for token in (
+        "implicitWidth: chipContent.implicitWidth + 20",
+        "implicitHeight: 30",
+        "radius: height / 2",
+        "border.width: 1",
+        "Appearance.colors.colSecondaryContainerHover",
+        "Appearance.colors.colOnSecondaryContainer",
+        "spacing: (root.chipIcon.length > 0 || root.removable) ? 4 : 0",
+        "anchors.rightMargin: root.removable ? 24 : 0",
+    ):
+        require(input_chip, token, "InputChip.qml")
+    forbid(input_chip, "RegaliaControlFace {", "InputChip.qml")
+
+    for token in (
+        "horizontalPadding: 11",
+        "verticalPadding: 6",
+        "readonly property bool showZzzPreview: false",
+        'colBackground: Config.options?.panelFamily === "abyss" ? Qt.alpha(Appearance.colors.colPrimary,.1) : Appearance.colors.colSecondaryContainer',
+        'colBackgroundHover: Config.options?.panelFamily === "abyss" ? Qt.alpha(Appearance.colors.colPrimary,.18) : Appearance.colors.colSecondaryContainerHover',
+        'colBackgroundActive: Config.options?.panelFamily === "abyss" ? Qt.alpha(Appearance.colors.colPrimary,.26) : Appearance.colors.colSecondaryContainerActive',
+        "buttonPreviewKind",
+    ):
+        require(selection_group_button, token, "SelectionGroupButton.qml")
+    for token in ("ZzzCornerPreview", "cornerPreview", "Appearance.zzz."):
+        forbid(selection_group_button, token, "SelectionGroupButton.qml")
+    for token in (
+        "spacing: root.compact ? 6 : 10",
+        "implicitWidth: materialShape.implicitWidth",
+        "implicitHeight: materialShape.implicitHeight",
+        "MaterialShapeWrappedMaterialSymbol {",
+        "color: Appearance.colors.colOnSurface",
+        "color: Appearance.colors.colSubtext",
+    ):
+        require(material_placeholder_message, token, "MaterialPlaceholderMessage.qml")
+    forbid(material_placeholder_message, "Appearance.inir.", "MaterialPlaceholderMessage.qml")
+
+    for token in (
+        "radius: Appearance.rounding.small",
+        "Appearance.colors.colLayer3",
+        "border.width: 0",
+        "color: Appearance.colors.colOnLayer3",
+        "Appearance.colors.colSubtext",
+    ):
+        require(notification_item, token, "NotificationItem.qml")
+    forbid(notification_item, "RegaliaPlate {", "NotificationItem.qml")
+    for token in (
+        "ColorUtils.applyAlpha(Appearance.colors.colLayer2, 1 - Appearance.backgroundTransparency)",
+        "radius: Appearance.rounding.normal",
+        "border.width: 0",
+        "color: root.modernLayout",
+        "color: Appearance.colors.colSubtext",
+    ):
+        require(notification_group, token, "NotificationGroup.qml")
+    for token in (
+        "ZzzPlate {",
+        "RegaliaPlate {",
+        "AngelPartialBorder {",
+        "notifBlurredWallpaper",
+        "MultiEffect {",
+        "GE.OpacityMask",
+    ):
+        forbid(notification_group, token, "NotificationGroup.qml")
+
+    for token in (
+        "implicitHeight: 34",
+        "buttonRadius: Appearance.rounding.small",
+        "? Appearance.colors.colSecondaryContainer",
+        ": Appearance.colors.colLayer4",
+        "? Appearance.colors.colOnSecondaryContainer",
+        ": Appearance.colors.colOnLayer3",
+    ):
+        require(notification_action_button, token, "NotificationActionButton.qml")
+    for token in (
+        "buttonRadius: Appearance.rounding.full",
+        "ColorUtils.mix(",
+        "Appearance.colors.colLayer2Hover",
+        "Appearance.colors.colLayer2Active",
+        "color: Appearance.colors.colOnLayer2",
+    ):
+        require(notification_group_expand_button, token, "NotificationGroupExpandButton.qml")
+    for token in (
+        'color: isUrgent ? Appearance.colors.colPrimaryContainer : "transparent"',
+        "Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSecondaryContainer",
+        "radius: Appearance.rounding.full",
+    ):
+        require(notification_app_icon, token, "NotificationAppIcon.qml")
+
+    for token in (
+        "color: Appearance.colors.colSubtext",
+        "font.weight: Font.Normal",
+        "font.letterSpacing: 0",
+    ):
+        require(content_subsection_label, token, "ContentSubsectionLabel.qml")
+    for token in (
+        "radius: Appearance.rounding.small",
+        "border.color: Appearance.colors.colPrimary",
+    ):
+        require(keyboard_focus_ring, token, "KeyboardFocusRing.qml")
+    for token in (
+        "property real borderRadius: Appearance.rounding.verysmall",
+        "color: Appearance.colors.colSurfaceContainerHigh",
+        "color: Appearance.colors.colSurfaceContainer",
+        "color: Appearance.colors.colOnSurface",
+    ):
+        require(keyboard_key, token, "KeyboardKey.qml")
+    for token in (
+        "color: Appearance.colors.colSecondaryContainer",
+        "colSymbol: Appearance.colors.colOnSecondaryContainer",
+        "shape: MaterialShape.Shape.Clover4Leaf",
+    ):
+        require(material_shape_symbol, token, "MaterialShapeWrappedMaterialSymbol.qml")
+    for token in (
+        "buttonRadius: baseSize / 14 * 4",
+        "colBackground: Appearance.colors.colPrimaryContainer",
+        "colBackgroundHover: Appearance.colors.colPrimaryContainerHover",
+        "colRipple: Appearance.colors.colPrimaryContainerActive",
+        "property color colOnBackground: Appearance.colors.colOnPrimaryContainer",
+    ):
+        require(floating_action_button, token, "FloatingActionButton.qml")
+    for token in (
+        "readonly property color colText: Appearance.colors.colOnLayer1",
+        "readonly property color colTextSecondary: Appearance.colors.colSubtext",
+        "readonly property color colPrimary: Appearance.colors.colPrimary",
+        "readonly property color colOnPrimary: Appearance.colors.colOnPrimary",
+        "readonly property color colCard: Appearance.colors.colLayer1",
+        "readonly property color colLayer2: Appearance.colors.colLayer2",
+        "readonly property real radius: Appearance.rounding.small",
+    ):
+        require(date_picker, token, "DatePicker.qml")
+
+    for token in (
+        "buttonRadius: Appearance?.rounding.full ?? 9999",
+        "property color colEnabled: Appearance.colors.colPrimary",
+        "property color colDisabled: Appearance.colors.colOutline",
+        "colBackground: ColorUtils.transparentize(Appearance.colors.colLayer3)",
+        "text: root.buttonText",
+        "font.family: Appearance.font.family.main",
+    ):
+        require(dialog_button, token, "DialogButton.qml")
+    for token in (
+        "? Appearance.colors.colPrimaryContainer : Appearance.colors.colLayer2",
+        "? Appearance.colors.colPrimaryContainerHover : Appearance.colors.colLayer2Hover",
+        "? Appearance.colors.colPrimaryContainerActive : Appearance.colors.colLayer2Active",
+        "buttonRadius: Appearance.rounding.normal",
+    ):
+        require(dialog_list_item, token, "DialogListItem.qml")
+    for token in (
+        "colBackgroundToggled: Appearance.colors.colSecondaryContainer",
+        "colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover",
+        "colRippleToggled: Appearance.colors.colSecondaryContainerActive",
+        "? Appearance.colors.colOnSecondaryContainer",
+        ": Appearance.colors.colOnSurfaceVariant",
+        "iconSize: 22",
+    ):
+        require(icon_toolbar_button, token, "IconToolbarButton.qml")
+    for token in (
+        "? Appearance.colors.colLayer1Hover",
+        "color: Appearance.colors.colOnSecondaryContainer",
+    ):
+        require(collapsible_section, token, "CollapsibleSection.qml")
+    for token in (
+        "OptionalMaterialSymbol {",
+        "color: SettingsMaterialPreset.titleExpandedColor",
+    ):
+        require(content_section, token, "ContentSection.qml")
+    forbid(content_section, "ZzzSectionHeader {", "ContentSection.qml")
+
+    for token in (
+        "Material.accent: Appearance.colors.colPrimary",
+        "Material.background: Appearance.colors.colLayer1",
+        "Material.foreground: Appearance.colors.colOnSurface",
+        "Material.containerStyle: Material.Outlined",
+        "selectedTextColor: Appearance.colors.colOnSecondaryContainer",
+        "selectionColor: Appearance.colors.colSecondaryContainer",
+        "placeholderTextColor: Appearance.colors.colOnLayer1",
+    ):
+        require(material_text_field, token, "MaterialTextField.qml")
+    forbid(material_text_field, "RegaliaControlFace {", "MaterialTextField.qml")
+    for token in (
+        "selectedTextColor: Appearance.colors.colOnSecondaryContainer",
+        "selectionColor: Appearance.colors.colSecondaryContainer",
+        "placeholderTextColor: Appearance.colors.colOutline",
+    ):
+        require(styled_text_area, token, "StyledTextArea.qml")
+    require(toolbar_button, "buttonRadius: Appearance.rounding.full", "ToolbarButton.qml")
+    for token in (
+        "radius: Appearance.rounding.normal",
+        "color: Appearance.colors.colSurfaceContainer",
+        "color: Appearance.colors.colPrimary",
+        "color: Appearance.colors.colOnSurface",
+    ):
+        require(notice_box, token, "NoticeBox.qml")
+    for token in (
+        "implicitHeight: 35",
+        "horizontalPadding: 10",
+        "buttonRadius: Appearance.rounding.small",
+        "colBackground: Appearance.colors.colLayer2",
+        "spacing: 5",
+        "ColorUtils.ensureReadable(Appearance.colors.colOnLayer2",
+    ):
+        require(ripple_button_with_icon, token, "RippleButtonWithIcon.qml")
+
+    for token in (
+        "color: Appearance.colors.colLayer3",
+        "radius: Appearance.rounding.verysmall",
+        "border.width: 1",
+        "border.color: Appearance.colors.colLayer3Hover",
+        "color: Appearance.colors.colOnLayer3",
+    ):
+        require(styled_tooltip_content, token, "StyledToolTipContent.qml")
+    for token in ("RegaliaPlate {", "AngelPartialBorder {"):
+        forbid(styled_tooltip_content, token, "StyledToolTipContent.qml")
+    for token in (
+        "active: root.enableShadow && !root.transparent",
+        "visible: !root.transparent",
+        "fallbackColor: Appearance.colors.colSurfaceContainer",
+        "border.width: 0",
+        'border.color: "transparent"',
+        "radius: height / 2",
+        "GlassBackground {",
+    ):
+        require(toolbar, token, "Toolbar.qml")
+    for token in ("ZzzPlate {", "ZzzSurfaceAccent {", "RegaliaPlate {"):
+        forbid(toolbar, token, "Toolbar.qml")
 
     motion_start = appearance.index("property QtObject motion: QtObject {")
     motion_end = appearance.index("m3colors: QtObject {", motion_start)
@@ -383,7 +1063,7 @@ def main() -> None:
         'readonly property color _surfaceColor: Appearance.colors.colLayer0',
         'readonly property color _borderColor: Appearance.colors.colLayer0Border',
         'readonly property real _borderWidth: 0',
-        'readonly property real _surfaceRadius: Appearance.rounding.large',
+        'readonly property real _surfaceRadius: PerimeterTokens.popupRadius',
     ):
         require(styled_popup, token, "StyledPopup.qml")
 
@@ -409,14 +1089,19 @@ def main() -> None:
     ):
         forbid(sys_tray_menu, token, "SysTrayMenu.qml")
     for token in (
+        "StyledPopup {",
+        "popupBackgroundMargin: 0",
+        "closeOnOutsideClick: true",
+        "keyboardFocus: root.keyboardMode",
+    ):
+        require(sys_tray_menu, token, "SysTrayMenu.qml")
+    for token in (
         "color: Appearance.colors.colLayer0",
         "radius: Appearance.rounding.windowRounding",
         "border.width: 1",
         "border.color: Appearance.colors.colLayer0Border",
-        "Appearance.motion.popupReveal.enableFade",
-        "Appearance.motion.popupReveal.enableScale",
     ):
-        require(sys_tray_menu, token, "SysTrayMenu.qml")
+        forbid(sys_tray_menu, token, "SysTrayMenu duplicate popup chrome")
 
     # ContextMenu is shared by Bar and other active shell controls. Keep its
     # focus/input/close behavior intact while locking visual chrome to Material.
@@ -432,9 +1117,9 @@ def main() -> None:
         forbid(context_menu, token, "ContextMenu.qml")
     for token in (
         "property real sourceEdgeMargin: -implicitHeight",
-        "fallbackColor: Appearance.colors.colSurfaceContainer",
+        'fallbackColor: Config.options?.panelFamily === "abyss" ? Qt.alpha(Appearance.colors.colLayer2Base,.92) : Appearance.colors.colSurfaceContainer',
         "radius: Appearance.rounding.normal",
-        "border.width: 1",
+        'border.width: Config.options?.panelFamily === "abyss" ? 0 : 1',
         "border.color: Appearance.colors.colSurfaceContainerHighest",
         "buttonRadius: Appearance.rounding.small",
         "color: Appearance.colors.colOnSurface",
@@ -489,9 +1174,9 @@ def main() -> None:
         forbid(ripple_button, token, "RippleButton.qml")
     for token in (
         "property int rippleDuration: 1200",
-        "property bool rippleEnabled: true",
-        'property color colBackground: "transparent"',
-        "property color colBackgroundHover: Appearance.colLayer1Hover",
+        "property bool rippleEnabled: !abyssStyle",
+        'property color colBackground: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.14) : "transparent"',
+        "property color colBackgroundHover: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.24) : Appearance.colLayer1Hover",
         "property color colBackgroundToggled: Appearance.colors.colPrimary",
         "border.width: root.visualFocus ? 1 : 0",
         'border.color: root.visualFocus ? Appearance.colors.colPrimary : "transparent"',
@@ -517,12 +1202,10 @@ def main() -> None:
     ):
         forbid(bar, token, "Bar.qml")
     for token in (
-        "readonly property bool hugCorners: bar.showBarBackground",
         "readonly property bool rightDeadPixelWorkaround:",
         "readonly property bool bottomDeadPixelWorkaround:",
-        "readonly property color solidColor: showBarBackground",
-        "? Appearance.colors.colLayer0",
-        "RoundCorner {",
+        "id: barRoot",
+        "BackgroundEffect.blurRegion: Region {",
     ):
         require(bar, token, "Bar.qml")
 
@@ -542,14 +1225,12 @@ def main() -> None:
         "AuroraBlurCorner",
     ):
         forbid(vertical_bar, token, "VerticalBar.qml")
+    forbid(bar, "showBarBackground", "Bar.qml")
+    forbid(vertical_bar, "showBarBackground", "VerticalBar.qml")
     for token in (
-        'active: showBarBackground && (Config.options?.bar?.cornerStyle ?? 0) === 0',
-        "readonly property bool isRight: Config.options?.bar?.bottom ?? false",
-        "readonly property color solidColor: showBarBackground",
-        "? Appearance.colors.colLayer0",
-        "// Top Material corner.",
-        "// Bottom Material corner.",
-        "RoundCorner {",
+        "id: barRoot",
+        "BackgroundEffect.blurRegion: Region {",
+        "item: barContent.nativeBlurActive ? barContent.backgroundItem : emptyMask",
     ):
         require(vertical_bar, token, "VerticalBar.qml")
 
@@ -561,7 +1242,13 @@ def main() -> None:
         "Appearance.inir.",
     ):
         forbid(weather_bar, token, "WeatherBar.qml")
-    require(weather_bar, "color: Appearance.colors.colOnLayer1", "WeatherBar.qml")
+    for token in (
+        "property color foregroundColor: root.vertical",
+        "? Appearance.colors.colOnLayer0",
+        ": Appearance.colors.colOnLayer1",
+        "color: root.foregroundColor",
+    ):
+        require(weather_bar, token, "WeatherBar.qml")
 
     for token in (
         "Appearance.zzzEverywhere",
@@ -576,15 +1263,21 @@ def main() -> None:
     ):
         forbid(bar_media_popup, token, "BarMediaPopup.qml")
     for token in (
+        "PlayerControl {",
+        "radius: root.popupRounding",
         "Appearance.colors.colPrimary",
         "Appearance.colors.colLayer2",
+        "EqualizerPanel {",
+        "active: root.presentationActive && root.visible",
+    ):
+        require(bar_media_popup, token, "BarMediaPopup.qml")
+    for token in (
         "color: Appearance.colors.colLayer0",
-        "radius: root.popupRounding",
         'border.color: "transparent"',
         "color: Appearance.colors.colOnLayer0",
         "color: Appearance.colors.colSubtext",
     ):
-        require(bar_media_popup, token, "BarMediaPopup.qml")
+        forbid(bar_media_popup, token, "BarMediaPopup duplicate outer chrome")
 
     for source, label, forbidden_tokens, required_tokens in (
         (
@@ -756,7 +1449,9 @@ def main() -> None:
         "colBackgroundToggled: Appearance.colors.colSecondaryContainer",
         "colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover",
         "colRippleToggled: Appearance.colors.colSecondaryContainerActive",
-        "color: Appearance.colors.colOnLayer0",
+        "color: root.toggled",
+        "? Appearance.colors.colOnSecondaryContainer",
+        ": Appearance.colors.colOnLayer0",
         "color: Appearance.colors.colTertiary",
     ):
         require(left_sidebar_button, token, "LeftSidebarButton.qml")
@@ -908,7 +1603,9 @@ def main() -> None:
         "ColorUtils.transparentize(Appearance.colors.colPrimary, 0.7)",
         "ColorUtils.transparentize(Appearance.colors.colSurfaceContainerHigh, 0.5)",
         "color: Appearance.colors.colOnLayer0",
-        "color: Appearance.colors.colSubtext",
+        "color: root.hovered",
+        "? Appearance.colors.colError",
+        ": Appearance.colors.colSubtext",
         "color: Appearance.colors.colSurfaceContainerLow",
     ):
         require(bar_taskbar_window_preview, token, "BarTaskbarWindowPreview.qml")
@@ -980,12 +1677,12 @@ def main() -> None:
         forbid(styled_combo_box, token, "StyledComboBox.qml")
     for token in (
         "property real baseHeight: 38",
-        "property real radius: Appearance.rounding.small",
-        "readonly property color _bgColor: Appearance.colors.colLayer2",
+        "property real radius: abyssStyle ? baseHeight/2 : Appearance.rounding.small",
+        "readonly property color _bgColor: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.08) : Appearance.colors.colLayer2",
         "readonly property color _popupColor: Appearance.colors.colLayer3Base",
-        "readonly property color _selectedColor: Appearance.colors.colPrimaryContainer",
+        "readonly property color _selectedColor: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.22) : Appearance.colors.colPrimaryContainer",
         "color: root.down ? root._bgActiveColor",
-        "border.width: 1",
+        "border.width: root.abyssStyle ? 0 : 1",
         "width: root.width - 8",
         "height: 36",
         "radius: Appearance.rounding.unsharpenmore",
@@ -1100,7 +1797,7 @@ def main() -> None:
         "y: card.y + 1.5",
         "color: Appearance.colors.colShadow",
         "color: SettingsMaterialPreset.cardColor",
-        "border.width: 1",
+        'border.width: Config.options?.panelFamily === "abyss" ? 0 : 1',
         "border.color: SettingsMaterialPreset.cardBorderColor",
         "implicitWidth: Appearance.font.pixelSize.larger",
         "text: root.title",
@@ -1153,16 +1850,16 @@ def main() -> None:
     ):
         forbid(styled_slider, token, "StyledSlider.qml")
     for token in (
-        "property real handleDefaultWidth: 3",
-        "property real handlePressedWidth: 1.5",
+        "property real handleDefaultWidth: abyssStyle ? 12 : 3",
+        "property real handlePressedWidth: abyssStyle ? 14 : 1.5",
         "property color highlightColor: Appearance.colors.colPrimary",
-        "property color trackColor: Appearance.colors.colSecondaryContainer",
+        "property color trackColor: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.18) : Appearance.colors.colSecondaryContainer",
         "property color handleColor: Appearance.colors.colPrimary",
         "property color dotColor: Appearance.colors.colOnSecondaryContainer",
         "property color dotColorHighlighted: Appearance.colors.colOnPrimary",
-        "property real trackWidth: configuration",
+        "property real trackWidth: abyssStyle ? 4 : configuration",
         "property bool wavy: configuration === StyledSlider.Configuration.Wavy",
-        "readonly property bool usesWaveTrack: wavy || configuration === StyledSlider.Configuration.Wavy",
+        "readonly property bool usesWaveTrack: !abyssStyle && (wavy || configuration === StyledSlider.Configuration.Wavy)",
         "radius: Math.min(width, height) / 2",
     ):
         require(styled_slider, token, "StyledSlider.qml")
@@ -1185,7 +1882,7 @@ def main() -> None:
         forbid(settings_card, token, "SettingsOverlay.qml outer Settings card")
     for token in (
         "radius: Appearance.rounding.windowRounding",
-        "Appearance.colors.colLayer0Base",
+        "Appearance.colors.colLayer0",
         "border.width: 0",
         'border.color: "transparent"',
     ):
@@ -1248,7 +1945,7 @@ def main() -> None:
     actions_start = settings_overlay.index("id: overlayNavActions")
     content_start = settings_overlay.index("id: overlayContentContainer", actions_start)
     search_results_start = settings_overlay.index(
-        "id: overlaySearchResultsOverlay", content_start
+        "id: overlayLiveSearch", content_start
     )
     nav_actions = settings_overlay[actions_start:content_start]
     content_chrome = settings_overlay[content_start:search_results_start]
@@ -1267,7 +1964,7 @@ def main() -> None:
     forbid(content_chrome, "GlassBackground {", "SettingsOverlay.qml content container")
     for token in (
         "radius: Appearance.rounding.normal",
-        "color: Appearance.colors.colSurfaceContainerLow",
+        'color: "transparent"',
         "border.width: 0",
         'border.color: "transparent"',
     ):
@@ -1289,11 +1986,12 @@ def main() -> None:
     # Window-mode Settings uses the same Material-only public contract.
     for token in ("ZzzDiagonalPattern {", "ZzzSurfaceAccent {"):
         forbid(settings_window, token, "settings.qml root chrome")
-    require(
-        settings_window,
-        "? Appearance.m3colors.m3background",
-        "settings.qml root chrome",
-    )
+    for token in (
+        'color: "transparent"',
+        "id: windowBaseSurface",
+        'color: root.uiReady ? Appearance.colors.colLayer0 : "transparent"',
+    ):
+        require(settings_window, token, "settings.qml root chrome")
     window_search_start = settings_window.index("id: searchContainer")
     window_nav_start = settings_window.index("id: navRail", window_search_start)
     window_search = settings_window[window_search_start:window_nav_start]
@@ -1347,10 +2045,10 @@ def main() -> None:
         forbid(settings_window, token, "settings.qml")
 
     window_content_start = settings_window.index("id: contentContainer")
-    window_results_start = settings_window.index("id: searchResultsCard", window_content_start)
+    window_results_start = settings_window.index("id: settingsLiveSearch", window_content_start)
     window_content = settings_window[window_content_start:window_results_start]
     for token in (
-        "color: Appearance.colors.colSurfaceContainerLow",
+        'color: "transparent"',
         "radius: Appearance.rounding.windowRounding - root.contentPadding",
         "border.width: 0",
         'border.color: "transparent"',
@@ -1358,25 +2056,30 @@ def main() -> None:
     ):
         require(window_content, token, "settings.qml content container")
 
-    window_results_end = settings_window.index("id: resultsListView", window_results_start)
-    window_results = settings_window[window_results_start:window_results_end]
+    require(settings_window, "SettingsLiveSearchResults {",
+        "settings.qml shared live-search host")
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.cookieEverywhere",
+    ):
+        forbid(settings_live_search_results, token,
+            "SettingsLiveSearchResults.qml")
     for token in (
         "radius: Appearance.rounding.normal",
+        "color: Appearance.colors.colLayer1",
         "border.width: 1",
         "border.color: Appearance.m3colors.m3outlineVariant",
-        "layer.enabled: Appearance.effectsEnabled",
-    ):
-        require(window_results, token, "settings.qml search results card")
-
-    results_delegate_start = settings_window.index("id: resultItem", window_results_end)
-    results_delegate_end = settings_window.index("contentItem: RowLayout", results_delegate_start)
-    results_delegate = settings_window[results_delegate_start:results_delegate_end]
-    for token in (
+        "id: resultsList",
         "buttonRadius: Appearance.rounding.small",
-        "? Appearance.colors.colPrimaryContainer",
+        '? Appearance.colors.colLayer2 : "transparent"',
         "colBackgroundHover: Appearance.colors.colLayer2",
     ):
-        require(results_delegate, token, "settings.qml search result delegate")
+        require(settings_live_search_results, token,
+            "SettingsLiveSearchResults.qml")
 
     # Small active Control Panel leaves are safe to collapse independently of
     # the larger panel shell. Lock them to the Material fallbacks that were
@@ -1422,8 +2125,6 @@ def main() -> None:
         "color: Appearance.colors.colLayer0",
         "border.width: 0",
         'border.color: "transparent"',
-        "ConnectedSurfaceJoinFlares {",
-        "flareRadius: PerimeterTokens.joinFlareRadius",
         'joinTop: oskRoot.snappedEdge === "top"',
         'joinBottom: oskRoot.snappedEdge === "bottom"',
         "targetY = 0",
@@ -1446,21 +2147,22 @@ def main() -> None:
     ):
         require(osk_key, token, "onScreenKeyboard/OskKey.qml")
 
-    # ScreenCorners is shared by ii and Waffle. Fake-rounding chrome follows
-    # Material directly; corner actions/hot-corner/brightness-volume behavior stay intact.
+    # ScreenCorners is interaction-only; physical corner paint belongs to ScreenEdges.
     for token in legacy_style_tokens:
         forbid(screen_corners, token, "screenCorners/ScreenCorners.qml")
     for token in (
-        "readonly property int roundingSize: cornerPanelWindow.showFakeRounding",
-        "? Appearance.rounding.screenRounding",
         "GlobalStates.toggleSidebarLeft",
         "GlobalStates.toggleSidebarRight",
-        "GlobalStates.openOrbit(",
+        "NiriService.isOverviewHotCornerActive",
         "Brightness.getMonitorForScreen",
         "Audio.incrementVolume()",
         "Audio.decrementVolume()",
     ):
         require(screen_corners, token, "screenCorners/ScreenCorners.qml")
+    for token in ("RoundCorner", "fakeScreenRounding", "showFakeRounding", "roundingSize",
+                  "GlobalStates.openOrbit(", "shouldShowOrbitHotCorner",
+                  "Config.options?.orbit"):
+        forbid(screen_corners, token, "screenCorners/ScreenCorners.qml")
 
     # CompactSidebarRightContent is selected by SidebarHost when sidebar.layout
     # is compact. Preserve its connected surface, explicit island skin, rail/nav,
@@ -1474,9 +2176,11 @@ def main() -> None:
     ):
         forbid(compact_sidebar_right_content, token, "sidebarRight/CompactSidebarRightContent.qml")
     for token in (
-        "readonly property color connectedSurfaceColor: bg.color",
+        "property bool externalConnectedSurface: false",
+        "readonly property color connectedSurfaceColor:",
+        "readonly property real connectedSurfaceRadius: bg.radius",
         'readonly property bool islandStyle: surfaceDialect === "island"',
-        "IslandPanel {", "visible: bg.islandStyle",
+        "RicelinSurface {", "visible: !root.externalConnectedSurface && bg.islandStyle",
         "readonly property color colDarkSurface:",
         "ColorUtils.transparentize(Appearance.colors.colLayer1, 0.22)",
         "readonly property color colDarkSurfaceHover:",
@@ -1489,9 +2193,13 @@ def main() -> None:
         "property var controlsSectionOrder:",
         "function moveSectionUp(index: int): void", "function moveSectionDown(index: int): void",
         'Config.setNestedValue("sidebar.right.controlsSectionOrder", order)',
-        "WheelHandler {", "ClassicQuickPanel {", "AndroidQuickPanel { editMode: root.editMode }",
+        "WheelHandler {",
+        'active: (Config.options?.sidebar?.quickToggles?.style ?? "classic") === "classic"',
+        "QuickToggleButton {", "AndroidQuickPanel { editMode: root.editMode }",
         "CalendarWidget {", "WeatherDetailWidget {",
-        "Notifications.discardAllNotifications()", "Notifications.silent = !Notifications.silent",
+        "Notifications.ensureInitialized()",
+        "toggled: Notifications.silent ?? false",
+        "onClicked: Notifications.toggleSilent()",
         "Network.rescanWifi()", "Bluetooth.defaultAdapter.discovering = true",
         "function doReload()", "function doSettings()",
         '"region", "screenshot"', '"region", "record"', '"region", "ocr"', '"region", "search"',
@@ -1501,7 +2209,7 @@ def main() -> None:
 
     # Default SidebarRightContent is the primary right-sidebar content tree.
     # Keep connected-edge geometry, explicit island skin, section reordering/
-    # resizing, dialogs and quick-toggle routing while collapsing chrome to Material.
+    # elastic section layout, dialogs and quick-toggle routing with Material chrome.
     for token in legacy_style_tokens:
         forbid(sidebar_right_content, token, "sidebarRight/SidebarRightContent.qml")
     for token in (
@@ -1516,11 +2224,13 @@ def main() -> None:
     ):
         forbid(sidebar_right_content, token, "sidebarRight/SidebarRightContent.qml")
     for token in (
-        "readonly property color connectedSurfaceColor: sidebarRightBackground.color",
+        "property bool externalConnectedSurface: false",
+        "readonly property color connectedSurfaceColor:",
+        "readonly property real connectedSurfaceRadius: sidebarRightBackground.radius",
         'readonly property bool islandStyle: surfaceDialect === "island"',
-        "IslandPanel {",
+        "RicelinSurface {",
         "visible: sidebarRightBackground.islandStyle",
-        "color: (gameModeMinimal || islandStyle) ? \"transparent\"",
+        "color: root.externalConnectedSurface",
         "Appearance.colors.colLayer1",
         "Appearance.colors.colLayer0",
         "radius: cardStyle",
@@ -1532,21 +2242,19 @@ def main() -> None:
         "startSectionDrag(",
         "updateSectionDrag(",
         "endSectionDrag()",
-        "startSectionResize(",
-        "updateSectionResize(",
-        "endSectionResize()",
-        "Config.setNestedValues({",
+        "Layout.fillHeight: usesElasticPool",
+        "Layout.minimumHeight: !isElastic ? -1",
+        "readonly property bool contentCollapsed:",
         "radius: Appearance.rounding.verysmall",
         "Appearance.colors.colLayer1Hover",
-        "Appearance.colors.colPrimaryContainer",
-        "Appearance.colors.colOutlineVariant",
-        "Appearance.colors.colOnLayer2",
+        "Appearance.colors.colPrimary",
+        "Appearance.colors.colOnLayer1",
         "SidebarProfileHeader {",
         "surfaceDialect: sidebarRightBackground.surfaceDialect",
         "QuickSliders {}",
         "ClassicQuickPanel {}",
         "AndroidQuickPanel { editMode: root.editMode }",
-        "CenterWidgetGroup { collapsed: root.notifsCollapsed }",
+        "readonly property bool usesElasticPool: isElastic && !contentCollapsed",
         "BottomWidgetGroup {}",
         "ToggleDialog {",
         "Network.rescanWifi()",
@@ -1573,11 +2281,13 @@ def main() -> None:
     ):
         forbid(sidebar_left_content, token, "sidebarLeft/SidebarLeftContent.qml")
     for token in (
-        "readonly property color connectedSurfaceColor: sidebarLeftBackground.color",
+        "property bool externalConnectedSurface: false",
+        "readonly property color connectedSurfaceColor:",
+        "readonly property real connectedSurfaceRadius: sidebarLeftBackground.radius",
         'readonly property bool islandStyle: surfaceDialect === "island"',
-        "IslandPanel {",
-        "visible: sidebarLeftBackground.islandStyle",
-        "color: (gameModeMinimal || islandStyle) ? \"transparent\"",
+        "RicelinSurface {",
+        "visible: !root.externalConnectedSurface && sidebarLeftBackground.islandStyle",
+        "color: root.externalConnectedSurface",
         "Appearance.colors.colLayer1",
         "Appearance.colors.colLayer0",
         "radius: cardStyle",
@@ -1597,22 +2307,22 @@ def main() -> None:
         "Ai.ensureInitialized()",
         "SwipeView {",
         "interactive: !root.tabEditMode",
-        "WidgetsView {}",
+        "active: SwipeView.isCurrentItem || SwipeView.isNextItem || SwipeView.isPreviousItem",
         "AiChat {}",
         "Translator {}",
         "Anime {}",
         "AnimeScheduleView {}",
-        "WallhavenView {",
+        'case "newspaper": return newsComp',
         "NewsView {}",
-        "InnerTuneView {}",
+        'case "library_music": return musicComp',
         "ToolsView {}",
-        "SoftwareView {}",
+        'case "build": return toolsComp',
     ):
         require(sidebar_left_content, token, "sidebarLeft/SidebarLeftContent.qml")
 
-    # VerticalBarContent owns the supported ii vertical bar chrome. Keep the
-    # independent islands/cornerStyle/cardStyle, compositor blur and connected
-    # BarContextMenu behavior while removing retired Global Theme routing.
+    # VerticalBarContent owns the supported ii vertical Hug chrome. Keep its
+    # compositor blur and connected BarContextMenu behavior while ensuring
+    # retired Islands/Card/Floating routing cannot become an intermediate path.
     for token in legacy_style_tokens:
         forbid(vertical_bar_content, token, "verticalBar/VerticalBarContent.qml")
     for token in (
@@ -1621,19 +2331,17 @@ def main() -> None:
         "root.auroraEverywhere",
         "root.zzzEverywhere",
         "AngelPartialBorder {",
+        "appearanceStyle",
+        "isIslands",
+        "cardStyleEverywhere",
+        "floatingStyle",
     ):
         forbid(vertical_bar_content, token, "verticalBar/VerticalBarContent.qml")
     for token in (
-        'readonly property bool isIslands: root.barAppearance === "islands"',
-        "readonly property bool cardStyleEverywhere:",
         'Appearance.useCompositorBlur("bar", root.nativeBlurTopology)',
         "readonly property color separatorColor: Appearance.colors.colOutlineVariant",
-        "color: root.cardStyleEverywhere",
         "Appearance.colors.colLayer0",
         "Appearance.colors.colLayer1",
-        "Appearance.rounding.windowRounding",
-        "Appearance.rounding.normal",
-        "border.width: floatingStyle ? 1 : 0",
         "border.color: Appearance.colors.colLayer0Border",
         "Bar.BarContextMenu {",
         "barContextMenu.requestOpen()",
@@ -1682,17 +2390,23 @@ def main() -> None:
         forbid(overview_search_bar, token, "overview/SearchBar.qml")
     forbid(overview_search_bar, "RegaliaControlFace {", "overview/SearchBar.qml")
     for token in (
-        "? Appearance.colors.colOnPrimary",
         ": Appearance.colors.colOnSurfaceVariant",
-        "MaterialShape {",
-        "Appearance.colors.colPrimaryHover",
-        "Appearance.colors.colPrimary",
-        "Appearance.colors.colSurfaceContainerHigh",
-        "ColorUtils.transparentize(Appearance.colors.colSurfaceContainerHigh)",
+        'colBackground: "transparent"',
+        'colBackgroundHover: "transparent"',
+        'colBackgroundToggled: "transparent"',
+        'colBackgroundToggledHover: "transparent"',
+        'colRipple: "transparent"',
+        'colRippleToggled: "transparent"',
+        "rippleEnabled: false",
+        "pressScaleEnabled: false",
+        "stateTransitionsEnabled: false",
+        "position: \"top\"",
         "onClicked: SongRec.toggleRunning()",
         'text: "music_cast"',
     ):
         require(overview_search_bar, token, "overview/SearchBar.qml")
+    forbid(overview_search_bar, "background: Item {", "overview/SearchBar.qml")
+    forbid(overview_search_bar, "MaterialShape {", "overview/SearchBar.qml")
 
     # Search result delegates are active for both compositor paths. Preserve
     # execution/keyboard/drag semantics while locking their row chrome to Material.
@@ -1701,9 +2415,9 @@ def main() -> None:
     for token in (
         "readonly property color normalTextColor: Appearance.colors.colOnLayer1",
         "readonly property color selectedTextColor: Appearance.colors.colOnLayer1",
-        "readonly property color selectedBackgroundColor: Appearance.colors.colLayer1",
-        "readonly property color hoverBackgroundColor: Appearance.colors.colLayer1",
-        "readonly property color pressedBackgroundColor: Appearance.colors.colLayer1Hover",
+        "readonly property color selectedBackgroundColor: root.abyssStyle ? Qt.alpha(Appearance.colors.colLayer2Base,AbyssStyle.cardOpacity) : Appearance.colors.colLayer1",
+        "readonly property color hoverBackgroundColor: root.abyssStyle ? Qt.alpha(Appearance.colors.colLayer2Base,AbyssStyle.cardOpacity) : Appearance.colors.colLayer1",
+        "readonly property color pressedBackgroundColor: root.abyssStyle ? Qt.alpha(Appearance.colors.colLayer2Base,AbyssStyle.cardOpacity) : Appearance.colors.colLayer1Hover",
         "readonly property color activeRippleColor: Appearance.colors.colLayer1Hover",
         "buttonRadius: Appearance.rounding.normal",
         "radius: Appearance.rounding.full",
@@ -1726,17 +2440,19 @@ def main() -> None:
     ):
         forbid(overview_search_widget, token, "overview/SearchWidget.qml")
     for token in (
+        "property bool embeddedSurface: false",
+        "readonly property real collapsedHeight:",
         "readonly property bool islandStyle:",
-        "IslandPanel {",
-        "visible: root.islandStyle",
-        'fallbackColor: root.islandStyle',
+        "RicelinSurface {",
+        "visible: !root.embeddedSurface && root.islandStyle",
+        'fallbackColor: root.embeddedSurface || root.islandStyle',
         '? "transparent"',
         ": Appearance.colors.colBackgroundSurfaceContainer",
-        "wallpaperBackdropEnabled: root.panelVisible && !root.islandStyle",
+        "&& !root.embeddedSurface && !root.islandStyle",
         "border.width: 0",
         "border.color: Appearance.colors.colLayer0Border",
-        "Layout.leftMargin: 10",
-        "Layout.rightMargin: 4",
+        "Layout.leftMargin: root.embeddedSurface ? 0 : 10",
+        "Layout.rightMargin: root.embeddedSurface ? 0 : 4",
         "Layout.topMargin: verticalPadding",
         "Layout.bottomMargin: verticalPadding",
         "topMargin: 10",
@@ -1811,66 +2527,65 @@ def main() -> None:
     ):
         require(overview_all_apps_grid, token, "overview/OverviewAllAppsGrid.qml")
 
-    # Dashboard is the final active Overview Global Theme cluster. Collapse
-    # only its presentation tokens; its newer bottom-connected popup mechanics
-    # (slide-under translation, reveal clipping, flares and Screen Edge shadow)
-    # are source invariants and must remain intact.
+    # DashboardContent reuses the established Material shell background. It must
+    # not grow a Dashboard-specific wallpaper/global-style renderer.
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "ZzzPlate {",
+        "ZzzPanelBackdrop {",
+        "ColorQuantizer {",
+        "AdaptedMaterialScheme {",
+        "id: blurredWallpaper",
+        "useWallpaperBackdrop",
+    ):
+        forbid(dashboard_content, token, "dashboard/DashboardContent.qml")
+    for token in (
+        'color: root.embeddedSurface ? "transparent" : Appearance.colors.colLayer0',
+        'radius: root.embeddedSurface ? 0 : Appearance.rounding.large',
+        "border.width: 0",
+        'border.color: "transparent"',
+        "StyledRectangularShadow {",
+        "Qt.alpha(Appearance.m3colors.m3shadow,",
+    ):
+        require(dashboard_content, token, "dashboard/DashboardContent.qml")
+
+    # Launcher Dashboard is a lean connected host around shared DashboardContent
+    # plus the embedded bottom SearchWidget.
     for token in legacy_style_tokens:
         forbid(overview_dashboard, token, "overview/OverviewDashboard.qml")
     for token in (
-        "angelStyle",
-        "inirStyle",
-        "auroraStyle",
-        "zzzStyle",
-        "ZzzPlate {",
-        "ZzzPanelBackdrop {",
-        "AngelPartialBorder {",
-    ):
-        forbid(overview_dashboard, token, "overview/OverviewDashboard.qml")
-    for token in (
-        "readonly property bool useWallpaperBackdrop: false",
-        "readonly property color colText: Appearance.colors.colOnLayer1",
-        "readonly property color colSubtext: Appearance.colors.colSubtext",
-        "readonly property color colCardBg: Appearance.colors.colBackgroundSurfaceContainer",
-        "readonly property color colCard: Appearance.colors.colLayer1",
-        "readonly property color colBorder: Appearance.colors.colLayer0Border",
-        "readonly property color colPrimary: Appearance.colors.colPrimary",
-        "readonly property color colOnPrimary: Appearance.colors.colOnPrimary",
-        "readonly property color colCardHover: Appearance.colors.colLayer2Hover",
-        "readonly property color colLayer2: Appearance.colors.colLayer2",
-        "readonly property real cardRadius: Appearance.rounding.normal",
-        "readonly property real containerRadius: Appearance.rounding.large",
-        "readonly property int bw: 1",
-        "fallbackColor: Appearance.colors.colBackgroundSurfaceContainer",
-        "color: root.colCard",
-        "buttonRadius: Appearance.rounding.full",
-        "colBackgroundHover: Appearance.colors.colLayer2Hover",
-        "color: Appearance.colors.colSecondaryContainer",
-        "property bool directBottomAttachment: false",
-        "property bool popupPresented: true",
-        "property real revealProgress: 0",
-        "clip: root.directBottomAttachment",
-        "transform: Translate {",
-        "y: (1 - root.revealProgress) * dashContainer.height",
-        "ConnectedSurfaceJoinFlares {",
-        "fillColor: dashContainer.fallbackColor",
-        "flareRadius: PerimeterTokens.joinFlareRadius",
-        "progress: root.revealProgress > 0.001 ? 1 : 0",
-        "joinBottom: root.directBottomAttachment",
+        "import qs.modules.dashboard",
+        "DashboardContent {",
+        "SearchWidget {",
+        "embeddedSurface: true",
+        "Config.options?.dashboard?.widthRatio",
+        "Config.options?.dashboard?.heightRatio",
+        "property real dashboardProgress: 1",
+        "height: root.embeddedSurface ? Math.max(0, root.height - root.editToolbarReserve) : root.presentingSearch",
+        "y: root.embeddedSurface ? 0 : (1 - root.revealProgress) * dashContainer.height",
+        "opacity: root.dashboardOpacity",
+        "resultsOpacity: root.searchResultsOpacity",
+        "ConnectedSurfaceIrisEdgeSurface {",
+        'edge: "bottom"',
+        "ownerThickness: root.attachmentThickness",
+        "root.height + root.attachmentThickness",
+        "fillColor: Appearance.colors.colLayer0",
+        "color: root.embeddedSurface || root.directBottomAttachment",
         "StyledRectangularShadow {",
         "blur: root.screenEdgeShadowSize",
-        "root.screenEdgeShadowOpacity",
         "bottomLeftRadius: root.directBottomAttachment ? 0 : radius",
         "bottomRightRadius: root.directBottomAttachment ? 0 : radius",
-        "Audio.toggleMute()",
-        "Network.toggleWifi()",
-        "BluetoothStatus.toggle()",
-        "MprisController.togglePlaying()",
-        "Weather.forceRefresh()",
-        "ResourceUsage.cpuUsage",
-        "ResourceUsage.memoryUsedPercentage",
+        "SurfaceMotion.duration",
+        "SurfaceMotion.easingType",
     ):
         require(overview_dashboard, token, "overview/OverviewDashboard.qml")
+
+    for token in ("ConnectedSurfaceJoinFlares", "joinFlareRadius"):
+        forbid(overview_dashboard, token, "overview/OverviewDashboard.qml")
+        forbid(on_screen_keyboard, token, "onScreenKeyboard/OnScreenKeyboard.qml")
 
     # Niri's Overview workspace/window path is the primary compositor surface.
     # Its workspace/background/context-menu chrome is Material-only while Niri
@@ -1881,9 +2596,9 @@ def main() -> None:
         "property color activeBorderColor: Appearance.colors.colSecondary",
         "StyledRectangularShadow {",
         "target: overviewBackground",
-        "radius: Appearance.rounding.large + padding",
-        "color: Appearance.colors.colBackgroundSurfaceContainer",
-        "border.width: 1",
+        "radius: root.embeddedSurface ? 0 : (Appearance.rounding.large + padding)",
+        'color: root.embeddedSurface ? "transparent"',
+        "border.width: root.embeddedSurface ? 0 : 1",
         "ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.68)",
         "? Appearance.colors.colBackgroundSurfaceContainer",
         "Appearance.colors.colBackgroundSurfaceContainer, 0.3",
@@ -1900,9 +2615,9 @@ def main() -> None:
         "buttonRadius: Appearance.rounding.small",
         "colBackgroundHover: Appearance.colors.colLayer4Hover",
         "NiriService.switchToWorkspaceById(nextWorkspace.id)",
-        "NiriService.moveWindowToWorkspaceById(windowData.id, targetWorkspace, true)",
-        "NiriService.focusWindow(windowData.id)",
-        "NiriService.closeWindow(windowData.id)",
+        "NiriService.moveWindowToWorkspaceById(\n                                        draggedWindowId, targetWorkspace, false)",
+        "NiriService.focusWindow(draggedWindowId)",
+        "NiriService.closeWindow(windowItem.windowId)",
         "WindowPreviewService.getPreviewUrl",
     ):
         require(overview_niri_widget, token, "overview/OverviewNiriWidget.qml")
@@ -1915,8 +2630,8 @@ def main() -> None:
         "property color activeBorderColor: Appearance.colors.colSecondary",
         "property real largeWorkspaceRadius: Appearance.rounding.large",
         "property real smallWorkspaceRadius: Appearance.rounding.verysmall",
-        "color: Appearance.colors.colBackgroundSurfaceContainer",
-        "border.width: 1",
+        'color: root.embeddedSurface ? "transparent"',
+        "border.width: root.embeddedSurface ? 0 : 1",
         "ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.68)",
         "Appearance.colors.colSurfaceContainerHigh, 0.8",
         "defaultWorkspaceColor, Appearance.colors.colLayer1Hover, 0.1",
@@ -1939,7 +2654,7 @@ def main() -> None:
         "color: Appearance.colors.colPrimary",
         "color: Appearance.colors.colOnLayer1",
         "color: Appearance.colors.colSubtext",
-        "running: GlobalStates.controlPanelOpen",
+        "DateTime.clock.date",
     ):
         require(control_panel_date_time, token, "controlPanel/DateTimeHeader.qml")
 
@@ -2039,7 +2754,7 @@ def main() -> None:
     forbid(control_panel_media, "AngelPartialBorder {", "controlPanel/MediaSection.qml")
     for token in (
         "CavaProcess {",
-        "active: root.visible && root.hasPlayer && GlobalStates.controlPanelOpen",
+        "active: root.visible && root.hasPlayer && root.effectiveIsPlaying && GlobalStates.controlPanelOpen",
         "ColorQuantizer {",
         "AdaptedMaterialScheme {",
         "radius: Appearance.rounding.normal",
@@ -2057,7 +2772,7 @@ def main() -> None:
         "onClicked: MprisController.togglePlaying()",
         "onClicked: MprisController.next()",
         "onMoved: root.player.position = value * root.player.length",
-        "running: root.player?.playbackState === MprisPlaybackState.Playing",
+        "running: root.positionTickerActive",
     ):
         require(control_panel_media, token, "controlPanel/MediaSection.qml")
     for token in (
@@ -2084,12 +2799,12 @@ def main() -> None:
         "interval: 45",
         "root._entranceCascade = -1",
         "entranceCascadeTimer.start()",
-        "visible: !root.islandStyle && !Appearance.gameModeMinimal",
+        "visible: !root.embeddedSurface && !root.islandStyle && !Appearance.gameModeMinimal",
         "RicelinSurface {",
-        "visible: root.islandStyle",
-        'color: root.islandStyle ? "transparent" : Appearance.colors.colLayer0',
+        "visible: !root.embeddedSurface && root.islandStyle",
+        'color: root.embeddedSurface || root.islandStyle ? "transparent" : Appearance.colors.colLayer0',
         "Appearance.rounding.large",
-        "border.width: root.islandStyle ? 0 : 1",
+        "border.width: root.embeddedSurface || root.islandStyle ? 0 : 1",
         "border.color: Appearance.colors.colLayer0Border",
         "active: root.showMediaSection",
         "active: root.showWallpaperSection",

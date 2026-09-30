@@ -1,154 +1,100 @@
 import QtQuick
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects as GE
 import Quickshell.Services.Mpris
 import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.mediaControls
 
 /**
- * Media card: cover art, track info and transport controls. Shows a playful
- * placeholder when nothing is playing (the panel keeps its composition).
+ * Dashboard Media reuses the canonical PlayerControl transport/artwork/seek
+ * surface and the shared EqualizerPanel. The media card intentionally does not
+ * run a CAVA visualizer: DSP visualization already belongs to EqualizerPanel,
+ * so the player surface stays quiet and avoids duplicate audio analysis.
  */
 DashCard {
     id: root
 
+    // Lifecycle is owned by DashboardContent/DashboardCanvas because this card
+    // is hosted both by the standalone Dashboard and the embedded Overview.
+    // Keep this writable: DashboardCanvas binds its host-specific presentation
+    // state into every DashMedia instance.
+    property bool presentationActive:
+        GlobalStates.dashboardOpen || GlobalStates.overviewOpen
+
     readonly property MprisPlayer player: MprisController.activePlayer
-    readonly property bool hasPlayer: player !== null && (player?.trackTitle ?? "").length > 0
-    readonly property bool isPlaying: player?.isPlaying ?? false
+    readonly property bool hasPlayer: root.player !== null
+    readonly property bool isPlaying: root.player?.isPlaying ?? false
 
     ColumnLayout {
         Layout.fillWidth: true
-        spacing: 6
+        spacing: root.compact ? 4 : 6
 
-        // Cover art / placeholder shape. Wrapped in a fillWidth Item so the
-        // fixed 64x64 square anchors to the CARD's real horizontal center
-        // instead of an ambiguous ColumnLayout implicit width (root cause of
-        // the visual drift: the text column below used to size itself off
-        // its own children's implicit width, which didn't match this item's
-        // reference frame when the title was short).
         Item {
+            id: playerSurface
             Layout.fillWidth: true
-            implicitHeight: 64
+            Layout.minimumHeight: root.hasPlayer ? 120 : 104
+            Layout.preferredHeight: root.hasPlayer
+                ? Appearance.sizes.mediaControlsHeight : 112
 
-            Item {
-                id: artBox
-                width: 64
-                height: 64
-                anchors.horizontalCenter: parent.horizontalCenter
-
-                Rectangle {
-                    id: artMask
-                    anchors.fill: parent
-                    radius: Appearance.rounding.small
-                    visible: false
+            Loader {
+                id: sharedPlayerLoader
+                anchors.fill: parent
+                // Keep the shared PlayerControl resident for the lifetime of
+                // this Dashboard media card once a player exists. Recreating it
+                // at every presentation resets ColorQuantizer/artwork masks
+                // during the parent slide, which produced the cyan/blank flash.
+                // Expensive CAVA/EasyEffects activity remains presentation-gated
+                // below, so hidden residency does not keep those backends hot.
+                active: root.hasPlayer
+                sourceComponent: PlayerControl {
+                    player: root.player
+                    visualizerPoints: []
+                    showVisualizer: false
+                    compactLayout: true
+                    radius: Appearance.rounding.normal
                 }
+            }
 
-                Image {
-                    id: artImage
-                    anchors.fill: parent
-                    source: MprisController.effectiveArtUrl(root.player)
-                    fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
-                    sourceSize.width: 128
-                    sourceSize.height: 128
-                    opacity: status === Image.Ready ? 1 : 0
-                    visible: opacity > 0
-                    Behavior on opacity {
-                        enabled: Appearance.animationsEnabled
-                        NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                    }
-                    layer.enabled: GlobalStates.dashboardOpen && root.visible && status === Image.Ready
-                    layer.effect: GE.OpacityMask { maskSource: artMask }
-                }
+            Column {
+                anchors.centerIn: parent
+                spacing: 4
+                visible: !root.hasPlayer
 
                 MaterialShapeWrappedMaterialSymbol {
-                    anchors.fill: parent
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: 52
+                    height: 52
                     text: "music_note"
                     shape: MaterialShape.Shape.Cookie4Sided
-                    padding: 8
-                    iconSize: 30
-                    opacity: artImage.status !== Image.Ready ? 1 : 0
-                    visible: opacity > 0
-                    Behavior on opacity {
-                        enabled: Appearance.animationsEnabled
-                        NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                    }
+                    padding: 7
+                    iconSize: 26
+                }
+
+                StyledText {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: Translation.tr("Nothing playing")
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    font.weight: Font.Medium
+                    color: root.colText
+                }
+
+                StyledText {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: Translation.tr("No music is currently playing")
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: root.colSubtext
                 }
             }
         }
 
-        ColumnLayout {
-            // fillWidth (capped at 240) resolves this column's width against
-            // the SAME outer reference frame as the cover Item above, instead
-            // of its own children's implicit width — that mismatch was the
-            // actual centering bug.
+        EqualizerPanel {
+            id: equalizer
             Layout.fillWidth: true
-            Layout.maximumWidth: 240
-            Layout.alignment: Qt.AlignHCenter
-            spacing: 2
-
-            StyledText {
-                Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-                text: root.hasPlayer ? (root.player?.trackTitle ?? "") : Translation.tr("Nothing playing")
-                font.pixelSize: Appearance.font.pixelSize.normal
-                font.weight: Font.Medium
-                color: root.colText
-                elide: Text.ElideRight
-            }
-            StyledText {
-                Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-                text: root.hasPlayer ? (root.player?.trackArtist ?? "") : Translation.tr("No music is currently playing")
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: root.colSubtext
-                elide: Text.ElideRight
-            }
-
-            RowLayout {
-                Layout.topMargin: 4
-                Layout.alignment: Qt.AlignHCenter
-                spacing: 4
-
-                component MediaButton: RippleButton {
-                    implicitWidth: 32
-                    implicitHeight: 32
-                    buttonRadius: Appearance.rounding.full
-                    colBackground: "transparent"
-                    colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                        : root.inirEverywhere ? Appearance.inir.colLayer2Hover
-                        : root.auroraEverywhere ? Appearance.aurora.colSubSurfaceHover
-                        : Appearance.colors.colLayer2Hover
-                    property alias iconName: symbol.text
-                    property alias iconColor: symbol.color
-                    contentItem: MaterialSymbol {
-                        id: symbol
-                        anchors.centerIn: parent
-                        iconSize: 20
-                        color: root.colText
-                        horizontalAlignment: Text.AlignHCenter
-                    }
-                }
-
-                MediaButton {
-                    iconName: "skip_previous"
-                    enabled: MprisController.canGoPrevious
-                    onClicked: MprisController.previous()
-                }
-                MediaButton {
-                    iconName: root.isPlaying ? "pause" : "play_arrow"
-                    iconColor: root.colAccent
-                    enabled: root.hasPlayer
-                    onClicked: MprisController.togglePlaying()
-                }
-                MediaButton {
-                    iconName: "skip_next"
-                    enabled: MprisController.canGoNext
-                    onClicked: MprisController.next()
-                }
-            }
+            Layout.preferredHeight: implicitHeight
+            compactLayout: true
+            active: root.presentationActive && root.visible
         }
     }
 }

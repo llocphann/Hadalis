@@ -6,7 +6,7 @@ import qs.modules.common
 
 DropShadow {
     required property var target
-    visible: Appearance.effectsEnabled && !Appearance.zzzEverywhere
+    visible: Appearance.effectsEnabled
     source: target
     anchors.fill: source
     radius: Appearance.effectsEnabled ? 8 : 0

@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.modules.common
 import qs.modules.common.functions
+import qs.modules.abyss.looks
 
 QtObject {
     id: root
@@ -40,7 +41,7 @@ QtObject {
     // ── Colors ──
     // In angel/aurora, cards are more transparent to let the content area's
     // GlassBackground blur show through (like Overlay widgets do).
-    readonly property color cardColor: Appearance.angelEverywhere
+    readonly property color cardColor: Config.options?.panelFamily === "abyss" ? AbyssStyle.contentLayer : Appearance.angelEverywhere
         ? ColorUtils.transparentize(Appearance.colors.colLayer1Base, Appearance.angel.cardTransparentize * 0.7)
         // bg3 (not tile): the content field sits at bg2 now, so cards must lift a
         // clear step above it instead of matching it — depth by layer, not stroke.
@@ -60,7 +61,7 @@ QtObject {
         : Appearance.auroraEverywhere ? Appearance.aurora.colPopupBorder
         : Appearance.colors.colLayer0Border
 
-    readonly property color groupColor: Appearance.angelEverywhere
+    readonly property color groupColor: Config.options?.panelFamily === "abyss" ? Qt.alpha(Appearance.colors.colLayer2Base,AbyssStyle.cardOpacity*.55) : Appearance.angelEverywhere
         ? ColorUtils.transparentize(Appearance.colors.colLayer2Base, Appearance.angel.popupTransparentize * 0.6)
         : Appearance.regaliaEverywhere ? "transparent"
         : Appearance.zzzEverywhere ? "transparent"

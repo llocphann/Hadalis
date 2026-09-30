@@ -14,6 +14,7 @@ Singleton {
     id: root
 
     readonly property string socketPath: Quickshell.env("NIRI_SOCKET")
+    readonly property string nativeDispatchPath: Quickshell.shellPath("scripts/native-dispatch")
 
     property var workspaces: ({})
     property var allWorkspaces: []
@@ -38,6 +39,9 @@ Singleton {
 
     property var outputs: ({})
     property var windows: []
+    // Initial WindowsChanged has arrived, including an authoritative empty list.
+    // Do not treat the pre-event [] as proof that cached previews are orphaned.
+    property bool windowListReady: false
     property var displayScales: ({})
     property var mruWindowIds: []
     property var activeWindow: null  // Currently focused window object
@@ -78,6 +82,8 @@ Singleton {
                 send('"EventStream"')
                 fetchOutputs()
                 refreshOverviewHotCorners()
+            } else {
+                root.windowListReady = false
             }
         }
 
@@ -125,8 +131,8 @@ Singleton {
     Process {
         id: overviewHotCornersProcess
         command: [
-            "/usr/bin/python3",
-            Quickshell.shellPath("scripts/niri-config.py"),
+            root.nativeDispatchPath,
+            "niri",
             "get-hot-corners"
         ]
 
@@ -532,6 +538,7 @@ Singleton {
 
     function handleWindowsChanged(data) {
         scheduleWindowsUpdate(data.windows)
+        windowListReady = true
     }
 
     function handleWindowClosed(data) {
@@ -714,10 +721,10 @@ Singleton {
         currentOutput = nextCurrentOutput
         updateCurrentOutputWorkspaces()
 
-        // Force immediate update for outputs as it affects geometry calculations significantly
+        // OutputsChanged already carries the authoritative output map. Re-querying
+        // `niri msg -j outputs` here duplicates compositor IPC and a process spawn.
         windows = sortWindowsByLayout(windows)
         windowOrderChanged()
-        fetchOutputs()
     }
 
     function handleOverviewChanged(data) {

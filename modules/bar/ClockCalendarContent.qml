@@ -1,13 +1,21 @@
 pragma ComponentBehavior: Bound
 
+import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.sidebarRight.events
 import qs.services
 import QtQuick
+import QtQuick.Layouts
 
 Item {
     id: root
 
+    signal eventEditorRequested(var event)
+    signal eventDateSelected(var date)
+
     property int monthShift: 0
+    property bool eventDateSelectionEnabled: false
+    property var selectedEventDate: null
     readonly property date today: DateTime.clock.date
     readonly property var locale: Qt.locale()
     readonly property date viewingDate: new Date(
@@ -15,6 +23,12 @@ Item {
         root.today.getMonth() + root.monthShift,
         1
     )
+    readonly property bool eventEditorActive: eventsPane.inlineEditorMode
+
+    function closeEventEditor(): void {
+        if (eventsPane.inlineEditorMode)
+            eventsPane.closeInlineEditor()
+    }
 
     readonly property var calendarCells: {
         const year = root.viewingDate.getFullYear()
@@ -37,7 +51,11 @@ Item {
         return cells
     }
 
-    implicitWidth: Math.max(246, monthView.implicitWidth)
+    // Keep both halves symmetric so the separator is the true visual center.
+    // The month view remains the sizing floor; Events receives the same width.
+    readonly property real paneWidth:
+        Math.max(292, monthView.implicitWidth)
+    implicitWidth: root.paneWidth * 2 + 25
     implicitHeight: monthView.implicitHeight
 
     function sameDay(a, b): bool {
@@ -46,15 +64,63 @@ Item {
             && a.getDate() === b.getDate()
     }
 
-    ObsidianMonthCalendar {
-        id: monthView
-        anchors.horizontalCenter: parent.horizontalCenter
-        viewingDate: root.viewingDate
-        today: root.today
-        locale: root.locale
-        calendarCells: root.calendarCells
-        onPreviousMonthRequested: root.monthShift--
-        onNextMonthRequested: root.monthShift++
-        onTodayRequested: root.monthShift = 0
+    RowLayout {
+        anchors.fill: parent
+        spacing: 12
+
+        EventsWidget {
+            id: eventsPane
+            Layout.fillWidth: true
+            Layout.preferredWidth: root.paneWidth
+            Layout.fillHeight: true
+            // Calendar popup-specific FAB treatment: smaller and tucked into
+            // the popup's bottom-left corner. Other EventsWidget owners keep
+            // the shared bottom-right default.
+            fabSize: 36
+            fabMargins: 10
+            fabLeftAligned: true
+        }
+
+        Rectangle {
+            // A shorter centered hairline keeps the two panes visually related
+            // without cutting the popup in half. Use the active theme accent
+            // instead of a high-contrast white/outline line.
+            Layout.preferredWidth: 1
+            Layout.preferredHeight: Math.max(120, root.height - 64)
+            Layout.maximumHeight: Math.max(120, root.height - 40)
+            Layout.alignment: Qt.AlignVCenter
+            color: Appearance.colors.colPrimary
+            opacity: 0.28
+        }
+
+        Item {
+            Layout.fillWidth: true
+            Layout.preferredWidth: root.paneWidth
+            Layout.fillHeight: true
+
+            ObsidianMonthCalendar {
+                id: monthView
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
+                viewingDate: root.viewingDate
+                today: root.today
+                locale: root.locale
+                calendarCells: root.calendarCells
+                selectedDate: eventsPane.inlineEditorMode
+                    ? eventsPane.inlineEditorDate
+                    : root.selectedEventDate
+                interactiveDays: eventsPane.inlineEditorMode
+                    || root.eventDateSelectionEnabled
+                onPreviousMonthRequested: root.monthShift--
+                onNextMonthRequested: root.monthShift++
+                onTodayRequested: root.monthShift = 0
+                onDayActivated: date => {
+                    if (eventsPane.inlineEditorMode)
+                        eventsPane.setInlineEditorDate(date)
+                    else
+                        root.eventDateSelected(date)
+                }
+            }
+        }
     }
 }

@@ -13,6 +13,10 @@ import Quickshell.Hyprland
 
 Scope {
     id: root
+    property Item embeddedHost: null
+    readonly property Item presentationContent: cheatsheetBackground
+    readonly property real desiredWidth: 1100
+    readonly property real desiredHeight: 750
     property bool _presentedOpen: false
     property var pages: [
         {
@@ -42,7 +46,7 @@ Scope {
         id: window
 
         Component.onCompleted: {
-            visible = root.cheatsheetOpen
+            visible = !root.embeddedHost && root.cheatsheetOpen
             if (root.cheatsheetOpen)
                 Qt.callLater(() => { root._presentedOpen = root.cheatsheetOpen })
         }
@@ -52,7 +56,7 @@ Scope {
             function onCheatsheetOpenChanged() {
                 if (root.cheatsheetOpen) {
                     _closeTimer.stop()
-                    window.visible = true
+                    window.visible = !root.embeddedHost
                     Qt.callLater(() => { root._presentedOpen = root.cheatsheetOpen })
                 } else {
                     root._presentedOpen = false
@@ -71,7 +75,7 @@ Scope {
         color: "transparent"
         WlrLayershell.namespace: "quickshell:cheatsheet"
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: root.cheatsheetOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: !root.embeddedHost && root.cheatsheetOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
         anchors {
             top: true
@@ -85,7 +89,7 @@ Scope {
             anchors.fill: parent
             z: -1
             color: ColorUtils.transparentize(Appearance.colors.colBackground, 1 - 0.85)
-            opacity: root._presentedOpen ? 1 : 0
+            opacity: root.embeddedHost ? 1 : root._presentedOpen ? 1 : 0
 
             Behavior on color {
                 enabled: Appearance.animationsEnabled
@@ -123,20 +127,22 @@ Scope {
         }
 
         StyledRectangularShadow {
+            parent: cheatsheetBackground.parent
             target: cheatsheetBackground
             radius: cheatsheetBackground.radius
-            visible: !Appearance.zzzEverywhere
+            visible: !root.embeddedHost && !Appearance.zzzEverywhere
         }
 
         Rectangle {
             id: cheatsheetBackground
+            parent: root.embeddedHost ?? window.contentItem
             anchors.centerIn: parent
-            color: Appearance.zzzEverywhere ? Appearance.zzz.bg0
+            color: root.embeddedHost ? "transparent" : Appearance.zzzEverywhere ? Appearance.zzz.bg0
                  : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
                  : Appearance.inirEverywhere ? Appearance.inir.colLayer0
                  : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
                  : Appearance.colors.colLayer0
-            border.width: Appearance.zzzEverywhere ? 1
+            border.width: root.embeddedHost ? 0 : Appearance.zzzEverywhere ? 1
                         : Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
                         : Appearance.inirEverywhere ? 1 : 1
             Behavior on border.width {
@@ -163,8 +169,8 @@ Scope {
             }
 
             property real padding: 8
-            width: Math.min(parent.width - 80, 1100)
-            height: Math.min(parent.height - 80, 750)
+            width: root.embeddedHost ? parent.width : Math.min(parent.width - 80, 1100)
+            height: root.embeddedHost ? parent.height : Math.min(parent.height - 80, 750)
 
             // Key handler on the content ancestor so events from any
             // focused child (search field, nav buttons) propagate here.
@@ -186,8 +192,8 @@ Scope {
             }
 
             // Scale animation for open/close
-            scale: root._presentedOpen ? 1.0 : 0.95
-            opacity: root._presentedOpen ? 1 : 0
+            scale: root.embeddedHost ? 1 : root._presentedOpen ? 1.0 : 0.95
+            opacity: root.embeddedHost ? 1 : root._presentedOpen ? 1 : 0
             
             Behavior on scale {
                 enabled: Appearance.animationsEnabled

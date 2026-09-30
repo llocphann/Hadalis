@@ -11,6 +11,7 @@ Item {
     required property string name
     property bool rotateIcon: false
     property bool scaleIcon: false
+    property bool connectedSurface: false
 
     readonly property bool _zzz: Appearance.zzzEverywhere
 
@@ -18,28 +19,34 @@ Item {
     property real valueIndicatorLeftPadding: 10
     property real valueIndicatorRightPadding: 20
 
-    implicitWidth: Appearance.sizes.osdWidth + 2 * Appearance.sizes.elevationMargin
-    implicitHeight: valueIndicator.implicitHeight + 2 * Appearance.sizes.elevationMargin
+    implicitWidth: Appearance.sizes.osdWidth
+        + (root.connectedSurface ? 0 : 2 * Appearance.sizes.elevationMargin)
+    implicitHeight: valueIndicator.implicitHeight
+        + (root.connectedSurface ? 0 : 2 * Appearance.sizes.elevationMargin)
     clip: true
 
     StyledRectangularShadow {
         target: valueIndicator
-        visible: !root._zzz
+        visible: !root.connectedSurface && !root._zzz
     }
     GlassBackground {
         id: valueIndicator
         anchors {
             fill: parent
-            margins: Appearance.sizes.elevationMargin
+            margins: root.connectedSurface ? 0 : Appearance.sizes.elevationMargin
         }
-        radius: root._zzz ? Appearance.zzz.panelRadius : Appearance.rounding.full
-        fallbackColor: root._zzz ? Appearance.zzz.bg0 : Appearance.colors.colLayer0
+        radius: root.connectedSurface ? 0
+            : root._zzz ? Appearance.zzz.panelRadius : Appearance.rounding.full
+        wallpaperBackdropEnabled: !root.connectedSurface
+        fallbackColor: root.connectedSurface ? "transparent"
+            : root._zzz ? Appearance.zzz.bg0 : Appearance.colors.colLayer0
         inirColor: Appearance.inir.colLayer1
         auroraTransparency: Appearance.aurora.popupTransparentize
-        border.width: root._zzz || auroraEverywhere || inirEverywhere ? 1 : 0
+        border.width: root.connectedSurface ? 0
+            : root._zzz || Appearance.auroraEverywhere || Appearance.inirEverywhere ? 1 : 0
         border.color: root._zzz ? Appearance.zzz.borderColor
             : Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-            : inirEverywhere ? Appearance.inir.colBorder
+            : Appearance.inirEverywhere ? Appearance.inir.colBorder
             : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipBorder : Appearance.colors.colLayer0Border
 
         implicitWidth: valueRow.implicitWidth

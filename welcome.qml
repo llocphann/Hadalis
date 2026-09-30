@@ -61,7 +61,6 @@ Scope {
         "dock.enable": true,
         "dock.hoverToReveal": false,
         "dock.pinnedOnStartup": true,
-        "dashboard.enable": true,
         "bar.weather.enable": true,
         "bar.modules.weather": true,
         "bar.modules.battery": true,
@@ -78,7 +77,7 @@ Scope {
         "sidebar.collapseEmptyNotifications": false,
         "sidebar.collapseWidgetsTab": false,
         "sidebar.right.headerBanner": "wallpaper",
-        "sidebar.right.sectionOrder": ["system", "sliders", "toggles", "notifications", "widgets"],
+        "sidebar.right.sectionOrder": ["system", "sliders", "toggles", "widgets"],
         "sidebar.quickToggles.style": "android",
         "sidebar.quickToggles.android.columns": 4,
         // Material II's embedded bar taskbar duplicates the Material II dock.
@@ -261,7 +260,7 @@ Scope {
         {
             icon: "palette", title: Translation.tr("Appearance"),
             headline: Translation.tr("Make it yours"),
-            subtitle: Translation.tr("Your wallpaper generates the palette. The visual style sets the shape of every surface.")
+            subtitle: Translation.tr("Your wallpaper generates the Material palette. Tune colors and appearance, then keep arranging the shell.")
         },
         {
             icon: "dashboard", title: Translation.tr("Layout"),
@@ -440,67 +439,25 @@ Scope {
             Keys.onReturnPressed: root.currentStep < root.totalSteps - 1 ? root.currentStep++ : root.finish(false)
             Keys.onEnterPressed: root.currentStep < root.totalSteps - 1 ? root.currentStep++ : root.finish(false)
 
-            // Shadow (hide in aurora)
             StyledRectangularShadow {
                 target: cardBg
-                visible: Appearance.angelEverywhere || !Appearance.auroraEverywhere
             }
 
-            // Card background - style-aware
+            // First-run chrome follows the canonical Material surface directly.
             Rectangle {
                 id: cardBg
                 anchors.fill: parent
 
-                radius: Appearance.inirEverywhere ? Appearance.inir.roundingLarge
-                      : Appearance.rounding.large
+                radius: Appearance.rounding.large
 
-                // Base color — colLayer1Base is the raw m3surfaceContainerLow without
-                // contentTransparency mixing, so the wizard stays solid even when the user
-                // has transparency enabled in Material/Cards styles.
-                color: Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                     : Appearance.auroraEverywhere ? "transparent"
-                     : Appearance.colors.colLayer1Base
-
-                border.width: Appearance.inirEverywhere ? 1 : (Appearance.auroraEverywhere ? 0 : 1)
-                border.color: Appearance.inirEverywhere ? Appearance.inir.colBorder
-                            : Appearance.colors.colLayer0Border
+                // colLayer1Base is the raw Material surface without content
+                // transparency mixing, so the wizard remains legible on first run.
+                color: Appearance.colors.colLayer1Base
+                border.width: 1
+                border.color: Appearance.colors.colLayer0Border
 
                 Behavior on color { ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
                 Behavior on border.color { ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
-
-                // Aurora: Wallpaper blur inside card
-                Item {
-                    id: auroraBlurSource
-                    visible: Appearance.auroraEverywhere
-                    anchors.fill: parent
-
-                    Image {
-                        x: -wizardCard.x
-                        y: -wizardCard.y
-                        width: wizardPanel.width
-                        height: wizardPanel.height
-                        source: Config.options?.background?.wallpaperPath ?? ""
-                        fillMode: Image.PreserveAspectCrop
-                    }
-                }
-
-                MultiEffect {
-                    visible: Appearance.auroraEverywhere
-                    source: auroraBlurSource
-                    anchors.fill: parent
-                    blurEnabled: Appearance.effectsEnabled
-                    blurMax: 40
-                    blur: Appearance.effectsEnabled ? 1.0 : 0
-                    saturation: Appearance.effectsEnabled ? 0.1 : 0
-                }
-
-                // Aurora: Tinted overlay
-                Rectangle {
-                    anchors.fill: parent
-                    visible: Appearance.auroraEverywhere
-                    radius: parent.radius
-                    color: ColorUtils.transparentize(Appearance.colors.colLayer1Base, 0.25)
-                }
 
                 // Block clicks from propagating to background MouseArea
                 MouseArea {
@@ -670,8 +627,7 @@ Scope {
                     Layout.leftMargin: 20
                     Layout.rightMargin: 20
                     height: 1
-                    color: Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle
-                         : Appearance.colors.colOutlineVariant
+                    color: Appearance.colors.colOutlineVariant
                 }
 
                 // Content area with transitions
@@ -939,12 +895,10 @@ Scope {
             Layout.maximumWidth: 540
             implicitWidth: 520
             implicitHeight: previewCol.implicitHeight + 24
-            radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
-            color: Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                 : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colLayer2, 0.5)
-                 : Appearance.colors.colLayer2
-            border.width: Appearance.inirEverywhere ? 1 : 0
-            border.color: Appearance.inir.colBorderSubtle
+            radius: Appearance.rounding.normal
+            color: Appearance.colors.colLayer2
+            border.width: 0
+            border.color: Appearance.colors.colLayer0Border
 
             ColumnLayout {
                 id: previewCol
@@ -1035,17 +989,14 @@ Scope {
                     readonly property bool selected: (Config.options?.settingsUi?.easyMode ?? false) === true
                     Layout.fillWidth: true
                     Layout.preferredHeight: settingsDepthRow.cardHeight
-                    radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
+                    radius: Appearance.rounding.normal
                     color: selected
                         ? Appearance.colors.colPrimaryContainer
-                        : (Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                          : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colLayer2, 0.5)
-                          : Appearance.colors.colLayer2)
+                        : Appearance.colors.colLayer2
                     border.width: selected ? 2 : 1
                     border.color: selected
                         ? Appearance.colors.colPrimary
-                        : (Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle
-                          : Appearance.colors.colLayer0Border)
+                        : Appearance.colors.colLayer0Border
 
                     Behavior on color {
                         enabled: Appearance.animationsEnabled
@@ -1123,17 +1074,14 @@ Scope {
                     readonly property bool selected: (Config.options?.settingsUi?.easyMode ?? false) === false
                     Layout.fillWidth: true
                     Layout.preferredHeight: settingsDepthRow.cardHeight
-                    radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
+                    radius: Appearance.rounding.normal
                     color: selected
                         ? Appearance.colors.colPrimaryContainer
-                        : (Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                          : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colLayer2, 0.5)
-                          : Appearance.colors.colLayer2)
+                        : Appearance.colors.colLayer2
                     border.width: selected ? 2 : 1
                     border.color: selected
                         ? Appearance.colors.colPrimary
-                        : (Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle
-                          : Appearance.colors.colLayer0Border)
+                        : Appearance.colors.colLayer0Border
 
                     Behavior on color {
                         enabled: Appearance.animationsEnabled
@@ -1235,59 +1183,6 @@ Scope {
                     spacing: 16
                     LightDarkPreferenceButton { dark: false }
                     LightDarkPreferenceButton { dark: true }
-                }
-            }
-        }
-
-        // Global style selector
-        SettingsGroup {
-            Layout.fillWidth: true
-            Layout.alignment: Qt.AlignHCenter
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 10
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    MaterialSymbol { text: "style"; iconSize: 20; color: Appearance.colors.colPrimary }
-                    StyledText { text: Translation.tr("Visual Style"); font.pixelSize: Appearance.font.pixelSize.normal }
-                    Item { Layout.fillWidth: true }
-                    StyledText {
-                        text: {
-                            const style = Config.options?.appearance?.globalStyle ?? "material"
-                            return style === "material" ? Translation.tr("Clean & Solid")
-                                 : style === "cards" ? Translation.tr("Rounded Cards")
-                                 : style === "aurora" ? Translation.tr("Glass & Blur")
-                                 : style === "angel" ? Translation.tr("Neo-Brutalism Glass")
-                                 : Translation.tr("Terminal Style")
-                        }
-                        color: Appearance.colors.colSubtext
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                    }
-                }
-
-                ConfigSelectionArray {
-                    Layout.fillWidth: true
-                    currentValue: Config.options?.appearance?.globalStyle ?? "material"
-                    onSelected: newValue => {
-                        Config.setNestedValue("appearance.globalStyle", newValue)
-                    }
-                    options: [
-                        { displayName: "Material", icon: "dashboard", value: "material" },
-                        { displayName: "Cards", icon: "crop_square", value: "cards" },
-                        { displayName: "Aurora", icon: "blur_on", value: "aurora" },
-                        { displayName: "Inir", icon: "terminal", value: "inir" }
-                    ]
-                }
-
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("More experimental styles remain available in Settings.")
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smallest
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
                 }
             }
         }
@@ -1511,7 +1406,7 @@ Scope {
                     RowLayout {
                         MaterialSymbol { text: "web_asset"; iconSize: 18; color: Appearance.colors.colPrimary }
                         StyledText {
-                            text: "Material II · " + Translation.tr("Bar")
+                            text: "Material II / Abyss · " + Translation.tr("Bar")
                             font.pixelSize: Appearance.font.pixelSize.small
                         }
                     }
@@ -1536,7 +1431,7 @@ Scope {
                     RowLayout {
                         MaterialSymbol { text: "dock_to_bottom"; iconSize: 18; color: Appearance.colors.colPrimary }
                         StyledText {
-                            text: "Material II · " + Translation.tr("Dock")
+                            text: "Material II / Abyss · " + Translation.tr("Dock")
                             font.pixelSize: Appearance.font.pixelSize.small
                         }
                     }
@@ -1571,7 +1466,8 @@ Scope {
                         onSelected: v => root.setProfileFeature("panelFamily", v)
                         options: [
                             { displayName: "Material II", icon: "dashboard", value: "ii" },
-                            { displayName: "Waffle", icon: "grid_view", value: "waffle" }
+                            { displayName: "Waffle", icon: "grid_view", value: "waffle" },
+                            { displayName: "Abyss", icon: "water", value: "abyss" }
                         ]
                     }
                 }
@@ -1584,21 +1480,14 @@ Scope {
 
             ConfigSwitch {
                 buttonIcon: "dock_to_bottom"
-                text: "Material II · " + Translation.tr("Show dock")
+                text: "Material II / Abyss · " + Translation.tr("Show dock")
                 description: Translation.tr("Keep dock visible at all times (Empty workspace mode only)")
                 checked: Config.options?.dock?.enable ?? true
                 onToggledByUser: checked => root.setProfileFeature("dock.enable", checked)
             }
             ConfigSwitch {
-                buttonIcon: "dashboard"
-                text: "Material II · " + Translation.tr("Show dashboard")
-                description: Translation.tr("Keep a centered home panel for notifications, media, weather and daily controls.")
-                checked: Config.options?.dashboard?.enable ?? true
-                onToggledByUser: checked => root.setProfileFeature("dashboard.enable", checked)
-            }
-            ConfigSwitch {
                 buttonIcon: "auto_awesome_motion"
-                text: "Material II · " + Translation.tr("Auto-hide the bar")
+                text: "Material II / Abyss · " + Translation.tr("Auto-hide the bar")
                 description: Translation.tr("A quieter desktop; the bar returns from the edge or while holding Super.")
                 checked: Config.options?.bar?.autoHide?.enable ?? false
                 onToggledByUser: checked => root.setProfileFeature("bar.autoHide.enable", checked)
@@ -1660,7 +1549,7 @@ Scope {
                 Rectangle {
                     Layout.fillWidth: true
                     implicitHeight: profileSummaryColumn.implicitHeight + 20
-                    radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.small
+                    radius: Appearance.rounding.small
                     color: root.profileCustomized
                         ? Appearance.colors.colLayer2
                         : Appearance.colors.colPrimaryContainer
@@ -1844,12 +1733,10 @@ Scope {
                     Layout.preferredWidth: 340
                     Layout.alignment: Qt.AlignTop
                     implicitHeight: shortcutsCardCol.implicitHeight + 24
-                    radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
-                    color: Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                         : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colLayer2, 0.5)
-                         : Appearance.colors.colLayer2
-                    border.width: Appearance.inirEverywhere ? 1 : 0
-                    border.color: Appearance.inir.colBorderSubtle
+                    radius: Appearance.rounding.normal
+                    color: Appearance.colors.colLayer2
+                    border.width: 0
+                    border.color: Appearance.colors.colLayer0Border
 
                     ColumnLayout {
                         id: shortcutsCardCol
@@ -1913,12 +1800,10 @@ Scope {
                     Layout.preferredWidth: 340
                     Layout.alignment: Qt.AlignTop
                     implicitHeight: tryItCardCol.implicitHeight + 24
-                    radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
-                    color: Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                         : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colLayer2, 0.5)
-                         : Appearance.colors.colLayer2
-                    border.width: Appearance.inirEverywhere ? 1 : 0
-                    border.color: Appearance.inir.colBorderSubtle
+                    radius: Appearance.rounding.normal
+                    color: Appearance.colors.colLayer2
+                    border.width: 0
+                    border.color: Appearance.colors.colLayer0Border
 
                     ColumnLayout {
                         id: tryItCardCol
@@ -2034,7 +1919,7 @@ Scope {
                 Layout.preferredWidth: 694
                 Layout.maximumWidth: 700
                 Layout.preferredHeight: helpCalloutRow.implicitHeight + 18
-                buttonRadius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
+                buttonRadius: Appearance.rounding.normal
                 colBackground: ColorUtils.transparentize(Appearance.colors.colPrimaryContainer, 0.6)
                 colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colPrimaryContainer, 0.4)
 

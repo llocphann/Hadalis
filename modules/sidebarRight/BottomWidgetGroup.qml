@@ -9,7 +9,6 @@ import qs.modules.sidebarRight.pomodoro
 import qs.modules.sidebarRight.notepad
 import qs.modules.sidebarRight.calculator
 import qs.modules.sidebarRight.sysmon
-import qs.modules.sidebarRight.screenTime
 import qs.modules.sidebarRight.events
 import qs.modules.sidebarRight.weather
 import QtQuick
@@ -61,15 +60,8 @@ Rectangle {
     property bool collapsed: Persistent.states?.sidebar?.bottomGroup?.collapsed ?? false
     
     property var allTabs: [
-        {"type": "calendar", "name": Translation.tr("Calendar"), "icon": "calendar_month", "widget": calendarWidget},
-        {"type": "events", "name": Translation.tr("Events"), "icon": "event_upcoming", "widget": eventsWidgetComponent},
-        {"type": "todo", "name": Translation.tr("To Do"), "icon": "done_outline", "widget": todoWidget},
-        {"type": "notepad", "name": Translation.tr("Notepad"), "icon": "edit_note", "widget": notepadWidget},
         {"type": "calculator", "name": Translation.tr("Calc"), "icon": "calculate", "widget": calculatorWidget},
         {"type": "sysmon", "name": Translation.tr("System"), "icon": "monitor_heart", "widget": sysMonWidget},
-        {"type": "weather", "name": Translation.tr("Weather"), "icon": "light_mode", "widget": weatherWidget},
-        {"type": "timer", "name": Translation.tr("Timer"), "icon": "schedule", "widget": pomodoroWidget},
-        {"type": "screentime", "name": Translation.tr("Screen Time"), "icon": "av_timer", "widget": screenTimeWidget},
     ]
 
     property int configVersion: 0
@@ -113,14 +105,10 @@ Rectangle {
 
     readonly property var enabledWidgets: {
         root.configVersion // Force dependency
-        return Config.options?.sidebar?.right?.enabledWidgets ?? ["calendar", "todo", "notepad", "calculator", "sysmon", "weather", "timer"]
+        return Config.options?.sidebar?.right?.enabledWidgets ?? ["calculator", "sysmon"]
     }
 
-    property var tabs: allTabs.filter(tab => {
-        if (tab.type === "screentime" && !(Config.options?.sidebar?.screenTime?.enable ?? false))
-            return false
-        return enabledWidgets.includes(tab.type)
-    })
+    property var tabs: allTabs.filter(tab => enabledWidgets.includes(tab.type))
 
     property string currentTabType: ""
     onSelectedTabChanged: {
@@ -228,10 +216,9 @@ Rectangle {
         }
 
         StyledText {
-            property int remainingTasks: Todo.list.filter(task => !task.done).length;
             Layout.margins: 10
             Layout.leftMargin: 0
-            text: Translation.tr("%1   •   %2 tasks").arg(DateTime.collapsedCalendarFormat).arg(remainingTasks)
+            text: root.tabs[root.selectedTab]?.name ?? Translation.tr("Widgets")
             font.pixelSize: Appearance.font.pixelSize.large
             font.family: Appearance.zzzEverywhere ? Appearance.font.family.numbers : Appearance.font.family.main
             color: Appearance.zzzEverywhere ? Appearance.zzz.ink : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer1
@@ -528,15 +515,6 @@ Rectangle {
     Component {
         id: pomodoroWidget
         PomodoroWidget {
-            anchors.fill: parent
-            anchors.margins: 5
-        }
-    }
-
-    // Screen Time component
-    Component {
-        id: screenTimeWidget
-        ScreenTimeWidget {
             anchors.fill: parent
             anchors.margins: 5
         }

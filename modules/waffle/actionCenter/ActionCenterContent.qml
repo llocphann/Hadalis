@@ -36,18 +36,10 @@ WBarAttachedPanelContent {
             readonly property bool hasActivePlayer: MprisController.activePlayer != null
             visible: hasActivePlayer
             Layout.fillWidth: true
-            screenX: root.panelScreenX + root.visualMargin * 2
-            screenY: root.panelScreenY + root.visualMargin * 2
-            screenWidth: root._screenW
-            screenHeight: root._screenH
             contentItem: MediaPaneContent {}
         }
         WPane {
             Layout.fillWidth: true
-            screenX: root.panelScreenX + root.visualMargin * 2
-            screenY: root.panelScreenY + root.visualMargin * 2 + (mediaPane.visible ? mediaPane.height + Looks.dp(12) : 0)
-            screenWidth: root._screenW
-            screenHeight: root._screenH
             contentItem: WStackView {
                 id: stackView
                 implicitWidth: initItem.implicitWidth

@@ -7,6 +7,7 @@ inir/
 ├── shell.qml                     # Root entry — loads services and selects panel family
 ├── ShellIiPanels.qml             # Material ii panel family
 ├── ShellWafflePanels.qml         # Windows 11 panel family
+├── ShellAbyssPanels.qml          # Perimeter Liquid Shell family
 ├── GlobalStates.qml              # Runtime UI state
 ├── FamilyTransitionOverlay.qml   # Animated family switch
 ├── settings.qml                  # Settings GUI
@@ -27,6 +28,11 @@ inir/
 │   ├── dock/                     # App dock
 │   ├── overview/                 # Workspace overview + app search/task view
 │   ├── wallpaperLauncher/        # Compact wallpaper carousel
+│   ├── abyss/                    # Single perimeter field + embedded native content
+│   │   ├── looks/                # Style, deterministic geometry and shader
+│   │   ├── bar/                  # Five-zone horizontal/vertical modules
+│   │   ├── content/              # Lazy sidebars, dock, popup, clipboard, launcher, OSD
+│   │   └── settings/             # Abyss Style and output selection
 │   ├── waffle/                   # Windows 11 family
 │   │   ├── bar/                  # Bottom taskbar
 │   │   ├── startMenu/            # Start menu with search
@@ -42,7 +48,8 @@ inir/
 ├── translations/                 # Canonical en_US UI catalog + validators
 ├── distro/                       # Packaging/distribution data
 ├── assets/                       # Icons, wallpapers, systemd unit, desktop entry
-└── docs/                         # User documentation
+├── docs/                         # Documentation and historical research
+└── to-do/                        # Active Cloud Bot / deterministic Local Bot tasks
 ```
 
 The live tree intentionally has no Orbit, Mascot, Workspace Strip, `barM3`, Pill-Bar, Islands-Bar, Scenic-Bar, or Frame-Bar module directory. Those systems are retired, not optional renderers.
@@ -53,13 +60,15 @@ The live tree intentionally has no Orbit, Mascot, Workspace Strip, `barM3`, Pill
 
 **modules/common/:** shared config, visual infrastructure, perimeter infrastructure, and reusable widgets. `Config.qml` owns the typed runtime schema and the custom-widget persistence workaround.
 
-**modules/common/perimeter/:** Connected Perimeter core substrate: topology and slot configuration, module registry/hosting, anchor publication/lookup, transient-surface routing, and connected geometry/input helpers. Existing bar popups consume this substrate through `modules/bar/StyledPopup.qml`; full `iiPerimeter` composition ownership remains a separate broader cutover.
+**modules/common/perimeter/:** Connected Perimeter core substrate: topology and slot configuration, module registry/hosting, anchor publication/lookup, transient-surface routing, and connected geometry/input helpers. Existing bar popups consume this substrate through `modules/bar/StyledPopup.qml`; the retired full `iiPerimeter` runtime remains absent.
 
 **modules/bar/:** the sole ii-family Bar implementation. It supports top/bottom/left/right placement and Classic geometry modes (Hug, Float, Rectangle, Card). Existing bar popups use `StyledPopup.qml`, which provides the connected-surface presentation path without introducing a second popup framework.
 
 **modules/dock/:** the ii-family application Dock. Panel is the canonical supported Dock surface style; legacy persisted style values are normalized to `panel` during startup.
 
 **modules/waffle/:** Windows 11-style panel family with its own bottom taskbar, Start menu, action center, notification center, visual tokens, and settings. Waffle is a separate family rather than a Dock or Classic Bar style.
+
+**modules/abyss/:** independent perimeter-centric liquid family. `AbyssPerimeter.qml` owns one painter per output; `AbyssBodyHost.qml` owns lazy content and bounded input without painting; `looks/AbyssGeometry.js` and `looks/AbyssField.frag(.qsb)` own topology; `looks/AbyssStyle.qml` centralizes palette, motion and effects. Critical/specialist fallbacks share implementations rather than backend copies.
 
 **modules/ii/:** ii-family-specific overlay/sidebar components.
 
@@ -79,7 +88,9 @@ The live tree intentionally has no Orbit, Mascot, Workspace Strip, `barM3`, Pill
 
 **assets/:** static icons, images, wallpapers, systemd units, desktop entries, and related packaged data.
 
-**docs/:** user/developer Markdown documentation.
+**docs/:** user/developer Markdown documentation and archived research/history.
+
+**to-do/:** one active chatbot-work index: `cloud-bot/` (sole reasoning agent) and `local-bot/` (explicit deterministic execution only).
 
 ## Key File Locations
 
@@ -87,6 +98,8 @@ The live tree intentionally has no Orbit, Mascot, Workspace Strip, `barM3`, Pill
 - `shell.qml` — root shell, services, IPC and family selection.
 - `ShellIiPanels.qml` — ii-family loader.
 - `ShellWafflePanels.qml` — Waffle-family loader.
+- `ShellAbyssPanels.qml` / `ShellAbyssCriticalPanels.qml` — URL-loaded Abyss compositions.
+- `modules/common/PanelFamilyPolicy.js` — normalization, cycling and default migration for three families.
 - `settings.qml` — standalone Settings process/UI.
 - `waffleSettings.qml` — Waffle settings.
 - `welcome.qml` — first-run wizard.
@@ -97,15 +110,16 @@ The live tree intentionally has no Orbit, Mascot, Workspace Strip, `barM3`, Pill
 - `Config.options.path.to.key` — runtime reads.
 - `Config.setNestedValue("path.to.key", value)` — runtime writes.
 
-Retired Bar keys such as `appearanceStyle`, `bar.m3`, `bar.pill`, and Bar-specific Islands state are not part of the live schema. Shared `m3*` Material color tokens, generic pill-shaped UI, and shared island skins remain valid where consumed by unrelated features.
+Retired Bar keys such as `appearanceStyle`, `bar.m3`, `bar.pill`, and Bar-specific Islands state are not part of the live schema. Shared `m3*` Material color tokens, generic pill-shaped UI, and shared island skins remain valid where consumed by unrelated features. The active Ricelin island implementation is `modules/common/widgets/RicelinSurface.qml`; there is no `modules/pill` compatibility module.
 
 ### Classic Bar
 - `modules/bar/` — Classic Bar runtime.
 - `modules/bar/StyledPopup.qml` — existing popup abstraction with connected perimeter geometry/frame/mask integration.
-- `modules/settings/BarConfig.qml` — Classic Bar settings.
+- `modules/settings/BarConfig.qml` — canonical Classic Bar + Screen Edge settings page; no compatibility facade sits in front of it.
 - `bar.bottom` + `bar.vertical` — placement.
-- `bar.cornerStyle` — Hug/Float/Rectangle/Card geometry.
-- `bar.blurBackground` — native compositor blur controls.
+- `bar.cornerStyle` — compatibility-only persisted field normalized to Hug (`0`); it is not a renderer selector.
+- `bar.opacity` + `bar.borderless` — active Bar surface controls.
+- `appearance.screenEdge.width` + `appearance.screenEdge.radius` + `appearance.screenEdge.physicalShadow` — physical perimeter controls surfaced by Bar settings.
 - `bar.autoHide.showWhenPressingSuper` — Super-key reveal behavior.
 
 ### Dock

@@ -10,11 +10,30 @@ Item {
 
     property bool compact: false
     readonly property real compactBreakpoint: 900
-    readonly property real panelHeight: 270
-    readonly property real panelWidth: root.compact ? 360 : 430
+    readonly property real panelHeight: root.compact ? 270 : 300
+    // Keep one stable connected-surface width for both tabs. Detailed Weather
+    // reflows at narrow widths instead of forcing the whole popup to stay wide.
+    readonly property real panelWidth: root.compact ? 360 : 390
+    // Let the liquid orbit consume the popup body instead of inheriting the
+    // detail-page inset. Keep only a small safety gutter, with extra room on
+    // the right for the persistent tab indicator rail.
+    readonly property real orbitalInset: root.compact ? 6 : 8
+    readonly property real orbitalRightInset: root.orbitalInset
     readonly property int tabCount: 2
     readonly property int slideDuration: Appearance.animation.elementMove.duration
     property int currentTab: 0
+    // Animate tab selection, never the viewport's physical size. A newly
+    // rehosted popup starts at zero height; animating y would briefly paint
+    // both tabs on top of one another while its first layout is established.
+    property real tabPosition: root.currentTab
+    Behavior on tabPosition {
+        enabled: Appearance.animationsEnabled && root.visible
+        NumberAnimation {
+            duration: root.slideDuration
+            easing.type: Appearance.animation.elementMove.type
+            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+        }
+    }
     property date now: new Date()
     readonly property real sunProgress: {
         const sunrise = root.timeToMinutes(Weather.data?.sunrise)
@@ -53,7 +72,7 @@ Item {
     Timer {
         interval: 30000
         repeat: true
-        running: true
+        running: root.visible && root.width > 0 && root.height > 0
         onTriggered: root.now = new Date()
     }
 
@@ -69,265 +88,29 @@ Item {
         height: tabViewport.height
         radius: Appearance.rounding.large
         color: "transparent"
-        y: (0 - root.currentTab) * tabViewport.height
+        y: -root.tabPosition * tabViewport.height
         enabled: root.currentTab === 0
 
-        Behavior on y {
-            enabled: Appearance.animationsEnabled
-            NumberAnimation {
-                duration: root.slideDuration
-                easing.type: Appearance.animation.elementMove.type
-                easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
-            }
-        }
 
-        Item {
+        Loader {
             id: orbitalTimeline
-            anchors.fill: parent
-            anchors.margins: 8
-            anchors.topMargin: -12
-            anchors.bottomMargin: 0
-
-            // Serpantinum-inspired frontend: the clock is the visual center
-            // and Hadalis hourly data is distributed around an ellipse.
-            readonly property var hours: (Weather.data?.hourly ?? []).slice(0, 8)
-            // Keep the eight cells clear of one another: smaller cards plus
-            // a slightly wider orbit preserve the same composition without
-            // the near-touching visual density seen in the runtime pass.
-            readonly property real radiusX: Math.max(122, (width - 84) / 2)
-            readonly property real radiusY: Math.max(82, (height - 104) / 2)
-            // Keep card centres on the same ellipse that is actually painted.
-            // The old guide subtracted 2 px only while the cards used the
-            // larger radii, which was most visible on the four diagonal hours.
-            readonly property real orbitRadiusX: Math.max(1, radiusX - 2)
-            readonly property real orbitRadiusY: Math.max(1, radiusY - 2)
-
-            // Preserve the real clock anchors while equalizing visual
-            // spacing on the ellipse. 06/12/18/00 stay at the four cardinal
-            // points. Intermediate times are placed by arc length within each
-            // six-hour quadrant, not by raw 45° parameter angles.
-            function hourFromLabel(label): real {
-                const match = String(label ?? "").match(/^(\d{1,2})(?::(\d{2}))?/)
-                if (!match)
-                    return 0
-                const hour = parseInt(match[1], 10)
-                const minute = parseInt(match[2] ?? "0", 10)
-                if (isNaN(hour) || isNaN(minute))
-                    return 0
-                return (((hour % 24) + 24) % 24) + minute / 60
+            anchors {
+                fill: parent
+                leftMargin: root.orbitalInset
+                rightMargin: root.orbitalRightInset
+                topMargin: root.orbitalInset
+                bottomMargin: root.orbitalInset
             }
-
-            function arcAngle(startAngle, endAngle, fraction): real {
-                if (fraction <= 0)
-                    return startAngle
-                if (fraction >= 1)
-                    return endAngle
-
-                const samples = 72
-                const rx = orbitalTimeline.orbitRadiusX
-                const ry = orbitalTimeline.orbitRadiusY
-                const lengths = [0]
-                let total = 0
-                let prevX = Math.cos(startAngle) * rx
-                let prevY = Math.sin(startAngle) * ry
-
-                for (let sample = 1; sample <= samples; ++sample) {
-                    const t = sample / samples
-                    const angle = startAngle + (endAngle - startAngle) * t
-                    const x = Math.cos(angle) * rx
-                    const y = Math.sin(angle) * ry
-                    const dx = x - prevX
-                    const dy = y - prevY
-                    total += Math.sqrt(dx * dx + dy * dy)
-                    lengths.push(total)
-                    prevX = x
-                    prevY = y
-                }
-
-                const target = total * fraction
-                let sample = 1
-                while (sample < lengths.length && lengths[sample] < target)
-                    ++sample
-
-                const before = lengths[Math.max(0, sample - 1)]
-                const span = Math.max(0.0001, lengths[sample] - before)
-                const local = (target - before) / span
-                const t = (sample - 1 + local) / samples
-                return startAngle + (endAngle - startAngle) * t
-            }
-
-            function orbitAngleForHour(label): real {
-                const hour = orbitalTimeline.hourFromLabel(label)
-                const shiftedHour = (hour - 6 + 24) % 24
-                const quadrant = Math.floor(shiftedHour / 6)
-                const fraction = (shiftedHour - quadrant * 6) / 6
-                const start = -Math.PI / 2 + quadrant * Math.PI / 2
-                const end = start + Math.PI / 2
-                return orbitalTimeline.arcAngle(start, end, fraction)
-            }
-
-            Canvas {
-                id: orbitGuide
-                anchors.centerIn: parent
-                width: Math.max(1, orbitalTimeline.orbitRadiusX * 2 + 4)
-                height: Math.max(1, orbitalTimeline.orbitRadiusY * 2 + 4)
-                opacity: 0.42
-
-                onWidthChanged: requestPaint()
-                onHeightChanged: requestPaint()
-                onPaint: {
-                    const ctx = getContext("2d")
-                    ctx.clearRect(0, 0, width, height)
-                    ctx.beginPath()
-                    const rx = orbitalTimeline.orbitRadiusX
-                    const ry = orbitalTimeline.orbitRadiusY
-                    for (let angle = 0; angle <= Math.PI * 2 + 0.01; angle += 0.05) {
-                        const x = width / 2 + Math.cos(angle) * rx
-                        const y = height / 2 + Math.sin(angle) * ry
-                        if (angle === 0)
-                            ctx.moveTo(x, y)
-                        else
-                            ctx.lineTo(x, y)
-                    }
-                    ctx.strokeStyle = Appearance.colors.colPrimary
-                    ctx.globalAlpha = 0.5
-                    ctx.lineWidth = 1.5
-                    ctx.setLineDash([4, 9])
-                    ctx.stroke()
-                    ctx.globalAlpha = 1
-                }
-            }
-
-            ColumnLayout {
-                anchors.centerIn: parent
-                anchors.verticalCenterOffset: 0
-                spacing: 1
-                z: 2
-
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: Qt.formatDate(root.now, "dddd, MMM d")
-                    font {
-                        weight: Font.DemiBold
-                        pixelSize: Appearance.font.pixelSize.normal
-                    }
-                    color: Appearance.colors.colOnSurfaceVariant
-                }
-
-                RowLayout {
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.topMargin: 3
-                    spacing: 5
-
-                    MaterialSymbol {
-                        text: Icons.getWeatherIcon(
-                            Weather.data?.wCode,
-                            Weather.isNightNow()) ?? "cloud"
-                        iconSize: Appearance.font.pixelSize.normal
-                        color: Appearance.colors.colPrimary
-                    }
-
-                    StyledText {
-                        text: Weather.data?.temp ?? "--°"
-                        font {
-                            weight: Font.DemiBold
-                            pixelSize: Appearance.font.pixelSize.normal
-                        }
-                        color: Appearance.colors.colOnSurface
-                    }
-
-                    StyledText {
-                        text: Weather.data?.description ?? ""
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: Appearance.colors.colOnSurfaceVariant
-                        elide: Text.ElideRight
-                        Layout.maximumWidth: 120
-                    }
-                }
-            }
-
-            Repeater {
-                id: orbitHours
-                model: orbitalTimeline.hours
-
-                delegate: Item {
-                    id: hourPoint
-                    required property int index
-                    required property var modelData
-
-                    readonly property real angle:
-                        orbitalTimeline.orbitAngleForHour(modelData?.label)
-                    readonly property bool highlighted: index === 0
-
-                    width: 52
-                    height: 64
-                    x: orbitalTimeline.width / 2
-                        + Math.cos(angle) * orbitalTimeline.orbitRadiusX - width / 2
-                    y: orbitalTimeline.height / 2
-                        + Math.sin(angle) * orbitalTimeline.orbitRadiusY - height / 2
-                    z: highlighted ? 3 : 1
-
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: Appearance.rounding.normal
-                        color: hourPoint.highlighted
-                            ? Appearance.colors.colPrimaryContainer
-                            : Appearance.colors.colSurfaceContainerHigh
-                        border.width: 1
-                        border.color: hourPoint.highlighted
-                            ? Appearance.colors.colPrimary
-                            : Appearance.colors.colOutlineVariant
-
-                        ColumnLayout {
-                            anchors.centerIn: parent
-                            spacing: 1
-
-                            StyledText {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: hourPoint.modelData?.label ?? ""
-                                font {
-                                    weight: Font.DemiBold
-                                    pixelSize: Appearance.font.pixelSize.smaller
-                                }
-                                color: hourPoint.highlighted
-                                    ? Appearance.colors.colOnPrimaryContainer
-                                    : Appearance.colors.colOnSurfaceVariant
-                            }
-
-                            MaterialSymbol {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: Icons.getWeatherIcon(
-                                    hourPoint.modelData?.code,
-                                    hourPoint.modelData?.isNight) ?? "cloud"
-                                iconSize: Appearance.font.pixelSize.normal
-                                color: hourPoint.highlighted
-                                    ? Appearance.colors.colOnPrimaryContainer
-                                    : Appearance.colors.colOnSurface
-                            }
-
-                            StyledText {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: hourPoint.modelData?.temp ?? ""
-                                font {
-                                    weight: Font.DemiBold
-                                    pixelSize: Appearance.font.pixelSize.smaller
-                                }
-                                color: hourPoint.highlighted
-                                    ? Appearance.colors.colOnPrimaryContainer
-                                    : Appearance.colors.colOnSurface
-                            }
-                        }
-                    }
-                }
-            }
-
-            StyledText {
-                anchors.centerIn: parent
-                anchors.verticalCenterOffset: 72
-                visible: orbitalTimeline.hours.length === 0
-                text: Translation.tr("Hourly forecast unavailable")
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.colors.colOnSurfaceVariant
+            sourceComponent:Config.options?.panelFamily === "abyss" ? abyssOrbit : materialOrbit
+        }
+        Component { id:abyssOrbit;AbyssOrbitalWeather { now:root.now } }
+        Component {
+            id:materialOrbit
+            OrbitalWeather {
+                now: root.now
+                liquidMode: true
+                liquidAnimationActive: root.currentTab === 0
+                    || timeWeatherPanel.y > -timeWeatherPanel.height + 1
             }
         }
     }
@@ -339,34 +122,26 @@ Item {
         height: tabViewport.height
         radius: Appearance.rounding.small
         color: "transparent"
-        y: (1 - root.currentTab) * tabViewport.height
+        y: (1 - root.tabPosition) * tabViewport.height
         enabled: root.currentTab === 1
 
-        Behavior on y {
-            enabled: Appearance.animationsEnabled
-            NumberAnimation {
-                duration: root.slideDuration
-                easing.type: Appearance.animation.elementMove.type
-                easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
-            }
-        }
 
         ColumnLayout {
             id: detailColumn
             anchors {
                 fill: parent
-                leftMargin: 14
-                rightMargin: 24
-                topMargin: 12
-                bottomMargin: 12
+                leftMargin: root.compact ? 10 : 12
+                rightMargin: root.compact ? 22 : 24
+                topMargin: root.compact ? 10 : 12
+                bottomMargin: root.compact ? 10 : 12
             }
-            spacing: 8
+            spacing: root.compact ? 6 : 7
 
             RowLayout {
                 id: detailSummary
                 Layout.fillWidth: true
-                Layout.preferredHeight: 48
-                spacing: 10
+                Layout.preferredHeight: root.compact ? 44 : 46
+                spacing: root.compact ? 8 : 10
 
                 MaterialSymbol {
                     text: Icons.getWeatherIcon(
@@ -412,7 +187,7 @@ Item {
                             weight: Font.DemiBold
                         }
                         elide: Text.ElideRight
-                        Layout.maximumWidth: 150
+                        Layout.maximumWidth: root.compact ? 118 : 130
                     }
 
                     StyledText {
@@ -424,7 +199,7 @@ Item {
                         color: Appearance.colors.colOnSurfaceVariant
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         elide: Text.ElideRight
-                        Layout.maximumWidth: 150
+                        Layout.maximumWidth: root.compact ? 118 : 130
                     }
 
                     StyledText {
@@ -441,9 +216,9 @@ Item {
             GridLayout {
                 id: primaryMetrics
                 Layout.fillWidth: true
-                columns: 4
+                columns: 2
                 columnSpacing: 6
-                rowSpacing: 0
+                rowSpacing: root.compact ? 4 : 6
                 uniformCellWidths: true
 
                 PrimaryMetric {
@@ -472,7 +247,7 @@ Item {
             Rectangle {
                 id: secondaryStrip
                 Layout.fillWidth: true
-                implicitHeight: 36
+                implicitHeight: root.compact ? 32 : 34
                 radius: Appearance.rounding.small
                 color: Appearance.colors.colSurfaceContainerHigh
 
@@ -507,7 +282,7 @@ Item {
             Rectangle {
                 id: sunTimeline
                 Layout.fillWidth: true
-                implicitHeight: 62
+                implicitHeight: root.compact ? 52 : 56
                 radius: Appearance.rounding.small
                 color: Appearance.colors.colSurfaceContainerHigh
 
@@ -516,7 +291,7 @@ Item {
                     anchors.left: parent.left
                     anchors.leftMargin: 10
                     anchors.top: parent.top
-                    anchors.topMargin: 9
+                    anchors.topMargin: root.compact ? 7 : 8
                     text: "wb_twilight"
                     iconSize: 16
                     color: Appearance.colors.colPrimary
@@ -527,7 +302,7 @@ Item {
                     anchors.right: parent.right
                     anchors.rightMargin: 10
                     anchors.top: parent.top
-                    anchors.topMargin: 9
+                    anchors.topMargin: root.compact ? 7 : 8
                     text: "bedtime"
                     iconSize: 16
                     color: Appearance.colors.colPrimary
@@ -553,7 +328,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         color: Appearance.colors.colPrimary
                         border.width: 1
-                        border.color: Appearance.colors.colSurface
+                        border.color: Appearance.colors.colLayer2
                     }
                 }
 
@@ -561,7 +336,7 @@ Item {
                     anchors.left: parent.left
                     anchors.leftMargin: 10
                     anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 8
+                    anchors.bottomMargin: root.compact ? 6 : 7
                     text: Weather.data?.sunrise ?? "--:--"
                     color: Appearance.colors.colOnSurface
                     font.pixelSize: Appearance.font.pixelSize.smaller
@@ -570,7 +345,7 @@ Item {
                 StyledText {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 8
+                    anchors.bottomMargin: root.compact ? 6 : 7
                     text: Translation.tr("Sun")
                     color: Appearance.colors.colOnSurfaceVariant
                     font {
@@ -583,7 +358,7 @@ Item {
                     anchors.right: parent.right
                     anchors.rightMargin: 10
                     anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 8
+                    anchors.bottomMargin: root.compact ? 6 : 7
                     text: Weather.data?.sunset ?? "--:--"
                     color: Appearance.colors.colOnSurface
                     font.pixelSize: Appearance.font.pixelSize.smaller
@@ -600,47 +375,52 @@ Item {
         required property string value
 
         Layout.fillWidth: true
-        implicitHeight: 58
+        implicitHeight: root.compact ? 36 : 42
         radius: Appearance.rounding.small
         color: Appearance.colors.colSurfaceContainerHigh
 
-        ColumnLayout {
-            anchors.centerIn: parent
-            spacing: 1
+        RowLayout {
+            anchors {
+                fill: parent
+                leftMargin: 9
+                rightMargin: 9
+            }
+            spacing: 7
 
-            RowLayout {
-                Layout.alignment: Qt.AlignHCenter
-                spacing: 4
+            MaterialSymbol {
+                text: primaryMetric.symbol
+                iconSize: 15
+                color: Appearance.colors.colOnSurfaceVariant
+                Layout.alignment: Qt.AlignVCenter
+            }
 
-                MaterialSymbol {
-                    text: primaryMetric.symbol
-                    iconSize: 15
-                    color: Appearance.colors.colOnSurfaceVariant
-                }
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+                spacing: -1
 
                 StyledText {
+                    Layout.fillWidth: true
                     text: primaryMetric.title.toUpperCase()
                     color: Appearance.colors.colOnSurfaceVariant
                     font {
                         pixelSize: Appearance.font.pixelSize.smallest
                         weight: Font.DemiBold
-                        letterSpacing: 0.5
+                        letterSpacing: 0.4
                     }
                     elide: Text.ElideRight
-                    Layout.maximumWidth: 70
                 }
-            }
 
-            StyledText {
-                Layout.alignment: Qt.AlignHCenter
-                text: primaryMetric.value
-                color: Appearance.colors.colOnSurface
-                font {
-                    pixelSize: Appearance.font.pixelSize.small
-                    weight: Font.DemiBold
+                StyledText {
+                    Layout.fillWidth: true
+                    text: primaryMetric.value
+                    color: Appearance.colors.colOnSurface
+                    font {
+                        pixelSize: Appearance.font.pixelSize.small
+                        weight: Font.DemiBold
+                    }
+                    elide: Text.ElideRight
                 }
-                elide: Text.ElideRight
-                Layout.maximumWidth: 82
             }
         }
     }

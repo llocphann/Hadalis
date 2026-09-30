@@ -1,10 +1,12 @@
 # Panel Families
 
-iNiR has two completely separate UI families that share the same services and config backend. Switch between them at runtime with `Super+Shift+W`.
+Hadalis has three separate UI families sharing services, models and configuration: Material II (`ii`), Waffle (`waffle`) and Abyss (`abyss`). Switch at runtime with `Super+Shift+W`, Settings → Modules → Panel Style, or `inir panelFamily set abyss`.
 
-## Material ii
+Abyss (`abyss`) is the default; Waffle (`waffle`) is the other supported panel style. Old `ii` settings and IPC calls migrate to Abyss without resetting shared feature preferences.
 
-The default family. Hadalis 1.0 exposes **Material as the only shell-wide Global Theme**. Wallpaper-derived palettes, named color presets, motion settings, and local component presentation options are independent of that Global Theme boundary.
+## Material design baseline
+
+Abyss inherits the shared content and token system described below. The former Material panel family is retired; its source is retained for shared feature reuse and regression comparison. Hadalis 1.0 exposes **Material as the only shell-wide Global Theme**. Wallpaper-derived palettes, named color presets, motion settings, and local component presentation options are independent of that Global Theme boundary.
 
 ### Global theme
 
@@ -24,7 +26,7 @@ font.family: Appearance.font.main
 
 ### Layout
 
-- **Bar**: top or bottom of screen (horizontal), or left/right edge (vertical). The horizontal bar is modular: left edge, two center-side zones, centered workspace pivot, right edge.
+- **Bar**: top or bottom of screen (horizontal), or left/right edge (vertical). Both orientations are modular and keep independent presets. Top/Bottom uses left edge, two center-side zones, a centered workspace pivot and right edge; Left/Right uses top edge, center-top, the same centered workspace pivot, center-bottom and bottom edge.
 - **Sidebars**: left sidebar (AI chat, YT Music, widgets), right sidebar (toggles, calendar, tools)
 - **Dock**: application dock (any of 4 edges)
 - **Overview**: workspace overview with app launcher and search (`Super+Space`)
@@ -60,17 +62,29 @@ ii loads about 25 panels through `ShellIiPanels.qml`. Some notable ones:
 
 ### Bar zones
 
-The ii horizontal bar uses five zones:
+The ii Bar stores separate five-zone presets for horizontal and vertical placement.
+
+Top/Bottom uses `bar.layout`:
 
 | Zone | Role |
 |------|------|
 | `left` | Left edge controls, usually sidebar button + active window/taskbar |
 | `centerLeft` | Left center pill, usually resources/media |
-| `center` | Pivot, normally workspaces |
+| `center` | Fixed Workspaces pivot |
 | `centerRight` | Right center pill, usually clock/util/battery |
 | `right` | Right edge controls, usually sidebar button/tray/timer/update/weather |
 
-Change it from Settings -> Bar -> Bar module layout. Do not hand-edit unless you enjoy typo archaeology.
+Left/Right uses `bar.verticalLayout`:
+
+| Zone | Role |
+|------|------|
+| `top` | Physical top-edge controls |
+| `centerTop` | Modules immediately above Workspaces |
+| `center` | Fixed Workspaces pivot at screen center |
+| `centerBottom` | Modules immediately below Workspaces |
+| `bottom` | Physical bottom-edge controls |
+
+Settings -> Bar -> Bar module layout edits the preset for the active orientation. Visibility still comes from the shared `bar.modules.*` switches.
 
 ## Waffle
 
@@ -119,11 +133,35 @@ Waffle loads about 22 panels through `ShellWafflePanels.qml`:
 | `wWidgets` | Desktop widgets panel |
 | `wBackground` | Desktop wallpaper layer |
 
-Some panels are shared between families (cheatsheet, region selector, on-screen keyboard, screen corners) and keep their `ii` prefix even when running under waffle.
+Some panels are shared between families (cheatsheet, region selector, on-screen keyboard) and keep their `ii` prefix even under Waffle or Abyss. Waffle retains its own supported presentation family.
+
+## Abyss
+
+**Perimeter Liquid Shell.** The screen edge is the shell; panels deform inward from one continuous liquid body. Abyss is not an iRiS Island implementation.
+
+`ShellAbyssPanels.qml` source-loads the Abyss composition. One `AbyssPerimeter` per output owns the final SDF silhouette, fill, specular rim and shadow. Bar zones, dock, sidebars, popups, notifications and OSD contribute geometry records rather than independent body painters. Palette-derived `AbyssStyle` tokens control typography, tension, material and bounded motion.
+
+| Panel ID | Presentation |
+|---|---|
+| `abyssPerimeter` | Four-edge physical body and transparent reservations |
+| `abyssBar` | Five zones embedded in any screen edge |
+| `abyssDock` | Retractable pinned/running apps attached to any edge |
+| `abyssSidebarLeft`, `abyssSidebarRight` | Output-local tools and control deformations |
+| `abyssPopup` | Media, clock, resources, weather, battery and audio extrusion from the bar edge |
+| `abyssNotificationPopup`, `abyssNotificationCenter` | Bounded notification swell and history |
+| `abyssOnScreenDisplay` | Passive, temporary edge indicator |
+| `abyssClipboard`, `abyssOverview` | Demand-loaded clipboard and launcher deformations |
+| `abyssBackground` | Shared per-output wallpaper implementation |
+
+Lock, polkit and session screens use shared implementations behind Abyss IDs. Screenshot/region selection, OSK, cheatsheet, dashboard, control panel, overlay, wallpaper selection, updates and recording indicators remain shared demand-loaded fallbacks. AI and local music reuse specialist content inside the native left body; tray menus reuse the shared tray control. Settings uses the existing standalone window with an **Abyss Style** section. These fallbacks preserve workflows while native geometry stays separately owned.
+
+Abyss uses shared bar orientation/layout/visibility, dock placement/pins and output-list settings. `abyss.*` contains the new material, perimeter, motion and quality settings. Performance uses a static palette surface; Balanced adds static-wallpaper glass; Quality permits optional refraction and a small settle. Animated wallpapers use palette fill. Glass samples the wallpaper, not application pixels.
+
+See [Abyss audit, checkpoints and acceptance evidence](ABYSS.md). Source/local tests do not establish hardware multi-output or desktop input acceptance.
 
 ## Switching families
 
-`Super+Shift+W` triggers a family transition with an animated overlay. The transition:
+`Super+Shift+W` cycles `abyss → waffle → abyss`. A specific family can be selected through the shared IPC router. Unknown persisted values fall back to `abyss`; `ii` is a compatibility alias. The transition:
 
 1. Overlay fades in
 2. Current family panels unload
@@ -131,11 +169,11 @@ Some panels are shared between families (cheatsheet, region selector, on-screen 
 4. New family panels load
 5. Overlay fades out
 
-The transition is handled by `FamilyTransitionOverlay.qml`. Config persists the choice, so the next startup uses whichever family you last selected.
+`FamilyTransitionOverlay.qml` handles Material/Waffle transitions; an incoming Abyss uses its short perimeter flood. Both are input-free and have finite completion/watchdog lifecycles. Direct config changes use the same root migration/cleanup boundary. Ordinary open surfaces close on a family change; lock and polkit state is preserved. Config persists the choice for the next startup. `knownPanels` and `visitedPanelFamilies` enable new defaults once and preserve deliberately disabled panels on later visits.
 
 ## Panel loading
 
-Both families use the same loading system. Each panel is a `PanelLoader`:
+All families use the same readiness and enabled-panel gates. Family entry points use URL loaders so inactive visual modules stay outside the parsed tree. Ordinary panels use `PanelLoader`:
 
 ```qml
 PanelLoader {
@@ -151,15 +189,15 @@ Three conditions must all be true for a panel to load:
 2. **Identifier in `enabledPanels`** (user hasn't disabled it)
 3. **`extraCondition`** passes (panel-specific logic)
 
-Panels are split into immediate (bar, background, OSD) and deferred (sidebars, overview, clipboard). Deferred panels load 500ms after the first frame to keep startup fast.
+Panels are split into critical and deferred composition. Sidebars, overview, clipboard and specialist content are demand-loaded after deferred readiness. Abyss content uses `AbyssBodyHost`: it paints nothing, loads only when requested, clips content to its live rectangle and releases input immediately on close while the contour retracts.
 
 ## For contributors
 
 If you're adding a new panel:
 
 1. Create the QML component in the appropriate module directory
-2. Add a `PanelLoader` entry in `ShellIiPanels.qml` or `ShellWafflePanels.qml`
-3. Add the identifier to `enabledPanels` default in `defaults/config.json`
+2. Add the appropriate loader/geometry record in that family's critical or deferred composition
+3. Add the identifier to the family policy/defaults and preserve disabled-panel migration behavior
 4. If it has settings, add them to the correct Settings UI
 
-If your change affects both families, update both. If your change touches a shared component (notifications, lock screen, polkit), test under both families.
+If your change touches shared behavior (notifications, lock screen, polkit), test all three families. Keep geometry and presentation at the family boundary rather than adding family branches throughout services.

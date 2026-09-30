@@ -69,10 +69,7 @@ WSettingsPage {
         const palette = Looks.useMaterial
             ? Translation.tr("Material colors")
             : Translation.tr("Native Waffle colors")
-        const chrome = Looks.glassActive
-            ? Translation.tr("glass chrome")
-            : Translation.tr("solid chrome")
-        return palette + " · " + chrome
+        return palette + " · " + Translation.tr("solid chrome")
     }
     readonly property string currentScheme: Config.options?.appearance?.palette?.type ?? "auto"
     readonly property string effectiveRecordingPath: {

@@ -11,8 +11,24 @@ editor="$root/modules/common/widgets/SidebarLayoutEditor.qml"
 defaults="$root/defaults/config.json"
 schema="$root/modules/common/Config.qml"
 registry="$root/modules/settings/SettingsPageRegistryData.qml"
+migration="$root/sdata/migrations/044-local-music-mpd-state-cleanup.sh"
+dispatch="$root/scripts/native-dispatch"
+mpdd="$root/native/inir-mpdd/src/main.rs"
+mpdd_cargo="$root/native/inir-mpdd/Cargo.toml"
 
-grep -Fq 'local_music_mpd.py' "$service" || fail 'LocalMusic must use MPD helper'
+grep -Fq 'libc.workspace = true' "$mpdd_cargo" \
+    || fail 'inir-mpdd must retain Linux parent-death lifecycle support'
+grep -Fq 'libc::PR_SET_PDEATHSIG' "$mpdd" \
+    || fail 'inir-mpdd daemon/subscriber must die with their owning shell'
+grep -Fq 'daemon_socket_in_use' "$mpdd" \
+    || fail 'inir-mpdd must not unlink a live daemon socket'
+grep -Fq 'io::ErrorKind::ConnectionRefused' "$mpdd" \
+    || fail 'inir-mpdd may reclaim only a demonstrably stale socket'
+grep -Fq 'readonly property string nativeDispatchPath: Directories.scriptsPath + "/native-dispatch"' "$service"     || fail 'LocalMusic must route MPD/local lyrics through native-dispatch'
+grep -Fq 'root.nativeDispatchPath, "mpd", "snapshot",' "$service"     || fail 'LocalMusic snapshot must route through native-dispatch'
+grep -Fq 'root.nativeDispatchPath, "mpd-daemon",' "$service"     || fail 'Rust MPD persistent daemon must remain selector-routed'
+grep -Fq 'command: [root.nativeDispatchPath, "mpd-subscribe"]' "$service"     || fail 'Rust MPD idle subscription must remain selector-routed'
+grep -Fq 'scripts/local_music_mpd.py' "$dispatch"     || fail 'native-dispatch must retain the Python MPD fallback'
 grep -Fq 'readonly property var mprisPlayer: MprisController.mpdPlayer' "$service" || fail 'LocalMusic must use MPD MPRIS player'
 grep -Fq 'MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)' "$service" || fail 'LocalMusic must request MPRIS for its configured MPD endpoint'
 grep -Fq 'property MprisPlayer mpdPlayer: null' "$mpris" || fail 'MprisController must expose MPD player'
@@ -21,11 +37,33 @@ grep -Fq '_mpdMprisCustomProc.command = root._mpdCustomBridgeCommand()' "$mpris"
 grep -Fq 'command: ["/usr/bin/systemctl", "--user", "start", "mpd-mpris.service"]' "$mpris" || fail 'default localhost MPD must retain distro mpd-mpris service path'
 grep -Fq 'LocalMusic.updateDatabase()' "$view" || fail 'Music UI must expose MPD update'
 grep -Fq 'PlayerControl {' "$view" || fail 'Music now-playing UI must reuse Media popup PlayerControl'
-grep -Fq 'player: LocalMusic.mprisPlayer' "$view" || fail 'Music PlayerControl must bind the MPD MPRIS session'
+grep -Fq 'id: nowPlayingPanel' "$view" || fail 'Music media must live above its section tabs'
+grep -Fq 'id: classicPlaybackOptions' "$view" || fail 'Music must retain the compact transport-adjacent volume row'
+grep -Fq 'Layout.preferredWidth: 100' "$view" || fail 'Music volume slider width drifted'
+grep -Fq 'configuration: StyledSlider.Configuration.XS' "$view" || fail 'Music volume slider must keep the thin XS track'
+grep -Fq 'playbackAdapter: localMusicPlayerAdapter' "$view" || fail 'Music PlayerControl must retain direct MPD fallback state/actions'
+if grep -Fq 'symbol: LocalMusic.shuffleMode ? "shuffle_on" : "shuffle"' "$view"; then
+    fail 'Music must not duplicate Shuffle below PlayerControl'
+fi
+if grep -Fq 'symbol: LocalMusic.repeatMode === 1' "$view"; then
+    fail 'Music must not duplicate Repeat below PlayerControl'
+fi
+grep -Fq 'player: LocalMusic.mprisPlayer' "$view" || fail 'Music PlayerControl must bind the MPD MPRIS session when available'
+grep -Fq 'model: LocalMusic.playlists' "$view" || fail 'Playlists tab must expose saved MPD playlists only'
+grep -Fq 'property var selectedTrackKeys: []' "$view" || fail 'Songs must expose desktop bulk selection state'
+grep -Fq 'property var selectedFolderPaths: []' "$view" || fail 'Songs must expose folder bulk selection state'
+grep -Fq 'function selectFolder(folder, entryIndex, modifiers): void' "$view" || fail 'Songs folders must support bulk selection semantics'
+grep -Fq 'root.isFolderSelected(modelData.path)' "$view" || fail 'Folder delegates must render their selected state'
+grep -Fq 'Qt.ControlModifier' "$view" || fail 'Songs must support Ctrl multi-selection'
+grep -Fq 'Qt.ShiftModifier' "$view" || fail 'Songs must support Shift range selection'
+grep -Fq 'function createPlaylist(name: string, tracks): void' "$service" || fail 'LocalMusic must support creating saved MPD playlists'
+grep -Fq 'function addTracksToPlaylist(name: string, tracks): void' "$service" || fail 'LocalMusic must support adding tracks to MPD playlists'
+grep -Fq 'client.command("playlistadd", playlist_name, uri)' "$root/scripts/local_music_mpd.py" || fail 'MPD helper must mutate saved playlists with playlistadd'
 grep -Fq 'Layout.fillHeight: false' "$view" || fail 'Music search must not consume the song viewport'
 grep -Fq 'ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }' "$view" || fail 'Music lists must expose scrolling'
 grep -Fq 'Translation.tr("Lyrics")' "$view" || fail 'Music must expose the local Lyrics tab'
-grep -Fq 'local_music_lyrics.py' "$service" || fail 'LocalMusic must load local sidecar lyrics'
+grep -Fq '_lyricsProc.command = [root.nativeDispatchPath, "lyrics", path]' "$service"     || fail 'LocalMusic local lyrics must route through native-dispatch'
+grep -Fq 'scripts/local_music_lyrics.py' "$dispatch"     || fail 'native-dispatch must retain the Python local-lyrics fallback'
 grep -Fq 'function removeQueueTrack(index: int): void' "$service" || fail 'Music Queue must expose per-track MPD removal'
 grep -Fq 'function clearQueue(): void' "$service" || fail 'Music Queue must expose MPD clear'
 grep -Fq '"deleteid",' "$root/scripts/local_music_mpd.py" || fail 'MPD helper must allow stable queue-id deletion'
@@ -33,6 +71,8 @@ grep -Fq '"clear",' "$root/scripts/local_music_mpd.py" || fail 'MPD helper must 
 grep -Fq 'removable: true' "$view" || fail 'Queue rows must expose their remove action'
 grep -Fq 'onRemoveRequested: LocalMusic.removeQueueTrack(index)' "$view" || fail 'Queue remove UI must target MPD queue state'
 grep -Fq 'onClicked: LocalMusic.clearQueue()' "$view" || fail 'Queue must expose a Clear action'
+grep -Fq 'id: clearQueueContent' "$view" || fail 'Queue Clear must keep a combined icon/text content group'
+grep -Fq 'anchors.centerIn: parent' "$view" || fail 'Queue Clear icon/text group must be centered'
 grep -Fq 'implicitHeight: 50' "$view" || fail 'Song/queue rows must retain compact desktop-player density'
 grep -Fq 'def binary(self, name: str, uri: str)' "$root/scripts/local_music_mpd.py" || fail 'MPD helper must read binary artwork without a private player backend'
 grep -Fq 'for command in ("albumart", "readpicture")' "$root/scripts/local_music_mpd.py" || fail 'Music covers must prefer MPD albumart and fall back to embedded readpicture'
@@ -47,11 +87,22 @@ fi
     || fail 'retired private mpv IPC helper must stay removed'
 [[ ! -e "$root/scripts/local_music_scan.py" ]] \
     || fail 'retired filesystem scanner must stay removed; MPD owns the library database'
-grep -Fq '"wallhaven", "news", "music", "tools", "software"' "$schema" \
+grep -Fq '"news", "music", "tools"' "$schema" \
     || fail 'canonical sidebar schema order must use music instead of ytmusic'
 grep -Fq '"music"' "$defaults" \
     || fail 'default sidebar order must contain the canonical music id'
-grep -Fq 'leftDefaultOrder: ["widgets", "ai", "translator", "anime", "animeSchedule", "wallhaven", "news", "music", "tools", "software"]' "$editor" \
+for retired_state in normalizeVolume shuffleMode repeatMode volume; do
+    if sed -n '/property JsonObject music: JsonObject {/,/^                }/p' "$schema" \
+        | grep -Eq "property [^ ]+ ${retired_state}:"; then
+        fail "local Music schema still exposes retired mpv state: $retired_state"
+    fi
+    if jq -e --arg key "$retired_state" '.sidebar.music | has($key)' "$defaults" >/dev/null; then
+        fail "local Music defaults still expose retired mpv state: $retired_state"
+    fi
+    grep -Fq ".sidebar.music.$retired_state" "$migration" \
+        || fail "migration 044 does not remove retired local Music state: $retired_state"
+done
+grep -Fq 'leftDefaultOrder: ["ai", "translator", "anime", "animeSchedule", "news", "music", "tools"]' "$editor" \
     || fail 'Sidebar layout editor must arrange the canonical Music tab'
 grep -Fq 'id === "ytmusic" ? "music" : id' "$editor" \
     || fail 'Sidebar layout editor must normalize legacy ytmusic order ids'

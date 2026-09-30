@@ -5,14 +5,15 @@ This document records the stabilization contracts that should be checked during 
 ## Connected bar popouts
 
 - Existing bar popouts continue through `modules/bar/StyledPopup.qml`; no parallel popup framework is introduced.
-- The outer shell composes `ConnectedSurfaceGeometry`, `ConnectedSurfaceFrame`, `ConnectedSurfaceConnector`, and `ConnectedSurfaceMask` from `modules/common/perimeter/`.
+- ii `StyledPopup` composes `ConnectedSurfaceGeometry`, `ConnectedSurfaceRevealClip`, `ConnectedSurfaceIrisFrame`, `ConnectedSurfaceContentHost`, and `ConnectedSurfaceBodyMask` from `modules/common/perimeter/`. Waffle retains its legacy shared-frame path.
 - Attachment works from top, bottom, left, and right bars.
-- The visible surface is not a detached rounded card with a thin stem. It starts at roughly the source control width, flares through curved Bézier shoulders, and grows into the popup body as one bar-owned surface.
+- The visible ii popup is not a detached rounded card or Bézier shoulder patch. Exact iRiS SDF smooth-union math treats popup and Bar/Screen Edge owner records as one silhouette while split-composition scissoring prevents Overlay from repainting Top-layer owners.
 - The popup body uses the active Classic Bar surface family rather than the old generic popup-card material.
-- Opening morphs outward from the real rendered anchor; closing reverses the same geometry and retracts into the bar before the loader is released.
-- Hover popouts stay resident during the short retract tail so the pointer can cross the connected shoulder from the bar into the body without collapsing the surface.
-- Body and connector overlap by a device-pixel-aware amount so fractional scale cannot expose a transparent seam.
-- The connector input mask follows the flare with a tighter union of rounded strips instead of making its transparent bounding rectangle interactive.
+- Opening and closing are pure attachment-axis slides under the fixed owner seam; no scale/fade/morph stage is introduced before the loader is released.
+- Hover popouts stay resident during the short retract tail so the pointer can cross the Bar↔popup seam into the body without collapsing the surface.
+- The iRiS body welds under joined owners by `irisWeldDepth = 3`; field/shadow/input scissoring still begins at the actual owner boundary, so the weld cannot repaint or steal input from Bar/Screen Edge pixels.
+- Bar popup shadows use the same public Screen Edge shadow controls and Material `m3shadow` ink as the physical frame; owner-side clipping still suppresses shadow across joined Bar/Screen Edge pixels.
+- ii popup input is body-only through `ConnectedSurfaceBodyMask`; shader fillets and transparent full-output regions do not steal pointer input. The connector-strip mask is no longer part of the ii path.
 - Transparent regions outside the visible popup shape remain click-through.
 - Focused connected popouts preserve Niri layer-shell focus and the existing Hyprland compositor focus grab.
 - Media volume HUD, expanded bar Media controls, tray overflow, taskbar window previews, and the existing battery/resources/weather/clock/timer/update popouts all use the shared connected path. Context menus remain context menus rather than being forced into this presentation contract.
@@ -30,6 +31,9 @@ This document records the stabilization contracts that should be checked during 
 ## Dock
 
 - Panel is the only supported user-facing Dock style.
+- Dock uses `ConnectedSurfaceIrisEdgeSurface` for top/bottom/left/right attachment, so the visible body stops at the real Screen Edge inner boundary while the SDF weld makes it one connected block with Screen Edge.
+- Dock, Sidebar and Dashboard use the same `appearance.screenEdge.physicalShadow` size/opacity and Material `m3shadow` ink as the physical Screen Edge.
+- Dock reveal/retract remains slide-only through `SurfaceMotion`; the iRiS body follows that translation rather than introducing a second animation stage.
 - Legacy persisted values such as Pill, macOS, Island, or M3 normalize to `panel` during startup.
 - The settings UI must not expose the legacy style matrix again.
 - Waffle remains a separate panel family and is not a value of `dock.style`.
@@ -59,9 +63,9 @@ For the final local pass, verify at minimum:
 1. open battery, resources, weather, clock/timer/update and tray overflow from a top bar and confirm each outer shell visually grows from the source control rather than appearing as a separate card;
 2. open the Media wheel-volume HUD, expanded bar Media controls, and taskbar window preview and confirm they use the same connected shell rather than their previous detached `PopupWindow` presentation;
 3. repeat representative popouts with bottom, left, and right bar placement and confirm the growth direction is inward from the owning edge;
-4. close a popout and confirm the body/shoulders retract back into the source edge rather than disappearing immediately;
-5. for a hover popout, move the pointer from the bar control across the shoulder into the popup body and confirm it stays open;
-6. at fractional scaling, inspect the source/shoulder/body joins for a transparent one-pixel seam;
+4. close a popout and confirm the body/iRiS field retract back into the source edge rather than disappearing immediately;
+5. for a hover popout, move the pointer from the bar control across the connected seam into the popup body and confirm it stays open;
+6. at fractional scaling, inspect the source/body join for a transparent one-pixel seam, residual wedge, or closing sliver;
 7. verify clicks in transparent areas outside the visible popup shape are not captured by the full-output host window;
 8. verify expanded Media still receives keyboard focus/Escape correctly on the compositor in use;
 9. restart with a legacy non-zero `bar.cornerStyle` and verify it normalizes to `0`, the Bar remains Hug, and Settings does not offer Float/Rectangle/Card;
@@ -70,3 +74,12 @@ For the final local pass, verify at minimum:
 12. restart with a legacy `language.ui` value and verify the shell remains English and normalizes it to `en_US`.
 
 The retired full `iiPerimeter` composition must remain absent. Local acceptance should validate the supported connected-surface primitives and feature-owned bridges instead of treating the old runtime as an alternate path.
+
+
+## Legacy corner retirement
+
+`ConnectedSurfaceJoinFlares`, `PerimeterCornerShadow`, common `RoundCorner`
+and fake screen-rounding paint are retired. Sidebar/Dashboard/Settings use the
+shared iRiS edge adapter where curved contact is required; remaining
+non-cutover surfaces use direct square seams. Do not restore a standalone
+round-wedge painter.

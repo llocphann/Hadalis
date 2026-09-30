@@ -15,13 +15,14 @@ RowLayout {
     property string text: ""
     property string icon
     property string value: "00:00" // Format: "HH:mm"
+    property bool compact: false
     property bool hovered: timeRow.hovered
 
     signal timeChanged(string newTime)
 
-    spacing: 10
-    Layout.leftMargin: 8
-    Layout.rightMargin: 8
+    spacing: root.compact ? 4 : 10
+    Layout.leftMargin: root.compact ? 4 : 8
+    Layout.rightMargin: root.compact ? 4 : 8
 
     // Parse time string to components
     property int _hour: {
@@ -44,11 +45,12 @@ RowLayout {
     }
 
     RowLayout {
-        spacing: 10
+        spacing: root.compact ? 4 : 10
         Layout.fillWidth: true
 
         OptionalMaterialSymbol {
             icon: root.icon
+            iconSize: root.compact ? 16 : Appearance.font.pixelSize.larger
             opacity: root.enabled ? 1 : 0.4
         }
 
@@ -57,7 +59,10 @@ RowLayout {
             text: root.text
             color: Appearance.colors.colOnSurface
             opacity: root.enabled ? 1 : 0.4
-            elide: Text.ElideNone
+            elide: root.compact ? Text.ElideRight : Text.ElideNone
+            font.pixelSize: root.compact
+                ? Appearance.font.pixelSize.small
+                : Appearance.font.pixelSize.normal
         }
     }
 
@@ -67,8 +72,9 @@ RowLayout {
         property bool hovered: timeMouseArea.containsMouse
         property bool editingHours: true
 
-        Layout.preferredWidth: timeLabelRow.implicitWidth + 24
-        Layout.preferredHeight: 35
+        Layout.preferredWidth: timeLabelRow.implicitWidth
+            + (root.compact ? 16 : 24)
+        Layout.preferredHeight: root.compact ? 30 : 35
         activeFocusOnTab: root.enabled
         radius: Appearance.rounding.small
         color: hovered ? Appearance.colors.colLayer2Hover : Appearance.colors.colLayer2

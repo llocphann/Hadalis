@@ -18,10 +18,12 @@ Item {
     property bool loading: false
     property bool error: false
     property bool _cacheLoaded: false
+    property real _cacheTimestamp: 0
 
     readonly property var coins: Config.options?.sidebar?.widgets?.crypto_settings?.coins ?? []
-    readonly property int refreshInterval: (Config.options?.sidebar?.widgets?.crypto_settings?.refreshInterval ?? 60) * 1000
+    readonly property int refreshInterval: (Config.options?.sidebar?.widgets?.crypto_settings?.refreshInterval ?? 300) * 1000
     readonly property string cachePath: FileUtils.trimFileProtocol(`${Directories.state}/user/crypto_cache.json`)
+    readonly property bool presentationActive: GlobalStates.sidebarLeftOpen && root.visible
 
     // --- File-based cache ---
     FileView {
@@ -38,6 +40,7 @@ Item {
                 if (cached.sparklineData && Object.keys(cached.sparklineData).length > 0) {
                     root.sparklineData = cached.sparklineData
                 }
+                root._cacheTimestamp = Number(cached.timestamp) || 0
             } catch (e) {
                 // Corrupted cache, ignore
             }
@@ -52,49 +55,74 @@ Item {
 
     function saveCache() {
         try {
+            const timestamp = Date.now()
+            root._cacheTimestamp = timestamp
             cacheFile.setText(JSON.stringify({
                 cryptoData: root.cryptoData,
                 sparklineData: root.sparklineData,
-                timestamp: Date.now()
+                timestamp: timestamp
             }))
         } catch (e) {
             // Non-critical, ignore write failures
         }
     }
 
+    function _hasMissingCoinData(): bool {
+        for (const coin of root.coins) {
+            if (!(coin in root.cryptoData))
+                return true
+        }
+        return false
+    }
+
+    function _cacheNeedsRefresh(): bool {
+        if (root.coins.length === 0)
+            return false
+        if (root._hasMissingCoinData())
+            return true
+        if (root._cacheTimestamp <= 0)
+            return true
+        return (Date.now() - root._cacheTimestamp) >= root.refreshInterval
+    }
+
+    function _scheduleRefreshIfNeeded(): void {
+        if (!root.presentationActive || !root._cacheLoaded || root.coins.length === 0 || !Config.ready)
+            return
+        if (!root._cacheNeedsRefresh() || priceProcess.running)
+            return
+
+        const hasData = Object.keys(root.cryptoData).length > 0
+        if (hasData && !root._hasMissingCoinData())
+            refreshDelayTimer.restart()
+        else
+            Qt.callLater(() => root.fetchPrices())
+    }
+
     Timer {
         id: fetchTimer
         interval: root.refreshInterval
-        running: root.coins.length > 0 && Config.ready && GlobalStates.sidebarLeftOpen
+        running: root.presentationActive && root.coins.length > 0 && Config.ready
         repeat: true
-        onTriggered: root.fetchPrices()
-    }
-
-    // Fetch only after cache has been attempted, and only if data is stale or missing
-    Component.onCompleted: {
-        // cacheFile.onLoaded / onLoadFailed will set _cacheLoaded
+        triggeredOnStart: true
+        onTriggered: root._scheduleRefreshIfNeeded()
     }
 
     onCoinsChanged: {
-        if (root._cacheLoaded && root.coins.length > 0) {
-            // Check if we have data for all configured coins
-            const hasMissing = root.coins.some(c => !(c in root.cryptoData))
-            if (hasMissing) {
-                Qt.callLater(() => root.fetchPrices())
-            }
-        }
+        if (root._cacheLoaded)
+            root._scheduleRefreshIfNeeded()
     }
 
     on_CacheLoadedChanged: {
-        if (root._cacheLoaded && root.coins.length > 0) {
-            // If cache had no data or is stale (>5 min), fetch fresh
-            const hasData = Object.keys(root.cryptoData).length > 0
-            if (!hasData) {
-                Qt.callLater(() => root.fetchPrices())
-            } else {
-                // Still schedule a background refresh for freshness
-                refreshDelayTimer.restart()
-            }
+        if (root._cacheLoaded)
+            root._scheduleRefreshIfNeeded()
+    }
+
+    onPresentationActiveChanged: {
+        if (root.presentationActive) {
+            root._scheduleRefreshIfNeeded()
+        } else {
+            refreshDelayTimer.stop()
+            sparklineTimer.stop()
         }
     }
 
@@ -102,15 +130,17 @@ Item {
         id: refreshDelayTimer
         interval: 2000
         onTriggered: {
-            if (root.coins.length > 0) root.fetchPrices()
+            if (root.presentationActive && root._cacheNeedsRefresh())
+                root.fetchPrices()
         }
     }
 
     function fetchPrices() {
-        if (coins.length === 0) return
+        if (!root.presentationActive || root.coins.length === 0 || priceProcess.running)
+            return
         loading = true
         error = false
-        priceProcess.url = "https://api.coingecko.com/api/v3/simple/price?ids=" + coins.join(",") + "&vs_currencies=usd&include_24hr_change=true"
+        priceProcess.url = "https://api.coingecko.com/api/v3/simple/price?ids=" + root.coins.join(",") + "&vs_currencies=usd&include_24hr_change=true"
         priceProcess.running = true
     }
 
@@ -129,8 +159,8 @@ Item {
                     root.cryptoData = JSON.parse(text)
                     root.error = false
                     root.saveCache()
-                    // Start sparkline fetch
-                    root.fetchSparklines()
+                    if (root.presentationActive)
+                        root.fetchSparklines()
                 } catch (e) {
                     root.error = true
                 }
@@ -140,25 +170,28 @@ Item {
 
     property int _sparklineIdx: 0
     function fetchSparklines() {
-        _sparklineIdx = 0
-        sparklineTimer.start()
+        if (!root.presentationActive || root.coins.length === 0 || sparklineProcess.running)
+            return
+        root._sparklineIdx = 0
+        sparklineTimer.restart()
+    }
+
+    function _startNextSparkline(): void {
+        if (!root.presentationActive || sparklineProcess.running || root._sparklineIdx >= root.coins.length)
+            return
+
+        const id = root.coins[root._sparklineIdx]
+        root._sparklineIdx++
+        sparklineProcess.coinId = id
+        sparklineProcess.url = "https://api.coingecko.com/api/v3/coins/" + id + "/market_chart?vs_currency=usd&days=1"
+        sparklineProcess.running = true
     }
 
     Timer {
         id: sparklineTimer
         interval: 1000
-        repeat: true
-        onTriggered: {
-            if (root._sparklineIdx < root.coins.length) {
-                const id = root.coins[root._sparklineIdx]
-                sparklineProcess.coinId = id
-                sparklineProcess.url = "https://api.coingecko.com/api/v3/coins/" + id + "/market_chart?vs_currency=usd&days=1"
-                sparklineProcess.running = true
-                root._sparklineIdx++
-            } else {
-                stop()
-            }
-        }
+        repeat: false
+        onTriggered: root._startNextSparkline()
     }
 
     Process {
@@ -188,6 +221,10 @@ Item {
                     }
                 } catch (e) {}
             }
+        }
+        onExited: {
+            if (root.presentationActive && root._sparklineIdx < root.coins.length)
+                sparklineTimer.restart()
         }
     }
 

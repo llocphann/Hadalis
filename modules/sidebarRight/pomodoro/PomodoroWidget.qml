@@ -9,12 +9,35 @@ Item {
     id: root
     property bool compactMode: false
     property bool centerMode: true
+    // Timer-to-Bar pin keeps its original meaning outside Quick Notes.
+    property bool showPinButton: true
     property int currentTab: Persistent.states?.timer?.tab ?? 0
+    // Materialize only the visible timer face on first entry. Once a face has
+    // been visited, keep it resident for this widget instance so transient UI
+    // state (for example Pomodoro settings) survives mode switches.
+    property bool pomodoroMaterialized: false
+    property bool countdownMaterialized: false
+    property bool stopwatchMaterialized: false
+
+    function ensureCurrentPage(): void {
+        if (root.currentTab === 0) root.pomodoroMaterialized = true
+        else if (root.currentTab === 1) root.countdownMaterialized = true
+        else if (root.currentTab === 2) root.stopwatchMaterialized = true
+    }
+
     property var tabButtonList: [
         {"name": Translation.tr("Pomodoro"), "icon": "search_activity"},
         {"name": Translation.tr("Timer"), "icon": "hourglass_empty"},
         {"name": Translation.tr("Stopwatch"), "icon": "timer"}
     ]
+
+    onCurrentTabChanged: {
+        root.ensureCurrentPage()
+        if (Persistent?.states?.timer)
+            Persistent.states.timer.tab = root.currentTab
+    }
+
+    Component.onCompleted: root.ensureCurrentPage()
 
     // Style tokens
     readonly property color colText: Appearance.angelEverywhere ? Appearance.angel.colText
@@ -59,45 +82,38 @@ Item {
         // Tab bar row with pin button
         Item {
             Layout.fillWidth: true
-            implicitHeight: tabBar.height
+            implicitHeight: tabBar.implicitHeight
 
-            SecondaryTabBar {
+            PillTabBar {
                 id: tabBar
-                anchors.left: parent.left
-                anchors.right: pinButton.left
-                anchors.rightMargin: 6
-                currentIndex: currentTab
-                onCurrentIndexChanged: {
-                    currentTab = currentIndex
-                    if (Persistent?.states?.timer) {
-                        Persistent.states.timer.tab = currentIndex
-                    }
-                }
+                anchors.horizontalCenter: parent.horizontalCenter
+                // Compact corner mode gets enough width for Pomodoro/Timer/
+                // Stopwatch without changing the popup's outer dimensions.
+                width: Math.max(root.compactMode ? 210 : 150, Math.min(
+                    root.compactMode ? 296 : 260,
+                    parent.width - (pinButton.width + 6) * 2))
+                pillHeight: root.compactMode ? 28 : 30
+                currentIndex: root.currentTab
+                tabs: root.tabButtonList.map(item => ({
+                    icon: item.icon, label: item.name
+                }))
+                onTabSelected: index => root.currentTab = index
 
-                background: Item {
-                    WheelHandler {
-                        onWheel: (event) => {
-                            if (event.angleDelta.y < 0)
-                                tabBar.currentIndex = Math.min(tabBar.currentIndex + 1, root.tabButtonList.length - 1)
-                            else if (event.angleDelta.y > 0)
-                                tabBar.currentIndex = Math.max(tabBar.currentIndex - 1, 0)
-                        }
-                        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                    }
-                }
-
-                Repeater {
-                    model: root.tabButtonList
-                    delegate: SecondaryTabButton {
-                        selected: (index == currentTab)
-                        buttonText: modelData.name
-                        buttonIcon: modelData.icon
+                WheelHandler {
+                    acceptedDevices:
+                        PointerDevice.Mouse | PointerDevice.TouchPad
+                    onWheel: event => {
+                        const step = event.angleDelta.y < 0 ? 1 : -1
+                        root.currentTab = Math.max(0, Math.min(
+                            root.tabButtonList.length - 1,
+                            root.currentTab + step))
                     }
                 }
             }
 
             IconToolbarButton {
                 id: pinButton
+                visible: root.showPinButton
                 anchors.right: parent.right
                 anchors.verticalCenter: tabBar.verticalCenter
                 text: "push_pin"
@@ -114,75 +130,33 @@ Item {
             }
         }
 
-        Item {
-            id: tabIndicator
-            Layout.fillWidth: true
-            height: 3
-            property bool enableIndicatorAnimation: false
-            Connections {
-                target: root
-                function onCurrentTabChanged() {
-                    tabIndicator.enableIndicatorAnimation = true
-                }
-            }
-
-            Rectangle {
-                id: indicator
-                property int tabCount: root.tabButtonList.length
-                property real fullTabSize: tabBar.width / tabCount
-                property real targetWidth: tabBar.contentItem?.children[0]?.children[tabBar.currentIndex]?.tabContentWidth ?? 50
-
-                implicitWidth: targetWidth
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                x: tabBar.currentIndex * fullTabSize + (fullTabSize - targetWidth) / 2
-                color: Appearance.colors.colPrimary
-                radius: height / 2
-
-                Behavior on x {
-                    enabled: tabIndicator.enableIndicatorAnimation && Appearance.animationsEnabled
-                    animation: NumberAnimation { duration: Appearance.animation.elementMove.duration; easing.type: Appearance.animation.elementMove.type; easing.bezierCurve: Appearance.animation.elementMove.bezierCurve }
-                }
-                Behavior on implicitWidth {
-                    enabled: tabIndicator.enableIndicatorAnimation && Appearance.animationsEnabled
-                    animation: NumberAnimation { duration: Appearance.animation.elementMove.duration; easing.type: Appearance.animation.elementMove.type; easing.bezierCurve: Appearance.animation.elementMove.bezierCurve }
-                }
-            }
-        }
-
-        Rectangle { // No full-width grey track — only the colored active indicator reads.
-            Layout.fillWidth: true
-            height: 1
-            color: "transparent"
-        }
-
-        SwipeView {
-            id: swipeView
+        StackLayout {
             Layout.topMargin: 6
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 6
             clip: true
-            currentIndex: currentTab
-            onCurrentIndexChanged: {
-                tabIndicator.enableIndicatorAnimation = true
-                currentTab = currentIndex
-                if (Persistent?.states?.timer) {
-                    Persistent.states.timer.tab = currentIndex
+            currentIndex: root.currentTab
+
+            Loader {
+                active: root.pomodoroMaterialized
+                sourceComponent: PomodoroTimer {
+                    compactMode: root.compactMode
+                    centerMode: root.centerMode
                 }
             }
-
-            PomodoroTimer {
-                compactMode: root.compactMode
-                centerMode: root.centerMode
+            Loader {
+                active: root.countdownMaterialized
+                sourceComponent: CountdownTimer {
+                    compactMode: root.compactMode
+                    centerMode: root.centerMode
+                }
             }
-            CountdownTimer {
-                compactMode: root.compactMode
-                centerMode: root.centerMode
-            }
-            Stopwatch {
-                compactMode: root.compactMode
-                centerMode: root.centerMode
+            Loader {
+                active: root.stopwatchMaterialized
+                sourceComponent: Stopwatch {
+                    compactMode: root.compactMode
+                    centerMode: root.centerMode
+                }
             }
         }
     }

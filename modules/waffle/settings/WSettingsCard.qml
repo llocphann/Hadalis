@@ -29,21 +29,11 @@ Item {
         z: 1
         anchors.fill: parent
         radius: root.cardRadius
-        color: Looks.cookieEverywhere ? "transparent" : Looks.colors.bg1Base
+        color: Looks.colors.bg1Base
         border.width: 0
-
-        Loader {
-            anchors.fill: parent
-            active: Looks.cookieEverywhere && root.visible
-            sourceComponent: CookieFace {
-                role: "card"
-                color: Looks.colors.bg1Base
-            }
-        }
 
         Rectangle {
             anchors.fill: parent
-            visible: !Looks.cookieEverywhere
             radius: parent.radius
             color: root.cardWash
             border.width: 1
@@ -105,26 +95,15 @@ Item {
                     implicitWidth: Looks.dp(28)
                     implicitHeight: Looks.dp(28)
                     radius: Looks.settings.radiusLarge
-                    color: Looks.cookieEverywhere
-                        ? "transparent" : Qt.alpha(Looks.colors.accent, 0.16)
+                    color: Qt.alpha(Looks.colors.accent, 0.16)
                     Layout.alignment: root.description !== ""
                         ? Qt.AlignTop : Qt.AlignVCenter
-
-                    CookieFace {
-                        anchors.fill: parent
-                        visible: Looks.cookieEverywhere
-                        role: "badge"
-                        selected: root.expanded
-                        color: root.expanded ? Looks.colors.accent : Looks.colors.bg2
-                    }
 
                     FluentIcon {
                         anchors.centerIn: parent
                         icon: root.icon
                         implicitSize: Looks.dp(15)
-                        color: Looks.cookieEverywhere
-                            ? (root.expanded ? Looks.colors.accentFg : Looks.colors.fg)
-                            : Looks.colors.accent
+                        color: Looks.colors.accent
                     }
                 }
 

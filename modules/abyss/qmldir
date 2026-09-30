@@ -1,0 +1,13 @@
+module qs.modules.abyss
+AbyssPerimeter 1.0 AbyssPerimeter.qml
+AbyssBodyHost 1.0 AbyssBodyHost.qml
+AbyssOsdController 1.0 AbyssOsdController.qml
+AbyssSurfaceController 1.0 AbyssSurfaceController.qml
+AbyssParticipant 1.0 AbyssParticipant.qml
+AbyssWaveController 1.0 AbyssWaveController.qml
+AbyssEdgeEditor 1.0 AbyssEdgeEditor.qml
+AbyssSpectrumController 1.0 AbyssSpectrumController.qml
+AbyssSidebarReveal 1.0 AbyssSidebarReveal.qml
+AbyssCorners 1.0 AbyssCorners.qml
+AbyssGenericPopupPresenter 1.0 AbyssGenericPopupPresenter.qml
+AbyssPyramidCoordinator 1.0 AbyssPyramidCoordinator.qml

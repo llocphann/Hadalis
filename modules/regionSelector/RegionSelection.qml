@@ -2,11 +2,13 @@ pragma ComponentBehavior: Bound
 import qs
 import qs.modules.common
 import qs.modules.common.functions
+import qs.modules.common.perimeter
 import qs.modules.common.widgets
 import qs.modules.waffle.regionSelector as WaffleRegion
 import qs.services
 import QtQuick
 import QtQuick.Controls
+import Qt5Compat.GraphicalEffects as GE
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -33,6 +35,40 @@ PanelWindow {
     signal dismiss()
     
     readonly property bool useNiri: CompositorService.isNiri
+    readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+    // Screenshot selection stays full-output for hit testing/crop coordinates,
+    // but its dim/guide visuals must not repaint the persistent Bar/Screen Edge.
+    readonly property bool screenshotIiBarActive:
+        (Config.options?.panelFamily ?? "ii") === "ii"
+        && GlobalStates.barOpen
+        && !(Config.options?.bar?.autoHide?.enable ?? false)
+        && (Config.options?.enabledPanels ?? []).includes(
+            (Config.options?.bar?.vertical ?? false) ? "iiVerticalBar" : "iiBar")
+    readonly property string screenshotIiBarEdge:
+        (Config.options?.bar?.vertical ?? false)
+            ? ((Config.options?.bar?.bottom ?? false) ? "right" : "left")
+            : ((Config.options?.bar?.bottom ?? false) ? "bottom" : "top")
+    readonly property real screenshotTopOwnerInset:
+        screenshotIiBarActive && screenshotIiBarEdge === "top"
+            ? Appearance.sizes.barHeight : screenEdgeThickness
+    readonly property real screenshotBottomOwnerInset:
+        screenshotIiBarActive && screenshotIiBarEdge === "bottom"
+            ? Appearance.sizes.barHeight : screenEdgeThickness
+    readonly property real screenshotLeftOwnerInset:
+        screenshotIiBarActive && screenshotIiBarEdge === "left"
+            ? Appearance.sizes.verticalBarWidth : screenEdgeThickness
+    readonly property real screenshotRightOwnerInset:
+        screenshotIiBarActive && screenshotIiBarEdge === "right"
+            ? Appearance.sizes.verticalBarWidth : screenEdgeThickness
+    readonly property bool screenEdgeShadowEnabled:
+        Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true
+    readonly property real screenEdgeShadowSize: Math.max(0, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15)))
+    readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(1.0,
+        Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70)))
+    readonly property color screenEdgeShadowColor:
+        Qt.alpha(Appearance.m3colors.m3shadow, root.screenEdgeShadowOpacity)
 
     property string screenshotDir: Directories.screenshotTemp
     readonly property string screenshotNameFormat: Config.options?.regionSelector?.screenshotNameFormat || "ss-%Y%m%d-%H%M%S"
@@ -500,30 +536,68 @@ PanelWindow {
                 root.points.push({ x: mouse.x, y: mouse.y });
             }
             
-            Loader {
+            // Clip only the dim/selection-guide rendering to the workspace
+            // interior. The MouseArea and snip coordinates remain full-output,
+            // so Bar/Screen Edge pixels stay visually unchanged without
+            // changing what the user can select or capture.
+            Item {
+                id: selectionVisualViewport
                 z: 2
-                anchors.fill: parent
-                active: root.selectionMode === RegionSelection.SelectionMode.RectCorners
-                sourceComponent: RectCornersSelectionDetails {
-                    regionX: root.regionX
-                    regionY: root.regionY
-                    regionWidth: root.regionWidth
-                    regionHeight: root.regionHeight
-                    mouseX: mouseArea.mouseX
-                    mouseY: mouseArea.mouseY
-                    color: root.selectionBorderColor
-                    overlayColor: root.overlayColor
+                x: root.screenshotLeftOwnerInset
+                y: root.screenshotTopOwnerInset
+                width: Math.max(0, mouseArea.width
+                    - root.screenshotLeftOwnerInset
+                    - root.screenshotRightOwnerInset)
+                height: Math.max(0, mouseArea.height
+                    - root.screenshotTopOwnerInset
+                    - root.screenshotBottomOwnerInset)
+                clip: true
+                // Match the exact rounded inner workspace hole painted by
+                // ScreenEdges.qml. A rectangular clip protects the straight
+                // edge bands but still lets the screenshot scrim cover the four
+                // rounded frame corners because RegionSelection lives on Overlay.
+                layer.enabled: true
+                layer.smooth: true
+                layer.effect: GE.OpacityMask {
+                    maskSource: Rectangle {
+                        width: selectionVisualViewport.width
+                        height: selectionVisualViewport.height
+                        radius: Math.max(0, Math.min(
+                            PerimeterTokens.frameRadius,
+                            width / 2,
+                            height / 2))
+                    }
                 }
-            }
 
-            Loader {
-                z: 2
-                anchors.fill: parent
-                active: root.selectionMode === RegionSelection.SelectionMode.Circle
-                sourceComponent: CircleSelectionDetails {
-                    color: root.selectionBorderColor
-                    overlayColor: root.overlayColor
-                    points: root.points
+                Loader {
+                    x: -selectionVisualViewport.x
+                    y: -selectionVisualViewport.y
+                    width: mouseArea.width
+                    height: mouseArea.height
+                    active: root.selectionMode === RegionSelection.SelectionMode.RectCorners
+                    sourceComponent: RectCornersSelectionDetails {
+                        regionX: root.regionX
+                        regionY: root.regionY
+                        regionWidth: root.regionWidth
+                        regionHeight: root.regionHeight
+                        mouseX: mouseArea.mouseX
+                        mouseY: mouseArea.mouseY
+                        color: root.selectionBorderColor
+                        overlayColor: root.overlayColor
+                    }
+                }
+
+                Loader {
+                    x: -selectionVisualViewport.x
+                    y: -selectionVisualViewport.y
+                    width: mouseArea.width
+                    height: mouseArea.height
+                    active: root.selectionMode === RegionSelection.SelectionMode.Circle
+                    sourceComponent: CircleSelectionDetails {
+                        color: root.selectionBorderColor
+                        overlayColor: root.overlayColor
+                        points: root.points
+                    }
                 }
             }
 
@@ -585,16 +659,50 @@ PanelWindow {
             }
 
             // Controls
+            // Material ii uses one connected iRiS body that grows directly from
+            // the physical bottom Screen Edge. The toolbar and close action are
+            // content inside that single body instead of separate floating cards.
+            ConnectedSurfaceIrisEdgeSurface {
+                id: regionControlsIris
+                z: 9998
+                anchors.fill: parent
+                visible: !regionSelectionControls.useWaffle
+                edge: "bottom"
+                ownerThickness: root.screenEdgeThickness
+                // Same raster seam treatment as the now-validated Sidebar
+                // attachment: only iRiS paint overlaps the physical owner;
+                // toolbar layout/input still stop at the real boundary.
+                paintOverlap: Math.min(
+                    PerimeterTokens.seamOverlap,
+                    Math.max(0, root.screenEdgeThickness - 1))
+                outputRect: Qt.rect(0, 0, width, height)
+                bodyRect: Qt.rect(
+                    regionSelectionControls.x,
+                    regionSelectionControls.y,
+                    regionSelectionControls.width,
+                    regionSelectionControls.height)
+                bodyRadius: PerimeterTokens.popupRadius
+                fillColor: Appearance.colors.colLayer0
+                borderColor: Appearance.colors.colLayer0Border
+                borderWidth: 0
+                progress: 1
+                shadowEnabled: root.screenEdgeShadowEnabled
+                    && root.screenEdgeShadowSize > 0
+                    && root.screenEdgeShadowOpacity > 0
+                shadowExtent: root.screenEdgeShadowSize
+                shadowColor: root.screenEdgeShadowColor
+            }
+
             Item {
                 id: regionSelectionControls
                 z: 9999
-                implicitWidth: controlsLoader.implicitWidth
-                implicitHeight: controlsLoader.implicitHeight
+                readonly property bool useWaffle: Config.options?.panelFamily === "waffle"
+                readonly property real shellPadding: useWaffle ? 0 : 8
+                implicitWidth: controlsLoader.implicitWidth + shellPadding * 2
+                implicitHeight: controlsLoader.implicitHeight + shellPadding * 2
                 opacity: 0
                 
-                readonly property bool useWaffle: Config.options?.panelFamily === "waffle"
-                
-                // Position: waffle = top center, material = bottom center
+                // Position: waffle = top center, material = connected to bottom Screen Edge
                 anchors {
                     horizontalCenter: parent.horizontalCenter
                     top: useWaffle ? parent.top : undefined
@@ -610,7 +718,7 @@ PanelWindow {
                         if (regionSelectionControls.useWaffle) {
                             regionSelectionControls.anchors.topMargin = 16;
                         } else {
-                            regionSelectionControls.anchors.bottomMargin = 8;
+                            regionSelectionControls.anchors.bottomMargin = root.screenEdgeThickness;
                         }
                         regionSelectionControls.opacity = 1;
                     }
@@ -627,6 +735,7 @@ PanelWindow {
 
                 Loader {
                     id: controlsLoader
+                    anchors.centerIn: parent
                     sourceComponent: regionSelectionControls.useWaffle ? waffleControls : materialControls
                 }
 
@@ -634,9 +743,11 @@ PanelWindow {
                 Component {
                     id: materialControls
                     Row {
-                        spacing: 6
+                        spacing: 4
 
                         OptionsToolbar {
+                            enableShadow: false
+                            transparent: true
                             action: root.action
                             selectionMode: root.selectionMode
                             onActionChanged: root.action = action
@@ -649,27 +760,20 @@ PanelWindow {
                                 ShellExec.execDetachedArgs(["/usr/bin/bash", "-c", "sleep 0.3; /usr/bin/hyprpicker -a"], "Pick color");
                             }
                         }
-                        Item {
+
+                        FloatingActionButton {
+                            id: closeFab
                             anchors.verticalCenter: parent.verticalCenter
-                            implicitWidth: closeFab.implicitWidth
-                            implicitHeight: closeFab.implicitHeight
-                            StyledRectangularShadow {
-                                target: closeFab
-                                radius: closeFab.buttonRadius
+                            baseSize: 40
+                            iconText: "close"
+                            onClicked: root.dismiss();
+                            StyledToolTip {
+                                text: Translation.tr("Close")
                             }
-                            FloatingActionButton {
-                                id: closeFab
-                                baseSize: 48
-                                iconText: "close"
-                                onClicked: root.dismiss();
-                                StyledToolTip {
-                                    text: Translation.tr("Close")
-                                }
-                                colBackground: Appearance.colors.colTertiaryContainer
-                                colBackgroundHover: Appearance.colors.colTertiaryContainerHover
-                                colRipple: Appearance.colors.colTertiaryContainerActive
-                                colOnBackground: Appearance.colors.colOnTertiaryContainer
-                            }
+                            colBackground: Appearance.colors.colTertiaryContainer
+                            colBackgroundHover: Appearance.colors.colTertiaryContainerHover
+                            colRipple: Appearance.colors.colTertiaryContainerActive
+                            colOnBackground: Appearance.colors.colOnTertiaryContainer
                         }
                     }
                 }

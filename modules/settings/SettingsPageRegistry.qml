@@ -3,24 +3,60 @@ import QtQuick
 import Quickshell
 import qs.services
 import qs.modules.common
+import "../common/PanelFamilyPolicy.js" as FamilyPolicy
 
 /**
  * Public Settings registry facade.
  *
- * SettingsPageRegistryData intentionally keeps historical indices so persisted
- * settings-page values remain loadable. Retired feature pages are hidden here
- * and redirected to live pages only when an old direct index is opened.
+ * SettingsPageRegistryData keeps only historical slots that precede live pages.
+ * Retired terminal indices are handled here as migration-only persisted values,
+ * without retaining placeholder pages in the active registry.
  */
 Singleton {
     id: root
 
-    readonly property var retiredFeaturePageIndexes: [18, 19, 21, 27]
+    // Historical 30/31 slots stay hidden now that focused Abyss pages follow
+    // them. Stored indices migrate without shifting any live page identity.
+    readonly property var retiredFeaturePageIndexes: [18, 19, 21, 27, 30, 31]
     readonly property int retiredTlpPageIndex: 28
-    readonly property int quickPageIndex: 0
     readonly property int systemPageIndex: 1
     readonly property int barPageIndex: 2
-    readonly property int themesPageIndex: 4
     readonly property int panelsPageIndex: 5
+
+    // A renderer-specific page is shown only for its active panel family.
+    // Keep historical slots in the registry so stored indices remain stable.
+    readonly property bool abyssFamily: Config.options?.panelFamily === "abyss"
+    readonly property bool waffleFamily: Config.options?.panelFamily === "waffle"
+    function isPageApplicable(index: int): bool {
+        if (index < 0 || index >= root.pages.length
+                || root.isHiddenLegacyIndex(index)) return false
+        if (root.abyssFamily)
+            return ![11,26].includes(index)
+        if (root.waffleFamily)
+            return index !== root.barPageIndex && index !== 16 && index !== 29 && index < 32
+        return index !== 11 && index < 32
+    }
+
+    // Stable route keys survive page reordering and legacy numeric slot
+    // retirement. The active Settings chrome navigates inside its own window
+    // instead of spawning a second instance when a related-settings link runs.
+    signal navigateRequested(int pageIndex, string section)
+    function pageIndexForKey(key: string): int {
+        const value = String(key ?? "").trim()
+        if (!value) return -1
+        if (root.abyssFamily && ["shell-layout","bar"].includes(value)) return value === "bar" ? 34 : root.barPageIndex
+        return root.pages.findIndex((page, index) => page.key === value
+            && page.devNavigationHidden !== true
+            && root.isPageApplicable(index))
+    }
+    function navigateToKey(key: string, section: string): bool {
+        const index = root.pageIndexForKey(key)
+        if (index < 0) return false
+        root.navigateRequested(index, root.abyssFamily && !section
+            ? ({"shell-layout":"surface",bar:"bar"}[key] ?? "")
+            : String(section ?? ""))
+        return true
+    }
     property bool _legacyTlpPowerRedirectPending: false
     property bool _legacyDockStyleMigrationDone: false
     property bool _legacyUiLocaleMigrationDone: false
@@ -34,31 +70,13 @@ Singleton {
     }
 
     readonly property var pages: SettingsPageRegistryData.pages.map((page, index) => {
+        if (root.abyssFamily && index === root.barPageIndex)
+            return Object.assign({},page,{key:"abyss",name:"Surface",icon:"water",
+                desc:"Screen Edge, waves and surface presentation",component:"modules/settings/AbyssConfig.qml"})
         if (root.isRetiredFeaturePage(index)) {
             const panelsPage = SettingsPageRegistryData.pages[root.panelsPageIndex]
             return Object.assign({}, panelsPage, {
                 devNavigationHidden: true
-            })
-        }
-        if (index === root.quickPageIndex) {
-            return Object.assign({}, page, {
-                component: "modules/settings/QuickConfigHugOnly.qml"
-            })
-        }
-        if (index === root.barPageIndex) {
-            return Object.assign({}, page, {
-                // BarConfig.qml remains the compatibility implementation so old
-                // configs can still be parsed; the public page removes retired
-                // Float/Rectangle/Card controls and exposes Hug only.
-                component: "modules/settings/BarConfigHugOnly.qml"
-            })
-        }
-        if (index === root.themesPageIndex) {
-            return Object.assign({}, page, {
-                // Public v1.0 theme settings expose the supported Material
-                // color, typography, motion and advanced tooling only.
-                component: "modules/settings/ThemesConfigMaterial.qml",
-                desc: Translation.tr("Material colors, typography and motion")
             })
         }
         if (index !== root.retiredTlpPageIndex)
@@ -76,17 +94,16 @@ Singleton {
 
     function isHiddenLegacyIndex(index: int): bool {
         return index === root.retiredTlpPageIndex || root.isRetiredFeaturePage(index)
+            || (root.abyssFamily && index === 26)
     }
 
     readonly property var defaultCategories: SettingsPageRegistryData.defaultCategories.map(category => ({
-        label: category.label,
-        pages: category.pages.filter(index => !root.isHiddenLegacyIndex(index))
-    }))
+        label:category.label,pages:category.pages.filter(index=>root.isPageApplicable(index))
+    })).filter(category=>category.pages.length > 0)
 
     readonly property var categories: SettingsPageRegistryData.categories.map(category => ({
-        label: category.label,
-        pages: category.pages.filter(index => !root.isHiddenLegacyIndex(index))
-    }))
+        label:category.label,pages:category.pages.filter(index=>root.isPageApplicable(index))
+    })).filter(category=>category.label !== "More" || category.pages.length > 0)
 
     readonly property var hiddenPages: SettingsPageRegistryData.hiddenPages.filter(
         index => !root.isHiddenLegacyIndex(index))
@@ -98,6 +115,10 @@ Singleton {
             return
 
         const current = Number(Persistent.states.settings.iiPage ?? -1)
+        if (root.abyssFamily && current === 26) {
+            Persistent.states.settings.iiPage = root.barPageIndex
+            return
+        }
         if (root.isRetiredFeaturePage(current)) {
             Persistent.states.settings.iiPage = root.panelsPageIndex
             return
@@ -196,9 +217,12 @@ Singleton {
     function searchIndex(): var {
         return SettingsPageRegistryData.searchIndex()
             .filter(entry => !root.isRetiredFeaturePage(entry.pageIndex))
-            .filter(entry => entry.pageIndex !== root.barPageIndex
-                || entry.label !== Translation.tr("Corner style"))
             .map(entry => {
+                const route = FamilyPolicy.settingsRoute(Config.options?.panelFamily,entry.pageIndex,entry.section)
+                if (route.pageIndex !== entry.pageIndex)
+                    return Object.assign({},entry,route,{pageName:"Abyss"})
+                if (root.abyssFamily && entry.pageIndex === root.barPageIndex)
+                    return Object.assign({},entry,{pageName:"Abyss"})
                 if (entry.pageIndex !== root.retiredTlpPageIndex)
                     return entry
 

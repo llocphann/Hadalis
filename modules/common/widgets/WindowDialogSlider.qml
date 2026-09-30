@@ -12,6 +12,7 @@ Column {
 
     property alias text: sliderName.text
     property string accessibleName: root.text
+    property string valueText: Number(root.value).toFixed(root.stepSize > 0 && root.stepSize < 1 ? 2 : 0)
     property alias from: sliderWidget.from
     property alias to: sliderWidget.to
     property alias value: sliderWidget.value
@@ -23,13 +24,19 @@ Column {
     signal moved()
     
     spacing: -2
-    ContentSubsectionLabel {
-        id: sliderName
-        visible: text?.length > 0
-        text: ""
-        anchors {
-            left: parent.left
-            right: parent.right
+    RowLayout {
+        width: parent.width
+        visible: root.text.length > 0
+        ContentSubsectionLabel {
+            id: sliderName
+            Layout.fillWidth: true
+            text: ""
+        }
+        StyledText {
+            text: root.valueText
+            color: Appearance.colors.colSubtext
+            font.pixelSize: Appearance.font.pixelSize.small
+            horizontalAlignment: Text.AlignRight
         }
     }
     StyledSlider {

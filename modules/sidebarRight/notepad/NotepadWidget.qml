@@ -10,7 +10,28 @@ import Quickshell.Io
 
 Item {
     id: root
+
+    signal editorActivated()
+
     property int margin: 10
+    // Dashboard can opt into a denser chrome while Sidebar keeps the full
+    // title/stats/toolbar presentation. The editor and draft semantics stay
+    // identical across both surfaces.
+    property bool compactPresentation: false
+    // Hot-corner Quick Notes is a capture surface rather than a tab manager.
+    // Keep the same editor/autosave backend while hiding Dashboard/Sidebar
+    // navigation chrome that would slow down a one-thought interaction.
+    property bool quickCapturePresentation: false
+    property bool verticalDotNavigation: false
+    // Quick Notes can coexist on Dashboard, Sidebar Left and the bottom-left
+    // corner. In that mode each surface keeps the stable ID of the note it is
+    // actually displaying instead of letting another surface's currentTab
+    // change steal the editor out from under an in-progress draft.
+    property bool surfaceLocalTabSelection: false
+    readonly property bool narrowCompact:
+        root.compactPresentation && root.width > 0 && root.width < 260
+    readonly property bool veryNarrowCompact:
+        root.compactPresentation && root.width > 0 && root.width < 220
 
     // Style tokens (5-style support)
     readonly property color colText: Appearance.angelEverywhere ? Appearance.angel.colText
@@ -34,49 +55,246 @@ Item {
     readonly property int wordCount: textArea.text.trim().length > 0
         ? textArea.text.trim().split(/\s+/).length : 0
     readonly property int tabCount: Notepad.tabs.length
+    // The corner Quick Notes capture surface does not expose Zettelkasten
+    // actions. Keep that optional singleton (and its Todo backend dependency)
+    // cold while the hover popup is only being used as a shared editor.
+    readonly property bool zettelkastenIntegrationEnabled:
+        !root.quickCapturePresentation
+    readonly property bool canSaveZettel: root.zettelkastenIntegrationEnabled
+        && Notepad.ready
+        && Zettelkasten.ready
+        && !Zettelkasten.busy
+        && textArea.text.trim().length > 0
+    function _captureZettel(): bool {
+        if (!root.canSaveZettel)
+            return false
+
+        // Persist the visible editor first, then capture a snapshot without
+        // consuming or clearing the Notepad draft. Capture is intentionally
+        // non-destructive; draft cleanup remains an explicit user action.
+        root.flushPendingSave()
+
+        const index = Notepad.indexForTabId(root._loadedTabId)
+        const tabTitle = String(Notepad.tabs[index]?.title ?? "").trim()
+        const title = /^Note \d+$/.test(tabTitle) ? "" : tabTitle
+        const draftText = String(textArea.text)
+        return Zettelkasten.capture(title, draftText)
+    }
+
+    function saveAsZettel(): bool {
+        return root._captureZettel()
+    }
+
+    function captureQuickNote(): bool {
+        return root._captureZettel()
+    }
+
+    // Public focus/save hooks for lightweight secondary surfaces such as the
+    // bottom-left Quick Notes popup. They keep the canonical editor in charge
+    // of autosave semantics without exposing its private TextArea.
+    function focusEditor(): void {
+        if (!Notepad.ready)
+            return
+        Qt.callLater(() => {
+            if (root.visible && root.enabled)
+                textArea.forceActiveFocus()
+        })
+    }
+
+    function releaseEditorFocus(): void {
+        textArea.focus = false
+        root.focus = false
+    }
+
+    function _activeTabId(): string {
+        return String(Notepad.tabs[Notepad.currentTab]?.id ?? "")
+    }
+
+    function _loadedTabText(): string {
+        const index = Notepad.indexForTabId(root._loadedTabId)
+        if (index < 0)
+            return ""
+        return String(Notepad.tabs[index]?.text ?? "")
+    }
+
+    function _persistEditorText(): bool {
+        if (!Notepad.ready || root._loadingTab || !root._loadedTabId)
+            return false
+        if (textArea.text === root._loadedTabText())
+            return true
+        return Notepad.setTabTextById(root._loadedTabId, textArea.text)
+    }
+
+    function flushPendingSave(): void {
+        saveTimer.stop()
+        root._persistEditorText()
+    }
+
+    // Tab mutations can change Notepad.currentTab synchronously. Persist the
+    // current editor first so an 800ms autosave still pending in the old tab
+    // can never be written into, or discarded by, the newly-selected tab.
+    function switchToTab(index): void {
+        if (!Notepad.ready || index < 0 || index >= Notepad.tabs.length)
+            return
+        const targetId = String(Notepad.tabs[index]?.id ?? "")
+        root.flushPendingSave()
+        if (!Notepad.switchTab(index))
+            return
+        if (root.surfaceLocalTabSelection)
+            root._loadTabById(targetId)
+    }
+
+    function addTabSafely(): void {
+        root.flushPendingSave()
+        if (!Notepad.addTab())
+            return
+        if (root.surfaceLocalTabSelection)
+            root._loadActiveTab()
+    }
+
+    function removeTabSafely(index): void {
+        if (!Notepad.ready || index < 0 || index >= Notepad.tabs.length)
+            return
+        const removedId = String(Notepad.tabs[index]?.id ?? "")
+        const removingDisplayedTab = removedId === root._loadedTabId
+        let fallbackId = ""
+        if (removingDisplayedTab && Notepad.tabs.length > 1) {
+            const fallbackIndex = index + 1 < Notepad.tabs.length ? index + 1 : index - 1
+            fallbackId = String(Notepad.tabs[fallbackIndex]?.id ?? "")
+        }
+
+        root.flushPendingSave()
+        if (!Notepad.removeTab(index))
+            return
+
+        if (root.surfaceLocalTabSelection && removingDisplayedTab) {
+            if (!root._loadTabById(fallbackId))
+                root._loadActiveTab()
+        }
+    }
 
     // When this widget gets focus (from BottomWidgetGroup.focusActiveItem),
     // move focus to the internal text area on the next event loop tick.
     onFocusChanged: (focus) => {
-        if (focus && Notepad.ready) {
-            Qt.callLater(() => textArea.forceActiveFocus())
-        }
+        if (focus)
+            root.focusEditor()
     }
+    Component.onDestruction: root.flushPendingSave()
 
     // Guards programmatic text loads (tab switch / external reload) so they
-    // don't trigger the save timer and clobber the freshly-loaded tab.
+    // don't trigger the save timer and clobber the freshly-loaded tab. Track the
+    // tab identity separately from Notepad.currentTab: several NotepadWidget
+    // instances can exist at once (Sidebar, Dashboard and Quick Notes), and a
+    // delayed autosave must always write back to the tab it actually displays.
     property bool _loadingTab: false
+    property string _loadedTabId: ""
+    readonly property string displayedTabId: root._loadedTabId
+    readonly property int displayedTabIndex:
+        Notepad.indexForTabId(root._loadedTabId)
+    readonly property string displayedTabTitle:
+        root.displayedTabIndex >= 0
+            ? String(Notepad.tabs[root.displayedTabIndex]?.title ?? "")
+            : ""
 
-    function _loadActiveTab() {
+    onDisplayedTabIndexChanged: {
+        if (!root.verticalDotNavigation || noteRailFlick.height <= 0)
+            return
+        noteRailFlick.contentY = Math.max(0, Math.min(
+            noteRailFlick.contentHeight - noteRailFlick.height,
+            root.displayedTabIndex * 19 - noteRailFlick.height / 2))
+    }
+
+    function _loadTabById(tabId): bool {
+        if (!Notepad.ready)
+            return false
+        const id = String(tabId ?? "")
+        const index = Notepad.indexForTabId(id)
+        if (!id || index < 0)
+            return false
+
+        saveTimer.stop()
         root._loadingTab = true
-        textArea.text = Notepad.text
+        root._loadedTabId = id
+        textArea.text = String(Notepad.tabs[index]?.text ?? "")
         root._loadingTab = false
+        return true
+    }
+
+    function _loadActiveTab(): bool {
+        return root._loadTabById(root._activeTabId())
     }
 
     // The TextArea.text binding to Notepad.text breaks the moment the user
-    // types, so tab switches (currentTab change) and external reloads must be
-    // reflected manually — otherwise the old tab's text leaks into the new tab.
+    // types, so tab switches and external reloads must be reflected manually.
+    // Flush the old displayed tab before adopting a newly-selected one.
     Connections {
         target: Notepad
-        function onCurrentTabChanged() { root._loadActiveTab() }
+        function onCurrentTabChanged() {
+            if (root.surfaceLocalTabSelection) {
+                if (!root._loadedTabId)
+                    root._loadActiveTab()
+                return
+            }
+            root.flushPendingSave()
+            root._loadActiveTab()
+        }
         function onTabsChanged() {
-            if (textArea.text !== Notepad.text) root._loadActiveTab()
+            if (!Notepad.ready)
+                return
+
+            if (root.surfaceLocalTabSelection) {
+                if (!root._loadedTabId) {
+                    root._loadActiveTab()
+                    return
+                }
+                if (Notepad.indexForTabId(root._loadedTabId) < 0) {
+                    // Another surface may delete this note before Notepad has
+                    // finished repairing currentTab. Reconcile after the
+                    // service mutation completes instead of loading a transient
+                    // array index.
+                    Qt.callLater(() => {
+                        if (Notepad.ready
+                                && Notepad.indexForTabId(root._loadedTabId) < 0)
+                            root._loadActiveTab()
+                    })
+                    return
+                }
+                if (!saveTimer.running
+                        && textArea.text !== root._loadedTabText())
+                    root._loadTabById(root._loadedTabId)
+                return
+            }
+
+            if (root._loadedTabId !== root._activeTabId()) {
+                root.flushPendingSave()
+                root._loadActiveTab()
+                return
+            }
+            if (!saveTimer.running && textArea.text !== root._loadedTabText())
+                root._loadActiveTab()
         }
         function onReadyChanged() {
-            if (Notepad.ready && textArea.text !== Notepad.text)
+            if (!Notepad.ready)
+                return
+            if (root._loadedTabId !== root._activeTabId()
+                    || textArea.text !== Notepad.text)
                 root._loadActiveTab()
+            if (root.focus)
+                root.focusEditor()
         }
     }
 
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: root.margin
-        spacing: 6
+        spacing: root.compactPresentation ? 4 : 6
 
-        // Header with title and stats
+        // Header with title and stats. Dashboard already owns the module title,
+        // so compactPresentation removes this duplicate row entirely.
         RowLayout {
             Layout.fillWidth: true
             spacing: 8
+            visible: !root.compactPresentation
 
             StyledText {
                 text: Translation.tr("Notepad")
@@ -123,18 +341,22 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             spacing: 4
-            visible: root.tabCount > 1 || root.tabCount === 1 // Always show for discoverability
+            visible: !root.quickCapturePresentation
+                && (root.tabCount > 1 || root.tabCount === 1) // Always show outside quick capture
 
             Flickable {
+                id: tabFlick
+                visible: !root.verticalDotNavigation
                 Layout.fillWidth: true
-                implicitHeight: 28
-                contentWidth: tabRow.implicitWidth
+                implicitHeight: root.compactPresentation ? 24 : 28
+                contentWidth: Math.max(width, tabRow.implicitWidth)
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
 
                 Row {
                     id: tabRow
-                    spacing: 4
+                    x: Math.max(0, (tabFlick.width - implicitWidth) / 2)
+                    spacing: root.compactPresentation ? 3 : 4
 
                     Repeater {
                         model: Notepad.tabs
@@ -142,10 +364,14 @@ Item {
                             id: tabPill
                             required property var modelData
                             required property int index
-                            readonly property bool active: index === Notepad.currentTab
-                            width: tabLabel.implicitWidth + (tabCount > 1 ? closeBtn.width + 16 : 16)
-                            height: 26
-                            radius: 13
+                            readonly property bool active: root.surfaceLocalTabSelection
+                                ? String(modelData?.id ?? "") === root._loadedTabId
+                                : index === Notepad.currentTab
+                            width: tabLabel.implicitWidth
+                                + ((!root.compactPresentation && tabCount > 1)
+                                    ? closeBtn.width + 14 : 12)
+                            height: root.compactPresentation ? 22 : 26
+                            radius: height / 2
                             color: active
                                 ? (Appearance.angelEverywhere ? Appearance.angel.colPrimary
                                     : Appearance.inirEverywhere ? Appearance.inir.colPrimary
@@ -165,7 +391,9 @@ Item {
                                     id: tabLabel
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: modelData.title || `Note ${index + 1}`
-                                    font.pixelSize: Appearance.font.pixelSize.smaller
+                                    font.pixelSize: root.compactPresentation
+                                        ? Appearance.font.pixelSize.smallest
+                                        : Appearance.font.pixelSize.smaller
                                     font.weight: tabPill.active ? Font.Medium : Font.Normal
                                     color: tabPill.active
                                         ? (Appearance.angelEverywhere ? Appearance.angel.colOnPrimary
@@ -174,13 +402,14 @@ Item {
                                         : root.colTextSecondary
                                     elide: Text.ElideRight
                                     maximumLineCount: 1
-                                    width: Math.min(implicitWidth, 80)
+                                    width: Math.min(implicitWidth,
+                                        root.compactPresentation ? 58 : 80)
                                 }
 
                                 // Close button (only when multiple tabs)
                                 MaterialSymbol {
                                     id: closeBtn
-                                    opacity: tabCount > 1 ? 1 : 0
+                                    opacity: !root.compactPresentation && tabCount > 1 ? 1 : 0
                                     visible: opacity > 0
                                     Behavior on opacity {
                                         enabled: Appearance.animationsEnabled
@@ -199,7 +428,7 @@ Item {
                                         anchors.fill: parent
                                         anchors.margins: -4
                                         enabled: Notepad.ready
-                                        onClicked: Notepad.removeTab(tabPill.index)
+                                        onClicked: root.removeTabSafely(tabPill.index)
                                     }
                                 }
                             }
@@ -211,26 +440,36 @@ Item {
                                 hoverEnabled: true
                                 cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                                 z: -1
-                                onClicked: Notepad.switchTab(tabPill.index)
+                                onClicked: root.switchToTab(tabPill.index)
                             }
                         }
                     }
                 }
             }
 
-            // Add tab button
+            Item {
+                visible: root.verticalDotNavigation
+                Layout.fillWidth: true
+            }
+
+            // Full Sidebar presentation keeps Add beside the tabs. Compact
+            // Quick Notes surfaces move both Add and Remove to the right-side
+            // vertical rail so this row contributes only the centered tabs.
             NotepadToolButton {
+                visible: !root.compactPresentation
                 icon: "add"
                 tooltipText: Translation.tr("New tab")
                 enabled: Notepad.ready
-                onClicked: Notepad.addTab()
+                onClicked: root.addTabSafely()
             }
         }
 
-        // Toolbar
+        // Full toolbar remains unchanged for Sidebar; Dashboard folds these
+        // actions into the tab row above.
         RowLayout {
             Layout.fillWidth: true
             spacing: 4
+            visible: !root.compactPresentation
 
             NotepadToolButton {
                 icon: "content_copy"
@@ -238,7 +477,7 @@ Item {
                 enabled: textArea.text.length > 0
                 onClicked: {
                     Quickshell.execDetached(["wl-copy", textArea.text])
-                    copiedToast.show()
+                    copiedToast.show(Translation.tr("Copied!"))
                 }
             }
 
@@ -256,6 +495,17 @@ Item {
                 onClicked: textArea.selectAll()
             }
 
+            NotepadToolButton {
+                icon: "note_add"
+                tooltipText: !root.zettelkastenIntegrationEnabled
+                    ? ""
+                    : Zettelkasten.ready
+                        ? Translation.tr("Save as Zettelkasten quick note")
+                        : Translation.tr("Configure an Obsidian vault to enable Zettelkasten")
+                enabled: root.canSaveZettel
+                onClicked: root.saveAsZettel()
+            }
+
             Item { Layout.fillWidth: true }
 
             NotepadToolButton {
@@ -265,75 +515,294 @@ Item {
                 destructive: true
                 onClicked: {
                     textArea.text = ""
-                    Notepad.setTextValue("")
+                    root.flushPendingSave()
                 }
             }
         }
 
-        Rectangle {
+        Item {
+            id: editorStage
             Layout.fillWidth: true
             Layout.fillHeight: true
-            radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal : Appearance.rounding.normal
-            color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                : Appearance.inirEverywhere ? Appearance.inir.colLayer0
-                : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                : Appearance.colors.colLayer0
-            border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
-                : Appearance.inirEverywhere ? 1 : (Appearance.auroraEverywhere ? 0 : 1)
-            border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                : Appearance.inirEverywhere ? Appearance.inir.colBorder : Appearance.colors.colLayer0Border
-            clip: true
 
-            ScrollView {
-                id: scrollView
+            HoverHandler {
+                id: editorStageHover
+            }
+
+            RowLayout {
                 anchors.fill: parent
-                anchors.margins: 8
-                ScrollBar.vertical.policy: ScrollBar.AsNeeded
-                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                spacing: root.compactPresentation ? 5 : 0
 
-                TextArea {
-                    id: textArea
-                    enabled: Notepad.ready
-                    width: scrollView.availableWidth
-                    wrapMode: TextArea.Wrap
-                    renderType: Text.NativeRendering
-                    font.pixelSize: Appearance.inirEverywhere ? Appearance.font.pixelSize.smaller : Appearance.font.pixelSize.small
-                    color: Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer0
-                    selectionColor: Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                        : Appearance.inirEverywhere ? Appearance.inir.colPrimary
-                        : Appearance.colors.colSecondaryContainer
-                    selectedTextColor: Appearance.angelEverywhere ? Appearance.angel.colOnPrimary
-                        : Appearance.inirEverywhere ? Appearance.inir.colOnPrimary
-                        : Appearance.colors.colOnSecondaryContainer
-                    placeholderText: Translation.tr("Write your notes here...")
-                    placeholderTextColor: Appearance.inirEverywhere ? Appearance.inir.colTextSecondary : Appearance.colors.colOutline
-                    Component.onCompleted: text = Notepad.text
-                    selectByMouse: true
-                    persistentSelection: true
-                    activeFocusOnTab: true
-                    background: null
+                // Note indicators live outside the writing surface. This keeps
+                // the editor visually clean while preserving fast note switching.
+                Item {
+                    id: noteRail
+                    visible: root.verticalDotNavigation
+                    Layout.preferredWidth: 18
+                    Layout.fillHeight: true
 
-                    TextInputContextMenu {
-                        target: textArea
-                    }
+                    Flickable {
+                        id: noteRailFlick
+                        anchors.fill: parent
+                        contentWidth: width
+                        contentHeight: noteDotColumn.implicitHeight
+                        boundsBehavior: Flickable.StopAtBounds
+                        clip: true
 
-                    Keys.onPressed: (event) => {
-                        if (Notepad.ready && (event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_S) {
-                            Notepad.setTextValue(textArea.text)
-                            event.accepted = true
+                        Column {
+                            id: noteDotColumn
+                            width: noteRailFlick.width
+                            spacing: 1
+
+                            Repeater {
+                                model: Notepad.tabs
+
+                                delegate: Item {
+                                    id: noteDot
+                                    required property var modelData
+                                    required property int index
+                                    readonly property bool selected:
+                                        String(modelData?.id ?? "") === root._loadedTabId
+                                    width: noteDotColumn.width
+                                    height: 18
+                                    Accessible.name: String(modelData?.title
+                                        ?? `Note ${index + 1}`)
+
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: noteDot.selected ? 9 : 6
+                                        height: width
+                                        radius: width / 2
+                                        color: noteDot.selected
+                                            ? Appearance.colors.colPrimary
+                                            : Appearance.colors.colOutline
+                                        opacity: noteDot.selected ? 1 : 0.65
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        enabled: Notepad.ready
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.switchToTab(noteDot.index)
+                                    }
+
+                                    StyledToolTip {
+                                        text: String(noteDot.modelData?.title
+                                            ?? `Note ${noteDot.index + 1}`)
+                                    }
+                                }
+                            }
                         }
                     }
 
-                    onTextChanged: {
-                        if (root._loadingTab || !Notepad.ready) return
-                        saveTimer.restart()
+                    WheelHandler {
+                        acceptedDevices:
+                            PointerDevice.Mouse | PointerDevice.TouchPad
+                        onWheel: event => {
+                            const next = root.displayedTabIndex
+                                + (event.angleDelta.y < 0 ? 1 : -1)
+                            if (next >= 0 && next < root.tabCount)
+                                root.switchToTab(next)
+                        }
+                    }
+                }
+
+                Rectangle {
+                    id: editorCard
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    radius: Appearance.angelEverywhere
+                        ? Appearance.angel.roundingNormal
+                        : Appearance.rounding.normal
+                    color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
+                        : Appearance.inirEverywhere ? Appearance.inir.colLayer0
+                        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
+                        : Appearance.colors.colLayer0
+                    border.width: Appearance.angelEverywhere
+                        ? Appearance.angel.cardBorderWidth
+                        : Appearance.inirEverywhere ? 1
+                        : (Appearance.auroraEverywhere ? 0 : 1)
+                    border.color: Appearance.angelEverywhere
+                        ? Appearance.angel.colCardBorder
+                        : Appearance.inirEverywhere ? Appearance.inir.colBorder
+                        : Appearance.colors.colLayer0Border
+                    clip: true
+
+                    ScrollView {
+                        id: scrollView
+                        anchors.fill: parent
+                        anchors.margins: root.compactPresentation ? 6 : 8
+                        ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+                        TextArea {
+                            id: textArea
+                            enabled: Notepad.ready
+                            width: scrollView.availableWidth
+                            wrapMode: TextArea.Wrap
+                            renderType: Text.NativeRendering
+                            font.pixelSize: Appearance.inirEverywhere
+                                ? Appearance.font.pixelSize.smaller
+                                : Appearance.font.pixelSize.small
+                            color: Appearance.inirEverywhere
+                                ? Appearance.inir.colText
+                                : Appearance.colors.colOnLayer0
+                            selectionColor: Appearance.angelEverywhere
+                                ? Appearance.angel.colPrimary
+                                : Appearance.inirEverywhere ? Appearance.inir.colPrimary
+                                : Appearance.colors.colSecondaryContainer
+                            selectedTextColor: Appearance.angelEverywhere
+                                ? Appearance.angel.colOnPrimary
+                                : Appearance.inirEverywhere ? Appearance.inir.colOnPrimary
+                                : Appearance.colors.colOnSecondaryContainer
+                            placeholderText: Translation.tr("Write your notes here...")
+                            placeholderTextColor: Appearance.inirEverywhere
+                                ? Appearance.inir.colTextSecondary
+                                : Appearance.colors.colOutline
+                            Component.onCompleted: root._loadActiveTab()
+                            selectByMouse: true
+                            persistentSelection: true
+                            activeFocusOnTab: true
+                            background: null
+
+                            onActiveFocusChanged: {
+                                if (activeFocus)
+                                    root.editorActivated()
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                acceptedButtons: Qt.NoButton
+                                hoverEnabled: true
+                                cursorShape: Qt.IBeamCursor
+                            }
+
+                            // First-click focus catcher mirrors the desktop
+                            // NotesWidget contract and disappears once focused.
+                            MouseArea {
+                                id: editorFocusCatcher
+                                anchors.fill: parent
+                                visible: Notepad.ready && !textArea.activeFocus
+                                acceptedButtons: Qt.LeftButton
+                                cursorShape: Qt.IBeamCursor
+                                onPressed: mouse => {
+                                    textArea.forceActiveFocus()
+                                    textArea.cursorPosition = textArea.positionAt(
+                                        mouse.x, mouse.y)
+                                    mouse.accepted = true
+                                }
+                            }
+
+                            TextInputContextMenu {
+                                target: textArea
+                            }
+
+                            Keys.onPressed: event => {
+                                if (Notepad.ready
+                                        && (event.modifiers & Qt.ControlModifier)
+                                        && event.key === Qt.Key_S) {
+                                    root.flushPendingSave()
+                                    event.accepted = true
+                                }
+                            }
+
+                            onTextChanged: {
+                                if (root._loadingTab || !Notepad.ready)
+                                    return
+                                saveTimer.restart()
+                            }
+
+                            onCursorRectangleChanged: {
+                                scrollView.ScrollBar.vertical.position = Math.max(
+                                    0, Math.min(
+                                        (cursorRectangle.y - scrollView.height / 2)
+                                            / contentHeight,
+                                        1 - scrollView.height / contentHeight))
+                            }
+                        }
+                    }
+                }
+
+                // Compact Quick Notes keeps only the two note-lifecycle
+                // actions persistently visible. Everything else fades in on
+                // hover/focus, all in the same external vertical rail.
+                Item {
+                    id: compactActionRail
+                    visible: root.compactPresentation
+                    Layout.preferredWidth: root.veryNarrowCompact ? 24 : 28
+                    Layout.fillHeight: true
+
+                    Column {
+                        id: primaryNoteActions
+                        anchors.top: parent.top
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        spacing: 1
+
+                        NotepadToolButton {
+                            icon: "add"
+                            tooltipText: Translation.tr("New tab")
+                            enabled: Notepad.ready
+                            onClicked: root.addTabSafely()
+                        }
+
+                        NotepadToolButton {
+                            visible: root.tabCount > 1
+                            icon: "close"
+                            tooltipText: Translation.tr("Remove current note")
+                            enabled: Notepad.ready && root.displayedTabIndex >= 0
+                            onClicked: root.removeTabSafely(root.displayedTabIndex)
+                        }
                     }
 
-                    onCursorRectangleChanged: {
-                        scrollView.ScrollBar.vertical.position = Math.max(0, Math.min(
-                            (cursorRectangle.y - scrollView.height / 2) / contentHeight,
-                            1 - scrollView.height / contentHeight
-                        ))
+                    Column {
+                        id: secondaryNoteActions
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.bottom: parent.bottom
+                        spacing: 1
+                        opacity: editorStageHover.hovered || textArea.activeFocus ? 1 : 0
+                        visible: opacity > 0
+
+                        Behavior on opacity {
+                            enabled: Appearance.animationsEnabled
+                            NumberAnimation {
+                                duration: Appearance.animation.elementMoveFast.duration
+                            }
+                        }
+
+                        NotepadToolButton {
+                            icon: "content_copy"
+                            tooltipText: Translation.tr("Copy all")
+                            enabled: textArea.text.length > 0
+                            onClicked: {
+                                Quickshell.execDetached(["wl-copy", textArea.text])
+                                copiedToast.show(Translation.tr("Copied!"))
+                            }
+                        }
+
+                        NotepadToolButton {
+                            icon: "content_paste"
+                            tooltipText: Translation.tr("Paste from clipboard")
+                            enabled: Notepad.ready
+                            onClicked: clipboardProc.running = true
+                        }
+
+                        NotepadToolButton {
+                            icon: "select_all"
+                            tooltipText: Translation.tr("Select all")
+                            enabled: textArea.text.length > 0
+                            onClicked: textArea.selectAll()
+                        }
+
+                        NotepadToolButton {
+                            icon: "delete"
+                            tooltipText: Translation.tr("Clear all")
+                            enabled: Notepad.ready && textArea.text.length > 0
+                            destructive: true
+                            onClicked: {
+                                textArea.text = ""
+                                root.flushPendingSave()
+                            }
+                        }
                     }
                 }
             }
@@ -344,10 +813,7 @@ Item {
         id: saveTimer
         interval: 800
         repeat: false
-        onTriggered: {
-            if (Notepad.ready)
-                Notepad.setTextValue(textArea.text)
-        }
+        onTriggered: root._persistEditorText()
     }
 
     // Clipboard paste process
@@ -367,6 +833,14 @@ Item {
     }
 
     // Copied toast notification
+    Connections {
+        target: root.zettelkastenIntegrationEnabled ? Zettelkasten : null
+
+        function onCaptured(payload): void {
+            copiedToast.show(Translation.tr("Saved to Zettelkasten"))
+        }
+    }
+
     Rectangle {
         id: copiedToast
         anchors.horizontalCenter: parent.horizontalCenter
@@ -378,8 +852,10 @@ Item {
         color: root.colPrimary
         opacity: 0
         visible: opacity > 0
+        property string message: Translation.tr("Copied!")
 
-        function show() {
+        function show(message) {
+            copiedToast.message = String(message ?? Translation.tr("Copied!"))
             opacity = 1
             toastTimer.restart()
         }
@@ -403,7 +879,7 @@ Item {
             }
 
             StyledText {
-                text: Translation.tr("Copied!")
+                text: copiedToast.message
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 color: Appearance.angelEverywhere ? Appearance.angel.colOnPrimary
                     : Appearance.inirEverywhere ? Appearance.inir.colOnPrimary
@@ -427,8 +903,8 @@ Item {
 
         signal clicked()
 
-        implicitWidth: 32
-        implicitHeight: 28
+        implicitWidth: root.compactPresentation ? 24 : 32
+        implicitHeight: root.compactPresentation ? 24 : 28
 
         opacity: enabled ? 1 : 0.4
 
@@ -457,7 +933,7 @@ Item {
             MaterialSymbol {
                 anchors.centerIn: parent
                 text: toolBtn.icon
-                iconSize: 18
+                iconSize: root.compactPresentation ? 15 : 18
                 color: toolBtn.destructive && toolBtn.enabled
                     ? Appearance.colors.colError
                     : root.colTextSecondary

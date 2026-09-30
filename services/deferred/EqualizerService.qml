@@ -5,6 +5,18 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
+/**
+ * Optional 10-band DSP Equalizer facade for the Media Popup.
+ *
+ * Hadalis keeps one EqualizerService/backend boundary. The helper feature-probes
+ * EasyEffects' local property API, applies the 10-to-32-band curve directly to
+ * the active Equalizer instance, and persists only those Equalizer fields into
+ * the currently selected preset. It never reloads the preset, so Convolver,
+ * Limiter, ordering, and unsaved live pipeline state are not reconstructed.
+ * The helper talks to EasyEffectsServer directly with Python's AF_UNIX socket;
+ * socat is not required for the DSP path.
+ */
+ 
 Singleton {
     id: root
 
@@ -36,12 +48,6 @@ Singleton {
     })
 
     property string error: ""
-    // Compatibility aliases retained for callers that used the earlier facade.
-    property list<string> presets:
-        ["Flat", "Bass", "Treble", "Vocal", "Pop", "Rock", "Jazz", "Classic"]
-    readonly property string activePreset: root._presetName
-    readonly property var bands: root.dspBands
-
     property int _consumerCount: 0
     property bool _transportChecked: false
     property bool _transportAvailable: false
@@ -53,7 +59,6 @@ Singleton {
     property int _lifecycleGeneration: 0
 
     readonly property bool busy: applyProc.running
-    readonly property bool bandControlAvailable: root.dspControlAvailable
     readonly property bool dspControlAvailable:
         root.available && !root.busy
     readonly property string dspPresetName: root._presetName
@@ -74,10 +79,15 @@ Singleton {
 
     function registerConsumer() {
         root._consumerCount++
-        if (!root.enabled)
+        if (!root.enabled) {
             root.enabled = true
-        else
+        } else {
+            if (!root._transportChecked
+                    && (root.error === "transport-unavailable"
+                        || root.error === "transport-probe-failed"))
+                root.error = ""
             root.refresh()
+        }
     }
 
     function unregisterConsumer() {
@@ -99,13 +109,32 @@ Singleton {
         return true
     }
 
+    function _startTransportProbe() {
+        if (!root.enabled || transportProbe.running)
+            return
+        transportProbe.generation = root._lifecycleGeneration
+        transportProbe.running = true
+    }
+
+    function _retryStaleTransportProbe(generation) {
+        if (!root.enabled
+                || generation === root._lifecycleGeneration
+                || root._transportChecked)
+            return
+        // Process.running may still be true while onExited is unwinding. Queue
+        // the replacement probe after the stale process has fully settled.
+        Qt.callLater(() => {
+            if (root.enabled && !root._transportChecked)
+                root._startTransportProbe()
+        })
+    }
+
     function refresh() {
         if (!root.enabled)
             return
         EasyEffects.fetchAvailability()
         if (!root._transportChecked) {
-            transportProbe.generation = root._lifecycleGeneration
-            transportProbe.running = true
+            root._startTransportProbe()
             return
         }
         root._refreshBackendState()
@@ -114,6 +143,14 @@ Singleton {
     function _refreshBackendState() {
         if (!root.enabled)
             return
+        // "false" is the default transport value before any valid probe has
+        // completed. Do not publish an unavailable error for that unknown state.
+        // This path also restarts a probe invalidated by an EasyEffects lifecycle
+        // generation change during shell boot/reload.
+        if (!root._transportChecked) {
+            root._startTransportProbe()
+            return
+        }
         if (!root._transportAvailable) {
             root.error = "transport-unavailable"
             root._stateReady = false
@@ -237,19 +274,6 @@ Singleton {
         return root._applyState(curve, preset)
     }
 
-    // Compatibility functions map onto the supported ten-band facade.
-    function applyPreset(name) {
-        return root.applyDspPreset(name)
-    }
-
-    function setBandGain(index, gain) {
-        return root.setDspBandGain(index, gain)
-    }
-
-    function reset() {
-        return root.applyDspPreset("Flat")
-    }
-
     onEnabledChanged: {
         root._lifecycleGeneration++
         transportProbe.running = false
@@ -311,11 +335,15 @@ Singleton {
         id: transportProbe
         property int generation: 0
         command: ["/usr/bin/env", "sh", "-c",
-            "command -v socat >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1"]
+            "command -v python3 >/dev/null 2>&1"]
 
         onExited: (exitCode, exitStatus) => {
-            if (!root.enabled || generation !== root._lifecycleGeneration)
+            if (!root.enabled)
                 return
+            if (generation !== root._lifecycleGeneration) {
+                root._retryStaleTransportProbe(generation)
+                return
+            }
             root._transportChecked = true
             root._transportAvailable = exitCode === 0
             if (!root._transportAvailable) {

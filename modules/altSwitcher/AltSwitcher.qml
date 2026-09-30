@@ -125,6 +125,8 @@ Scope {
                 root.quickSwitchDone = false
                 root.noUiSnapshot = []
                 root.noUiIndex = 0
+                if (root.effectiveNoVisualUi && !GameMode.active)
+                    root.rebuildNoUiSnapshot()
             }
         }
     }
@@ -136,15 +138,29 @@ Scope {
         onTriggered: root.skewCardVisible = GlobalStates.altSwitcherOpen && root.skewStyle
     }
 
-    Timer {
-        id: skewFocusTimer
-        interval: 100
-        running: root.skewStyle && GlobalStates.altSwitcherOpen
-        repeat: true
-        onTriggered: {
-            if (GlobalStates.altSwitcherOpen)
-                altReleaseDetector.forceActiveFocus()
+    property int _skewFocusRetryCount: 0
+
+    function _ensureSkewFocus(): void {
+        if (!root.skewStyle || !GlobalStates.altSwitcherOpen) {
+            skewFocusRetryTimer.stop()
+            root._skewFocusRetryCount = 0
+            return
         }
+
+        altReleaseDetector.forceActiveFocus()
+        if (!altReleaseDetector.activeFocus && root._skewFocusRetryCount < 4) {
+            root._skewFocusRetryCount++
+            skewFocusRetryTimer.restart()
+        } else {
+            skewFocusRetryTimer.stop()
+        }
+    }
+
+    Timer {
+        id: skewFocusRetryTimer
+        interval: 50
+        repeat: false
+        onTriggered: root._ensureSkewFocus()
     }
 
     function toTitleCase(name) {
@@ -728,7 +744,10 @@ Scope {
                     }
                     readonly property real edgeOpacity: isCurrent ? 1.0
                         : Math.max(0.25, 1.0 - (_distFromCenter / (skewDeck.width * 0.55)) * 0.65)
-                    property string previewUrl: ""
+                    readonly property string previewUrl: {
+                        const cached = WindowPreviewService.previewCache[modelData?.id]
+                        return cached ? WindowPreviewService.getPreviewUrl(modelData.id) : ""
+                    }
                     width: isCurrent ? root.skewExpandedWidth : root.skewSliceWidth
                     height: skewDeck.height
                     y: isCurrent ? -8 : 0
@@ -747,14 +766,6 @@ Scope {
                             const rightX = w - sk * (point.y / h)
                             return point.x >= leftX && point.x <= rightX && point.y >= 0 && point.y <= h
                         }
-                    }
-
-                    function refreshPreview(): void {
-                        if (modelData?.id === undefined)
-                            return
-                        const url = WindowPreviewService.getPreviewUrl(modelData.id)
-                        if (url && url.length > 0)
-                            previewUrl = url
                     }
 
                     Behavior on width {
@@ -786,19 +797,6 @@ Scope {
                         NumberAnimation {
                             duration: Appearance.calcEffectiveDuration(150)
                             easing.type: Easing.OutQuad
-                        }
-                    }
-
-                    Component.onCompleted: Qt.callLater(() => skewSlice.refreshPreview())
-
-                    Connections {
-                        target: WindowPreviewService
-                        function onPreviewUpdated(updatedId: int): void {
-                            if (updatedId === skewSlice.modelData?.id)
-                                skewSlice.previewUrl = WindowPreviewService.getPreviewUrl(updatedId)
-                        }
-                        function onCaptureComplete(): void {
-                            skewSlice.refreshPreview()
                         }
                     }
 
@@ -1658,10 +1656,14 @@ Scope {
         Connections {
             target: GlobalStates
             function onAltSwitcherOpenChanged() {
+                root._skewFocusRetryCount = 0
                 if (GlobalStates.altSwitcherOpen) {
                     root.showPanel()
                     root.maybeOpenOverview()
+                    if (root.skewStyle)
+                        Qt.callLater(root._ensureSkewFocus)
                 } else {
+                    skewFocusRetryTimer.stop()
                     root.hidePanel()
                     root.maybeCloseOverview()
                 }
@@ -1905,22 +1907,30 @@ Scope {
         }
     }
     
-    Timer {
-        id: noUiSnapshotUpdateTimer
-        interval: GameMode.active ? 10000 : 3000
-        repeat: true
-        running: root.effectiveNoVisualUi && !GlobalStates.altSwitcherOpen
-        onTriggered: {
-            if (GameMode.active) return
-            
-            if (NiriService.windows?.length > 0) {
-                Qt.callLater(function() {
-                    const windows = NiriService.windows || []
-                    const workspaces = NiriService.workspaces || {}
-                    const mruIds = NiriService.mruWindowIds || []
-                    root.noUiSnapshot = buildItemsFrom(windows, workspaces, mruIds)
-                })
-            }
+    onEffectiveNoVisualUiChanged: {
+        if (root.effectiveNoVisualUi && !GlobalStates.altSwitcherOpen && !GameMode.active) {
+            root.rebuildNoUiSnapshot()
+        } else if (!root.effectiveNoVisualUi) {
+            root.noUiSnapshot = []
+            root.noUiIndex = 0
+        }
+    }
+
+    Connections {
+        target: NiriService
+        enabled: root.effectiveNoVisualUi && !GlobalStates.altSwitcherOpen && !GameMode.active
+
+        function onWindowsChanged() { root.rebuildNoUiSnapshot() }
+        function onWorkspacesChanged() { root.rebuildNoUiSnapshot() }
+        function onMruWindowIdsChanged() { root.rebuildNoUiSnapshot() }
+    }
+
+    Connections {
+        target: GameMode
+
+        function onActiveChanged() {
+            if (!GameMode.active && root.effectiveNoVisualUi && !GlobalStates.altSwitcherOpen)
+                root.rebuildNoUiSnapshot()
         }
     }
 

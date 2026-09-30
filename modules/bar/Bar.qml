@@ -14,46 +14,10 @@ import qs.modules.common.widgets
 
 Scope {
     id: bar
-    // Hug is the only supported Classic Bar surface. Keep its structural
-    // background resident so endpoint shoulders and the shared perimeter shadow
-    // cannot disappear because of an old transparent-bar config value.
-    readonly property bool showBarBackground: true
-    property bool _legacyCornerStyleMigrationDone: false
-    // Note: Vignette effect moved to Backdrop.qml (backdrop wallpaper layer)
-
-    // Global style changes can swap surface implementations that are evaluated
-    // when the bar window is created, so rebuild only for that live dependency.
-    readonly property string rebuildKey: Config.options?.appearance?.globalStyle ?? "material"
-    property bool rebuilding: false
-    onRebuildKeyChanged: {
-        bar.rebuilding = true;
-        barRebuildTimer.restart();
-    }
-
-    function normalizeLegacyCornerStyle(): void {
-        if (bar._legacyCornerStyleMigrationDone || !Config.ready)
-            return
-
-        bar._legacyCornerStyleMigrationDone = true
-        if ((Config.options?.bar?.cornerStyle ?? 0) !== 0)
-            Config.setNestedValue("bar.cornerStyle", 0)
-    }
-
-    Component.onCompleted: bar.normalizeLegacyCornerStyle()
-
-    Connections {
-        target: Config
-        function onReadyChanged(): void {
-            if (Config.ready)
-                bar.normalizeLegacyCornerStyle()
-        }
-    }
-
-    Timer {
-        id: barRebuildTimer
-        interval: 50
-        onTriggered: bar.rebuilding = false
-    }
+    // Hug is the only supported Classic Bar surface. Its body is structural
+    // in BarContent rather than mediated by a compatibility visibility flag.
+    // Legacy Bar surface values are normalized once by SettingsPageRegistry at
+    // shell startup. The live Bar consumes only canonical Hug state.
 
     Variants {
         // For each monitor
@@ -72,29 +36,27 @@ Scope {
         }
         LazyLoader {
             id: barLoader
-            active: !bar.rebuilding && GlobalStates.barOpen && !GlobalStates.screenLocked
+            active: GlobalStates.barOpen && !GlobalStates.screenLocked
                 && !GlobalStates.widgetEditMode
             required property ShellScreen modelData
             component: PanelWindow { // Bar window
                 id: barRoot
                 screen: barLoader.modelData
                 readonly property string outputName: String(barLoader.modelData?.name ?? "")
+                readonly property bool fullscreenCovered: barRoot.outputName.length > 0
+                    && GameMode.hasFullscreenOnOutput(barRoot.outputName)
 
-                // FULLSCREEN-BAR-LIFECYCLE-LOCK (maintainer approved 2026-09-19):
-                // Do NOT unmap or suspend this PanelWindow on fullscreen.
-                // Niri/compositor stacking already covers Top-layer Bar surfaces.
-                // Toggling PanelWindow visible/updatesEnabled during fullscreen
-                // can leave its QML contents blank after the fullscreen client
-                // exits until Quickshell is reloaded.
+                // Keep this window mapped across fullscreen. Niri can map the
+                // full-output Screen Edge frame after the bar, obscuring the
+                // entire bar while leaving its input region interactive. Put
+                // the bar above that Top-layer frame and gate its paint/input
+                // during fullscreen without destroying the layer surface.
                 readonly property real panelSurfaceHeight: Appearance.sizes.barHeight
                 readonly property bool rightDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
                     && barRoot.anchors.right
                 readonly property bool bottomDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
                     && barRoot.anchors.bottom
 
-                property var brightnessMonitor: Brightness.getMonitorForScreen(barLoader.modelData)
-                property real useShortenedForm: (Appearance.sizes.barHellaShortenScreenWidthThreshold >= screen.width) ? 2 : (Appearance.sizes.barShortenScreenWidthThreshold >= screen.width) ? 1 : 0
-                readonly property int centerSideModuleWidth: (useShortenedForm == 2) ? Appearance.sizes.barCenterSideModuleWidthHellaShortened : (useShortenedForm == 1) ? Appearance.sizes.barCenterSideModuleWidthShortened : Appearance.sizes.barCenterSideModuleWidth
 
                 Timer {
                     id: showBarTimer
@@ -118,11 +80,17 @@ Scope {
                 property bool superShow: false
                 property bool mustShow: hoverRegion.containsMouse || superShow
                     || ShellEditSession.active
+                    || GlobalStates.barPopupHoverHeld(barRoot.outputName)
+                    || (GlobalStates.overviewOpen
+                        && (!GlobalStates.overviewTargetOutput
+                            || GlobalStates.overviewTargetOutput === barRoot.outputName))
                 exclusionMode: ExclusionMode.Ignore
                 exclusiveZone:
-                    (GlobalStates.coverflowSelectorOpen || (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))) ? 0 :
+                    (barRoot.fullscreenCovered || GlobalStates.coverflowSelectorOpen || (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))) ? 0 :
                     barRoot.panelSurfaceHeight
                 WlrLayershell.namespace: "quickshell:bar"
+                WlrLayershell.layer: CompositorService.isNiri
+                    ? WlrLayer.Overlay : WlrLayer.Top
                 implicitHeight: barRoot.panelSurfaceHeight
                 // Explicit zero-size item prevents ambiguous null input region during
                 // surface map/unmap transitions. Region { item: null } can be interpreted
@@ -130,7 +98,7 @@ Scope {
                 // input-blocking area at the top of the screen.
                 Item { id: emptyMask; width: 0; height: 0 }
                 mask: Region {
-                    item: hoverMaskRegion
+                    item: barRoot.fullscreenCovered ? emptyMask : hoverMaskRegion
                 }
                 color: "transparent"
 
@@ -138,7 +106,8 @@ Scope {
                 // actual Classic bar background rather than across the whole layer surface.
                 BackgroundEffect.blurRegion: Region {
                     Region {
-                        item: barContent.nativeBlurActive ? barContent.backgroundItem : emptyMask
+                        item: !barRoot.fullscreenCovered && barContent.nativeBlurActive
+                            ? barContent.backgroundItem : emptyMask
                         radius: barContent.backgroundItem.radius
                     }
                 }
@@ -157,6 +126,7 @@ Scope {
 
                 MouseArea  {
                     id: hoverRegion
+                    enabled: !barRoot.fullscreenCovered
                     hoverEnabled: true
                     property alias barContent: barContent
                     anchors {
@@ -176,6 +146,7 @@ Scope {
 
                     BarContent {
                         id: barContent
+                        opacity: barRoot.fullscreenCovered ? 0 : 1
                         nativeBlurAllowed: false
 
                         implicitHeight: barRoot.panelSurfaceHeight

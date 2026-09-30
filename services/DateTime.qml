@@ -10,17 +10,12 @@ import Quickshell.Io
  * A nice wrapper for date and time strings.
  */
 Singleton {
+    id: root
     property var clock: SystemClock {
         id: clock
-        precision: {
-            if ((Config.options?.time?.secondPrecision ?? false) || GlobalStates.screenLocked)
-                return SystemClock.Seconds;
-            // Cookie clock second hand needs sub-minute ticks without requiring global secondPrecision
-            if ((Config.options?.background?.widgets?.clock?.style ?? "cookie") === "cookie"
-                    && (Config.options?.background?.widgets?.clock?.cookie?.secondHandStyle ?? "hide") !== "hide")
-                return SystemClock.Seconds;
-            return SystemClock.Minutes;
-        }
+        precision: ((Config.options?.time?.secondPrecision ?? false)
+                || GlobalStates.screenLocked)
+            ? SystemClock.Seconds : SystemClock.Minutes
     }
     property string time: Qt.locale().toString(clock.date, Config.options?.time.format ?? "hh:mm")
     // Like time, but appends :ss when secondPrecision is enabled — used by bar clocks
@@ -36,35 +31,37 @@ Singleton {
     property string collapsedCalendarFormat: Qt.locale().toString(clock.date, "dd MMMM yyyy")
     property string uptime: "0h, 0m"
 
-    Timer {
-        triggeredOnStart: true
-        // Uptime doesn't change fast - 60s updates are sufficient and reduce I/O
-        interval: 60000
-        running: true
-        repeat: true
-        onTriggered: {
-            fileUptime.reload();
-            const textUptime = String(fileUptime.text() ?? "").trim();
-            const uptimeSeconds = Number(textUptime.split(/\s+/)[0]);
-            if (!Number.isFinite(uptimeSeconds) || uptimeSeconds < 0)
-                return;
+    function _refreshUptime(): void {
+        fileUptime.reload();
+        const textUptime = String(fileUptime.text() ?? "").trim();
+        const uptimeSeconds = Number(textUptime.split(/\s+/)[0]);
+        if (!Number.isFinite(uptimeSeconds) || uptimeSeconds < 0)
+            return;
 
-            // Convert seconds to days, hours, and minutes
-            const days = Math.floor(uptimeSeconds / 86400);
-            const hours = Math.floor((uptimeSeconds % 86400) / 3600);
-            const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+        // Convert seconds to days, hours, and minutes
+        const days = Math.floor(uptimeSeconds / 86400);
+        const hours = Math.floor((uptimeSeconds % 86400) / 3600);
+        const minutes = Math.floor((uptimeSeconds % 3600) / 60);
 
-            // Build the formatted uptime string
-            let formatted = "";
-            if (days > 0)
-                formatted += `${days}d`;
-            if (hours > 0)
-                formatted += `${formatted ? ", " : ""}${hours}h`;
-            if (minutes > 0 || !formatted)
-                formatted += `${formatted ? ", " : ""}${minutes}m`;
-            uptime = formatted;
+        // Build the formatted uptime string
+        let formatted = "";
+        if (days > 0)
+            formatted += `${days}d`;
+        if (hours > 0)
+            formatted += `${formatted ? ", " : ""}${hours}h`;
+        if (minutes > 0 || !formatted)
+            formatted += `${formatted ? ", " : ""}${minutes}m`;
+        uptime = formatted;
+    }
+
+    Connections {
+        target: clock
+        function onMinutesChanged(): void {
+            root._refreshUptime()
         }
     }
+
+    Component.onCompleted: root._refreshUptime()
 
     FileView {
         id: fileUptime

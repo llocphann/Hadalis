@@ -131,6 +131,7 @@ RowLayout {
         }
         text: "image_search"
         StyledToolTip {
+            position: "top"
             text: Translation.tr("Google Lens")
         }
     }
@@ -143,48 +144,28 @@ RowLayout {
         toggled: SongRec.running
         onClicked: SongRec.toggleRunning()
         text: "music_cast"
+        buttonText: Translation.tr("Recognize music")
+
+        // SongRec must remain a plain toolbar icon. The old custom rotating
+        // MaterialShape/content renderer introduced an extra transformed scene
+        // node that could survive as a crescent/face beside the icon. Running
+        // state is communicated by ink only; hover/ripple stay shared chrome.
+        colBackground: "transparent"
+        colBackgroundHover: "transparent"
+        colBackgroundToggled: "transparent"
+        colBackgroundToggledHover: "transparent"
+        colRipple: "transparent"
+        colRippleToggled: "transparent"
+        rippleEnabled: false
+        pressScaleEnabled: false
+        stateTransitionsEnabled: false
+        colText: toggled
+            ? Appearance.colors.colPrimary
+            : Appearance.colors.colOnSurfaceVariant
 
         StyledToolTip {
+            position: "top"
             text: Translation.tr("Recognize music")
-        }
-
-        colText: toggled
-            ? Appearance.colors.colOnPrimary
-            : Appearance.colors.colOnSurfaceVariant
-        background: Item {
-            MaterialShape {
-                anchors.fill: parent
-                RotationAnimation on rotation {
-                    running: songRecButton.toggled
-                    duration: 12000
-                    easing.type: Easing.Linear
-                    loops: Animation.Infinite
-                    from: 0
-                    to: 360
-                }
-                shape: {
-                    if (songRecButton.down) {
-                        return songRecButton.toggled ? MaterialShape.Shape.Circle : MaterialShape.Shape.Square
-                    } else {
-                        return songRecButton.toggled ? MaterialShape.Shape.SoftBurst : MaterialShape.Shape.Circle
-                    }
-                }
-                color: {
-                    if (songRecButton.toggled) {
-                        return songRecButton.hovered
-                            ? Appearance.colors.colPrimaryHover
-                            : Appearance.colors.colPrimary
-                    } else {
-                        return songRecButton.hovered
-                            ? Appearance.colors.colSurfaceContainerHigh
-                            : ColorUtils.transparentize(Appearance.colors.colSurfaceContainerHigh)
-                    }
-                }
-                Behavior on color {
-                    enabled: Appearance.animationsEnabled
-                    animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                }
-            }
         }
     }
 }

@@ -13,16 +13,19 @@ common="nix/module-common.nix"
 nixos="nix/nixos-module.nix"
 home="nix/home-module.nix"
 package="nix/package.nix"
+workflow_parser="nix/workflow-parser.nix"
+flake="flake.nix"
 nix_workflow=".github/workflows/nix.yml"
 nix_doc="docs/NIXOS.md"
 switchwall="scripts/colors/switchwall.sh"
+native_dispatch="scripts/native-dispatch"
 color_generator="scripts/colors/generate_colors_material.py"
 zed_module="scripts/colors/modules/31-zed.sh"
 easyeffects_service="services/deferred/EasyEffects.qml"
 default_config="defaults/config.json"
 awww_service="services/AwwwBackend.qml"
 
-for file in "$common" "$nixos" "$home" "$package" "$nix_workflow" "$nix_doc" "$switchwall" "$color_generator" "$zed_module" "$easyeffects_service" "$default_config" "$awww_service"; do
+for file in "$common" "$nixos" "$home" "$package" "$workflow_parser" "$flake" "$nix_workflow" "$nix_doc" "$switchwall" "$native_dispatch" "$color_generator" "$zed_module" "$easyeffects_service" "$default_config" "$awww_service"; do
   [[ -f "$file" ]] || fail "missing Nix/runtime contract file: $file"
 done
 
@@ -57,8 +60,43 @@ done < sdata/runtime-root-files.txt
 # than the required non-Nix packaging contract.
 grep -Fq 'for doc in docs/*.md; do' "$package" \
   || fail 'Nix package no longer installs repository documentation'
+if grep -Fq '"$docs/${doc##*/}"' "$package"; then
+  fail 'Nix package docs loop contains an unescaped Bash parameter expansion inside an indented string'
+fi
 grep -Fq 'install -Dm644 LICENSE "$out/share/licenses/inir/LICENSE"' "$package" \
   || fail 'Nix package no longer installs the project license'
+
+grep -Fq 'nativeBackend = pkgs.rustPlatform.buildRustPackage {' "$package" \
+  || fail 'Nix package no longer builds the qualified Rust backend'
+grep -Fq 'cargoLock.lockFile = ../native/Cargo.lock;' "$package" \
+  || fail 'Nix native backend no longer uses the committed Cargo.lock'
+grep -Fq 'mkdir -p "$runtime/native/bin"' "$package" \
+  || fail 'Nix package no longer installs native binaries into the runtime'
+
+grep -Fq '{ pkgs, withWorkflowParser ? false }:' "$package" \
+  || fail 'Nix shell package no longer keeps Workflow parser capability opt-in'
+grep -Fq 'HADALIS_WORKFLOW_GRAMMAR' "$package" \
+  || fail 'parser-capable Nix shell no longer exports its grammar path'
+grep -Fq 'HADALIS_TREE_SITTER_LIBRARY' "$package" \
+  || fail 'parser-capable Nix shell no longer exports its Tree-sitter library path'
+grep -Fq 'lib.optionalString withWorkflowParser' "$package" \
+  || fail 'default Nix shell no longer gates parser wrapper arguments'
+grep -Fq 'pname = "inir-workflow-parser";' "$workflow_parser" \
+  || fail 'Nix Workflow parser derivation is missing'
+grep -Fq 'version = "0.3.1";' "$workflow_parser" \
+  || fail 'Nix Workflow parser grammar version drifted'
+grep -Fq 'sha256-5u06cEDfVP7RGDgBrUghOWIr+bnsHF9+42xeziWAbFg=' "$workflow_parser" \
+  || fail 'Nix Workflow parser source hash drifted'
+grep -Fq 'src/parser.c src/scanner.c' "$workflow_parser" \
+  || fail 'Nix Workflow parser no longer builds the released generated C sources'
+grep -Fq 'treeSitterLibrary = "${treeSitterLib}/lib/libtree-sitter.so";' "$workflow_parser" \
+  || fail 'Nix Workflow parser no longer exposes its runtime library path'
+grep -Fq 'inir-workflow-parser = workflowParser;' "$flake" \
+  || fail 'flake no longer exports the standalone Workflow parser capability'
+grep -Fq 'inir-with-workflow-parser = packageWithWorkflowParser;' "$flake" \
+  || fail 'flake no longer exports the parser-capable Hadalis variant'
+grep -Fq 'nix build .#inir-with-workflow-parser --print-build-logs' "$nix_workflow" \
+  || fail 'Nix CI no longer builds the parser-capable Hadalis variant'
 grep -Fq 'Nix-managed installations keep inir.service declarative' "$package" \
   || fail 'Nix package no longer blocks mutable service ownership commands'
 grep -Fq 'systemctl --user cat inir.service' "$package" \
@@ -90,10 +128,14 @@ grep -Fq 'colorPython = with pkgs;' "$package" \
   || fail 'Nix runtime no longer names the packaged color Python environment'
 grep -Eq '^[[:space:]]+colorPython$' "$package" \
   || fail 'Nix runtime no longer exposes colorPython on the wrapped runtime PATH'
-[[ "$(grep -Fc '${colorPython}/bin/python3' "$package")" -ge 2 ]] \
-  || fail 'Nix package no longer pins switchwall to the packaged color Python interpreter'
-grep -Fq '_ii_python="{color_python}"' "$package" \
-  || fail 'Nix package no longer rewrites switchwall to the pinned color Python interpreter'
+grep -Fq 'elif command -v python3 >/dev/null 2>&1; then' "$native_dispatch" \
+  || fail 'native selector no longer honors the Nix-wrapped Python PATH'
+if grep -Fq '_ii_python=' "$switchwall" || grep -Fq 'source "$_ii_venv/bin/activate"' "$switchwall"; then
+  fail 'switchwall must not eagerly select or activate Python before native-dispatch'
+fi
+if grep -Fq '_ii_python="{color_python}"' "$package"; then
+  fail 'Nix package must not patch the retired switchwall Python selector block'
+fi
 
 grep -Fq 'Quickshell.execDetached(["/usr/bin/env", "easyeffects", "--service-mode"])' "$easyeffects_service" \
   || fail 'EasyEffects service no longer exercises the PATH-resolved native runtime contract'

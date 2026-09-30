@@ -38,7 +38,6 @@ Loader {
         Config.options?.waffles?.bar?.bottom ?? false
     property bool popupBelow: false
     property real ambientShadowWidth: 1
-    property int _anchorRevision: 0
     readonly property bool popupContainsMouse:
         root.item?.popupContainsMouse ?? false
 
@@ -73,10 +72,6 @@ Loader {
             root.active = false
     }
 
-    function updateAnchor() {
-        root._anchorRevision++
-    }
-
     function _anchorRect(outputWidth, outputHeight) {
         const target = root.anchorItem
         const host = target ? target.QsWindow : null
@@ -86,9 +81,7 @@ Loader {
                 || outputWidth <= 0 || outputHeight <= 0)
             return Qt.rect(0, 0, 0, 0)
 
-        // Explicit revision preserves the legacy updateAnchor() API. Geometry
-        // reads also keep transformed/scaled outputs reactive.
-        root._anchorRevision
+        // Geometry reads keep transformed/scaled outputs reactive.
         target.x
         target.y
         target.width

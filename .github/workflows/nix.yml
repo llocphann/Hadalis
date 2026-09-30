@@ -71,3 +71,4 @@ jobs:
 
       - name: Build Hadalis package
         run: nix build .#inir --print-build-logs
+

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs.services
+import "../common/PanelFamilyPolicy.js" as FamilyPolicy
 import qs.modules.common
 import qs.modules.common.widgets
 
@@ -10,9 +11,12 @@ ContentPage {
     settingsPageIndex: 10
     settingsPageName: Translation.tr("Modules")
 
+    readonly property bool isIi: (Config.options?.panelFamily ?? "abyss") === "ii"
+    readonly property bool isAbyss: Config.options?.panelFamily === "abyss"
     readonly property bool isWaffle: Config.options?.panelFamily === "waffle"
 
     readonly property var defaultPanels: ({
+        "abyss": FamilyPolicy.abyssPanels,
         "ii": [
             "iiBar", "iiBackground", "iiBackdrop", "iiCheatsheet", "iiControlPanel", "iiDock", "iiLock", 
             "iiMediaControls", "iiNotificationPopup", "iiOnScreenDisplay", "iiOnScreenKeyboard", 
@@ -66,7 +70,7 @@ ContentPage {
     }
 
     function resetToDefaults() {
-        const family = Config.options?.panelFamily ?? "ii"
+        const family = Config.options?.panelFamily ?? "abyss"
         Config.setNestedValue("enabledPanels", [...(defaultPanels[family] ?? [])])
     }
 
@@ -143,81 +147,14 @@ ContentPage {
         title: Translation.tr("Panel Style")
 
         SettingsGroup {
-            RowLayout {
+            ConfigSelectionArray {
                 Layout.fillWidth: true
-                spacing: 8
-
-                RippleButton {
-                    Layout.fillWidth: true
-                    implicitHeight: 64
-                    buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius : Appearance.rounding.small
-                    colBackground: !modulesPage.isWaffle
-                        ? (Appearance.zzzEverywhere ? Appearance.zzz.sticker : Appearance.colors.colPrimaryContainer)
-                        : Appearance.colors.colLayer1
-                    colBackgroundHover: !modulesPage.isWaffle
-                        ? (Appearance.zzzEverywhere ? Appearance.colors.colPrimaryHover : Appearance.colors.colPrimaryContainerHover)
-                        : Appearance.colors.colLayer1Hover
-                    colRipple: !modulesPage.isWaffle
-                        ? (Appearance.zzzEverywhere ? Appearance.colors.colPrimaryActive : Appearance.colors.colPrimaryContainerActive)
-                        : Appearance.colors.colLayer1Active
-
-                    ColumnLayout {
-                        anchors.centerIn: parent
-                        spacing: 4
-                        MaterialSymbol {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: "dashboard"
-                            iconSize: Appearance.font.pixelSize.larger
-                            color: !modulesPage.isWaffle
-                                ? (Appearance.zzzEverywhere ? Appearance.zzz.onSticker : Appearance.colors.colOnPrimaryContainer)
-                                : Appearance.colors.colOnSurface
-                        }
-                        StyledText {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: "Material (ii)"
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            color: !modulesPage.isWaffle
-                                ? (Appearance.zzzEverywhere ? Appearance.zzz.onSticker : Appearance.colors.colOnPrimaryContainer)
-                                : Appearance.colors.colOnSurface
-                        }
-                    }
-
-                    onClicked: {
-                        Config.setNestedValue("panelFamily", "ii")
-                        Config.setNestedValue("enabledPanels", [...modulesPage.defaultPanels["ii"]])
-                    }
-                }
-
-                RippleButton {
-                    Layout.fillWidth: true
-                    implicitHeight: 64
-                    buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius : Appearance.rounding.small
-                    colBackground: modulesPage.isWaffle ? Appearance.colors.colPrimaryContainer : Appearance.colors.colLayer1
-                    colBackgroundHover: modulesPage.isWaffle ? Appearance.colors.colPrimaryContainerHover : Appearance.colors.colLayer1Hover
-                    colRipple: modulesPage.isWaffle ? Appearance.colors.colPrimaryContainerActive : Appearance.colors.colLayer1Active
-
-                    ColumnLayout {
-                        anchors.centerIn: parent
-                        spacing: 4
-                        MaterialSymbol {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: "window"
-                            iconSize: Appearance.font.pixelSize.larger
-                            color: modulesPage.isWaffle ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSurface
-                        }
-                        StyledText {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: "Windows 11 (Waffle)"
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            color: modulesPage.isWaffle ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSurface
-                        }
-                    }
-
-                    onClicked: {
-                        Config.setNestedValue("panelFamily", "waffle")
-                        Config.setNestedValue("enabledPanels", [...modulesPage.defaultPanels["waffle"]])
-                    }
-                }
+                currentValue: Config.options?.panelFamily ?? "abyss"
+                options: [
+                    { displayName: "Waffle", icon: "window", value: "waffle" },
+                    { displayName: "Abyss", icon: "water", value: "abyss" }
+                ]
+                onSelected: value => Quickshell.execDetached([Quickshell.shellPath("scripts/inir"),"panelFamily","set",value])
             }
         }
     }
@@ -497,7 +434,7 @@ ContentPage {
     // ==================== MATERIAL II ====================
     SettingsCardSection {
         settingsTaskSection: "modules"
-        visible: !modulesPage.isWaffle && modulesPage.activeSection === "modules"
+        visible: modulesPage.isIi && modulesPage.activeSection === "modules"
         expanded: true
         icon: "dashboard"
         title: Translation.tr("Core")
@@ -563,7 +500,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "modules"
-        visible: !modulesPage.isWaffle && modulesPage.activeSection === "modules"
+        visible: modulesPage.isIi && modulesPage.activeSection === "modules"
         expanded: true
         icon: "notifications"
         title: Translation.tr("Feedback")
@@ -597,7 +534,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "modules"
-        visible: !modulesPage.isWaffle && modulesPage.activeSection === "modules"
+        visible: modulesPage.isIi && modulesPage.activeSection === "modules"
         expanded: true
         icon: "build"
         title: Translation.tr("Utilities")
@@ -679,7 +616,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "modules"
-        visible: !modulesPage.isWaffle && modulesPage.activeSection === "modules"
+        visible: modulesPage.isIi && modulesPage.activeSection === "modules"
         expanded: true
         icon: "more_horiz"
         title: Translation.tr("Optional")
@@ -698,7 +635,7 @@ ContentPage {
                 text: Translation.tr("Screen Corners")
                 checked: modulesPage.isPanelEnabled("iiScreenCorners")
                 onCheckedChanged: modulesPage.setPanelEnabled("iiScreenCorners", checked)
-                StyledToolTip { text: Translation.tr("Rounded corner overlays for screens without hardware rounding") }
+                StyledToolTip { text: Translation.tr("Allow opening sidebars by interacting with screen corners") }
             }
 
             SettingsSwitch {
@@ -916,43 +853,17 @@ ContentPage {
         title: Translation.tr("Display scaling")
 
         SettingsGroup {
-            ConfigRow {
-                uniform: true
-                ConfigSpinBox {
-                    icon: "zoom_in"
-                    text: Translation.tr("UI scale (%)")
-                    value: Math.round((Config.options?.appearance?.typography?.sizeScale ?? 1.0) * 100)
-                    from: 50
-                    to: 200
-                    stepSize: 5
-                    onValueChanged: {
-                        Config.setNestedValue("appearance.typography.sizeScale", value / 100)
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Scale fonts and spacing throughout the shell. Takes effect immediately.")
-                    }
-                }
-            }
-
             StyledText {
-                Layout.leftMargin: 16
-                text: Translation.tr("Current: %1%. Takes effect immediately.").arg(
+                Layout.fillWidth: true
+                text: Translation.tr("Current UI scale: %1%").arg(
                     Math.round((Config.options?.appearance?.typography?.sizeScale ?? 1.0) * 100))
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.colors.colSubtext
+                color: Appearance.colors.colOnSurfaceVariant
             }
-
-            RowLayout {
-                Layout.topMargin: 4
-                visible: Math.abs((Config.options?.appearance?.typography?.sizeScale ?? 1.0) - 1.0) > 0.01
-
-                RippleButtonWithIcon {
-                    materialIcon: "zoom_out"
-                    mainText: Translation.tr("Reset to 100%")
-                    onClicked: {
-                        Config.setNestedValue("appearance.typography.sizeScale", 1.0)
-                    }
-                }
+            RippleButtonWithIcon {
+                Layout.fillWidth: true
+                materialIcon: "text_format"
+                mainText: Translation.tr("Open Typography settings")
+                onClicked: SettingsPageRegistry.navigateToKey("themes", "Typography")
             }
         }
     }
@@ -1023,16 +934,6 @@ ContentPage {
             }
 
             SettingsSwitch {
-                buttonIcon: "school"
-                text: Translation.tr("Easy mode (essentials only)")
-                checked: Config.options?.settingsUi?.easyMode ?? false
-                onCheckedChanged: Config.setNestedValue("settingsUi.easyMode", checked)
-                StyledToolTip {
-                    text: Translation.tr("Show a curated set of essential settings and hide the more advanced pages and sections. You can switch back to Advanced anytime from the title bar.")
-                }
-            }
-
-            SettingsSwitch {
                 buttonIcon: "layers"
                 text: Translation.tr("Overlay mode (live preview)")
                 checked: Config.options?.settingsUi?.overlayMode ?? false
@@ -1096,23 +997,6 @@ ContentPage {
                     }
                 }
 
-                // Floor is 60, not 20: the panel is a reading surface and the
-                // solid styles carry no backdrop of their own, so anything lower
-                // put the wallpaper straight behind the text. Both settings
-                // hosts clamp on read too, so an older stored value cannot reach
-                // the panel even if this page is never opened.
-                ConfigSpinBox {
-                    icon: "opacity"
-                    text: Translation.tr("Panel background opacity (%)")
-                    value: Math.round((Config.options?.settingsUi?.overlayAppearance?.backgroundOpacity ?? 1.0) * 100)
-                    from: 60
-                    to: 100
-                    stepSize: 5
-                    onValueChanged: Config.setNestedValue("settingsUi.overlayAppearance.backgroundOpacity", value / 100)
-                    StyledToolTip {
-                        text: Translation.tr("Opacity of the Settings panel background. Lower values let the shell show through; with a glass style it thins the frosted tint instead.")
-                    }
-                }
             }
 
             Rectangle {

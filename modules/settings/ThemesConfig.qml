@@ -61,7 +61,10 @@ ContentPage {
         onTriggered: root.refreshSavedThemes()
     }
 
-    Component.onCompleted: root.refreshSavedThemes()
+    Component.onCompleted: {
+        ThemeService.normalizeGlobalStyle()
+        root.refreshSavedThemes()
+    }
 
     function _log(...args): void {
         if (Quickshell.env("QS_DEBUG") === "1") console.log(...args);
@@ -70,6 +73,23 @@ ContentPage {
     settingsPageIndex: 4
     settingsPageName: Translation.tr("Themes")
     property string activeSection: "colors"
+
+    onActiveSectionChanged: {
+        // "style" belonged to the retired shell-wide Global Style page.
+        if (activeSection === "style")
+            activeSection = "colors"
+    }
+
+    function activateSettingsSearchSection(section: string): bool {
+        const label = String(section ?? "").toLowerCase()
+        if (label.includes("type") || label.includes("font")
+                || label.includes("scale")) root.activeSection = "type"
+        else if (label.includes("motion") || label.includes("animation"))
+            root.activeSection = "motion"
+        else if (label.includes("advanced")) root.activeSection = "advanced"
+        else root.activeSection = "colors"
+        return true
+    }
 
     SettingsTaskNavigator {
         icon: "palette"
@@ -855,7 +875,7 @@ ContentPage {
     // Theme Scheduling Section
     SettingsCardSection {
         settingsTaskSection: "motion"
-        visible: root.activeSection === "motion" && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "motion"
         expanded: true
         icon: "schedule"
         title: Translation.tr("Theme Scheduling")
@@ -1091,7 +1111,7 @@ ContentPage {
     SettingsCardSection {
         id: terminalColorsSection
         settingsTaskSection: "advanced"
-        visible: root.activeSection === "advanced" && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "advanced"
         expanded: true
         icon: "terminal"
         title: Translation.tr("Terminal Colors")
@@ -1563,7 +1583,7 @@ ContentPage {
     SettingsCardSection {
         id: customThemeEditorSection
         settingsTaskSection: "advanced"
-        visible: root.activeSection === "advanced" && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "advanced"
         expanded: true
         icon: "edit"
         title: Translation.tr("Custom Theme Editor")
@@ -1572,7 +1592,7 @@ ContentPage {
             Loader {
                 Layout.fillWidth: true
                 active: root.activeSection === "advanced"
-                    && !(Config.options?.settingsUi?.easyMode ?? false)
+
                     && customThemeEditorSection.expanded
                 source: "CustomThemeEditor.qml"
             }
@@ -1582,7 +1602,7 @@ ContentPage {
     SettingsCardSection {
         id: gowallEditorSection
         settingsTaskSection: "advanced"
-        visible: root.activeSection === "advanced" && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "advanced"
         expanded: true
         icon: "wallpaper"
         title: Translation.tr("Gowall Wallpaper Editor")
@@ -1591,7 +1611,7 @@ ContentPage {
             Loader {
                 Layout.fillWidth: true
                 active: root.activeSection === "advanced"
-                    && !(Config.options?.settingsUi?.easyMode ?? false)
+
                     && gowallEditorSection.expanded
                 source: "GowallWallpaperEditor.qml"
             }
@@ -1870,7 +1890,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "advanced"
-        visible: root.activeSection === "advanced" && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "advanced"
         expanded: true
         icon: "info"
         title: Translation.tr("About Themes")

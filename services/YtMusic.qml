@@ -417,7 +417,10 @@ Singleton {
     }
 
     Timer {
-        interval: 500
+        // MPRIS reads are in-process. The IPC fallback used to spawn up to four
+        // shell+socat processes every 500 ms; poll it at 1 Hz and batch all
+        // required properties through one socket connection instead.
+        interval: root._mpvPlayer ? 500 : 1000
         running: root.currentVideoId !== ""
         repeat: true
         onTriggered: {
@@ -426,80 +429,67 @@ Singleton {
                 root._ipcPaused = !root._mpvPlayer.isPlaying
                 if (root.currentDuration <= 0 && root._mpvPlayer.length > 0)
                     root.currentDuration = root._mpvPlayer.length
-            } else if (!root._userInitiatedPlay) {
-                _ipcQueryProc.running = true
-                _ipcPauseQueryProc.running = true
             }
 
-            // mpv knows the real duration once the stream is loaded; MPRIS `length` is often
-            // missing for yt-dlp-streamed tracks, leaving the player stuck at 0:00. Query it
-            // directly until we have it (stops firing once known).
-            if (root.currentDuration <= 0 && root.ipcSocket)
-                _ipcDurationQueryProc.running = true
-
-            // Don't query EOF while a new play is pending — the old socket
-            // would return stale eof-reached=true and cause double-advance.
-            if (!root._userInitiatedPlay)
-                _ipcEofQueryProc.running = true
+            const needsFallbackState = !root._mpvPlayer && !root._userInitiatedPlay
+            const needsDuration = root.currentDuration <= 0
+            if ((needsFallbackState || needsDuration)
+                    && root.ipcSocket
+                    && !_ipcStateProc.running) {
+                _ipcStateProc.queryFullState = needsFallbackState
+                _ipcStateProc.queryDuration = needsDuration
+                _ipcStateProc.running = true
+            }
 
             // Covers keep-open style endings where mpv doesn't exit,
             // so onExited never fires but eof-reached becomes true.
-            // Also guard against stale EOF from old mpv when user initiated a new play.
-            if (root._ipcEofReached && !root._autoAdvanceTriggered && !root._userInitiatedPlay && root.currentVideoId !== "") {
+            if (root._ipcEofReached && !root._autoAdvanceTriggered
+                    && !root._userInitiatedPlay && root.currentVideoId !== "") {
                 root._autoAdvanceTriggered = true
                 root.playNext(true)
             }
         }
     }
-    
-    Process {
-        id: _ipcQueryProc
-        command: ["/bin/sh", "-c", "echo '{ \"command\": [\"get_property\", \"time-pos\"] }' | socat - " + root.ipcSocket + " 2>/dev/null"]
-        stdout: SplitParser {
-            onRead: line => {
-                try {
-                    const res = JSON.parse(line)
-                    if (res.data !== undefined) root.currentPosition = res.data
-                } catch(e) {}
-            }
-        }
-    }
-    
-    Process {
-        id: _ipcDurationQueryProc
-        command: ["/bin/sh", "-c", "echo '{ \"command\": [\"get_property\", \"duration\"] }' | socat - " + root.ipcSocket + " 2>/dev/null"]
-        stdout: SplitParser {
-            onRead: line => {
-                try {
-                    const res = JSON.parse(line)
-                    if (typeof res.data === "number" && res.data > 0) root.currentDuration = res.data
-                } catch(e) {}
-            }
-        }
-    }
 
     Process {
-        id: _ipcPauseQueryProc
-        command: ["/bin/sh", "-c", "echo '{ \"command\": [\"get_property\", \"pause\"] }' | socat - " + root.ipcSocket + " 2>/dev/null"]
-        stdout: SplitParser {
-            onRead: line => {
-                try {
-                    const res = JSON.parse(line)
-                    if (res.data !== undefined) root._ipcPaused = res.data
-                } catch(e) {}
-            }
-        }
-    }
+        id: _ipcStateProc
+        property bool queryFullState: false
+        property bool queryDuration: false
+        command: ["/bin/sh", "-c",
+            "{" +
+            (queryFullState
+                ? " printf '%s\\n' '{\"command\":[\"get_property\",\"time-pos\"],\"request_id\":1}'" +
+                  " '{\"command\":[\"get_property\",\"pause\"],\"request_id\":2}'" +
+                  " '{\"command\":[\"get_property\",\"eof-reached\"],\"request_id\":3}';"
+                : "") +
+            (queryDuration
+                ? " printf '%s\\n' '{\"command\":[\"get_property\",\"duration\"],\"request_id\":4}';"
+                : "") +
+            " } | socat - " + root.ipcSocket + " 2>/dev/null"]
 
-    Process {
-        id: _ipcEofQueryProc
-        command: ["/bin/sh", "-c", "echo '{ \"command\": [\"get_property\", \"eof-reached\"] }' | socat - " + root.ipcSocket + " 2>/dev/null"]
         stdout: SplitParser {
             onRead: line => {
                 try {
                     const res = JSON.parse(line)
-                    if (res.data !== undefined) root._ipcEofReached = !!res.data
-                } catch(e) {}
+                    switch (Number(res.request_id ?? 0)) {
+                    case 1:
+                        if (typeof res.data === "number")
+                            root.currentPosition = res.data
+                        break
+                    case 2:
+                        if (res.data !== undefined)
+                            root._ipcPaused = !!res.data
+                        break
+                    case 3:
+                        if (res.data !== undefined)
+                            root._ipcEofReached = !!res.data
+                        break
+                    case 4:
+                        if (typeof res.data === "number" && res.data > 0)
+                            root.currentDuration = res.data
+                        break
+                    }
+                } catch (e) {}
             }
         }
     }

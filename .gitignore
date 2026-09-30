@@ -104,6 +104,8 @@ node_modules/
 # ── Build artifacts ───────────────────────────────────────────
 *.qmlc
 *.jsc
+/native/target/
+
 
 # ── Logs / Debug / Temp ──────────────────────────────────────
 *.log
@@ -191,3 +193,7 @@ assets/images/mascot/PROMPTS.md
 # via the optional pack (`setup extras`); this repo ships only the manifest
 assets/images/mascot/inir-mascot-*.png
 assets/images/mascot/inir-mascot-*.gif
+
+# Local iRiS live visual evidence (never ship/commit)
+/scripts/iris-corner-poc/captures/
+/scripts/iris-corner-poc/g2/captures/

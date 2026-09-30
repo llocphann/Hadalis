@@ -797,14 +797,9 @@ Item {
                         }
                     }
 
-                    RowLayout {
-                        Layout.fillWidth: true; spacing: 8
-                        MaterialLoadingIndicator { implicitSize: 18; loading: true }
-                        StyledText {
-                            text: Translation.tr("Waiting for authorization...")
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: root.colTextSecondary
-                        }
+                    LoadingText {
+                        Layout.fillWidth: true
+                        color: root.colTextSecondary
                     }
 
                     RippleButton {
@@ -822,12 +817,9 @@ Item {
                 Layout.fillWidth: true
                 active: YtMusic.oauthSetupActive && !YtMusic.oauthUserCode
                 visible: active
-                sourceComponent: RowLayout {
-                    spacing: 8
-                    Item { Layout.fillWidth: true }
-                    MaterialLoadingIndicator { implicitSize: 24; loading: true }
-                    StyledText { text: Translation.tr("Requesting code..."); color: root.colTextSecondary }
-                    Item { Layout.fillWidth: true }
+                sourceComponent: LoadingText {
+                    anchors.centerIn: parent
+                    color: root.colTextSecondary
                 }
             }
         }
@@ -1049,26 +1041,9 @@ Item {
                 spacing: 10
                 
                 MaterialSymbol {
-                    id: searchIcon
-                    text: YtMusic.searching ? "progress_activity" : "search"
+                    text: "search"
                     iconSize: 20
                     color: root.colTextSecondary
-                    rotation: 0
-
-                    RotationAnimation on rotation {
-                        from: 0; to: 360; duration: 1000
-                        loops: Animation.Infinite
-                        running: YtMusic.searching && GlobalStates.sidebarLeftOpen
-                    }
-
-                    // Reset rotation to 0 when search ends so icon doesn't stay tilted
-                    Connections {
-                        target: YtMusic
-                        function onSearchingChanged() {
-                            if (!YtMusic.searching)
-                                searchIcon.rotation = 0
-                        }
-                    }
                 }
                 
                 TextField {
@@ -1231,12 +1206,9 @@ Item {
                         width: parent.width
                         active: YtMusic.searching
                         height: active ? 40 : 0
-                        sourceComponent: RowLayout {
-                            spacing: 8
-                            Item { Layout.fillWidth: true }
-                            MaterialLoadingIndicator { implicitSize: 24; loading: true }
-                            StyledText { text: Translation.tr("Searching..."); color: root.colTextSecondary }
-                            Item { Layout.fillWidth: true }
+                        sourceComponent: LoadingText {
+                            anchors.centerIn: parent
+                            color: root.colTextSecondary
                         }
                     }
                 }
@@ -1338,15 +1310,19 @@ Item {
                             Layout.fillWidth: true
                         }
 
+                        LoadingText {
+                            visible: YtMusic.googleChecking
+                            color: root.colPrimary
+                        }
                         StyledText {
-                            text: YtMusic.googleChecking ? Translation.tr("Connecting...")
-                                : YtMusic.googleConnected
-                                    ? (YtMusic.syncingLiked ? Translation.tr("Syncing...")
-                                        : YtMusic.lastLikedSync ? Translation.tr("Synced %1").arg(YtMusic.lastLikedSync)
-                                        : Translation.tr("Not synced yet"))
-                                    : Translation.tr("Access liked songs & playlists")
+                            visible: !YtMusic.googleChecking
+                            text: YtMusic.googleConnected
+                                ? (YtMusic.syncingLiked ? Translation.tr("Syncing...")
+                                    : YtMusic.lastLikedSync ? Translation.tr("Synced %1").arg(YtMusic.lastLikedSync)
+                                    : Translation.tr("Not synced yet"))
+                                : Translation.tr("Access liked songs & playlists")
                             font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: YtMusic.googleChecking || YtMusic.syncingLiked ? root.colPrimary : root.colTextSecondary
+                            color: YtMusic.syncingLiked ? root.colPrimary : root.colTextSecondary
                         }
                     }
 
@@ -1405,12 +1381,7 @@ Item {
                         onClicked: YtMusic.quickConnect()
                     }
 
-                    // Checking: loading indicator
-                    MaterialLoadingIndicator {
-                        visible: YtMusic.googleChecking
-                        implicitSize: 20
-                        loading: visible
-                    }
+                    // The status line displays Loading; no duplicate icon.
                 }
 
                 // Error row - shows inline when connection fails
@@ -2024,26 +1995,9 @@ Item {
             spacing: 10
             visible: YtMusic.googleChecking
 
-            MaterialLoadingIndicator {
-                implicitSize: 20
-                loading: visible
-            }
-
-            ColumnLayout {
+            LoadingText {
                 Layout.fillWidth: true
-                spacing: 0
-                StyledText {
-                    text: Translation.tr("Connecting...")
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    font.weight: Font.Medium
-                    color: root.colText
-                }
-                StyledText {
-                    visible: YtMusic.googleBrowser
-                    text: Translation.tr("Trying %1...").arg(YtMusic.getBrowserDisplayName(YtMusic.googleBrowser))
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    color: root.colPrimary
-                }
+                color: root.colText
             }
 
             YtActionChip {

@@ -1,0 +1,5 @@
+module qs.modules.abyss.settings
+AbyssStyleSettings 1.0 AbyssStyleSettings.qml
+AbyssOutputSelector 1.0 AbyssOutputSelector.qml
+AbyssWavePreview 1.0 AbyssWavePreview.qml
+AbyssPositionSettings 1.0 AbyssPositionSettings.qml

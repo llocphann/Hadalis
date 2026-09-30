@@ -10,10 +10,14 @@ ContentPage {
     id: root
     settingsPageIndex: 15
     settingsPageName: Translation.tr("Monitors")
+    property bool embeddedArrangementOnly: false
+    embedded: embeddedArrangementOnly
+    readonly property bool arrangementChromeVisible: !embeddedArrangementOnly
 
     property string activeSection: "outputs"
 
     readonly property string niriConfigScript: Quickshell.shellPath("scripts/niri-config.py")
+    readonly property string nativeDispatchPath: Quickshell.shellPath("scripts/native-dispatch")
     property bool monitorLayoutBusy: false
     property string monitorLayoutError: ""
     property string monitorLayoutInfo: ""
@@ -31,6 +35,7 @@ ContentPage {
     signal monitorPositionFinished(string outputName, bool success)
 
     SettingsTaskNavigator {
+        visible: !root.embeddedArrangementOnly
         icon: "settings_input_component"
         title: Translation.tr("Monitors")
         description: Translation.tr("Choose which monitor shows each shell surface: outputs, ii surfaces, desktop widgets and shared popups.")
@@ -49,6 +54,7 @@ ContentPage {
         { title: Translation.tr("Bar"), description: Translation.tr("Top workspace bar, or the vertical bar when that mode is enabled"), icon: "web_asset", path: "bar.screenList" },
         { title: Translation.tr("Dock"), description: Translation.tr("Application dock and its hover reveal area"), icon: "call_to_action", path: "dock.screenList" },
         { title: Translation.tr("Sidebars"), description: Translation.tr("Feature and system sidebars on each screen edge"), icon: "side_navigation", path: "sidebar.screenList" },
+        { title: Translation.tr("Notification center"), description: Translation.tr("Bottom-right notification history surface"), selectionLabel: Translation.tr("Enabled outputs"), icon: "notifications", path: "notificationCenter.screenList" },
         { title: Translation.tr("Media controls"), description: Translation.tr("Floating player popup opened from the bar or IPC"), selectionLabel: Translation.tr("Enabled outputs"), icon: "music_note", path: "media.screenList" }
     ]
     readonly property var sharedSurfaces: [
@@ -370,7 +376,7 @@ ContentPage {
                 y: name === outputName ? y : Math.round(rect.y)
             }
         }
-        monitorLayoutPersist.command = ["python3", niriConfigScript, "persist-layout", JSON.stringify(layout)]
+        monitorLayoutPersist.command = [root.nativeDispatchPath, "niri", "persist-layout", JSON.stringify(layout)]
         monitorLayoutPersist.running = true
     }
 
@@ -952,11 +958,8 @@ ContentPage {
         Layout.fillWidth: true
         implicitHeight: surfaceLayout.implicitHeight + Appearance.sizes.spacingLarge * 2
         radius: Appearance.rounding.small
-        color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-            : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-            : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-            : Appearance.colors.colLayer1
-        border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : 1
+        color: Appearance.colors.colLayer1
+        border.width: 1
         border.color: SettingsMaterialPreset.groupBorderColor
 
         ColumnLayout {
@@ -1080,10 +1083,7 @@ ContentPage {
         Layout.fillWidth: true
         implicitHeight: outputColumn.implicitHeight + Appearance.sizes.spacingLarge * 2
         radius: Appearance.rounding.small
-        color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-            : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-            : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-            : Appearance.colors.colLayer1
+        color: Appearance.colors.colLayer1
         border.width: 1
         border.color: outputBlock.primary
             ? Appearance.colors.colPrimary : SettingsMaterialPreset.groupBorderColor
@@ -1185,18 +1185,26 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "outputs"
-        visible: root.activeSection === "outputs" && CompositorService.isNiri
+        visible: (root.embeddedArrangementOnly || root.activeSection === "outputs") && CompositorService.isNiri
         expanded: true
+        collapsible: root.arrangementChromeVisible
+        showHeader: root.arrangementChromeVisible
+        enableSettingsSearch: root.arrangementChromeVisible
         icon: "screen_rotation_alt"
         title: Translation.tr("Monitor arrangement")
 
         SettingsGroup {
             NoticeBox {
+                visible: root.arrangementChromeVisible
                 Layout.fillWidth: true
                 materialIcon: "drag_pan"
-                text: root.niriOutputNames().length > 1
-                    ? Translation.tr("Drag displays to match your desk. Nearby edges and alignments snap automatically. Gaps are allowed, but Niri's pointer only crosses directly adjacent outputs.")
-                    : Translation.tr("Connect another display to arrange monitor positions.")
+                text: root.embeddedArrangementOnly
+                    ? (root.niriOutputNames().length > 1
+                        ? Translation.tr("Drag to arrange.")
+                        : Translation.tr("One display connected."))
+                    : (root.niriOutputNames().length > 1
+                        ? Translation.tr("Drag displays to match your desk. Nearby edges and alignments snap automatically. Gaps are allowed, but Niri's pointer only crosses directly adjacent outputs.")
+                        : Translation.tr("Connect another display to arrange monitor positions."))
             }
 
             Rectangle {
@@ -1204,10 +1212,7 @@ ContentPage {
                 Layout.fillWidth: true
                 implicitHeight: 292
                 radius: Appearance.rounding.normal
-                color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                    : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                    : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                    : Appearance.colors.colLayer1
+                color: Appearance.colors.colLayer1
                 border.width: 1
                 border.color: SettingsMaterialPreset.groupBorderColor
                 clip: true
@@ -1348,7 +1353,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "outputs"
-        visible: root.activeSection === "outputs"
+        visible: !root.embeddedArrangementOnly && root.activeSection === "outputs"
         expanded: true
         icon: "settings_input_component"
         title: Translation.tr("Shell visibility")
@@ -1393,7 +1398,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "outputs"
-        visible: root.activeSection === "outputs"
+        visible: !root.embeddedArrangementOnly && root.activeSection === "outputs"
         expanded: true
         icon: "preview"
         title: Translation.tr("Overview placement")
@@ -1413,7 +1418,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "surfaces"
-        visible: root.activeSection === "surfaces"
+        visible: !root.embeddedArrangementOnly && root.activeSection === "surfaces"
         expanded: true
         icon: "web_asset"
         title: Translation.tr("Material shell surfaces")
@@ -1441,7 +1446,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "widgets"
-        visible: root.activeSection === "widgets"
+        visible: !root.embeddedArrangementOnly && root.activeSection === "widgets"
         expanded: true
         icon: "widgets"
         title: Translation.tr("Desktop widgets")
@@ -1470,7 +1475,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "popups"
-        visible: root.activeSection === "popups"
+        visible: !root.embeddedArrangementOnly && root.activeSection === "popups"
         expanded: true
         icon: "notifications"
         title: Translation.tr("Popups")

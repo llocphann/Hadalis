@@ -10,8 +10,21 @@ import QtQuick.Layouts
 
 MouseArea {
     id: root
-    implicitWidth: rowLayout.implicitWidth + 10 * 2
-    implicitHeight: Appearance.sizes.barHeight
+    // A pointer click can retain activeFocus after hover ends. Keep popup
+    // keyboard focus affordance without treating pointer focus as hover.
+    property bool _pointerFocused: false
+    onPressed: root._pointerFocused = true
+    onActiveFocusChanged: {
+        if (!root.activeFocus)
+            root._pointerFocused = false
+    }
+    property bool vertical: false
+    property color foregroundColor: root.vertical
+        ? Appearance.colors.colOnLayer0
+        : Appearance.colors.colOnLayer1
+
+    implicitWidth: root.vertical ? 34 * Appearance.sizes.barModuleScale : rowLayout.implicitWidth + 20 * Appearance.sizes.barModuleScale
+    implicitHeight: root.vertical ? 34 * Appearance.sizes.barModuleScale : Appearance.sizes.barHeight
 
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
@@ -63,15 +76,15 @@ MouseArea {
         MaterialSymbol {
             fill: 0
             text: Icons.getWeatherIcon(Weather.data?.wCode, Weather.isNightNow()) ?? "cloud"
-            iconSize: Appearance.font.pixelSize.large
-            color: Appearance.colors.colOnLayer1
+            iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
+            color: root.foregroundColor
             Layout.alignment: Qt.AlignVCenter
         }
 
         StyledText {
-            visible: true
-            font.pixelSize: Appearance.font.pixelSize.small
-            color: Appearance.colors.colOnLayer1
+            visible: !root.vertical
+            font.pixelSize: Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale)
+            color: root.foregroundColor
             text: Weather.data?.temp ?? "--°"
             Layout.alignment: Qt.AlignVCenter
         }
@@ -80,6 +93,6 @@ MouseArea {
     WeatherPopup {
         id: weatherPopup
         hoverTarget: root
-        alternativeVisibleCondition: root.activeFocus
+        alternativeVisibleCondition: root.activeFocus && !root._pointerFocused
     }
 }

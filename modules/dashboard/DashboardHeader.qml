@@ -14,6 +14,9 @@ RowLayout {
     id: root
     spacing: 8
 
+    property bool editMode: false
+    signal editModeRequested()
+
     readonly property bool inirEverywhere: Appearance.inirEverywhere
     readonly property bool auroraEverywhere: Appearance.auroraEverywhere
     readonly property bool showPowerButtons: Config.options?.dashboard?.showPowerButtons ?? true
@@ -73,6 +76,14 @@ RowLayout {
 
     Item { Layout.fillWidth: true }
 
+    HeaderButton {
+        iconName: root.editMode ? "done" : "edit"
+        tooltip: root.editMode
+            ? Translation.tr("Done editing")
+            : Translation.tr("Edit widgets")
+        toggled: root.editMode
+        onClicked: root.editModeRequested()
+    }
     HeaderButton {
         iconName: "notifications_paused"
         tooltip: Translation.tr("Do Not Disturb")

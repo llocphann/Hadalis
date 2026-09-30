@@ -346,7 +346,13 @@ Singleton {
 
 	Connections {
 		target: Audio
-		function onOutputAppNodesChanged(): void { _streamMetadataRefresh.restart() }
+		function onOutputAppNodesChanged(): void {
+			if ((Audio.outputAppNodes?.length ?? 0) > 0) {
+				_streamMetadataRefresh.restart()
+				return
+			}
+			root._streamMetadataById = ({})
+		}
 	}
 	
 	// Reactive counter that forces re-evaluation when any player's state changes
@@ -392,34 +398,58 @@ Singleton {
 	
 	property bool hasPlasmaIntegration: false
 	property bool hasWtype: false
+	property bool _browserCapabilitiesProbed: false
+
+	function _isBrowserCapabilityPlayer(player): bool {
+		const name = String(player?.dbusName ?? "").toLowerCase()
+		return name.includes("firefox")
+			|| name.includes("chromium")
+			|| name.includes("chrome")
+			|| name.includes("brave")
+			|| name.includes("vivaldi")
+			|| name.includes("opera")
+			|| name.includes("librewolf")
+			|| name.includes("floorp")
+			|| name.includes("waterfox")
+			|| name.includes("plasma-browser-integration")
+	}
+
+	function _ensureBrowserCapabilities(player = null): void {
+		if (root._browserCapabilitiesProbed || plasmaIntegrationCheckProc.running)
+			return
+		if (player) {
+			if (!root._isBrowserCapabilityPlayer(player))
+				return
+		} else {
+			let relevant = false
+			for (const candidate of Mpris.players.values) {
+				if (root._isBrowserCapabilityPlayer(candidate)) {
+					relevant = true
+					break
+				}
+			}
+			if (!relevant)
+				return
+		}
+		plasmaIntegrationCheckProc.running = true
+	}
+
 	Process {
 		id: plasmaIntegrationCheckProc
 		running: false
 		command: ["/usr/bin/bash", "-c", "command -v plasma-browser-integration-host >/dev/null; plasma=$?; command -v wtype >/dev/null; wtype=$?; exit $((plasma + wtype * 10))"]
 		onExited: (exitCode) => {
+			root._browserCapabilitiesProbed = true
 			root.hasPlasmaIntegration = (exitCode % 10) === 0;
 			root.hasWtype = Math.floor(exitCode / 10) === 0;
 		}
 	}
 
-	Timer {
-		id: plasmaCheckDefer
-		interval: 1200
-		repeat: false
-		onTriggered: plasmaIntegrationCheckProc.running = true
-	}
-
 	Component.onCompleted: {
-		_streamMetadataRefresh.start()
+		if ((Audio.outputAppNodes?.length ?? 0) > 0)
+			_streamMetadataRefresh.start()
 		_mpdMprisProbeProc.running = true
-		plasmaCheckDefer.start()
-	}
-
-	Connections {
-		target: Config
-		function onReadyChanged() {
-			if (Config.ready) plasmaCheckDefer.start()
-		}
+		root._ensureBrowserCapabilities()
 	}
 	
 	// Check if player is in grace period (recently had valid metadata)
@@ -996,6 +1026,7 @@ Singleton {
 			target: modelData;
 
 			Component.onCompleted: {
+				root._ensureBrowserCapabilities(modelData)
 				// Only track if it's a real player
 				if (!root._manualPlayerSelection && isRealPlayer(modelData) && (root.trackedPlayer == null || modelData.isPlaying)) {
 					root.trackedPlayer = modelData;
@@ -1472,20 +1503,82 @@ Singleton {
 			root.activePlayer.volume = clamped;
 	}
 
-	property bool loopSupported: this.activePlayer && this.activePlayer.loopSupported && this.activePlayer.canControl;
-	property var loopState: this.activePlayer?.loopState ?? MprisLoopState.None;
-	function setLoopState(loopState: var): void {
-		if (this.loopSupported) {
-			this.activePlayer.loopState = loopState;
-		}
+	function _isYtMusicOptionTarget(player): bool {
+		return root._isYtMusicMpv(player) && !!YtMusic.currentVideoId;
 	}
 
-	property bool shuffleSupported: this.activePlayer && this.activePlayer.shuffleSupported && this.activePlayer.canControl;
-	property bool hasShuffle: this.activePlayer?.shuffle ?? false;
-	function setShuffle(shuffle: bool): void {
-		if (this.shuffleSupported) {
-			this.activePlayer.shuffle = shuffle;
+	function loopSupportedForPlayer(player): bool {
+		if (root._isYtMusicOptionTarget(player)) return true;
+		return !!(player && player.loopSupported && player.canControl);
+	}
+	function loopStateForPlayer(player): var {
+		if (root._isYtMusicOptionTarget(player)) {
+			if (YtMusic.repeatMode === 1) return MprisLoopState.Track;
+			if (YtMusic.repeatMode === 2) return MprisLoopState.Playlist;
+			return MprisLoopState.None;
 		}
+		return player?.loopState ?? MprisLoopState.None;
+	}
+	function setLoopStateForPlayer(player, loopState: var): bool {
+		if (root._isYtMusicOptionTarget(player)) {
+			const requested = Number(loopState);
+			YtMusic.repeatMode = requested === Number(MprisLoopState.Track) ? 1
+				: (requested === Number(MprisLoopState.Playlist) ? 2 : 0);
+			return true;
+		}
+		if (!root.loopSupportedForPlayer(player)) return false;
+		player.loopState = loopState;
+		return true;
+	}
+	function loopActiveForPlayer(player): bool {
+		return Number(root.loopStateForPlayer(player)) !== Number(MprisLoopState.None);
+	}
+	function loopTrackForPlayer(player): bool {
+		return Number(root.loopStateForPlayer(player)) === Number(MprisLoopState.Track);
+	}
+	function cycleLoopForPlayer(player): bool {
+		const current = Number(root.loopStateForPlayer(player));
+		let next = MprisLoopState.None;
+		if (current === Number(MprisLoopState.None))
+			next = MprisLoopState.Track;
+		else if (current === Number(MprisLoopState.Track))
+			next = MprisLoopState.Playlist;
+		return root.setLoopStateForPlayer(player, next);
+	}
+
+	function shuffleSupportedForPlayer(player): bool {
+		if (root._isYtMusicOptionTarget(player)) return true;
+		return !!(player && player.shuffleSupported && player.canControl);
+	}
+	function shuffleForPlayer(player): bool {
+		if (root._isYtMusicOptionTarget(player)) return YtMusic.shuffleMode;
+		return player?.shuffle ?? false;
+	}
+	function setShuffleForPlayer(player, shuffle: bool): bool {
+		if (root._isYtMusicOptionTarget(player)) {
+			YtMusic.shuffleMode = shuffle;
+			return true;
+		}
+		if (!root.shuffleSupportedForPlayer(player)) return false;
+		player.shuffle = shuffle;
+		return true;
+	}
+	function toggleShuffleForPlayer(player): bool {
+		return root.setShuffleForPlayer(player, !root.shuffleForPlayer(player));
+	}
+
+	property bool loopSupported: root.loopSupportedForPlayer(root.activePlayer);
+	property var loopState: root.loopStateForPlayer(root.activePlayer);
+	property bool loopActive: root.loopActiveForPlayer(root.activePlayer);
+	property bool loopTrack: root.loopTrackForPlayer(root.activePlayer);
+	function setLoopState(loopState: var): void {
+		root.setLoopStateForPlayer(root.activePlayer, loopState);
+	}
+
+	property bool shuffleSupported: root.shuffleSupportedForPlayer(root.activePlayer);
+	property bool hasShuffle: root.shuffleForPlayer(root.activePlayer);
+	function setShuffle(shuffle: bool): void {
+		root.setShuffleForPlayer(root.activePlayer, shuffle);
 	}
 
 	function setActivePlayer(player: MprisPlayer): void {

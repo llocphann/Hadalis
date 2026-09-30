@@ -26,6 +26,10 @@ Canvas {
     property string barsOrigin: "bottom"
     property int smoothing: 2
     property string waveMode: "fill"
+    // Filled/ribbon waves already get their visual edge from the gradient fill.
+    // Owners that cover large surfaces can disable the extra top-edge stroke,
+    // avoiding a second rasterized path over the same samples every CAVA frame.
+    property bool waveOutlineEnabled: true
     property real lineWidth: 2
     property real edgeInset: 0
     property real leftRadius: 0
@@ -47,6 +51,15 @@ Canvas {
     property real startTaper: -1
     property real endTaper: -1
     property var clipSegments: []
+
+    // Per-instance frame scratch. These arrays are internal and reused across
+    // paint frames to avoid transient JS allocation at the CAVA refresh rate.
+    property var _selectedScratch: []
+    property var _smoothScratch: []
+    property var _primaryScratch: []
+    property var _secondaryScratch: []
+    property var _baselineScratch: []
+
     readonly property var _resolvedPalette: root._makePalette()
     readonly property var _resolvedCornerRadii: root._makeCornerRadii()
     readonly property var _resolvedEdgeTapers: root._makeEdgeTapers()
@@ -132,9 +145,25 @@ Canvas {
         const endRatio = Math.max(startRatio, Math.min(1, root.sampleEndRatio))
         const start = Math.min(count - 1, Math.floor(startRatio * count))
         const end = Math.max(start + 1, Math.min(count, Math.ceil(endRatio * count)))
-        const selected = []
-        for (let i = start; i < end; i++)
-            selected.push(Number(source[i]) || 0)
+        const selectedCount = end - start
+        const strength = Math.max(0, Math.min(1, root.accentStrength))
+        const applyProfile = strength > 0 && root.frequencyProfile !== "flat"
+        const selected = root._selectedScratch
+        selected.length = selectedCount
+
+        for (let i = 0; i < selectedCount; ++i) {
+            let value = Number(source[start + i]) || 0
+            if (applyProfile) {
+                const domainPosition = startRatio + (endRatio - startRatio)
+                    * (selectedCount > 1 ? i / (selectedCount - 1) : 0.5)
+                const frequencyPosition = root.mirroredStereo
+                    ? Math.abs(domainPosition * 2 - 1)
+                    : domainPosition
+                const profileWeight = root._profileWeight(frequencyPosition)
+                value *= 1 + (profileWeight - 1) * strength
+            }
+            selected[i] = value
+        }
         return selected
     }
 
@@ -155,32 +184,12 @@ Canvas {
         return 1
     }
 
-    function _applyFrequencyProfile(source): var {
-        const strength = Math.max(0, Math.min(1, root.accentStrength))
-        if (source.length === 0 || strength <= 0 || root.frequencyProfile === "flat")
-            return source
-
-        const start = Math.max(0, Math.min(1, root.sampleStartRatio))
-        const end = Math.max(start, Math.min(1, root.sampleEndRatio))
-        const output = new Array(source.length)
-        for (let i = 0; i < source.length; i++) {
-            const domainPosition = start + (end - start)
-                * (source.length > 1 ? i / (source.length - 1) : 0.5)
-            const frequencyPosition = root.mirroredStereo
-                ? Math.abs(domainPosition * 2 - 1)
-                : domainPosition
-            const profileWeight = root._profileWeight(frequencyPosition)
-            const mixedWeight = 1 + (profileWeight - 1) * strength
-            output[i] = source[i] * mixedWeight
-        }
-        return output
-    }
-
     function _frequencySmooth(source): var {
         const radius = Math.max(0, Math.round(root.smoothing))
         if (radius === 0 || source.length < 3)
             return source
-        const out = new Array(source.length)
+        const out = root._smoothScratch
+        out.length = source.length
         let start = 0
         let end = Math.min(source.length - 1, radius)
         let sum = 0
@@ -194,46 +203,6 @@ Canvas {
             while (end < nextEnd)
                 sum += source[++end]
             out[i] = sum / Math.max(1, end - start + 1)
-        }
-        return out
-    }
-
-    function _barLevels(source, count): var {
-        const out = new Array(count)
-        const ceiling = Math.max(1, root.normalizationCeiling)
-        for (let i = 0; i < count; i++) {
-            const from = Math.floor(i * source.length / count)
-            const to = Math.min(source.length,
-                Math.max(from + 1, Math.ceil((i + 1) * source.length / count)))
-            let sum = 0
-            let peak = 0
-            let samples = 0
-            for (let j = from; j < to; j++) {
-                const value = source[j] || 0
-                sum += value
-                peak = Math.max(peak, value)
-                samples++
-            }
-            const average = samples > 0 ? sum / samples : 0
-            out[i] = Math.max(0, Math.min(1, (average * 0.72 + peak * 0.28) / ceiling))
-        }
-        return out
-    }
-
-    function _waveLevels(source, count): var {
-        const out = new Array(count)
-        const ceiling = Math.max(1, root.normalizationCeiling)
-        if (source.length === 1) {
-            out.fill(Math.max(0, Math.min(1, source[0] / ceiling)))
-            return out
-        }
-        for (let i = 0; i < count; i++) {
-            const position = i * (source.length - 1) / Math.max(1, count - 1)
-            const low = Math.floor(position)
-            const high = Math.min(source.length - 1, low + 1)
-            const fraction = position - low
-            const value = source[low] * (1 - fraction) + source[high] * fraction
-            out[i] = Math.max(0, Math.min(1, value / ceiling))
         }
         return out
     }
@@ -293,33 +262,13 @@ Canvas {
         return radius - Math.sqrt(Math.max(0, radius * radius - distance * distance))
     }
 
-    function _surfaceBounds(x): var {
-        const radii = root._resolvedCornerRadii
-        const top = Math.max(
-            root._cornerInset(x, radii[0], true),
-            root._cornerInset(x, radii[1], false))
-        const bottomInset = Math.max(
-            root._cornerInset(x, radii[3], true),
-            root._cornerInset(x, radii[2], false))
-        return [top, Math.max(top, root.height - bottomInset)]
-    }
-
-    function _peakBounds(x, surfaceBounds): var {
-        const top = surfaceBounds[0]
-        const bottom = surfaceBounds[1]
+    function _curveHeadroom(top, bottom): real {
         const available = Math.max(0, bottom - top)
         const curveInset = Math.max(top, root.height - bottom)
         const pressure = Math.max(0, Math.min(1,
             curveInset / Math.max(1, root.height / 2)))
-        const curveHeadroom = available * Math.max(0, Math.min(1, root.edgeSoftness))
+        return available * Math.max(0, Math.min(1, root.edgeSoftness))
             * pressure * 0.24
-        const strokeHeadroom = root.visualizerType === "wave"
-            ? Math.max(0, root.lineWidth / 2 + 0.5) : 0
-        const center = (top + bottom) / 2
-        return [
-            Math.min(center, top + curveHeadroom + strokeHeadroom),
-            Math.max(center, bottom - curveHeadroom - strokeHeadroom)
-        ]
     }
 
     function _appendRoundedClip(ctx, x, y, width, height, radii): void {
@@ -397,10 +346,11 @@ Canvas {
         const span = Math.max(1, x1 - x0)
         const pitch = Math.max(3, root.pixelsPerBar)
         const count = Math.max(4, Math.floor((span + root.barSpacing) / pitch))
-        const levels = root._barLevels(source, count)
         const slot = span / count
         const width = Math.max(1, slot - Math.max(0, root.barSpacing))
         const gradient = root._horizontalGradient(ctx, x0, x1, 1)
+        const radii = root._resolvedCornerRadii
+        const ceiling = Math.max(1, root.normalizationCeiling)
         ctx.fillStyle = gradient
 
         for (let i = 0; i < count; i++) {
@@ -409,17 +359,38 @@ Canvas {
             const edgeFactor = root._edgeMorphFactor(centerX, x0, x1)
             if (edgeFactor < 0.01)
                 continue
-            const surface = root._surfaceBounds(centerX)
-            const peaks = root._peakBounds(centerX, surface)
-            const top = surface[0]
-            const bottom = surface[1]
-            const rawValue = levels[i] || 0
+            const top = Math.max(
+                root._cornerInset(centerX, radii[0], true),
+                root._cornerInset(centerX, radii[1], false))
+            const bottomInset = Math.max(
+                root._cornerInset(centerX, radii[3], true),
+                root._cornerInset(centerX, radii[2], false))
+            const bottom = Math.max(top, root.height - bottomInset)
+            const curveHeadroom = root._curveHeadroom(top, bottom)
+
+            const from = Math.floor(i * source.length / count)
+            const to = Math.min(source.length,
+                Math.max(from + 1, Math.ceil((i + 1) * source.length / count)))
+            let sum = 0
+            let peak = 0
+            let samples = 0
+            for (let j = from; j < to; ++j) {
+                const sample = source[j] || 0
+                sum += sample
+                peak = Math.max(peak, sample)
+                samples++
+            }
+            const average = samples > 0 ? sum / samples : 0
+            const rawValue = Math.max(0, Math.min(1,
+                (average * 0.72 + peak * 0.28) / ceiling))
             const value = rawValue * edgeFactor
             const center = (top + bottom) / 2
+            const peakTop = Math.min(center, top + curveHeadroom)
+            const peakBottom = Math.max(center, bottom - curveHeadroom)
             ctx.globalAlpha = 0.5 + rawValue * 0.5
 
             if (root.barsOrigin === "top") {
-                const available = Math.max(0, peaks[1] - top)
+                const available = Math.max(0, peakBottom - top)
                 if (!(available > 0))
                     continue
                 const height = Math.min(available, Math.max(root.barMinHeight * edgeFactor,
@@ -427,7 +398,7 @@ Canvas {
                 root._roundedRect(ctx, x, top, width, height, root.barRadius)
                 ctx.fill()
             } else if (root.barsOrigin === "center") {
-                const available = Math.max(0, center - peaks[0])
+                const available = Math.max(0, center - peakTop)
                 if (!(available > 0))
                     continue
                 const height = Math.min(available, Math.max(root.barMinHeight * edgeFactor,
@@ -436,7 +407,7 @@ Canvas {
                 ctx.fill()
             } else if (root.barsOrigin === "mirror") {
                 const available = Math.max(0,
-                    Math.min(center - peaks[0], peaks[1] - center))
+                    Math.min(center - peakTop, peakBottom - center))
                 if (!(available > 0))
                     continue
                 const halfHeight = Math.min(available, Math.max(root.barMinHeight * edgeFactor,
@@ -446,7 +417,7 @@ Canvas {
                 root._roundedRect(ctx, x, center + 0.5, width, halfHeight, root.barRadius)
                 ctx.fill()
             } else {
-                const available = Math.max(0, bottom - peaks[0])
+                const available = Math.max(0, bottom - peakTop)
                 if (!(available > 0))
                     continue
                 const height = Math.min(available, Math.max(root.barMinHeight * edgeFactor,
@@ -459,18 +430,25 @@ Canvas {
     }
 
     function _traceSmooth(ctx, coordinates): void {
-        if (coordinates.length === 0)
+        const pointCount = Math.floor(coordinates.length / 2)
+        if (pointCount === 0)
             return
-        ctx.moveTo(coordinates[0][0], coordinates[0][1])
-        for (let i = 1; i < coordinates.length - 1; i++) {
-            const next = coordinates[i + 1]
-            const current = coordinates[i]
-            ctx.quadraticCurveTo(current[0], current[1],
-                (current[0] + next[0]) / 2, (current[1] + next[1]) / 2)
+        ctx.moveTo(coordinates[0], coordinates[1])
+        for (let i = 1; i < pointCount - 1; ++i) {
+            const offset = i * 2
+            const nextOffset = offset + 2
+            const currentX = coordinates[offset]
+            const currentY = coordinates[offset + 1]
+            const nextX = coordinates[nextOffset]
+            const nextY = coordinates[nextOffset + 1]
+            ctx.quadraticCurveTo(currentX, currentY,
+                (currentX + nextX) / 2, (currentY + nextY) / 2)
         }
-        if (coordinates.length > 1) {
-            const last = coordinates[coordinates.length - 1]
-            ctx.quadraticCurveTo(last[0], last[1], last[0], last[1])
+        if (pointCount > 1) {
+            const lastOffset = (pointCount - 1) * 2
+            const lastX = coordinates[lastOffset]
+            const lastY = coordinates[lastOffset + 1]
+            ctx.quadraticCurveTo(lastX, lastY, lastX, lastY)
         }
     }
 
@@ -478,47 +456,75 @@ Canvas {
         const span = Math.max(1, x1 - x0)
         const count = Math.max(2, Math.min(source.length,
             Math.round(span / Math.max(4, root.pixelsPerBar))))
-        const levels = root._waveLevels(source, count)
-        const primary = []
-        const secondary = []
-        const baseline = []
+        const ceiling = Math.max(1, root.normalizationCeiling)
+        const ribbonMode = root.waveMode === "ribbon" || root.barsOrigin === "mirror"
+        const lineMode = root.waveMode === "line"
+        const primary = root._primaryScratch
+        primary.length = 0
+        const secondary = ribbonMode ? root._secondaryScratch : null
+        if (secondary)
+            secondary.length = 0
+        const baseline = !ribbonMode && !lineMode ? root._baselineScratch : null
+        if (baseline)
+            baseline.length = 0
+        const radii = root._resolvedCornerRadii
+        const strokeHeadroom = Math.max(0, root.lineWidth / 2 + 0.5)
 
         for (let i = 0; i < count; i++) {
             const x = x0 + i * span / Math.max(1, count - 1)
             const edgeFactor = root._edgeMorphFactor(x, x0, x1)
-            const surface = root._surfaceBounds(x)
-            const peaks = root._peakBounds(x, surface)
-            const top = surface[0]
-            const bottom = surface[1]
+            const top = Math.max(
+                root._cornerInset(x, radii[0], true),
+                root._cornerInset(x, radii[1], false))
+            const bottomInset = Math.max(
+                root._cornerInset(x, radii[3], true),
+                root._cornerInset(x, radii[2], false))
+            const bottom = Math.max(top, root.height - bottomInset)
             const center = (top + bottom) / 2
-            const value = (levels[i] || 0) * edgeFactor
+            const curveHeadroom = root._curveHeadroom(top, bottom)
+            const peakTop = Math.min(center, top + curveHeadroom + strokeHeadroom)
+            const peakBottom = Math.max(center, bottom - curveHeadroom - strokeHeadroom)
+            let level = 0
+            if (source.length === 1) {
+                level = Math.max(0, Math.min(1, source[0] / ceiling))
+            } else {
+                const position = i * (source.length - 1) / Math.max(1, count - 1)
+                const low = Math.floor(position)
+                const high = Math.min(source.length - 1, low + 1)
+                const fraction = position - low
+                const sample = source[low] * (1 - fraction) + source[high] * fraction
+                level = Math.max(0, Math.min(1, sample / ceiling))
+            }
+            const value = level * edgeFactor
             const fill = Math.max(0.1, Math.min(1, root.fillRatio))
 
-            if (root.waveMode === "ribbon" || root.barsOrigin === "mirror") {
+            if (ribbonMode) {
                 const maximum = Math.max(0,
-                    Math.min(center - peaks[0], peaks[1] - center))
+                    Math.min(center - peakTop, peakBottom - center))
                 const half = value * maximum * fill
-                primary.push([x, center - half])
-                secondary.push([x, center + half])
-                baseline.push([x, center])
+                primary.push(x, center - half)
+                secondary.push(x, center + half)
             } else if (root.barsOrigin === "top") {
-                const maximum = Math.max(0, peaks[1] - top)
-                primary.push([x, top + value * maximum * fill])
-                baseline.push([x, top])
+                const maximum = Math.max(0, peakBottom - top)
+                primary.push(x, top + value * maximum * fill)
+                if (baseline)
+                    baseline.push(x, top)
             } else if (root.barsOrigin === "center") {
-                const maximum = Math.max(0, center - peaks[0])
-                primary.push([x, center - value * maximum * fill])
-                baseline.push([x, center])
+                const maximum = Math.max(0, center - peakTop)
+                primary.push(x, center - value * maximum * fill)
+                if (baseline)
+                    baseline.push(x, center)
             } else {
-                const maximum = Math.max(0, bottom - peaks[0])
-                primary.push([x, bottom - value * maximum * fill])
-                baseline.push([x, bottom])
+                const maximum = Math.max(0, bottom - peakTop)
+                primary.push(x, bottom - value * maximum * fill)
+                if (baseline)
+                    baseline.push(x, bottom)
             }
         }
 
         const gradient = root._horizontalGradient(ctx, x0, x1, 1)
 
-        if (root.waveMode === "line") {
+        if (lineMode) {
             ctx.beginPath()
             root._traceSmooth(ctx, primary)
             ctx.strokeStyle = gradient
@@ -531,33 +537,35 @@ Canvas {
 
         ctx.beginPath()
         root._traceSmooth(ctx, primary)
-        if (secondary.length > 0) {
-            for (let i = secondary.length - 1; i >= 0; i--)
-                ctx.lineTo(secondary[i][0], secondary[i][1])
-        } else {
-            for (let i = baseline.length - 1; i >= 0; i--)
-                ctx.lineTo(baseline[i][0], baseline[i][1])
+        if (secondary) {
+            for (let i = secondary.length - 2; i >= 0; i -= 2)
+                ctx.lineTo(secondary[i], secondary[i + 1])
+        } else if (baseline) {
+            for (let i = baseline.length - 2; i >= 0; i -= 2)
+                ctx.lineTo(baseline[i], baseline[i + 1])
         }
         ctx.closePath()
         ctx.fillStyle = gradient
         ctx.fill()
 
-        ctx.beginPath()
-        root._traceSmooth(ctx, primary)
-        ctx.globalAlpha = 0.9
-        ctx.strokeStyle = gradient
-        ctx.lineWidth = Math.max(1, root.lineWidth * 0.65)
-        ctx.lineCap = "round"
-        ctx.lineJoin = "round"
-        ctx.stroke()
-        ctx.globalAlpha = 1
+        if (root.waveOutlineEnabled) {
+            ctx.beginPath()
+            root._traceSmooth(ctx, primary)
+            ctx.globalAlpha = 0.9
+            ctx.strokeStyle = gradient
+            ctx.lineWidth = Math.max(1, root.lineWidth * 0.65)
+            ctx.lineCap = "round"
+            ctx.lineJoin = "round"
+            ctx.stroke()
+            ctx.globalAlpha = 1
+        }
     }
 
     onPaint: {
         const ctx = getContext("2d")
         ctx.reset()
         ctx.clearRect(0, 0, root.width, root.height)
-        let selected = root._applyFrequencyProfile(root._selectedPoints())
+        let selected = root._selectedPoints()
         selected = root._frequencySmooth(selected)
         if (root.reverseFrequency)
             selected.reverse()
@@ -600,6 +608,7 @@ Canvas {
     onBarsOriginChanged: root._queuePaint()
     onSmoothingChanged: root._queuePaint()
     onWaveModeChanged: root._queuePaint()
+    onWaveOutlineEnabledChanged: root._queuePaint()
     onLineWidthChanged: root._queuePaint()
     onEdgeInsetChanged: root._queuePaint()
     onLeftRadiusChanged: root._queuePaint()

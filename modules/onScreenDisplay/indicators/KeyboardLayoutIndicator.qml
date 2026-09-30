@@ -8,25 +8,33 @@ import QtQuick.Layouts
 
 Item {
     id: root
+    property bool connectedSurface: false
 
-    implicitWidth: Appearance.sizes.osdWidth + 2 * Appearance.sizes.elevationMargin
-    implicitHeight: card.implicitHeight + 2 * Appearance.sizes.elevationMargin
+    implicitWidth: Appearance.sizes.osdWidth
+        + (root.connectedSurface ? 0 : 2 * Appearance.sizes.elevationMargin)
+    implicitHeight: card.implicitHeight
+        + (root.connectedSurface ? 0 : 2 * Appearance.sizes.elevationMargin)
     clip: true
 
-    StyledRectangularShadow { target: card }
+    StyledRectangularShadow {
+        target: card
+        visible: !root.connectedSurface
+    }
 
     Rectangle {
         id: card
         anchors {
             fill: parent
-            margins: Appearance.sizes.elevationMargin
+            margins: root.connectedSurface ? 0 : Appearance.sizes.elevationMargin
         }
-        radius: Appearance.rounding.full
-        color: Appearance.angelEverywhere ? Appearance.angel.colGlassPopup
+        radius: root.connectedSurface ? 0 : Appearance.rounding.full
+        color: root.connectedSurface ? "transparent"
+             : Appearance.angelEverywhere ? Appearance.angel.colGlassPopup
              : Appearance.inirEverywhere ? Appearance.inir.colLayer1
              : Appearance.auroraEverywhere ? Appearance.aurora.colPopupSurface
              : Appearance.colors.colLayer0
-        border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
+        border.width: root.connectedSurface ? 0
+            : Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth
             : Appearance.auroraEverywhere || Appearance.inirEverywhere ? 1 : 0
         border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
             : Appearance.inirEverywhere ? Appearance.inir.colBorder

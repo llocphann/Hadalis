@@ -43,6 +43,7 @@ Rectangle {
             && (root.activePlayer?.isPlaying ?? false)
         interval: 1000
         repeat: true
+        triggeredOnStart: true
         onTriggered: root.activePlayer?.positionChanged()
     }
 

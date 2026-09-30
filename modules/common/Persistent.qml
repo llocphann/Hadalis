@@ -102,6 +102,10 @@ Singleton {
                     property int tab: 0
                 }
                 property JsonObject compactGroup: JsonObject {
+                    // Stable section id is authoritative. Keep tab for one-way
+                    // migration from older installs whose widget indices shifted
+                    // when Notifications left the compact right sidebar.
+                    property string sectionId: ""
                     property int tab: 0
                 }
             }
@@ -249,6 +253,7 @@ Singleton {
                 property string gowallFormat: "png"
                 property string gowallTheme: ""
                 property string gowallEffect: "grayscale"
+
             }
 
             // Desktop-widget editor workspace state. This is transient UI

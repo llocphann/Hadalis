@@ -17,6 +17,7 @@ def check(condition: bool, message: str) -> None:
 
 def main() -> None:
     resources_popup = read("modules/bar/ResourcesPopup.qml")
+    dashboard_system = read("modules/dashboard/DashSystem.qml")
     styled_popup = read("modules/bar/StyledPopup.qml")
     config_schema = read("modules/common/Config.qml")
     default_config = read("defaults/config.json")
@@ -26,7 +27,7 @@ def main() -> None:
     system_settings = read("modules/settings/GeneralConfigCore.qml")
     system_facade = read("modules/settings/GeneralConfig.qml")
     settings_registry = read("modules/settings/SettingsPageRegistryData.qml")
-    bar_settings = read("modules/settings/BarConfigHugOnly.qml")
+    bar_settings = read("modules/settings/BarConfig.qml")
     bar_config = read("modules/settings/BarConfig.qml")
     source_setup = read("sdata/subcmd-install/2.setups.sh")
     thinkfan_migration = read("sdata/migrations/041-thinkfan-helper-bridge.sh")
@@ -39,7 +40,7 @@ def main() -> None:
         "ThinkFanService.refresh()",
         "ThinkFanService.applyProfile(",
         'Translation.tr("Fan")',
-        'Translation.tr("Speed:")',
+        'Translation.tr("RPM:")',
         'Translation.tr("Level:")',
         "thinkFanCanApply",
         "font.pixelSize: Appearance.font.pixelSize.small",
@@ -47,6 +48,19 @@ def main() -> None:
     ):
         check(token in resources_popup,
               f"System Monitor popup must own ThinkFan runtime UI: {token}")
+
+    for token in (
+        "ThinkFanService.refresh()",
+        "ThinkFanService.applyProfile(",
+        'Translation.tr("Fan control")',
+        'Translation.tr("RPM:")',
+        'Translation.tr("L%1")',
+        "ThinkFanService.fanRpm",
+        "ThinkFanService.fanLevel",
+        "root.thinkFanCanApply",
+    ):
+        check(token in dashboard_system,
+              f"Dashboard System module must reuse ThinkFan runtime state/control: {token}")
 
     for forbidden in (
         "ThinkFanConnectedSurface",
@@ -75,7 +89,7 @@ def main() -> None:
               f"System Monitor popup must keep the compact metrics contract: {forbidden}")
 
     fan_pos = resources_popup.index('Translation.tr("Fan")')
-    speed_pos = resources_popup.index('Translation.tr("Speed:")')
+    speed_pos = resources_popup.index('Translation.tr("RPM:")')
     level_pos = resources_popup.index('Translation.tr("Level:")')
     notice_pos = resources_popup.index("NoticeBox {", level_pos)
     check(fan_pos < speed_pos < level_pos < notice_pos,
@@ -83,21 +97,39 @@ def main() -> None:
 
     for token in (
         'label: Translation.tr("Thermal")',
+        'label: Translation.tr("Load")',
+        'label: Translation.tr("CPU:")',
         'value: `${Math.round(ResourceUsage.cpuUsage * 100)}%`',
         'value: `${Math.round(ResourceUsage.gpuUsage * 100)}%`',
+        'property string minimumValueSample: ""',
+        'property int valueHorizontalAlignment: Text.AlignRight',
+        'Layout.minimumWidth: minimumValueText.implicitWidth',
+        'horizontalAlignment: resourceItem.valueHorizontalAlignment',
+        'minimumValueSample: "99%"',
+        'valueHorizontalAlignment: Text.AlignLeft',
+        'text: "speed"',
+        'text: "tune"',
         "width: thermalColumn.width",
         "width: cpuColumn.width",
     ):
         check(token in resources_popup,
               f"System Monitor compact grid must keep screenshot-aligned metrics: {token}")
 
+    check('label: "CPU"' not in resources_popup,
+          "System Monitor third-column heading must be Load, not CPU")
+    check('label: Translation.tr("Load:")' not in resources_popup,
+          "System Monitor CPU usage metric must be labelled CPU:, not Load:")
+
     for token in (
         "property bool connectAdjacentScreenEdge: false",
         "id: directEdgeAttachment",
+        "readonly property real _popupScreenMargin: root._screenEdgeThickness",
         "screenMargin: root._popupScreenMargin",
         "connectorLength: 0",
-        "connectorVisible: false",
+        "ConnectedSurfaceIrisFrame {",
         "shadowEnabled: root._edgeShadowEnabled",
+        "screenEdge?.physicalShadow?.enabled ?? true",
+        "Qt.alpha(Appearance.m3colors.m3shadow, root._edgeShadowOpacity)",
     ):
         check(token in styled_popup,
               f"StyledPopup must use direct Caelestia-style edge attachment: {token}")
@@ -139,7 +171,8 @@ def main() -> None:
         "function applyConfiguredPowerProfileFanLevel(): bool",
         "Config.flushWrites()",
         'root.lastApplyError = "managed-control-active"',
-        'root.lastApplyError = "helper-update-required"',
+        '"direct-control-unavailable"',
+        '"helper-update-required"',
         'Config.getNestedValue("powerProfiles.fanControl.enabled", false)',
         'Config.getNestedValue(path, 0)',
         "function _scheduleConfiguredFanLevelApply(): void",

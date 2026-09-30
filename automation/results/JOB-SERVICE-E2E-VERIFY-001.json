@@ -1,0 +1,25 @@
+{
+  "actions": [
+    {
+      "argv": [
+        "python3",
+        "-c",
+        "import json, pathlib, subprocess\ndef run(argv):\n    p=subprocess.run(argv,text=True,capture_output=True,check=False)\n    return {'argv':argv,'exit_code':p.returncode,'stdout':p.stdout,'stderr':p.stderr}\nstate=pathlib.Path.home()/'.local/state/hadalis-automation/chat-bridge.json'\nout={\n  'bridge':run(['systemctl','--user','show','hadalis-chat-bridge.service','--no-pager','--property=ActiveState','--property=SubState','--property=Result','--property=ExecMainCode','--property=ExecMainStatus','--property=ExecMainStartTimestamp','--property=ExecMainExitTimestamp']),\n  'worker':run(['systemctl','--user','show','hadalis-worker.service','--no-pager','--property=ActiveState','--property=SubState','--property=Result']),\n  'chatgpt':run(['systemctl','--user','show','hadalis-chatgpt.service','--no-pager','--property=ActiveState','--property=SubState','--property=Result']),\n  'state_exists':state.exists(),\n  'state_text':state.read_text() if state.exists() else None,\n  'journal':run(['journalctl','--user','-u','hadalis-chat-bridge.service','-n','40','--no-pager','-o','short-iso'])\n}\nprint(json.dumps(out,indent=2,sort_keys=True))"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "index": 0,
+      "stderr": "",
+      "stderr_truncated": false,
+      "stdout": "{\n  \"bridge\": {\n    \"argv\": [\n      \"systemctl\",\n      \"--user\",\n      \"show\",\n      \"hadalis-chat-bridge.service\",\n      \"--no-pager\",\n      \"--property=ActiveState\",\n      \"--property=SubState\",\n      \"--property=Result\",\n      \"--property=ExecMainCode\",\n      \"--property=ExecMainStatus\",\n      \"--property=ExecMainStartTimestamp\",\n      \"--property=ExecMainExitTimestamp\"\n    ],\n    \"exit_code\": 0,\n    \"stderr\": \"\",\n    \"stdout\": \"ActiveState=inactive\\nSubState=dead\\nResult=success\\nExecMainStartTimestamp=Wed 2026-09-30 05:13:09 +07\\nExecMainExitTimestamp=Wed 2026-09-30 05:13:31 +07\\nExecMainCode=1\\nExecMainStatus=0\\n\"\n  },\n  \"chatgpt\": {\n    \"argv\": [\n      \"systemctl\",\n      \"--user\",\n      \"show\",\n      \"hadalis-chatgpt.service\",\n      \"--no-pager\",\n      \"--property=ActiveState\",\n      \"--property=SubState\",\n      \"--property=Result\"\n    ],\n    \"exit_code\": 0,\n    \"stderr\": \"\",\n    \"stdout\": \"ActiveState=active\\nSubState=running\\nResult=success\\n\"\n  },\n  \"journal\": {\n    \"argv\": [\n      \"journalctl\",\n      \"--user\",\n      \"-u\",\n      \"hadalis-chat-bridge.service\",\n      \"-n\",\n      \"40\",\n      \"--no-pager\",\n      \"-o\",\n      \"short-iso\"\n    ],\n    \"exit_code\": 0,\n    \"stderr\": \"\",\n    \"stdout\": \"2026-09-30T05:04:14+07:00 thinkpadt14 systemd[1919]: /home/llocphann/.config/systemd/user/hadalis-chat-bridge.service:9: WorkingDirectory= path is not absolute: \\\"/home/llocphann/Hadalis\\\"\\n2026-09-30T05:04:14+07:00 thinkpadt14 systemd[1919]: hadalis-chat-bridge.service: Unit configuration has fatal error, unit will not be started.\\n2026-09-30T05:08:02+07:00 thinkpadt14 systemd[1919]: Started Hadalis deterministic ChatGPT bridge.\\n2026-09-30T05:08:25+07:00 thinkpadt14 systemd[1919]: hadalis-chat-bridge.service: Consumed 1.424s CPU time over 23.154s wall clock time, 63.4M memory peak.\\n2026-09-30T05:13:09+07:00 thinkpadt14 systemd[1919]: Started Hadalis deterministic ChatGPT bridge.\\n2026-09-30T05:13:31+07:00 thinkpadt14 systemd[1919]: hadalis-chat-bridge.service: Consumed 1.344s CPU time over 21.199s wall clock time, 61.3M memory peak.\\n\"\n  },\n  \"state_exists\": true,\n  \"state_text\": \"{\\n  \\\"state\\\": \\\"done\\\",\\n  \\\"job_id\\\": null,\\n  \\\"updated_at_unix\\\": 1790720011\\n}\\n\",\n  \"worker\": {\n    \"argv\": [\n      \"systemctl\",\n      \"--user\",\n      \"show\",\n      \"hadalis-worker.service\",\n      \"--no-pager\",\n      \"--property=ActiveState\",\n      \"--property=SubState\",\n      \"--property=Result\"\n    ],\n    \"exit_code\": 0,\n    \"stderr\": \"\",\n    \"stdout\": \"ActiveState=active\\nSubState=running\\nResult=success\\n\"\n  }\n}\n",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "37e68aa59ac7b02966637d62ad9e456e492c1794",
+  "finished_at_unix": 1790720163,
+  "job": "JOB-SERVICE-E2E-VERIFY-001",
+  "job_commit": "59c11fa7e87e39144e4c230d44c6c03b046eedbf",
+  "started_at_unix": 1790720162,
+  "status": "passed"
+}

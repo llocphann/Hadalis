@@ -20,6 +20,13 @@ Item {
     property string lastCopiedEntry: ""
     property bool showClearConfirmation: false
 
+    Timer {
+        id: searchDebounce
+        interval: 70
+        repeat: false
+        onTriggered: root.updateFilteredModel()
+    }
+
     implicitWidth: pane.implicitWidth + 24
     implicitHeight: pane.implicitHeight + 24
 
@@ -41,6 +48,7 @@ Item {
     function updateFilteredModel() {
         filteredClipboardModel.clear()
         const trimmedSearch = searchText.trim().toLowerCase()
+        const filterEntries = trimmedSearch.length > 0 ? Cliphist.filterEntries() : []
 
         // Pinned entries always lead the list.
         const pins = Cliphist.pinned
@@ -56,7 +64,7 @@ Item {
             if (trimmedSearch.length === 0) {
                 filteredClipboardModel.append({ "rawEntry": entry, "pinText": "", "isPinRow": false })
             } else {
-                const content = formatCliphistName(entry).toLowerCase()
+                const content = filterEntries[i]?.waffleKey ?? formatCliphistName(entry).toLowerCase()
                 if (content.includes(trimmedSearch)) {
                     filteredClipboardModel.append({ "rawEntry": entry, "pinText": "", "isPinRow": false })
                 }
@@ -180,10 +188,6 @@ Item {
         id: pane
         anchors.centerIn: parent
         radius: Looks.radius.large
-        screenX: (Quickshell.screens[0]?.width ?? 1920) / 2 - pane.width / 2
-        screenY: (Quickshell.screens[0]?.height ?? 1080) / 2 - pane.height / 2
-        screenWidth: Quickshell.screens[0]?.width ?? 1920
-        screenHeight: Quickshell.screens[0]?.height ?? 1080
 
         contentItem: ColumnLayout {
             spacing: 0
@@ -328,7 +332,12 @@ Item {
 
                             onTextChanged: {
                                 root.searchText = text
-                                root.updateFilteredModel()
+                                if (root.searchText.trim().length === 0) {
+                                    searchDebounce.stop()
+                                    root.updateFilteredModel()
+                                } else {
+                                    searchDebounce.restart()
+                                }
                             }
 
                             WText {

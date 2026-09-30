@@ -578,30 +578,12 @@ Item {
         }
 
         // ── Loading indicator ──
-        RowLayout {
-            opacity: root.showLoading ? 1 : 0
-            visible: opacity > 0
-            Behavior on opacity {
-                enabled: Appearance.animationsEnabled
-                NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Easing.OutCubic }
-            }
+        LoadingText {
+            visible: root.showLoading
             Layout.fillWidth: true
             Layout.topMargin: 12
             Layout.bottomMargin: 12
             Layout.alignment: Qt.AlignHCenter
-            spacing: 8
-
-            BusyIndicator {
-                running: root.showLoading
-                implicitWidth: 20
-                implicitHeight: 20
-            }
-            StyledText {
-                text: Translation.tr("Searching packages...")
-                font.pixelSize: Appearance.font.pixelSize.small
-                color: Appearance.colors.colSubtext
-                Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
-            }
         }
 
         // ── Empty state ──

@@ -34,6 +34,18 @@ StyledOverlayWidget {
     property string folderDialogTarget: "recordings"
     property bool _folderDialogEngaged: false
 
+    property bool _statusDemandRegistered: false
+
+    function syncRecorderStatusDemand(): void {
+        const wanted = root.visible
+        if (wanted === root._statusDemandRegistered)
+            return
+        root._statusDemandRegistered = wanted
+        RecorderStatus.setFastStatusDemand("ii-overlay-recorder", wanted)
+    }
+
+    onVisibleChanged: root.syncRecorderStatusDemand()
+    Component.onCompleted: root.syncRecorderStatusDemand()
     function audioModeLabel(mode: string): string {
         switch (mode) {
         case "none": return Translation.tr("No audio")
@@ -153,7 +165,7 @@ StyledOverlayWidget {
                         width: 8; height: 8; radius: 4
                         color: Appearance.colors.colError
                         SequentialAnimation on opacity {
-                            running: RecorderStatus.isRecording
+                            running: RecorderStatus.isRecording && root.visible
                             loops: Animation.Infinite
                             NumberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutSine }
                             NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
@@ -356,6 +368,8 @@ StyledOverlayWidget {
     }
 
     Component.onDestruction: {
+        if (root._statusDemandRegistered)
+            RecorderStatus.setFastStatusDemand("ii-overlay-recorder", false)
         if (root._folderDialogEngaged)
             OverlayContext.setNativeDialogVisible("recorder-folder", false)
     }

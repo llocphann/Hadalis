@@ -3,9 +3,10 @@
 # Do not edit manually.
 # Regenerate: python3 scripts/lib/generate-ipc-registry.py
 # IPC.md metadata: docs/IPC.md
-# Targets: 57
+# Targets: 59
 
 declare -gA IPC_TARGET_DESC=(
+  [abyss]="Edit the Abyss module layout on the focused output. The editor uses a draft: Done saves its changes; Cancel or Escape restores the saved layout. These methods apply while Abyss is active."
   [ai]="Shared multi-provider AI service. It supports Gemini, OpenAI-compatible chat and Responses APIs, Mistral and Anthropic; live provider catalogs are normalized into capability-aware model records. Catalog visibility is separate from execution readiness, so public model lists remain browseable without pretending an API key exists. OpenCode Zen and Go resolve their current model lists and per-model API routes dynamically. Normal shell tools use typed actions and approval cards, while arbitrary commands are isolated in Advanced mode."
   [altSwitcher]="Alt+Tab window switcher. Works across workspaces, unlike some other implementations we won't name."
   [appCatalog]="App catalog service. Browse, search, and install curated applications."
@@ -31,15 +32,16 @@ declare -gA IPC_TARGET_DESC=(
   [memory]="Memory pressure monitoring for JSGCHeap accumulation (Qt V4 memfd leak). Notifies user when memory is high, lets them decide when to restart."
   [minimize]="Window minimization (Niri workaround - moves windows to hidden workspace)."
   [mpris]="Media player control. Automatically detects and uses YtMusic controls when active, otherwise uses the active MPRIS player."
+  [notificationCenter]="Family-aware notification history surface. On Material ii this opens the standalone bottom-right Notification Center; on Waffle it routes to the native Waffle notification center. The CLI alias is \`notification-center\`."
   [notifications]="Notification management."
-  [osd]="Waffle on-screen display indicator (volume, brightness)."
+  [osd]="Shared on-screen display router for the active family. Material, Waffle and Abyss consume internal signals; only the root registers this target."
   [osdInput]="Input-device OSD notifications. Used by keyboard/touchpad helpers to show the effective input state."
   [osdVolume]="On-screen volume indicator."
   [osk]="On-screen keyboard."
   [overlay]="Floating tools (Super+G): notes, images, crosshair, recorder, resources and other pinnable desktop tools."
   [overview]="Toggle the workspace overview panel. The one with all your windows looking tiny and organized."
   [packageSearch]="Package search service. Searches pacman repos and installed packages."
-  [panelFamily]="Switch between panel styles. ii supports two visual styles: Material ii (default) and Waffle (Windows 11-like)."
+  [panelFamily]="Switch between Abyss (\`abyss\`, default) and Waffle (\`waffle\`). Historical \`ii\` values migrate to Abyss, preserving enabled modules and shared configuration."
   [recordingOsd]="Screen recording floating pill OSD. Shows elapsed time and stop button during active recording."
   [region]="Region selection tools. Screenshots, OCR, recording. Draw a box, get stuff done."
   [search]="Waffle start menu / search."
@@ -50,7 +52,7 @@ declare -gA IPC_TARGET_DESC=(
   [shellUpdate]="Shell update checker. Monitors the git repo for new commits and shows an update overlay."
   [sidebarLeft]="Left sidebar (AI chat, apps)."
   [sidebarRight]="Right sidebar (quick toggles, notepad, settings)."
-  [taskview]="Compatibility entry point for task navigation. On Waffle it opens the Waffle Task View; on ii/Niri it routes to Orbit."
+  [taskview]="Compatibility entry point for task navigation. On Waffle it opens the Waffle Task View; on Abyss and legacy ii it opens the normal Overview in task-view mode."
   [tiling]="Tiling layout overlay. Pick or cycle through tiling presets for the current workspace."
   [voiceSearch]="Provider-neutral voice input for web search and AI dictation. Auto prefers local whisper.cpp, then connected Groq, Gemini and OpenAI speech backends. Keys stay in the system keyring and are passed to adapters through the process environment."
   [wactionCenter]="Waffle action center (quick settings)."
@@ -66,6 +68,7 @@ declare -gA IPC_TARGET_DESC=(
 )
 
 declare -gA IPC_TARGET_FAMILY=(
+  [abyss]="shared"
   [ai]="shared"
   [altSwitcher]="shared"
   [appCatalog]="shared"
@@ -91,8 +94,9 @@ declare -gA IPC_TARGET_FAMILY=(
   [memory]="shared"
   [minimize]="shared"
   [mpris]="shared"
+  [notificationCenter]="shared"
   [notifications]="shared"
-  [osd]="waffle"
+  [osd]="shared"
   [osdInput]="shared"
   [osdVolume]="shared"
   [osk]="shared"
@@ -126,6 +130,7 @@ declare -gA IPC_TARGET_FAMILY=(
 )
 
 declare -gA IPC_TARGET_FUNCTIONS=(
+  [abyss]="editLayout cancelEdit"
   [ai]="ensureInitialized diagnose refreshCatalog catalog providers run runGet"
   [altSwitcher]="open close toggle next previous"
   [appCatalog]="refresh search install list"
@@ -151,6 +156,7 @@ declare -gA IPC_TARGET_FUNCTIONS=(
   [memory]="collect stats restart dismiss reset"
   [minimize]="minimize minimizeId restore restoreOriginal"
   [mpris]="pauseAll playPause previous next"
+  [notificationCenter]="toggle close open status"
   [notifications]="test clearAll toggleSilent"
   [osd]="trigger"
   [osdInput]="touchpad"
@@ -186,6 +192,8 @@ declare -gA IPC_TARGET_FUNCTIONS=(
 )
 
 declare -gA IPC_FUNCTION_DESC=(
+  ["abyss:editLayout"]="Open the Abyss module editor on the focused output"
+  ["abyss:cancelEdit"]="Cancel editing and restore the saved layout"
   ["ai:ensureInitialized"]="Force-load models, provider catalogs and API keys"
   ["ai:diagnose"]="Dump current AI, catalog and tool state as JSON"
   ["ai:refreshCatalog"]="Refresh every live provider model catalog"
@@ -292,10 +300,14 @@ declare -gA IPC_FUNCTION_DESC=(
   ["mpris:playPause"]="Toggle play/pause (uses YtMusic if active)"
   ["mpris:previous"]="Previous track (uses YtMusic if active)"
   ["mpris:next"]="Next track (uses YtMusic if active)"
+  ["notificationCenter:toggle"]="Open/close notification history"
+  ["notificationCenter:close"]="Close notification history"
+  ["notificationCenter:open"]="Open notification history"
+  ["notificationCenter:status"]="Return family, open state and resolved output as JSON"
   ["notifications:test"]="Send test notifications"
   ["notifications:clearAll"]="Dismiss all notifications"
   ["notifications:toggleSilent"]="Toggle Do Not Disturb mode"
-  ["osd:trigger"]="Show the OSD indicator"
+  ["osd:trigger"]="Show the active family's volume indicator"
   ["osdInput:touchpad"]="Show touchpad state (\`on\` or \`off\`)"
   ["osdVolume:trigger"]="Show volume OSD"
   ["osdVolume:hide"]="Hide volume OSD"
@@ -312,8 +324,8 @@ declare -gA IPC_FUNCTION_DESC=(
   ["overview:actionOpen"]="Open overview in action search mode"
   ["packageSearch:search"]="Start a package search"
   ["packageSearch:results"]="Print current search results"
-  ["panelFamily:cycle"]="Cycle to next panel family (ii → waffle → ii)"
-  ["panelFamily:set"]="Set specific family (\"ii\" or \"waffle\")"
+  ["panelFamily:cycle"]="Cycle to next panel family (abyss → waffle → abyss)"
+  ["panelFamily:set"]="Set specific family (\`\"abyss\"\` or \`\"waffle\"\`; \`\"ii\"\` is a compatibility alias for Abyss)"
   ["recordingOsd:toggle"]="Stop the current recording (if active)"
   ["recordingOsd:show"]="Reveal the recording OSD pill"
   ["recordingOsd:hide"]="Collapse/hide the recording OSD pill"
@@ -500,10 +512,10 @@ bind "Ctrl+Alt+A" { spawn "inir" "wallpaperSelector" "openLauncher" "animated"; 
   [ytmusic]='bind "Mod+M+Space" { spawn "inir" "ytmusic" "playPause"; }'
 )
 
-IPC_ALL_TARGETS=(ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wwidgets ytmusic zoom)
-IPC_SHARED_TARGETS=(ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notifications osdInput osdVolume osk overlay overview packageSearch panelFamily region session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector ytmusic zoom)
+IPC_ALL_TARGETS=(abyss ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wwidgets ytmusic zoom)
+IPC_SHARED_TARGETS=(abyss ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily region session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector ytmusic zoom)
 IPC_II_TARGETS=()
-IPC_WAFFLE_TARGETS=(autostart customWidgets osd recordingOsd search wactionCenter waffleAltSwitcher wbar widgetpower wnotificationCenter wwidgets)
+IPC_WAFFLE_TARGETS=(autostart customWidgets recordingOsd search wactionCenter waffleAltSwitcher wbar widgetpower wnotificationCenter wwidgets)
 
 declare -gA IPC_KEBAB_ALIASES=(
   [alt-switcher]=altSwitcher
@@ -515,6 +527,7 @@ declare -gA IPC_KEBAB_ALIASES=(
   [custom-widgets]=customWidgets
   [global-actions]=globalActions
   [media-controls]=mediaControls
+  [notification-center]=notificationCenter
   [osd-input]=osdInput
   [osd-volume]=osdVolume
   [package-search]=packageSearch

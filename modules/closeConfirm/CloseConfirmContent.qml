@@ -7,7 +7,6 @@ import Quickshell.Widgets
 import org.kde.kirigami as Kirigami
 import qs.services
 import qs.modules.common
-import qs.modules.common.functions
 import qs.modules.common.widgets
 
 Item {
@@ -23,30 +22,11 @@ Item {
     readonly property string appDisplayName: appTitle || appId || Translation.tr("Unknown")
     readonly property bool showAppId: appId.length > 0
         && appId.toLowerCase() !== appDisplayName.toLowerCase()
-    readonly property color dangerColor: Appearance.zzzEverywhere
-        ? Appearance.zzz.tertiary : Appearance.colors.colError
-    readonly property color dangerForeground: Appearance.zzzEverywhere
-        ? Appearance.zzz.onTertiary : Appearance.colors.colOnError
-    readonly property color detailSurface: Appearance.cookieEverywhere
-        ? Appearance.cookie.secondaryFace
-        : Appearance.zzzEverywhere ? Appearance.zzz.paperAlt
-        : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-        : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-        : Appearance.colors.colLayer2
-    readonly property color detailBorder: Appearance.cookieEverywhere
-        ? Appearance.cookie.borderColor
-        : Appearance.zzzEverywhere ? Appearance.zzz.hairlineStrong
-        : Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-        : Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle
-        : Appearance.auroraEverywhere ? Appearance.aurora.colPopupBorder
-        : Appearance.colors.colOutlineVariant
-    readonly property int detailRadius: Appearance.cookieEverywhere
-        ? Appearance.cookie.roundNormal
-        : Appearance.zzzEverywhere ? Appearance.zzz.controlRadius
-        : Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-        : Appearance.inirEverywhere ? Appearance.inir.roundingSmall
-        : Appearance.rounding.small
+    readonly property color dangerColor: Appearance.colors.colError
+    readonly property color dangerForeground: Appearance.colors.colOnError
+    readonly property color detailSurface: Appearance.colors.colLayer2
+    readonly property color detailBorder: Appearance.colors.colOutlineVariant
+    readonly property int detailRadius: Appearance.rounding.small
 
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Escape) {
@@ -67,12 +47,8 @@ Item {
         implicitHeight: 36
         implicitWidth: actionRow.implicitWidth + Appearance.sizes.spacingLarge * 2
         horizontalPadding: Appearance.sizes.spacingLarge
-        buttonRadius: Appearance.cookieEverywhere ? height / 2
-            : Appearance.zzzEverywhere ? Appearance.zzz.controlRadius
-            : Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-            : Appearance.inirEverywhere ? Appearance.inir.roundingSmall
-            : Appearance.rounding.full
-        cookieMorphing: Appearance.cookieEverywhere
+        buttonRadius: Appearance.rounding.full
+        cookieMorphing: false
         colBackground: destructive ? root.dangerColor : root.detailSurface
         colBackgroundHover: destructive
             ? Appearance.colors.colErrorHover : Appearance.colLayer2Hover
@@ -95,12 +71,10 @@ Item {
             }
 
             StyledText {
-                text: Appearance.zzzEverywhere
-                    ? actionButton.label.toUpperCase() : actionButton.label
-                font.family: Appearance.zzzEverywhere
-                    ? Appearance.font.family.title : Appearance.font.family.main
+                text: actionButton.label
+                font.family: Appearance.font.family.main
                 font.pixelSize: Appearance.font.pixelSize.small
-                font.weight: Appearance.zzzEverywhere ? Font.Black : Font.DemiBold
+                font.weight: Font.DemiBold
                 color: actionButton.destructive
                     ? root.dangerForeground
                     : Appearance.colors.colOnLayer2
@@ -131,13 +105,6 @@ Item {
         id: dialog
         anchors.centerIn: parent
         backgroundWidth: 360
-        zzzLabel: "CLOSE"
-        zzzIndex: "APP"
-        zzzGhostText: "CLOSE"
-        zzzAccentColor: Appearance.zzz.tertiary
-        zzzShowBurst: false
-        zzzShowTicks: false
-        zzzDecorationsEnabled: false
         show: false
         Component.onCompleted: show = true
 

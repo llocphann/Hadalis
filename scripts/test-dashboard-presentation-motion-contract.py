@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+"""Regression contract for Dashboard entry slide and Dashboard/Search fade-through."""
+from pathlib import Path
+import re
+import subprocess
+
+ROOT = Path(__file__).resolve().parents[1]
+dashboard = (ROOT / "modules/overview/OverviewDashboard.qml").read_text(encoding="utf-8")
+search = (ROOT / "modules/overview/SearchWidget.qml").read_text(encoding="utf-8")
+
+failures = []
+
+def require(source: str, token: str, label: str) -> None:
+    if token not in source:
+        failures.append(f"{label}: missing {token!r}")
+
+def forbid(source: str, token: str, label: str) -> None:
+    if token in source:
+        failures.append(f"{label}: forbidden {token!r}")
+
+# First presentation must paint a closed frame before starting the same immutable
+# slide used for later Dashboard entry/retraction.
+for token in (
+    "property bool _hasPresentedOnce: false",
+    "id: firstRevealFrameTimer",
+    "interval: 16",
+    "root.revealProgress = 0",
+    "root.revealProgress = 1",
+    "(1 - root.revealProgress) * dashContainer.height",
+    "duration: SurfaceMotion.duration",
+    "easing.type: SurfaceMotion.easingType",
+):
+    require(dashboard, token, "Dashboard first-entry slide")
+
+# Search waits for the debounced model, so mode change cannot fade into an empty
+# list and then retarget the container height a second time.
+for token in (
+    "readonly property bool resultsReady:",
+    "!searchDebounceTimer.running",
+    "root.debouncedSearchText === root.searchingText",
+):
+    require(search, token, "Search readiness")
+for token in (
+    "property bool _searchSessionPresented: false",
+    "readonly property bool presentingSearch:",
+    "root.searching && root._searchSessionPresented",
+    "function syncSearchSession(): void",
+    "function acceptReadySearchResults(): void",
+    "if (!root.searching)",
+    "if (root.searching && searchWidget.resultsReady)",
+    "root._searchSessionPresented = true",
+):
+    require(dashboard, token, "Dashboard/Search readiness")
+forbid(
+    dashboard,
+    "readonly property bool presentingSearch:\n        root.searching && searchWidget.resultsReady",
+    "Dashboard/Search per-keystroke mode bounce",
+)
+
+# Internal mode switching is a compact fade-through, not the old broad 50/50
+# linear crossfade and not a slide between two separate surfaces.
+for token in (
+    "readonly property real dashboardOpacity:",
+    "readonly property real searchResultsOpacity:",
+    "function _smooth01(value): real",
+    "opacity: root.dashboardOpacity",
+    "resultsOpacity: root.searchResultsOpacity",
+    "duration: root.modeTransitionDuration",
+    "easing.type: Easing.InOutCubic",
+):
+    require(dashboard, token, "Dashboard/Search fade-through")
+forbid(
+    dashboard,
+    "resultsOpacity: 1 - root.dashboardProgress",
+    "Dashboard/Search fade-through",
+)
+
+# Execute the actual height contract in both hosts; embedded ownership must not
+# alter the existing Material dashboard/search sizes.
+height_binding = re.search(r"height: (root.embeddedSurface \? Math\.max\(0, root.height - root.editToolbarReserve\) : root.presentingSearch\s*\? root.searchOnlyHeight : root.configuredHeight)", dashboard).group(1)
+subprocess.run(["node","-e","const assert=require('node:assert/strict'); const root={embeddedSurface:false,presentingSearch:false,height:600,editToolbarReserve:48,searchOnlyHeight:280,configuredHeight:800}; function height(){return "+height_binding+";} assert.equal(height(),800); root.presentingSearch=true; assert.equal(height(),280); root.embeddedSurface=true; assert.equal(height(),552);"],check=True)
+
+if failures:
+    print("Dashboard presentation motion contract regression(s):")
+    for failure in failures:
+        print("  - " + failure)
+    raise SystemExit(1)
+
+print("Dashboard presentation motion contract: PASS")

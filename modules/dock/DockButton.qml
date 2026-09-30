@@ -7,7 +7,6 @@ import QtQuick.Layouts
 RippleButton {
     id: root
     property bool vertical: false
-    property string dockPosition: "bottom"
     property string surfaceDialect: Appearance.surfaceDialectFor("")
     readonly property bool zzzStyle: surfaceDialect === "zzz"
     readonly property bool regaliaStyle: surfaceDialect === "regalia"
@@ -21,8 +20,7 @@ RippleButton {
     implicitWidth: vertical ? (implicitHeight - topInset - bottomInset) : (implicitHeight - topInset - bottomInset)
     implicitHeight: 50
     // Square by construction, so the face stays organic. The dock paints no
-    // resting background, which leaves the hover state as the cookie face —
-    // and the pill/macOS styles hide `background` outright, so they are unaffected.
+    // resting background, which leaves the hover state as the cookie face.
     cookieMorphing: true
     buttonRadius: root.regaliaStyle ? Appearance.regalia.roundNormal
         : root.zzzStyle ? Appearance.zzz.controlRadius

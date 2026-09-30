@@ -9,11 +9,26 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
+import "NiriOverviewModel.js" as OverviewModel
 
 Item {
     id: root
     required property var panelWindow
     property bool taskViewMode: false
+    property bool embeddedSurface: false
+    property bool presentationActive: GlobalStates.overviewOpen
+    // Delay focus-indicator motion until the parent connected popup finishes
+    // its reveal. Window previews settle directly from Niri geometry.
+    property bool focusIndicatorAnimationReady: true
+    property var preferredWorkspaceId: null
+    signal presentationCloseRequested()
+
+    function requestPresentationClose(): void {
+        if (root.embeddedSurface)
+            root.presentationCloseRequested()
+        else
+            GlobalStates.overviewOpen = false
+    }
 
     readonly property var overviewOptions: Config.options?.overview ?? {}
     readonly property int overviewRows: taskViewMode ? 1 : (overviewOptions.rows ?? 3)
@@ -48,20 +63,28 @@ Item {
         const idx = outputWorkspaceNumbers.indexOf(currentWorkspaceNumber);
         return idx >= 0 ? idx : 0;
     }
+    readonly property int presentationWorkspaceSlot: {
+        if (root.preferredWorkspaceId !== null
+                && root.preferredWorkspaceId !== undefined) {
+            const preferred = root.workspacesForOutput.findIndex(workspace =>
+                String(workspace?.id ?? "") === String(root.preferredWorkspaceId))
+            if (preferred >= 0)
+                return preferred
+        }
+        return root.currentWorkspaceSlot
+    }
     readonly property int totalWorkspacesForOutput: workspacesForOutput ? workspacesForOutput.length : 0
     readonly property int firstVisibleWorkspaceSlot: {
         const total = totalWorkspacesForOutput;
         if (total <= 0)
             return 0;
-        const cur = currentWorkspaceSlot;
         const slots = workspacesShown <= 0 ? 1 : workspacesShown;
-        const half = Math.floor(slots / 2);
-        var start = cur - half;
-        if (start < 0)
-            start = 0;
-        if (start + slots > total)
-            start = Math.max(0, total - slots);
-        return start;
+        const cur = Math.max(0, Math.min(presentationWorkspaceSlot, total - 1));
+        // Keep physical preview slots stable inside a page. The previous
+        // centered window made hovering slot 4 of a 1..5 strip shift the
+        // viewport to 2..6, so the previews appeared to move under the pointer.
+        // Only crossing a page boundary is allowed to replace the visible group.
+        return Math.floor(cur / slots) * slots;
     }
 
     property real scale: root.overviewScale
@@ -128,20 +151,24 @@ Item {
     property int wheelStepCounter: 0
     property int wheelStepsRequired: Math.max(1, root.overviewScrollWorkspaceSteps)
 
+    // Drag state is transaction-owned. Keep the exact window id captured at
+    // press time instead of reading a reactive delegate after workspace/model
+    // updates; this guarantees that a drop can only move the window the user
+    // actually grabbed.
+    property int draggingWindowId: -1
     property int draggingFromWorkspace: -1
     property int draggingTargetWorkspace: -1
 
-    implicitWidth: overviewBackground.implicitWidth + Appearance.sizes.elevationMargin * 2
-    implicitHeight: overviewBackground.implicitHeight + Appearance.sizes.elevationMargin * 2
-
-    Timer {
-        id: dragCleanupTimer
-        interval: 100
-        onTriggered: {
-            root.draggingFromWorkspace = -1
-            root.draggingTargetWorkspace = -1
-        }
+    function resetDragState(): void {
+        root.draggingWindowId = -1
+        root.draggingFromWorkspace = -1
+        root.draggingTargetWorkspace = -1
     }
+
+    readonly property real presentationMargin:
+        root.embeddedSurface ? 0 : Appearance.sizes.elevationMargin
+    implicitWidth: overviewBackground.implicitWidth + root.presentationMargin * 2
+    implicitHeight: overviewBackground.implicitHeight + root.presentationMargin * 2
 
     function openWindowContext(windowItem, mouseX, mouseY) {
         if (!windowItem || !windowItem.windowData) return
@@ -158,11 +185,10 @@ Item {
     }
 
     Connections {
-        target: GlobalStates
-        function onOverviewOpenChanged() {
-            if (!GlobalStates.overviewOpen) {
+        target: root
+        function onPresentationActiveChanged() {
+            if (!root.presentationActive)
                 root.closeWindowContext()
-            }
         }
     }
 
@@ -210,20 +236,22 @@ Item {
 
     StyledRectangularShadow {
         target: overviewBackground
+        visible: !root.embeddedSurface
     }
 
     Rectangle {
         id: overviewBackground
         property real padding: root.taskViewMode ? 16 : 10
         anchors.fill: parent
-        anchors.margins: Appearance.sizes.elevationMargin
+        anchors.margins: root.presentationMargin
 
         implicitWidth: workspaceColumnLayout.implicitWidth + padding * 2
         implicitHeight: workspaceColumnLayout.implicitHeight + padding * 2
-        radius: Appearance.rounding.large + padding
+        radius: root.embeddedSurface ? 0 : (Appearance.rounding.large + padding)
         clip: false
-        color: Appearance.colors.colBackgroundSurfaceContainer
-        border.width: 1
+        color: root.embeddedSurface ? "transparent"
+            : Appearance.colors.colBackgroundSurfaceContainer
+        border.width: root.embeddedSurface ? 0 : 1
         border.color: ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.68)
 
         Column {
@@ -411,7 +439,7 @@ Item {
                                 acceptedButtons: Qt.LeftButton
                                 onPressed: {
                                     if (root.draggingTargetWorkspace === -1 && workspace.workspaceObj) {
-                                        GlobalStates.overviewOpen = false
+                                        root.requestPresentationClose()
                                         NiriService.switchToWorkspaceById(workspace.workspaceObj.id)
                                     }
                                 }
@@ -420,10 +448,11 @@ Item {
                             DropArea {
                                 anchors.fill: parent
                                 onEntered: {
-                                    root.draggingTargetWorkspace = workspace.workspaceObj ? workspace.workspaceObj.id : -1
-                                    if (root.draggingFromWorkspace === root.draggingTargetWorkspace)
+                                    if (root.draggingWindowId < 0)
                                         return
-                                    hoveredWhileDragging = true
+                                    root.draggingTargetWorkspace = workspace.workspaceObj?.id ?? -1
+                                    hoveredWhileDragging = root.draggingTargetWorkspace >= 0
+                                        && root.draggingFromWorkspace !== root.draggingTargetWorkspace
                                 }
                                 onExited: {
                                     hoveredWhileDragging = false
@@ -446,85 +475,37 @@ Item {
             property var windowItems: []
             
             function rebuildWindowItems() {
-                if (!GlobalStates.overviewOpen) {
-                    windowItems = []
-                    return
-                }
-                
-                const wins = NiriService.windows || []
-                const wsList = root.workspacesForOutput || []
-                if (wsList.length === 0 || wins.length === 0) {
-                    windowItems = []
-                    return
-                }
-
-                const workspaceSlotById = {}
-                for (let i = 0; i < wsList.length; ++i) {
-                    const ws = wsList[i]
-                    if (ws)
-                        workspaceSlotById[ws.id] = i
-                }
-
-                const startSlot = root.firstVisibleWorkspaceSlot
-                const endSlot = Math.min(startSlot + root.workspacesShown - 1, wsList.length - 1)
-
-                const collected = []
-                const counters = {}
-                const countsPerWorkspace = {}
-                const maxPerWorkspace = {}
-
-                for (let i = 0; i < wins.length; ++i) {
-                    const w = wins[i]
-                    const slot = workspaceSlotById[w.workspace_id]
-                    if (slot === undefined)
-                        continue
-                    if (slot < startSlot || slot > endSlot)
-                        continue
-
-                    const wsNumber = slot + 1
-
-                    const pos = w.layout && w.layout.pos_in_scrolling_layout ? w.layout.pos_in_scrolling_layout : [1, 1]
-                    const col = pos.length >= 1 && pos[0] ? pos[0] : 1
-                    const row = pos.length >= 2 && pos[1] ? pos[1] : 1
-
-                    const keyWs = wsNumber.toString()
-                    countsPerWorkspace[keyWs] = (countsPerWorkspace[keyWs] || 0) + 1
-                    const info = maxPerWorkspace[keyWs] || { maxCol: 1, maxRow: 1 }
-                    info.maxCol = Math.max(info.maxCol, col)
-                    info.maxRow = Math.max(info.maxRow, row)
-                    maxPerWorkspace[keyWs] = info
-
-                    collected.push({ window: w, workspaceNumber: wsNumber, workspaceSlot: slot })
-                }
-
-                const result = []
-                for (let i = 0; i < collected.length; ++i) {
-                    const entry = collected[i]
-                    const wsKey = entry.workspaceNumber.toString()
-                    const key = wsKey
-                    const count = counters[key] || 0
-                    counters[key] = count + 1
-
-                    const gridInfo = maxPerWorkspace[wsKey] || { maxCol: 1, maxRow: 1 }
-
-                    result.push({
-                        "id": entry.window.id,
-                        "window": entry.window,
-                        "workspaceNumber": entry.workspaceNumber,
-                        "workspaceSlot": entry.workspaceSlot,
-                        "indexInWorkspace": count,
-                        "windowCount": countsPerWorkspace[wsKey] || 1,
-                        "maxCol": gridInfo.maxCol,
-                        "maxRow": gridInfo.maxRow
-                    })
-                }
-
-                windowItems = result
+                windowItems = root.presentationActive
+                    ? OverviewModel.buildWindowItems(
+                        NiriService.windows || [],
+                        root.workspacesForOutput || [],
+                        root.firstVisibleWorkspaceSlot,
+                        root.workspacesShown)
+                    : []
+                if (root.presentationActive && !root.taskViewMode
+                        && root.overviewOptions.showPreviews !== false)
+                    WindowPreviewService.warmForOverview(windowItems.map(record => record.id))
             }
-            
+
+            function refreshVisibleWindowPreviews(): void {
+                if (!root.presentationActive)
+                    return
+                const ids = windowItems.map(record => record.id)
+                if (!root.taskViewMode
+                        && root.overviewOptions.showPreviews !== false) {
+                    // The resident cache gives Overview an immediate first
+                    // frame; refresh the visible IDs in the background so
+                    // long-lived terminals do not show their creation-time
+                    // snapshot forever.
+                    WindowPreviewService.refreshForOverview(ids)
+                } else {
+                    WindowPreviewService.captureForTaskView(ids)
+                }
+            }
+
             Connections {
                 target: NiriService
-                enabled: GlobalStates.overviewOpen
+                enabled: root.presentationActive
                 function onWindowsChanged() {
                     windowSpace.rebuildWindowItems()
                 }
@@ -537,51 +518,72 @@ Item {
                 }
                 function onFirstVisibleWorkspaceSlotChanged() {
                     windowSpace.rebuildWindowItems()
+                    windowSpace.refreshVisibleWindowPreviews()
                 }
             }
             
             Connections {
-                target: GlobalStates
-                function onOverviewOpenChanged() {
-                    if (GlobalStates.overviewOpen) {
+                target: root
+                function onPresentationActiveChanged() {
+                    if (root.presentationActive) {
                         windowSpace.rebuildWindowItems()
-                        WindowPreviewService.captureForTaskView()
+                        windowSpace.refreshVisibleWindowPreviews()
+                    } else {
+                        root.resetDragState()
+                        windowSpace.windowItems = []
                     }
                 }
             }
             
             Component.onCompleted: {
                 rebuildWindowItems()
-                if (GlobalStates.overviewOpen)
-                    WindowPreviewService.captureForTaskView()
+                if (root.presentationActive)
+                    refreshVisibleWindowPreviews()
             }
 
             Repeater {
                 model: ScriptModel {
-                    values: windowSpace.windowItems
+                    // Delegate identity is a primitive compositor window ID.
+                    // Reflow updates the record, never the identity.
+                    values: windowSpace.windowItems.map(record => record.id)
                 }
 
                 delegate: Item {
                     id: windowItem
-                    required property var modelData
-
-                    readonly property var windowData: modelData.window
-                    readonly property int workspaceNumber: modelData.workspaceNumber
-                    readonly property int workspaceSlot: modelData.workspaceSlot
-                    readonly property int indexInWorkspace: modelData.indexInWorkspace
-                    readonly property int windowCount: modelData.windowCount || 1
-
-                    readonly property int workspaceMaxCol: modelData.maxCol || 1
-                    readonly property int workspaceMaxRow: modelData.maxRow || 1
+                    required property int modelData
+                    readonly property int windowId: modelData
+                    readonly property var windowRecord:
+                        OverviewModel.findWindowRecord(windowSpace.windowItems, windowItem.windowId)
+                    readonly property var windowData: windowRecord?.window ?? null
+                    readonly property int workspaceNumber: windowRecord?.workspaceNumber ?? 0
+                    readonly property int workspaceSlot: windowRecord?.workspaceSlot ?? -1
+                    readonly property int indexInWorkspace: windowRecord?.indexInWorkspace ?? 0
+                    readonly property int windowCount: windowRecord?.windowCount ?? 1
+                    readonly property int workspaceMaxCol: windowRecord?.maxCol ?? 1
+                    readonly property int workspaceMaxRow: windowRecord?.maxRow ?? 1
 
                     readonly property int workspaceIndex: workspaceSlot - root.firstVisibleWorkspaceSlot
                     readonly property int workspaceColIndex: workspaceIndex % root.overviewColumns
                     readonly property int workspaceRowIndex: Math.floor(workspaceIndex / root.overviewColumns)
-
                     readonly property real xOffset: (root.workspaceImplicitWidth + workspaceSpacing) * workspaceColIndex
                     readonly property real yOffset: (root.workspaceImplicitHeight + workspaceSpacing) * workspaceRowIndex
 
-                    readonly property var layoutPos: (windowData.layout && windowData.layout.pos_in_scrolling_layout) ? windowData.layout.pos_in_scrolling_layout : [1, 1]
+                    function restoreOverviewPosition(): void {
+                        // MouseArea.drag.target changes x/y imperatively.
+                        windowItem.x = Qt.binding(function() {
+                            return windowItem.baseX + windowItem.tileMargin
+                        })
+                        windowItem.y = Qt.binding(function() {
+                            return windowItem.baseY + windowItem.tileMargin
+                        })
+                    }
+
+                    Component.onDestruction: {
+                        if (root.draggingWindowId === windowItem.windowId)
+                            root.resetDragState()
+                    }
+
+                    readonly property var layoutPos: windowData?.layout?.pos_in_scrolling_layout ?? [1, 1]
                     readonly property int layoutCol: layoutPos.length >= 1 && layoutPos[0] ? layoutPos[0] : 1
                     readonly property int layoutRow: layoutPos.length >= 2 && layoutPos[1] ? layoutPos[1] : 1
 
@@ -605,40 +607,12 @@ Item {
                     y: baseY + tileMargin
                     width: Math.max(10, tileWidth - 2 * tileMargin)
                     height: Math.max(10, tileHeight - 2 * tileMargin)
-                    z: root.windowZ
+                    z: windowItem.Drag.active ? root.windowDraggingZ : root.windowZ
 
-                    Behavior on x {
-                        enabled: !windowItem.Drag.active && Appearance.animationsEnabled
-                        NumberAnimation {
-                            duration: Appearance.animation.elementMoveFast.duration
-                            easing.type: Appearance.animation.elementMoveFast.type
-                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                        }
-                    }
-                    Behavior on y {
-                        enabled: !windowItem.Drag.active && Appearance.animationsEnabled
-                        NumberAnimation {
-                            duration: Appearance.animation.elementMoveFast.duration
-                            easing.type: Appearance.animation.elementMoveFast.type
-                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                        }
-                    }
-
-                    readonly property var toplevel: {
-                        const tlMap = ToplevelManager.toplevels
-                        if (!tlMap || !tlMap.values)
-                            return null
-                        const arr = Array.from(tlMap.values)
-                        for (let i = 0; i < arr.length; ++i) {
-                            const tl = arr[i]
-                            if (!tl)
-                                continue
-                            const match = NiriService.findNiriWindow(tl)
-                            if (match && match.niriWindow && match.niriWindow.id === windowData.id)
-                                return tl
-                        }
-                        return null
-                    }
+                    // A sibling may change Niri column when another window
+                    // leaves. Never animate it as if it followed the drag.
+                    // The unused heuristic toplevel match is also retired:
+                    // this surface renders directly from exact Niri IDs.
 
                     property bool hovered: false
                     property bool pressed: false
@@ -670,51 +644,58 @@ Item {
                             border.width: windowItem.hovered || windowItem.pressed ? 1 : 0
                         }
 
-                        // Window preview image
+                        // Preview source is a binding on the current immutable
+                        // window id and reactive cache; never retain another
+                        // window's URL in delegate-local mutable state.
                         readonly property bool showPreviews: root.taskViewMode || Config.options?.overview?.showPreviews !== false
                         Image {
                             id: windowPreview
                             anchors.fill: parent
                             anchors.margins: 2
-                            property string previewUrl: ""
-                            source: parent.showPreviews ? previewUrl : ""
                             asynchronous: true
+                            cache: true
+                            // Keep the last decoded frame while a refreshed URL
+                            // is loading. Overview refreshes visible windows on
+                            // every open, and dropping the old texture during
+                            // that async decode causes the icon/preview flash.
+                            retainWhileLoading: true
+                            property bool _everReady: false
+                            // Decode parameters precede source assignment. In
+                            // Overview they match the resident CPU image cache;
+                            // TaskView continues to decode to its smaller tile.
+                            sourceSize.width: root.taskViewMode
+                                ? Math.max(1, Math.min(768, Math.ceil(windowItem.width * 2)))
+                                : WindowPreviewService.overviewWarmDecodeWidth
+                            sourceSize.height: root.taskViewMode
+                                ? Math.max(1, Math.min(512, Math.ceil(windowItem.height * 2)))
+                                : WindowPreviewService.overviewWarmDecodeHeight
                             fillMode: root.taskViewMode ? Image.PreserveAspectFit : Image.PreserveAspectCrop
+                            source: {
+                                const cache = WindowPreviewService.previewCache
+                                if (!parent.showPreviews || !windowItem.windowData
+                                        || !cache?.[windowItem.windowId])
+                                    return ""
+                                return WindowPreviewService.getPreviewUrl(windowItem.windowId)
+                            }
+                            onStatusChanged: {
+                                if (status === Image.Ready)
+                                    _everReady = true
+                            }
+                            onSourceChanged: {
+                                if (String(source).length === 0)
+                                    _everReady = false
+                            }
                             smooth: true
                             mipmap: true
-                            visible: parent.showPreviews && status === Image.Ready
-                            opacity: status === Image.Ready ? 1 : 0
-
+                            visible: parent.showPreviews && _everReady
+                            opacity: visible ? 1 : 0
                             Behavior on opacity {
                                 enabled: Appearance.animationsEnabled
-                                NumberAnimation { 
+                                NumberAnimation {
                                     duration: Appearance.animation.elementMoveFast.duration
                                     easing.type: Appearance.animation.elementMoveFast.type
                                     easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
                                 }
-                            }
-
-                            // Listen for preview updates
-                            Connections {
-                                target: WindowPreviewService
-                                function onPreviewUpdated(updatedId: int): void {
-                                    if (updatedId === windowData.id) {
-                                        windowPreview.previewUrl = WindowPreviewService.getPreviewUrl(updatedId)
-                                    }
-                                }
-                                function onCaptureComplete(): void {
-                                    const url = WindowPreviewService.getPreviewUrl(windowData.id)
-                                    if (url) windowPreview.previewUrl = url
-                                }
-                            }
-                            
-                            Component.onCompleted: {
-                                Qt.callLater(() => {
-                                    if (windowData && windowData.id) {
-                                        const url = WindowPreviewService.getPreviewUrl(windowData.id)
-                                        if (url) previewUrl = url
-                                    }
-                                })
                             }
                         }
 
@@ -731,8 +712,9 @@ Item {
                                 return size;
                             }
                             height: width
-                            source: AppSearch.getIconSource(windowData.app_id || windowData.appId || "")
-                            asynchronous: true
+                            source: windowItem.windowData
+                                ? AppSearch.getIconSource(windowItem.windowData.app_id || windowItem.windowData.appId || "")
+                                : ""
                             fillMode: Image.PreserveAspectFit
                             opacity: windowPreview.visible ? (root.taskViewMode ? 0 : 0.6) : 1.0
                             Behavior on opacity {
@@ -754,7 +736,7 @@ Item {
                             id: windowMouseArea
                             anchors.fill: parent
                             hoverEnabled: true
-                            drag.target: windowItem
+                            drag.target: (windowMouseArea.pressedButtons & Qt.LeftButton) ? windowItem : null
                             acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
                             property real pressX: 0
                             property real pressY: 0
@@ -763,12 +745,19 @@ Item {
                             onPressed: (mouse) => {
                                 if (!windowData)
                                     return
-                                pressX = mouse.x
-                                pressY = mouse.y
-                                if (mouse.button === Qt.RightButton) {
-                                    // Click derecho: no iniciar drag, sólo registrar posición
+                                const point = windowMouseArea.mapToItem(windowSpace, mouse.x, mouse.y)
+                                pressX = point.x
+                                pressY = point.y
+                                if (mouse.button !== Qt.LeftButton)
                                     return
-                                }
+
+                                const draggedId = windowItem.windowId
+                                if (!Number.isFinite(draggedId) || draggedId < 0)
+                                    return
+
+                                root.draggingWindowId = draggedId
+                                root.draggingTargetWorkspace = -1
+
                                 windowItem.pressed = true
                                 const ws = NiriService.workspaces[windowData.workspace_id]
                                 root.draggingFromWorkspace = ws ? ws.id : -1
@@ -778,49 +767,51 @@ Item {
                                 windowItem.Drag.hotSpot.y = mouse.y
                             }
                             onReleased: (event) => {
-                                const dx = Math.abs(event.x - pressX)
-                                const dy = Math.abs(event.y - pressY)
-                                const isClick = dx <= 4 && dy <= 4
-
-                                if (!windowData) return
-
+                                const point = windowMouseArea.mapToItem(windowSpace, event.x, event.y)
+                                const isClick = Math.abs(point.x - pressX) <= 4
+                                    && Math.abs(point.y - pressY) <= 4
                                 if (event.button === Qt.RightButton) {
-                                    if (isClick) root.openWindowContext(windowItem, event.x, event.y)
-                                    windowItem.pressed = false
-                                    windowItem.Drag.active = false
-                                    root.draggingFromWorkspace = -1
-                                    root.draggingTargetWorkspace = -1
+                                    if (isClick && windowData)
+                                        root.openWindowContext(windowItem, event.x, event.y)
+                                    return
+                                }
+                                if (event.button === Qt.MiddleButton) {
+                                    if (isClick && windowData)
+                                        NiriService.closeWindow(windowItem.windowId)
                                     return
                                 }
 
+                                const draggedWindowId = root.draggingWindowId
                                 const fromWorkspace = root.draggingFromWorkspace
                                 const targetWorkspace = root.draggingTargetWorkspace
                                 windowItem.pressed = false
                                 windowItem.Drag.active = false
-                                dragCleanupTimer.restart()
+                                windowItem.restoreOverviewPosition()
+                                root.resetDragState()
 
-                                const movedToOtherWorkspace = (targetWorkspace !== -1 && targetWorkspace !== fromWorkspace)
+                                if (draggedWindowId !== windowItem.windowId)
+                                    return
 
-                                if (movedToOtherWorkspace) {
-                                    // Drop válido en otro workspace: mover ventana allí
-                                    NiriService.moveWindowToWorkspaceById(windowData.id, targetWorkspace, true)
-                                    // Force immediate rebuild after move
-                                    Qt.callLater(() => windowSpace.rebuildWindowItems())
-                                } else {
-                                    // Drop fuera de cualquier workspace diferente o mismo workspace: efecto imán
-                                    windowItem.x = Qt.binding(function() { return windowItem.baseX + windowItem.tileMargin })
-                                    windowItem.y = Qt.binding(function() { return windowItem.baseY + windowItem.tileMargin })
-
-                                    // Comportamiento de click (sin drag real)
-                                    if (isClick && event.button === Qt.LeftButton) {
-                                        NiriService.focusWindow(windowData.id)
-                                        if (!root.keepOverviewOpenOnWindowClick) {
-                                            GlobalStates.overviewOpen = false
-                                        }
-                                    } else if (isClick && event.button === Qt.MiddleButton) {
-                                        NiriService.closeWindow(windowData.id)
-                                    }
+                                if (targetWorkspace >= 0
+                                        && targetWorkspace !== fromWorkspace
+                                        && root.workspacesForOutput.some(ws => ws?.id === targetWorkspace)) {
+                                    // Never apply an optimistic workspace slot.
+                                    // NiriService.windows triggers the authoritative
+                                    // projection refresh for this one window ID.
+                                    NiriService.moveWindowToWorkspaceById(
+                                        draggedWindowId, targetWorkspace, false)
+                                } else if (isClick) {
+                                    NiriService.focusWindow(draggedWindowId)
+                                    if (!root.keepOverviewOpenOnWindowClick)
+                                        root.requestPresentationClose()
                                 }
+                            }
+                            onCanceled: {
+                                windowItem.pressed = false
+                                windowItem.Drag.active = false
+                                windowItem.restoreOverviewPosition()
+                                if (root.draggingWindowId === windowItem.windowId)
+                                    root.resetDragState()
                             }
                         }
                     }
@@ -862,7 +853,8 @@ Item {
                         onClicked: {
                             if (!root.contextWindowData) return
                             NiriService.focusWindow(root.contextWindowData.id)
-                            if (!root.keepOverviewOpenOnWindowClick) GlobalStates.overviewOpen = false
+                            if (!root.keepOverviewOpenOnWindowClick)
+                                root.requestPresentationClose()
                             root.closeWindowContext()
                         }
                     }
@@ -911,7 +903,9 @@ Item {
                 border.color: root.activeBorderColor
 
                 Behavior on x {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveFast.type
@@ -919,7 +913,9 @@ Item {
                     }
                 }
                 Behavior on y {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveFast.type
@@ -927,7 +923,9 @@ Item {
                     }
                 }
                 Behavior on topLeftRadius {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveEnter.type
@@ -935,7 +933,9 @@ Item {
                     }
                 }
                 Behavior on topRightRadius {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveEnter.type
@@ -943,7 +943,9 @@ Item {
                     }
                 }
                 Behavior on bottomLeftRadius {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveEnter.type
@@ -951,7 +953,9 @@ Item {
                     }
                 }
                 Behavior on bottomRightRadius {
-                    enabled: root.focusAnimEnabled && Appearance.animationsEnabled
+                    enabled: root.focusAnimEnabled
+                        && root.focusIndicatorAnimationReady
+                        && Appearance.animationsEnabled
                     animation: NumberAnimation {
                         duration: root.focusAnimDuration
                         easing.type: Appearance.animation.elementMoveEnter.type

@@ -47,6 +47,7 @@ in
 
 For Home Manager, import `nix/home-module.nix` instead. `programs.inir.package` can be overridden when you need a custom build.
 
+
 ## With flakes and niri-flake
 
 Add Hadalis and niri-flake as inputs:

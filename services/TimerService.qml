@@ -210,12 +210,26 @@ Singleton {
         pomodoroSecondsLeft = pomodoroLapDuration - (getCurrentTimeInSeconds() - Persistent.states.timer.pomodoro.start);
     }
 
-    Timer {
-        id: pomodoroTimer
-        interval: 200
-        running: root.pomodoroRunning && !root.pomodoroPaused
-        repeat: true
-        onTriggered: refreshPomodoro()
+    function refreshSecondTimers(): void {
+        if (!Persistent.ready)
+            return
+        if (root.pomodoroRunning && !root.pomodoroPaused)
+            root.refreshPomodoro()
+        if (root.countdownRunning && !root.countdownPaused)
+            root.refreshCountdown()
+    }
+
+    // Pomodoro and countdown expose whole-second state. Drive both from one
+    // second-aligned clock instead of two permanent 200 ms timers. Stopwatch
+    // keeps its independent 33 ms cadence because it exposes 10 ms ticks.
+    SystemClock {
+        precision: SystemClock.Seconds
+        enabled: Persistent.ready
+            && ((root.pomodoroRunning && !root.pomodoroPaused)
+                || (root.countdownRunning && !root.countdownPaused))
+        // Start/resume mutates persisted timestamps synchronously; defer the
+        // aligned tick so those writes are visible before refreshing.
+        onDateChanged: Qt.callLater(root.refreshSecondTimers)
     }
 
     function togglePomodoro() {
@@ -337,14 +351,6 @@ Singleton {
                 Audio.playEvent("timerDone");
             }
         }
-    }
-
-    Timer {
-        id: countdownTimer
-        interval: 200
-        running: root.countdownRunning && !root.countdownPaused
-        repeat: true
-        onTriggered: refreshCountdown()
     }
 
     function toggleCountdown(): void {

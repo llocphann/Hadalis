@@ -314,22 +314,10 @@ Item {
                 : Appearance.colors.colLayer0Border
             clip: true
             
-            // Loading indicator
-            ColumnLayout {
+            // Loading text only; refresh-without-text keeps the shared gear.
+            LoadingText {
                 anchors.centerIn: parent
                 visible: AnimeService.loading && root.getCurrentData().length === 0
-                spacing: 10
-                
-                MaterialLoadingIndicator {
-                    Layout.alignment: Qt.AlignHCenter
-                    loading: true
-                    implicitSize: 48
-                }
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: Translation.tr("Loading...")
-                    color: Appearance.colors.colSubtext
-                }
             }
             
             // Error message

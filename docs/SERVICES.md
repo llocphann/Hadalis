@@ -37,10 +37,11 @@
 | **GameMode** | Fullscreen detection with auto/manual activation. Suppresses animations, notifications, blur when gaming. IPC target: `gamemode`. |
 | **Idle** | Idle management via swayidle. Screen-off, lock, and suspend timeouts. Set `idle.onBattery.enable` to apply a separate, shorter set of timeouts while a laptop runs unplugged. |
 | **ResourceUsage** | CPU, RAM, GPU, temperature, disk polling. History arrays for graphs. Auto-stop timer (15s) when no consumers active. |
-| **ScreenTime** | Optional focused-app usage tracking. Local JSON storage, daily totals, hourly buckets, 3/14 day range aggregation. Disabled unless `sidebar.screenTime.enable` is true. |
+| **ScreenTime** | Focused-app/window usage tracking. Local JSON storage, daily totals, hourly buckets, and 3/14 day range aggregation. The Material (ii) notification-center Activity tab keeps it active while its ScreenCorners host is enabled; Waffle retains the explicit `sidebar.screenTime.enable` opt-in. |
 | **SystemInfo** | Distro name, username, desktop environment detection. |
 | **ShellLayoutController** | Validates and persists bar, dock, taskbar and sidebar placement across panel families. IPC target: `shellLayout`. |
 | **Privacy** | Mic and screen sharing detection via PipeWire link analysis. |
+
 
 ## Theming and Appearance
 
@@ -94,7 +95,7 @@
 | **LauncherSearch** | Overview search with prefix routing (apps, actions, calculator, packages). |
 | **TaskbarApps** | Dock/taskbar app list (merged pinned + open windows). |
 | **MinimizedWindows** | Niri window minimization via hidden workspace. IPC target: `minimize`. |
-| **WindowPreviewService** | Window preview caching for task view. |
+| **WindowPreviewService** | Niri window snapshot cache for Overview/task previews, including warm decoded frames and targeted refresh. |
 | **GlobalActions** | Modular action registry for keyboard-driven workflows. User-extensible. IPC target: `globalActions`. |
 
 ## Content

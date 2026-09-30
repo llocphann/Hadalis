@@ -20,7 +20,7 @@ THINKFAN_HELPER = $(LIBEXECDIR)/inir-thinkfan
 THINKFAN_POLICY = $(POLKIT_ACTIONS_DIR)/org.inir.thinkfan.policy
 PACKAGE_UPDATE_HINT = sudo make install PREFIX="$(PREFIX)" SYSTEMD_USER_DIR="$(SYSTEMD_USER_DIR)" LIBEXECDIR="$(LIBEXECDIR)" POLKIT_ACTIONS_DIR="$(POLKIT_ACTIONS_DIR)" TLP_CONFDIR="$(TLP_CONFDIR)" INIR_SYSTEM_SHAREDIR="$(INIR_SYSTEM_SHAREDIR)"
 
-.PHONY: all build test-local test-doctor-routing test-optional-audio-deps test-update-tlp-contracts test-news-contract test-equalizer-contracts test-perimeter-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks test-battery-helper test-thinkfan-helper install install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-license uninstall-battery-helper uninstall-thinkfan-helper
+.PHONY: all build test-local test-native-production test-doctor-routing test-optional-audio-deps test-update-tlp-contracts test-news-contract test-equalizer-contracts test-perimeter-contracts test-weather-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks test-battery-helper test-thinkfan-helper install install-bin install-shell install-native install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper uninstall uninstall-bin uninstall-shell uninstall-systemd uninstall-icon uninstall-desktop uninstall-docs uninstall-license uninstall-battery-helper uninstall-thinkfan-helper
 
 all: build
 
@@ -31,13 +31,16 @@ build:
 
 # test-local-distribution.sh already runs the battery, ThinkFan, updater, and TLP
 # contracts. Keep their standalone targets available without executing them twice here.
-test-local: build test-doctor-routing test-optional-audio-deps test-news-contract test-equalizer-contracts test-perimeter-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks
+test-local: build test-native-production test-doctor-routing test-optional-audio-deps test-news-contract test-equalizer-contracts test-perimeter-contracts test-weather-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks
 	@bash scripts/test-local-distribution.sh
 	@bash scripts/test-packaging-contract.sh
 	@bash scripts/test-nix-module-contract.sh
 
 test-doctor-routing:
 	@bash scripts/test-doctor-dependency-routing.sh
+
+test-native-production:
+	@bash scripts/test-native-production-contract.sh
 
 test-optional-audio-deps:
 	@bash scripts/test-optional-audio-deps-contract.sh
@@ -56,12 +59,18 @@ test-equalizer-contracts:
 
 test-perimeter-contracts:
 	@bash scripts/test-perimeter-contracts.sh
+	@python3 scripts/test-iris-production-surface-contract.py
+	@python3 scripts/test-connected-input-lifecycle.py
+	@python3 scripts/test-quick-notes-corner-contract.py
 	@bash scripts/test-perimeter-compatibility-placement-contract.sh
 	@bash scripts/test-perimeter-family-contracts.sh
 	@bash scripts/test-perimeter-route-contracts.sh
 	@bash scripts/test-perimeter-settings-contracts.sh
 	@bash scripts/test-perimeter-source-contracts.sh
 	@bash scripts/test-perimeter-retirement-contract.sh
+
+test-weather-contracts:
+	@bash scripts/test-weather-orbital-visual-lock.sh
 
 test-docs:
 	@bash scripts/verify-docs.sh
@@ -72,11 +81,12 @@ test-install-lifecycle:
 test-prefix-install:
 	@stage="$$(mktemp -d)"; \
 		trap 'rm -rf -- "$$stage"' EXIT; \
-		$(MAKE) -s install-bin install-shell install-desktop install-docs DESTDIR="$$stage" PREFIX=/opt/inir; \
+		$(MAKE) -s install-bin install-shell install-native install-desktop install-docs DESTDIR="$$stage" PREFIX=/opt/inir; \
 		runtime="$$stage/opt/inir/share/quickshell/inir"; \
 		docs="$$stage/opt/inir/share/doc/inir-shell"; \
 		test -f "$$runtime/shell.qml"; \
 		test -f "$$runtime/qmldir"; \
+		for binary in inir-inputd inir-mpdd inir-native inir-theme; do test -x "$$runtime/native/bin/$$binary"; done; \
 		test -f "$$docs/README.md"; \
 		test -f "$$docs/AUDIO_MEDIA.md"; \
 		test -f "$$docs/INSTALL.md"; \
@@ -158,6 +168,9 @@ install-shell:
 			--installed-at "$$installed_at" \
 			--update-hint '$(PACKAGE_UPDATE_HINT)'
 
+install-native:
+	@bash native/scripts/install-runtime.sh --dest "$(DESTDIR)$(SHELL_INSTALL_DIR)/native/bin"
+
 install-systemd:
 	@mkdir -p "$(DESTDIR)$(SYSTEMD_USER_DIR)"
 	@sed -e 's|^ExecStart=.*|ExecStart=$(BINDIR)/inir run --session|' \
@@ -205,7 +218,7 @@ install-thinkfan-helper:
 		assets/polkit/org.inir.thinkfan.policy > "$(DESTDIR)$(THINKFAN_POLICY)"
 	@chmod 644 "$(DESTDIR)$(THINKFAN_POLICY)"
 
-install: build install-bin install-shell install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper
+install: build install-bin install-shell install-native install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper
 
 uninstall-bin:
 	@rm -f "$(DESTDIR)$(BINDIR)/inir"

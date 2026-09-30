@@ -7,12 +7,14 @@ import QtQuick.Layouts
 Item {
     id: root
     property bool vertical: false
-    property real padding: 8
+    property real padding: 8 * Appearance.sizes.barModuleScale
     readonly property bool cardStyleEverywhere: (Config.options?.dock?.cardStyle ?? false)
         && (Config.options?.sidebar?.cardStyle ?? false)
         && (Config.options?.bar?.cornerStyle === 3)
     property bool bare: false
     property bool clipContent: false
+    property real moduleSpacing: (root.vertical ? 12 : 4) * Appearance.sizes.barModuleScale
+    property int contentHorizontalAlignment: Qt.AlignHCenter
     readonly property bool zzzPlate: false
     implicitWidth: vertical ? Appearance.sizes.baseVerticalBarWidth
         : (gridLayout.implicitWidth + padding * 2)
@@ -26,10 +28,10 @@ Item {
         id: background
         anchors {
             fill: parent
-            topMargin: root.vertical ? 0 : 4
-            bottomMargin: root.vertical ? 0 : 4
-            leftMargin: root.vertical ? 4 : 0
-            rightMargin: root.vertical ? 4 : 0
+            topMargin: root.vertical ? 0 : 4 * Appearance.sizes.barModuleScale
+            bottomMargin: root.vertical ? 0 : 4 * Appearance.sizes.barModuleScale
+            leftMargin: root.vertical ? 4 * Appearance.sizes.barModuleScale : 0
+            rightMargin: root.vertical ? 4 * Appearance.sizes.barModuleScale : 0
         }
         visible: !root.bare
         cardStyle: root.cardStyleEverywhere
@@ -48,13 +50,21 @@ Item {
             columns: root.vertical ? 1 : -1
             anchors {
                 verticalCenter: root.vertical ? undefined : parent.verticalCenter
-                horizontalCenter: parent.horizontalCenter
+                horizontalCenter: (root.vertical
+                    || root.contentHorizontalAlignment === Qt.AlignHCenter)
+                    ? parent.horizontalCenter : undefined
+                left: (!root.vertical
+                    && root.contentHorizontalAlignment === Qt.AlignLeft)
+                    ? parent.left : undefined
+                right: (!root.vertical
+                    && root.contentHorizontalAlignment === Qt.AlignRight)
+                    ? parent.right : undefined
                 top: root.vertical ? parent.top : undefined
                 bottom: root.vertical ? parent.bottom : undefined
                 margins: root.padding
             }
-            columnSpacing: 4
-            rowSpacing: 12
+            columnSpacing: root.vertical ? 0 : root.moduleSpacing
+            rowSpacing: root.vertical ? root.moduleSpacing : 0
         }
     }
 }

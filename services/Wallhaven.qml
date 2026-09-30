@@ -67,13 +67,6 @@ QtObject {
 
     readonly property bool _active: (Config.options?.sidebar?.wallhaven?.enable ?? true) && (GlobalStates?.sidebarLeftOpen ?? false)
 
-    property Timer wallhavenClock: Timer {
-        // Removed: nowMs is updated on-demand in handlers that need it
-        interval: 500
-        repeat: false
-        running: false
-    }
-
     Component.onCompleted: {
         root.nowMs = Date.now()
     }
@@ -82,36 +75,30 @@ QtObject {
     property int minSearchIntervalMs: 1200
     property int minTagIntervalMs: 1200
     property real _nextSearchAllowedMs: 0
-
-    property Timer _pendingSearchTimer: Timer {
-        interval: Math.max(0, root._nextSearchAllowedMs - root.nowMs)
-        onTriggered: root._processPendingSearch()
-    }
     property real _nextTagAllowedMs: 0
 
     // Pending search request (coalesced)
     property var pendingSearch: null
 
-    property Timer pendingSearchTimer: Timer {
-        interval: 300
-        repeat: true
-        running: root._active || (root.pendingSearch !== null)
-        onTriggered: {
-            root.nowMs = Date.now()
-            if (!root.pendingSearch)
-                return
-            if (root.runningRequests > 0 || root.searchProcess.running)
-                return
-            if (root.nowMs < root._nextSearchAllowedMs)
-                return
-
-            const next = root.pendingSearch
-            if (root.isRateLimited && next.provider === "wallhaven")
-                return
-            root.pendingSearch = null
-            root.makeRequest(next.tags, next.nsfw, next.limit, next.page,
-                next.category, next.generation, next.provider, next.fitProfile)
+    function _schedulePendingSearch(): void {
+        if (!root.pendingSearch) {
+            _pendingSearchTimer.stop()
+            return
         }
+
+        const now = Date.now()
+        root.nowMs = now
+        let due = Math.max(now, root._nextSearchAllowedMs)
+        if (root.pendingSearch.provider === "wallhaven")
+            due = Math.max(due, root.rateLimitedUntilMs)
+        _pendingSearchTimer.interval = Math.max(1, Math.round(due - now))
+        _pendingSearchTimer.restart()
+    }
+
+    property Timer _pendingSearchTimer: Timer {
+        interval: 1
+        repeat: false
+        onTriggered: root._processPendingSearch()
     }
 
     // Tag fetch queue
@@ -205,6 +192,8 @@ QtObject {
                 root._handleTagCountResponse(text)
             }
         }
+        onExited: (_exitCode, _exitStatus) =>
+            Qt.callLater(root._scheduleTagCount)
     }
 
     // Process for tag suggestions
@@ -227,12 +216,30 @@ QtObject {
                 root._handleTagDetailResponse(text)
             }
         }
+        onExited: (_exitCode, _exitStatus) =>
+            Qt.callLater(root._scheduleTagDetail)
+    }
+
+    function _tagDelayMs(): int {
+        const now = Date.now()
+        root.nowMs = now
+        const due = Math.max(now, root._nextTagAllowedMs, root.rateLimitedUntilMs)
+        return Math.max(1, Math.round(due - now))
+    }
+
+    function _scheduleTagCount(): void {
+        if (!root._tagCountQueue || root._tagCountQueue.length === 0
+                || root.tagCountProcess.running) {
+            _tagCountTimer.stop()
+            return
+        }
+        _tagCountTimer.interval = root._tagDelayMs()
+        _tagCountTimer.restart()
     }
 
     property Timer _tagCountTimer: Timer {
-        interval: 350
-        repeat: true
-        running: root._active || (root._tagCountQueue && root._tagCountQueue.length > 0)
+        interval: 1
+        repeat: false
         onTriggered: root._fetchNextTagCount()
     }
 
@@ -300,25 +307,26 @@ QtObject {
         if (root._tagCountQueue.indexOf(id) !== -1)
             return
         root._tagCountQueue = [...root._tagCountQueue, id]
+        root._scheduleTagCount()
     }
 
     function _fetchNextTagCount(): void {
         root.nowMs = Date.now()
-        if (root.isRateLimited)
-            return
-        if (root.nowMs < root._nextTagAllowedMs)
-            return
         if (!root._tagCountQueue || root._tagCountQueue.length === 0)
             return
         if (root.tagCountProcess.running)
             return
+        if (root.isRateLimited || root.nowMs < root._nextTagAllowedMs) {
+            root._scheduleTagCount()
+            return
+        }
 
         const id = root._tagCountQueue[0]
         root._tagCountQueue = root._tagCountQueue.slice(1)
-        if (!id || id.length === 0)
+        if (!id || id.length === 0 || root._tagCountRequests[id]) {
+            root._scheduleTagCount()
             return
-        if (root._tagCountRequests[id])
-            return
+        }
 
         root._tagCountRequests[id] = true
         root._nextTagAllowedMs = root.nowMs + root.minTagIntervalMs
@@ -496,28 +504,29 @@ QtObject {
 
     function ensureWallpaperTags(id) {
         root.nowMs = Date.now()
-        if (!id || id.length === 0)
+        if (!id || id.length === 0
+                || wallpaperTagCache[id] !== undefined
+                || wallpaperTagRequests[id]) {
+            root._scheduleTagDetail()
             return
-        if (wallpaperTagCache[id] !== undefined)
-            return
-        if (wallpaperTagRequests[id])
-            return
+        }
 
         if (tagQueue.indexOf(id) === -1) {
             tagQueue = [...tagQueue, id]
+            root._scheduleTagDetail()
         }
     }
 
     function _fetchNextTag(): void {
         root.nowMs = Date.now()
-        if (root.isRateLimited)
-            return
-        if (root.nowMs < root._nextTagAllowedMs)
-            return
         if (!tagQueue || tagQueue.length === 0)
             return
         if (root.tagDetailProcess.running)
             return
+        if (root.isRateLimited || root.nowMs < root._nextTagAllowedMs) {
+            root._scheduleTagDetail()
+            return
+        }
 
         const id = tagQueue[0]
         tagQueue = tagQueue.slice(1)
@@ -565,10 +574,19 @@ QtObject {
         }
     }
 
+    function _scheduleTagDetail(): void {
+        if (!root.tagQueue || root.tagQueue.length === 0
+                || root.tagDetailProcess.running) {
+            tagQueueTimer.stop()
+            return
+        }
+        tagQueueTimer.interval = root._tagDelayMs()
+        tagQueueTimer.restart()
+    }
+
     property Timer tagQueueTimer: Timer {
-        interval: 350
-        repeat: true
-        running: root._active || ((root.tagQueue && root.tagQueue.length > 0))
+        interval: 1
+        repeat: false
         onTriggered: root._fetchNextTag()
     }
 
@@ -710,9 +728,10 @@ QtObject {
                 fitProfile: requestedFit
             }
             // Without an in-flight response to trigger _processPendingSearch,
-            // a throttled search would stay queued forever.
+            // a throttled search would stay queued forever. Schedule one wakeup
+            // at the exact throttle/rate-limit deadline instead of polling.
             if (runningRequests <= 0)
-                root._pendingSearchTimer.restart()
+                root._schedulePendingSearch()
             return
         }
 
@@ -1003,13 +1022,22 @@ QtObject {
 
     function _processPendingSearch(): void {
         root.nowMs = Date.now()
-        if (root.pendingSearch) {
-            const next = root.pendingSearch
-            if (root.isRateLimited && next.provider === "wallhaven")
-                return
-            root.pendingSearch = null
-            Qt.callLater(() => root.makeRequest(next.tags, next.nsfw, next.limit,
-                next.page, next.category, next.generation, next.provider, next.fitProfile))
+        if (!root.pendingSearch)
+            return
+        if (root.runningRequests > 0 || root.searchProcess.running)
+            return
+
+        const next = root.pendingSearch
+        const blockedUntil = next.provider === "wallhaven"
+            ? Math.max(root._nextSearchAllowedMs, root.rateLimitedUntilMs)
+            : root._nextSearchAllowedMs
+        if (root.nowMs < blockedUntil) {
+            root._schedulePendingSearch()
+            return
         }
+
+        root.pendingSearch = null
+        Qt.callLater(() => root.makeRequest(next.tags, next.nsfw, next.limit,
+            next.page, next.category, next.generation, next.provider, next.fitProfile))
     }
 }

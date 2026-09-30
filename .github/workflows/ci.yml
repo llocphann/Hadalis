@@ -27,4 +27,15 @@ jobs:
           sudo apt-get install -y fish jq rsync
 
       - name: Run canonical local validator
-        run: bash scripts/validate-maintainer-local.sh --current-repo
+        shell: bash
+        run: |
+          log="$RUNNER_TEMP/hadalis-maintainer-validation.log"
+          set +e
+          HADALIS_VALIDATION_LOG="$log" bash scripts/validate-maintainer-local.sh --current-repo
+          rc=$?
+          set -e
+          if [[ -f "$log" ]]; then
+            echo "===== canonical validator log ====="
+            cat "$log"
+          fi
+          exit "$rc"

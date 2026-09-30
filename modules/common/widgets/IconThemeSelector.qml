@@ -55,7 +55,10 @@ Item {
         height: Math.min(280, themeList.contentHeight + searchField.height + 24 + (root.mode === "dock" ? 40 : 0))
         padding: 8
 
-        onOpened: IconThemeService.ensureInitialized()
+        onOpened: {
+            IconThemeService.ensureInitialized()
+            IconThemeService.ensureThemesLoaded()
+        }
         
         background: Rectangle {
             color: Appearance.colors.colLayer2Base

@@ -69,7 +69,9 @@ Item {
     readonly property list<string> clockNumbers: DateTime.time.split(/[: ]/)
     readonly property int clockHour: parseInt(clockNumbers[0]) % 12
     readonly property int clockMinute: DateTime.clock.minutes
-    readonly property int clockSecond: DateTime.clock.seconds
+    // Background ClockWidget overrides this with its local, power-aware clock.
+    // Lock-screen callers keep the shared DateTime seconds by default.
+    property int clockSecond: DateTime.clock.seconds
 
     implicitWidth: implicitSize
     implicitHeight: implicitSize

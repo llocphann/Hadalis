@@ -4,7 +4,6 @@ import qs.services.deferred
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
-import qs.modules.pill
 import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Controls
@@ -17,16 +16,42 @@ Item { // Wrapper
     readonly property string xdgConfigHome: Directories.config
     property string searchingText: ""
     property bool showResults: searchingText != ""
+    // The embedded Dashboard waits for the 60 ms query debounce to finish
+    // before crossfading away from its module canvas. This prevents the first
+    // search frame from fading into an empty result model and then resizing a
+    // second time when results arrive.
+    readonly property bool resultsReady: !root.showResults
+        || (!searchDebounceTimer.running
+            && root.debouncedSearchText === root.searchingText)
+    // Embedded Dashboard owns the crossfade. Standalone search keeps 1.0.
+    property real resultsOpacity: 1
     property bool panelVisible: true
     property bool applicationDragActive: false
+    property bool embeddedSurface: false
     property real availableHeight: root.QsWindow?.window?.height ?? (root.QsWindow?.window?.screen?.height ?? 1080)
+    // When search has results, Overview can present this whole surface as the
+    // bottom-connected Applications popup. The body geometry is exported so
+    // the owning full-screen layer can align its real painted bottom, not the
+    // wrapper/elevation margin, to Bar/Screen Edge.
+    property bool directBottomAttachment: false
+    readonly property rect connectedSurfaceRect: Qt.rect(
+        searchWidgetContent.x, searchWidgetContent.y,
+        searchWidgetContent.width, searchWidgetContent.height)
+    readonly property color connectedSurfaceColor: searchWidgetContent.fallbackColor
+    readonly property real connectedSurfaceBottomInset: Math.max(0,
+        root.implicitHeight - (root.connectedSurfaceRect.y
+            + root.connectedSurfaceRect.height))
     // Island is an explicit supported search-surface skin. It remains
     // independent from the retired shell-wide Global Theme families.
     readonly property bool islandStyle: (Config.options?.search?.style ?? "default") === "island"
     readonly property bool actionMode: searchingText.startsWith(root.prefixAction)
     readonly property string actionQuery: actionMode ? StringUtils.cleanPrefix(searchingText, root.prefixAction) : ""
-    implicitWidth: searchWidgetContent.implicitWidth + Appearance.sizes.elevationMargin * 2
-    implicitHeight: searchWidgetContent.implicitHeight + Appearance.sizes.elevationMargin * 2
+    implicitWidth: searchWidgetContent.implicitWidth
+        + (root.embeddedSurface ? 0 : Appearance.sizes.elevationMargin * 2)
+    implicitHeight: searchWidgetContent.implicitHeight
+        + (root.embeddedSurface ? 0 : Appearance.sizes.elevationMargin * 2)
+    readonly property real collapsedHeight:
+        searchBar.implicitHeight + searchBar.verticalPadding * 2
 
     readonly property var searchPrefixes: Config.options?.search?.prefix ?? {}
     readonly property string prefixAction: searchPrefixes.action ?? "/"
@@ -136,7 +161,10 @@ Item { // Wrapper
         const text = root.debouncedSearchText;
         
         if (text === "") {
-            root.cachedResults = [];
+            // Keep the last application model while the embedded Dashboard
+            // crossfades back in; clear only after the result layer is gone.
+            if (!root.embeddedSurface || root.resultsOpacity <= 0.001)
+                root.cachedResults = [];
             return;
         }
 
@@ -339,6 +367,12 @@ Item { // Wrapper
         root.mathResult = ""
         searchDebounceTimer.restart();
     }
+    onResultsOpacityChanged: {
+        if (root.embeddedSurface && !root.showResults
+                && root.resultsOpacity <= 0.001
+                && root.debouncedSearchText === "")
+            root.cachedResults = []
+    }
 
     Timer {
         id: nonAppResultsTimer
@@ -425,13 +459,16 @@ Item { // Wrapper
     }
 
     StyledRectangularShadow {
+        z: 0
         target: searchWidgetContent
-        visible: !root.islandStyle
+        visible: !root.embeddedSurface && !root.islandStyle
+        joinBottom: root.directBottomAttachment && root.showResults
     }
 
-    IslandPanel {
+
+    RicelinSurface {
         anchors.fill: searchWidgetContent
-        visible: root.islandStyle
+        visible: !root.embeddedSurface && root.islandStyle
         radius: searchWidgetContent.radius
         glassEnabled: true
         screen: root.QsWindow?.window?.screen ?? null
@@ -439,22 +476,29 @@ Item { // Wrapper
 
     GlassBackground { // Background
         id: searchWidgetContent
+        z: 1
         anchors {
             top: parent.top
             horizontalCenter: parent.horizontalCenter
-            topMargin: Appearance.sizes.elevationMargin
+            topMargin: root.embeddedSurface ? 0 : Appearance.sizes.elevationMargin
         }
         clip: true
-        implicitWidth: columnLayout.implicitWidth
+        implicitWidth: root.embeddedSurface ? root.width : columnLayout.implicitWidth
         implicitHeight: columnLayout.implicitHeight
-        radius: root.islandStyle
-            ? (root.showResults ? (Config.options?.appearance?.island?.radius ?? 18)
-                : searchBar.height / 2 + searchBar.verticalPadding)
-            : searchBar.height / 2 + searchBar.verticalPadding
-        fallbackColor: root.islandStyle
+        radius: root.embeddedSurface ? 0
+            : root.islandStyle
+                ? (root.showResults ? (Config.options?.appearance?.island?.radius ?? 18)
+                    : searchBar.height / 2 + searchBar.verticalPadding)
+                : searchBar.height / 2 + searchBar.verticalPadding
+        // A result surface attached to the bottom Screen Edge owns no inward
+        // rounding at that contact. Shared outward flares draw the shoulders.
+        bottomLeftRadius: root.directBottomAttachment && root.showResults ? 0 : radius
+        bottomRightRadius: root.directBottomAttachment && root.showResults ? 0 : radius
+        fallbackColor: root.embeddedSurface || root.islandStyle
             ? "transparent"
             : Appearance.colors.colBackgroundSurfaceContainer
-        wallpaperBackdropEnabled: root.panelVisible && !root.islandStyle
+        wallpaperBackdropEnabled: root.panelVisible
+            && !root.embeddedSurface && !root.islandStyle
         border.width: 0
         border.color: Appearance.colors.colLayer0Border
         Behavior on radius {
@@ -468,7 +512,8 @@ Item { // Wrapper
 
         Behavior on implicitHeight {
             id: searchHeightBehavior
-            enabled: GlobalStates.overviewOpen && root.showResults && Appearance.animationsEnabled
+            enabled: !root.embeddedSurface
+                && GlobalStates.overviewOpen && root.showResults && Appearance.animationsEnabled
             NumberAnimation {
                 duration: Appearance.animation.elementResize.duration
                 easing.type: Appearance.animation.elementResize.type
@@ -483,36 +528,20 @@ Item { // Wrapper
                 horizontalCenter: parent.horizontalCenter
             }
             spacing: 0
+            width: root.embeddedSurface ? searchWidgetContent.width : implicitWidth
 
             // clip: true
-            layer.enabled: true
+            layer.enabled: !root.embeddedSurface
             layer.effect: OpacityMask {
                 maskSource: Rectangle {
                     width: searchWidgetContent.width
                     height: searchWidgetContent.height
                     radius: searchWidgetContent.radius
+                    topLeftRadius: searchWidgetContent.topLeftRadius
+                    topRightRadius: searchWidgetContent.topRightRadius
+                    bottomLeftRadius: searchWidgetContent.bottomLeftRadius
+                    bottomRightRadius: searchWidgetContent.bottomRightRadius
                 }
-            }
-
-            SearchBar {
-                id: searchBar
-                property real verticalPadding: 4
-                Layout.fillWidth: true
-                Layout.leftMargin: 10
-                Layout.rightMargin: 4
-                Layout.topMargin: verticalPadding
-                Layout.bottomMargin: verticalPadding
-                searchingText: root.searchingText
-                onSearchingTextChanged: if (searchingText !== root.searchingText) root.searchingText = searchingText
-            }
-
-            Rectangle {
-                // Separator
-                visible: root.showResults && !root.actionMode
-                Layout.fillWidth: true
-                height: 1
-                color: Appearance.colors.colOutlineVariant
-                Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
             }
 
             // ── Action Mode View (replaces normal results when in / mode) ──
@@ -520,6 +549,7 @@ Item { // Wrapper
                 id: actionModeView
                 Layout.fillWidth: true
                 visible: root.actionMode && root.showResults
+                opacity: root.resultsOpacity
                 query: root.actionQuery
                 availableHeight: root.resultsAvailableHeight
                 onActionExecuted: GlobalStates.overviewOpen = false
@@ -528,7 +558,9 @@ Item { // Wrapper
 
             ListView { // App results
                 id: appResults
-                visible: root.showResults && !root.actionMode
+                visible: (root.showResults || (root.embeddedSurface && root.resultsOpacity > 0.001))
+                    && !root.actionMode
+                opacity: root.resultsOpacity
                 Layout.fillWidth: true
                 implicitHeight: Math.min(root.resultsAvailableHeight, appResults.contentHeight + topMargin + bottomMargin)
                 clip: true
@@ -618,6 +650,30 @@ Item { // Wrapper
                     }
                 }
             }
+
+            Rectangle {
+                // Separator
+                visible: (root.showResults || (root.embeddedSurface && root.resultsOpacity > 0.001))
+                    && !root.actionMode
+                opacity: root.resultsOpacity
+                Layout.fillWidth: true
+                height: 1
+                color: Appearance.colors.colOutlineVariant
+                Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
+            }
+
+            SearchBar {
+                id: searchBar
+                property real verticalPadding: 4
+                Layout.fillWidth: true
+                Layout.leftMargin: root.embeddedSurface ? 0 : 10
+                Layout.rightMargin: root.embeddedSurface ? 0 : 4
+                Layout.topMargin: verticalPadding
+                Layout.bottomMargin: verticalPadding
+                searchingText: root.searchingText
+                onSearchingTextChanged: if (searchingText !== root.searchingText) root.searchingText = searchingText
+            }
+
         }
     }
 }

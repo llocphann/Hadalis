@@ -14,45 +14,54 @@ import Quickshell.Wayland
 
 Item {
     id: root
+
     property bool borderless: Config.options?.bar?.borderless ?? false
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
     readonly property string cleanedTitle: StringUtils.cleanMusicTitle(activePlayer?.trackTitle) || Translation.tr("No media")
     readonly property string fullTrackText: `${cleanedTitle}${activePlayer?.trackArtist ? ' • ' + activePlayer.trackArtist : ''}`
-    readonly property string popupMode: Config.options?.media?.popupMode ?? "dock"
+    property bool edgeHostedExpansion: false
+    readonly property string popupMode: edgeHostedExpansion ? "bar" : Config.options?.media?.popupMode ?? "dock"
     readonly property bool showVerboseLabel: Config.options?.bar?.verbose ?? true
     readonly property bool hasTrackMetadata: (activePlayer?.trackTitle?.length ?? 0) > 0
         || (activePlayer?.trackArtist?.length ?? 0) > 0
     readonly property bool lockMediaWidth: showVerboseLabel && hasTrackMetadata
+    readonly property real mediaInset: Math.max(2, Math.round(4 * Appearance.sizes.barModuleScale))
+    readonly property real mediaTextGap: Math.max(4, Math.round(7 * Appearance.sizes.barModuleScale))
+    // The title scroller owns its own HoverHandler to pause the marquee, so the
+    // legacy MouseArea does not report containsMouse over that child. Expose one
+    // module-wide hover state for the connected Media popup instead.
+    readonly property bool containsMouse:
+        mediaInput.containsMouse || titleHoverHandler.hovered
     property int pendingTrackDirection: 0
     readonly property int effectiveTrackAnimationDirection: pendingTrackDirection !== 0 ? pendingTrackDirection : 1
 
     Layout.fillHeight: true
-    // Clamp width to prevent long song titles from overflowing into Workspaces.
-    // The bar's centerSideModuleWidth binding already accounts for this, but
-    // a stable natural width prevents track-length changes from resizing the
-    // center pill every time metadata changes.
-    readonly property real maxMediaWidth: 220 * Appearance.fontSizeScale
+    // Keep the media footprint compact and user-controlled. A stable width
+    // prevents track-length changes from resizing the center pill while the
+    // marquee handles titles that exceed the configured space.
+    readonly property real maxMediaWidth: {
+        const configured = Number(Config.options?.bar?.media?.width ?? 180)
+        return isFinite(configured)
+            ? Math.max(120, Math.min(320, configured))
+            : 180
+    }
     implicitWidth: lockMediaWidth
         ? maxMediaWidth
-        : Math.min(rowLayout.implicitWidth + rowLayout.spacing * 2, maxMediaWidth)
+        : Math.min(rowLayout.implicitWidth + root.mediaInset * 2, maxMediaWidth)
     implicitHeight: Appearance.sizes.barHeight
     clip: true
 
     Timer {
-        running: activePlayer?.playbackState == MprisPlaybackState.Playing
+        running: root.visible
+            && (root.QsWindow.window?.visible ?? false)
+            && activePlayer?.playbackState == MprisPlaybackState.Playing
         interval: Config.options?.resources?.updateInterval ?? 3000
         repeat: true
+        triggeredOnStart: true
         onTriggered: activePlayer?.positionChanged()
     }
 
-    property bool volumePopupVisible: false
-    property real volumePopupValue: Math.max(0, Math.min(1, MprisController.getVolume()))
     property bool barMediaPopupVisible: false
-
-    onActivePlayerChanged: {
-        volumePopupVisible = false
-        volumePopupValue = Math.max(0, Math.min(1, MprisController.getVolume()))
-    }
 
     function toggleExpanded(): void {
         if (root.popupMode === "bar")
@@ -61,61 +70,28 @@ Item {
             GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen
     }
 
-    Timer {
-        id: hideTimer
-        interval: 1000
-        onTriggered: root.volumePopupVisible = false
-    }
-
-    Connections {
-        target: MprisController
-        function onVolumeChanged() {
-            if (!root.volumePopupVisible)
-                root.volumePopupValue = MprisController.getVolume()
-        }
-    }
-
-    // The wheel-volume HUD is a real bar popout now, not a detached PopupWindow.
-    StyledPopup {
-        id: volumePopup
-        hoverTarget: root
-        hoverActivates: false
-        alternativeVisibleCondition: root.volumePopupVisible
-
-        Row {
-            spacing: 6
-
-            MaterialSymbol {
-                anchors.verticalCenter: parent.verticalCenter
-                text: root.volumePopupValue === 0 ? "volume_off" : "volume_up"
-                iconSize: Appearance.font.pixelSize.normal
-                color: Appearance.colors.colOnLayer0
-            }
-            StyledText {
-                anchors.verticalCenter: parent.verticalCenter
-                text: Math.round(root.volumePopupValue * 100) + "%"
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.colors.colOnLayer0
-            }
-        }
-    }
-
     // Expanded media controls use the same morphing surface as the small bar
     // popouts. Internal player cards stay intact, but the outer shell deforms
     // directly from the media module instead of opening a floating window/card.
     StyledPopup {
         id: barMediaPopup
         hoverTarget: root
-        hoverActivates: false
+        hoverActivates: true
         alternativeVisibleCondition: root.barMediaPopupVisible && root.popupMode === "bar"
-        closeOnOutsideClick: true
-        keyboardFocus: true
-        popupBackgroundMargin: Appearance.sizes.elevationMargin
+        closeOnOutsideClick: root.barMediaPopupVisible
+        keyboardFocus: root.barMediaPopupVisible
+        // BarMediaPopup owns the tab rail inside playerViewport and reserves
+        // horizontal space only when more than one media source is visible.
+        // Do not add StyledPopup's legacy trailing background inset here: on a
+        // single source it becomes an unnecessary right-side gap.
+        popupBackgroundMargin: 0
         onRequestClose: root.barMediaPopupVisible = false
 
         function restoreInitialFocus(): void {
             Qt.callLater(() => {
-                if (barMediaPopup.requestedVisible && barMediaPopup.presentationWindow)
+                if (root.barMediaPopupVisible
+                        && barMediaPopup.requestedVisible
+                        && barMediaPopup.presentationWindow)
                     mediaPopupContent.focusInitialControl()
             })
         }
@@ -140,6 +116,7 @@ Item {
         id: mediaInput
         anchors.fill: parent
         acceptedButtons: Qt.MiddleButton | Qt.BackButton | Qt.ForwardButton | Qt.RightButton | Qt.LeftButton
+        hoverEnabled: true
         activeFocusOnTab: true
 
         Accessible.role: Accessible.Button
@@ -169,37 +146,28 @@ Item {
                 root.toggleExpanded()
             }
         }
-        onWheel: (event) => {
-            if (!MprisController.canChangeVolume) return
-            const step = 0.05
-            const current = root.volumePopupVisible
-                ? root.volumePopupValue : MprisController.getVolume()
-            if (event.angleDelta.y > 0) root.volumePopupValue = Math.min(1, current + step)
-            else if (event.angleDelta.y < 0) root.volumePopupValue = Math.max(0, current - step)
-            MprisController.setVolume(root.volumePopupValue)
-            volumePopupVisible = true
-            hideTimer.restart()
-        }
     }
 
     RowLayout { // Real content
         id: rowLayout
 
-        spacing: 4
+        spacing: root.mediaTextGap
         anchors.fill: parent
+        anchors.leftMargin: root.mediaInset
+        anchors.rightMargin: root.mediaInset
 
         Item {
             id: compactMediaGlyph
             Layout.alignment: Qt.AlignVCenter
-            implicitWidth: 22
+            implicitWidth: Math.round(22 * Appearance.sizes.barModuleScale)
             implicitHeight: implicitWidth
 
             ClippedFilledCircularProgress {
                 id: mediaCircProg
                 anchors.centerIn: parent
-                lineWidth: Appearance.rounding.unsharpen
+                lineWidth: Math.round(Appearance.rounding.unsharpen * Appearance.sizes.barModuleScale)
                 value: (activePlayer && activePlayer.length > 0) ? (activePlayer.position / activePlayer.length) : 0
-                implicitSize: 22
+                implicitSize: Math.round(22 * Appearance.sizes.barModuleScale)
                 colPrimary: Appearance.colors.colOnLayer0
                 enableAnimation: activePlayer?.playbackState === MprisPlaybackState.Playing
 
@@ -212,7 +180,7 @@ Item {
                         anchors.centerIn: parent
                         fill: 1
                         text: activePlayer?.isPlaying ? "pause" : "music_note"
-                        iconSize: Appearance.font.pixelSize.normal
+                        iconSize: Math.round(Appearance.font.pixelSize.normal * Appearance.sizes.barModuleScale)
                         color: Appearance.colors.colOnLayer0
                         Behavior on color {
                             enabled: Appearance.animationsEnabled
@@ -228,31 +196,38 @@ Item {
             visible: root.showVerboseLabel
             Layout.alignment: Qt.AlignVCenter
             Layout.fillWidth: true
-            Layout.rightMargin: rowLayout.spacing
+            Layout.minimumWidth: 0
             implicitWidth: titleText.implicitWidth
             implicitHeight: titleText.implicitHeight
             clip: true
 
             readonly property string fullText: root.fullTrackText
             readonly property bool overflowing: titleText.implicitWidth > width + 1
+            // Short labels sit centered in the reserved Media label area. Long
+            // labels still start at the leading edge so the marquee keeps the
+            // same readable entry point and scrolling distance.
+            readonly property real restingX: overflowing
+                ? 0 : Math.max(0, (width - titleText.implicitWidth) / 2)
             // Continuous wraparound: scroll one text width + gap, then loop. The
             // trailing copy enters from the right exactly as the first exits left,
             // so it reads as a single seamless ribbon with no fade-snap.
-            readonly property real gap: 40
+            readonly property real gap: Math.round(28 * Appearance.sizes.barModuleScale)
             readonly property real loopDistance: titleText.implicitWidth + gap
 
             Row {
                 id: marqueeRow
                 height: parent.height
                 spacing: titleScroller.gap
-                x: 0
+                x: titleScroller.restingX
 
                 StyledText {
                     id: titleText
                     height: marqueeRow.height
                     verticalAlignment: Text.AlignVCenter
-                    horizontalAlignment: titleScroller.overflowing ? Text.AlignLeft : Text.AlignHCenter
-                    width: titleScroller.overflowing ? implicitWidth : titleScroller.width
+                    horizontalAlignment: titleScroller.overflowing
+                        ? Text.AlignLeft : Text.AlignHCenter
+                    font.pixelSize: Math.max(11, Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale))
+                    width: implicitWidth
                     elide: Text.ElideNone
                     animateChange: true
                     animationDistanceX: root.effectiveTrackAnimationDirection * 10
@@ -265,12 +240,7 @@ Item {
                     text: titleScroller.fullText
                     onTextChanged: {
                         root.pendingTrackDirection = 0
-                        if (!titleScroller.overflowing) marqueeRow.x = 0
-                        if (!titleScroller._marqueeHovered && titleScroller.overflowing && Appearance.animationsEnabled) {
-                            scrollAnim.stop()
-                            titleScroller._marqueeHolding = true
-                            titleScroller._startHoldTimer()
-                        }
+                        titleScroller.resetMarquee()
                     }
                 }
 
@@ -290,6 +260,22 @@ Item {
             // Hover pauses mid-scroll; on exit it resumes from the paused position.
             property bool _marqueeHolding: true
             property bool _marqueeHovered: false
+            property bool _marqueeReady: false
+            Component.onCompleted: {
+                _marqueeReady = true
+                resetMarquee()
+            }
+
+            // Track/width/font changes must never leave a clipped mid-scroll
+            // fragment beside the media icon. Restart at the first glyph.
+            function resetMarquee() {
+                if (!_marqueeReady) return
+                holdTimer.stop()
+                scrollAnim.stop()
+                marqueeRow.x = titleScroller.restingX
+                _marqueeHolding = true
+                _startHoldTimer()
+            }
 
             function _startHoldTimer() {
                 if (!titleScroller.visible || !titleScroller.overflowing
@@ -317,30 +303,22 @@ Item {
                 // Gate on running — binding setPaused() on a stopped animation warns.
                 paused: titleScroller._marqueeHovered && scrollAnim.running
                 onFinished: {
-                    marqueeRow.x = 0
+                    marqueeRow.x = titleScroller.restingX
                     titleScroller._marqueeHolding = true
                     titleScroller._startHoldTimer()
                 }
             }
 
-            // Kick off on geometry/overflow changes
-            onOverflowingChanged: {
-                if (!overflowing) {
-                    marqueeRow.x = 0
-                    scrollAnim.stop()
-                    titleScroller._marqueeHolding = true
-                } else if (!_marqueeHovered) {
-                    scrollAnim.stop()
-                    titleScroller._marqueeHolding = true
-                    titleScroller._startHoldTimer()
-                }
-            }
+            // The reserved label area can resize without changing the boolean
+            // overflow state (e.g. via the Media width or Bar height sliders).
+            onWidthChanged: resetMarquee()
+            onOverflowingChanged: resetMarquee()
 
             onVisibleChanged: {
                 if (!visible) {
                     holdTimer.stop()
                     scrollAnim.stop()
-                    marqueeRow.x = 0
+                    marqueeRow.x = titleScroller.restingX
                     _marqueeHolding = true
                 } else if (overflowing && !_marqueeHovered) {
                     _startHoldTimer()

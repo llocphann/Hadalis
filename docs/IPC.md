@@ -57,6 +57,7 @@ excluded.
 
 ---
 
+
 ### overview
 
 Toggle the workspace overview panel. The one with all your windows looking tiny and organized.
@@ -78,7 +79,7 @@ bind "Mod+Space" { spawn "inir" "overview" "toggle"; }
 
 ### taskview
 
-Compatibility entry point for task navigation. On Waffle it opens the Waffle Task View; on ii/Niri it routes to Orbit.
+Compatibility entry point for task navigation. On Waffle it opens the Waffle Task View; on Abyss and legacy ii it opens the normal Overview in task-view mode.
 
 | Function | Description |
 |----------|-------------|
@@ -251,6 +252,7 @@ Close window confirmation dialog. Shows a prompt before closing the focused wind
 |----------|-------------|
 | `trigger` | Show close confirmation for focused window |
 | `triggerWindow <windowId> <appId>` | Close or confirm the exact window captured by `inir close-window` |
+| `triggerWindowContext <windowId> <appId> <workspaceId>` | Same exact-window request with the captured Niri workspace, used internally to preserve source-output placement |
 | `close` | Dismiss the dialog without closing |
 
 ```kdl
@@ -616,12 +618,12 @@ bind "Super+F12" { spawn "inir" "gamemode" "toggle"; }
 
 ### panelFamily
 
-Switch between panel styles. ii supports two visual styles: Material ii (default) and Waffle (Windows 11-like).
+Switch between Abyss (`abyss`, default) and Waffle (`waffle`). Historical `ii` values migrate to Abyss, preserving enabled modules and shared configuration.
 
 | Function | Description |
 |----------|-------------|
-| `cycle` | Cycle to next panel family (ii → waffle → ii) |
-| `set` | Set specific family ("ii" or "waffle") |
+| `cycle` | Cycle to next panel family (abyss → waffle → abyss) |
+| `set` | Set specific family (`"abyss"` or `"waffle"`; `"ii"` is a compatibility alias for Abyss) |
 
 ```kdl
 bind "Mod+Shift+W" { spawn "inir" "panelFamily" "cycle"; }
@@ -687,6 +689,19 @@ Shell update checker. Monitors the git repo for new commits and shows an update 
 | `dismiss` | Dismiss update notification |
 | `undismiss` | Un-dismiss update notification |
 | `diagnose` | Dump update state as JSON |
+
+---
+
+### notificationCenter
+
+Family-aware notification history surface. On Material ii this opens the standalone bottom-right Notification Center; on Waffle it routes to the native Waffle notification center. The CLI alias is `notification-center`.
+
+| Function | Description |
+|----------|-------------|
+| `toggle` | Open/close notification history |
+| `open` | Open notification history |
+| `close` | Close notification history |
+| `status` | Return family, open state and resolved output as JSON |
 
 ---
 
@@ -758,6 +773,36 @@ Screen zoom. Accessibility feature, or for reading tiny UI without pretending yo
 
 ---
 
+### osd
+
+Shared on-screen display router for the active family. Material, Waffle and Abyss consume internal signals; only the root registers this target.
+
+| Function | Description |
+|----------|-------------|
+| `trigger` | Show the active family's volume indicator |
+
+Dismiss the active volume indicator through `osdVolume.hide`. The root `osd` router only exposes `trigger`.
+
+---
+
+### abyss
+
+Edit the Abyss module layout on the focused output. The editor uses a draft:
+Done saves its changes; Cancel or Escape restores the saved layout.
+These methods apply while Abyss is active.
+
+| Function | Description |
+|----------|-------------|
+| `editLayout` | Open the Abyss module editor on the focused output |
+| `cancelEdit` | Cancel editing and restore the saved layout |
+
+```bash
+inir abyss editLayout
+inir abyss cancelEdit
+```
+
+---
+
 ## Waffle-Specific Targets
 
 These targets only work when using the Waffle (Windows 11) panel style.
@@ -819,16 +864,6 @@ Waffle taskbar visibility.
 | `toggle` | Show/hide taskbar |
 | `open` | Show taskbar |
 | `close` | Hide taskbar |
-
----
-
-### osd
-
-Waffle on-screen display indicator (volume, brightness).
-
-| Function | Description |
-|----------|-------------|
-| `trigger` | Show the OSD indicator |
 
 ---
 

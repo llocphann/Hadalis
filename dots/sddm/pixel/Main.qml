@@ -442,7 +442,7 @@ MouseArea {
 
                         MSymbol {
                             anchors.centerIn: parent
-                            text: root.loginInProgress ? "progress_activity" : "arrow_forward"
+                            text: root.loginInProgress ? "settings" : "arrow_forward"
                             iconSize: 20; iconColor: root.colOnPrimary; symFont: root.symFont()
                             RotationAnimation on rotation {
                                 running: root.loginInProgress; loops: Animation.Infinite

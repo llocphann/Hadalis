@@ -3,12 +3,14 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import qs.modules.common
+import qs.services
 
 QtObject {
     id: root
 
-    readonly property int layoutSchemaVersion: 4
+    readonly property int layoutSchemaVersion: 11
     readonly property int retiredTlpPageIndex: 28
+    readonly property int overviewPageIndex: 29
 
     function snapshot(): var {
         return ({
@@ -21,14 +23,13 @@ QtObject {
     }
 
     function save(snapshot): void {
-        // The internal data registry still has the historical page 28 so its
-        // existing arrangement sanitizer remains reusable. Persist 28 as an
-        // implementation-only hidden index to stop it being re-added as a
-        // missing "More" page. The public registry facade filters it out, so
-        // users never see it in navigation or Arrange.
+        // Persist all retired slots as implementation-only hidden indices so
+        // old numeric routes cannot be re-added under a generated "More" group.
+        const retired = SettingsPageRegistryData.legacyHiddenIndexes
         const hidden = (Array.isArray(snapshot.hidden) ? snapshot.hidden : [])
-            .filter(index => index !== root.retiredTlpPageIndex)
-        hidden.push(root.retiredTlpPageIndex)
+            .filter(index => !retired.includes(index))
+        for (const index of retired)
+            hidden.push(index)
 
         Config.setNestedValue("settingsUi.categories", JSON.stringify({
             version: root.layoutSchemaVersion,
@@ -101,6 +102,99 @@ QtObject {
         })
         const migratedHidden = hidden.filter(keepPage)
 
+        // v5 gives Overview a first-class Shell home. v4 could only discover
+        // the newly appended page as “More”, so remove that generated placement
+        // and insert it into whichever saved group best matches the default Shell
+        // peers. This also survives renamed/custom Shell group labels.
+        if (sourceVersion < 5
+                && !migratedHidden.includes(root.overviewPageIndex)) {
+            for (const group of migratedGroups) {
+                if (!group || !Array.isArray(group.pages))
+                    continue
+                group.pages = group.pages.filter(
+                    index => index !== root.overviewPageIndex)
+            }
+
+            const defaultShell = SettingsPageRegistry.defaultCategories.find(
+                category => category.pages.includes(root.overviewPageIndex))
+            const shellPeers = defaultShell?.pages?.filter(
+                index => index !== root.overviewPageIndex) ?? [2, 26, 5, 22, 23, 16]
+            let targetIndex = -1
+            let bestScore = -1
+            for (let i = 0; i < migratedGroups.length; i++) {
+                const pages = migratedGroups[i]?.pages ?? []
+                let score = 0
+                for (const peer of shellPeers)
+                    if (pages.includes(peer))
+                        score++
+                if (score > bestScore) {
+                    bestScore = score
+                    targetIndex = i
+                }
+            }
+
+            if (targetIndex >= 0) {
+                const pages = migratedGroups[targetIndex].pages
+                const panelsIndex = pages.indexOf(5)
+                pages.splice(panelsIndex >= 0 ? panelsIndex + 1 : pages.length,
+                    0, root.overviewPageIndex)
+            }
+        }
+
+        // v8 upgrades the five legacy category labels even when the user
+        // rearranged their pages. v7 only upgraded the exact default order,
+        // leaving real installations displaying ESSENTIALS/APPEARANCE/SHELL.
+        // Preserve existing relative page order and hidden page preferences.
+        // Custom/renamed groups remain untouched.
+        const legacyLabels = [
+            Translation.tr("Essentials"), Translation.tr("Appearance"),
+            Translation.tr("Shell"), Translation.tr("System"),
+            Translation.tr("Reference")
+        ]
+        const untouchedStock = migratedGroups.length === legacyLabels.length
+            && migratedGroups.every((group, index) =>
+                group?.label === legacyLabels[index])
+
+        if (sourceVersion < 8 && untouchedStock) {
+            const defaults = SettingsPageRegistry.defaultCategories
+            const owner = new Map()
+            const grouped = defaults.map(group => ({
+                label: group.label, pages: []
+            }))
+            for (let i = 0; i < defaults.length; i++)
+                for (const page of defaults[i].pages)
+                    owner.set(page, i)
+            const seen = new Set(migratedHidden)
+            for (const group of migratedGroups) {
+                for (const page of group?.pages ?? []) {
+                    if (seen.has(page) || !owner.has(page)) continue
+                    grouped[owner.get(page)].pages.push(page)
+                    seen.add(page)
+                }
+            }
+            // Include pages introduced after the saved arrangement, in the
+            // canonical group, instead of silently relegating them to More.
+            for (const group of defaults) {
+                for (const page of group.pages) {
+                    if (seen.has(page)) continue
+                    grouped[owner.get(page)].pages.push(page)
+                    seen.add(page)
+                }
+            }
+            root.save({ groups: grouped, hidden: migratedHidden })
+            return
+        }
+
+        if (sourceVersion < 11 && Config.options?.panelFamily === "abyss") {
+            const pages = [2,32,34,33,22,23,16].filter(i=>!migratedHidden.includes(i))
+            let home = migratedGroups.find(group=>group?.label === "Abyss")
+            if (!home) { home={label:"Abyss",pages:[]};migratedGroups.splice(1,0,home) }
+            for (const group of migratedGroups) {
+                if (!Array.isArray(group?.pages)) continue
+                group.pages=group.pages.filter(i=>!pages.includes(i))
+            }
+            home.pages=pages
+        }
         root.save({ groups: migratedGroups, hidden: migratedHidden })
     }
 
@@ -222,10 +316,14 @@ QtObject {
 
     function removeCategory(index: int): bool {
         const state = root.snapshot()
-        if (state.groups.length <= 1 || !state.groups[index]
-                || state.groups[index].pages.length > 0)
+        if (state.groups.length <= 1 || !state.groups[index])
             return false
-        state.groups.splice(index, 1)
+        const removed = state.groups.splice(index, 1)[0]
+        for (const page of removed.pages) {
+            const target = root.bestRestoreCategory(page, state.groups)
+            if (!state.groups[target].pages.includes(page))
+                state.groups[target].pages.push(page)
+        }
         root.save(state)
         return true
     }

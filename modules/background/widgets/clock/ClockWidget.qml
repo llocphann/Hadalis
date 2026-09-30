@@ -125,6 +125,8 @@ AbstractBackgroundWidget {
     property string clockFontFamily: Config.getNestedValue("background.widgets.clock.fontFamily", "Space Grotesk")
     property string timeFormat: Config.getNestedValue("background.widgets.clock.timeFormat", "system")
     property bool showSeconds: Config.getNestedValue("background.widgets.clock.showSeconds", false)
+    readonly property bool cookieNeedsSeconds: root.clockStyle === "cookie"
+        && String(root._readConfigKey("cookie.secondHandStyle") ?? "hide") !== "hide"
     property bool showDate: Config.getNestedValue("background.widgets.clock.showDate", true)
     property string dateStyle: Config.getNestedValue("background.widgets.clock.dateStyle", "long")
     property int timeScale: Number(root._readConfigKey("timeScale") ?? 100)
@@ -164,7 +166,8 @@ AbstractBackgroundWidget {
     SystemClock {
         id: displayClock
         // Drop to minutes precision when power is reduced to save CPU
-        precision: (root.showSeconds || GlobalStates.screenLocked) && root.powerActive
+        precision: (root.showSeconds || root.cookieNeedsSeconds
+                || GlobalStates.screenLocked) && root.powerActive
             ? SystemClock.Seconds : SystemClock.Minutes
     }
 
@@ -355,6 +358,7 @@ AbstractBackgroundWidget {
                     colHourHand: root.handPrimary
                     colMinuteHand: root.handTertiary
                     colSecondHand: root.cookieInk
+                    clockSecond: displayClock.seconds
                     onDiagnosticReportChanged: root.cookieDiagnostics = diagnosticReport
                 }
                 FadeLoader {

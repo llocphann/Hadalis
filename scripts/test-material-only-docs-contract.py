@@ -7,6 +7,7 @@ import re
 ROOT = Path(__file__).resolve().parents[1]
 
 docs = {
+    "ARCHITECTURE.md": ROOT / "ARCHITECTURE.md",
     "ARCHITECTURE_OVERVIEW.md": ROOT / "docs" / "ARCHITECTURE_OVERVIEW.md",
     "PANEL_FAMILIES.md": ROOT / "docs" / "PANEL_FAMILIES.md",
     "OPTIMIZATION.md": ROOT / "docs" / "OPTIMIZATION.md",
@@ -16,6 +17,10 @@ docs = {
 }
 
 forbidden = {
+    "ARCHITECTURE.md": (
+        "| Global styles | material, cards, aurora, inir, angel, zzz, cookie |",
+        "Style dispatch priority is **cookie > zzz > angel > inir > aurora > material**",
+    ),
     "ARCHITECTURE_OVERVIEW.md": ("active material, cards, aurora",),
     "PANEL_FAMILIES.md": ("six style variants", "Style dispatch priority"),
     "OPTIMIZATION.md": (

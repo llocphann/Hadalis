@@ -31,7 +31,7 @@ Button {
         id: background
         radius: Looks.radius.medium
         color: root.color
-        border.width: Looks.glassActive && ((root.hovered && !root.down) || root.checked) ? 1 : 0
+        border.width: 0
         border.color: Looks.colors.tooltipBorder
         
         // Subtle scale on press for tactile feedback

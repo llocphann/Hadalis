@@ -6,6 +6,7 @@ import QtQuick.Layouts
 
 MouseArea {
     id: root
+
     property bool alwaysShowAllResources: false
     implicitWidth: rowLayout.implicitWidth + rowLayout.anchors.leftMargin + rowLayout.anchors.rightMargin
     implicitHeight: Appearance.sizes.barHeight
@@ -17,31 +18,11 @@ MouseArea {
     Accessible.name: Translation.tr("System resources")
     Accessible.focusable: true
 
-    property bool _resourceUsageHeld: false
-    readonly property bool _resourceUsageWanted: root.visible && !GameMode.active
-
-    function syncResourceUsageLifecycle(): void {
-        if (root._resourceUsageWanted === root._resourceUsageHeld)
-            return
-        if (root._resourceUsageWanted)
-            ResourceUsage.keepAlive()
-        else
-            ResourceUsage.releaseKeepAlive()
-        root._resourceUsageHeld = root._resourceUsageWanted
-    }
-
-    Component.onCompleted: root.syncResourceUsageLifecycle()
-    Component.onDestruction: {
-        if (root._resourceUsageHeld) {
-            root._resourceUsageHeld = false
-            ResourceUsage.releaseKeepAlive()
-        }
-    }
-    onVisibleChanged: root.syncResourceUsageLifecycle()
-
-    Connections {
-        target: GameMode
-        function onActiveChanged(): void { root.syncResourceUsageLifecycle() }
+    property QtObject resourceMonitor: ResourceUsageMonitor {
+        network: false
+        histories: false
+        target: root
+        active: !GameMode.active
     }
 
     RowLayout {
@@ -49,8 +30,8 @@ MouseArea {
 
         spacing: 0
         anchors.fill: parent
-        anchors.leftMargin: 4
-        anchors.rightMargin: 4
+        anchors.leftMargin: 4 * Appearance.sizes.barModuleScale
+        anchors.rightMargin: 4 * Appearance.sizes.barModuleScale
 
         Resource {
             iconName: "memory"
@@ -66,7 +47,7 @@ MouseArea {
                 ((Config.options?.bar?.resources?.alwaysShowTemp ?? true) ||
                     !(MprisController.activePlayer?.trackTitle?.length > 0) ||
                     root.alwaysShowAllResources)
-            Layout.leftMargin: shown ? 6 : 0
+            Layout.leftMargin: shown ? 6 * Appearance.sizes.barModuleScale : 0
             cautionThreshold: Config.options?.bar?.resources?.tempCautionThreshold ?? 65
             warningThreshold: Config.options?.bar?.resources?.tempWarningThreshold ?? 80
         }
@@ -78,7 +59,7 @@ MouseArea {
                 ((Config.options?.bar?.resources?.alwaysShowCpu ?? true) ||
                     !(MprisController.activePlayer?.trackTitle?.length > 0) ||
                     root.alwaysShowAllResources)
-            Layout.leftMargin: shown ? 6 : 0
+            Layout.leftMargin: shown ? 6 * Appearance.sizes.barModuleScale : 0
             warningThreshold: Config.options?.bar?.resources?.cpuWarningThreshold ?? 90
         }
 
@@ -89,7 +70,7 @@ MouseArea {
                 ((Config.options?.bar?.resources?.alwaysShowGpu ?? true) ||
                     !(MprisController.activePlayer?.trackTitle?.length > 0) ||
                     root.alwaysShowAllResources)
-            Layout.leftMargin: shown ? 6 : 0
+            Layout.leftMargin: shown ? 6 * Appearance.sizes.barModuleScale : 0
             warningThreshold: Config.options?.bar?.resources?.gpuWarningThreshold ?? 90
         }
 

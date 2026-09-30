@@ -9,6 +9,7 @@ singleton Images 1.0 Images.qml
 singleton NerdIconMap 1.0 NerdIconMap.qml
 singleton Persistent 1.0 Persistent.qml
 singleton SidebarGeometry 1.0 SidebarGeometry.qml
+singleton SurfaceMotion 1.0 SurfaceMotion.qml
 singleton StylePresets 1.0 StylePresets.qml
 singleton ThemePresets 1.0 ThemePresets.qml
 ToastManager 1.0 ToastManager.qml

@@ -25,6 +25,9 @@ MouseArea {
     ClippedProgressBar {
         id: batteryProgress
         anchors.centerIn: parent
+        valueBarWidth: Math.round(30 * Appearance.sizes.barModuleScale)
+        valueBarHeight: Math.round(18 * Appearance.sizes.barModuleScale)
+        font.pixelSize: Math.round(13 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale)
         value: percentage
         highlightColor: (isLow && !isCharging)
             ? Appearance.colors.colError
@@ -42,11 +45,11 @@ MouseArea {
                 MaterialSymbol {
                     id: boltIcon
                     Layout.alignment: Qt.AlignVCenter
-                    Layout.leftMargin: -2
-                    Layout.rightMargin: -2
+                    Layout.leftMargin: -2 * Appearance.sizes.barModuleScale
+                    Layout.rightMargin: -2 * Appearance.sizes.barModuleScale
                     fill: 1
                     text: "bolt"
-                    iconSize: Appearance.font.pixelSize.smaller
+                    iconSize: Math.round(Appearance.font.pixelSize.smaller * Appearance.sizes.barModuleScale)
                     opacity: (isCharging && percentage < 1) ? 1 : 0
                     visible: opacity > 0
                     

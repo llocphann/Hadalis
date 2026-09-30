@@ -14,6 +14,8 @@ import Quickshell.Wayland
 
 WindowDialog {
     id: root
+    liquidVacancyRole: "connectivityDialog"
+    property bool showEmbeddedFooter: true
     backgroundHeight: 450
 
     WindowDialogTitle {
@@ -97,8 +99,11 @@ WindowDialog {
             }
         }
     }
-    WindowDialogSeparator {}
+    WindowDialogSeparator {
+        visible: !root.effectiveEmbedded || root.showEmbeddedFooter
+    }
     WindowDialogButtonRow {
+        visible: !root.effectiveEmbedded || root.showEmbeddedFooter
         DialogButton {
             buttonText: Translation.tr("Details")
             onClicked: {

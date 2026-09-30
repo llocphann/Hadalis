@@ -82,7 +82,11 @@ Item {
 
             // Tooltip - using BarToolTip pattern
             WPopupToolTip {
-                extraVisibleCondition: compactMouse.containsMouse && !root.selected
+                // The parent is a plain Item; hover belongs to compactMouse.
+                useParentHover: false
+                externalHoverState: compactMouse.containsMouse
+                externalPressedState: compactMouse.pressed
+                extraVisibleCondition: !root.selected
                 text: root.item?.appName ?? root.item?.title ?? ""
             }
         }

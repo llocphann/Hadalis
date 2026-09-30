@@ -255,6 +255,7 @@ Singleton {
         function onReadyChanged() {
             if (!Config.ready) return
             root.normalizeGlobalStyle()
+            scheduleRefreshTimer.restart()
             // Prime the signature to current value so the first config write
             // doesn't get treated as a delta-from-empty.  The forced regen on
             // shell startup is still done explicitly by shell.qml via
@@ -267,8 +268,10 @@ Singleton {
     }
 
     Component.onCompleted: {
-        if (Config.ready)
+        if (Config.ready) {
             root.normalizeGlobalStyle()
+            scheduleRefreshTimer.restart()
+        }
     }
 
     Timer {
@@ -303,41 +306,98 @@ Singleton {
 
     // Theme Scheduling
     readonly property bool scheduleEnabled: Config.options?.appearance?.themeSchedule?.enabled ?? false
-    
+    readonly property string scheduleDayStart: Config.options?.appearance?.themeSchedule?.dayStart ?? "06:00"
+    readonly property string scheduleNightStart: Config.options?.appearance?.themeSchedule?.nightStart ?? "18:00"
+    readonly property string scheduleDayTheme: Config.options?.appearance?.themeSchedule?.dayTheme ?? ""
+    readonly property string scheduleNightTheme: Config.options?.appearance?.themeSchedule?.nightTheme ?? ""
+
+    function _scheduleMinutes(value: string, fallback: int): int {
+        const parts = String(value ?? "").split(":")
+        if (parts.length !== 2)
+            return fallback
+        const hour = Number(parts[0])
+        const minute = Number(parts[1])
+        if (!Number.isFinite(hour) || !Number.isFinite(minute)
+                || hour < 0 || hour > 23 || minute < 0 || minute > 59)
+            return fallback
+        return Math.floor(hour) * 60 + Math.floor(minute)
+    }
+
     function isNightTime(): bool {
         const now = new Date()
         const currentMinutes = now.getHours() * 60 + now.getMinutes()
-        
-        const dayStart = Config.options?.appearance?.themeSchedule?.dayStart ?? "06:00"
-        const nightStart = Config.options?.appearance?.themeSchedule?.nightStart ?? "18:00"
-        
-        const [dayH, dayM] = dayStart.split(":").map(Number)
-        const [nightH, nightM] = nightStart.split(":").map(Number)
-        
-        const dayMinutes = dayH * 60 + dayM
-        const nightMinutes = nightH * 60 + nightM
-        
+        const dayMinutes = root._scheduleMinutes(root.scheduleDayStart, 6 * 60)
+        const nightMinutes = root._scheduleMinutes(root.scheduleNightStart, 18 * 60)
+
         // Night if before day start or after night start
         return currentMinutes < dayMinutes || currentMinutes >= nightMinutes
     }
-    
+
+    function _nextScheduleDelayMs(): int {
+        const now = new Date()
+        const nowMs = now.getHours() * 60 * 60 * 1000
+            + now.getMinutes() * 60 * 1000
+            + now.getSeconds() * 1000
+            + now.getMilliseconds()
+        const dayMs = root._scheduleMinutes(root.scheduleDayStart, 6 * 60) * 60 * 1000
+        const nightMs = root._scheduleMinutes(root.scheduleNightStart, 18 * 60) * 60 * 1000
+        const dayLengthMs = 24 * 60 * 60 * 1000
+
+        let dayDelay = dayMs - nowMs
+        let nightDelay = nightMs - nowMs
+        if (dayDelay <= 0) dayDelay += dayLengthMs
+        if (nightDelay <= 0) nightDelay += dayLengthMs
+        return Math.max(1000, Math.min(dayDelay, nightDelay))
+    }
+
+    function _armScheduleTimer(): void {
+        scheduleTimer.stop()
+        if (!root.scheduleEnabled)
+            return
+        scheduleTimer.interval = Math.max(1000, Math.round(root._nextScheduleDelayMs()))
+        scheduleTimer.restart()
+    }
+
+    function _refreshSchedule(): void {
+        scheduleTimer.stop()
+        if (!root.scheduleEnabled)
+            return
+        root.applyScheduledTheme()
+        root._armScheduleTimer()
+    }
+
     function applyScheduledTheme(): void {
         if (!scheduleEnabled) return
-        
-        const schedule = Config.options?.appearance?.themeSchedule
-        const targetTheme = isNightTime() ? schedule?.nightTheme : schedule?.dayTheme
-        
+
+        const targetTheme = isNightTime() ? root.scheduleNightTheme : root.scheduleDayTheme
+
         if (targetTheme && targetTheme !== currentTheme) {
             root._log("[ThemeService] Schedule: switching to", targetTheme)
             setTheme(targetTheme, true)
         }
     }
-    
+
+    onScheduleEnabledChanged: scheduleRefreshTimer.restart()
+    onScheduleDayStartChanged: scheduleRefreshTimer.restart()
+    onScheduleNightStartChanged: scheduleRefreshTimer.restart()
+    onScheduleDayThemeChanged: scheduleRefreshTimer.restart()
+    onScheduleNightThemeChanged: scheduleRefreshTimer.restart()
+
     Timer {
-        interval: 60000  // Check every minute
-        running: root.scheduleEnabled
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: root.applyScheduledTheme()
+        id: scheduleRefreshTimer
+        interval: 0
+        repeat: false
+        running: false
+        onTriggered: root._refreshSchedule()
+    }
+
+    Timer {
+        id: scheduleTimer
+        repeat: false
+        running: false
+        onTriggered: {
+            root.applyScheduledTheme()
+            root._armScheduleTimer()
+        }
     }
 }

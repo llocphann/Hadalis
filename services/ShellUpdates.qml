@@ -86,6 +86,9 @@ Singleton {
     // Derived
     readonly property bool enabled: Config.options?.shellUpdates?.enabled ?? true
     readonly property int checkIntervalMs: (Config.options?.shellUpdates?.checkIntervalMinutes ?? 360) * 60 * 1000
+    readonly property int startupFreshnessMs: Math.min(root.checkIntervalMs, 30 * 60 * 1000)
+    readonly property string lastCheckCachePath: `${Directories.stateUserPath}/shell-update-last-check`
+    property real _lastRemoteCheckAt: 0
     readonly property string dismissedCommit: Config.options?.shellUpdates?.dismissedCommit ?? ""
     readonly property string lastNotifiedCommit: Config.options?.shellUpdates?.lastNotifiedCommit ?? ""
     readonly property bool showUpdate: hasUpdate && !isDismissed && !isUpdating
@@ -109,7 +112,7 @@ Singleton {
         ? "This iNiR installation is managed outside the runtime copy. Use your package manager or installation workflow to update it."
         : "Repository not found. The update system cannot locate the iNiR git repository."
     readonly property string unavailableHint: managedExternally
-        ? "Runtime diagnostics are still available, but in-shell self-update is disabled for this installation mode."
+        ? "Update diagnostics are still available, but in-shell self-update is disabled for this installation mode."
         : "Run './setup doctor' in your terminal to diagnose the issue, or use the diagnose command below."
 
     // Handler: notify when availability changes to false (after initial check)
@@ -147,6 +150,30 @@ Singleton {
         })
         Config.setNestedValue("shellUpdates.lastNotifiedCommit", remoteCommit)
         print("[ShellUpdates] Notification sent: Update available" + version)
+    }
+
+    function _loadLastRemoteCheckAt(): void {
+        let cached = 0
+        try {
+            lastCheckFile.reload()
+            cached = Number(String(lastCheckFile.text() ?? "").trim())
+        } catch (error) {
+            cached = 0
+        }
+        root._lastRemoteCheckAt = Number.isFinite(cached) && cached > 0 ? cached : 0
+    }
+
+    function _startupRemoteCheckFresh(): bool {
+        root._loadLastRemoteCheckAt()
+        return root._lastRemoteCheckAt > 0
+            && Date.now() - root._lastRemoteCheckAt < root.startupFreshnessMs
+    }
+
+    function _startLocalComparison(): void {
+        if (!enabled || isChecking || isUpdating || managedExternally || !available) return
+        root.isChecking = true
+        root.lastError = ""
+        currentBranchProc.running = true
     }
 
     function check(): void {
@@ -312,9 +339,19 @@ Singleton {
             localVersion: root.localVersion,
             remoteVersion: root.remoteVersion,
             overlayOpen: root.overlayOpen,
-            isFetchingDetails: root.isFetchingDetails
+            isFetchingDetails: root.isFetchingDetails,
+            lastRemoteCheckAt: root._lastRemoteCheckAt,
+            startupFreshnessMs: root.startupFreshnessMs
         }
         return JSON.stringify(diag, null, 2)
+    }
+
+    FileView {
+        id: lastCheckFile
+        path: root.lastCheckCachePath
+        watchChanges: false
+        blockLoading: true
+        printErrors: false
     }
 
     // Initial check after startup delay
@@ -325,7 +362,7 @@ Singleton {
         running: root.enabled && Config.ready
         onTriggered: {
             print("[ShellUpdates] Loading repo path from version.json...")
-            loadRepoPathProc.running = true
+            root._loadRepoPathFromVersion()
         }
     }
 
@@ -337,12 +374,30 @@ Singleton {
     // detect the prior state from the status file and either clean up
     // (if the final step was reached) or resume polling so the bar indicator
     // and overlay don't go silent while the update keeps running underneath.
+    FileView {
+        id: updateResumeFile
+        path: Directories.updateStatusPath
+        watchChanges: false
+        blockLoading: true
+        printErrors: false
+    }
+
     Timer {
         id: resumeUpdateCheck
         interval: 1000  // 1s — get the indicator back up fast
         repeat: false
         running: true
-        onTriggered: updateResumeReader.running = true
+        onTriggered: {
+            let status = ""
+            try {
+                updateResumeFile.reload()
+                status = String(updateResumeFile.text() ?? "").trim()
+            } catch (error) {
+                status = ""
+            }
+            if (status.length > 0)
+                updateResumeReader.running = true
+        }
     }
 
     Process {
@@ -438,17 +493,26 @@ Singleton {
         command: ["rm", "-f", Directories.updateStatusPath]
     }
 
-    // Load repo path from version.json (stored in shellConfig dir, NOT in quickshell config dir)
-    Process {
-        id: loadRepoPathProc
-        property bool _handledFallback: false
-        running: false
-        onRunningChanged: if (running) _handledFallback = false
-        command: ["cat", Directories.shellConfig + "/version.json"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    const json = JSON.parse(text ?? "{}")
+    // Load repo path from version.json without spawning cat.
+    FileView {
+        id: versionFile
+        path: Directories.shellConfig + "/version.json"
+        watchChanges: false
+        blockLoading: true
+        printErrors: false
+    }
+
+    function _loadRepoPathFromVersion(): void {
+        let raw = ""
+        try {
+            versionFile.reload()
+            raw = String(versionFile.text() ?? "")
+        } catch (error) {
+            raw = ""
+        }
+
+        try {
+            const json = JSON.parse(raw || "{}")
                     // Extract version from version.json (always available even if VERSION file missing)
                     if (json.version && json.version !== "0.0.0") {
                         root.localVersion = json.version
@@ -488,18 +552,9 @@ Singleton {
                 } catch (e) {
                     print("[ShellUpdates] Failed to parse version.json: " + e)
                 }
-                // No repo_path in version.json, try to find it
-                print("[ShellUpdates] No repo_path in version.json, searching for repository...")
-                loadRepoPathProc._handledFallback = true
-                searchRepoProc.running = true
-            }
-        }
-        onExited: (exitCode, exitStatus) => {
-            if (exitCode !== 0 && !_handledFallback) {
-                print("[ShellUpdates] version.json not found, searching for repository...")
-                searchRepoProc.running = true
-            }
-        }
+        // No repo_path in version.json, try to find it
+        print("[ShellUpdates] No repo_path in version.json, searching for repository...")
+        searchRepoProc.running = true
     }
 
     Process {
@@ -703,37 +758,39 @@ Singleton {
             print("[ShellUpdates] Git available: " + root.available)
             if (root.available) {
                 // Load system info (manifest + local log) before checking for updates
-                manifestInfoProc.running = true
+                root._loadManifestInfo()
             }
         }
     }
 
-    // Step 1b: Parse manifest for installed commit and date
-    Process {
-        id: manifestInfoProc
-        running: false
-        command: [
-            "/usr/bin/bash", "-c",
-            "manifest='" + root.manifestPath + "'; " +
-            "[[ -f \"$manifest\" ]] || exit 1; " +
-            "head -3 \"$manifest\" | grep -E '^# (generated|commit):' | sed 's/^# //'"
-        ]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const lines = (text ?? "").trim().split("\n")
-                for (const line of lines) {
-                    if (line.startsWith("generated: ")) {
-                        root.installedDate = line.substring(11).trim()
-                    } else if (line.startsWith("commit: ")) {
-                        root.installedCommit = line.substring(8).trim()
-                    }
-                }
-                print("[ShellUpdates] Manifest: commit=" + root.installedCommit + " date=" + root.installedDate)
+    // Step 1b: Parse manifest for installed commit and date without a shell helper.
+    FileView {
+        id: manifestFile
+        path: root.manifestPath
+        watchChanges: false
+        blockLoading: true
+        printErrors: false
+    }
+
+    function _loadManifestInfo(): void {
+        let raw = ""
+        try {
+            manifestFile.reload()
+            raw = String(manifestFile.text() ?? "")
+        } catch (error) {
+            raw = ""
+        }
+        const lines = raw.trim().split("\n").slice(0, 3)
+        for (const line of lines) {
+            const normalized = line.startsWith("# ") ? line.substring(2) : line
+            if (normalized.startsWith("generated: ")) {
+                root.installedDate = normalized.substring(11).trim()
+            } else if (normalized.startsWith("commit: ")) {
+                root.installedCommit = normalized.substring(8).trim()
             }
         }
-        onExited: (exitCode, exitStatus) => {
-            recentLocalLogProc.running = true
-        }
+        print("[ShellUpdates] Manifest: commit=" + root.installedCommit + " date=" + root.installedDate)
+        recentLocalLogProc.running = true
     }
 
     // Step 1c: Get recent local commit history (last 15 commits)
@@ -752,32 +809,54 @@ Singleton {
         }
         onExited: (exitCode, exitStatus) => {
             // Also read local VERSION on startup
-            localVersionStartupProc.running = true
+            root._loadLocalVersion()
         }
     }
 
-    // Step 1d: Read local VERSION on startup
-    // Try repo path first (VERSION is there), fallback to config dir (dev setup)
-    Process {
-        id: localVersionStartupProc
-        running: false
-        command: [
-            "/usr/bin/bash", "-c",
-            "cat '" + root.repoPath + "/VERSION' 2>/dev/null || cat '" + root.configDir + "/VERSION' 2>/dev/null || echo ''"
-        ]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const ver = (text ?? "").trim()
-                // Only override if we got a better version than what version.json gave us
-                if (ver.length > 0 && ver !== root.localVersion) {
-                    root.localVersion = ver
-                }
-                print("[ShellUpdates] Local version: " + root.localVersion)
+    // Step 1d: Read local VERSION on startup without spawning a shell helper.
+    FileView {
+        id: repoVersionFile
+        path: root.repoPath + "/VERSION"
+        watchChanges: false
+        blockLoading: true
+        printErrors: false
+    }
+
+    FileView {
+        id: configVersionFile
+        path: root.configDir + "/VERSION"
+        watchChanges: false
+        blockLoading: true
+        printErrors: false
+    }
+
+    function _loadLocalVersion(): void {
+        let ver = ""
+        try {
+            repoVersionFile.reload()
+            ver = String(repoVersionFile.text() ?? "").trim()
+        } catch (error) {
+            ver = ""
+        }
+        if (ver.length === 0) {
+            try {
+                configVersionFile.reload()
+                ver = String(configVersionFile.text() ?? "").trim()
+            } catch (error) {
+                ver = ""
             }
         }
-        onExited: (exitCode, exitStatus) => {
-            root.check()
+        // Only override if we got a better version than what version.json gave us.
+        if (ver.length > 0 && ver !== root.localVersion)
+            root.localVersion = ver
+        print("[ShellUpdates] Local version: " + root.localVersion)
+
+        if (root._startupRemoteCheckFresh()) {
+            print("[ShellUpdates] Reusing fresh remote refs on startup; skipping network fetch")
+            root._startLocalComparison()
+            return
         }
+        root.check()
     }
 
     // Step 2: Fetch from remote
@@ -819,9 +898,14 @@ Singleton {
                 }
                 return
             }
-            // Success - reset error counters
+            // Success - reset error counters and persist remote freshness so a
+            // quick shell restart can rebuild update state from the fetched refs
+            // without immediately hitting the network again.
             root.consecutiveFetchErrors = 0
             root.fetchErrorNotificationShown = false
+            const now = Date.now()
+            root._lastRemoteCheckAt = now
+            lastCheckFile.setText(String(Math.floor(now)))
             currentBranchProc.running = true
         }
     }

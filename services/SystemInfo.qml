@@ -52,6 +52,15 @@ Singleton {
     function refreshIdentity(): void {
         if (getUsername.running || getDisplayName.running)
             return
+
+        const envUser = String(Quickshell.env("USER") ?? "").trim()
+        if (envUser.length > 0) {
+            root.username = envUser
+            getDisplayName.command = ["/usr/bin/getent", "passwd", envUser]
+            getDisplayName.running = true
+            return
+        }
+
         getUsername.running = true
     }
 

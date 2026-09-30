@@ -1,0 +1,278 @@
+pragma Singleton
+
+import QtQuick
+import Quickshell
+import Quickshell.Io
+import qs.modules.common
+import qs.services
+import "DisplayModePlan.js" as DisplayPlan
+
+Singleton {
+    id: root
+
+    readonly property string nativeDispatchPath: Quickshell.shellPath("scripts/native-dispatch")
+    readonly property var connectedOutputs: DisplayPlan.normalizedNames(Object.keys(NiriService.outputs ?? {}))
+    readonly property var activeOutputs: DisplayPlan.activeNames(NiriService.outputs ?? {})
+    readonly property string primaryOutput: DisplayPlan.primary(
+        connectedOutputs, Config.options?.display?.primaryMonitor ?? "")
+
+    property string selectedSecondary: ""
+    property string mirrorSource: ""
+    property string mirrorTarget: ""
+    property bool mirrorAvailable: false
+    property bool mirrorProbeComplete: false
+    property bool applying: false
+    property string statusMessage: ""
+    property string lastError: ""
+
+    property var _queue: []
+    property var _previousActive: []
+    property var _pendingMirror: null
+    property var _pendingMirrorRestart: null
+    property var _currentAction: null
+    property bool _rollingBack: false
+    property bool _stoppingMirror: false
+    property string _operationFailure: ""
+    property string _requestedMode: ""
+
+    readonly property string currentMode: {
+        if (mirrorProcess.running) return "mirror"
+        if (!activeOutputs.length) return "none"
+        if (connectedOutputs.length > 1 && activeOutputs.length === connectedOutputs.length)
+            return "extend"
+        if (activeOutputs.length === 1 && activeOutputs[0] === primaryOutput)
+            return "primary-only"
+        if (activeOutputs.length === 1)
+            return "second-only"
+        return "custom"
+    }
+
+    function normalizeSelections(): void {
+        const names = connectedOutputs
+        if (!names.length) {
+            selectedSecondary = ""
+            mirrorSource = ""
+            mirrorTarget = ""
+            return
+        }
+        const secondaryNames = names.filter(name => name !== primaryOutput)
+        if (!secondaryNames.includes(selectedSecondary))
+            selectedSecondary = secondaryNames[0] ?? ""
+        if (!names.includes(mirrorSource))
+            mirrorSource = primaryOutput || names[0]
+        const mirrorTargets = names.filter(name => name !== mirrorSource)
+        if (!mirrorTargets.includes(mirrorTarget))
+            mirrorTarget = mirrorTargets[0] ?? ""
+        if (mirrorProcess.running
+                && (!names.includes(mirrorSource) || !names.includes(mirrorTarget)
+                    || mirrorSource === mirrorTarget)) {
+            stopMirror()
+            lastError = "Display mirroring stopped because one of its outputs disconnected."
+        }
+    }
+
+    function setMirrorSource(name): void {
+        const value = String(name ?? "")
+        if (!connectedOutputs.includes(value)) return
+        mirrorSource = value
+        if (mirrorTarget === value || !connectedOutputs.includes(mirrorTarget))
+            mirrorTarget = connectedOutputs.find(output => output !== value) ?? ""
+    }
+
+    function setMirrorTarget(name): void {
+        const value = String(name ?? "")
+        if (connectedOutputs.includes(value) && value !== mirrorSource)
+            mirrorTarget = value
+    }
+
+    function probeMirrorHelper(): void {
+        if (!mirrorProbe.running)
+            mirrorProbe.running = true
+    }
+
+    function apply(mode): void {
+        if (applying) return
+        lastError = ""
+        statusMessage = ""
+        if (!CompositorService.isNiri) {
+            lastError = "Display modes are currently available on Niri only."
+            return
+        }
+
+        normalizeSelections()
+        const plan = DisplayPlan.plan(mode, connectedOutputs, primaryOutput,
+            selectedSecondary, mirrorSource, mirrorTarget)
+        if (!plan.ok) {
+            lastError = plan.error
+            return
+        }
+        if (mode === "mirror" && !mirrorAvailable) {
+            lastError = mirrorProbeComplete
+                ? "Mirror requires wl-mirror. Install it and retry."
+                : "Checking for wl-mirror…"
+            probeMirrorHelper()
+            return
+        }
+
+        _previousActive = activeOutputs.slice()
+        _queue = plan.actions.slice()
+        _pendingMirror = plan.mirror
+        _rollingBack = false
+        _operationFailure = ""
+        _requestedMode = mode
+        applying = true
+        statusMessage = "Applying display mode…"
+        stopMirror()
+        _runNextAction()
+    }
+
+    function _runNextAction(): void {
+        if (!applying) return
+        if (_queue.length === 0) {
+            const restored = _rollingBack
+            _rollingBack = false
+            applying = false
+            _currentAction = null
+            NiriService.fetchOutputs()
+            if (restored) {
+                statusMessage = ""
+                lastError = _operationFailure
+                    + " The previous active-output set was restored."
+                return
+            }
+            if (_requestedMode === "mirror" && _pendingMirror)
+                _startMirror(_pendingMirror)
+            else
+                statusMessage = "Display mode applied for this Niri session."
+            _pendingMirror = null
+            return
+        }
+
+        _currentAction = _queue[0]
+        _queue = _queue.slice(1)
+        actionProcess.command = [
+            nativeDispatchPath, "niri", "apply-output",
+            _currentAction.output, "dpms=" + _currentAction.power
+        ]
+        actionProcess.running = true
+    }
+
+    function _actionFailed(detail): void {
+        const action = _currentAction
+        const summary = "Could not turn " + (action?.power ?? "")
+            + " output " + (action?.output ?? "") + "."
+        if (_rollingBack) {
+            applying = false
+            _queue = []
+            _pendingMirror = null
+            statusMessage = ""
+            lastError = _operationFailure + " Rollback also failed. "
+                + summary + (detail.length ? " " + detail : "")
+            NiriService.fetchOutputs()
+            return
+        }
+
+        _operationFailure = summary + (detail.length ? " " + detail : "")
+        _rollingBack = true
+        _pendingMirror = null
+        const rollback = DisplayPlan.restore(
+            connectedOutputs, _previousActive, primaryOutput)
+        if (!rollback.ok) {
+            applying = false
+            _queue = []
+            statusMessage = ""
+            lastError = _operationFailure + " " + rollback.error
+            NiriService.fetchOutputs()
+            return
+        }
+        statusMessage = "Display change failed; restoring the previous output state…"
+        _queue = rollback.actions.slice()
+        _runNextAction()
+    }
+
+    function stopMirror(): void {
+        _pendingMirrorRestart = null
+        if (!mirrorProcess.running) return
+        _stoppingMirror = true
+        mirrorProcess.running = false
+    }
+
+    function _startMirror(spec): void {
+        if (!spec) return
+        if (!mirrorAvailable) {
+            lastError = "Mirror requires wl-mirror."
+            statusMessage = ""
+            return
+        }
+        if (mirrorProcess.running || _stoppingMirror) {
+            _pendingMirrorRestart = spec
+            if (mirrorProcess.running) {
+                _stoppingMirror = true
+                mirrorProcess.running = false
+            }
+            return
+        }
+        _launchMirror(spec)
+    }
+
+    function _launchMirror(spec): void {
+        mirrorSource = spec.source
+        mirrorTarget = spec.target
+        mirrorProcess.command = [
+            "wl-mirror", "--fullscreen-output", spec.target, spec.source
+        ]
+        statusMessage = "Starting display mirror…"
+        mirrorProcess.running = true
+    }
+
+    onConnectedOutputsChanged: Qt.callLater(normalizeSelections)
+
+    Component.onCompleted: {
+        normalizeSelections()
+        probeMirrorHelper()
+    }
+
+    Process {
+        id: actionProcess
+        stderr: StdioCollector { id: actionError }
+        onExited: exitCode => {
+            if (exitCode !== 0) {
+                root._actionFailed(actionError.text.trim())
+                return
+            }
+            root._runNextAction()
+        }
+    }
+
+    Process {
+        id: mirrorProbe
+        command: ["/bin/sh", "-c", "command -v wl-mirror >/dev/null 2>&1"]
+        onExited: exitCode => {
+            root.mirrorAvailable = exitCode === 0
+            root.mirrorProbeComplete = true
+        }
+    }
+
+    Process {
+        id: mirrorProcess
+        stderr: StdioCollector { id: mirrorError }
+        onStarted: root.statusMessage = "Mirroring "
+            + root.mirrorSource + " to " + root.mirrorTarget + "."
+        onExited: exitCode => {
+            const expectedStop = root._stoppingMirror
+            root._stoppingMirror = false
+            if (root._pendingMirrorRestart) {
+                const restart = root._pendingMirrorRestart
+                root._pendingMirrorRestart = null
+                Qt.callLater(() => root._launchMirror(restart))
+                return
+            }
+            if (!expectedStop) {
+                root.statusMessage = "Display mirror stopped."
+                if (exitCode !== 0)
+                    root.lastError = "wl-mirror exited with an error."
+                        + (mirrorError.text.trim().length ? " " + mirrorError.text.trim() : "")
+            }
+        }
+    }
+}

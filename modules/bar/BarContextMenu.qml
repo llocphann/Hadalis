@@ -22,6 +22,7 @@ Item {
     property var anchorRect: null
     property bool anchorHovered: false
     property bool active: false
+    property bool keyboardMode: true
     property bool closeOnHoverLost: true
     property bool closeOnHoverLostAfterEntered: false
     property int closeOnHoverLostDelay: 500
@@ -78,7 +79,7 @@ Item {
         hoverActivates: false
         alternativeVisibleCondition: root.active
         closeOnOutsideClick: true
-        keyboardFocus: true
+        keyboardFocus: root.keyboardMode
         popupBackgroundMargin: 0
         onRequestClose: root.close()
 

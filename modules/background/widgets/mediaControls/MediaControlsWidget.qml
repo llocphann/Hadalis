@@ -345,6 +345,8 @@ AbstractBackgroundWidget {
                         item.blendedColors = root._desktopInkOverride
                         item.themeSourceColor = Qt.binding(() => root.widgetAccentVisible)
                         item.visualizerPoints = Qt.binding(() => root.visualizerPoints)
+                        item.positionUpdatesActive = Qt.binding(() =>
+                            root.visible && root.powerActive)
                         item.radius = root.popupRounding
                         item.screenX = Qt.binding(() => root.widgetScreenPos.x)
                         item.screenY = Qt.binding(() => root.widgetScreenPos.y)

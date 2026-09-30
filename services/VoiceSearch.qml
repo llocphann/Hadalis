@@ -39,6 +39,7 @@ Singleton {
     property string _transcriptionError: ""
     property bool _pendingStart: false
     property bool _probeQueued: false
+    property bool initialized: false
     property bool _cancelRequested: false
     // "search" opens the browser; "dictate" emits transcriptionReady only.
     property string mode: "search"
@@ -98,7 +99,14 @@ Singleton {
         return ""
     }
 
+    function ensureInitialized(): void {
+        if (root.initialized)
+            return
+        root.refreshBackends()
+    }
+
     function refreshBackends(): void {
+        root.initialized = true
         if (localProbe.running)
             root._probeQueued = true
         else {
@@ -121,11 +129,16 @@ Singleton {
     }
 
     function _begin(): void {
-        if (!KeyringStorage.loaded) {
-            root._pendingStart = true
-            KeyringStorage.fetchKeyringData()
+        root._pendingStart = true
+        root.ensureInitialized()
+        root._tryStartPending()
+    }
+
+    function _tryStartPending(): void {
+        if (!root._pendingStart || localProbe.running || root._probeQueued
+                || !KeyringStorage.loaded)
             return
-        }
+        root._pendingStart = false
         root._doStart()
     }
 
@@ -212,15 +225,15 @@ Singleton {
     Connections {
         target: KeyringStorage
         function onLoadedChanged(): void {
-            if (KeyringStorage.loaded && root._pendingStart) {
-                root._pendingStart = false
-                root._doStart()
-            }
+            if (KeyringStorage.loaded)
+                root._tryStartPending()
         }
     }
 
-    Component.onCompleted: root.refreshBackends()
-    onLocalModelPathChanged: root.refreshBackends()
+    onLocalModelPathChanged: {
+        if (root.initialized)
+            root.refreshBackends()
+    }
 
     Process {
         id: localProbe
@@ -257,10 +270,20 @@ Singleton {
             root.localAvailable = false
             root.detectedLocalExecutable = ""
             root.detectedLocalModel = ""
-            root._drainProbeQueue()
+            if (root._probeQueued) {
+                root._drainProbeQueue()
+                return
+            }
+            root._tryStartPending()
         }
         onStarted: localProbe.startObserved = true
-        onExited: root._drainProbeQueue()
+        onExited: {
+            if (root._probeQueued) {
+                root._drainProbeQueue()
+                return
+            }
+            root._tryStartPending()
+        }
     }
 
     Process {

@@ -311,24 +311,6 @@ WSettingsPage {
         }
     }
 
-    WSettingsCard {
-        title: Translation.tr("Display")
-        icon: "screenshot"
-        
-        WSettingsDropdown {
-            label: Translation.tr("Fake rounded corners")
-            icon: "screenshot"
-            description: Translation.tr("Add rounded corners to flat screens")
-            currentValue: Config.options?.appearance?.fakeScreenRounding ?? 0
-            options: [
-                { value: 0, displayName: Translation.tr("None") },
-                { value: 1, displayName: Translation.tr("Always") },
-                { value: 2, displayName: Translation.tr("When not fullscreen") }
-            ]
-            onSelected: newValue => Config.setNestedValue("appearance.fakeScreenRounding", newValue)
-        }
-    }
-
     WSettingsSection {
         title: Translation.tr("Notifications & Alerts")
         icon: "alert"

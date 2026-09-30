@@ -392,6 +392,7 @@ Item {
 
         ColumnLayout {
             id: playerLayout
+            z: 1
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.leftMargin: root.contentPadding + root.artworkSize + root.contentGap
@@ -517,15 +518,13 @@ Item {
                 Layout.topMargin: 4
                 spacing: root.cookieStyle ? 6 : 4
 
-                Revealer {
-                    reveal: MprisController.shuffleSupported
-                    TransportBtn {
-                        icon: "shuffle"
-                        toggled: MprisController.hasShuffle
-                        onClicked: MprisController.setShuffle(!MprisController.hasShuffle)
-                        tooltipText: Translation.tr("Shuffle")
-                        small: true
-                    }
+                TransportBtn {
+                    icon: "shuffle"
+                    enabled: MprisController.shuffleSupportedForPlayer(playerBase.player)
+                    toggled: MprisController.shuffleForPlayer(playerBase.player)
+                    onClicked: MprisController.toggleShuffleForPlayer(playerBase.player)
+                    tooltipText: Translation.tr("Shuffle")
+                    small: true
                 }
 
                 TransportBtn {
@@ -667,18 +666,13 @@ Item {
                     small: true
                 }
 
-                Revealer {
-                    reveal: MprisController.loopSupported
-                    TransportBtn {
-                        icon: MprisController.loopState === 2 ? "repeat_one" : "repeat"
-                        toggled: MprisController.loopState !== 0
-                        onClicked: {
-                            const next = (MprisController.loopState + 1) % 3
-                            MprisController.setLoopState(next)
-                        }
-                        tooltipText: Translation.tr("Loop")
-                        small: true
-                    }
+                TransportBtn {
+                    icon: MprisController.loopTrackForPlayer(playerBase.player) ? "repeat_one" : "repeat"
+                    enabled: MprisController.loopSupportedForPlayer(playerBase.player)
+                    toggled: MprisController.loopActiveForPlayer(playerBase.player)
+                    onClicked: MprisController.cycleLoopForPlayer(playerBase.player)
+                    tooltipText: Translation.tr("Repeat")
+                    small: true
                 }
             }
         }

@@ -364,3 +364,13 @@ This task is complete only when all of the following are true:
 - Added `docs/WULL_COMPANION_PROTOCOL_V1.md` to freeze the low-rate semantic stdio contract before daemon implementation.
 - Next gate: run deterministic QML/static contract checks and capture a bounded live screenshot/Quickshell diagnostic proving render + attachment before production integration.
 - Reference-asset note: the current task file contains no linked image URL/path at this HEAD; no repository reference image could be resolved from the task itself.
+
+
+## Checkpoint — 2026-10-01 Quickshell-native proof recovery
+
+- Phase: **Phase 2 renderer/attachment proof; production integration remains disabled**.
+- Current development proof commit: `822a19f1086a967a75e1e939c3a540eb0e4cb473`; the proof harness now follows Hadalis standalone-window conventions with a Quickshell `ApplicationWindow`, while `AbyssCompanion.qml` and `WaterDropletBody.qml` remain unchanged.
+- Prior local evidence: `JOB-WULL-DIAG-004:0` / `:1` on source `2e41e0aeca6917c6cdb3f42c075106b1912a65d2` established only an unclassified standalone-launch failure (exit 46); `JOB-WULL-DIAG-006:0` on source `9d7032f45775498b4d639ecd3c144462da932c85`, observed at Unix `1790803241`, failed with classifier exit 48 and did not match the explicit Quickshell-string hypothesis. `JOB-WULL-DIAG-005` was invalid before action execution and supplies no runtime evidence.
+- Test dispatched: `JOB-WULL-PROOF-007`, introduced by commit `92091826c525e34365cba0fe6b33aaa5406a9e81`, is pinned to base/test source `822a19f1086a967a75e1e939c3a540eb0e4cb473` and invokes the repository-confirmed `qs -n -p` standalone path before bounded runtime/service/screenshot diagnostics.
+- Blocker: no Quickshell-native receipt or live visual evidence has passed yet; therefore renderer attachment is not accepted and Wull is not wired into production ownership.
+- Next: inspect `JOB-WULL-PROOF-007`; if the exact pinned SHA loads under Quickshell, use its bounded diagnostics to advance renderer/attachment proof. If it fails, diagnose only from its published evidence before any further source change.

@@ -17,7 +17,6 @@ UNITS = {
 SERVICE_ACTIONS = {"start", "stop", "restart"}
 PROFILE_ACTIONS = {"start", "pause", "resume", "stop", "restart"}
 HEARTBEAT_STALE_SECONDS = 180
-DISPATCH_ACK_SECONDS = 12
 
 
 def _ensure_runtime_services() -> None:
@@ -67,8 +66,7 @@ def _scheduler_problem(services: dict, state: dict, now: int) -> str:
         return f'Chat bridge is {bridge["state"]} ({detail}); start the Automation services'
     heartbeat = state.get("manager_heartbeat_at_unix")
     if type(heartbeat) is int and now - heartbeat > HEARTBEAT_STALE_SECONDS:
-        return (f"Chat bridge scheduler heartbeat is older than {HEARTBEAT_STALE_SECONDS}s; "
-                "inspect its user journal")
+        return f"Chat bridge scheduler has not ticked for {now - heartbeat}s; inspect its user journal"
     for key in ("chatgpt", "worker"):
         service = services[key]
         if service["state"] != "active":
@@ -89,7 +87,7 @@ def service_states() -> dict:
         try:
             output = subprocess.run(
                 ["systemctl", "--user", "show", unit,
-                 "--property=LoadState,ActiveState,SubState,Result,ExecMainStatus,WorkingDirectory,ExecStart"],
+                 "--property=LoadState,ActiveState,SubState,Result,ExecMainStatus"],
                 capture_output=True, text=True, timeout=4, check=False,
             )
             values = dict(line.split("=", 1) for line in output.stdout.splitlines() if "=" in line)
@@ -108,28 +106,36 @@ def service_states() -> dict:
                 state = "failed"
             result[key] = {"unit": unit, "state": state,
                            "detail": values.get("SubState", ""), "result": outcome,
-                           "exec_main_status": values.get("ExecMainStatus", ""),
-                           "working_directory": values.get("WorkingDirectory", ""),
-                           "exec_start": values.get("ExecStart", "")}
+                           "exec_main_status": values.get("ExecMainStatus", "")}
         except (OSError, subprocess.TimeoutExpired):
             result[key] = {"unit": unit, "state": "unavailable",
                            "detail": "systemd user manager unavailable", "result": "",
-                           "exec_main_status": "", "working_directory": "", "exec_start": ""}
+                           "exec_main_status": ""}
     return result
 
 
 def status() -> dict:
-    """Observe health without mutating the scheduler's own run status.
-
-    UI status polling must not fight the manager heartbeat over its state or
-    flood the 100-entry Activity ring with false recovery events.
-    """
     config, state, issues = read_snapshot()
     services = service_states()
+    problem = _scheduler_problem(services, state, int(time.time()))
+    if problem and any(item["desired"] == "run" and
+                       (item["status"] != "scheduler_unavailable" or
+                        item["last_error"] != problem)
+                       for item in state["profiles"].values()):
+        def mark_unavailable(_config: dict, runtime: dict):
+            for profile_id, item in runtime["profiles"].items():
+                if item["desired"] != "run":
+                    continue
+                if item["status"] == "scheduler_unavailable" and item["last_error"] == problem:
+                    continue
+                item["status"] = "scheduler_unavailable"
+                item["last_error"] = problem[:2000]
+                item["last_activity_at_unix"] = int(time.time())
+                event(runtime, profile_id, "scheduler_unavailable", problem)
+        change_state(mark_unavailable)
+        config, state, issues = read_snapshot()
     return {"ok": True, "config": config, "runtime": state, "issues": issues,
-            "services": services,
-            "scheduler_problem": _scheduler_problem(services, state, int(time.time())),
-            "capabilities": {
+            "services": services, "capabilities": {
                 "archive_chat": False, "delete_chat": False,
                 "stuck_generation_recovery": False, "composer_recovery": False,
                 "stream_poll_recovery": True, "transport_retry": False,
@@ -151,51 +157,12 @@ def control_service(action: str, key: str) -> dict:
     return {"ok": True}
 
 
-def _await_dispatch(profile_id: str, command_seq: int) -> None:
-    """Wait for a *new* manager tick to acknowledge this specific command."""
-    deadline = time.monotonic() + DISPATCH_ACK_SECONDS
-    reason = "bridge has not acknowledged the new command"
-    while time.monotonic() < deadline:
-        _config, state, issues = read_snapshot()
-        item = state["profiles"].get(profile_id)
-        if item is None:
-            raise RuntimeError("profile was removed before scheduler acknowledgement")
-        if issues:
-            raise RuntimeError("invalid Automation configuration: " + "; ".join(issues)[:1400])
-        if item["status"] == "invalid_configuration":
-            raise RuntimeError(item["last_error"])
-        heartbeat = state.get("manager_heartbeat_at_unix")
-        fresh = type(heartbeat) is int and 0 <= int(time.time()) - heartbeat <= 15
-        acknowledged = state.get("command_ack_seq", 0) >= command_seq
-        owner = state["owner_id"]
-        if fresh and acknowledged:
-            if owner == profile_id and item["desired"] == "run":
-                return
-            if (owner is not None and owner != profile_id and
-                    item["status"] == "waiting_owner" and
-                    state.get("requested_profile_id") == profile_id):
-                return  # Explicitly queued for safe handover, not yet running.
-            if item["desired"] != "run":
-                raise RuntimeError("profile stopped before dispatch")
-            reason = "manager acknowledged the request but has not claimed the due profile"
-        elif not fresh:
-            reason = "no fresh manager heartbeat"
-        else:
-            reason = "running bridge did not acknowledge this command (possibly outdated code)"
-        time.sleep(0.25)
-    raise RuntimeError(
-        "Start was saved but was not dispatched: " + reason +
-        ". Check the chat bridge journal; if it runs outdated code, update "
-        "its source checkout and restart it after any pending response is safe."
-    )
-
-
 def profile_action(action: str, profile_id: str) -> dict:
     if action not in PROFILE_ACTIONS:
         raise ValueError("profile action not allowlisted")
 
     def mutate(config: dict, state: dict):
-        profile = next((p for p in config["profiles"] if p["id"] == profile_id), None)
+        profile = next((item for item in config["profiles"] if item["id"] == profile_id), None)
         if profile is None:
             raise ValueError("profile not found")
         item = state["profiles"][profile_id]
@@ -203,92 +170,51 @@ def profile_action(action: str, profile_id: str) -> dict:
             raise ValueError("enable the profile first")
         if action == "resume" and item["desired"] != "paused":
             raise ValueError("profile is not paused")
-        now = int(time.time())
         if action in {"start", "resume", "restart"}:
             item["desired"] = "run"
-            item["next_run_at_unix"] = now
-            item["status_detail"] = ""
-            state["command_seq"] += 1
-            item["command_seq"] = state["command_seq"]
-
-            # A previous prompt may already have reached ChatGPT. Even after
-            # a polling failure, explicitly pressing Start/Restart may only
-            # re-observe that *same* baseline, never submit another prompt.
-            if state["owner_id"] == profile_id and item["pending"] is not None:
-                item["poll_errors"] = 0
-                item["pending"]["poll_after_unix"] = now
-                item["pending"]["stream_retry_attempts"] = 0
-                item["status"] = "restart_queued" if action == "restart" else "recovering_pending"
-                item["status_detail"] = "Rechecking the existing ChatGPT response without resubmitting the prompt"
-                event(state, profile_id, "pending_recovery_requested", item["status_detail"])
-            elif action == "restart":
-                item["status"] = "scheduled"
-            elif not (state["owner_id"] == profile_id and item["job_id"]):
-                item["status"] = "scheduled"
-
+            # A button click is not a scheduler tick; never falsely claim
+            # that a previously owned profile is actively continuing.
             if action == "restart":
+                item["status"] = "restart_queued" if item["pending"] else "scheduled"
                 if item["job_id"] and item["pending"] is None:
                     event(state, profile_id, "job_wait_abandoned", item["job_id"])
                     item["job_id"] = None
                     item["next_job_poll_at_unix"] = None
                     item["job_poll_errors"] = 0
-                item["request"] = "restart"
-            elif action == "start" and state["owner_id"] != profile_id:
-                item["request"] = "new"
-
+            elif not (state["owner_id"] == profile_id and
+                      (item["pending"] is not None or item["job_id"])):
+                item["status"] = "scheduled"
+            item["next_run_at_unix"] = int(time.time())
             if action == "resume":
                 item["poll_errors"] = 0
                 item["job_poll_errors"] = 0
-
-            if state["owner_id"] != profile_id:
-                state["requested_profile_id"] = profile_id
-                old_id = state["owner_id"]
-                if old_id:
-                    old = state["profiles"][old_id]
-                    old["desired"] = "stopped"
-                    if old["pending"] is not None:
-                        # Polling is observational. A bounded explicit retry
-                        # helps release an uncertain owner without a new send.
-                        old["poll_errors"] = 0
-                        old["pending"]["poll_after_unix"] = now
-                    else:
-                        old["status"] = "stopping"
-                    old["status_detail"] = "Yielding transport after the existing response is resolved"
-                    item["status"] = "waiting_owner"
-                    item["status_detail"] = (
-                        f"Waiting for {old_id} to release ChatGPT. "
-                        "A pending or failed response must be resolved safely first.")
-                    event(state, old_id, "handover_requested", profile_id)
-                    event(state, profile_id, "waiting_owner", item["status_detail"])
+                if item["pending"] is not None:
+                    item["pending"]["poll_after_unix"] = int(time.time())
+                    item["pending"]["stream_retry_attempts"] = 0
+            if action == "restart":
+                item["request"] = "restart"
+            elif action == "start" and state["owner_id"] != profile_id:
+                item["request"] = "new"
         else:
             item["desired"] = "paused" if action == "pause" else "stopped"
-            item["status_detail"] = ""
-            if state.get("requested_profile_id") == profile_id:
-                state["requested_profile_id"] = None
             item["status"] = "pausing" if state["owner_id"] == profile_id else (
                 "paused" if action == "pause" else "idle")
             if state["owner_id"] != profile_id:
                 item["request"] = None
         event(state, profile_id, action)
-        return item["command_seq"] if action in {"start", "resume", "restart"} else None
 
-    seq = change_state(mutate)
+    change_state(mutate)
     if action in {"start", "resume", "restart"}:
         try:
             _ensure_runtime_services()
-            _await_dispatch(profile_id, seq)
         except RuntimeError as exc:
-            def failed(_config: dict, state: dict):
-                item = state["profiles"].get(profile_id)
-                if item is None:
-                    return
+            def startup_failed(_config: dict, state: dict):
+                item = state["profiles"][profile_id]
+                item["status"] = "scheduler_unavailable"
                 item["last_error"] = str(exc)[:2000]
                 item["last_activity_at_unix"] = int(time.time())
-                # Preserve a possibly submitted prompt, but report that this
-                # command did not get a scheduler acknowledgement.
-                item["status"] = "scheduler_unavailable"
                 event(state, profile_id, "start_failed", item["last_error"])
-            change_state(failed)
+            change_state(startup_failed)
             raise
     return {"ok": True}
 
@@ -398,8 +324,6 @@ def remove_profile(profile_id: str) -> dict:
             state["owner_id"] = None
             event(state, profile_id, "stale_owner_released")
         config["profiles"] = [item for item in config["profiles"] if item["id"] != profile_id]
-        if state.get("requested_profile_id") == profile_id:
-            state["requested_profile_id"] = None
         state["profiles"].pop(profile_id)
         event(state, profile_id, "removed", "ChatGPT history retained")
     change(mutate)

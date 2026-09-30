@@ -48,40 +48,33 @@ def main() -> None:
 
                 second = control.create_profile("Second profile")["profile_id"]
                 control.set_profile(second, "enabled", "true")
-                with patch.object(control, "_ensure_runtime_services"), patch.object(control, "_await_dispatch"):
+                with patch.object(control, "_ensure_runtime_services"):
                     control.profile_action("start", second)
-                assert store.read_snapshot()[1]["profiles"][default]["desired"] == "stopped"
-                assert store.read_snapshot()[1]["profiles"][second]["status"] == "waiting_owner"
-                daemon.tick(base + 2)  # Old response must complete before handover.
-                assert store.read_snapshot()[1]["owner_id"] is None
+                daemon.tick(base + 2)
+                assert store.read_snapshot()[1]["owner_id"] == default
                 assert store.read_snapshot()[1]["profiles"][default]["iterations"] == 1
-                daemon.tick(base + 4)
-                assert store.read_snapshot()[1]["owner_id"] == second
-                assert [item[0] for item in calls].count("new-chat") == 2
-
-                control.profile_action("pause", second)
-                daemon.tick(base + 6)
-                assert store.read_snapshot()[1]["owner_id"] == second
-                assert store.read_snapshot()[1]["profiles"][second]["status"] == "paused"
-                daemon.tick(base + 8)  # A paused owner retains its chat.
-                assert store.read_snapshot()[1]["owner_id"] == second
-                third = control.create_profile("Third profile")["profile_id"]
-                control.set_profile(third, "enabled", "true")
-                with patch.object(control, "_ensure_runtime_services"), patch.object(control, "_await_dispatch"):
-                    control.profile_action("start", third)
-                assert store.read_snapshot()[1]["profiles"][second]["desired"] == "stopped"
-                daemon.tick(base + 10)  # Explicit request yields paused owner.
+                daemon.tick(base + 4)  # continuation; never opens a second chat
+                assert [item[0] for item in calls].count("new-chat") == 1
+                control.profile_action("pause", default)
+                daemon.tick(base + 6)  # finish in-flight response first
+                assert store.read_snapshot()[1]["owner_id"] == default
+                assert store.read_snapshot()[1]["profiles"][default]["status"] == "paused"
+                assert len(replies) == 1
+                daemon.tick(base + 8)  # queued profile cannot steal paused chat
+                assert store.read_snapshot()[1]["owner_id"] == default
+                control.profile_action("stop", default)
+                daemon.tick(base + 10)  # releases after known terminal state
                 assert store.read_snapshot()[1]["owner_id"] is None
                 daemon.tick(base + 12)
-                assert store.read_snapshot()[1]["owner_id"] == third
-                assert [item[0] for item in calls].count("new-chat") == 3
+                assert store.read_snapshot()[1]["owner_id"] == second
+                assert [item[0] for item in calls].count("new-chat") == 2
 
             # Unknown submission outcome must retain a pending baseline and
             # never inject the same prompt again.
             config, state, _ = store.read_snapshot()
-            assert state["profiles"][third]["pending"] is not None
-            control.profile_action("stop", third)
-            assert store.read_snapshot()[1]["owner_id"] == third
+            assert state["profiles"][second]["pending"] is not None
+            control.profile_action("stop", second)
+            assert store.read_snapshot()[1]["owner_id"] == second
 
     with tempfile.TemporaryDirectory() as tmp:
         with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp + "/config", "XDG_STATE_HOME": tmp + "/state"}):
@@ -147,7 +140,7 @@ def main() -> None:
                         daemon.tick(base + 33)
                         assert commands.count("managed-poll") == 2
                         with patch.object(control.time, "time", return_value=base + 34):
-                            with patch.object(control, "_ensure_runtime_services"), patch.object(control, "_await_dispatch"):
+                            with patch.object(control, "_ensure_runtime_services"):
                                 control.profile_action("resume", "strict-lossless-research")
                         resumed = store.read_snapshot()[1]["profiles"]["strict-lossless-research"]
                         assert resumed["pending"]["stream_retry_attempts"] == 0

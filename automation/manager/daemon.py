@@ -79,33 +79,17 @@ def _release(state: dict, owner: str, now: int, reason: str) -> None:
     item["request"] = None
     item["job_id"] = None
     item["status"] = reason
-    item["status_detail"] = ""
     item["last_activity_at_unix"] = now
     event(state, owner, reason)
 
 
 def _claim(config: dict, state: dict, now: int) -> str | None:
     owner = choose_profile(config, state, now)
-    # One explicit user request may take priority over default continuous mode
-    # only after any previous owner safely releases the ChatGPT transport.
-    requested = state.get("requested_profile_id")
-    if state["owner_id"] is None and requested:
-        preferred = next((p for p in config["profiles"]
-                          if p["id"] == requested and p["enabled"]), None)
-        item = state["profiles"].get(requested)
-        if preferred and item and item["desired"] == "run":
-            if (item.get("next_run_at_unix") or 0) <= now:
-                owner = requested
-        else:
-            state["requested_profile_id"] = None
     if owner is None:
         return None
     if state["owner_id"] is None:
         state["owner_id"] = owner
-        if state.get("requested_profile_id") == owner:
-            state["requested_profile_id"] = None
         item = state["profiles"][owner]
-        item["status_detail"] = ""
         item["status"] = "starting"
         item["started_at_unix"] = now
         item["chat_started_at_unix"] = None
@@ -180,7 +164,6 @@ def _submit(config: dict, state: dict, owner: str, now: int) -> None:
                                    "poll_after_unix": now + POLL_SECONDS,
                                    "counted": False}
         current_item["status"] = "thinking"
-        current_item["status_detail"] = ""
         current_item["last_activity_at_unix"] = now
         event(current, owner, "prompt_prepared", kind)
     change_state(prepare)
@@ -227,7 +210,7 @@ def _poll(config: dict, state: dict, owner: str, now: int) -> None:
     if item["desired"] == "paused" and item["status"] == "stream_failed":
         return  # Keep the failed turn for an explicit recovery action.
     if item["poll_errors"] > _profile(config, owner)["max_poll_errors"]:
-        return  # Needs explicit Start/Resume; keep uncertain pending baseline.
+        return  # Needs explicit resume; owner and pending baseline stay intact.
     try:
         result = desktop_command("managed-poll", str(pending["response_action_count"]),
                                  project_name=_profile(config, owner)["project_name"])
@@ -313,12 +296,6 @@ def _poll(config: dict, state: dict, owner: str, now: int) -> None:
             current_item["status"] = "waiting_result"
             event(current, owner, "wait_result", directive.argument or "")
             return
-        if current_item["request"] == "restart" and current_item["desired"] == "run":
-            # The completion belongs to the pre-restart prompt. Record it,
-            # but do not let its old directive cancel an explicit safe restart.
-            current_item["status"] = "rotating"
-            current_item["status_detail"] = ""
-            return
         if directive.kind is DirectiveKind.CONNECTOR_BLOCKED:
             current_item["desired"] = "paused"
             current_item["last_error"] = "GitHub connector needs attention"
@@ -326,6 +303,9 @@ def _poll(config: dict, state: dict, owner: str, now: int) -> None:
             return
         profile = _profile(current_config, owner)
         if _stop_or_pause(current_config, current, owner, now):
+            return
+        if current_item["request"] == "restart":
+            current_item["status"] = "rotating"
             return
         decision = limit_decision(profile, current_item, now)
         if decision == "stop":
@@ -405,18 +385,11 @@ def _job_poll_error(config: dict, state: dict, owner: str, now: int, exc: Except
 
 def _heartbeat(state: dict, now: int) -> None:
     state["manager_heartbeat_at_unix"] = now
-    state["command_ack_seq"] = state["command_seq"]
     for profile_id, item in state["profiles"].items():
-        if item["desired"] != "run" or item["status"] != "scheduler_unavailable":
-            continue
-        if state["owner_id"] == profile_id:
-            item["status"] = "recovering_pending" if item["pending"] is not None else "starting"
-        elif state["owner_id"] is not None:
-            item["status"] = "waiting_owner"
-        else:
+        if item["desired"] == "run" and item["status"] == "scheduler_unavailable":
             item["status"] = "scheduled"
-        item["last_error"] = ""
-        event(state, profile_id, "scheduler_recovered")
+            item["last_error"] = ""
+            event(state, profile_id, "scheduler_recovered")
 
 
 def _configuration_problem(state: dict, issues: list[str]) -> None:
@@ -447,7 +420,6 @@ def tick(now: int | None = None) -> None:
     config, state, issues = read_snapshot()
     if (state.get("manager_heartbeat_at_unix") is None or
             now - state["manager_heartbeat_at_unix"] >= 10 or
-            state.get("command_seq", 0) > state.get("command_ack_seq", 0) or
             any(item["status"] == "scheduler_unavailable"
                 for item in state["profiles"].values())):
         change_state(lambda _config, current: _heartbeat(current, now))

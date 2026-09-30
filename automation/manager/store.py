@@ -69,8 +69,7 @@ def profile_state() -> dict:
         "started_at_unix": None, "chat_started_at_unix": None,
         "last_run_at_unix": None, "next_run_at_unix": None,
         "last_activity_at_unix": None, "last_success": "", "last_error": "",
-        "pending": None, "request": None, "status_detail": "",
-        "command_seq": 0,
+        "pending": None, "request": None,
     }
 
 
@@ -99,9 +98,7 @@ def default_state(config: dict) -> dict:
                 "desired": "paused", "status": "error",
                 "last_error": "Legacy bridge state is unreadable",
             })
-    return {"version": 1, "owner_id": None, "requested_profile_id": None,
-            "command_seq": 0, "command_ack_seq": 0,
-            "manager_heartbeat_at_unix": None,
+    return {"version": 1, "owner_id": None, "manager_heartbeat_at_unix": None,
             "profiles": profiles, "events": []}
 
 
@@ -121,19 +118,6 @@ def normalize_state(raw: dict, config: dict) -> dict:
     owner = raw.get("owner_id")
     if owner not in profiles:
         owner = None
-    requested = raw.get("requested_profile_id")
-    if requested not in profiles:
-        requested = None
-    command_seq = raw.get("command_seq")
-    if type(command_seq) is not int or command_seq < 0:
-        command_seq = 0
-    command_ack_seq = raw.get("command_ack_seq")
-    if type(command_ack_seq) is not int or command_ack_seq < 0:
-        command_ack_seq = 0
-    command_ack_seq = min(command_ack_seq, command_seq)
-    for item in profiles.values():
-        if type(item["command_seq"]) is not int or item["command_seq"] < 0:
-            item["command_seq"] = 0
     events = raw.get("events", [])
     if not isinstance(events, list):
         events = []
@@ -141,9 +125,8 @@ def normalize_state(raw: dict, config: dict) -> dict:
     heartbeat = raw.get("manager_heartbeat_at_unix")
     if type(heartbeat) is not int or heartbeat < 0:
         heartbeat = None
-    return {"version": 1, "owner_id": owner, "requested_profile_id": requested,
-            "command_seq": command_seq, "command_ack_seq": command_ack_seq,
-            "manager_heartbeat_at_unix": heartbeat, "profiles": profiles, "events": events}
+    return {"version": 1, "owner_id": owner, "manager_heartbeat_at_unix": heartbeat,
+            "profiles": profiles, "events": events}
 
 
 def event(state: dict, profile_id: str | None, kind: str, detail: str = "") -> None:

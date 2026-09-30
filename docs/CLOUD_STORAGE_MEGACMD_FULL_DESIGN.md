@@ -1,5 +1,7 @@
 # Hadalis Cloud Storage — detailed MEGAcmd → Rust → QML design
 
+> **UX research round 4 (2026-09-30):** The detailed [buttons, dropdowns, dialogs and responsive Settings system](CLOUD_STORAGE_MEGACMD_UX_COMPONENTS.md) plus [exact control options and per-section wizard matrix](CLOUD_STORAGE_MEGACMD_UX_CONTROL_MATRIX.md) refine this functional blueprint. All remain *research only*, not implemented.
+
 > **Round 3 follow-up (2026-09-30):** Before implementing the 76-command design, read the [protocol, cross-client and SDK decision study](CLOUD_STORAGE_MEGACMD_PROTOCOL_DECISIONS.md). It adds verified MEGA Desktop extension IPC (limited, private—not a supported management API), **remote-folder overlap** and SDK no-lock caveats, a confirmed silent-overwrite hazard in `mega-mv`, and definitive evidence that `mega-login email` cannot safely read a piped password in noninteractive mode. This is documentation research only.
 
 > **Source audit update (2026-09-30):** This is the breadth-oriented **design** covering 76 documented MEGAcmd commands and ten proposed QML sections. Read [CLOUD_STORAGE_MEGACMD_SOURCE_AUDIT.md](CLOUD_STORAGE_MEGACMD_SOURCE_AUDIT.md) **before implementation** for confirmed vendor client argv re-tokenization, unescaped table cells, server autostart, the official SDK version-restore alternative, exact Hadalis Rust production packaging paths and evidence gates. In particular, a comprehensive UI blueprint is **not** a verified arbitrary-filename CLI file-manager implementation.

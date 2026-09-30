@@ -1,5 +1,7 @@
 # Cloud Storage — MEGAcmd ↔ Rust ↔ QML research
 
+> **UX research round 4:** [Shared component/layout rules](../../docs/CLOUD_STORAGE_MEGACMD_UX_COMPONENTS.md) and [per-section control/wizard choices](../../docs/CLOUD_STORAGE_MEGACMD_UX_CONTROL_MATRIX.md) define practical button, combo, context menu, status-chip and dialog details. No code or live MEGA commands.
+
 > **Research round 3:** [Protocol, SDK feasibility, Desktop IPC and data-loss decisions](../../docs/CLOUD_STORAGE_MEGACMD_PROTOCOL_DECISIONS.md) refines both the [full design](../../docs/CLOUD_STORAGE_MEGACMD_FULL_DESIGN.md) and [source audit](../../docs/CLOUD_STORAGE_MEGACMD_SOURCE_AUDIT.md). Remote and local sync overlap **both matter**; ordinary CLI-based Drive mutations are not automatically safe.
 
 > **Research round 2:** [Source-level audit and blocking acceptance gates](../../docs/CLOUD_STORAGE_MEGACMD_SOURCE_AUDIT.md) supersedes earlier optimistic assumptions about generic CLI argv, column parsing and pre-connect read-only probes. The Rust bridge is still the preferred direction, but capability-gated Drive mutations are mandatory.
@@ -56,3 +58,13 @@ The autonomous Local Bot must not contact a real MEGA account, initiate a sync o
 - [ ] Verify actual `//bin` move-out on throwaway data; separately investigate original-path restoration and SDK version restoration.
 - [ ] Resolve SDK separate account/app-key/session/FFI/cache costs and whether unrestricted Drive is a requirement before adding any second client.
 - [ ] Collect real installed-version and latency/output fixtures with explicit consent on an isolated test account; until then claim **design only**.
+
+### Round-4 micro-interaction/design research
+- [x] Audit current Settings/Abyss/Waffle button, dropdown, card, menu, tooltip, loading, dialog and responsive ContentPage behavior.
+- [x] Preserve ten canonical Cloud Storage sections while avoiding a ten-pill navigation bar: five groups plus 1–3 child sections with compact combo fallback.
+- [x] Specify button hierarchy/states, value-dropdown versus action-menu rules, keyboard/focus, scaling, loading, empty/stale/error and confirmation behavior.
+- [x] Map Overview, Drive, Transfers, Sync, Backups, Sharing, Contacts, Mounts/Local Access, Account/Security and Preferences/Diagnostics to concrete controls/options/wizards.
+- [x] Add no-silent-overwrite move workflow, structured ignore-filter builder, backup UTC/first-run controls, sharing permission controls and FUSE/WebDAV safe defaults.
+- [ ] Validate responsive breakpoints and every menu/dialog at 100/125/150/200% font scale in standalone, Abyss overlay, SettingsFocus and Waffle after implementation approval.
+- [ ] Confirm a safe host local-file/folder picker before exposing Browse; no such Cloud-specific picker is assumed from the current audit.
+- [ ] Verify every dynamic remote chooser, button enabled rule and dropdown option against installed-version sanitized fixtures before any write action is enabled.

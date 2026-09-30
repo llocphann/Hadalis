@@ -361,11 +361,14 @@ def set_profile(profile_id: str, field: str, value_json: str, confirm_delete: bo
     def mutate(config: dict, state: dict):
         for index, profile in enumerate(config["profiles"]):
             if profile["id"] == profile_id:
-                if field == "project_name" and state["owner_id"] == profile_id:
-                    raise ValueError("stop the active profile before changing its project")
+                item = state["profiles"][profile_id]
+                if (field == "project_name" and not item.get("active_project_name")
+                        and (state["owner_id"] == profile_id or item["pending"] is not None)):
+                    # Migration-safe staging: capture the project of an
+                    # already-open/pending chat before editing its next-chat target.
+                    item["active_project_name"] = profile["project_name"]
                 config["profiles"][index] = update_profile(
                     profile, {field: value}, confirm_delete=confirm_delete)
-                item = state["profiles"][profile_id]
                 if field == "enabled" and value is False:
                     item["desired"] = "stopped"
                     item["status"] = ("parked_unresolved" if item.get("parked_pending")
@@ -432,11 +435,10 @@ def remove_profile(profile_id: str) -> dict:
             raise ValueError("the scheduler still owns this profile; retry after it releases the chat")
 
     def mutate(config: dict, state: dict):
-        if profile_id == "strict-lossless-research":
-            raise ValueError("the built-in profile can be disabled but not removed")
         if profile_id not in state["profiles"]:
             raise ValueError("profile not found")
-        if state["profiles"][profile_id]["pending"] is not None:
+        item = state["profiles"][profile_id]
+        if item["pending"] is not None and not item.get("parked_pending"):
             raise ValueError("cannot remove profile with a pending ChatGPT response")
         if state["owner_id"] == profile_id:
             item = state["profiles"][profile_id]
@@ -447,7 +449,10 @@ def remove_profile(profile_id: str) -> dict:
         config["profiles"] = [item for item in config["profiles"] if item["id"] != profile_id]
         if state.get("requested_profile_id") == profile_id:
             state["requested_profile_id"] = None
+        parked = bool(state["profiles"][profile_id].get("parked_pending"))
         state["profiles"].pop(profile_id)
-        event(state, profile_id, "removed", "ChatGPT history retained")
+        event(state, profile_id, "removed",
+              "ChatGPT history retained; parked recovery metadata discarded"
+              if parked else "ChatGPT history retained")
     change(mutate)
     return {"ok": True}

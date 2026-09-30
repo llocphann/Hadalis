@@ -165,7 +165,7 @@ def normalize_config(raw: object) -> tuple[dict, list[str]]:
             issues.append(f"profile {index + 1}: {exc}")
     if len(source) > MAX_PROFILES:
         issues.append("profile count exceeds limit")
-    if not profiles:
+    if not profiles and source:
         profiles = [default_profile()]
         profiles[0]["enabled"] = False
         issues.append("no valid profiles; default is disabled")

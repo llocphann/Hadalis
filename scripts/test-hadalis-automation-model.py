@@ -45,6 +45,8 @@ def main() -> None:
     assert not issues and loaded["profiles"][0]["mode"] == "manual"
     malformed, issues = model.normalize_config({"profiles": [older["profiles"][0], {"id": "bad/id"}]})
     assert len(malformed["profiles"]) == 1 and len(issues) == 1
+    empty, issues = model.normalize_config({"profiles": []})
+    assert empty["profiles"] == [] and not issues
     expect_error(lambda: model.update_profile(initial, {"delete_completed": True}), "confirmation")
     expect_error(lambda: model.update_profile(initial, {"requires_github": False}), "require GitHub")
     expect_error(lambda: model.update_profile(initial, {"project_name": "Wrong; project"}), "project name")

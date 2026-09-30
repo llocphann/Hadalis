@@ -72,6 +72,10 @@ def _profile(config: dict, owner: str) -> dict:
     return next(profile for profile in config["profiles"] if profile["id"] == owner)
 
 
+def _transport_project_name(config: dict, state: dict, owner: str) -> str:
+    return state["profiles"][owner].get("active_project_name") or _profile(config, owner)["project_name"]
+
+
 def _release(state: dict, owner: str, now: int, reason: str) -> None:
     item = state["profiles"][owner]
     state["owner_id"] = None
@@ -80,6 +84,7 @@ def _release(state: dict, owner: str, now: int, reason: str) -> None:
     item["job_id"] = None
     item["status"] = reason
     item["status_detail"] = ""
+    item["active_project_name"] = ""
     item["last_activity_at_unix"] = now
     event(state, owner, reason)
 
@@ -106,6 +111,7 @@ def _claim(config: dict, state: dict, now: int) -> str | None:
             state["requested_profile_id"] = None
         item = state["profiles"][owner]
         item["status_detail"] = ""
+        item["active_project_name"] = ""
         item["status"] = "starting"
         item["started_at_unix"] = now
         item["chat_started_at_unix"] = None
@@ -148,6 +154,7 @@ def _new_chat(owner: str, now: int, *, kind: str, project_name: str) -> None:
             item["run_start_iterations"] = item["iterations"]
             item["run_start_prompts"] = item["prompts_sent"]
         item["chat_started_at_unix"] = now
+        item["active_project_name"] = project_name
         item["chat_iterations"] = 0
         item["request"] = kind
         item["next_run_at_unix"] = None
@@ -168,7 +175,8 @@ def _submit(config: dict, state: dict, owner: str, now: int) -> None:
         item = state["profiles"][owner]
         kind = item["request"]
         profile = _profile(config, owner)
-    baseline = desktop_command("managed-baseline", project_name=profile["project_name"])
+    transport_project = _transport_project_name(config, state, owner)
+    baseline = desktop_command("managed-baseline", project_name=transport_project)
     count = baseline.get("responseActionCount")
     if type(count) is not int or count < 0:
         raise RuntimeError("desktop baseline is invalid")
@@ -187,7 +195,7 @@ def _submit(config: dict, state: dict, owner: str, now: int) -> None:
     prompt = effective_prompt(profile, kind)
     try:
         desktop_command("managed-submit", str(count), prompt=prompt,
-                        project_name=profile["project_name"])
+                        project_name=transport_project)
     except (DesktopBusy, DesktopViewChanged):
         # The Desktop CLI raises this only before filling or sending. Remove
         # the pre-send baseline so the scheduler can safely retry later.
@@ -228,9 +236,10 @@ def _poll(config: dict, state: dict, owner: str, now: int) -> None:
         return  # Keep the failed turn for an explicit recovery action.
     if item["poll_errors"] > _profile(config, owner)["max_poll_errors"]:
         return  # Needs explicit Start/Resume; keep uncertain pending baseline.
+    transport_project = _transport_project_name(config, state, owner)
     try:
         result = desktop_command("managed-poll", str(pending["response_action_count"]),
-                                 project_name=_profile(config, owner)["project_name"])
+                                 project_name=transport_project)
         if result.get("streamError"):
             if pending.get("stream_retry_attempts", 0) >= 1:
                 def exhausted(_config: dict, current: dict):
@@ -251,7 +260,7 @@ def _poll(config: dict, state: dict, owner: str, now: int) -> None:
                 event(current, owner, "stream_retry_started")
             change_state(preparing_retry)
             desktop_command("managed-retry", str(pending["response_action_count"]),
-                            project_name=_profile(config, owner)["project_name"])
+                            project_name=transport_project)
             return
         if not result.get("completed"):
             def waiting(_config: dict, current: dict):
@@ -422,7 +431,7 @@ def _handle_park_request(config: dict, state: dict, owner: str, now: int) -> boo
 
     try:
         check = desktop_command(
-            "handover-check", project_name=_profile(config, owner)["project_name"])
+            "handover-check", project_name=_transport_project_name(config, state, owner))
     except Exception as exc:
         def failed(_config: dict, current: dict):
             current_item = current["profiles"][owner]

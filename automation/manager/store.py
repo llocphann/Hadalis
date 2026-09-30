@@ -70,6 +70,7 @@ def profile_state() -> dict:
         "last_run_at_unix": None, "next_run_at_unix": None,
         "last_activity_at_unix": None, "last_success": "", "last_error": "",
         "pending": None, "request": None, "status_detail": "",
+        "active_project_name": "",
         "command_seq": 0, "park_requested": False, "parked_pending": False,
     }
 

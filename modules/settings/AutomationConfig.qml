@@ -104,7 +104,7 @@ ContentPage {
 
     function confirmRemoval(): void {
         const id = root.selectedProfileId
-        if (!id || id === "strict-lossless-research" || root.busy) return
+        if (!id || root.busy) return
         if (root.snapshot?.runtime?.owner_id === id
             && (root.selectedState?.desired !== "stopped" || root.selectedState?.pending !== null)) {
             root.errorText = Translation.tr("Stop the profile and finish its current response before removing it.")
@@ -116,7 +116,7 @@ ContentPage {
     function applyRemoval(): void {
         const id = root.pendingRemoveId
         root.cancelConfirmation()
-        if (id && id === root.selectedProfileId && id !== "strict-lossless-research")
+        if (id && id === root.selectedProfileId)
             root.runAction(["profile-remove", id])
     }
 
@@ -445,7 +445,7 @@ ContentPage {
             SettingsNote { text: Translation.tr("GitHub is required for Hadalis repository automations. ChatGPT remains the only reasoning agent.") }
             MaterialTextField { id: nameEditor; Layout.fillWidth: true; placeholderText: Translation.tr("Profile name") }
             MaterialTextField { id: descriptionEditor; Layout.fillWidth: true; placeholderText: Translation.tr("Description (optional)") }
-            SettingsNote { text: Translation.tr("Exact ChatGPT Desktop project name. Stop this profile before changing its project.") }
+            SettingsNote { text: Translation.tr("Project changes apply on the next new chat.") }
             MaterialTextField { id: projectEditor; Layout.fillWidth: true; placeholderText: Translation.tr("ChatGPT project") }
             Flow {
                 Layout.fillWidth: true
@@ -453,7 +453,7 @@ ContentPage {
                 spacing: 6
                 DialogButton { buttonText: Translation.tr("Save name"); enabled: !root.busy; onClicked: root.setProfile("name", nameEditor.text) }
                 DialogButton { buttonText: Translation.tr("Save description"); enabled: !root.busy; onClicked: root.setProfile("description", descriptionEditor.text) }
-                DialogButton { buttonText: Translation.tr("Save project"); enabled: !root.busy && root.snapshot?.runtime?.owner_id !== root.selectedProfileId; onClicked: root.setProfile("project_name", projectEditor.text) }
+                DialogButton { buttonText: Translation.tr("Save project"); enabled: !root.busy; onClicked: root.setProfile("project_name", projectEditor.text) }
             }
             Flow {
                 Layout.fillWidth: true
@@ -466,7 +466,7 @@ ContentPage {
                 DialogButton { buttonText: Translation.tr("Restart"); enabled: !root.busy && (root.selectedProfile?.enabled ?? false); onClicked: root.runAction(["profile-action", "restart", root.selectedProfileId]) }
                 DialogButton {
                     buttonText: Translation.tr("Remove")
-                    enabled: !root.busy && root.selectedProfileId !== "strict-lossless-research"
+                    enabled: !root.busy
                     onClicked: root.confirmRemoval()
                 }
             }
@@ -515,7 +515,9 @@ ContentPage {
             SettingsNote {
                 visible: root.pendingRemoveId === root.selectedProfileId
                 warning: true
-                text: Translation.tr("Remove this profile? ChatGPT conversation history will be kept.")
+                text: root.selectedState?.parked_pending
+                    ? Translation.tr("Remove this profile and parked recovery state? ChatGPT history stays.")
+                    : Translation.tr("Remove this profile? ChatGPT history stays.")
             }
             Flow {
                 visible: root.pendingRemoveId === root.selectedProfileId

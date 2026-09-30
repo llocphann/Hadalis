@@ -13,6 +13,7 @@ Maintainer-authorized implementation, 2026-09-30. Target contract and audit:
 - [x] Two-workflow monitoring: classify ChatGPT rate limits privately, bound conversation polling and persist a shared API cooldown while local receipts/jobs continue. Regression covers concurrent profiles, restart persistence and no prompt replay. Live Wull/MegaQML monitoring and current canonical validation are tracked separately.
 - [x] Restart is consumed once at durable dispatch; cancellation preserves WAIT_RESULT, final receipt and provenance before the fresh chat. Legacy recovery needs an acknowledged chat and an earlier explicit restart event.
 - [x] Failed exec receipts project bounded fixed compiler/QML/test/lockfile error codes to the managed chat while preserving private raw logs; diagnostics include the actual `inir.service` shell unit.
+- [x] Final responses and job receipts share the transition contract: preserve evidence/checkpoint first, then honor rotation, run limits and interval timing after WAIT_RESULT.
 - [ ] Future/deferred: migrate the Linux/process-sensitive Automation execution substrate to Rust only after parity and benchmark gates in [`AUTOMATION_RUST_MIGRATION.md`](AUTOMATION_RUST_MIGRATION.md).
 
 Keep uncertain existing submissions and consumed job results. Do not reset

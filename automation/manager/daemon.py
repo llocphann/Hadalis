@@ -135,6 +135,35 @@ def _release(state: dict, profile_id: str, now: int, status: str) -> None:
     event(state, profile_id, status)
 
 
+def _advance(config: dict, state: dict, profile_id: str, now: int,
+             directive=DirectiveKind.CONTINUE) -> None:
+    """Apply the same transition rules after a final response or job receipt."""
+    current, profile = state["profiles"][profile_id], _profile(config, profile_id)
+    if directive is DirectiveKind.CONNECTOR_BLOCKED:
+        current.update(desired="paused", status="connector_blocked", last_error="GitHub connector needs attention")
+        return
+    if current["desired"] != "run" or not profile["enabled"]:
+        _release(state, profile_id, now, "paused" if current["desired"] == "paused" else "idle")
+        return
+    if current["request"] == "restart":
+        current["status"] = "rotating"
+        return
+    decision = limit_decision(profile, current, now)
+    if decision in {"stop", "pause"} or (directive is DirectiveKind.DONE and
+            (profile["mode"] != "continuous" or profile.get("stop_on_done", False))):
+        current["desired"] = "paused" if decision == "pause" else "stopped"
+        _release(state, profile_id, now, "paused" if decision == "pause" else "completed")
+    elif decision == "rotate" or directive is DirectiveKind.ROTATE:
+        current.update(request="rotation", status="rotating")
+        if decision == "rotate" and profile["mode"] == "duration":
+            current["started_at_unix"] = now
+    elif profile["mode"] == "interval":
+        _release(state, profile_id, now, "scheduled")
+        current.update(desired="run", request="new", next_run_at_unix=now+profile["interval_seconds"])
+    else:
+        current.update(request="continuation", status="continuing")
+
+
 def _handle_removals(config: dict, state: dict, protected=()) -> bool:
     ids = [p["id"] for p in config["profiles"] if
            state["profiles"][p["id"]].get("remove_requested") and p["id"] not in protected]
@@ -438,28 +467,7 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
                     {"profile_id":profile_id,"reason":"profile restart","at_unix":now})
                 event(s,profile_id,"job_cancel_requested",directive.argument)
             return
-        if current["request"] == "restart" and current["desired"] == "run":
-            current["status"] = "rotating"; return
-        profile = _profile(c, profile_id)
-        if directive.kind is DirectiveKind.CONNECTOR_BLOCKED:
-            current.update(desired="paused", status="connector_blocked", last_error="GitHub connector needs attention")
-            return
-        if current["desired"] != "run" or not profile["enabled"]:
-            _release(s, profile_id, now, "paused" if current["desired"] == "paused" else "idle")
-            return
-        decision = limit_decision(profile, current, now)
-        if decision in {"stop", "pause"} or (directive.kind is DirectiveKind.DONE and
-                (profile["mode"] != "continuous" or profile.get("stop_on_done", False))):
-            current["desired"] = "paused" if decision == "pause" else "stopped"
-            _release(s, profile_id, now, "paused" if decision == "pause" else "completed")
-        elif decision == "rotate" or directive.kind is DirectiveKind.ROTATE:
-            current.update(request="rotation", status="rotating")
-            if decision == "rotate" and profile["mode"] == "duration": current["started_at_unix"] = now
-        elif profile["mode"] == "interval":
-            _release(s, profile_id, now, "scheduled")
-            current.update(desired="run", request="new", next_run_at_unix=now+profile["interval_seconds"])
-        else:
-            current.update(request="continuation", status="continuing")
+        _advance(c,s,profile_id,now,directive.kind)
     change_state(complete)
     # Private receipts are bounded by count; checkpoint and latest IDs are durable.
     for old in sorted(path.parent.glob("*.json"), key=lambda p:p.stat().st_mtime, reverse=True)[32:]:
@@ -517,6 +525,7 @@ def _wait_result(config: dict, state: dict, profile_id: str, now: int) -> None:
         current["job_evidence"]=(current["job_evidence"]+ids)[-128:]
         current["job_summary"]=summary
         event(s,profile_id,"job_result",current["last_job_id"]+" "+current["last_result"])
+        _advance(c,s,profile_id,now)
     change_state(ready)
 
 

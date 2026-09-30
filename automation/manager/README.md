@@ -24,6 +24,11 @@ include `inir.service`, the actual installed shell unit, alongside compatibility
 unit names. A successful new dispatch or job observation clears stale error
 indicators and starts the next turn with its own observation retry budget.
 
+Responses and completed jobs share one transition function. WAIT_RESULT first
+captures its result/provenance, then applies rotation, prompt/iteration/duration
+limits and interval scheduling. Job waits cannot bypass those boundaries or
+discard the checkpoint when rotating a long workflow.
+
 Start, Pause, Resume, Stop and Restart affect one profile. Pending replies remain observable after Stop. Restart is consumed once in its durable submission intent, including a lost acknowledgement; a later Restart keeps its own command sequence. It reconciles a pending reply and requests cancellation of a discovered/local job, then retains WAIT_RESULT until the final worker receipt and evidence are captured before creating the fresh chat. Legacy acknowledged restart intents are consumed only when their command event predates the new-chat dispatch. Cancel local job persists a cancellation request; action receipts prevent execution replay. Confirmed Remove archives local recovery metadata and removes only the profile, retaining ChatGPT history. Archive/delete preferences remain pending semantic Desktop support and do not perform chat cleanup.
 
 Backend, worker and the allowlisted privilege broker start under the user default target and have no lifecycle dependency on Quickshell or Desktop. Their systemd units bound process counts, memory and shutdown. Desktop is optional transport; its startup failure does not kill diagnostics/job publication/recovery. Privileged requests have fixed command/service allowlists, reasons and a durable local audit. Authenticate with an OS Polkit agent or sudo cache; Automation has no password field or persistent credential protocol. Risky shell changes require pinned canonical validation, staging and an independent rollback journal/watchdog. See automation/worker/README.md.

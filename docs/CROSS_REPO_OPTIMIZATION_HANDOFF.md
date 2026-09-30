@@ -18707,3 +18707,217 @@ No numeric reduction above is an end-to-end Hadalis speedup; all values are
 local source-derived allocation/traversal counts.
 
 No runtime/source implementation is authorized by this handoff.
+
+
+## 72. Round 58 — Abyss vacancy role selection and blocker-scan fusion (2026-09-30)
+
+This round continued from Round-57 documentation commit
+`22109ec47cd6add6bd1b7019c6fca29f84b24c66`.
+
+Before this write, current `dev` is
+`40fdace6cb730504293783ecc6f7743a9052c260`
+(`fix(automation): wait for busy chats and start in target project`).
+
+Three commits landed after Round 57 and were audited before relying on prior
+findings:
+
+- `d078b855cc11def937386ecec5c13cb264e6ff8a` —
+  `fix(abyss): expand connectivity dialogs into vacancy`;
+- `4ad6191c6bd1e4b26424cf2e408c7c06386afb5b` —
+  `fix(connectivity): reflow content into borrowed space`;
+- `40fdace6cb730504293783ecc6f7743a9052c260` —
+  `fix(automation): wait for busy chats and start in target project`.
+
+The first two modify the vacancy/connectivity runtime audited below, so no
+pre-change vacancy conclusion was reused. The current
+`AbyssVacancyBorrowing.js`, `AbyssSurfaceController.qml`,
+`AbyssParticipant.qml`, `AbyssBodyHost.qml` and
+`AbyssBodyPlacement.js` were re-read from exact current `dev`.
+The automation commit does not touch these runtime paths.
+
+The handoff was searched before promotion for
+`AbyssVacancyBorrowing`, `_vacancyBestCandidate`,
+`_vacancyBlockerExtent`, `_vacancyCollides`, semantic-vacancy role
+selection, blocker/collision scans, `parallelEnvelope` and
+`connectivityDialog`. Historical vacancy commits are mentioned in earlier
+reconciliation notes, but no existing optimization item owns either reduction
+below.
+
+### 72.1 Vacancy pair role winners can be selected in one metadata pass instead of six filter/sort pipelines — CONFIRMED / P1-P2 reactive layout path
+
+Paths:
+
+- `modules/abyss/looks/AbyssVacancyBorrowing.js`;
+- `modules/abyss/AbyssSurfaceController.qml`;
+- `modules/abyss/AbyssBodyHost.qml`;
+- `modules/abyss/looks/AbyssBodyPlacement.js`.
+
+Current `resolve()` has three fixed semantic pairs. For every evaluation it
+calls `_vacancyMemberForRole()` twice per pair:
+
+1. `featureSidebar`;
+2. `quickNotes`;
+3. `systemSidebar`;
+4. `notificationCenter`;
+5. `systemSidebar` again;
+6. `connectivityDialog`.
+
+Each call currently:
+
+- runs `metadata.filter(...)` across the complete metadata array;
+- creates one filtered array;
+- sorts every eligible member by descending request `order`, then ascending
+  string `id` with the existing `localeCompare`;
+- returns only the first sorted member.
+
+The live inputs are already snapshot data before the resolver runs:
+
+- `vacancyParticipants` is rebuilt from `Object.keys(participants).map(...)`
+  into plain `{id, role}` JS objects;
+- each `placementRequest` is a fresh JS object literal produced by
+  `AbyssBodyHost`;
+- `AbyssBodyPlacement.arrange()` produces a plain result object containing
+  plain placement/content object literals.
+
+Therefore the six resolver scans do not capture independent QML property
+dependencies, invoke user callbacks, or observe getter-backed mutable records.
+They repeatedly read the same synchronous snapshots.
+
+Strict-safe direction:
+
+- keep construction of `requestById` exactly where it is today;
+- traverse `metadata` once in its existing order;
+- for each item, evaluate the exact current eligibility:
+  - role string;
+  - matching request exists and `req.open === true`;
+  - placement exists;
+  - `p.visible !== false`;
+  - `p.content` is present;
+- maintain the best eligible member for each of the five role strings used by
+  `_vacancyPairs`;
+- compare candidates with the exact current ordering:
+  - higher normalized request order wins;
+  - on equal order, smaller `String(id).localeCompare(...)` wins;
+- on a comparator-zero tie, retain the first encountered item. This matches
+  the current stable-sort first element and also preserves defensive duplicate
+  metadata behavior;
+- construct the same member shape
+  `{id, role, meta, request, placement}`;
+- run the existing pair/candidate/plan logic unchanged.
+
+All six current member lookups are unconditional inside the pair loop, so this
+does not skip a lookup that was previously protected by a short-circuit.
+
+For M metadata entries, with K_r eligible entries for each role:
+
+- full metadata traversals: **6M -> M**;
+- filtered temporary arrays: **6 -> 0**;
+- role-ranking work: up to
+  **sum sort(K_r) -> one best-member comparison per eligible row**;
+- the duplicate `systemSidebar` lookup becomes one winner computation.
+
+No pair priority, request-order tie, role ownership, placement identity or
+published `bodyPlacements` array/object behavior changes.
+
+### 72.2 Blocker limiting and final collision validation can be proven in one ordered placement scan — CONFIRMED / P1-P2 reactive layout path
+
+Path:
+
+- `modules/abyss/looks/AbyssVacancyBorrowing.js`,
+  `_vacancyBestCandidate()`.
+
+For every candidate direction that survives peer-gap and safe-bound checks,
+current code can traverse all `placements` twice:
+
+1. first scan:
+   - skip owner and, for parallel-envelope growth, the semantic peer;
+   - normalize each visible `p.content` with `_vacancyRect()`;
+   - reduce `max` through `_vacancyBlockerExtent(..., gap)`;
+   - stop if `max < .5`;
+2. create the grown rectangle;
+3. second scan:
+   - apply the same owner/parallel-peer exclusions;
+   - normalize every visible blocker rectangle again;
+   - reject if `_vacancyCollides(grown, blocker, gap-.01)`.
+
+The second scan is redundant once one additional boolean is derived during the
+first scan.
+
+Strict-safe one-scan direction:
+
+- preserve the exact `for ... in placements` enumeration and exclusions;
+- normalize each visited blocker rectangle once;
+- apply the current `_vacancyBlockerExtent(..., gap)` and the existing
+  `max < .5` break at the same point;
+- only when that break did not fire, record whether the **base** content already
+  collides with this blocker under the second pass's exact
+  `gap-.01`;
+- after the scan:
+  - if `max < .5`, reject exactly as today;
+  - if any base collision was recorded, reject;
+  - otherwise grow the rectangle and omit the second placement scan.
+
+Why the omitted grown-rectangle scan is equivalent for every normalized
+rectangle:
+
+1. Growth changes only the chosen axis. Orthogonal projection never changes.
+   A blocker that does not overlap the base projection under `gap-.01`
+   cannot become an orthogonal collision after growth.
+2. If a blocker lies ahead in the growth direction,
+   `_vacancyBlockerExtent(..., gap)` caps `max` so the grown edge remains at
+   least the full `gap` away. The later collision predicate uses the slightly
+   smaller `gap-.01`, so that blocker cannot collide.
+3. If a blocker is not ahead and the base rectangle does not collide, it must
+   be separated on the opposite side of the growth axis. Growth leaves that
+   opposite edge unchanged, so it cannot create a new collision.
+4. If the base rectangle already collides, every grown rectangle contains that
+   base rectangle. The current second scan therefore necessarily rejects it;
+   the recorded base-collision boolean rejects the same candidate.
+5. Width/height and non-finite geometry already pass through
+   `_vacancyRect()` normalization before either test, so the proof applies to
+   the same normalized malformed numeric state as current code.
+
+Runtime inputs are the plain placement snapshots returned by
+`AbyssBodyPlacement.arrange()`; eliminating the duplicate second read therefore
+does not change QML binding dependency capture or observable getter/callback
+ordering.
+
+For a direction that currently reaches the second phase with P placement
+entries:
+
+- placement enumerations: **up to 2P -> P**;
+- blocker `_vacancyRect()` normalizations: **up to 2P -> P**;
+- candidate direction, `max`, grown geometry, gain, priority and tie ordering
+  remain unchanged.
+
+Directions that already terminate because `max < .5` retain the existing
+early break and do not gain extra post-break reads.
+
+### 72.3 Nearby Abyss aggregation changes are not promoted again
+
+Two adjacent ideas were checked and intentionally not counted:
+
+- `placementRequests`, `records` and `inputBounds` one-pass aggregate
+  construction is already owned by §58.1. Round 58 does not duplicate it.
+- Sharing one `Object.keys(participants)` result or one aggregate object across
+  independent `placementRequests` / `vacancyParticipants` readonly bindings
+  would change binding dependency/publication topology and fresh-array behavior.
+  It is not required for §§72.1-72.2 and is not promoted under strict parity.
+- The newly-added Wi-Fi/Bluetooth `adaptiveDelegateHeight` bindings are O(1)
+  arithmetic over list geometry/count and do not justify a separate
+  optimization factor.
+
+### 72.4 Round-58 conclusion
+
+New strict-lossless groups:
+
+1. select all semantic vacancy role winners in one metadata pass instead of six
+   full filter/sort pipelines (§72.1, **CONFIRMED / P1-P2 reactive layout**);
+2. fuse blocker limiting and collision validation into one ordered placement
+   scan per eligible vacancy direction (§72.2,
+   **CONFIRMED / P1-P2 reactive layout**).
+
+No runtime/source implementation is authorized by this handoff.
+
+No numeric reduction above is an end-to-end Hadalis speedup; all values are
+local source-derived traversal/allocation reductions.

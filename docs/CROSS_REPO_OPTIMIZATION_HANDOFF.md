@@ -19432,3 +19432,175 @@ interaction-hot subsystem. If ShellExec becomes the next measurement target,
 dispatch one narrowly scoped SHA-pinned deterministic parity/benchmark job
 rather than bundling unrelated launch experiments.
 
+
+
+## 77. Round 63 — Waffle Start Menu result-action/category/secondary-control continuation (2026-09-30)
+
+### Snapshot, delta and ownership audit
+
+- Authoritative `dev` at the start of this round and immediately before this
+  documentation write:
+  `c8b7a2d93a55c38c37ae1a4497f16bef04ea4d8b`.
+- The newest committed optimization-research round is Round 62, whose handoff
+  content landed in that same merge HEAD. There are therefore **no commits
+  after the latest optimization-research commit** to reconcile in this round.
+- `AGENTS.md`, `to-do/README.md`, `to-do/cloud-bot/README.md`,
+  `to-do/local-bot/README.md` and the newest handoff tail were re-read before
+  this continuation.
+- Current exact-HEAD Waffle Start Menu linkage was continued through:
+  `StartMenuContent.qml`, `SearchPageContent.qml`, `SearchResults.qml`,
+  `WSearchResultButton.qml`, `SearchBar.qml`, `TagStrip.qml`,
+  `StartMenuContext.qml`, `WaffleStartMenu.qml`,
+  `services/deferred/LauncherSearch.qml`, `services/GlobalActions.qml` and
+  `services/TaskbarApps.qml`.
+- Result execution remains:
+  displayed result -> `WSearchResultButton.execute()` -> provider callback;
+  app results -> `AppSearch.launchEntry()` -> `ShellExec` as already traced
+  in Round 62. The preview pin action resolves the displayed app id, calls
+  `TaskbarApps.togglePin()`, normalizes case/whitespace, writes
+  `dock.pinnedApps` through `Config.setNestedValue()`, then TaskbarApps'
+  config connection schedules the normal refresh.
+- Duplicate-ownership search found no existing owner for `TagStrip.qml` or
+  the inert ellipsis control. Launcher action matching itself is already owned
+  by §57.4, so the optimization below **expands that owner rather than creating
+  a new finding count**.
+
+### 77.1 Extend §57.4 with an O(1) incompatibility guard before scanning all launcher actions — CONFIRMED / existing owner expansion
+
+Path:
+
+- `services/deferred/LauncherSearch.qml`, ordinary-query action matching.
+
+Current action matching constructs:
+
+`actionStr = actionPrefix + action.action`
+
+for every entry in `root.allActions`, then accepts only when either:
+
+- `actionStr.startsWith(q)`, or
+- `q.startsWith(actionStr)`.
+
+§57.4 already owns removal of the map/filter/concat staging, but its direct-loop
+form would still visit all A actions for queries that are provably incapable of
+matching any action.
+
+A strict-safe whole-scan guard exists. Before the action loop, after preserving
+the current `root.allActions` property read, skip the loop only when both are
+true:
+
+```
+!q.startsWith(actionPrefix)
+&& !actionPrefix.startsWith(q)
+```
+
+Proof:
+
+- Every `actionStr` begins with exactly `actionPrefix`.
+- If `q.startsWith(actionStr)` could be true, then `q` must also start with
+  `actionPrefix`; the first guard term would therefore be false.
+- If `actionStr.startsWith(q)` could be true, then either `q` extends through
+  the configured action prefix (so `q.startsWith(actionPrefix)` is true) or
+  `q` is a prefix of the configured action prefix (so
+  `actionPrefix.startsWith(q)` is true).
+- Therefore when both incompatibility predicates are true, **zero current
+  actions can match**, independent of action id/name contents or action count.
+
+Strict-lossless checks:
+
+- **Custom/overlapping/empty prefixes:** no distinct-prefix assumption is made.
+  Empty prefixes cannot take the skip because every string starts with `""`.
+  Multi-character and overlapping prefixes stay on the existing scan whenever
+  either string is a prefix of the other.
+- **Property-read/dependency semantics:** keep the current
+  `const actions = root.allActions` read before the guard. In current source
+  `LauncherSearch.allActions` delegates to `GlobalActions.searchActions`,
+  which is published as a newly mapped plain-JS-object array. The individual
+  `action.action` fields do not expose independent QML NOTIFY dependencies.
+  Thus the public action-list dependency can be retained while avoiding
+  guaranteed-useless per-element reads.
+- **Ordering/ties/duplicates:** compatible queries execute the unchanged action
+  loop in the same source order. Incompatible queries currently produce zero
+  action results, so skipping cannot change ordering, duplicate handling or
+  result placement relative to app/default rows.
+- **Short-circuit/error behavior:** the guard uses only the already-read string
+  query and configured action prefix. It does not call action callbacks,
+  perform coercion on action objects, spawn processes or alter malformed action
+  handling on the compatible path.
+- **Fresh publication:** the surrounding unpublished `result` array remains
+  freshly created and returned exactly as today.
+- **Callback/process/lifecycle behavior:** action `execute` closures are never
+  invoked during matching. No process, IPC, persistence, focus, cancellation
+  or close behavior is touched.
+- **Frontend contract:** category selection still uses
+  `LauncherSearch.ensurePrefix()`; once the action prefix is selected, the
+  query and prefix are compatible and the normal action scan remains active.
+
+For A currently enabled GlobalActions, on every incompatible query:
+
+- action-loop visits: **A -> 0**;
+- per-action `actionStr` string concatenations: **A -> 0**;
+- per-action prefix predicate pairs: **A -> 0**;
+- replacement work: two string-prefix checks total.
+
+This matters on the debounced typing path because the GlobalActions catalog
+contains built-ins plus optional setup/custom actions and can grow with user
+scripts. No whole-Hadalis percentage is claimed.
+
+This is not counted as a new optimization group because §57.4 already owns this
+same LauncherSearch action-matching path; it strengthens that existing
+strict-lossless direction from allocation removal to guaranteed whole-scan
+elision where the query/prefix relation proves zero matches.
+
+### 77.2 Secondary-control correctness gap: TagStrip ellipsis is interactive but has no action — NOT an optimization
+
+Path:
+
+- `modules/waffle/startMenu/TagStrip.qml`;
+- `modules/waffle/looks/WPanelIconButton.qml`.
+
+The right-side `more-horizontal` control is a real `WPanelIconButton`
+(`WButton` subclass), but the instance has no `onClicked`, signal forwarding
+or other action binding. The adjacent back control does have a handler.
+
+Therefore the ellipsis currently provides button hover/press affordance but no
+feature operation. This is a **correctness/product-intent gap**, not a
+performance optimization, and is not counted. Do not invent a target action in
+optimization work; resolve only when the intended product behavior is known.
+
+### 77.3 Math/qalc side-effect placement was inspected but not promoted under strict-lossless
+
+`LauncherSearch.results` currently restarts `mathTimer` from inside the
+results binding for ordinary non-Clipboard/non-Emoji queries. It is tempting to
+gate or move that restart to reduce `qalc` launches.
+
+No strict-lossless optimization is promoted here because:
+
+- `mathResult` is part of the published result model whenever Math is explicit
+  and, depending on `showDefaultActionsWithoutPrefix`, can also appear as a
+  default row;
+- the current binding's dependency/reevaluation behavior can restart the timer
+  after `mathResult` changes;
+- qalc expressions may have runtime-dependent output, so suppressing a
+  currently occurring second evaluation cannot be assumed observationally
+  identical without an oracle covering dynamic expressions, errors and timing;
+- the prompt's subprocess/timing/dependency requirements therefore require a
+  dedicated parity test before changing this path.
+
+Status: **BENCHMARK / PARITY ORACLE REQUIRED**, not counted.
+
+### 77.4 Round-63 conclusion / next checkpoint
+
+No new optimization group is added to the count in this round:
+
+- §77.1 is a **CONFIRMED expansion of existing §57.4 ownership**;
+- §77.2 is a secondary-control correctness gap, not an optimization;
+- §77.3 is intentionally not promoted beyond benchmark/parity investigation.
+
+No runtime QML, native code, scripts, packaging or product behavior were
+modified. Only this research handoff is updated.
+
+Next audit should re-fetch current `dev`, reconcile concurrent changes, then
+rotate away from LauncherSearch to another under-covered interaction-hot
+frontend/backend boundary. A good next target is Waffle/ii notification-center
+secondary actions and their service/model mutation paths, while checking the
+handoff first for existing notification ownership.

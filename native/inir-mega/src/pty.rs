@@ -63,6 +63,7 @@ fn open_private_pty() -> Result<PtyPair> {
 }
 
 #[cfg(unix)]
+#[derive(Debug)]
 pub(crate) struct FakeAuthResult {
     pub(crate) terminal: AuthStep,
     pub(crate) transcript: String,

@@ -3,7 +3,12 @@
 // already-visible content into geometry proven free on this output.
 var _vacancyPairs = [
     {role:"featureSidebar", peer:"quickNotes", automatic:"quickNotes"},
-    {role:"systemSidebar", peer:"notificationCenter", automatic:"notificationCenter"}
+    {role:"systemSidebar", peer:"notificationCenter", automatic:"notificationCenter"},
+    // Controls-owned connectivity dialogs are WindowDialog surfaces, not
+    // StyledPopups. They fill the free strip parallel to the logical system
+    // sidebar while preserving the already-resolved gap between both bodies.
+    {role:"systemSidebar", peer:"connectivityDialog",
+        automatic:"connectivityDialog", parallelEnvelope:true}
 ];
 
 function _vacancyNumber(value, fallback) {
@@ -111,6 +116,23 @@ function _vacancyEnvelopeExtent(owner,peer,direction) {
     if (_vacancyCenter(peer,"x") <= _vacancyCenter(owner,"x")+.01) return 0;
     return Math.max(0,peer.x+peer.width-(owner.x+owner.width));
 }
+function _vacancyParallelEnvelopeExtent(owner,peer,direction) {
+    var ownerRight=owner.x+owner.width, peerRight=peer.x+peer.width;
+    var ownerBottom=owner.y+owner.height, peerBottom=peer.y+peer.height;
+    // Parallel growth is valid only when the semantic peers occupy separate
+    // columns/rows. It preserves their existing orthogonal separation instead
+    // of consuming the literal gap between them.
+    if (direction === "top" || direction === "bottom") {
+        if (!(ownerRight <= peer.x+.01 || peerRight <= owner.x+.01)) return 0;
+        if (direction === "top")
+            return peer.y < owner.y-.01 ? owner.y-peer.y : 0;
+        return peerBottom > ownerBottom+.01 ? peerBottom-ownerBottom : 0;
+    }
+    if (!(ownerBottom <= peer.y+.01 || peerBottom <= owner.y+.01)) return 0;
+    if (direction === "left")
+        return peer.x < owner.x-.01 ? owner.x-peer.x : 0;
+    return peerRight > ownerRight+.01 ? peerRight-ownerRight : 0;
+}
 function _vacancySafeExtent(panel,bounds,direction) {
     if (direction === "top") return Math.max(0,panel.y-bounds.top);
     if (direction === "bottom") return Math.max(0,bounds.bottom-(panel.y+panel.height));
@@ -185,7 +207,7 @@ function _vacancyMemberForRole(role,metadata,requestById,placements) {
     var meta=list[0], id=String(meta.id);
     return {id:id,role:role,meta:meta,request:requestById[id],placement:placements[id]};
 }
-function _vacancyBestCandidate(owner,peer,placements,width,height,insets,gap) {
+function _vacancyBestCandidate(owner,peer,placements,width,height,insets,gap,pair) {
     var panel=_vacancyPanelRect(owner.request,owner.placement,width,height,insets);
     var content=_vacancyRect(owner.placement.content);
     var peerContent=_vacancyRect(peer.placement.content);
@@ -199,18 +221,24 @@ function _vacancyBestCandidate(owner,peer,placements,width,height,insets,gap) {
     // newly exposed outer strip along the peer envelope. Otherwise use only
     // literal rectangle separation, avoiding the old full-height detour.
     var fillOuterStrip=edge === peerEdge && ownerInward+.5 < peerInward;
+    var preferParallel=pair?.parallelEnvelope === true;
     var dirs=["top","bottom","left","right"], best=null;
     for (var i=0;i<dirs.length;i++) {
         var dir=dirs[i];
         if (!_vacancyDirectionAllowed(edge,dir)) continue;
-        var peerGap=fillOuterStrip
-            ? _vacancyEnvelopeExtent(content,peerContent,dir)
-            : _vacancyTowardPeer(content,peerContent,dir);
+        var parallelGap=preferParallel
+            ? _vacancyParallelEnvelopeExtent(content,peerContent,dir) : 0;
+        var parallel=parallelGap >= .5;
+        var peerGap=parallel ? parallelGap
+            : (fillOuterStrip
+                ? _vacancyEnvelopeExtent(content,peerContent,dir)
+                : _vacancyTowardPeer(content,peerContent,dir));
         if (peerGap < .5) continue;
         var max=Math.min(peerGap,_vacancySafeExtent(panel,bounds,dir));
         if (max < .5) continue;
         for (var id in placements) {
-            if (String(id) === String(owner.id)) continue;
+            if (String(id) === String(owner.id)
+                    || (parallel && String(id) === String(peer.id))) continue;
             var p=placements[id];
             if (!p || p.visible === false || !p.content) continue;
             max=Math.min(max,_vacancyBlockerExtent(content,_vacancyRect(p.content),dir,gap));
@@ -219,7 +247,8 @@ function _vacancyBestCandidate(owner,peer,placements,width,height,insets,gap) {
         if (max < .5) continue;
         var grown=_vacancyGrow(content,dir,max), collision=false;
         for (var blockerId in placements) {
-            if (String(blockerId) === String(owner.id)) continue;
+            if (String(blockerId) === String(owner.id)
+                    || (parallel && String(blockerId) === String(peer.id))) continue;
             var bp=placements[blockerId];
             if (!bp || bp.visible === false || !bp.content) continue;
             if (_vacancyCollides(grown,_vacancyRect(bp.content),gap-.01)) {
@@ -232,10 +261,13 @@ function _vacancyBestCandidate(owner,peer,placements,width,height,insets,gap) {
         // For diagonal layouts, prefer that nearest side; only use area gain as
         // a tie-breaker. This prevents a long vertical detour from winning over
         // the small horizontal gap visibly connecting two side-by-side panels.
-        if (!best || peerGap < best.peerGap-.01
-                || (Math.abs(peerGap-best.peerGap) <= .01
+        if (!best || Number(parallel)-Number(best.parallel) > 0
+                || (parallel === best.parallel && peerGap < best.peerGap-.01)
+                || (parallel === best.parallel
+                    && Math.abs(peerGap-best.peerGap) <= .01
                     && gain > best.gain+.01))
-            best={direction:dir,delta:max,content:grown,gain:gain,peerGap:peerGap};
+            best={direction:dir,delta:max,content:grown,gain:gain,
+                peerGap:peerGap,parallel:parallel};
     }
     return best;
 }
@@ -261,7 +293,7 @@ function resolve(requests,metadata,placements,width,height,insets,gap) {
 
         var choices=[first,second].map(function(owner) {
             var peer=owner.id === first.id ? second : first;
-            var candidate=_vacancyBestCandidate(owner,peer,placements,width,height,insets,gap);
+            var candidate=_vacancyBestCandidate(owner,peer,placements,width,height,insets,gap,pair);
             return candidate ? {
                 owner:owner,peer:peer,candidate:candidate,
                 requestOrder:_vacancyNumber(owner.request?.order,0)

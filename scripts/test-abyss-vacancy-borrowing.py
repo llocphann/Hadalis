@@ -8,6 +8,9 @@ perimeter=read("modules/abyss/AbyssPerimeter.qml")
 controller=read("modules/abyss/AbyssSurfaceController.qml")
 corners=read("modules/abyss/AbyssCorners.qml")
 notification_popup=read("modules/notificationCenter/NotificationCenterPopup.qml")
+window_dialog=read("modules/common/widgets/WindowDialog.qml")
+wifi_dialog=read("modules/sidebarRight/wifiNetworks/WifiDialog.qml")
+bluetooth_dialog=read("modules/sidebarRight/bluetoothDevices/BluetoothDialog.qml")
 host=read("modules/abyss/AbyssBodyHost.qml")
 participant=read("modules/abyss/AbyssParticipant.qml")
 geometry=read("modules/abyss/looks/AbyssGeometry.js")
@@ -24,6 +27,12 @@ assert '&& quickNotesEditorOutput.length === 0' not in corners
 assert 'keyboardAllowed:root.quickNotesEditorOutput.length === 0' in corners
 assert 'property bool keyboardAllowed: true' in notification_popup
 assert '!root.presentationActive || !root.keyboardAllowed' in notification_popup
+assert 'property string liquidVacancyRole: ""' in window_dialog
+assert 'liquidVacancyRole: "connectivityDialog"' in wifi_dialog
+assert 'liquidVacancyRole: "connectivityDialog"' in bluetooth_dialog
+assert 'liquid.activeDialog?.liquidVacancyRole' in perimeter
+assert 'peer:"connectivityDialog"' in resolver
+assert 'parallelEnvelope:true' in resolver
 
 program=geometry+"\n"+resolver+r"""
 const assert=require("node:assert/strict");
@@ -81,6 +90,38 @@ assert.equal(r.out.videoNotes.vacancyDirection,"top");
 assert(r.out.videoNotes.content.y < videoNotes.placement.content.y);
 assert.equal(r.out.videoNotes.content.width,videoNotes.placement.content.width);
 assert(r.out.videoNotes.content.y >= videoSidebar.placement.content.y-.01);
+
+// Screenshot regression: Controls/systemSidebar is physically on the left,
+// while its Wi-Fi/Bluetooth WindowDialog is on the right. The connectivity
+// dialog fills the free lower strip to the sidebar envelope without consuming
+// their already-resolved horizontal gap. Physical swap must not affect pairing.
+const controlsLeft=m("controlsLeft","systemSidebar","left",51,{visible:true,along:249,inward:0,span:700,depth:451,content:{x:37,y:249,width:450,height:700}});
+const connectivity=m("dialog","connectivityDialog","right",52,{visible:true,along:64,inward:0,span:495,depth:381,content:{x:500,y:64,width:380,height:495}});
+r=run([controlsLeft,connectivity]);
+assert.deepEqual(borrowers(r.out),["dialog"]);
+assert.equal(r.out.dialog.vacancyDirection,"bottom");
+assert.equal(r.out.dialog.content.x,connectivity.placement.content.x);
+assert.equal(r.out.dialog.content.width,connectivity.placement.content.width);
+assert.equal(r.out.dialog.content.y,connectivity.placement.content.y);
+assert.equal(r.out.dialog.content.y+r.out.dialog.content.height,
+    controlsLeft.placement.content.y+controlsLeft.placement.content.height);
+
+// An unrelated body in the free strip still caps the borrow with the normal
+// safety gap; semantic pairing never grants permission through blockers.
+const stripBlocker=m("stripBlocker","", "right",60,{visible:true,along:800,inward:0,span:100,depth:381,content:{x:500,y:800,width:380,height:100}});
+r=run([controlsLeft,connectivity,stripBlocker]);
+assert.equal(r.out.dialog.content.y+r.out.dialog.content.height,800-G);
+
+// Without the logical system sidebar there is no semantic vacancy transaction.
+r=run([connectivity]);
+assert.strictEqual(r.out,r.base);
+
+// The special parallel-envelope policy is connectivity-only. Notification
+// Center keeps the established literal-gap rule and must not become full-height.
+const centerByLeftControls=m("centerByLeftControls","notificationCenter","right",53,{visible:true,along:64,inward:0,span:495,depth:381,content:{x:500,y:64,width:380,height:495}});
+r=run([controlsLeft,centerByLeftControls]);
+assert.equal(r.out.centerByLeftControls?.content.height,
+    centerByLeftControls.placement.content.height);
 
 // No vacancy is strict identity no-op.
 const blocked=m("styledPopup0","quickNotes","left",99,{visible:true,along:70,inward:20,span:780,depth:394,content:{x:50,y:84,width:360,height:752}});

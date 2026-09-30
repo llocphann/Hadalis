@@ -14,6 +14,7 @@ import Quickshell.Wayland
 
 WindowDialog {
     id: root
+    liquidVacancyRole: "connectivityDialog"
     property bool showEmbeddedFooter: true
     backgroundHeight: 450
 

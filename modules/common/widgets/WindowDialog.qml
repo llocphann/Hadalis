@@ -13,6 +13,9 @@ Rectangle {
     // centered modal scrim/chrome so owners can place it inside an existing
     // connected surface (for example Calendar's expanding bottom editor).
     property bool embeddedPresentation: false
+    // Optional semantic role consumed only by Abyss post-allocation vacancy
+    // borrowing. Ordinary/modal WindowDialog geometry remains unchanged.
+    property string liquidVacancyRole: ""
     property var liquidOwner: null
     readonly property bool liquidHosted: liquidOwner?.activeDialog === root
     readonly property bool effectiveEmbedded: embeddedPresentation || liquidHosted

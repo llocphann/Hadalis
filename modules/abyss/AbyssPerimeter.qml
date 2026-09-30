@@ -847,6 +847,8 @@ Scope {
                 anchors.fill: parent
                 edge: window.positionEdge(identity,"right")
                 outputName: window.outputName
+                vacancyRole: String(
+                    liquid.activeDialog?.liquidVacancyRole ?? "")
                 open: window.presented && field.ready && liquid.activeDialog !== null
                 embeddedItem: liquid.activeDialog
                 span: (Geometry.horizontal(edge) ? (liquid.activeDialog?.liquidWidth ?? 350) : (liquid.activeDialog?.liquidHeight ?? 450))+padding*2

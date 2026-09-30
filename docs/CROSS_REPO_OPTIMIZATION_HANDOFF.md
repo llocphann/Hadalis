@@ -18921,3 +18921,46 @@ No runtime/source implementation is authorized by this handoff.
 
 No numeric reduction above is an end-to-end Hadalis speedup; all values are
 local source-derived traversal/allocation reductions.
+
+## 73. Round 59 — Dashboard fallback geometry and responsive collision-scan research (2026-09-30)
+
+### Snapshot, concurrent delta, ownership search
+
+- Authoritative dev at audit and immediately before this documentation write: 480a3b3d1d0881944b31d0b3fd16265afc8f7c54.
+- Latest preceding optimization round: Round 58 at 5ad09b2dde61df5c3adefcda46cf12c9b2b090f0.
+- Exactly one intervening commit, 480a3b3 (automation: preserve pending response across Desktop view changes), touched automation/chat_bridge/desktop_cli.mjs, automation/chat_bridge/desktop_driver.mjs, automation/manager/daemon.py and two automation tests; none changes Dashboard geometry or the handoff. AGENTS.md was re-read.
+- Current exact-dev modules/dashboard/DashboardCanvas.qml was read. Full handoff searches for DashboardCanvas, _fallbackPlacement, _candidateScore, _bestSideCandidate, _resolveNeighbour, _layoutHasOverlap, responsiveWorkspace and CavaSpectrum found §65.1 as the nearby Dashboard smart-alignment owner, but no previous owner for the two distinct collision-scan directions below. Existing notification aggregation §37.1, Overview delegate lookup §41.18 and WindowPreview bookkeeping §42.4 were excluded from promotion.
+
+### 73.1 Avoid a second obstacle traversal after an exhaustive collision-free fallback candidate check — CONFIRMED / P1-P2 complex resize/drop fallback
+
+Path: modules/dashboard/DashboardCanvas.qml, _fallbackPlacement() (around lines 1221–1278), _candidateScore() (around 1173–1191).
+
+For every viable candidate in the finite obstacle-edge search, the caller first traverses every obstacle in order, using _rectsOverlap(candidate, obstacle, gap). If any result is true it marks blocked, breaks, and skips the score. Only after the *entire* traversal proves that no obstacle overlaps does it call _candidateScore(candidate, base, obstacles), which repeats the same complete obstacle traversal merely to increment an overlap count. Thus that count is exactly zero for every candidate arriving at this call.
+
+Strict-safe direction: preserve all candidate generation, xs/ys lists including duplicates, width/height nesting, the blocking pass and its early break. Add an optional internal knownNoOverlap=false argument to _candidateScore(). Preserve the existing null-candidate guard. Only when the flag is true, initialize overlaps=0 but skip its obstacle-count loop; retain the **unchanged** score expression and arithmetic order, including its leading overlaps * 1000000000. Pass true only from _fallbackPlacement after the complete first scan returned !blocked. Keep the ordinary three-argument calls from _bestSideCandidate and all other callers intact.
+
+Parity evidence and full strict-contract checks:
+
+- The obstacle array is invocation-local and populated from ordinary plain rectangle snapshots by _resolveLayout(); _fitRectToCanvas() creates the candidate as a plain object. _rectsOverlap() is a pure sequence of numerical comparisons, with no writes, callbacks, allocations or events that could alter either scan's input.
+- The local gap read in _fallbackPlacement and the root.collisionGap reads inside the scorer are the same stable readonly arithmetic derivation of gridSize within this synchronous imperative gesture call. Removing redundant scorer property reads does not remove a QML-binding dependency: this solver is called through updateInteraction()/finishInteraction(), not an evaluated readonly binding.
+- The first scan throws at the same point on malformed obstacles; no failed candidate reaches the scorer. If non-finite geometry makes every overlap comparison false, both passes still count zero. The existing score expression preserves JS NaN/Infinity behavior and floating-point operation order.
+- First-strict-less-than score selection, first-wins ties, duplicate candidate coordinates, array order, short-circuit behavior, call and error order for all blocked candidates, object identities, signal/callback order, focus, rendered geometry, publication and fallback behavior are preserved. No change to QML sequence conversion, Set/SameValueZero versus strict equality, or fresh-array publication is involved. The public default three-argument scorer remains unchanged.
+- For C viable candidates and O obstacles, redundant scorer overlap tests are **C × O -> 0**. The required preceding blocking traversal is retained, including its early exit. This is only a local worst-case operation reduction; the fallback is used when the regular side-placement solver cannot resolve the neighbour. No whole-Hadalis speedup percentage is inferred.
+
+### 73.2 Responsive Abyss bisection could check active-versus-other overlaps only — HIGH CONFIDENCE / requires malformed-state oracle; not a confirmed count
+
+Path: modules/dashboard/DashboardCanvas.qml, _resolveFeasibleLayout() (around lines 1426–1474), _layoutHasOverlap() (around lines 1393–1415).
+
+The responsiveWorkspace branch applies to Abyss. Its initial fixed map is Object.assign({}, baselineRects), with only fixed[activeId] replaced. All 12 binary-search probes do exactly the same: only the active rectangle changes. For ordinary finite geometry, every pair not involving activeId is unchanged relative to baseline, so the existing legacy-overlap exemption suppresses it. Current generic _layoutHasOverlap nevertheless attempts up to V(V-1)/2 unordered visible-ID pairs on each of these 13 evaluations.
+
+Candidate: specialize only this responsive caller, preserving the exact visible-ID membership, active baseline-equivalence exemption and active/other collision predicate while testing at most V-1 relevant pairs. Retain the generic all-pair routine for the nonresponsive solver and as a fallback whenever the fast-path preconditions cannot be proven.
+
+Do **not** promote this yet: with non-finite fields (NaN or Infinity), even _sameRect(r,r) can be false, so an apparently unchanged other-other pair may still affect the generic result; the visible-ID list can also change mid-gesture, leaving an ID without a captured baseline. A naive active-only check is NOT strict-lossless under these states. Required deterministic oracle: original generic routine versus a guarded specialized routine across finite, missing, non-finite, duplicate-key, preexisting legacy overlaps, active-hidden and mid-gesture visibility-change fixtures. Check QML property-read dependencies, side effects, collision pair order and publication as well. Until that oracle and guarded proof, this remains HIGH CONFIDENCE, NOT CONFIRMED and not implementation-authorized.
+
+### 73.3 Nearby canvas sweep — no separate factor
+
+modules/common/widgets/CavaSpectrum.qml already retains per-instance selected, smooth, primary, secondary and baseline frame scratch arrays. Its frequency smoother already uses a rolling sum, so a generic smoothing-reallocation claim is stale. Hoisting a few fillRatio property reads alone lacks material significance. Dashboard pointer-hot smart-alignment anchor work is already owned by §65.1 and is not re-counted.
+
+### 73.4 Conclusion / next checkpoint
+
+New confirmed optimization groups this round: **one** (§73.1). One additional distinct high-confidence lead (§73.2) remains outside confirmed counts. No product/runtime files were edited; no local oracle or runtime patch was executed. Next audit should re-fetch dev, reconcile concurrent changes, then inspect another interaction-hot or per-frame area such as modules/dashboard/DashboardLayout.js projection, without duplicating §65.1 or §73.1. All quantities here count only local operations, not shell performance.

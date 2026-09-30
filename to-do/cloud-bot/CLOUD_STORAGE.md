@@ -1,4 +1,9 @@
-# Cloud Storage — MEGAcmd ↔ Rust ↔ QML research
+# Cloud Storage — MEGAcmd ↔ Rust ↔ QML implementation
+
+> **Implementation authorization (2026-10-01):** maintainer authorized design and source implementation on `dev`. Historical “research only” statements below describe the evidence state when written and no longer prohibit QML/Rust/source work for this task. Live account/data actions remain gated to an explicitly permitted disposable environment.
+
+> **Milestone I0 — Phase 0 substrate started:** gap audit at `e5cbf7f5dcf763d89194f8913def51f501e7c8b8` found no existing `inir-mega`, `CloudStorageService.qml`, or `CloudStorageConfig.qml`. The implementation delta is in [CLOUD_STORAGE_MEGACMD_IMPLEMENTATION.md](../../docs/CLOUD_STORAGE_MEGACMD_IMPLEMENTATION.md). Phase 0 adds the Rust workspace member, typed stdin/stdout protocol, fail-closed auth/MFA prompt classifier, and secret non-echo tests. Real vendor dispatch remains disabled until the fake PTY harness is qualified.
+
 
 > **Research round 7 — FINAL FREEZE:** [Final implementation readiness](../../docs/CLOUD_STORAGE_MEGACMD_FINAL_IMPLEMENTATION_READINESS.md) is now the implementation entry point. It freezes Tier A/B/C scope, dedicated Rust `inir-mega`, parser/capability rules, current MEGAcmd 2.6.0 corrections, packaging map and the fake/disposable qualification sequence. Further desk research is closed unless upstream changes.
 
@@ -12,7 +17,7 @@
 
 > **Research round 2:** [Source-level audit and blocking acceptance gates](../../docs/CLOUD_STORAGE_MEGACMD_SOURCE_AUDIT.md) supersedes earlier optimistic assumptions about generic CLI argv, column parsing and pre-connect read-only probes. The Rust bridge is still the preferred direction, but capability-gated Drive mutations are mandatory.
 
-**Status: DESIGN RESEARCH ONLY; no QML, Rust, script, packaging or account actions authorized.**
+**Historical research status:** source implementation is now authorized by the active maintainer task; live account/data actions remain separately gated.
 
 **Canonical full command/UX/security/architecture research:** [`../../docs/CLOUD_STORAGE_MEGACMD_FULL_DESIGN.md`](../../docs/CLOUD_STORAGE_MEGACMD_FULL_DESIGN.md).  
 **Prior feasibility snapshot:** [`../../docs/CLOUD_STORAGE_MEGACMD_RESEARCH.md`](../../docs/CLOUD_STORAGE_MEGACMD_RESEARCH.md) (historical provisional Python suggestion is superseded by Rust in the new design).
@@ -117,6 +122,6 @@ The autonomous Local Bot must not contact a real MEGA account, initiate a sync o
 - [x] Re-audit current Hadalis Settings/native packaging paths and define exact implementation files/tests.
 - [x] Freeze Tier A (read/ID-based), Tier B (installed/disposable-fixture gated), Tier C (withheld) scope.
 - [x] Freeze fake vendor harness as first implementation milestone.
-- [ ] IMPLEMENTATION: build Phase 0 substrate only after explicit code-change authorization.
+- [x] IMPLEMENTATION AUTHORIZED: Phase 0 substrate started; exact-SHA local qualification pending.
 - [ ] LOCAL QUALIFICATION: capture the owner's installed MEGAcmd capability fixtures using sanitized/disposable data before enabling writes.
 - [ ] Reopen research only when an upstream MEGAcmd/SDK/Desktop change materially affects a frozen capability.

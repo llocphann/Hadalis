@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/inir-protocol",
     "inir-inputd",
+    "inir-mega",
     "inir-mpdd",
     "inir-native",
     "inir-theme",

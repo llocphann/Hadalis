@@ -62,6 +62,11 @@ def control_unit_name(key: str) -> str:
 
 
 def _scheduler_problem(services: dict, state: dict, now: int) -> str:
+    host = services["chatgpt"]
+    if host["state"] != "active" and host.get("exec_main_status") == "76":
+        return ("ChatGPT was opened without the Automation connection. "
+                "Close ChatGPT once, reopen it from Applications, then press Start. "
+                "Your existing response and chat history are kept.")
     bridge = services["bridge"]
     if bridge["state"] != "active":
         detail = bridge.get("result") or bridge.get("detail") or "not running"

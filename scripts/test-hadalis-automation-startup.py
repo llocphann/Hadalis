@@ -51,6 +51,11 @@ def main() -> None:
 
             store.change_state(stale)
 
+            failed_host = services(chatgpt="failed", bridge="inactive")
+            failed_host["chatgpt"]["exec_main_status"] = "76"
+            with patch.object(control, "service_states", return_value=failed_host):
+                assert "Close ChatGPT once" in control.status()["scheduler_problem"]
+
             with patch.object(control, "service_states",
                               return_value=services(bridge="inactive")):
                 snapshot = control.status()

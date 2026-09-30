@@ -57,6 +57,8 @@ single publisher. Publication failure retries the saved result, never the
 commands. Stable job IDs are execution tombstones; do not reuse an ID for a
 different job. Recovery reports an interrupted external action as
 `indeterminate`, with `recovery_required`, instead of guessing its outcome.
+Pool health clears a Git discovery error only after a successful discovery
+cycle; that recovery does not erase a separate job metadata failure.
 
 Jobs may name `profile_id` and up to eight `resources` (for example
 `shell:inir`). Only equal resource names serialize. Each command has bounded

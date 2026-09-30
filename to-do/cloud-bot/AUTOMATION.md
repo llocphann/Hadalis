@@ -15,6 +15,7 @@ Maintainer-authorized implementation, 2026-09-30. Target contract and audit:
 - [x] Failed exec receipts project bounded fixed compiler/QML/test/lockfile error codes to the managed chat while preserving private raw logs; diagnostics include the actual `inir.service` shell unit.
 - [x] Final responses and job receipts share the transition contract: preserve evidence/checkpoint first, then honor rotation, run limits and interval timing after WAIT_RESULT.
 - [x] Consumed malformed Wull job retained byte-for-byte as archived evidence, with its original terminal result and digest; no action replay or job-ID reuse. Job authoring requires JSON serialization/validation before publication.
+- [x] Worker discovery recovery clears its own stale health warning while retaining independent job metadata failures and private exception boundaries.
 - [ ] Future/deferred: migrate the Linux/process-sensitive Automation execution substrate to Rust only after parity and benchmark gates in [`AUTOMATION_RUST_MIGRATION.md`](AUTOMATION_RUST_MIGRATION.md).
 
 Keep uncertain existing submissions and consumed job results. Do not reset

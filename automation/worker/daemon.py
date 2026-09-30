@@ -424,7 +424,7 @@ def main() -> int:
         _write(root/"pool-v2.json",{"version":2,"started_at_unix":int(time.time())})
         if args.once:
             result=process_one();print(json.dumps({"outcome":result}));return 0
-        running={};publisher=None;last_fetch=0;last_cleanup=0;last_error=None
+        running={};publisher=None;last_fetch=0;last_cleanup=0;last_error=None;discovery_error=None
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as execution, ThreadPoolExecutor(max_workers=1) as publication:
             while True:
                 now=int(time.time())
@@ -433,7 +433,7 @@ def main() -> int:
                         try:future.result()
                         except Exception:last_error="Job metadata processing failed; private receipts preserved"
                         del running[job_id]
-                _write(root/"pool.json",{"heartbeat_at_unix":now,"running":list(running),"limit":MAX_WORKERS,"publishing":publisher is not None and not publisher.done(),"last_error":last_error})
+                _write(root/"pool.json",{"heartbeat_at_unix":now,"running":list(running),"limit":MAX_WORKERS,"publishing":publisher is not None and not publisher.done(),"last_error":discovery_error or last_error})
                 if now-last_cleanup>=300:
                     cleanup(startup=False);last_cleanup=now
                 if publisher is None or publisher.done():
@@ -451,7 +451,8 @@ def main() -> int:
                             if r and (r.get("result") or now<r.get("retry_after_unix",0)):continue
                             if result_exists(job_id):continue
                             running[job_id]=execution.submit(process_job,path,publish_now=False)
-                    except Exception:last_error="Git discovery unavailable; owned jobs and publication recovery continue"
+                    except Exception:discovery_error="Git discovery unavailable; owned jobs and publication recovery continue"
+                    else:discovery_error=None
                 time.sleep(1)
 
 

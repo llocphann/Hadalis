@@ -17,9 +17,20 @@ QtObject {
     function nextVacancyInteractionOrder(): int {
         return ++vacancyInteractionOrder
     }
-    readonly property var placementRequests: Object.keys(participants)
-        .map(key => participants[key]?.placementRequest)
-        .filter(request => request !== null && request !== undefined)
+    readonly property var placementRequests: {
+        const mapped = Object.keys(participants)
+            .map(key => participants[key]?.placementRequest)
+        // Finish all participant reads before the original filter predicates.
+        // Only this fresh, unpublished map result is compacted.
+        let kept = 0
+        for (let i = 0; i < mapped.length; ++i) {
+            const request = mapped[i]
+            if (request !== null && request !== undefined)
+                mapped[kept++] = request
+        }
+        mapped.length = kept
+        return mapped
+    }
     // Hover is intentionally absent: vacancy geometry is automatic and must
     // not churn when the pointer crosses a body that is itself moving.
     readonly property var vacancyParticipants: Object.keys(participants)
@@ -248,12 +259,34 @@ QtObject {
         records: root.records
     }
     readonly property int capacity: 40
-    readonly property var records: moduleRecords.concat(Object.keys(participants)
-        .map(key => participants[key]?.geometry ? Object.assign({},participants[key].geometry,{mass:participants[key].mass}) : null)
-        .filter(rec => rec && rec.surface.width > 0 && rec.surface.height > 0))
-    readonly property var inputBounds: Object.keys(participants)
-        .map(key => participants[key]?.inputBounds)
-        .filter(rect => rect && rect.width > 0 && rect.height > 0)
+    readonly property var records: moduleRecords.concat((() => {
+        const mapped = Object.keys(participants)
+            .map(key => participants[key]?.geometry ? Object.assign({},participants[key].geometry,{mass:participants[key].mass}) : null)
+        // Finish all participant reads before the original filter predicates.
+        // Only this fresh, unpublished map result is compacted.
+        let kept = 0
+        for (let i = 0; i < mapped.length; ++i) {
+            const rec = mapped[i]
+            if (rec && rec.surface.width > 0 && rec.surface.height > 0)
+                mapped[kept++] = rec
+        }
+        mapped.length = kept
+        return mapped
+    })())
+    readonly property var inputBounds: {
+        const mapped = Object.keys(participants)
+            .map(key => participants[key]?.inputBounds)
+        // Finish all participant reads before the original filter predicates.
+        // Only this fresh, unpublished map result is compacted.
+        let kept = 0
+        for (let i = 0; i < mapped.length; ++i) {
+            const rect = mapped[i]
+            if (rect && rect.width > 0 && rect.height > 0)
+                mapped[kept++] = rect
+        }
+        mapped.length = kept
+        return mapped
+    }
 
     function impulse(edge, along, span, strength, mass = 1, channel = "module"): void {
         waves.impulse(edge,along,span,strength,mass,channel)

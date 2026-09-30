@@ -97,7 +97,7 @@ def main() -> None:
             control.set_profile(pid, "interval_seconds", "120")
             control.set_profile(pid, "prompt", json.dumps(custom["prompt"]))
             control.set_profile(pid, "project_name", json.dumps("Hadalis Local"))
-            with patch.object(control, "_ensure_runtime_services"):
+            with patch.object(control, "_ensure_runtime_services"), patch.object(control, "_await_dispatch"):
                 control.profile_action("start", pid)
             config, runtime, _ = store.read_snapshot()
             edited = next(p for p in config["profiles"] if p["id"] == pid)
@@ -111,7 +111,7 @@ def main() -> None:
             store.change_state(lambda _config, state: state.__setitem__("owner_id", None))
             control.profile_action("pause", pid)
             assert store.read_snapshot()[1]["profiles"][pid]["desired"] == "paused"
-            with patch.object(control, "_ensure_runtime_services"):
+            with patch.object(control, "_ensure_runtime_services"), patch.object(control, "_await_dispatch"):
                 control.profile_action("resume", pid)
             control.profile_action("stop", pid)
             expect_error(lambda: control.set_maintenance("delete_completed", "true"), "confirmation")

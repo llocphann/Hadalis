@@ -20534,3 +20534,152 @@ rotate outside Wallpapers to avoid repeatedly mining the same subsystem.
 Prefer another interaction-hot file-backed path such as Clipboard/Cliphist
 secondary controls or search/launcher file/process boundaries, while honoring
 existing §§28/57/60/65 ownership.
+
+
+## 83. Round 69 — Cliphist refresh-bound and pinned-preview audit (2026-09-30)
+
+### Snapshot and ownership
+
+- Authoritative `dev` at round start and immediately before this write:
+  `c87d73712b7925fcdf3a7f68ea50f90dc24783ab` (Round 68).
+- No intervening commit exists after Round 68.
+- Current `services/deferred/Cliphist.qml`, Waffle Clipboard and classic
+  ClipboardPanel call sites were re-read.
+- Existing ownership was retained rather than re-counted:
+  - §13.11: prepared/filter caches, panel-visible refresh gating and unchanged
+    refresh publication;
+  - §28.1: decoded-image warm cache/in-flight ownership;
+  - §57.6: bounded Superpaste selection/reverse command construction;
+  - §63.8: stale unlimited scoring candidate already closed.
+- No prior handoff item owns `pinPreview()` or the exact read-buffer
+  `maxEntries` timing issue below.
+
+### 83.1 Pinned preview can stop at the first nonempty line instead of splitting the complete text — CONFIRMED / P2 clipboard interaction
+
+Path:
+
+- `services/deferred/Cliphist.qml`, `pinPreview()`.
+
+Consumers include both Clipboard families. During every open/filter/search model
+rebuild, each pinned text is passed through `pinPreview()`; Waffle also uses it
+for pinned-row display.
+
+Pins can retain up to `maxPinLength: 8000` characters.
+
+Current implementation:
+
+```qml
+const firstLine = String(text ?? "").split("\n")
+    .find(l => l.trim().length > 0) ?? ""
+return firstLine.trim()
+```
+
+Even when the first line is already the desired preview, `split("\n")`
+tokenizes the entire pin and materializes an array containing every line.
+
+Strict-safe direction:
+
+1. keep the exact `String(text ?? "")` coercion;
+2. scan newline boundaries from the beginning;
+3. slice one candidate line at a time;
+4. apply the same `.trim()`;
+5. return immediately on the first nonempty trimmed line;
+6. return `""` when all lines are empty/whitespace.
+
+Parity:
+
+- the delimiter remains the literal LF character only; CR remains part of the
+  candidate line until `trim()`, exactly as today;
+- leading, repeated and trailing LF produce the same empty-line sequence;
+- whitespace-only lines remain skipped;
+- embedded NUL/Unicode text is not reinterpreted;
+- the same first nonempty line is returned after trimming;
+- no QML property, callback, signal, filesystem/process or Config behavior is
+  involved.
+
+For a pin with L total characters/lines but a first useful line near the
+beginning:
+
+- full-text split array: **1 -> 0**;
+- substrings after the first useful line: **all -> 0**;
+- scanning can stop at that line rather than tokenizing the remainder.
+
+This is relevant on the 70 ms debounced clipboard-search interaction because
+both classic and Waffle rebuild their pinned-prefix model on search updates.
+
+### 83.2 Cliphist read buffer cannot be mechanically capped at maxEntries without freezing a dynamic-limit contract
+
+Path:
+
+- `services/deferred/Cliphist.qml`, `readProc`.
+
+Current refresh reads all `cliphist list` lines into `readProc.buffer`, then
+on successful process exit computes:
+
+`nextEntries = readProc.buffer.slice(0, root.maxEntries)`.
+
+Therefore the public `maxEntries` value that matters is the value at process
+completion, not necessarily the value when the process started.
+
+It is tempting to stop retaining stdout lines once
+`readProc.buffer.length === root.maxEntries`. For a large underlying history
+H this would bound QML buffer residency to the usual 400 entries while keeping
+the external `cliphist list` process alive.
+
+That shortcut is **not strict-lossless** for dynamic property changes:
+
+1. refresh begins while `maxEntries = 100`;
+2. line 101+ is discarded by an early cap;
+3. another consumer changes `maxEntries = 400` before process exit;
+4. current source would publish up to the first 400 buffered lines;
+5. the capped reader can only publish the first 100.
+
+Stopping/killing the external process after N lines is even less compatible
+because it changes process completion/exit/cancellation semantics.
+
+Core repository search does not currently assign `maxEntries`, but the
+property is externally readable/writable singleton state and the strict
+standard includes extension-visible behavior.
+
+Status:
+
+- mechanical onRead cap: **OUT OF STRICT-LOSSLESS**;
+- a future bounded design requires defining `maxEntries` as immutable for a
+  refresh generation or explicitly handling limit growth without losing data.
+
+### 83.3 Per-row pinned normalization is a CPU-for-memory/index tradeoff rather than a free cache
+
+Paths:
+
+- `services/deferred/Cliphist.qml`, `pinnedTextFor()`;
+- classic and Waffle Clipboard surfaces.
+
+`pinnedTextFor()` normalizes each candidate pinned string until the first
+match. Repeated visible history rows can therefore repeat the same pin
+normalization.
+
+A persistent normalized pin index would reduce that work, but it retains an
+additional normalized copy of user clipboard text and needs invalidation on
+every `clipboard.pinned` publication. This is directly a resident-memory/index
+tradeoff rather than a no-cost local transformation.
+
+Building such an index for every full model rebuild can also be worse when only
+a small virtualized subset of history rows asks for pin state.
+
+Status: **BENCHMARK / not in the strict no-tradeoff set**.
+
+### 83.4 Round-69 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one** (§83.1,
+**CONFIRMED / P2 clipboard interaction**).
+
+Not counted:
+
+- §83.2 dynamic-limit read-buffer cap;
+- §83.3 persistent pin-normalization index.
+
+No runtime/product/native/script file was modified and no local job was needed.
+
+Next audit should re-fetch current `dev`, reconcile concurrent changes and
+continue outside Cliphist. Prefer a search/launcher process boundary or another
+file-backed interaction path not already owned by §§57/60/76/77.

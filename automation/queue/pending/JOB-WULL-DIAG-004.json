@@ -1,0 +1,20 @@
+{
+  "id": "JOB-WULL-DIAG-004",
+  "profile_id": "profile-918f783d49cd45cd",
+  "base_sha": "313c296d687fa67fc70edd7390f488ab6d4bc944",
+  "actions": [
+    {
+      "diagnostics": {
+        "checks": ["services", "processes", "journal", "git", "runtime"],
+        "lines": 60
+      }
+    },
+    {
+      "exec": {
+        "argv": ["bash", "-lc", "err=$(mktemp); trap 'rm -f \"$err\"' EXIT; if command -v qmlscene >/dev/null 2>&1; then timeout 6s qmlscene -I . modules/abyss/companion/AbyssCompanionProof.qml >/dev/null 2>\"$err\"; rc=$?; else timeout 6s qml -I . modules/abyss/companion/AbyssCompanionProof.qml >/dev/null 2>\"$err\"; rc=$?; fi; [ \"$rc\" -eq 124 ] && exit 0; grep -Eq 'module .qs(\\.|\")|qs.modules|is not installed' \"$err\" && exit 41; grep -Eq 'QtQuick.Shapes|module .*Shapes' \"$err\" && exit 42; grep -Eqi 'display|wayland|xcb|platform plugin|could not connect' \"$err\" && exit 43; grep -Eqi 'Type .* unavailable|is unavailable' \"$err\" && exit 44; grep -Eqi 'Cannot assign|non-existent property|Invalid property|ReferenceError' \"$err\" && exit 45; [ \"$rc\" -eq 0 ] && exit 0; exit 46"],
+        "cwd": ".",
+        "timeout_seconds": 15
+      }
+    }
+  ]
+}

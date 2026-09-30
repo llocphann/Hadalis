@@ -21408,3 +21408,120 @@ outside GlobalActions. Prefer another recurring or collection-scaling private
 derivation with no existing owner; avoid reopening the dense AppSearch,
 LauncherSearch, MPRIS, Network and notification clusters unless a genuinely
 distinct source owner is found.
+
+
+## 89. Round 75 — MemoryPressure maps-scan allocation audit (2026-09-30)
+
+### Snapshot and ownership reconciliation
+
+- Authoritative `dev` at round start and immediately before this write:
+  `59f1b4f705e075158104188abea08a547faf8f7f` (Round 74).
+- No intervening commit exists after Round 74.
+- `AGENTS.md`, `to-do/README.md` and the newest handoff tail were re-read.
+- A fresh service inventory was taken from the current `dev` tree to avoid
+  repeatedly mining already-dense areas.
+- Existing ownership was searched before promotion:
+  - §24.3 owns the startup/blocking-read question for
+    `MemoryPressureService`;
+  - §18.2 already records that the steady-state monitor is a sparse 5-minute
+    in-process `/proc/self/maps` read rather than shell/grep polling.
+- No prior item owns the local `_applyMapsText()` collection allocation below.
+- Nearby `WidgetPowerManager` opportunities were also checked and not
+  re-counted: §§40.18-40.20 already own its duplicate pause decisions,
+  output-eligibility reread and conditional window-presence memo.
+
+### 89.1 MemoryPressure can scan maps text by newline bounds without materializing every line — CONFIRMED / P1-low startup + P2 periodic
+
+Path:
+
+- `services/MemoryPressureService.qml`, `_applyMapsText(rawText)`.
+
+Current implementation:
+
+```qml
+const lines = String(rawText ?? "").split("\n")
+for (const line of lines) {
+    if (!line.includes("JSGCHeap"))
+        continue
+    total++
+    if (line.includes("deleted"))
+        deleted++
+}
+```
+
+The monitor needs only two counts:
+
+- number of lines containing `JSGCHeap`;
+- among those lines, number also containing `deleted`.
+
+The full line array and line substrings are not published or retained.
+
+Strict-safe direction:
+
+1. keep the exact `String(rawText ?? "")` coercion once;
+2. walk newline boundaries with `indexOf("\n", start)`;
+3. for each logical line range `[start, end)`, search
+   `JSGCHeap` from `start` and accept it only when the match index is
+   strictly before `end`;
+4. only for a matching line, search `deleted` with the same line-bound check;
+5. increment the same counters;
+6. continue after the newline until the string is exhausted.
+
+No line substring is required. A final unterminated line is processed exactly
+like the final element produced by `split("\n")`.
+
+Strict-lossless proof:
+
+- the same nullish-to-empty String coercion occurs before scanning;
+- literal LF remains the only line delimiter;
+- CR in CRLF remains part of the logical line, exactly as with
+  `split("\n")`;
+- empty lines and a trailing final empty split element contribute no counts in
+  either implementation;
+- a line containing multiple `JSGCHeap` occurrences still increments
+  `total` exactly once;
+- `deleted` is tested only when `JSGCHeap` exists in the same logical line;
+- occurrences in the following line cannot leak across the line boundary
+  because match indices are range-checked;
+- embedded NUL/Unicode text remains ordinary JS string content;
+- counter assignment order, threshold comparison and notification path remain
+  unchanged;
+- no FileView read/reload cadence, blocking semantics, timer cadence, IPC,
+  warning threshold or notification timing is changed.
+
+For an L-line maps snapshot:
+
+- full `split` result array: **1 -> 0**;
+- line substrings created by split: **about L -> 0**;
+- the scan remains O(text length).
+
+The value is workload-shaped rather than constant: this service exists
+specifically because deleted JSGCHeap mappings can accumulate, so the temporary
+line-array cost grows with the condition being monitored. The same reduction
+applies to the startup prime and every five-minute sample.
+
+This finding is independent of §24.3. Removing transient parsing allocations
+does **not** claim to solve the separate potential UI-thread blocking cost of
+`blockLoading: true`.
+
+### 89.2 WidgetPowerManager was not reopened
+
+The current `WidgetPowerManager.qml` still exposes tempting repeated
+workspace/window scans, but those are already owned by §§40.18-40.20.
+
+No new count is added here. Any future work should extend those owners rather
+than relabeling the same nested-scan problem.
+
+### 89.3 Round-75 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one** (§89.1,
+**CONFIRMED / P1-low startup + P2 periodic**).
+
+No runtime/product/native/script code was modified. Only this handoff was
+updated; no deterministic local job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent work, then move
+outside MemoryPressure/WidgetPowerManager. Prefer an under-covered event/process
+boundary such as WallpaperListener, AntiFlashbangSampler, DeviceStatePersistence
+secondary paths, or another service whose collection/process cost scales with
+real user/session state.

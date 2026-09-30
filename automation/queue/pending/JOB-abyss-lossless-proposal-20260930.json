@@ -1,0 +1,17 @@
+{
+  "id": "JOB-abyss-lossless-proposal-20260930",
+  "base_sha": "45551e186f078395f8c40c562b0cf1304fc16230",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-abyss-lossless-allocations.py",
+          "--proposal"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 90
+      }
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 Status: **deferred research / future migration plan only**. This note does not authorize a runtime cutover by itself.
 
-Research baseline: `dev` at `bea23fc621f0c13d951140c293d546566f141349` on 2026-09-30. Re-fetch the current `dev` HEAD and re-audit every referenced file before implementation because Automation is still changing.
+Research baseline: initial audit at `bea23fc621f0c13d951140c293d546566f141349`; second-pass boundary audit through `00086e6097f23a35fdd13fcbca5df2beed2dc74f` on 2026-09-30. Re-fetch the current `dev` HEAD and re-audit every referenced file before implementation because Automation is still changing.
 
 Related contract: [`docs/AUTOMATION_ARCHITECTURE.md`](../../docs/AUTOMATION_ARCHITECTURE.md).
 
@@ -12,10 +12,11 @@ Do **not** rewrite all Automation in Rust. Migrate the Linux/process-sensitive e
 
 Priority order:
 
-1. **P0 — Rust process execution substrate**
-   - `automation/worker/process.py`
-   - the low-level execution parts of `automation/worker/runner.py`
-   - `automation/worker/child.py`
+1. **P0 — native Rust helper for the `exec` action only**
+   - add a small `inir-automation-exec` helper behind the existing `automation/worker/runner.py` `exec` branch;
+   - keep `runner.py` as the Python action orchestrator/security envelope;
+   - keep `automation/worker/process.py` for Git, diagnostics, deployment and other Python orchestration;
+   - retire `automation/worker/child.py` from the exec path only after native parity is proven.
 2. **P1 — Rust privilege broker**
    - broker/server and elevated process supervision in `automation/worker/privilege.py`
 3. **P2 — benchmark-gated worker daemon migration**
@@ -30,6 +31,8 @@ Initially keep these in Python:
 - `automation/manager/control.py`
 - `automation/worker/diagnostics.py`
 - `automation/worker/deployment.py`
+- `automation/worker/process.py` as the Python subprocess utility for non-exec orchestration
+- `automation/worker/runner.py` as the job/action orchestrator during P0
 - install/test/validation scripts
 
 Keep the ChatGPT Desktop/CDP adapter in JavaScript unless that transport boundary is redesigned separately.
@@ -60,6 +63,8 @@ The current execution path already operates at Linux primitive level rather than
 
 Those responsibilities are a better fit for a small typed native component than for expanding Python + `ctypes`/Linux-specific glue. The expected gain is primarily stronger lifecycle/resource correctness and lower process-management overhead; any speed or memory claim must still be benchmarked.
 
+**Second-pass scope refinement:** `bounded_run` is also used by worker Git operations, private diagnostics, shell deployment and the privilege path. Therefore P0 must **not** replace `bounded_run` globally or delete `process.py`. The first Rust boundary should replace only the arbitrary job `exec` child lifecycle. Python remains responsible for the surrounding job state machine and the other external-tool orchestration.
+
 ## Why the privilege broker is P1
 
 `automation/worker/privilege.py` is a security boundary. It currently implements:
@@ -81,19 +86,15 @@ Hadalis already ships a production Rust workspace in `native/` using Rust 1.95 /
 
 The native backend also already has a Python rollback strategy. Reuse its build/install/CI lessons, but **do not copy its automatic runtime fallback semantics blindly** for Automation.
 
-Candidate future layout:
+Candidate future layout should start smaller than the first audit proposed:
 
 ```text
 native/
-├── crates/
-│   ├── inir-protocol/
-│   ├── inir-automation-protocol/     # versioned serde request/result types
-│   └── inir-automation-process/      # Linux process/pipe/identity primitives
-├── inir-automation-exec/             # bounded action execution
-└── inir-automation-privileged/       # Unix-socket privilege broker
+├── inir-automation-exec/             # P0: bounded exec-action supervisor + hidden child-exec mode
+└── inir-automation-privileged/       # P1: Unix-socket privilege broker
 ```
 
-A later `inir-automation-worker` daemon should be added only if profiling justifies P2.
+Do not create a shared Automation protocol/process crate before it has two real consumers. When P1 starts, extract the stable process/receipt primitives into `native/crates/inir-automation-process/` only if the exec and privilege implementations actually share them. A later `inir-automation-worker` daemon should be added only if profiling justifies P2.
 
 Do not introduce an async runtime merely because the code is moving to Rust. Start with the smallest blocking/polling implementation that preserves the current semantics, then benchmark.
 
@@ -161,11 +162,21 @@ Do not infer a required percentage improvement in advance.
 
 ### Phase 1 — dormant Rust exec helper
 
-Add Rust process/protocol crates and a dormant `inir-automation-exec` binary while Python remains the default.
+Add one dormant `inir-automation-exec` binary while Python remains the default. Do not move the whole runner or generic `bounded_run` in this phase.
 
-Prefer migrating the `exec` action substrate first rather than rewriting all action kinds. Python may continue orchestrating diagnostics, deployment and privilege actions while the Rust helper owns the child process lifecycle.
+Recommended P0 handoff:
 
-The native helper must be able to durably expose the spawned process identity before arbitrary external code is considered safely executing. Design the IPC/file protocol around this requirement rather than around convenience.
+1. Python resolves/validates `cwd`, builds the allowlisted environment with the existing `session_env`, computes the existing Python `command_sha256`, verifies native protocol capability, selects the backend, then writes the durable action `dispatching` intent including private `executor_backend` and protocol metadata.
+2. Python invokes `inir-automation-exec` with only bounded control arguments such as spec/receipt path and action index. Do not expose the target job argv as the helper's own process argv.
+3. The Rust supervisor validates that the request belongs to the expected private worker/action directory and that the existing receipt is the matching `dispatching` intent.
+4. A hidden child-exec mode arms `PR_SET_PDEATHSIG`, verifies its expected parent, updates the same action receipt to `executing` with the target process identity, fsyncs it, then execs the target in place. Preserve the current identity shape: integer `pid`, string `start_ticks`, string `boot_id`.
+5. The Rust supervisor owns target pipe draining, full-stream hashes/counts, per-stream capture limits, timeout and process-group TERM/KILL behavior. It must react to cancellation/termination without letting the target group silently escape.
+6. Target stdout/stderr must **not** be written durably by Rust before sanitization. Return bounded captured bytes through an ephemeral parent channel (for example base64 fields in the helper's captured JSON stdout); Python decodes with its existing UTF-8 `errors="replace"`, applies `privacy.redact`, adds evidence/source/timestamp provenance and writes the final `finished` action receipt.
+7. If the helper or Python runner disappears after dispatch but before the Python `finished` receipt is durable, preserve the existing conservative result: `indeterminate` / recovery required, never an automatic replay.
+
+The helper's own exit code is a **transport/protocol status**, not the target command exit code. A successfully observed target that exits nonzero should still allow the helper itself to return transport success with the target `exit_code` inside the result envelope.
+
+This split keeps privacy policy and job orchestration in Python while moving the Linux child lifecycle into Rust.
 
 ### Phase 2 — explicit A/B parity selector
 
@@ -335,19 +346,105 @@ Keep Python/shell unless a specific measured reason requires otherwise.
 
 Keep JavaScript while the Desktop adapter is tied to Electron/CDP semantics. A separate persistent transport redesign may be valuable, but it is not part of this Rust migration.
 
-## Open design questions before implementation
+## Second-pass design decisions
 
-Resolve these from current-head evidence before coding:
+The current source resolves several questions from the first audit.
 
-- Should the exec helper communicate through a versioned request/result file, stdin/stdout, or a Unix socket?
-- Which component owns the durable `executing` receipt in the final P0 design?
-- Should process primitives be a shared Rust library used by both exec and privilege binaries?
-- What private native build identity is sufficient to diagnose stale binary/source mismatches?
-- Can session-environment discovery remain Python-owned, or should its exact current behavior move into the native helper?
-- Which crash points need a purpose-built fault-injection hook for deterministic tests?
-- Does worker-daemon profiling justify P2 at all?
+### P0 transport and receipt ownership
 
-Do not answer these by preference alone; use parity fixtures and measurements.
+Use the existing durable filesystem ledger for request identity and phase state; do not add a persistent socket for the exec helper. The helper result itself should cross an **ephemeral pipe**, not a durable raw-output file.
+
+Phase ownership should be explicit:
+
+- Python writes `dispatching`, including backend/protocol selection and the legacy `command_sha256`.
+- Rust child-exec writes `executing` immediately before target exec, preserving the existing intent fields and durably recording process identity.
+- Python writes `finished` only after it has decoded and redacted captured output and added provenance.
+
+This deliberately leaves a crash after target completion but before Python finalization as `indeterminate`, matching the current conservative semantics instead of persisting unredacted command output.
+
+A JSON result envelope with base64-encoded captured bytes is a reasonable P0 transport because the capture is already bounded. It keeps invalid UTF-8 byte-exact until Python applies the current decoder/redactor. Derive the outer helper capture bound from the configured per-stream capture limit; never make it unbounded.
+
+### Keep environment discovery in Python
+
+`session_env` has Hadalis-specific fallback discovery for Wayland, Niri and the user D-Bus socket. It is not a generic process primitive. Keep it in Python and pass the final allowlisted environment map to Rust. This prevents a second implementation from choosing a different compositor/session socket.
+
+### Keep legacy digests Python-owned where practical
+
+The current `command_sha256` is computed from Python `json.dumps(argv)`; changing serializers can change hashes for spacing/escaping/non-ASCII data. During P0, compute this digest in Python before dispatch and preserve it through the Rust helper rather than inventing a second canonicalization.
+
+Likewise, the job `input_sha256` remains owned by the Python daemon because it hashes the exact Git job text.
+
+### Rust binary layout
+
+For P0, prefer one `inir-automation-exec` binary with a private/hidden child-exec mode over two separately packaged binaries. The repository already uses direct `libc::prctl` parent-death handling in `inir-mpdd`, so this approach matches existing native style without introducing an async runtime.
+
+Extract a shared process crate only when P1 proves that the privilege broker needs the same primitives.
+
+### Capability/version check
+
+Add a non-mutating capability command that returns at least binary name, protocol version, package version and optional build source identity. Protocol compatibility is the hard gate; exact source SHA should be diagnostic only because Hadalis already supports services running from a source checkout that differs from the deployed Quickshell tree.
+
+Probe capability **before** writing an action's `dispatching` intent. If the selected Rust backend is unavailable or incompatible at that point, Python may remain selected for that new action. After `dispatching`, backend switching is forbidden.
+
+### Privilege service boundary
+
+Keep the privilege broker a separate same-user service. Today `hadalis-worker.service` has `NoNewPrivileges=yes`, while `hadalis-privilege.service` deliberately does not because it must invoke the fixed `sudo`/polkit elevation path. A Rust migration must preserve that separation; do not make the worker privileged and do not run the broker itself as root.
+
+Backend selection for the privilege service should be fixed when the service starts. If a Rust broker crashes after a request may have been delivered, systemd may restart the same backend, but a dispatcher must not silently switch to Python and replay the request.
+
+The broker's existing receipt digest is based on Python `json.dumps(spec, sort_keys=True)`. Before P1 cutover, update the Python broker/reader to understand an explicit digest scheme or otherwise provide backward-compatible comparison of legacy receipts. Do not introduce Rust receipts that the Python rollback path would reject.
+
+### Packaging/discovery
+
+`native/scripts/install-runtime.sh` currently enumerates four production binaries explicitly, and `setup` builds that qualified runtime into the active runtime tree. A future Automation binary therefore requires explicit install-list and CI updates.
+
+The standalone `scripts/install-hadalis-automation.py` currently does not build Rust. Before production cutover it needs a deterministic source-checkout-local binary discovery/build policy. Do not resolve Automation helpers from an unrelated deployed QML tree.
+
+Use an Automation-specific selector such as `HADALIS_AUTOMATION_EXECUTOR=python|rust`; do not reuse the global `INIR_NATIVE_BACKEND` selector because Automation has stricter no-replay fallback semantics.
+
+### P2 daemon economics
+
+The worker daemon performs external Git operations and also fsyncs its heartbeat/state through the existing durable writer. Those costs can dominate Python interpreter overhead. Before considering a Rust daemon, separately measure Git latency, heartbeat fsync cost and Python CPU/RSS. Do not attribute I/O latency to the language.
+
+The manager is also still receiving correctness/concurrency changes on current `dev` (including nonblocking shared Git observation at `00086e6097f23a35fdd13fcbca5df2beed2dc74f`), which is another reason not to port that state machine while its contract is actively moving.
+
+## Additional failure cases discovered in the second pass
+
+Add these to the P0/P1 qualification matrix:
+
+- Python runner receives SIGTERM while the Rust helper is supervising a live target;
+- Rust supervisor receives SIGTERM and must terminate the target process group before exiting;
+- Rust supervisor is SIGKILLed after the child wrote `executing`;
+- target completes but the result pipe breaks before Python writes `finished`;
+- target emits invalid UTF-8 and embedded NUL bytes;
+- helper JSON/base64 result reaches its maximum derived transport size;
+- Rust capability mismatch is detected before `dispatching`;
+- a stale/mismatched helper is discovered only after an existing Rust `dispatching` receipt (must not fall back);
+- legacy Python `command_sha256` remains identical for non-ASCII argv;
+- privilege broker replays a legacy Python receipt after Rust cutover;
+- privilege broker Rust receipt remains readable after an explicit rollback to Python;
+- service stop/restart while an elevated request has been dispatched but its response is lost;
+- a target forks a same-process-group child;
+- separately document behavior for a target that deliberately creates a new session/process group. Process-group containment is the current contract; stronger hostile-descendant containment would be a separate design, not an implicit promise of this migration.
+
+For fault testing, prefer dependency-injected Rust unit tests plus external kill-at-observed-phase integration tests. Do not add production fault-injection environment variables unless a crash boundary cannot otherwise be exercised deterministically.
+
+## Remaining open questions before implementation
+
+- Does the ephemeral result channel use base64 JSON on stdout or a dedicated inherited binary FD? Base64 JSON is simpler and byte-exact but adds bounded encoding overhead.
+- What exact helper transport-size formula and hard ceiling should be enforced for the configured maximum capture?
+- Should the Rust atomic receipt writer be local to the exec binary in P0, then extracted only when the privilege broker needs it?
+- Does live benchmarking justify P2 worker-daemon migration at all?
+
+Resolve the remaining questions with fixtures and measurements, not language preference.
+
+## Security/systemd constraints to preserve
+
+The installed worker already has `KillMode=control-group`, `TasksMax=256`, `MemoryMax=2G`, `CPUQuota=200%` and `NoNewPrivileges=yes`. The Python runner additionally sets core/no-file/address-space/CPU rlimits so manual/standalone execution keeps a safety envelope. Keeping the Python runner in P0 preserves those limits automatically for the Rust helper and its target descendants.
+
+Do not weaken these layers merely because Rust is memory safe. Rust protects the helper implementation; it does not replace process/cgroup/resource policy.
+
+The privilege service has its own smaller task/memory bounds and intentionally separate elevation semantics. Preserve the exact fixed-command model, including the elevated timeout and `systemctl ... --no-block` behavior for restarts.
 
 ## Completion definition
 

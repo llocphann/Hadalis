@@ -1,36 +1,14 @@
 # Hadalis Chat Bridge
 
-This directory is the deterministic control layer between ChatGPT Desktop and the Hadalis repository workflow.
+ChatGPT is the only reasoning agent. This layer transports explicit objectives and interprets only loop directives. Worker commands and code decisions come from ChatGPT; GitHub is authoritative for repository state. Session IDs, Desktop state, raw logs and credentials stay private locally.
 
-## Non-negotiable architecture
+Production uses `native_adapter.mjs` and `native_cli.mjs`, called by `automation.manager.daemon`. The adapter probes installed Desktop renderer capabilities, uses its authenticated HTTP/stream service and never reads auth tokens or cookies. Conversation/user-message identity drives polling independently of the selected chat, composer, project and UI toolbar. There is no DOM, keyboard, navigation or coordinate fallback for managed sessions. Unsupported builds fail closed before submission. Legacy DOM/controller modules remain for compatibility tests, not as the production scheduler.
 
-- **ChatGPT is the only reasoning agent.**
-- The bridge does not choose commands, generate patches, interpret failures semantically, alter goals, or decide development steps.
-- The local worker executes only explicit jobs written by ChatGPT and returns mechanical evidence.
-- GitHub/repository state is the durable source of truth.
-- Desktop/session state such as CDP targets, PIDs, retry counters, and conversation identifiers stays local and must not be committed.
+Repository profiles carry the literal `[@GitHub](plugin://github@openai-curated-remote)` mention and require current dev, AGENTS.md and verified GitHub access. The native request binds the exact enabled GitHub plugin capability. Generic non-repository profiles may disable that requirement. All profiles stay in ChatGPT without switching or handing off to Work.
 
-## Autonomous prompt contract
+A final assistant message must belong to the exact submitted user turn, have successful terminal status and end_turn, and contain exactly one final directive:
 
-Every automatically injected prompt starts with the literal connector mention:
-
-```text
-[@GitHub](plugin://github@openai-curated-remote)
 ```
-
-The prompt then requires ChatGPT to verify access to `llocphann/Hadalis` and fetch the current `dev` HEAD before reasoning from repository state. If GitHub is unavailable, expired, disconnected, or lacks access, ChatGPT emits:
-
-```text
-HADALIS_LOOP:CONNECTOR_BLOCKED GITHUB
-```
-
-The bridge must stop automatic resubmission in that state; otherwise an expired connector would create a retry loop.
-
-## Loop markers
-
-A completed assistant response contains exactly one machine-readable marker:
-
-```text
 HADALIS_LOOP:WAIT_RESULT JOB-000127
 HADALIS_LOOP:CONTINUE
 HADALIS_LOOP:ROTATE
@@ -38,24 +16,6 @@ HADALIS_LOOP:DONE
 HADALIS_LOOP:CONNECTOR_BLOCKED GITHUB
 ```
 
-`protocol.py` parses the marker. `controller.py` maps it to a deterministic state transition. Neither module interprets repository contents or decides what development work should happen next.
+The Python protocol validates the marker. Streaming text, tool steps, user prompts and replies from another user turn cannot complete a receipt. The scheduler saves submission intent before IPC and completion before continuation. An ambiguous send only permits observation of its original message ID. Read-only stream reattachment does not create a user message or a new generation. A server-proven terminal failure can schedule a distinct reconciliation step; it never replays uncertain effects. Project/conversation IDs survive Desktop restarts and reboot. Independent profiles progress through a bounded scheduler and resource-specific leases.
 
-## Desktop action policy
-
-The production controller should prefer these mechanisms in order:
-
-1. semantic DOM discovery and activation through CDP;
-2. a verified internal Electron command/IPC action when it is more stable than DOM;
-3. niri focus plus native Wayland input as a fallback;
-4. coordinate clicking is not part of the normal control path.
-
-Known ChatGPT Desktop observations from the local feasibility probes:
-
-- main renderer: exact URL `app://-/index.html`;
-- project new-chat control: `New chat in Hadalis Cloud`;
-- valid main composer labels include `Ask ChatGPT` and `New chat in Hadalis Cloud`;
-- Send is exposed as an enabled/disabled semantic button;
-- generation start is observable through a Stop control;
-- generation end is observable when Stop disappears and Regenerate response becomes available.
-
-Selectors must be verified by postconditions rather than assumed to remain valid forever.
+See automation/manager/README.md and docs/AUTOMATION_ARCHITECTURE.md for migration, checkpoint, recovery, evidence and acceptance contracts. Run `node scripts/test-hadalis-native-session.mjs` for message projection behavior; `HADALIS_TEST_INSTALLED_DESKTOP=1` also probes the installed adapter contract. Real acceptance is opt-in and never changes production profiles.

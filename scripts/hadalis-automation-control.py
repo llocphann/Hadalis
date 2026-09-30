@@ -21,6 +21,8 @@ def main(argv: list[str]) -> dict:
         return control.control_service(args[0], args[1])
     if operation == "profile-action" and len(args) == 2:
         return control.profile_action(args[0], args[1])
+    if operation == "job-cancel" and len(args) == 1:
+        return control.cancel_job(args[0])
     if operation == "profile-create" and len(args) == 1:
         return control.create_profile(args[0])
     if operation == "profile-duplicate" and len(args) == 2:

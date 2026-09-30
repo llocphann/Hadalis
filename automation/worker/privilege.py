@@ -102,6 +102,8 @@ def handle(payload, executor=bounded_run):
                 on_spawn=lambda identity:_write(path,{**receipt,"phase":"executing","process":identity}))
             result["stdout"]=redact(result["stdout"]);result["stderr"]=redact(result["stderr"])
             result["status"]="passed" if result["exit_code"]==0 else "failed"
+            if result["status"]!="passed":
+                result["error_code"]="administrator_authentication_required" if re.search(r"password is required|not authorized|authentication failed",result["stderr"],re.I) else "administrator_command_failed"
         except Exception:result={"status":"indeterminate","exit_code":None,"recovery_required":True}
         _write(path,{**receipt,"phase":"finished","result":result,"finished_at_unix":int(time.time())})
         return result

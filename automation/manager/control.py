@@ -8,7 +8,7 @@ import time
 from .model import (CUSTOM_CONTINUATION_PROMPT, CUSTOM_ROTATION_PROMPT,
                     DEFAULT_ID, MAX_PROFILES, MAINTENANCE_DEFAULTS, PROFILE_DEFAULTS,
                     default_prompt, new_profile, update_profile)
-from .store import change, change_state, event, profile_state, read_snapshot, state_dir
+from .store import change, change_state, event, profile_state, read_snapshot, state_dir, _write
 
 UNITS = {
     "chatgpt": "hadalis-chatgpt.service",
@@ -117,8 +117,11 @@ def status() -> dict:
     """
     config, state, issues = read_snapshot()
     services = service_states()
+    pool_path=state_dir()/"worker/pool.json"
+    try:pool=json.loads(pool_path.read_text()) if pool_path.exists() else {}
+    except (OSError,ValueError):pool={"last_error":"Worker status receipt unreadable"}
     return {"ok": True, "config": config, "runtime": state, "issues": issues,
-            "services": services,
+            "services": services,"worker_pool":pool,
             "scheduler_problem": _scheduler_problem(services, state, int(time.time())),
             "capabilities": {
                 "archive_chat": False, "delete_chat": False,
@@ -149,7 +152,6 @@ def _await_dispatch(profile_id: str, command_seq: int) -> None:
         _, state, issues = read_snapshot()
         item = state["profiles"].get(profile_id)
         if not item: raise RuntimeError("profile removed before dispatch")
-        if issues: raise RuntimeError("invalid Automation configuration")
         heartbeat = state.get("manager_heartbeat_at_unix")
         if type(heartbeat) is int and 0 <= int(time.time()) - heartbeat <= 15 and state["command_ack_seq"] >= command_seq:
             if item["desired"] != "run": raise RuntimeError("profile stopped before dispatch")
@@ -180,6 +182,7 @@ def profile_action(action: str, profile_id: str) -> dict:
                 item["status"] = "scheduled"
             if action == "restart":
                 if item["job_id"] and not item["pending"]:
+                    _write(state_dir()/"worker/cancellations"/item["job_id"],{"profile_id":profile_id,"reason":"profile restart","at_unix":int(time.time())})
                     event(state, profile_id, "job_wait_abandoned", item["job_id"])
                     item.update(job_id=None, next_job_poll_at_unix=None)
                 item["request"] = "restart"
@@ -209,6 +212,18 @@ def profile_action(action: str, profile_id: str) -> dict:
             change_state(failed)
             raise
     return {"ok": True}
+
+
+def cancel_job(profile_id):
+    def cancel(c,s):
+        item=s["profiles"].get(profile_id)
+        if not item or not item["job_id"]:raise ValueError("profile has no active local job")
+        job=item["job_id"]
+        if not isinstance(job,str) or not __import__('re').fullmatch(r"JOB-[A-Za-z0-9._-]+",job):raise ValueError("invalid job identity")
+        _write(state_dir()/"worker/cancellations"/job,{"profile_id":profile_id,"reason":"user cancellation","at_unix":int(time.time())})
+        event(s,profile_id,"job_cancel_requested",job)
+    change_state(cancel)
+    return {"ok":True}
 
 
 def request_park_unresolved(owner_id: str) -> dict:

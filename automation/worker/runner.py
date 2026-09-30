@@ -12,7 +12,7 @@ import time
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from automation.manager.store import _write
-from automation.worker.process import bounded_run, process_identity
+from automation.worker.process import bounded_run, process_identity, session_env
 from automation.worker.privacy import redact
 
 ENV_KEYS={"PATH","HOME","USER","LOGNAME","LANG","LC_ALL","DISPLAY","WAYLAND_DISPLAY",
@@ -69,7 +69,7 @@ def execute_spec(spec: dict) -> dict:
             def spawned(identity):
                 intent.update(phase="executing",process=identity);_write(path,intent)
             result=bounded_run(argv,cwd=cwd,timeout=body.get("timeout_seconds",600),
-                env={k:v for k,v in os.environ.items() if k in ENV_KEYS},capture=spec["capture"],
+                env=session_env(ENV_KEYS),capture=spec["capture"],
                 cancelled=lambda:cancelled() or (root.parent.parent/"cancellations"/job["id"]).exists(),
                 on_spawn=spawned,execution_receipt=path)
             result.update(index=index,kind=kind,command_sha256=hashlib.sha256(json.dumps(argv).encode()).hexdigest())

@@ -28,7 +28,7 @@ def main():
             jobs[job]=json.dumps({"id":job,"base_sha":"a"*40,"profile_id":"profile-a",
                 "actions":[{"exec":{"argv":[sys.executable,"-c",script],"timeout_seconds":timeout}}]})
             return w.process_job(f"{w.QUEUE}/{job}.json",publish_now=False)
-        with patch.object(w,"remote_text",side_effect=lambda p:jobs[Path(p).stem]), \
+        with patch.object(w,"remote_text",side_effect=lambda p,ref:jobs[Path(p).stem]), \
              patch.object(w,"introducing_commit",return_value="b"*40), \
              patch.object(w,"first_parent",return_value="a"*40),patch.object(w,"workspace_for",side_effect=clone):
             counter=base/"counter"

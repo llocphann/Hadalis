@@ -28,6 +28,8 @@ def main():
         vendor.write_text(original)
         data_home = base / "user-data"
         with patch.dict(os.environ, {"XDG_DATA_HOME": str(data_home),
+                                     "XDG_STATE_HOME": str(base/"state"),
+                                     "XDG_CONFIG_HOME": str(base/".config"),
                                      "XDG_DATA_DIRS": str(base / "vendor")}), \
              patch.object(installer.Path, "home", return_value=base), \
              patch.object(sys, "argv", ["install-hadalis-automation.py"]), \
@@ -53,6 +55,14 @@ def main():
         assert "WantedBy=graphical-session.target" in host
         assert "After=graphical-session.target" not in host
         assert "PartOf=graphical-session.target" in host
+        bridge=(unit_dir/"hadalis-chat-bridge.service").read_text()
+        assert "WantedBy=default.target" in bridge
+        assert "Requires=hadalis-chatgpt" not in bridge and "PartOf=" not in bridge
+        worker=(unit_dir/"hadalis-worker.service").read_text()
+        assert "TasksMax=" in worker and "MemoryMax=" in worker and "NoNewPrivileges=yes" in worker
+        broker=(unit_dir/"hadalis-privilege.service").read_text()
+        assert "NoNewPrivileges=yes" not in broker
+        assert (data_home/"hadalis-automation/control.py").exists()
         # Verify the generated units using the real systemd dependency parser.
         if shutil.which("systemd-analyze"):
             result = subprocess.run(["systemd-analyze", "--user", "verify",

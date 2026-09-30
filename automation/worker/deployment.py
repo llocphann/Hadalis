@@ -110,9 +110,15 @@ def deploy(spec, workspace, job_id):
         _write(path,receipt)
         try:
             # Acceptance is required on the exact pinned workspace before touching the shell.
-            result=bounded_run(["bash","scripts/validate-maintainer-local.sh"],cwd=workspace,timeout=1800,capture=32768)
+            result=bounded_run(["bash","scripts/validate-maintainer-local.sh","--current-repo"],cwd=workspace,timeout=1800,capture=32768)
             qml=[str(stage/name) for name in spec["files"] if Path(name).suffix in {".qml",".js"}]
-            syntax=bounded_run(["qmllint",*qml],cwd=stage,timeout=20,capture=32768) if qml else {"exit_code":0}
+            parser=next((p for p in ("/usr/lib/qt6/bin/qmlformat","/usr/lib/x86_64-linux-gnu/qt6/bin/qmlformat") if Path(p).exists()),shutil.which("qmlformat"))
+            syntax={"exit_code":0}
+            if qml and not parser:syntax={"exit_code":127}
+            elif parser:
+                for file in qml:
+                    syntax=bounded_run([parser,file],cwd=stage,timeout=20,capture=32768)
+                    if syntax["exit_code"]:break
             if result["exit_code"] or syntax["exit_code"]:
                 receipt.update(phase="validation_failed",validation_exit=result["exit_code"],syntax_exit=syntax["exit_code"]);_write(path,receipt)
                 return {"status":"failed","exit_code":1,"error_code":"shell_validation_failed"}

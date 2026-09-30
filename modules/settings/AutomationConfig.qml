@@ -14,7 +14,7 @@ ContentPage {
     settingsPageIndex: 35
     settingsPageName: Translation.tr("Automation")
 
-    readonly property string bridge: Quickshell.shellPath("scripts/hadalis-automation-control.py")
+    readonly property string bridge: (Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share") + "/hadalis-automation/control.py"
     property string activeSection: "overview"
     property string selectedProfileId: ""
     property var snapshot: null
@@ -23,21 +23,11 @@ ContentPage {
     property string errorText: ""
     property string pendingRemoveId: ""
     property bool pendingRemoveUnresolved: false
-    property string pendingParkOwnerId: ""
     property string pendingCleanupScope: ""
     property string pendingCleanupField: ""
     property string diagnosticText: ""
     property string logMessage: ""
     readonly property bool logsBusy: logsProcess.running
-    readonly property string blockedOwnerId: root.selectedState?.status === "waiting_owner"
-        ? (root.snapshot?.runtime?.owner_id ?? "") : ""
-    readonly property var blockedOwnerState: root.blockedOwnerId
-        && root.snapshot && root.snapshot.runtime && root.snapshot.runtime.profiles
-        ? (root.snapshot.runtime.profiles[root.blockedOwnerId] ?? null) : null
-    readonly property bool canParkBlockedOwner: !!root.blockedOwnerId
-        && root.blockedOwnerState?.desired === "stopped"
-        && root.blockedOwnerState?.pending !== null
-        && root.blockedOwnerState?.status === "waiting_desktop"
     property int nowUnix: Math.floor(Date.now() / 1000)
     readonly property bool busy: actionProcess.running
     readonly property var profiles: root.snapshot?.config?.profiles ?? []
@@ -89,7 +79,6 @@ ContentPage {
     function cancelConfirmation(): void {
         root.pendingRemoveId = ""
         root.pendingRemoveUnresolved = false
-        root.pendingParkOwnerId = ""
         root.pendingCleanupScope = ""
         root.pendingCleanupField = ""
     }
@@ -123,18 +112,6 @@ ContentPage {
             if (unresolved) args.push("confirm-unresolved")
             root.runAction(args)
         }
-    }
-
-    function confirmParkBlockedOwner(): void {
-        if (!root.canParkBlockedOwner || root.busy) return
-        root.pendingParkOwnerId = root.blockedOwnerId
-    }
-
-    function applyParkBlockedOwner(): void {
-        const id = root.pendingParkOwnerId
-        root.cancelConfirmation()
-        if (id && id === root.blockedOwnerId)
-            root.runAction(["profile-park-unresolved", id])
     }
 
     function refreshLogs(): void {
@@ -173,7 +150,10 @@ ContentPage {
             rotating: "Rotating chat", paused: "Paused",
             pausing: "Pausing", scheduled: "Scheduled", idle: "Idle", completed: "Completed",
             connector_blocked: "GitHub connector blocked", transport_unavailable: "Transport unavailable",
-            disabled: "Disabled", running: "Running"
+            disabled: "Disabled", running: "Running",
+            submission_uncertain: "Verifying submission", stream_failed: "Recovering response",
+            recovering_generation: "Recovering workflow", recovery_required: "Recovery needs review",
+            session_changed: "Managed chat changed", session_conflict: "Managed chat conflict", evidence_required: "Evidence needs review"
         }
         return Translation.tr(labels[value] ?? String(value ?? "Unknown"))
     }
@@ -380,19 +360,18 @@ ContentPage {
         visible: root.activeSection === "overview"
         expanded: true
         icon: "hub"
-        title: Translation.tr("Transport ownership")
+        title: Translation.tr("Independent workflows")
         SettingsGroup {
             StyledText {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
-                text: root.snapshot?.runtime?.owner_id
-                    ? Translation.tr("ChatGPT is assigned to %1. Other profiles wait until it stops.").arg(root.profiles.find(p => p.id === root.snapshot.runtime.owner_id)?.name ?? root.snapshot.runtime.owner_id)
-                    : Translation.tr("No profile currently owns the ChatGPT composer.")
+                text: Translation.tr("Each profile keeps its own managed chat. You can use other chats and projects while workflows continue.")
                 color: Appearance.colors.colOnSurface
             }
             SettingsNote {
-                text: Translation.tr("A paused profile keeps its chat. Stop it to let the next queued profile run. Pauses and stops finish the current ChatGPT response first.")
+                text: Translation.tr("Profiles progress independently. Waiting for a response or local job does not block another profile. Backend recovery continues when the shell is closed.")
             }
+            SettingsNote { text: Translation.tr("Local workers: %1 running, limit %2.").arg(root.snapshot?.worker_pool?.running?.length ?? 0).arg(root.snapshot?.worker_pool?.limit ?? 2) }
         }
     }
 
@@ -465,7 +444,8 @@ ContentPage {
                 autoToggle: false
                 onToggledByUser: checked => root.setProfile("enabled", checked)
             }
-            SettingsNote { text: Translation.tr("GitHub is required for Hadalis repository automations. ChatGPT remains the only reasoning agent.") }
+            SettingsSwitch { text: Translation.tr("Require GitHub repository access"); checked: root.selectedProfile?.requires_github ?? true; autoToggle: false; onToggledByUser: checked => root.setProfile("requires_github", checked) }
+            SettingsSwitch { text: Translation.tr("Stop when the objective is complete"); checked: root.selectedProfile?.stop_on_done ?? true; autoToggle: false; onToggledByUser: checked => root.setProfile("stop_on_done", checked) }
             MaterialTextField { id: nameEditor; Layout.fillWidth: true; placeholderText: Translation.tr("Profile name") }
             MaterialTextField { id: descriptionEditor; Layout.fillWidth: true; placeholderText: Translation.tr("Description (optional)") }
             SettingsNote { text: Translation.tr("Project changes apply on the next new chat.") }
@@ -487,6 +467,7 @@ ContentPage {
                 DialogButton { buttonText: Translation.tr("Resume"); enabled: !root.busy && root.selectedState?.desired === "paused"; onClicked: root.runAction(["profile-action", "resume", root.selectedProfileId]) }
                 DialogButton { buttonText: Translation.tr("Stop"); enabled: !root.busy; onClicked: root.runAction(["profile-action", "stop", root.selectedProfileId]) }
                 DialogButton { buttonText: Translation.tr("Restart"); enabled: !root.busy && (root.selectedProfile?.enabled ?? false); onClicked: root.runAction(["profile-action", "restart", root.selectedProfileId]) }
+                DialogButton { buttonText: Translation.tr("Cancel local job"); visible: !!root.selectedState?.job_id; enabled: !root.busy; onClicked: root.runAction(["job-cancel", root.selectedProfileId]) }
                 DialogButton {
                     buttonText: Translation.tr("Remove")
                     enabled: !root.busy
@@ -494,47 +475,14 @@ ContentPage {
                 }
             }
             SettingsNote {
-                visible: root.snapshot?.runtime?.owner_id === root.selectedProfileId
-                    && root.selectedState?.desired !== "stopped"
+                visible: !!root.selectedState?.pending
                 text: Translation.tr("Stop waits for the current response. Remove stops tracking this profile and keeps ChatGPT history.")
             }
             SettingsNote {
                 visible: !!root.selectedState?.status_detail
                 text: root.selectedState?.status_detail ?? ""
             }
-            SettingsNote {
-                visible: root.canParkBlockedOwner
-                warning: true
-                text: Translation.tr("Open the previous profile's original ChatGPT project chat to recover it, or park the unresolved turn to continue.")
-            }
-            Flow {
-                visible: root.canParkBlockedOwner && root.pendingParkOwnerId !== root.blockedOwnerId
-                Layout.fillWidth: true
-                Layout.preferredHeight: childrenRect.height
-                spacing: 6
-                DialogButton {
-                    buttonText: Translation.tr("Park unresolved previous turn")
-                    enabled: !root.busy
-                    onClicked: root.confirmParkBlockedOwner()
-                }
-            }
-            SettingsNote {
-                visible: root.pendingParkOwnerId === root.blockedOwnerId
-                warning: true
-                text: Translation.tr("The old pending baseline is kept, but that profile will require manual reconciliation.")
-            }
-            Flow {
-                visible: root.pendingParkOwnerId === root.blockedOwnerId
-                Layout.fillWidth: true
-                Layout.preferredHeight: childrenRect.height
-                spacing: 6
-                DialogButton { buttonText: Translation.tr("Cancel"); onClicked: root.cancelConfirmation() }
-                DialogButton {
-                    buttonText: Translation.tr("Confirm park and continue")
-                    enabled: !root.busy
-                    onClicked: root.applyParkBlockedOwner()
-                }
-            }
+            SettingsNote { visible: !!root.selectedState?.checkpoint; text: Translation.tr("Checkpoint: %1").arg(root.selectedState?.checkpoint?.summary ?? root.selectedState?.checkpoint?.phase ?? "") }
         }
 
         SettingsGroup {
@@ -588,7 +536,7 @@ ContentPage {
             MaterialTextArea { id: rotationEditor; Layout.fillWidth: true; Layout.preferredHeight: 110 }
             DialogButton { buttonText: Translation.tr("Save rotation"); enabled: !root.busy; onClicked: root.setProfile("rotation_prompt", rotationEditor.text) }
             DialogButton { buttonText: Translation.tr("Reset rotation"); enabled: !root.busy; onClicked: root.runAction(["profile-reset-prompt", root.selectedProfileId, "rotation_prompt"]) }
-            SettingsNote { text: Translation.tr("Mandatory GitHub, current dev, ChatGPT-only and no Work mode rules remain attached to edited prompts.") }
+            SettingsNote { text: Translation.tr("Set a multi-step objective. Workflows preserve checkpoints and local evidence across research, coding, testing and recovery. Repository profiles also require GitHub and current dev.") }
         }
     }
 
@@ -599,10 +547,9 @@ ContentPage {
         icon: "health_and_safety"
         title: Translation.tr("Advanced recovery and cleanup")
         SettingsGroup {
-            ConfigSpinBox { text: Translation.tr("Consecutive polling errors before pause"); from: 0; to: 100; value: root.selectedProfile?.max_poll_errors ?? 3; onValueModified: root.setProfile("max_poll_errors", value) }
             ConfigSpinBox { text: Translation.tr("Retry delay (seconds)"); from: 1; to: 3600; value: root.selectedProfile?.retry_delay_seconds ?? 30; onValueModified: root.setProfile("retry_delay_seconds", value) }
-            ConfigSpinBox { text: Translation.tr("Local result fetch failures before pause"); from: 0; to: 100; value: root.selectedProfile?.max_failures ?? 3; onValueModified: root.setProfile("max_failures", value) }
-            SettingsNote { text: Translation.tr("Polling retries use bounded backoff. A failed submission is never resent automatically; its status needs review.") }
+            SettingsNote { text: Translation.tr("Observation retries automatically with bounded backoff. Uncertain prompts and actions are retained for reconciliation and never resent.") }
+            SettingsNote { text: Translation.tr("Administrator actions require an allowed service and a reason. Authenticate through the system agent or sudo cache. Automation never stores a password.") }
             SettingsSwitch { text: Translation.tr("Archive completed chats (pending desktop support)"); checked: root.selectedProfile?.archive_completed ?? true; autoToggle: false; onToggledByUser: checked => root.setProfile("archive_completed", checked) }
             SettingsSwitch { text: Translation.tr("Delete completed chats (pending desktop support)"); checked: root.selectedProfile?.delete_completed ?? false; autoToggle: false; enabled: !(root.selectedProfile?.archive_completed ?? true); onToggledByUser: checked => checked ? root.confirmCleanup("delete_completed", false) : root.setProfile("delete_completed", false) }
             SettingsNote {

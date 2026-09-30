@@ -34,8 +34,12 @@ export function projectTurn(conversation, pending) {
   const final = turn.findLast(m => m.author?.role === "assistant" &&
     m.recipient === "all" && (m.channel == null || m.channel === "final") &&
     m.status === "finished_successfully" && m.end_turn === true);
-  if (!final) return { completed: false, submitted: true,
-    streamError: turn.some(m => ["failed", "error", "cancelled"].includes(m.status)) };
+  if (!final) {
+    const lastAssistant=turn.findLast(m=>m.author?.role === "assistant");
+    return { completed: false, submitted: true,
+      streamError: turn.some(m => ["failed", "error", "cancelled"].includes(m.status)),
+      terminal_failed: !!lastAssistant && ["failed","error","cancelled"].includes(lastAssistant.status) && lastAssistant.end_turn === true };
+  }
   return { completed: true, submitted: true, response: {
     message_id: final.id, text: (final.content?.parts ?? []).filter(p => typeof p === "string").join("\n")
   }};
@@ -197,12 +201,12 @@ export async function nativeSubmit(page, input) {
     try {
       await transport.startCompletionStream({request, prepared: Promise.resolve(prepared),
         startupSignal: AbortSignal.timeout(25000),
-        onRequestStart: () => { receipt.dispatched = true; },
+        onRequestStart: () => { receipt.dispatched = true; receipt.dispatched_at_ms = Date.now(); },
         onResponse: () => { receipt.accepted = true; },
         onUpdate: inspect,
         onEvent: event => { try { inspect(typeof event.data === "string" ? JSON.parse(event.data) : event.data); } catch {} },
         onError: () => { receipt.streamError = true; },
-        onComplete: () => { receipt.streamComplete = true; }
+        onComplete: () => { receipt.streamComplete = true; receipt.completed_at_ms = Date.now(); }
       });
       const deadline = Date.now() + 10000;
       while (!receipt.conversation_id && !receipt.streamError && Date.now() < deadline)
@@ -235,4 +239,22 @@ export async function discoverSubmission(page, pending) {
       return {conversation_id: item.id};
   }
   return {conversation_id: null};
+}
+
+export async function nativeResume(page, pending) {
+  if (!UUID.test(pending.conversation_id)) throw new Error("invalid resume identity");
+  // Read-only reattachment to the server stream. No new user message, variant
+  // generation, prompt replay or credential persistence is permitted here.
+  return page.evaluate(async pending => {
+    const {transport} = window.__hadalisNative;
+    if (typeof transport.resumeCompletionStream !== "function") throw new Error("Desktop resume capability unavailable");
+    const receipt = window.__hadalisReceipts.get(pending.user_message_id) ?? {
+      conversation_id:pending.conversation_id, user_message_id:pending.user_message_id};
+    window.__hadalisReceipts.set(pending.user_message_id,receipt);
+    await transport.resumeCompletionStream({request:{conversation_id:pending.conversation_id,offset:0},
+      onResponse:()=>{receipt.resumed=true;},onUpdate:()=>{},onDecodedPayload:()=>{},
+      onError:()=>{receipt.streamError=true;},onTransportClose:()=>{},
+      onComplete:()=>{receipt.streamComplete=true;receipt.completed_at_ms=Date.now();}});
+    return {reattached:true};
+  }, pending);
 }

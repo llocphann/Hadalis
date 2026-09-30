@@ -18,6 +18,9 @@ assert.equal(projectTurn(c,p).completed,false);
 c.mapping.a.message.recipient="all";
 c.mapping.a.message.status="error";
 assert.equal(projectTurn(c,p).streamError,true);
+assert.equal(projectTurn(c,p).terminal_failed,true);
+c.mapping.a.message.end_turn=false;
+assert.equal(projectTurn(c,p).terminal_failed,false);
 c.mapping.b={id:"b",parent:"a",message:message("b","user","finished_successfully",true,"next")};
 c.mapping.z={id:"z",parent:"b",message:message("z","assistant","finished_successfully",true,"HADALIS_LOOP:DONE")};c.current_node="z";
 assert.equal(projectTurn(c,p).completed,false); // Never consume the next user's reply.

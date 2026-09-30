@@ -1,6 +1,8 @@
-import {connectNative, nativeRead, resolveProject, nativeSubmit, discoverSubmission, projectTurn} from "./native_adapter.mjs";
+import {connectNative, nativeRead, resolveProject, nativeSubmit, nativeResume, discoverSubmission, projectTurn} from "./native_adapter.mjs";
 
 let browser;
+// A supervisor crash must not leave an orphan CDP client indefinitely alive.
+const deadline=setTimeout(()=>process.exit(1),45000);deadline.unref();
 try {
   let raw = "";
   for await (const chunk of process.stdin) {
@@ -12,12 +14,22 @@ try {
   const page = connection.page;
   let result;
   if (input.op === "project") result = {project_id: await resolveProject(page, input.name)};
+  else if (input.op === "preflight") result=await page.evaluate(requiresGithub=>{
+    if(requiresGithub){
+      const plugins=window.__hadalisNative.transport.scope.queryClient.getQueryCache().getAll()
+        .filter(q=>q.queryKey[0]==="plugins" && Array.isArray(q.state.data)).flatMap(q=>q.state.data)
+        .map(x=>x.plugin).filter(p=>p?.id==="github@openai-curated-remote" && p.installed && p.enabled && p.remotePluginId);
+      if(new Set(plugins.map(p=>p.remotePluginId)).size!==1)throw new Error("GitHub plugin capability unavailable");
+    }
+    return {ready:true};
+  },input.requires_github);
   else if (input.op === "read") result = await nativeRead(page, `/conversation/${input.conversation_id}`);
   else if (input.op === "cursor") {
     const c = await nativeRead(page, `/conversation/${input.conversation_id}`);
     result = {conversation_id: c.conversation_id, current_node: c.current_node, model: c.default_model_slug};
   }
   else if (input.op === "submit") result = await nativeSubmit(page, input);
+  else if (input.op === "resume") result = await nativeResume(page, input.pending);
   else if (input.op === "poll") {
     let pending = {...input.pending};
     if (!pending.conversation_id) Object.assign(pending, await discoverSubmission(page, pending));
@@ -44,5 +56,11 @@ try {
   console.log(JSON.stringify(result));
 } catch (error) {
   // Never serialize a raw request/headers or an HTTP error body.
-  console.error(String(error.message).slice(0, 500)); process.exitCode = 1;
-} finally { if (browser) await browser.close(); }
+  const message=String(error.message);
+  const code=message.includes("legacy pending") ? "LEGACY_IDENTITY_AMBIGUOUS"
+    : /unsupported|capabilit|export contract|Desktop build/.test(message) ? "DESKTOP_CAPABILITY_UNAVAILABLE"
+    : message.includes("GitHub plugin") ? "GITHUB_PLUGIN_UNAVAILABLE"
+    : message.includes("project name") ? "PROJECT_UNAVAILABLE_OR_AMBIGUOUS"
+    : "DESKTOP_OPERATION_UNAVAILABLE";
+  console.error(code); process.exitCode = 1;
+} finally { clearTimeout(deadline); if (browser) await browser.close(); }

@@ -9,7 +9,7 @@ import shutil
 import time
 
 from automation.manager.store import _write
-from automation.worker.process import bounded_run
+from automation.worker.process import bounded_run, session_env
 from automation.worker.privacy import redact, scrub, SECRET_KEY
 
 CHECKS = {"services", "processes", "journal", "git", "resources", "hardware",
@@ -70,7 +70,8 @@ def collect(spec, workspace: Path, evidence_dir: Path):
         if time.monotonic() >= deadline:
             return {"exit_code": None, "stdout": "", "stderr": "diagnostic budget exhausted", "timed_out": True}
         try:
-            result = bounded_run(argv, cwd=cwd, timeout=min(8, deadline-time.monotonic()), capture=MAX_BYTES)
+            result = bounded_run(argv, cwd=cwd, timeout=min(8, deadline-time.monotonic()), capture=MAX_BYTES,
+                env=session_env({"PATH","HOME","USER","LANG","DISPLAY","WAYLAND_DISPLAY","XDG_RUNTIME_DIR","NIRI_SOCKET","DBUS_SESSION_BUS_ADDRESS"}))
         except OSError:
             result = {"exit_code": 127, "stdout": "", "stderr": "diagnostic command unavailable", "timed_out": False}
         result["stdout"] = redact(result["stdout"]); result["stderr"] = redact(result["stderr"])

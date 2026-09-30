@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -32,6 +34,27 @@ def environment(name: str, value: str | Path) -> str:
 def write_unit(path: Path, content: str) -> None:
     path.write_text(content.rstrip() + "\n", encoding="utf-8")
     print(f"wrote {path}")
+
+
+def install_control_endpoint():
+    """Old repo-copy frontends delegate before they can normalize v2 state."""
+    from automation.manager.store import _write
+    data=Path(os.environ.get("XDG_DATA_HOME",str(Path.home()/".local/share")))/"hadalis-automation"
+    data.mkdir(parents=True,exist_ok=True)
+    _write(data/"backend.json",{"version":2,"source":str(ROOT)})
+    launcher=("#!/usr/bin/env python3\nimport runpy\n"
+              f"runpy.run_path({str(ROOT/'scripts/hadalis-automation-control.py')!r},run_name='__main__')\n")
+    from automation.worker.deployment import atomic_file
+    atomic_file(data/"control.py",launcher.encode())
+    shells=Path(os.environ.get("XDG_CONFIG_HOME",str(Path.home()/".config")))/"quickshell"
+    for path in shells.glob("*/scripts/hadalis-automation-control.py"):
+        if path.resolve()==(ROOT/"scripts/hadalis-automation-control.py").resolve():continue
+        # Save the old frontend privately before replacing its control interface.
+        import hashlib
+        from automation.manager.store import state_dir
+        _write(state_dir()/"frontend-migration"/(hashlib.sha256(str(path).encode()).hexdigest()+".json"),
+               {"path":str(path),"previous_control":path.read_text(),"backend_source":str(ROOT)})
+        atomic_file(path,launcher.encode())
 
 
 def install_desktop_launcher(chatgpt: str) -> Path | None:
@@ -91,7 +114,15 @@ def main() -> int:
             "fails if another bridge instance currently holds the lock"
         ),
     )
+    parser.add_argument("--push-remote",default=os.environ.get("HADALIS_WORKER_PUSH_REMOTE"),
+                        help="optional credential-free worker publication remote (for example an SSH Git URL)")
     args = parser.parse_args()
+    if args.push_remote and (urlparse(args.push_remote).password or any(ch.isspace() for ch in args.push_remote)):
+        raise ValueError("worker push remote cannot contain credentials or whitespace")
+
+    import sys
+    sys.path.insert(0,str(ROOT))
+    install_control_endpoint()
 
     python = require_command("python3")
     chatgpt = require_command("chatgpt")
@@ -134,8 +165,15 @@ Type=simple
 WorkingDirectory={ROOT}
 ExecStart={quote(python)} {quote(ROOT / "automation" / "worker" / "daemon.py")}
 {environment("PYTHONUNBUFFERED", "1")}
+{environment("HADALIS_WORKER_PUSH_REMOTE", args.push_remote) if args.push_remote else ""}
 Restart=on-failure
 RestartSec=3
+KillMode=control-group
+TimeoutStopSec=10
+TasksMax=256
+MemoryMax=2G
+CPUQuota=200%
+NoNewPrivileges=yes
 
 [Install]
 WantedBy=default.target
@@ -146,9 +184,6 @@ WantedBy=default.target
         units / "hadalis-chat-bridge.service",
         f"""[Unit]
 Description=Hadalis deterministic ChatGPT bridge
-Requires=hadalis-chatgpt.service
-After=hadalis-chatgpt.service
-PartOf=graphical-session.target
 
 [Service]
 Type=simple
@@ -159,11 +194,35 @@ ExecStart={quote(python)} -m automation.manager.daemon
 Restart=on-failure
 RestartPreventExitStatus=75
 RestartSec=3
+KillMode=control-group
+TimeoutStopSec=10
+TasksMax=128
+MemoryMax=512M
+NoNewPrivileges=yes
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=default.target
 """,
     )
+
+    write_unit(units/"hadalis-privilege.service",f"""[Unit]
+Description=Hadalis allowlisted administrator broker
+
+[Service]
+Type=simple
+WorkingDirectory={ROOT}
+ExecStart={quote(python)} -m automation.worker.privilege
+{environment("PYTHONUNBUFFERED", "1")}
+Restart=on-failure
+RestartSec=3
+KillMode=control-group
+TimeoutStopSec=10
+TasksMax=32
+MemoryMax=128M
+
+[Install]
+WantedBy=default.target
+""")
 
     install_desktop_launcher(chatgpt)
     subprocess.run([systemctl, "--user", "daemon-reload"], check=True)
@@ -178,6 +237,7 @@ WantedBy=graphical-session.target
                 str(units / "hadalis-chatgpt.service"),
                 str(units / "hadalis-worker.service"),
                 str(units / "hadalis-chat-bridge.service"),
+                str(units / "hadalis-privilege.service"),
             ],
             check=True,
         )
@@ -204,6 +264,7 @@ WantedBy=graphical-session.target
                 "hadalis-chatgpt.service",
                 "hadalis-worker.service",
                 "hadalis-chat-bridge.service",
+                "hadalis-privilege.service",
             ],
             check=True,
         )

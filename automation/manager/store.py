@@ -109,6 +109,8 @@ def profile_state() -> dict:
         # Durable identity; never derived from whichever chat is visible.
         "session": None, "checkpoint": None, "response_message_id": None,
         "recovery": None, "run_active": False,
+        "last_transport_at_unix": 0, "job_evidence": [], "job_summary": None,
+        "generation_recoveries": 0, "failed_turn": None,
     }
 
 
@@ -157,6 +159,10 @@ def normalize_state(raw: dict, config: dict) -> dict:
         if isinstance(prior, dict):
             item.update({key: prior[key] for key in item if key in prior})
         profiles[profile["id"]] = item
+    # Quarantined configuration must not erase its durable pending receipts.
+    for profile_id, prior in source.items():
+        if profile_id not in profiles and isinstance(prior,dict):
+            profiles[profile_id]={**profile_state(),**prior,"status":"invalid_configuration"}
     owner = raw.get("owner_id")
     if owner not in profiles:
         owner = None
@@ -180,6 +186,7 @@ def normalize_state(raw: dict, config: dict) -> dict:
     heartbeat = raw.get("manager_heartbeat_at_unix")
     if type(heartbeat) is not int or heartbeat < 0:
         heartbeat = None
+    if raw.get("engine_version",1) not in {1,2}:raise ValueError("unsupported scheduler engine version; state retained")
     return {"version": 1, "owner_id": owner, "requested_profile_id": requested,
             "engine_version": raw.get("engine_version", 1),
             "command_seq": command_seq, "command_ack_seq": command_ack_seq,

@@ -10,6 +10,21 @@ import sys
 import time
 
 
+def session_env(keys):
+    """Observe only allowlisted runtime sockets, including services started at boot."""
+    env={k:v for k,v in os.environ.items() if k in keys}
+    runtime=Path(os.environ.get("XDG_RUNTIME_DIR",f"/run/user/{os.getuid()}"))
+    if runtime.is_dir():
+        env["XDG_RUNTIME_DIR"]=str(runtime)
+        for variable,pattern in (("WAYLAND_DISPLAY","wayland-*"),("NIRI_SOCKET","niri.*.sock")):
+            if variable not in env:
+                matches=[p for p in runtime.glob(pattern) if p.is_socket()][:2]
+                if len(matches)==1:env[variable]=matches[0].name if variable=="WAYLAND_DISPLAY" else str(matches[0])
+        if "DBUS_SESSION_BUS_ADDRESS" not in env and (runtime/"bus").is_socket():
+            env["DBUS_SESSION_BUS_ADDRESS"]="unix:path="+str(runtime/"bus")
+    return env
+
+
 def process_identity(pid: int) -> dict | None:
     try:
         stat = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()

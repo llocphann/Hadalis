@@ -92,8 +92,8 @@ def result_exists(job_id: str) -> bool:
     return result.returncode == 0
 
 
-def remote_text(path: str) -> str:
-    result = git("show", f"origin/dev:{path}", timeout=30)
+def remote_text(path: str, *, ref="origin/dev") -> str:
+    result = git("show", f"{ref}:{path}", timeout=30)
     if result.returncode != 0:
         raise RuntimeError(f"cannot read {path}: {result.stderr.strip()}")
     return result.stdout
@@ -323,8 +323,8 @@ def process_job(path: str, *, publish_now=True):
         if prior and prior.get("result"):
             payload=prior["result"]
         else:
-            raw=remote_text(path);digest=hashlib.sha256(raw.encode()).hexdigest()
             commit=introducing_commit(path)
+            raw=remote_text(path,ref=commit);digest=hashlib.sha256(raw.encode()).hexdigest()
             if prior and prior.get("input_sha256")!=digest:
                 raise ValueError("job ID reused with different content; original receipt retained")
             if prior and prior["phase"]=="executing":
@@ -337,6 +337,7 @@ def process_job(path: str, *, publish_now=True):
                 try:
                     data=validate_job(path,raw)
                     if first_parent(commit)!=data["base_sha"]:raise ValueError("job parent does not match base_sha")
+                    prior["profile_id"]=data.get("profile_id");save_receipt(job_id,prior)
                     if sum(p.stat().st_size for folder in ("actions","receipts") for p in (state_root()/folder).rglob("*") if p.is_file())>MAX_EVIDENCE_BYTES:
                         raise RuntimeError("private evidence storage pressure")
                     with resource_leases(data.get("resources",[])):

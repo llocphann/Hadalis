@@ -39,6 +39,7 @@ class Transport:
         with self.lock: self.calls.append((op,data))
         if self.down: raise RuntimeError("Desktop unavailable")
         if op=="project": return {"project_id":"project-"+data["name"]}
+        if op=="preflight":return {"ready":True}
         if op=="submit":
             with self.lock:
                 self.active+=1;self.peak=max(self.peak,self.active)
@@ -55,7 +56,7 @@ class Transport:
                 "message_id":str(uuid.uuid5(uuid.NAMESPACE_URL,p["user_message_id"])),"text":reply}}
             return {"completed":False,"submitted":bool(chat),"conversation_id":chat}
         if op=="cursor":
-            for uid, chat in self.messages.items():
+            for uid, chat in reversed(list(self.messages.items())):
                 if chat==data["conversation_id"] and uid in self.replies:
                     return {"current_node":str(uuid.uuid5(uuid.NAMESPACE_URL,uid))}
             raise RuntimeError("no completed response")

@@ -7,6 +7,7 @@ import fcntl
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -94,7 +95,8 @@ def _claim(config: dict, state: dict, now: int, profile_id: str) -> bool:
     item.update(run_active=True, status="starting", started_at_unix=now,
         run_start_iterations=item["iterations"], run_start_prompts=item["prompts_sent"],
         last_run_at_unix=now, next_run_at_unix=None)
-    item["request"] = item["request"] or ("continuation" if item["session"] else "initial")
+    failed=(item["failed_turn"] or {}).get("conversation_id")
+    item["request"] = item["request"] or ("recovery" if failed and (item["session"] or {}).get("conversation_id")==failed else "continuation" if item["session"] else "initial")
     event(state, profile_id, "started")
     return True
 
@@ -182,7 +184,7 @@ def _legacy_adopt(config: dict, item: dict, profile_id: str, now: int) -> None:
 def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
     profile, item = _profile(config, profile_id), state["profiles"][profile_id]
     kind = item["request"] or "continuation"
-    new_chat = kind in {"initial", "new", "rotation", "restart"}
+    new_chat = kind in {"initial", "new", "rotation", "restart", "recovery"}
     session = None if new_chat else item["session"]
     if not new_chat and not session:
         raise RuntimeError("Previous session identity needs reconciliation; no new prompt was sent")
@@ -200,12 +202,18 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
             change_state(changed)
             return
         parent = cursor["current_node"]
-    prompt_kind = "rotation" if kind == "rotation" else "initial" if new_chat else "continuation"
+    if profile["requires_github"]:native_command("preflight",requires_github=True)
+    prompt_kind = "rotation" if kind in {"rotation","recovery"} else "initial" if new_chat else "continuation"
     prompt = effective_prompt(profile, prompt_kind)
+    prompt += "\nManaged profile ID: " + profile_id + "\n"
+    if kind=="recovery":
+        prompt += "\nThe server confirmed that the previous generation ended with failure. This is a new recovery step, not a replay. Inspect current dev, private worker receipt summaries and evidence before any mutation. Do not repeat commands/jobs whose outcome is uncertain. Reconcile existing effects and continue from the checkpoint.\n"+json.dumps(item["failed_turn"])
     if item["checkpoint"]:
         prompt += "\n\nDurable profile checkpoint:\n" + json.dumps(item["checkpoint"], ensure_ascii=False)
     if item["last_job_id"]:
         prompt += f"\n\nLocal result: {RESULTS}/{item['last_job_id']}.json ({item['last_result']}). Inspect the evidence before the next decision.\n"
+    if item["job_summary"]:
+        prompt += "\nPrivate worker result projection (raw evidence remains local):\n"+json.dumps(item["job_summary"],ensure_ascii=False)
     pending = {"user_message_id": str(uuid.uuid4()), "parent_message_id": parent,
         "conversation_id": session.get("conversation_id") if session else None,
         "project_id": project_id, "kind": prompt_kind, "prepared_at_unix": now,
@@ -215,6 +223,9 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
         if not current or current["pending"] or current["desired"] != "run" or current["remove_requested"]:
             return False
         if current["command_seq"] != item["command_seq"]: return False
+        if session and any(pid!=profile_id and other.get("session",{}).get("conversation_id")==session["conversation_id"] and other["run_active"] for pid,other in s["profiles"].items() if other.get("session")):
+            current.update(desired="paused",status="session_conflict",last_error="Another profile already manages this conversation; original receipt retained")
+            return False
         current.update(pending=pending, status="thinking", status_detail="", last_activity_at_unix=now)
         if new_chat:
             current.update(session={"conversation_id":None, "project_id":project_id},
@@ -260,6 +271,22 @@ def _checkpoint(text: str) -> dict | None:
     return data
 
 
+def _reports(text, evidence_ids):
+    lines=[x[len("HADALIS_DIAGNOSIS:"):] for x in text.splitlines() if x.startswith("HADALIS_DIAGNOSIS:")]
+    if len(lines)>16:raise ValueError("diagnosis report exceeds bound")
+    reports=[]
+    for line in lines:
+        if len(line)>4000:raise ValueError("diagnosis report exceeds bound")
+        data=json.loads(line)
+        if not isinstance(data,dict) or set(data)!={"conclusion","evidence_ids"} or not isinstance(data["conclusion"],str):
+            raise ValueError("diagnosis requires conclusion and evidence IDs")
+        ids=data["evidence_ids"]
+        if not isinstance(ids,list) or not ids or len(ids)>32 or any(i not in evidence_ids for i in ids):
+            raise ValueError("diagnosis cites unavailable evidence")
+        reports.append(data)
+    return reports
+
+
 def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
     item = state["profiles"][profile_id]
     pending = item["pending"]
@@ -277,6 +304,33 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
         else:
             result = native_command("poll", pending=pending)
         if not result.get("completed"):
+            if result.get("terminal_failed"):
+                # The server has proved that generation ended. Archive this
+                # turn and ask the reasoning agent for a distinct recovery step.
+                failed_path=state_dir()/"failed-turns"/profile_id/(pending["user_message_id"]+".json")
+                _write(failed_path,{"pending":pending,"at_unix":now,"evidence":"server terminal failure"})
+                def failed_generation(c,s):
+                    current=s["profiles"].get(profile_id)
+                    if not _same_pending(current,pending):return
+                    if not current["pending"].get("counted"):current["prompts_sent"]+=1
+                    current["failures"]+=1
+                    current["failed_turn"]={"conversation_id":result["conversation_id"],"user_message_id":pending["user_message_id"],"observed_at_unix":now,"error_code":"server_terminal_failed"}
+                    current.update(pending=None,generation_recoveries=current["generation_recoveries"]+1,request="recovery",status="recovering_generation",next_run_at_unix=now+30)
+                    if current["generation_recoveries"]>3:current.update(desired="paused",status="recovery_required")
+                    event(s,profile_id,"generation_terminal_failed","Distinct evidence/reconciliation step scheduled; original prompt never replayed")
+                change_state(failed_generation);return
+            resume_due = result.get("submitted") and result.get("conversation_id") and now-pending["prepared_at_unix"]>=60 and pending.get("resume_attempts",0)<3 and now>=pending.get("resume_after_unix",0)
+            if resume_due:
+                # Resume reattaches an existing stream only. Persist the bounded
+                # attempt before IPC, including when its acknowledgement is lost.
+                def resume_intent(c,s):
+                    current=s["profiles"].get(profile_id)
+                    if not _same_pending(current,pending):return False
+                    current["pending"].update(resume_attempts=pending.get("resume_attempts",0)+1,resume_after_unix=now+300)
+                    event(s,profile_id,"stream_reattach",pending["user_message_id"]);return True
+                if change_state(resume_intent):
+                    try:native_command("resume",pending={**pending,"conversation_id":result["conversation_id"]})
+                    except Exception:pass # Observations continue even if reattachment is unsupported/offline.
             def waiting(c, s):
                 current = s["profiles"].get(profile_id)
                 if not _same_pending(current, pending): return
@@ -290,11 +344,16 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
             change_state(waiting)
             return
         response = result["response"]
-        directive = parse_loop_directive(response["text"])
-        checkpoint = _checkpoint(response["text"])
         path = cache
         _write(path, {"conversation_id": result.get("conversation_id"), "user_message_id":pending["user_message_id"],
                       "response":response, "at_unix":now})
+        protocol_error=None;directive=None;checkpoint=None
+        try:
+            directive = parse_loop_directive(response["text"])
+            checkpoint = _checkpoint(response["text"])
+            reports=_reports(response["text"],item["job_evidence"])
+            if reports:_write(path.with_suffix(".diagnosis.json"),{"reports":reports,"source_message_id":response["message_id"],"at_unix":now})
+        except (ValueError,TypeError):protocol_error="Completed response has invalid directive/checkpoint or unsupported diagnosis; private receipt retained"
     except Exception as exc:
         _observe_failure(profile_id, now, exc, pending=pending)
         return
@@ -307,7 +366,10 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
         current.update(pending=None, response_message_id=response["message_id"],
             iterations=current["iterations"]+1, chat_iterations=current["chat_iterations"]+1,
             poll_errors=0, last_error="", last_activity_at_unix=now,
-            last_success=directive.kind.value, loop_state=directive.kind.value.lower())
+            last_success=directive.kind.value if directive else "protocol_error", loop_state=directive.kind.value.lower() if directive else "protocol_error")
+        if protocol_error:
+            current.update(desired="paused",status="evidence_required",last_error=protocol_error)
+            event(s,profile_id,"response_protocol_error",protocol_error);return
         if checkpoint is not None: current["checkpoint"] = checkpoint
         event(s, profile_id, "response", directive.kind.value)
         if current["request"] == "restart" and current["desired"] == "run":
@@ -346,7 +408,10 @@ def job_result(job_id: str) -> dict | None:
     local = state_dir() / "worker" / "receipts" / f"{job_id}.json"
     if local.exists():
         receipt = json.loads(local.read_text())
-        if receipt.get("result") is not None: return receipt["result"]
+        if receipt.get("result") is not None:
+            payload=receipt["result"]
+            if not isinstance(payload,dict) or payload.get("job")!=job_id:raise ValueError("private job result identity mismatch")
+            return payload
     with (state_dir()/"git-observe.lock").open("a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         fetched = subprocess.run(["git","fetch","origin","dev"],cwd=ROOT,capture_output=True,text=True,timeout=30)
@@ -364,6 +429,9 @@ def _wait_result(config: dict, state: dict, profile_id: str, now: int) -> None:
     try:
         payload = job_result(item["job_id"])
         if payload and payload.get("profile_id") not in {None, profile_id}: raise ValueError("job belongs to another profile")
+        if payload:
+            from automation.worker.privacy import chat_result
+            summary=chat_result(payload)
     except Exception as exc:
         _observe_failure(profile_id,now,exc,job=True); return
     def ready(c,s):
@@ -373,20 +441,36 @@ def _wait_result(config: dict, state: dict, profile_id: str, now: int) -> None:
             current.update(next_job_poll_at_unix=now+10,status="waiting_result"); return
         current.update(last_job_id=current["job_id"],last_result=str(payload.get("status","unknown")),job_id=None,
                        next_job_poll_at_unix=None,job_poll_errors=0,request="continuation",status="continuing")
+        ids=[a["evidence_id"] for a in summary["actions"] if a.get("evidence_id")]
+        current["job_evidence"]=(current["job_evidence"]+ids)[-128:]
+        current["job_summary"]=summary
         event(s,profile_id,"job_result",current["last_job_id"]+" "+current["last_result"])
     change_state(ready)
 
 
 def _step(profile_id: str, now: int) -> None:
+    _,state,_=read_snapshot()
+    item=state["profiles"].get(profile_id,{})
+    conversation=(item.get("pending") or item.get("session") or {}).get("conversation_id")
+    resource=hashlib.sha256((conversation or profile_id).encode()).hexdigest()
+    with (state_dir()/("conversation-"+resource+".lock")).open("a+") as lease:
+        try:fcntl.flock(lease,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError:return
+        _step_session(profile_id,now)
+
+
+def _step_session(profile_id: str, now: int) -> None:
     config,state,issues = read_snapshot()
-    if issues or profile_id not in state["profiles"]: return
+    if profile_id not in state["profiles"] or not any(p["id"]==profile_id for p in config["profiles"]): return
     item = state["profiles"][profile_id]
     if item["remove_requested"]: return
     if item["pending"]:
         _poll(config,state,profile_id,now); return
     if item["desired"] != "run" or not _profile(config,profile_id)["enabled"]:
         if item["run_active"]:
-            change_state(lambda c,s:_release(s,profile_id,now,"paused" if item["desired"]=="paused" else "idle"))
+            review={"connector_blocked","evidence_required","session_changed","session_conflict","recovery_required"}
+            status=item["status"] if item["status"] in review else "paused" if item["desired"]=="paused" else "idle"
+            change_state(lambda c,s:_release(s,profile_id,now,status))
         return
     if item["job_id"]:
         _wait_result(config,state,profile_id,now); return
@@ -399,7 +483,10 @@ def tick(now: int | None = None, executor: ThreadPoolExecutor | None = None) -> 
     now = int(time.time()) if now is None else now
     config,state,issues = read_snapshot()
     if issues:
-        change_state(lambda c,s:_configuration_problem(s,issues)); return
+        def quarantine(c,s):
+            detail="Quarantined malformed profile configuration; valid workflows continue"
+            if not s["events"] or s["events"][-1].get("detail")!=detail:event(s,None,"invalid_configuration",detail)
+        change_state(quarantine)
     def prepare(c,s):
         migrate_runtime(c,s)
         _heartbeat(s,now)
@@ -424,12 +511,18 @@ def tick(now: int | None = None, executor: ThreadPoolExecutor | None = None) -> 
         elif item["run_active"] or item["desired"]=="run": at=item["next_run_at_unix"] or 0
         else: continue
         if at<=now: due.append(p["id"])
+    due.sort(key=lambda pid:state["profiles"][pid]["last_transport_at_unix"])
+    chosen=due if executor is None else due[:max(0,CONCURRENCY-len(_INFLIGHT))]
+    def scheduled(c,s):
+        for pid in chosen:
+            if pid in s["profiles"]:s["profiles"][pid]["last_transport_at_unix"]=now
+    if chosen:change_state(scheduled)
     if executor is None:
         with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
             futures=[pool.submit(_step,pid,now) for pid in due]
             for future in futures: future.result()
     else:
-        for pid in due[:max(0,CONCURRENCY-len(_INFLIGHT))]:
+        for pid in chosen:
             _INFLIGHT[pid]=executor.submit(_step,pid,now)
 
 

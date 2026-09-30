@@ -1,0 +1,30 @@
+{
+  "actions": [
+    {
+      "cancelled": false,
+      "command_sha256": "1b9679a90a2c4892fbcef4538bf0d5253f79420f2429d6eb1d3f29b03cd4bc9f",
+      "evidence_id": "JOB-MEGACMD-F1-PTY-007:0",
+      "exit_code": 101,
+      "index": 0,
+      "kind": "exec",
+      "observed_at_unix": 1790802671,
+      "source_sha": "21dd6a15e4d6702b7bca917d819cf64c4c453e15",
+      "stderr_bytes": 2452,
+      "stderr_sha256": "08c5ed99abfe6d44cb786518322e7b21e182e0ba450e1133cf84dd76dd98ffe4",
+      "stderr_truncated": false,
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "c8075e4a7df53ac82afa50947eecdf1c8251b135",
+  "evidence_location": "Private local evidence; raw output is not published",
+  "finished_at_unix": 1790802671,
+  "input_sha256": "8a26c64e3d3a81a329e6cca6913dc04c7036ccc9dda03b1b2bbc34cff8789ebd",
+  "job": "JOB-MEGACMD-F1-PTY-007",
+  "job_commit": "21dd6a15e4d6702b7bca917d819cf64c4c453e15",
+  "profile_id": "profile-a4506b8191014e5c",
+  "started_at_unix": 1790802662,
+  "status": "failed"
+}

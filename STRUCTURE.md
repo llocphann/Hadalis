@@ -48,7 +48,8 @@ inir/
 ├── translations/                 # Canonical en_US UI catalog + validators
 ├── distro/                       # Packaging/distribution data
 ├── assets/                       # Icons, wallpapers, systemd unit, desktop entry
-└── docs/                         # User documentation
+├── docs/                         # Documentation and historical research
+└── to-do/                        # Active Cloud Bot / deterministic Local Bot tasks
 ```
 
 The live tree intentionally has no Orbit, Mascot, Workspace Strip, `barM3`, Pill-Bar, Islands-Bar, Scenic-Bar, or Frame-Bar module directory. Those systems are retired, not optional renderers.
@@ -87,7 +88,9 @@ The live tree intentionally has no Orbit, Mascot, Workspace Strip, `barM3`, Pill
 
 **assets/:** static icons, images, wallpapers, systemd units, desktop entries, and related packaged data.
 
-**docs/:** user/developer Markdown documentation.
+**docs/:** user/developer Markdown documentation and archived research/history.
+
+**to-do/:** one active chatbot-work index: `cloud-bot/` (sole reasoning agent) and `local-bot/` (explicit deterministic execution only).
 
 ## Key File Locations
 

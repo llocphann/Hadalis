@@ -15,7 +15,7 @@ Do NOT switch to Work mode and do NOT hand off to Work mode. Stay in this ChatGP
 2. Verify access to llocphann/Hadalis.
 3. Fetch the CURRENT dev HEAD. Never rely on a remembered SHA.
 4. Read AGENTS.md.
-5. Read docs/CROSS_REPO_OPTIMIZATION_HANDOFF.md, especially its newest sections/tail.
+5. Read to-do/README.md and to-do/cloud-bot/OPTIMIZATION.md, then docs/CROSS_REPO_OPTIMIZATION_HANDOFF.md (especially its newest sections/tail).
 6. Determine the newest committed optimization-research round from the repository itself.
 7. Audit repository changes since that research commit before relying on prior findings.
 8. Search the handoff before promoting any candidate so duplicate, already-owned, superseded, closed, or implemented findings are not counted again.

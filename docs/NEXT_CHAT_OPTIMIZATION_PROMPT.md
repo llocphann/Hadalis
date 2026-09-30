@@ -8,6 +8,8 @@ The iRiS integration phase is complete. Treat the current iRiS/perimeter
 architecture as the production baseline; this new phase is for **optimization,
 bug fixing and refinement of existing features**, not another migration.
 
+Before editing, read `to-do/README.md` and the applicable `to-do/cloud-bot/` checklist. This prompt is a dated handoff snapshot, not a competing active task list.
+
 Before editing:
 
 1. Refetch the latest `dev` because other agents may push concurrently.

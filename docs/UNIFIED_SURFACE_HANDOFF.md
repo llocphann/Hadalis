@@ -152,6 +152,6 @@ Do not claim runtime success from source inspection alone.
 
 ## Broader unfinished v1.0 work
 
-Use `README.md` §11 as the current unfinished-work list. In particular, boot integrity, Screen Edge/Bar lifecycle, media/music, Dashboard/Overview, Calendar/Weather, ThinkFan/TLP and Material-only residue still require their listed source or live acceptance.
+Use `to-do/cloud-bot/ABYSS.md` and `to-do/cloud-bot/RELEASE.md` as current unfinished-work lists; `to-do/local-bot/VALIDATION.md` separates deterministic jobs from maintainer-only live acceptance. In particular, boot integrity, Screen Edge/Bar lifecycle, media/music, Dashboard/Overview, Calendar/Weather, ThinkFan/TLP and Material-only residue still require their listed source or live acceptance.
 
 Remove completed items from the active handoff instead of accumulating historical checked tasks.

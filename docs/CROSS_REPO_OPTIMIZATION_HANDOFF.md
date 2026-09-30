@@ -21277,3 +21277,134 @@ Next audit should re-fetch current `dev`, reconcile concurrent changes and
 rotate away from ScreenTime. Prefer media/player metadata, quick-toggle
 secondary derivations, or another frequently-reactive service that has not
 already been covered by the dense MPRIS/Network/Tray ownership clusters.
+
+
+## 88. Round 74 — GlobalActions provider-merge allocation audit (2026-09-30)
+
+### Snapshot and duplicate-ownership check
+
+- Authoritative `dev` at round start and immediately before this write:
+  `a4291bf2eee7325687cbe4ca5e0a5e170cbdca80` (Round 73).
+- No intervening commit exists after Round 73.
+- `services/GlobalActions.qml` and all current consumers were re-read.
+- Existing nearby ownership was searched first:
+  - §48.5 owns `GlobalActions.fuzzyQuery()` query-token/scoring reductions;
+  - §57.6 owns the Cliphist superpaste path invoked by GlobalActions;
+  - §§57.4/77.1 own LauncherSearch action-result staging/guards.
+- No existing item owns `GlobalActions._rebuildActions()` provider merging.
+
+### 88.1 Merge enabled GlobalActions providers into one fresh result instead of repeated prefix concat — CONFIRMED / P1-P2 reactive registry rebuild
+
+Path:
+
+- `services/GlobalActions.qml`, `_rebuildActions()`.
+
+`allActions` is a readonly binding to `_rebuildActions()`.
+
+Current rebuild starts with `result = []` and, for up to eight enabled
+providers, repeatedly executes:
+
+`result = result.concat(providerArray)`.
+
+Providers, in fixed order:
+
+1. system;
+2. appearance;
+3. tools;
+4. media;
+5. settings;
+6. packages;
+7. setup;
+8. custom user scripts.
+
+Every concat creates a new result array and recopies the complete prefix already
+merged by earlier providers.
+
+Strict-safe direction:
+
+- keep every existing config enable check in the same order;
+- retain one fresh local result array;
+- when a provider is enabled, append that provider's array contents directly
+  into the local result in source index order;
+- return that one array.
+
+For exact Array-concat hole behavior, the append helper can:
+
+1. snapshot the provider `length`;
+2. extend the target length by that amount;
+3. assign only source indices for which `i in provider` is true.
+
+That preserves holes rather than converting them to explicit `undefined`.
+
+Strict-lossless proof:
+
+- provider property reads remain behind the exact same enable predicates and in
+  the same provider order;
+- each provider is consumed immediately at the same logical point rather than
+  cached across rebuilds;
+- action object identity is unchanged because only references are copied;
+- provider ordering and intra-provider ordering are unchanged;
+- duplicates remain duplicated;
+- sparse provider slots can retain concat-equivalent holes;
+- the intermediate prefix arrays are private locals and are never published;
+- removing rereads of the already-local prefix cannot remove getter/callback
+  effects because that prefix contains ordinary locally copied references/holes,
+  not accessor properties created by Hadalis;
+- if a provider read throws, the partially built final array remains unpublished
+  just as the current newly-concatenated result never becomes observable;
+- `allActions` still receives one fresh final array on every successful
+  binding reevaluation;
+- `searchActions`, IPC, fuzzy search and action execution observe the same
+  action references/order.
+
+Let E be the number of enabled providers and Lj their lengths in provider order.
+
+Current element-copy shape:
+
+`L1 + (L1+L2) + ... + (L1+...+LE)`.
+
+Direct append:
+
+`L1 + L2 + ... + LE`.
+
+Current result-array allocations created by the rebuild:
+
+- initial empty array plus one concat result per enabled provider:
+  **E + 1 arrays**.
+
+Direct append:
+
+- one final local result array:
+  **1 array**.
+
+With all eight providers enabled, rebuild-owned result arrays are therefore
+**9 -> 1**, while eliminating the triangular prefix recopy.
+
+This is reactive registry work, not per-action execution work. Rebuilds occur
+when provider/config dependencies such as setup/custom action lists or enable
+flags change.
+
+### 88.2 Setup keyword concat is lower priority and not split into a separate finding
+
+`_setupActions` also constructs:
+
+`["setup", "install", slug].concat(splitKeywords)`.
+
+Because setup target counts are normally small and §88.1 removes the materially
+larger cross-provider prefix copying, this fixed per-target concat is not
+promoted as a separate optimization group. It can be folded into a future
+implementation batch only if exact keyword-array parity is retained.
+
+### 88.3 Round-74 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one** (§88.1,
+**CONFIRMED / P1-P2 reactive registry rebuild**).
+
+No runtime/product/native/script code was modified. Only this handoff was
+updated; no deterministic local job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent work, then move
+outside GlobalActions. Prefer another recurring or collection-scaling private
+derivation with no existing owner; avoid reopening the dense AppSearch,
+LauncherSearch, MPRIS, Network and notification clusters unless a genuinely
+distinct source owner is found.

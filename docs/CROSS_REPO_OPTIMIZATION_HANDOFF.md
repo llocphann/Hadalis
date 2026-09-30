@@ -21127,3 +21127,153 @@ move outside Quick Notes. Prefer another under-covered recurring interaction
 path with private derivation work, such as notification/activity secondary
 models, calendar/agenda interaction not already owned by §§49/57/69, or
 file/process-backed media/search secondary controls.
+
+
+## 87. Round 73 — notification closure and ScreenTime recurring allocation audit (2026-09-30)
+
+### Snapshot and ownership reconciliation
+
+- Authoritative `dev` at round start was the Round-72 research commit
+  `3f23bc9ea51ebfa738c11cb29f21eff8f83eb1e5`.
+- Before this documentation write, `dev` advanced through:
+  - `ae738846bc152979edd5c7028fda302ba7a3ee8b` — automation Stop/recovery UI
+    and lifecycle tests only;
+  - merge `d276fc8af87c35ff6dc158d3bbdb09f1c9c48cb1`.
+- The concurrent runtime delta does not modify `services/ScreenTime.qml`.
+  ScreenTime and the handoff were re-read from exact current HEAD before this
+  write.
+- Notification/Activity ownership was searched first. Existing authoritative
+  owners include:
+  - §37.1 one-pass notification grouping;
+  - §37.2 indexed Dock notification counts;
+  - §48.9 notification history search lowercase cache tradeoff;
+  - §48.10 persistence/history-load pass reductions;
+  - §60.1 common NotificationGroup bounded collapsed model;
+  - §78 secondary-control/callback/freshness audit.
+- ScreenTime ownership already includes:
+  - §32.6 Hyprland focused-window snapshot derivation;
+  - §56.2 one-trim-per-history-section merge.
+  Neither owns the local transient allocations below.
+
+### 87.1 Notification/Activity secondary path is already densely owned; no new group promoted
+
+Paths re-read include:
+
+- `services/Notifications.qml`;
+- common/Waffle NotificationGroup and Notification Center linkage from existing
+  ownership.
+
+Remaining obvious reductions are either:
+
+- already subsumed by §§37/48/60;
+- action-click micro-staging such as tiny fixed pattern arrays;
+- callback/freshness-sensitive, as documented by §78;
+- resident-index tradeoffs.
+
+No new strict-lossless group is counted from Notifications in this round.
+
+### 87.2 ScreenTime per-hour distribution can reuse one Date object per bucket — CONFIRMED / P1-P2 recurring telemetry
+
+Path:
+
+- `services/ScreenTime.qml`, `_distributeElapsed(startMs, endMs)`.
+
+For each interval bucket, current code constructs two Date objects from the
+same `cursor` timestamp:
+
+```qml
+const d = new Date(cursor)
+const hour = d.getHours()
+const next = new Date(cursor)
+next.setMinutes(60, 0, 0)
+```
+
+The first Date is never used after `getHours()`.
+
+Strict-safe direction:
+
+- construct one Date from `cursor`;
+- read `hour = d.getHours()`;
+- call `d.setMinutes(60, 0, 0)`;
+- use `d.getTime()` for the same next-hour boundary.
+
+Strict-lossless proof:
+
+- both current Date objects begin with the exact same millisecond value;
+- local timezone and DST interpretation are therefore identical;
+- `getHours()` is evaluated before any mutation in both versions;
+- `setMinutes(60, 0, 0)` operates on an equivalent Date state;
+- the first Date is not read again after the hour extraction today;
+- no Date object escapes the function;
+- boundary min, rounding, object-key accumulation, guard count and returned
+  object are unchanged;
+- invalid/edge timestamp behavior remains driven by the same Date constructor
+  and `setMinutes` operation.
+
+For B buckets:
+
+- Date allocations: **2B -> B**.
+
+Normal active ScreenTime intervals are short, so B is usually one, but the path
+runs on every accounted focus/timer tick while ScreenTime is enabled and also
+covers hour-boundary splits.
+
+### 87.3 ScreenTime app-id humanization can select the last dotted segment without a split array — CONFIRMED / P2 recurring telemetry
+
+Path:
+
+- `services/ScreenTime.qml`, `_humanizeAppId(id)`.
+
+Current:
+
+```qml
+const parts = id.split(".")
+const name = parts.length > 1 ? parts[parts.length - 1] : id
+return name.replace(...).replace(...).trim()
+```
+
+Only the final segment is consumed.
+
+Strict-safe direction:
+
+- find `lastIndexOf(".")`;
+- when present, slice from one character after that index;
+- otherwise use `id`;
+- retain the exact replacement/capitalization/trim chain.
+
+The typed QML parameter is `string`, so no array-generic coercion contract is
+being replaced.
+
+Parity examples all remain exact:
+
+- no dot -> whole id;
+- leading dot -> suffix;
+- repeated dots -> final suffix;
+- trailing dot -> empty final segment;
+- Unicode, dash and underscore handling is unchanged because the post-selection
+  regex chain is untouched.
+
+Per humanization:
+
+- full dotted-segment array: **1 -> 0**;
+- earlier segment substrings produced by `split`: **all -> 0**.
+
+This is called when the focused app id is resolved on ScreenTime ticks/focus
+events, so it is a recurring private allocation reduction rather than a cold
+migration cleanup.
+
+### 87.4 Round-73 conclusion / next checkpoint
+
+New strict-lossless optimization group: **one**, treating §87.2-§87.3 as one
+ScreenTime recurring-allocation cluster
+(**CONFIRMED / P1-P2 recurring telemetry**).
+
+Notification/Activity produced no new group.
+
+No runtime/product/native/script code was modified. Only this handoff was
+updated; no deterministic local job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent changes and
+rotate away from ScreenTime. Prefer media/player metadata, quick-toggle
+secondary derivations, or another frequently-reactive service that has not
+already been covered by the dense MPRIS/Network/Tray ownership clusters.

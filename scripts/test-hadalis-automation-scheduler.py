@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """True simultaneous profile dispatch and isolated WAIT_RESULT/Pause/Stop."""
 import threading
+import time
+from types import SimpleNamespace
 from unittest.mock import patch
 from automation_test_helpers import environment, profile, Transport, daemon, control, store
 
@@ -29,6 +31,23 @@ def main():
             assert store.read_snapshot()[1]['profiles'][b]['job_id']=='JOB-B'
             control.profile_action('stop',c)
             assert store.read_snapshot()[1]['profiles'][b]['desired']=='run'
-    print('PASS: simultaneous isolated sessions, Pause/Stop, WAIT_RESULT without global ownership')
+    with environment():
+        entered,release=threading.Event(),threading.Event()
+        def git(args,**kwargs):
+            if args[1]=='fetch':
+                entered.set();assert release.wait(5)
+                return SimpleNamespace(returncode=0)
+            return SimpleNamespace(returncode=1)
+        with patch.object(daemon.subprocess,'run',side_effect=git):
+            first=threading.Thread(target=daemon.job_result,args=('JOB-network-A',))
+            first.start()
+            try:
+                assert entered.wait(5)
+                began=time.monotonic()
+                assert daemon.job_result('JOB-network-B') is None
+                assert time.monotonic()-began<1, 'another job must not occupy a transport slot waiting for Git'
+            finally:release.set();first.join(5)
+            assert not first.is_alive()
+    print('PASS: simultaneous isolated sessions, Pause/Stop, WAIT_RESULT and nonblocking shared Git observation')
 
 if __name__=='__main__':main()

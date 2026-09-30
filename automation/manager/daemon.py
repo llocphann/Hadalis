@@ -439,7 +439,8 @@ def job_result(job_id: str) -> dict | None:
             if not isinstance(payload,dict) or payload.get("job")!=job_id:raise ValueError("private job result identity mismatch")
             return payload
     with (state_dir()/"git-observe.lock").open("a+") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:fcntl.flock(lock, fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError:return None
         fetched = subprocess.run(["git","fetch","origin","dev"],cwd=ROOT,capture_output=True,text=True,timeout=30)
         if fetched.returncode: raise RuntimeError("Cannot fetch dev for job result; observation will retry")
         shown = subprocess.run(["git","show",f"origin/dev:{RESULTS}/{job_id}.json"],cwd=ROOT,capture_output=True,text=True,timeout=15)

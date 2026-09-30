@@ -24753,3 +24753,192 @@ continue outside Desktop drag/drop. Prefer another low-ownership reactive
 collection or parser with more than fixed-size data. Candidate inventory can
 include `ThemesConfig` detection presentation, background typography/string
 models, or another request-completion model after duplicate-owner search.
+
+## 107. Round 93 — Vertical Japanese text grapheme/column allocation audit (2026-09-30)
+
+### Snapshot and concurrent reconciliation
+
+- Authoritative dev immediately before this write:
+  1ab3b323825ed7515a55e416b1206c1ddb6ae6ff
+  (feat(automation): bound worker pool with durable execution and private evidence).
+- One concurrent commit landed after Round 92:
+  1ab3b323825ed7515a55e416b1206c1ddb6ae6ff.
+- Its changed-file set is confined to automation/worker/*,
+  scripts/test-hadalis-worker-recovery.py and to-do/cloud-bot/AUTOMATION.md.
+- It does not touch Japanese typography, Background widget rendering, Config,
+  this handoff, or any proof input below.
+- The handoff was searched for VerticalJapaneseText.qml, _characters(),
+  _allColumnCount(), grapheme compaction and JapaneseTypography column
+  construction.
+- Existing JapaneseTypography ownership only concerns broader Config
+  read/dependency architecture. No existing optimization item owns these local
+  string/array paths.
+
+### 107.1 _characters() can merge grapheme continuations directly into its fresh code-point array — CONFIRMED / P2 reactive text layout
+
+Path:
+
+- modules/background/widgets/japaneseTypography/VerticalJapaneseText.qml,
+  _characters(value).
+
+Current logic first creates:
+
+- one fresh code-point array with
+  Array.from(String(value ?? "").replace(/\r/g, ""));
+- then a second graphemes array;
+- then scans every point, appending joining code points to the previous
+  grapheme or pushing a new grapheme.
+
+The points array is invocation-local, never published, and never retained after
+_characters() returns.
+
+Strict-safe direction:
+
+1. preserve the exact String/nullish conversion, CR removal and Array.from()
+   Unicode iteration;
+2. scan the original source slots in ascending order with a local write count;
+3. keep the exact current join predicate:
+   zero-width joiner, previous grapheme ending in zero-width joiner,
+   FE0E/FE0F variation selectors, U+0300..U+036F combining marks,
+   U+3099/U+309A and U+1F3FB..U+1F3FF skin-tone modifiers;
+4. when a point joins the previous grapheme, append it to
+   points[writeCount - 1];
+5. otherwise write it into points[writeCount] and increment;
+6. truncate points.length to the final write count and return that same fresh
+   array.
+
+Strict-lossless proof:
+
+- Unicode source iteration remains owned by Array.from(String(...)); surrogate
+  pair/code-point behavior is unchanged.
+- CR removal remains before Unicode iteration.
+- Every source point is visited once in the same order.
+- codePointAt(0) is evaluated for the same primitive point strings and the same
+  number of times.
+- The previous-grapheme string used by the join predicate is byte-equivalent to
+  the current graphemes[graphemes.length - 1] accumulator.
+- Joining still performs the same previousString + point concatenation at the
+  same point in traversal.
+- Duplicate, empty and all-joining-compatible inputs retain the same output.
+- Callers still receive one fresh ordinary JS array per invocation.
+- No QML property dependency or signal boundary is changed.
+
+For P code points and G final graphemes:
+
+- fresh code-point arrays: unchanged, 1;
+- second grapheme-array allocation: 1 -> 0;
+- pushes into a second array: G -> 0;
+- source-point visits: unchanged, P;
+- final returned length/content/order: unchanged, G.
+
+Classification:
+CONFIRMED / P2 reactive text layout.
+
+### 107.2 _allColumnCount() can count with the exact existing chunk loop instead of constructing every column array solely for .length — CONFIRMED / P1-P2 reactive layout
+
+Path:
+
+- modules/background/widgets/japaneseTypography/VerticalJapaneseText.qml,
+  _allColumnCount().
+
+Current properties are independent:
+
+- columns = root._buildColumns();
+- overflowed = root._allColumnCount() > root.visibleColumnLimit.
+
+Today _allColumnCount() simply returns root._allColumns().length.
+
+But _allColumns() materializes the complete render model:
+
+- converts/root.text, removes CR and splits lines;
+- reads root.rowsPerColumn;
+- calls _characters() for every line;
+- allocates one outer result array;
+- for every nonempty chunk, allocates chars.slice(offset, offset + rows);
+- pushes every slice into result;
+- only then is result.length read and the entire nested structure discarded by
+  the count-only caller.
+
+Strict-safe direction:
+
+- duplicate the same local text/line setup inside _allColumnCount();
+- keep one scalar count = 0;
+- for each line call the exact same _characters() helper in source order;
+- preserve the current empty-line rule:
+  an empty line contributes one column only when the text has more than one
+  line;
+- for nonempty chars, use the exact same loop shape
+  for (offset = 0; offset < chars.length; offset += rows), incrementing count
+  instead of allocating/pushing chars.slice(...);
+- return count.
+
+The exact loop is important. Do not replace it with Math.ceil(chars.length /
+rows), because strict-lossless includes unusual numeric/geometry behavior.
+
+Strict-lossless proof:
+
+- root.text and root.rowsPerColumn are read once per helper invocation in the
+  same logical order as the current _allColumns() call.
+- String conversion, CR removal, newline split and per-line _characters()
+  calls remain identical and ordered.
+- Empty-line handling is identical.
+- One count increment occurs exactly where current code would execute one
+  result.push(chars.slice(...)).
+- If rows is NaN, the current loop runs once for a nonempty line, then offset
+  becomes NaN and the loop stops. The direct-count loop preserves this.
+- If rows is Infinity, both paths execute one iteration and stop.
+- Normal zero/negative rows are prevented by the rowsPerColumn binding, but the
+  unchanged loop mechanics avoid defining a different malformed-geometry
+  contract.
+- The discarded slice contents are unobservable in the count-only call.
+- _buildColumns() remains unchanged and continues to materialize the exact
+  visible nested arrays for the Repeater model.
+- No shared QML cache/property is introduced, so columns and overflowed retain
+  independent binding/signal boundaries.
+
+Let C be the logical number of columns represented by the current
+_allColumns() call. For each overflow-count evaluation:
+
+- outer result arrays: 1 -> 0;
+- per-column slice arrays: C -> 0;
+- copied grapheme entries into discarded slices: eliminated;
+- line/grapheme parsing: unchanged;
+- chunk-loop iterations: unchanged, C;
+- returned integer: unchanged.
+
+Classification:
+CONFIRMED / P1-P2 reactive layout.
+
+### 107.3 Sharing _allColumns() between columns and overflowed is intentionally not promoted
+
+A shared readonly model/cache could remove the duplicated text parsing between
+the columns and overflowed bindings.
+
+However that would change QML dependency ownership, property reevaluation
+timing, possible columnsChanged versus overflowedChanged ordering, and the
+fresh-array cadence of columns.
+
+Strict-lossless explicitly preserves those observable QML semantics.
+
+Status:
+HIGH CONFIDENCE architecture idea / not counted.
+
+### 107.4 Round-93 conclusion / next checkpoint
+
+New strict-lossless optimization groups: two:
+
+1. in-place grapheme compaction in _characters()
+   (§107.1, CONFIRMED / P2);
+2. allocation-free direct column counting with unchanged chunk-loop semantics
+   (§107.2, CONFIRMED / P1-P2).
+
+Concurrent automation worker-pool commit 1ab3b323... was audited before this
+write and does not affect these findings.
+
+No runtime/product/native/script code was modified and no deterministic local
+job was required.
+
+Next audit should re-fetch current dev, reconcile concurrent commits and
+continue outside JapaneseTypography. Prefer a record-scaled private model or
+parser completion path; fixed-size settings literals/counts should remain below
+higher-cardinality paths unless no stronger candidate remains.

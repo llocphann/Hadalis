@@ -1,11 +1,14 @@
+use std::env;
+use std::fs;
 use std::io::{self, Read};
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-const PROTOCOL_VERSION: u32 = 1;
+mod pty;\n\nconst PROTOCOL_VERSION: u32 = 1;
 
 #[derive(Debug, Parser)]
 #[command(about = "Typed, one-shot MEGAcmd adapter for Hadalis")]
@@ -20,7 +23,7 @@ enum Command {
     Request,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 struct Request {
     protocol: u32,
     request_id: String,
@@ -39,7 +42,7 @@ enum Operation {
     AuthMfa,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 struct SecretInput {
     #[serde(default)]
     password: Option<String>,
@@ -54,6 +57,47 @@ struct Response {
     ok: bool,
     result: Value,
     error: Option<SafeError>,
+}
+
+#[derive(Debug, Serialize)]
+struct VendorBinary {
+    name: &'static str,
+    path: Option<String>,
+    executable: bool,
+}
+
+fn is_executable(path: &Path) -> bool {
+    let Ok(metadata) = fs::metadata(path) else { return false; };
+    if !metadata.is_file() { return false; }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        metadata.permissions().mode() & 0o111 != 0
+    }
+    #[cfg(not(unix))]
+    {
+        true
+    }
+}
+
+fn find_in_path(name: &'static str, path_env: Option<&str>) -> VendorBinary {
+    let found = path_env.and_then(|value| {
+        env::split_paths(value)
+            .map(|dir| dir.join(name))
+            .find(|candidate| is_executable(candidate))
+    });
+    VendorBinary {
+        name,
+        executable: found.is_some(),
+        path: found.and_then(|path| fs::canonicalize(path).ok()).map(|path| path.to_string_lossy().into_owned()),
+    }
+}
+
+fn static_detection(path_env: Option<&str>) -> Vec<VendorBinary> {
+    ["mega-login", "mega-cmd-server", "mega-whoami", "mega-version"]
+        .into_iter()
+        .map(|name| find_in_path(name, path_env))
+        .collect()
 }
 
 #[derive(Debug, Serialize)]
@@ -90,6 +134,51 @@ fn classify_auth_prompt(text: &str) -> AuthPrompt {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AuthState {
+    AwaitPassword,
+    AwaitMfaOrComplete,
+    Terminal,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SecretWrite {
+    Password,
+    Mfa,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum AuthStep {
+    Write(SecretWrite),
+    Complete,
+    Failed,
+    RejectUnexpected,
+}
+
+fn advance_auth(state: &mut AuthState, prompt: AuthPrompt) -> AuthStep {
+    match (*state, prompt) {
+        (AuthState::AwaitPassword, AuthPrompt::Password) => {
+            *state = AuthState::AwaitMfaOrComplete;
+            AuthStep::Write(SecretWrite::Password)
+        }
+        (AuthState::AwaitMfaOrComplete, AuthPrompt::Mfa) => {
+            AuthStep::Write(SecretWrite::Mfa)
+        }
+        (AuthState::AwaitMfaOrComplete, AuthPrompt::Complete) => {
+            *state = AuthState::Terminal;
+            AuthStep::Complete
+        }
+        (_, AuthPrompt::Failed) => {
+            *state = AuthState::Terminal;
+            AuthStep::Failed
+        }
+        _ => {
+            *state = AuthState::Terminal;
+            AuthStep::RejectUnexpected
+        }
+    }
+}
+
 fn validate_request(request: &Request) -> Option<SafeError> {
     if request.protocol != PROTOCOL_VERSION {
         return Some(SafeError {
@@ -122,18 +211,27 @@ fn handle(request: Request) -> Response {
     }
 
     match request.operation {
-        Operation::Detect => Response {
-            protocol: PROTOCOL_VERSION,
-            request_id: request.request_id,
-            ok: true,
-            result: json!({
-                "adapter": "inir-mega",
-                "vendor_execution": "disabled_until_fake_harness_qualification",
-                "auth_transport": "pty_required",
-                "secret_argv": false,
-                "python_mutation_fallback": false
-            }),
-            error: None,
+        Operation::Detect => {
+            let binaries = static_detection(env::var("PATH").ok().as_deref());
+            let login_available = binaries.iter().any(|item| item.name == "mega-login" && item.executable);
+            let server_available = binaries.iter().any(|item| item.name == "mega-cmd-server" && item.executable);
+            Response {
+                protocol: PROTOCOL_VERSION,
+                request_id: request.request_id,
+                ok: true,
+                result: json!({
+                    "adapter": "inir-mega",
+                    "probe_kind": "static_no_vendor_execution",
+                    "vendor_execution": "disabled_until_pty_transport_qualification",
+                    "auth_transport": "pty_required",
+                    "secret_argv": false,
+                    "python_mutation_fallback": false,
+                    "login_available": login_available,
+                    "server_available": server_available,
+                    "binaries": binaries
+                }),
+                error: None,
+            }
         },
         Operation::AuthBegin => {
             let has_email = request.params.get("email").and_then(Value::as_str)
@@ -226,12 +324,100 @@ mod tests {
     use super::*;
 
     #[test]
+    fn static_detection_does_not_execute_vendor_binary() {
+        let root = env::temp_dir().join(format!("inir-mega-static-probe-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let marker = root.join("executed");
+        let fake = root.join("mega-login");
+        fs::write(&fake, format!("#!/bin/sh\\ntouch '{}'\\n", marker.display())).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = fs::metadata(&fake).unwrap().permissions();
+            permissions.set_mode(0o700);
+            fs::set_permissions(&fake, permissions).unwrap();
+        }
+        let path_value = root.to_string_lossy().into_owned();
+        let detected = static_detection(Some(&path_value));
+        assert!(detected.iter().any(|item| item.name == "mega-login" && item.executable));
+        assert!(!marker.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn static_detection_reports_missing_dependency_without_vendor_call() {
+        let detected = static_detection(Some(""));
+        assert!(detected.iter().all(|item| !item.executable));
+    }
+
+    #[test]
     fn auth_prompt_state_machine_requires_explicit_known_prompts() {
         assert_eq!(classify_auth_prompt("Password:"), AuthPrompt::Password);
         assert_eq!(classify_auth_prompt("Multi-factor authentication code:"), AuthPrompt::Mfa);
         assert_eq!(classify_auth_prompt("Login successful"), AuthPrompt::Complete);
         assert_eq!(classify_auth_prompt("Login failed"), AuthPrompt::Failed);
         assert_eq!(classify_auth_prompt("Enter something else:"), AuthPrompt::Unexpected);
+    }
+
+    struct FakeVendorHarness {
+        prompts: Vec<&'static str>,
+        writes: Vec<String>,
+    }
+
+    impl FakeVendorHarness {
+        fn run(mut self, password: &str, mfa: &str) -> (AuthStep, Vec<String>) {
+            let mut state = AuthState::AwaitPassword;
+            let mut terminal = AuthStep::RejectUnexpected;
+            for prompt in self.prompts {
+                match advance_auth(&mut state, classify_auth_prompt(prompt)) {
+                    AuthStep::Write(SecretWrite::Password) => self.writes.push(password.to_owned()),
+                    AuthStep::Write(SecretWrite::Mfa) => self.writes.push(mfa.to_owned()),
+                    step @ (AuthStep::Complete | AuthStep::Failed | AuthStep::RejectUnexpected) => {
+                        terminal = step;
+                        break;
+                    }
+                }
+            }
+            (terminal, self.writes)
+        }
+    }
+
+    #[test]
+    fn fake_vendor_harness_qualifies_password_then_mfa_flow() {
+        let password = "fixture-password-never-log";
+        let mfa = "123456";
+        let (terminal, writes) = FakeVendorHarness {
+            prompts: vec!["Password:", "Multi-factor authentication code:", "Login successful"],
+            writes: Vec::new(),
+        }
+        .run(password, mfa);
+        assert_eq!(terminal, AuthStep::Complete);
+        assert_eq!(writes, vec![password, mfa]);
+    }
+
+    #[test]
+    fn fake_vendor_harness_never_submits_secret_to_unknown_prompt() {
+        let password = "fixture-password-never-log";
+        let mfa = "123456";
+        let (terminal, writes) = FakeVendorHarness {
+            prompts: vec!["Enter account recovery key:"],
+            writes: Vec::new(),
+        }
+        .run(password, mfa);
+        assert_eq!(terminal, AuthStep::RejectUnexpected);
+        assert!(writes.is_empty());
+    }
+
+    #[test]
+    fn fake_vendor_harness_rejects_out_of_order_mfa_without_secret_write() {
+        let (terminal, writes) = FakeVendorHarness {
+            prompts: vec!["2FA code:"],
+            writes: Vec::new(),
+        }
+        .run("fixture-password-never-log", "123456");
+        assert_eq!(terminal, AuthStep::RejectUnexpected);
+        assert!(writes.is_empty());
     }
 
     #[test]

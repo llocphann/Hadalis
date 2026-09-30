@@ -107,9 +107,10 @@ def main() -> None:
             assert edited["project_name"] == "Hadalis Local"
             assert runtime["profiles"][pid]["desired"] == "run"
             store.change_state(lambda _config, state: state.__setitem__("owner_id", pid))
-            expect_error(lambda: control.set_profile(pid, "project_name", json.dumps("Another Project")),
-                         "stop the active profile")
-            assert next(p for p in store.read_snapshot()[0]["profiles"] if p["id"] == pid)["project_name"] == "Hadalis Local"
+            control.set_profile(pid, "project_name", json.dumps("Another Project"))
+            config, runtime, _ = store.read_snapshot()
+            assert next(p for p in config["profiles"] if p["id"] == pid)["project_name"] == "Another Project"
+            assert runtime["profiles"][pid]["active_project_name"] == "Hadalis Local"
             store.change_state(lambda _config, state: state.__setitem__("owner_id", None))
             control.profile_action("pause", pid)
             assert store.read_snapshot()[1]["profiles"][pid]["desired"] == "paused"

@@ -93,7 +93,10 @@ function guardedPage({ stop = false, text = "", domText = text, projectLabel = n
   };
 }
 
-await assert.rejects(requireIdleComposer(guardedPage({ stop: true })), /generation is active/);
+await assert.rejects(
+  requireIdleComposer(guardedPage({ stop: true })),
+  error => error.code === "HADALIS_DESKTOP_BUSY" && /generation is active/.test(error.message)
+);
 await assert.rejects(requireIdleComposer(guardedPage({ text: "draft" })), /non-empty/);
 await assert.rejects(requireIdleComposer(guardedPage({ text: "  " })), /non-empty/);
 await assert.rejects(requireIdleComposer(guardedPage({ projectLabel: "Project: Wrong project" })), /project guard/);
@@ -107,7 +110,8 @@ await assert.rejects(
 );
 assert.equal((await managedPoll(guardedPage(), { responseActionCount: 1 })).completed, false);
 
-function delayedNewChat() {
+function delayedNewChat({ busyPrevious = false, missingPreviousComposer = false,
+                          blankPrevious = false, sameProjectPrevious = false } = {}) {
   const project = process.env.HADALIS_CHATGPT_PROJECT ?? "Hadalis Cloud";
   let fresh = false;
   let clicked = false;
@@ -129,9 +133,9 @@ function delayedNewChat() {
     context: () => ({ browser: () => browser }),
     locator: selector => {
       if (selector === "body")
-        return locator(1, { body: () => fresh ? "" : "HADALIS_LOOP:CONTINUE" });
+        return locator(1, { body: () => fresh || blankPrevious ? "" : "HADALIS_LOOP:CONTINUE" });
       if (selector.includes('aria-current="page"'))
-        return locator(() => fresh ? 0 : 1, { label: "Previous chat" });
+        return locator(() => fresh || blankPrevious ? 0 : 1, { label: "Previous chat" });
       if (selector === `button[aria-label="New chat in ${project}"]`)
         return locator(1, { click: () => {
           clicked = true;
@@ -140,11 +144,12 @@ function delayedNewChat() {
       return locator(0);
     },
     getByRole: (role, options) => {
-      if (role === "textbox") return locator(1);
+      if (role === "textbox") return locator(() => fresh || !missingPreviousComposer ? 1 : 0);
       const name = String(options.name);
-      if (name === "/stop/i") return locator(0);
-      if (name.includes("Project:")) return locator(1);
-      if (name.includes("regenerate")) return locator(() => fresh ? 0 : 1);
+      if (name === "/stop/i") return locator(() => !fresh && busyPrevious ? 1 : 0);
+      if (name.includes("Project:"))
+        return locator(() => fresh || sameProjectPrevious || !busyPrevious ? 1 : 0);
+      if (name.includes("regenerate")) return locator(() => fresh || blankPrevious ? 0 : 1);
       if (name === `New chat in ${project}`) return locator(1);
       return locator(0);
     }
@@ -157,5 +162,42 @@ const started = Date.now();
 assert.equal(await openHadalisNewChat(navigation.page), navigation.page);
 assert.deepEqual(navigation.result(), { clicked: true, fresh: true });
 assert.ok(Date.now() - started >= 80, "new-chat must wait for a visible transition");
+
+const busyNavigation = delayedNewChat({ busyPrevious: true });
+await assert.rejects(
+  openHadalisNewChat(busyNavigation.page),
+  error => error.code === "HADALIS_DESKTOP_BUSY"
+);
+assert.equal(busyNavigation.result().clicked, false, "owned chat must not rotate while generating");
+assert.equal(
+  await openHadalisNewChat(busyNavigation.page, { unownedPreviousChat: true }),
+  busyNavigation.page
+);
+assert.deepEqual(busyNavigation.result(), { clicked: true, fresh: true });
+
+const unsupportedPreviousComposer = delayedNewChat({
+  busyPrevious: true, missingPreviousComposer: true
+});
+assert.equal(
+  await openHadalisNewChat(unsupportedPreviousComposer.page, { unownedPreviousChat: true }),
+  unsupportedPreviousComposer.page
+);
+assert.deepEqual(unsupportedPreviousComposer.result(), { clicked: true, fresh: true });
+
+const alreadyBlank = delayedNewChat({ blankPrevious: true });
+assert.equal(
+  await openHadalisNewChat(alreadyBlank.page, { unownedPreviousChat: true }),
+  alreadyBlank.page
+);
+assert.deepEqual(alreadyBlank.result(), { clicked: false, fresh: false });
+
+const busyTargetProject = delayedNewChat({
+  busyPrevious: true, sameProjectPrevious: true
+});
+await assert.rejects(
+  openHadalisNewChat(busyTargetProject.page, { unownedPreviousChat: true }),
+  error => error.code === "HADALIS_DESKTOP_BUSY"
+);
+assert.equal(busyTargetProject.result().clicked, false);
 
 console.log("PASS: desktop marker, composer, project, and new-chat guards");

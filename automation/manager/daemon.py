@@ -19,6 +19,10 @@ RESULTS = "automation/results"
 POLL_SECONDS = 2
 
 
+class DesktopBusy(RuntimeError):
+    """The current owned ChatGPT chat has not finished generating."""
+
+
 def desktop_command(command: str, *args: str, prompt: str | None = None,
                     project_name: str | None = None) -> dict:
     environment = os.environ.copy()
@@ -30,7 +34,10 @@ def desktop_command(command: str, *args: str, prompt: str | None = None,
         timeout=40, check=False,
     )
     if result.returncode:
-        raise RuntimeError((result.stderr or result.stdout).strip()[:600])
+        detail = (result.stderr or result.stdout).strip()[:600]
+        if detail.startswith("HADALIS_DESKTOP_BUSY: "):
+            raise DesktopBusy(detail.removeprefix("HADALIS_DESKTOP_BUSY: "))
+        raise RuntimeError(detail)
     try:
         payload = json.loads(result.stdout)
     except json.JSONDecodeError as exc:
@@ -105,9 +112,12 @@ def _stop_or_pause(config: dict, state: dict, owner: str, now: int) -> bool:
 
 
 def _new_chat(owner: str, now: int, *, kind: str, project_name: str) -> None:
-    # The desktop driver checks the old composer/generation before opening a
-    # new chat. A failed guard cannot displace the current owner's session.
-    desktop_command("new-chat", project_name=project_name)
+    # A newly claimed owner has no chat to protect and can leave an unrelated
+    # active chat. An owned chat must pass the idle guard before rotation.
+    _config, state, _issues = read_snapshot()
+    unowned_previous = state["profiles"][owner]["chat_started_at_unix"] is None
+    desktop_command("new-chat", *("--unowned-previous-chat",) if unowned_previous else (),
+                    project_name=project_name)
 
     def record(_config: dict, state: dict):
         item = state["profiles"][owner]
@@ -118,6 +128,8 @@ def _new_chat(owner: str, now: int, *, kind: str, project_name: str) -> None:
         item["chat_started_at_unix"] = now
         item["chat_iterations"] = 0
         item["request"] = kind
+        item["next_run_at_unix"] = None
+        item["last_error"] = ""
         item["status"] = "rotating" if kind == "rotation" else "starting"
         event(state, owner, "chat_rotated" if kind == "rotation" else "chat_opened")
     change_state(record)
@@ -153,6 +165,12 @@ def _submit(config: dict, state: dict, owner: str, now: int) -> None:
     try:
         desktop_command("managed-submit", str(count), prompt=prompt,
                         project_name=profile["project_name"])
+    except DesktopBusy:
+        # The Desktop CLI raises this only before filling or sending. Remove
+        # the pre-send baseline so the scheduler can safely retry later.
+        change_state(lambda _config, current: current["profiles"][owner].update(
+            {"pending": None}))
+        raise
     except Exception as exc:
         # The submission may have reached ChatGPT before the transport failed.
         # Keep the pending baseline and poll for a fresh response; never resend.
@@ -344,8 +362,20 @@ def tick(now: int | None = None) -> None:
     if item["job_id"]:
         _wait_result(config, state, owner, now)
         return
+    if now < (item.get("next_run_at_unix") or 0):
+        return
     try:
         _submit(config, state, owner, now)
+    except DesktopBusy as exc:
+        def waiting(current_config: dict, current: dict):
+            current_item = current["profiles"][owner]
+            if current_item["status"] != "waiting_desktop":
+                event(current, owner, "desktop_busy", str(exc))
+            current_item["last_error"] = str(exc)[:500]
+            current_item["status"] = "waiting_desktop"
+            current_item["next_run_at_unix"] = now + min(
+                _profile(current_config, owner)["retry_delay_seconds"], 60)
+        change_state(waiting)
     except Exception as exc:
         def failed(_config: dict, current: dict):
             current_item = current["profiles"][owner]

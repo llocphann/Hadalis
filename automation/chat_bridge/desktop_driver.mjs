@@ -98,15 +98,22 @@ async function newChatFootprint(page) {
   };
 }
 
-export async function openHadalisNewChat(page) {
-  await requireIdleComposer(page, false);
+export async function openHadalisNewChat(page, { unownedPreviousChat = false } = {}) {
+  // A new owner may arrive while an unrelated chat is generating. Opening a
+  // project chat must not depend on that chat's composer or Stop control.
+  // Rotations of an owned chat still require the idle guard below.
+  if (!unownedPreviousChat) await requireIdleComposer(page, false);
   const before = await newChatFootprint(page);
   if (before.sameProject && before.responseActions === 0 &&
       before.markers === 0 && before.selectedChat === null) {
-    // An empty unsent chat in the target project is already a fresh session.
-    await verifyProject(page);
+    // Reuse a verified empty project chat, including after another process
+    // navigated there first. A busy target-project chat may belong to an
+    // earlier run, so never leave it before completion.
+    await requireIdleComposer(page);
     return page;
   }
+  if (unownedPreviousChat && before.sameProject)
+    await requireIdleComposer(page);
   let button = null;
   for (const name of [`Start new chat in ${PROJECT_NAME}`, `New chat in ${PROJECT_NAME}`]) {
     // Current Desktop presents both a labeled button and a second button
@@ -158,8 +165,11 @@ export async function openHadalisNewChat(page) {
 export async function requireIdleComposer(page, requireProject = true) {
   if (requireProject) await verifyProject(page);
   const composer = await resolveComposer(page);
-  if ((await visibleCount(page.getByRole("button", { name: /stop/i }))) > 0)
-    throw new Error("refusing to rotate while ChatGPT generation is active");
+  if ((await visibleCount(page.getByRole("button", { name: /stop/i }))) > 0) {
+    const error = new Error("ChatGPT generation is active; waiting before rotating the owned chat");
+    error.code = "HADALIS_DESKTOP_BUSY";
+    throw error;
+  }
   // Empty ProseMirror editors can report a layout newline via innerText.
   // textContent is empty in that state and still detects whitespace drafts.
   if (await composer.evaluate(element => (element.textContent ?? "").length > 0))

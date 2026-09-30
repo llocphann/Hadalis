@@ -107,6 +107,7 @@ ContentPage {
             active: "Active", inactive: "Inactive", starting: "Starting",
             stopping: "Stopping", failed: "Failed", blocked: "Blocked",
             unavailable: "Unavailable", thinking: "Thinking", waiting_result: "Waiting for local result",
+            waiting_desktop: "Waiting for ChatGPT",
             continuing: "Continuing", rotating: "Rotating chat", paused: "Paused",
             pausing: "Pausing", scheduled: "Scheduled", idle: "Idle", completed: "Completed",
             connector_blocked: "GitHub connector blocked", transport_unavailable: "Transport unavailable",
@@ -118,7 +119,7 @@ ContentPage {
     function statusColor(value): color {
         if (["active", "running", "continuing"].includes(value)) return Appearance.colors.colPrimary
         if (["failed", "connector_blocked", "blocked", "transport_unavailable"].includes(value)) return Appearance.colors.colTertiary
-        if (["starting", "stopping", "thinking", "waiting_result", "rotating", "pausing"].includes(value)) return Appearance.colors.colSecondary
+        if (["starting", "stopping", "thinking", "waiting_result", "waiting_desktop", "rotating", "pausing"].includes(value)) return Appearance.colors.colSecondary
         return Appearance.colors.colSubtext
     }
 

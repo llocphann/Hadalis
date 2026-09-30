@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 import tempfile
 import time
+from types import SimpleNamespace
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -43,6 +44,7 @@ def main() -> None:
                 assert state["owner_id"] == default
                 assert state["profiles"][default]["pending"] is not None
                 assert state["profiles"][default]["prompts_sent"] == 1
+                assert calls[0][:2] == ("new-chat", ("--unowned-previous-chat",))
 
                 second = control.create_profile("Second profile")["profile_id"]
                 control.set_profile(second, "enabled", "true")
@@ -94,7 +96,84 @@ def main() -> None:
             assert state["profiles"]["strict-lossless-research"]["pending"] is not None
             assert commands.count("managed-submit") == 1
             assert commands.count("managed-poll") == 2
-    print("PASS: one ChatGPT transport owner, safe pause/stop, queued profile")
+
+    with patch.object(daemon.subprocess, "run", return_value=SimpleNamespace(
+            returncode=1, stderr="HADALIS_DESKTOP_BUSY: generation active\n", stdout="")):
+        try:
+            daemon.desktop_command("new-chat")
+        except daemon.DesktopBusy as exc:
+            assert str(exc) == "generation active"
+        else:
+            raise AssertionError("expected a typed busy condition")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp + "/config", "XDG_STATE_HOME": tmp + "/state"}):
+            commands = []
+            busy_attempts = 0
+
+            def busy_then_ready(command, *args, prompt=None, project_name=None):
+                nonlocal busy_attempts
+                commands.append((command, args))
+                assert project_name == "Hadalis Cloud"
+                if command == "new-chat":
+                    busy_attempts += 1
+                    if busy_attempts <= 2:
+                        raise daemon.DesktopBusy("ChatGPT generation is active")
+                    return {}
+                if command == "managed-baseline":
+                    return {"responseActionCount": 0}
+                if command == "managed-submit":
+                    return {"submitted": True}
+                raise AssertionError(command)
+
+            base = int(time.time())
+            with patch.object(daemon, "desktop_command", side_effect=busy_then_ready):
+                daemon.tick(base)
+                state = store.read_snapshot()[1]
+                item = state["profiles"]["strict-lossless-research"]
+                assert state["owner_id"] == "strict-lossless-research"
+                assert item["desired"] == "run" and item["status"] == "waiting_desktop"
+                assert item["failures"] == 0 and item["prompts_sent"] == 0
+                assert item["next_run_at_unix"] == base + 30
+                daemon.tick(base + 2)
+                assert busy_attempts == 1
+                daemon.tick(base + 30)
+                assert busy_attempts == 2
+                assert sum(event["kind"] == "desktop_busy" for event in store.read_snapshot()[1]["events"]) == 1
+                daemon.tick(base + 60)
+                item = store.read_snapshot()[1]["profiles"]["strict-lossless-research"]
+                assert item["status"] == "thinking" and item["prompts_sent"] == 1
+                assert item["next_run_at_unix"] is None and item["last_error"] == ""
+                assert commands.count(("new-chat", ("--unowned-previous-chat",))) == 3
+
+    with tempfile.TemporaryDirectory() as tmp:
+        with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp + "/config", "XDG_STATE_HOME": tmp + "/state"}):
+            commands = []
+
+            def pre_send_busy(command, *args, prompt=None, project_name=None):
+                commands.append(command)
+                assert project_name == "Hadalis Cloud"
+                if command == "new-chat":
+                    return {}
+                if command == "managed-baseline":
+                    return {"responseActionCount": 0}
+                if command == "managed-submit" and commands.count("managed-submit") == 1:
+                    raise daemon.DesktopBusy("generation began before send")
+                if command == "managed-submit":
+                    return {"submitted": True}
+                raise AssertionError(command)
+
+            base = int(time.time())
+            with patch.object(daemon, "desktop_command", side_effect=pre_send_busy):
+                daemon.tick(base)
+                item = store.read_snapshot()[1]["profiles"]["strict-lossless-research"]
+                assert item["pending"] is None and item["prompts_sent"] == 0
+                assert item["status"] == "waiting_desktop" and item["failures"] == 0
+                daemon.tick(base + 30)
+                item = store.read_snapshot()[1]["profiles"]["strict-lossless-research"]
+                assert item["pending"] is not None and item["prompts_sent"] == 1
+                assert commands.count("managed-submit") == 2
+    print("PASS: one ChatGPT owner, busy wait, safe pause/stop, queued profile")
 
 
 if __name__ == "__main__":

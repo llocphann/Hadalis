@@ -18,7 +18,9 @@ function writeJson(payload) {
 }
 
 function writeError(error) {
-  fs.writeSync(2, (error?.stack ?? String(error)) + "\n");
+  const detail = error?.code === "HADALIS_DESKTOP_BUSY"
+    ? `${error.code}: ${error.message}` : (error?.stack ?? String(error));
+  fs.writeSync(2, detail + "\n");
 }
 
 async function readStdin() {
@@ -38,7 +40,11 @@ async function main() {
   }
 
   if (command === "new-chat") {
-    page = await openHadalisNewChat(page);
+    if (process.argv[3] && process.argv[3] !== "--unowned-previous-chat")
+      throw new Error("unknown new-chat option");
+    page = await openHadalisNewChat(page, {
+      unownedPreviousChat: process.argv[3] === "--unowned-previous-chat"
+    });
     writeJson(await observeDesktop(page));
     return;
   }

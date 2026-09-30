@@ -56,18 +56,17 @@ def main() -> None:
                 snapshot = control.status()
                 repeated = control.status()
             item = repeated["runtime"]["profiles"][pid]
-            assert item["status"] == "scheduler_unavailable"
-            assert "Chat bridge is inactive" in item["last_error"]
-            assert len([entry for entry in repeated["runtime"]["events"]
-                        if entry["kind"] == "scheduler_unavailable"]) == 1
+            assert item["status"] == "continuing"  # Reads cannot mutate live state.
+            assert "Chat bridge is inactive" in snapshot["scheduler_problem"]
+            assert not repeated["runtime"]["events"]
             assert snapshot["services"]["bridge"]["state"] == "inactive"
 
             with patch.object(control, "service_states", return_value=services()):
                 stale_heartbeat = control.status()
-            assert "has not ticked" in stale_heartbeat["runtime"]["profiles"][pid]["last_error"]
+            assert "heartbeat is older" in stale_heartbeat["scheduler_problem"]
 
             store.change_state(lambda _config, runtime: daemon._heartbeat(runtime, int(time.time())))
-            assert store.read_snapshot()[1]["profiles"][pid]["status"] == "scheduled"
+            assert store.read_snapshot()[1]["profiles"][pid]["status"] == "continuing"
 
             with patch.object(control, "_ensure_runtime_services",
                               side_effect=RuntimeError("ChatGPT CDP endpoint unavailable")):
@@ -89,7 +88,7 @@ def main() -> None:
                     "pending": None, "next_job_poll_at_unix": int(time.time()) + 10})
 
             store.change_state(waiting_job)
-            with patch.object(control, "_ensure_runtime_services"):
+            with patch.object(control, "_ensure_runtime_services"), patch.object(control, "_await_dispatch"):
                 control.profile_action("restart", pid)
             item = store.read_snapshot()[1]["profiles"][pid]
             assert item["job_id"] is None and item["request"] == "restart"

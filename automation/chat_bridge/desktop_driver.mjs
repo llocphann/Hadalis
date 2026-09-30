@@ -10,6 +10,7 @@ if (!/^[A-Za-z0-9 ._-]{1,80}$/.test(PROJECT_NAME))
   throw new Error("invalid configured ChatGPT project name");
 const escapedProject = PROJECT_NAME.replaceAll(".", "\\.");
 const COMPOSER = new RegExp(`^(Ask ChatGPT|Do anything|New chat in ${escapedProject})$`);
+const ANY_COMPOSER = /^(Ask ChatGPT|Do anything|New chat in .+)$/;
 const PROJECT = new RegExp(`^(Project:|Change project:) ${escapedProject}$`);
 const GITHUB_MENTION = "[@GitHub](plugin://github@openai-curated-remote)";
 const LOOP_MARKER = /^HADALIS_LOOP:(?:WAIT_RESULT|CONTINUE|ROTATE|DONE|CONNECTOR_BLOCKED)(?:[ \\t]+[A-Za-z0-9._/-]+)?[ \\t]*$/m;
@@ -66,7 +67,7 @@ async function findMainPage(browser) {
   for (const context of browser.contexts()) {
     for (const page of context.pages()) {
       if (page.url() !== MAIN_URL) continue;
-      const composer = page.getByRole("textbox", { name: COMPOSER });
+      const composer = page.getByRole("textbox", { name: ANY_COMPOSER });
       const newChat = page.getByRole("button", {
         name: new RegExp(`^(Start new chat in|New chat in) ${escapedProject}$`)
       });
@@ -805,6 +806,34 @@ export async function extractLoopResponse(
 
   throw new Error("No completed assistant HADALIS_LOOP response found");
 }
+
+export async function handoverCheck(page) {
+  // Observational only: parking is a separate explicit control action.
+  const composers = await visibleItems(page.getByRole("textbox", {
+    name: ANY_COMPOSER
+  }));
+  let draftPresent = false;
+  if (composers.length === 1) {
+    try {
+      draftPresent = await composers[0].evaluate(
+        element => (element.textContent ?? "").length > 0
+      );
+    } catch {
+      draftPresent = true;
+    }
+  }
+  return {
+    projectGuardVisible: await visibleCount(
+      page.getByRole("button", { name: PROJECT })
+    ),
+    generationActive: (await visibleCount(
+      page.getByRole("button", { name: /stop/i })
+    )) > 0,
+    composerReady: composers.length === 1,
+    draftPresent
+  };
+}
+
 
 export async function observeDesktop(page) {
   const composer = page.getByRole("textbox", { name: COMPOSER });

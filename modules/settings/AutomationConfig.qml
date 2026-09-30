@@ -22,11 +22,21 @@ ContentPage {
     property bool reloadDraftOnce: false
     property string errorText: ""
     property string pendingRemoveId: ""
+    property string pendingParkOwnerId: ""
     property string pendingCleanupScope: ""
     property string pendingCleanupField: ""
     property string diagnosticText: ""
     property string logMessage: ""
     readonly property bool logsBusy: logsProcess.running
+    readonly property string blockedOwnerId: root.selectedState?.status === "waiting_owner"
+        ? (root.snapshot?.runtime?.owner_id ?? "") : ""
+    readonly property var blockedOwnerState: root.blockedOwnerId
+        && root.snapshot && root.snapshot.runtime && root.snapshot.runtime.profiles
+        ? (root.snapshot.runtime.profiles[root.blockedOwnerId] ?? null) : null
+    readonly property bool canParkBlockedOwner: !!root.blockedOwnerId
+        && root.blockedOwnerState?.desired === "stopped"
+        && root.blockedOwnerState?.pending !== null
+        && root.blockedOwnerState?.status === "waiting_desktop"
     property int nowUnix: Math.floor(Date.now() / 1000)
     readonly property bool busy: actionProcess.running
     readonly property var profiles: root.snapshot?.config?.profiles ?? []
@@ -77,6 +87,7 @@ ContentPage {
 
     function cancelConfirmation(): void {
         root.pendingRemoveId = ""
+        root.pendingParkOwnerId = ""
         root.pendingCleanupScope = ""
         root.pendingCleanupField = ""
     }
@@ -109,6 +120,18 @@ ContentPage {
             root.runAction(["profile-remove", id])
     }
 
+    function confirmParkBlockedOwner(): void {
+        if (!root.canParkBlockedOwner || root.busy) return
+        root.pendingParkOwnerId = root.blockedOwnerId
+    }
+
+    function applyParkBlockedOwner(): void {
+        const id = root.pendingParkOwnerId
+        root.cancelConfirmation()
+        if (id && id === root.blockedOwnerId)
+            root.runAction(["profile-park-unresolved", id])
+    }
+
     function refreshLogs(): void {
         if (!root.visible || root.activeSection !== "history" || root.logsBusy) return
         logsProcess.running = true
@@ -137,6 +160,9 @@ ContentPage {
             unavailable: "Unavailable", thinking: "Thinking", waiting_result: "Waiting for local result",
             waiting_desktop: "Waiting for ChatGPT",
             continuing: "Continuing", restart_queued: "Restart queued",
+            waiting_owner: "Waiting for previous profile",
+            recovering_pending: "Recovering previous response",
+            parked_unresolved: "Parked unresolved response",
             scheduler_unavailable: "Scheduler unavailable",
             invalid_configuration: "Invalid configuration",
             rotating: "Rotating chat", paused: "Paused",
@@ -149,8 +175,8 @@ ContentPage {
 
     function statusColor(value): color {
         if (["active", "running", "continuing"].includes(value)) return Appearance.colors.colPrimary
-        if (["failed", "connector_blocked", "blocked", "transport_unavailable", "scheduler_unavailable", "invalid_configuration"].includes(value)) return Appearance.colors.colTertiary
-        if (["starting", "stopping", "thinking", "waiting_result", "waiting_desktop", "rotating", "restart_queued", "pausing"].includes(value)) return Appearance.colors.colSecondary
+        if (["failed", "connector_blocked", "blocked", "transport_unavailable", "scheduler_unavailable", "invalid_configuration", "parked_unresolved"].includes(value)) return Appearance.colors.colTertiary
+        if (["starting", "stopping", "thinking", "waiting_result", "waiting_desktop", "waiting_owner", "recovering_pending", "rotating", "restart_queued", "pausing"].includes(value)) return Appearance.colors.colSecondary
         return Appearance.colors.colSubtext
     }
 
@@ -280,6 +306,12 @@ ContentPage {
         text: root.errorText
     }
     SettingsNote {
+        visible: !!root.snapshot?.scheduler_problem
+        warning: true
+        icon: "error"
+        text: root.snapshot?.scheduler_problem ?? ""
+    }
+    SettingsNote {
         visible: root.snapshot?.issues?.length > 0
         warning: true
         icon: "warning"
@@ -380,7 +412,7 @@ ContentPage {
                         Layout.fillWidth: true
                         spacing: 0
                         StyledText { Layout.fillWidth: true; text: profileRow.modelData.name; elide: Text.ElideRight; color: Appearance.colors.colOnSurface }
-                        StyledText { Layout.fillWidth: true; text: root.statusLabel(profileRow.modelData.enabled ? profileRow.run.status : "disabled"); font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colSubtext }
+                        StyledText { Layout.fillWidth: true; text: root.statusLabel(profileRow.run.parked_pending ? profileRow.run.status : (profileRow.modelData.enabled ? profileRow.run.status : "disabled")); font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colSubtext }
                     }
                     DialogButton { buttonText: Translation.tr("Edit"); onClicked: root.selectedProfileId = profileRow.modelData.id }
                 }
@@ -442,6 +474,43 @@ ContentPage {
                 visible: root.snapshot?.runtime?.owner_id === root.selectedProfileId
                     && root.selectedState?.desired !== "stopped"
                 text: Translation.tr("Stop this profile first. Wait for its current response to finish.")
+            }
+            SettingsNote {
+                visible: !!root.selectedState?.status_detail
+                text: root.selectedState?.status_detail ?? ""
+            }
+            SettingsNote {
+                visible: root.canParkBlockedOwner
+                warning: true
+                text: Translation.tr("Open the previous profile's original ChatGPT project chat to recover it, or park the unresolved turn to continue.")
+            }
+            Flow {
+                visible: root.canParkBlockedOwner && root.pendingParkOwnerId !== root.blockedOwnerId
+                Layout.fillWidth: true
+                Layout.preferredHeight: childrenRect.height
+                spacing: 6
+                DialogButton {
+                    buttonText: Translation.tr("Park unresolved previous turn")
+                    enabled: !root.busy
+                    onClicked: root.confirmParkBlockedOwner()
+                }
+            }
+            SettingsNote {
+                visible: root.pendingParkOwnerId === root.blockedOwnerId
+                warning: true
+                text: Translation.tr("The old pending baseline is kept, but that profile will require manual reconciliation.")
+            }
+            Flow {
+                visible: root.pendingParkOwnerId === root.blockedOwnerId
+                Layout.fillWidth: true
+                Layout.preferredHeight: childrenRect.height
+                spacing: 6
+                DialogButton { buttonText: Translation.tr("Cancel"); onClicked: root.cancelConfirmation() }
+                DialogButton {
+                    buttonText: Translation.tr("Confirm park and continue")
+                    enabled: !root.busy
+                    onClicked: root.applyParkBlockedOwner()
+                }
             }
             SettingsNote {
                 visible: root.pendingRemoveId === root.selectedProfileId
@@ -636,6 +705,13 @@ ContentPage {
         title: Translation.tr("Current run")
         SettingsGroup {
             StyledText { text: Translation.tr("Status: %1").arg(root.statusLabel(root.selectedState?.status ?? "idle")); color: Appearance.colors.colOnSurface }
+            StyledText {
+                visible: !!root.selectedState?.status_detail
+                Layout.fillWidth: true
+                text: root.selectedState?.status_detail ?? ""
+                wrapMode: Text.WordWrap
+                color: Appearance.colors.colSecondary
+            }
             StyledText { text: Translation.tr("Loop: %1 · Job: %2").arg(root.selectedState?.loop_state || "—").arg(root.selectedState?.job_id || root.selectedState?.last_job_id || "—"); color: Appearance.colors.colOnSurface }
             StyledText { text: Translation.tr("Elapsed: %1 · Iterations: %2 · Prompts: %3").arg(root.elapsed(root.selectedState?.started_at_unix)).arg(root.selectedState?.iterations ?? 0).arg(root.selectedState?.prompts_sent ?? 0); color: Appearance.colors.colOnSurface }
             StyledText { text: Translation.tr("Polling errors: %1 · Last result: %2").arg(root.selectedState?.poll_errors ?? 0).arg(root.selectedState?.last_result || "—"); color: Appearance.colors.colOnSurface }

@@ -37,6 +37,8 @@ def main(argv: list[str]) -> dict:
         return control.set_maintenance(args[0], args[1], len(args) == 3)
     if operation == "profile-remove" and len(args) == 1:
         return control.remove_profile(args[0])
+    if operation == "profile-park-unresolved" and len(args) == 1:
+        return control.request_park_unresolved(args[0])
     if operation == "logs" and not args:
         return {"ok": True, "text": diagnostics.report()}
     if operation == "logs-export" and not args:
@@ -53,7 +55,8 @@ if __name__ == "__main__":
         args = sys.argv[2:]
         profile_id = (args[1] if operation == "profile-action" and len(args) > 1
                       else args[0] if operation in {"profile-remove", "profile-set",
-                                                    "profile-reset-prompt"} and args
+                                                    "profile-reset-prompt",
+                                                    "profile-park-unresolved"} and args
                       else None)
         detail = f"{operation} failed: {type(exc).__name__}: {str(exc)[:1900]}"
         try:

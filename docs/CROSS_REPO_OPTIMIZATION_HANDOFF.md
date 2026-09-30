@@ -21525,3 +21525,209 @@ outside MemoryPressure/WidgetPowerManager. Prefer an under-covered event/process
 boundary such as WallpaperListener, AntiFlashbangSampler, DeviceStatePersistence
 secondary paths, or another service whose collection/process cost scales with
 real user/session state.
+
+
+## 90. Round 76 — Anti-flashbang capture process/Rust audit (2026-09-30)
+
+### Snapshot, linkage and ownership
+
+- Authoritative `dev` at round start and immediately before this write:
+  `ee28179a1489884e18844eafafea431618eff001` (Round 75).
+- No intervening commit exists after Round 75.
+- Current exact source traced end to end:
+  - Quick Toggle / Night Light controls mutate
+    `light.antiFlashbang.enable`;
+  - `Brightness.antiFlashbangActive` applies Config/lock/dark-mode/compositor
+    gating;
+  - `Brightness.qml` creates one `AntiFlashbangSampler` per
+    `Quickshell.screens` entry;
+  - each sampler captures the corresponding output;
+  - sampled lightness is converted by `antiFlashbangPolicy.js`;
+  - `BrightnessMonitor.brightnessMultiplier` feeds
+    `multipliedBrightness`;
+  - the existing brightness write path applies the resulting monitor value.
+- Hyprland/Niri focus/workspace events can request an early sample, while the
+  periodic timer keeps same-application content changes observable.
+- The handoff was searched for AntiFlashbang/captureCommand/grim/magick; no
+  existing optimization owner was found.
+
+### 90.1 Current active path starts four processes per successful capture attempt
+
+Path:
+
+- `services/AntiFlashbangSampler.qml`.
+
+Default capture command is structurally:
+
+`timeout`
+→ `bash -o pipefail -c`
+→ `grim ... -t ppm -`
+→ `magick ppm:- -colorspace Gray -format '%[fx:mean*100]' info:`.
+
+The sampler's configured interval is bounded to 250..3000 ms and defaults to
+500 ms.
+
+Therefore, while Anti-flashbang is active:
+
+- default periodic rate: up to about **2 capture attempts/s/output** when each
+  attempt completes before the next tick;
+- configured lower-bound interval: up to about **4 attempts/s/output**;
+- process startups per ordinary attempt: **4**;
+- default process-start shape: up to about **8 process startups/s/output**;
+- at the 250 ms lower bound: up to about **16 process startups/s/output**.
+
+Focus/workspace-triggered requests can add attempts between periodic ticks, but
+the sampler's `busy`/`pending` state coalesces concurrent requests.
+
+These are source-derived process counts, not CPU percentages.
+
+### 90.2 Same-language wrapper removal is not automatically strict-lossless
+
+The obvious simplifications are unsafe without lifecycle proof.
+
+#### Removing GNU timeout
+
+The QML watchdog also stops `capture.running` at the configured timeout, so
+the outer `timeout` process can look redundant.
+
+It is not proven redundant. Today GNU timeout owns child-command timeout and
+kill-after semantics while QML owns a second cancellation boundary. The checked
+runtime test explicitly covers a stuck command and expects the capture tree to
+terminate without publishing a late result.
+
+Making Bash the direct QML-owned process changes:
+
+- which PID receives QML cancellation;
+- pipeline-child lifetime if Bash exits first;
+- TERM/KILL propagation;
+- exit code/status;
+- stdout completion ordering relative to `onExited`.
+
+Status: **OUT OF STRICT-LOSSLESS for a mechanical timeout removal**.
+
+#### Removing Bash while retaining the pipe
+
+The Bash process supplies:
+
+- the `grim | magick` pipeline;
+- `pipefail`;
+- positional argv handling for output name and scale.
+
+Replacing it with a different shell or dropping `pipefail` changes pipeline
+failure semantics. Quickshell would need an explicit binary-safe process-pipe
+contract before Bash can be removed without another helper.
+
+Status: **PARITY REQUIRED**, not a source-local confirmed reduction.
+
+### 90.3 Native Rust orchestration is materially justified to benchmark
+
+This path differs from low-frequency script helpers:
+
+- it is periodic while enabled;
+- it scales by output count;
+- it can run at 2 Hz/output by default and 4 Hz/output at the supported minimum
+  interval;
+- every sample currently pays shell/process orchestration in addition to the
+  actual capture/image work.
+
+The native workspace has no existing capture/image helper, so this is not
+ALREADY NATIVE / SUPERSEDED.
+
+A first native design should **not** replace ImageMagick's grayscale math yet.
+
+Safer first architecture:
+
+`inir-antiflash-sample OUTPUT SCALE TIMEOUT`
+→ spawn exact current `grim` argv;
+→ pipe stdout to exact current `magick` argv;
+→ own both child processes in one native process group;
+→ reproduce timeout + 200 ms kill-after semantics;
+→ write only the same numeric sample text to stdout;
+→ preserve nonzero/failure behavior.
+
+That changes the process shape from:
+
+- current: `timeout + bash + grim + magick` = **4 processes/attempt**;
+
+to:
+
+- native orchestrator + `grim + magick` = **3 processes/attempt**,
+
+while also removing Bash parsing/pipeline setup and GNU timeout startup.
+
+The reason to keep `magick` initially is strict parity:
+`-colorspace Gray -format '%[fx:mean*100]'` has ImageMagick colorspace/quantum
+semantics. A naive Rust luma formula is not proven byte/numeric equivalent.
+
+Only after a representative image corpus proves exact or tolerance-acceptable
+product behavior should a second stage consider parsing PPM in Rust and
+removing `magick`, which could reduce the path to native orchestrator +
+`grim`.
+
+Rust classification: **RUST BENCHMARK REQUIRED**, with strong material reason.
+
+### 90.4 Rust compatibility surface / required oracle
+
+A native candidate must preserve all of the following:
+
+- one sample per accepted sampler request;
+- output-specific capture;
+- exact scale bounds;
+- PPM capture semantics;
+- stdout containing only the sample payload expected by QML;
+- malformed/empty stdout rejection;
+- finite 0..100 acceptance;
+- process exit/failure classification;
+- configured timeout;
+- 200 ms kill-after behavior;
+- QML watchdog interaction;
+- disable/reset cancellation;
+- generation rejection of late results;
+- `busy`, `pending`, success/failure and consecutive-failure state;
+- no disk image writes;
+- event-triggered request coalescing;
+- package/source installation path.
+
+Required parity cases should include the existing
+`scripts/test-anti-flashbang-sampler.sh` scenarios plus:
+
+- child `grim` start failure;
+- child `magick` start failure;
+- `grim` nonzero with `magick` still able/unable to consume stdin;
+- partial/broken PPM;
+- SIGTERM during each pipeline phase;
+- SIGKILL after grace period;
+- rapid disable/re-enable generation changes;
+- multi-output simultaneous sampling;
+- exact sample comparison against current ImageMagick output over dark, bright,
+  saturated and alpha/compositor fixtures.
+
+Required benchmark:
+
+- process starts/sample;
+- wall CPU/sample;
+- peak RSS/PSS of the helper chain;
+- sample latency distribution;
+- steady 30-60 s sampling CPU at one and multiple outputs.
+
+No Rust percentage is claimed before measurement.
+
+### 90.5 Round-76 conclusion / next checkpoint
+
+New source-local strict-lossless optimization groups: **zero**.
+
+New language/runtime candidate:
+
+- Anti-flashbang capture orchestration:
+  **RUST BENCHMARK REQUIRED** (§90.3).
+
+No runtime/product/native/script code was modified. Only this research handoff
+was updated; no local job is submitted yet because the candidate first requires
+an implementation/parity harness design, not a benchmark of nonexistent native
+code.
+
+Next audit should re-fetch current `dev`, reconcile concurrent work and rotate
+outside Brightness/Anti-flashbang. Prefer another event-driven persistence or
+collection path with a source-local strict reduction, such as
+DeviceStatePersistence secondary state handling, RecorderStatus ownership, or a
+less-covered deferred service.

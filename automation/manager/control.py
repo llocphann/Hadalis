@@ -55,6 +55,10 @@ def _ensure_runtime_services() -> None:
         )
 
 
+def control_unit_name(key: str) -> str:
+    return UNITS[key]
+
+
 def _scheduler_problem(services: dict, state: dict, now: int) -> str:
     bridge = services["bridge"]
     if bridge["state"] != "active":
@@ -63,6 +67,10 @@ def _scheduler_problem(services: dict, state: dict, now: int) -> str:
     heartbeat = state.get("manager_heartbeat_at_unix")
     if type(heartbeat) is int and now - heartbeat > HEARTBEAT_STALE_SECONDS:
         return f"Chat bridge scheduler has not ticked for {now - heartbeat}s; inspect its user journal"
+    for key in ("chatgpt", "worker"):
+        service = services[key]
+        if service["state"] != "active":
+            return f"{control_unit_name(key)} is {service['state']} ({service.get('result') or service.get('detail') or 'not running'})"
     if heartbeat is None:
         due = [item.get("next_run_at_unix") for item in state["profiles"].values()
                if item.get("desired") == "run" and type(item.get("next_run_at_unix")) is int]
@@ -97,10 +105,12 @@ def service_states() -> dict:
             if key == "bridge" and state == "inactive" and outcome not in {"", "success"}:
                 state = "failed"
             result[key] = {"unit": unit, "state": state,
-                           "detail": values.get("SubState", ""), "result": outcome}
+                           "detail": values.get("SubState", ""), "result": outcome,
+                           "exec_main_status": values.get("ExecMainStatus", "")}
         except (OSError, subprocess.TimeoutExpired):
             result[key] = {"unit": unit, "state": "unavailable",
-                           "detail": "systemd user manager unavailable", "result": ""}
+                           "detail": "systemd user manager unavailable", "result": "",
+                           "exec_main_status": ""}
     return result
 
 
@@ -119,7 +129,7 @@ def status() -> dict:
                 if item["status"] == "scheduler_unavailable" and item["last_error"] == problem:
                     continue
                 item["status"] = "scheduler_unavailable"
-                item["last_error"] = problem[:500]
+                item["last_error"] = problem[:2000]
                 item["last_activity_at_unix"] = int(time.time())
                 event(runtime, profile_id, "scheduler_unavailable", problem)
         change_state(mark_unavailable)
@@ -139,7 +149,7 @@ def control_service(action: str, key: str) -> dict:
     result = subprocess.run(["systemctl", "--user", action, UNITS[key]],
                             capture_output=True, text=True, timeout=20, check=False)
     if result.returncode != 0:
-        detail = (result.stderr or result.stdout).strip()[:500]
+        detail = (result.stderr or result.stdout).strip()[:2000]
         change_state(lambda _config, state: event(
             state, None, "service_action_failed", f"{action} {UNITS[key]}: {detail}"))
         raise RuntimeError(detail)
@@ -201,7 +211,7 @@ def profile_action(action: str, profile_id: str) -> dict:
             def startup_failed(_config: dict, state: dict):
                 item = state["profiles"][profile_id]
                 item["status"] = "scheduler_unavailable"
-                item["last_error"] = str(exc)[:500]
+                item["last_error"] = str(exc)[:2000]
                 item["last_activity_at_unix"] = int(time.time())
                 event(state, profile_id, "start_failed", item["last_error"])
             change_state(startup_failed)
@@ -289,16 +299,32 @@ def set_maintenance(field: str, value_json: str, confirm_delete: bool = False) -
 
 
 def remove_profile(profile_id: str) -> dict:
+    # If a dead scheduler stranded ownership, a fully stopped profile without
+    # an in-flight ChatGPT response can release that stale lease safely.
+    # Never discard a pending (possibly submitted) prompt.
+    config, state, _issues = read_snapshot()
+    if state["owner_id"] == profile_id:
+        item = state["profiles"][profile_id]
+        if item["desired"] != "stopped" or item["pending"] is not None:
+            raise ValueError("stop the profile and finish its current response before removing it")
+        if not _scheduler_problem(service_states(), state, int(time.time())):
+            raise ValueError("the scheduler still owns this profile; retry after it releases the chat")
+
     def mutate(config: dict, state: dict):
-        if state["owner_id"] == profile_id:
-            raise ValueError("stop the active profile before removing it")
         if profile_id == "strict-lossless-research":
             raise ValueError("the built-in profile can be disabled but not removed")
-        before = len(config["profiles"])
-        config["profiles"] = [item for item in config["profiles"] if item["id"] != profile_id]
-        if len(config["profiles"]) == before:
+        if profile_id not in state["profiles"]:
             raise ValueError("profile not found")
-        state["profiles"].pop(profile_id, None)
+        if state["profiles"][profile_id]["pending"] is not None:
+            raise ValueError("cannot remove profile with a pending ChatGPT response")
+        if state["owner_id"] == profile_id:
+            item = state["profiles"][profile_id]
+            if item["desired"] != "stopped" or item["pending"] is not None:
+                raise ValueError("the profile is still running or has a pending response")
+            state["owner_id"] = None
+            event(state, profile_id, "stale_owner_released")
+        config["profiles"] = [item for item in config["profiles"] if item["id"] != profile_id]
+        state["profiles"].pop(profile_id)
         event(state, profile_id, "removed", "ChatGPT history retained")
     change(mutate)
     return {"ok": True}

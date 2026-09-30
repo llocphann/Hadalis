@@ -8,7 +8,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from automation.manager import control  # noqa: E402
+from automation.manager import control, diagnostics, store  # noqa: E402
 
 
 def main(argv: list[str]) -> dict:
@@ -37,6 +37,10 @@ def main(argv: list[str]) -> dict:
         return control.set_maintenance(args[0], args[1], len(args) == 3)
     if operation == "profile-remove" and len(args) == 1:
         return control.remove_profile(args[0])
+    if operation == "logs" and not args:
+        return {"ok": True, "text": diagnostics.report()}
+    if operation == "logs-export" and not args:
+        return {"ok": True, "path": diagnostics.export_report()}
     raise ValueError("unknown or malformed automation control action")
 
 
@@ -45,5 +49,17 @@ if __name__ == "__main__":
         result = main(sys.argv[1:])
         print(json.dumps(result, ensure_ascii=False))
     except (ValueError, RuntimeError, OSError, json.JSONDecodeError) as exc:
-        print(json.dumps({"ok": False, "error": str(exc)[:500]}))
+        operation = sys.argv[1] if len(sys.argv) > 1 else "status"
+        args = sys.argv[2:]
+        profile_id = (args[1] if operation == "profile-action" and len(args) > 1
+                      else args[0] if operation in {"profile-remove", "profile-set",
+                                                    "profile-reset-prompt"} and args
+                      else None)
+        detail = f"{operation} failed: {type(exc).__name__}: {str(exc)[:1900]}"
+        try:
+            store.change_state(lambda _config, state: store.event(
+                state, profile_id, "control_error", detail))
+        except (ValueError, RuntimeError, OSError):
+            pass  # Preserve the original failure if local state is unreadable.
+        print(json.dumps({"ok": False, "error": str(exc)[:2000]}))
         raise SystemExit(1)

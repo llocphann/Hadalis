@@ -196,7 +196,7 @@ def _submit(config: dict, state: dict, owner: str, now: int) -> None:
 def _submission_uncertain(state: dict, owner: str, now: int, exc: Exception) -> None:
     item = state["profiles"][owner]
     item["status"] = "transport_unavailable"
-    item["last_error"] = str(exc)[:500]
+    item["last_error"] = str(exc)[:2000]
     item["failures"] += 1
     item["last_activity_at_unix"] = now
     event(state, owner, "submission_uncertain", item["last_error"])
@@ -255,7 +255,7 @@ def _poll(config: dict, state: dict, owner: str, now: int) -> None:
                 event(current, owner, "desktop_view_changed", str(exc))
             current_item["pending"]["poll_after_unix"] = now + min(
                 _profile(current_config, owner)["retry_delay_seconds"], 60)
-            current_item["last_error"] = str(exc)[:500]
+            current_item["last_error"] = str(exc)[:2000]
             current_item["status"] = "waiting_desktop"
         change_state(view_changed)
         return
@@ -267,7 +267,7 @@ def _poll(config: dict, state: dict, owner: str, now: int) -> None:
             delay = min(_profile(current_config, owner)["retry_delay_seconds"]
                         * (2 ** min(current_item["poll_errors"] - 1, 4)), 3600)
             current_item["pending"]["poll_after_unix"] = now + delay
-            current_item["last_error"] = str(exc)[:500]
+            current_item["last_error"] = str(exc)[:2000]
             current_item["status"] = "transport_unavailable"
             if current_item["poll_errors"] > _profile(current_config, owner)["max_poll_errors"]:
                 current_item["desired"] = "paused"
@@ -376,7 +376,7 @@ def _job_poll_error(config: dict, state: dict, owner: str, now: int, exc: Except
     item["failures"] += 1
     item["next_job_poll_at_unix"] = now + min(
         _profile(config, owner)["retry_delay_seconds"] * 2 ** min(item["job_poll_errors"], 4), 3600)
-    item["last_error"] = str(exc)[:500]
+    item["last_error"] = str(exc)[:2000]
     item["status"] = "transport_unavailable"
     if item["job_poll_errors"] > _profile(config, owner)["max_failures"]:
         item["desired"] = "paused"
@@ -393,7 +393,7 @@ def _heartbeat(state: dict, now: int) -> None:
 
 
 def _configuration_problem(state: dict, issues: list[str]) -> None:
-    detail = ("Invalid Automation configuration: " + "; ".join(issues))[:500]
+    detail = ("Invalid Automation configuration: " + "; ".join(issues))[:2000]
     for profile_id, item in state["profiles"].items():
         if item["desired"] != "run":
             continue
@@ -405,7 +405,7 @@ def _configuration_problem(state: dict, issues: list[str]) -> None:
 
 
 def _fatal_scheduler_error(state: dict, exc: Exception) -> None:
-    detail = (type(exc).__name__ + ": " + str(exc))[:500]
+    detail = (type(exc).__name__ + ": " + str(exc))[:2000]
     owner = state["owner_id"]
     if owner and owner in state["profiles"]:
         item = state["profiles"][owner]
@@ -454,7 +454,7 @@ def tick(now: int | None = None) -> None:
             if current_item["status"] != "waiting_desktop":
                 event(current, owner, "desktop_view_changed" if isinstance(exc, DesktopViewChanged)
                       else "desktop_busy", str(exc))
-            current_item["last_error"] = str(exc)[:500]
+            current_item["last_error"] = str(exc)[:2000]
             current_item["status"] = "waiting_desktop"
             current_item["next_run_at_unix"] = now + min(
                 _profile(current_config, owner)["retry_delay_seconds"], 60)
@@ -462,7 +462,7 @@ def tick(now: int | None = None) -> None:
     except Exception as exc:
         def failed(_config: dict, current: dict):
             current_item = current["profiles"][owner]
-            current_item["last_error"] = str(exc)[:500]
+            current_item["last_error"] = str(exc)[:2000]
             current_item["failures"] += 1
             current_item["status"] = "transport_unavailable"
             current_item["desired"] = "paused"

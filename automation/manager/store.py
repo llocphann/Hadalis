@@ -132,7 +132,7 @@ def normalize_state(raw: dict, config: dict) -> dict:
 def event(state: dict, profile_id: str | None, kind: str, detail: str = "") -> None:
     state["events"] = (state["events"] + [{
         "at_unix": int(time.time()), "profile_id": profile_id,
-        "kind": kind[:64], "detail": detail[:300],
+        "kind": kind[:64], "detail": detail[:4000],
     }])[-EVENT_LIMIT:]
 
 

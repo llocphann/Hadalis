@@ -21,6 +21,12 @@ ContentPage {
     property bool loaded: false
     property bool reloadDraftOnce: false
     property string errorText: ""
+    property string pendingRemoveId: ""
+    property string pendingCleanupScope: ""
+    property string pendingCleanupField: ""
+    property string diagnosticText: ""
+    property string logMessage: ""
+    readonly property bool logsBusy: logsProcess.running
     property int nowUnix: Math.floor(Date.now() / 1000)
     readonly property bool busy: actionProcess.running
     readonly property var profiles: root.snapshot?.config?.profiles ?? []
@@ -65,31 +71,53 @@ ContentPage {
     }
 
     function confirmCleanup(field, global): void {
-        ConfirmationService.enqueue({
-            owner: "hadalis-automation",
-            title: Translation.tr("Enable chat deletion?"),
-            message: Translation.tr("This preference is saved, but ChatGPT deletion remains unavailable until a reliable desktop action exists. Archive is safer."),
-            actions: [
-                { id: "cancel", label: Translation.tr("Cancel"), role: "cancel", isCancel: true },
-                { id: "enable", label: Translation.tr("Enable"), role: "default", isDefault: true,
-                    callback: () => global ? root.setMaintenance(field, true, true) : root.setProfile(field, true, true) }
-            ]
-        })
+        root.pendingCleanupScope = global ? "global" : root.selectedProfileId
+        root.pendingCleanupField = field
+    }
+
+    function cancelConfirmation(): void {
+        root.pendingRemoveId = ""
+        root.pendingCleanupScope = ""
+        root.pendingCleanupField = ""
+    }
+
+    function applyCleanup(): void {
+        const scope = root.pendingCleanupScope
+        const field = root.pendingCleanupField
+        root.cancelConfirmation()
+        if (field !== "delete_completed" || root.busy) return
+        if (scope === "global") root.setMaintenance(field, true, true)
+        else if (scope && scope === root.selectedProfileId)
+            root.setProfile(field, true, true)
     }
 
     function confirmRemoval(): void {
         const id = root.selectedProfileId
-        if (!id || id === "strict-lossless-research") return
-        ConfirmationService.enqueue({
-            owner: "hadalis-automation",
-            title: Translation.tr("Remove this automation?"),
-            message: Translation.tr("The profile will be removed. Its ChatGPT history will stay in ChatGPT."),
-            actions: [
-                { id: "cancel", label: Translation.tr("Cancel"), role: "cancel", isCancel: true },
-                { id: "remove", label: Translation.tr("Remove"), role: "default", isDefault: true,
-                    callback: () => root.runAction(["profile-remove", id]) }
-            ]
-        })
+        if (!id || id === "strict-lossless-research" || root.busy) return
+        if (root.snapshot?.runtime?.owner_id === id
+            && (root.selectedState?.desired !== "stopped" || root.selectedState?.pending !== null)) {
+            root.errorText = Translation.tr("Stop the profile and finish its current response before removing it.")
+            return
+        }
+        root.pendingRemoveId = id
+    }
+
+    function applyRemoval(): void {
+        const id = root.pendingRemoveId
+        root.cancelConfirmation()
+        if (id && id === root.selectedProfileId && id !== "strict-lossless-research")
+            root.runAction(["profile-remove", id])
+    }
+
+    function refreshLogs(): void {
+        if (!root.visible || root.activeSection !== "history" || root.logsBusy) return
+        logsProcess.running = true
+    }
+
+    function copyLogs(): void {
+        if (!root.diagnosticText.length) return
+        Quickshell.clipboardText = root.diagnosticText
+        root.logMessage = Translation.tr("Diagnostic log copied.")
     }
 
     function loadDraft(): void {
@@ -136,8 +164,18 @@ ContentPage {
         return Math.floor(seconds / 3600) + "h " + Math.floor(seconds % 3600 / 60) + "m"
     }
 
-    onSelectedProfileIdChanged: Qt.callLater(root.loadDraft)
-    onVisibleChanged: if (visible) Qt.callLater(root.refresh)
+    onSelectedProfileIdChanged: {
+        root.cancelConfirmation()
+        Qt.callLater(root.loadDraft)
+    }
+    onActiveSectionChanged: {
+        root.cancelConfirmation()
+        if (root.activeSection === "history") Qt.callLater(root.refreshLogs)
+    }
+    onVisibleChanged: if (visible) {
+        Qt.callLater(root.refresh)
+        if (root.activeSection === "history") Qt.callLater(root.refreshLogs)
+    }
     Component.onCompleted: Qt.callLater(root.refresh)
 
     Timer {
@@ -147,6 +185,30 @@ ContentPage {
         onTriggered: {
             root.nowUnix = Math.floor(Date.now() / 1000)
             root.refresh()
+        }
+    }
+
+    Timer {
+        interval: 15000
+        running: root.visible && root.activeSection === "history"
+        repeat: true
+        onTriggered: root.refreshLogs()
+    }
+
+    Process {
+        id: logsProcess
+        command: ["python3", root.bridge, "logs"]
+        stdout: StdioCollector { id: logsOutput }
+        stderr: StdioCollector { id: logsError }
+        onExited: exitCode => {
+            try {
+                const response = JSON.parse(logsOutput.text || logsError.text)
+                if (exitCode !== 0 || response.ok !== true)
+                    throw new Error(response.error ?? "Diagnostic log unavailable")
+                root.diagnosticText = response.text ?? ""
+            } catch (error) {
+                root.logMessage = String(error)
+            }
         }
     }
 
@@ -186,6 +248,9 @@ ContentPage {
                     throw new Error(response.error ?? "Automation action failed")
                 if (response.profile_id) root.selectedProfileId = response.profile_id
                 if (response.reload_draft) root.reloadDraftOnce = true
+                if (response.path) {
+                    root.logMessage = Translation.tr("Private diagnostic log saved: %1").arg(response.path)
+                }
             } catch (error) {
                 root.errorText = String(error)
             }
@@ -367,7 +432,29 @@ ContentPage {
                 DialogButton { buttonText: Translation.tr("Resume"); enabled: !root.busy && root.selectedState?.desired === "paused"; onClicked: root.runAction(["profile-action", "resume", root.selectedProfileId]) }
                 DialogButton { buttonText: Translation.tr("Stop"); enabled: !root.busy; onClicked: root.runAction(["profile-action", "stop", root.selectedProfileId]) }
                 DialogButton { buttonText: Translation.tr("Restart"); enabled: !root.busy && (root.selectedProfile?.enabled ?? false); onClicked: root.runAction(["profile-action", "restart", root.selectedProfileId]) }
-                DialogButton { buttonText: Translation.tr("Remove"); enabled: !root.busy && root.selectedProfileId !== "strict-lossless-research" && root.snapshot?.runtime?.owner_id !== root.selectedProfileId; onClicked: root.confirmRemoval() }
+                DialogButton {
+                    buttonText: Translation.tr("Remove")
+                    enabled: !root.busy && root.selectedProfileId !== "strict-lossless-research"
+                    onClicked: root.confirmRemoval()
+                }
+            }
+            SettingsNote {
+                visible: root.snapshot?.runtime?.owner_id === root.selectedProfileId
+                    && root.selectedState?.desired !== "stopped"
+                text: Translation.tr("Stop this profile first. Wait for its current response to finish.")
+            }
+            SettingsNote {
+                visible: root.pendingRemoveId === root.selectedProfileId
+                warning: true
+                text: Translation.tr("Remove this profile? ChatGPT conversation history will be kept.")
+            }
+            Flow {
+                visible: root.pendingRemoveId === root.selectedProfileId
+                Layout.fillWidth: true
+                Layout.preferredHeight: childrenRect.height
+                spacing: 6
+                DialogButton { buttonText: Translation.tr("Cancel"); onClicked: root.cancelConfirmation() }
+                DialogButton { buttonText: Translation.tr("Confirm remove"); enabled: !root.busy; onClicked: root.applyRemoval() }
             }
         }
 
@@ -439,6 +526,19 @@ ContentPage {
             SettingsNote { text: Translation.tr("Polling retries use bounded backoff. A failed submission is never resent automatically; its status needs review.") }
             SettingsSwitch { text: Translation.tr("Archive completed chats (pending desktop support)"); checked: root.selectedProfile?.archive_completed ?? true; autoToggle: false; onToggledByUser: checked => root.setProfile("archive_completed", checked) }
             SettingsSwitch { text: Translation.tr("Delete completed chats (pending desktop support)"); checked: root.selectedProfile?.delete_completed ?? false; autoToggle: false; enabled: !(root.selectedProfile?.archive_completed ?? true); onToggledByUser: checked => checked ? root.confirmCleanup("delete_completed", false) : root.setProfile("delete_completed", false) }
+            SettingsNote {
+                visible: root.pendingCleanupScope === root.selectedProfileId && root.pendingCleanupField === "delete_completed"
+                warning: true
+                text: Translation.tr("Save deletion preference? Chat deletion is not implemented.")
+            }
+            Flow {
+                visible: root.pendingCleanupScope === root.selectedProfileId && root.pendingCleanupField === "delete_completed"
+                Layout.fillWidth: true
+                Layout.preferredHeight: childrenRect.height
+                spacing: 6
+                DialogButton { buttonText: Translation.tr("Cancel"); onClicked: root.cancelConfirmation() }
+                DialogButton { buttonText: Translation.tr("Confirm preference"); enabled: !root.busy; onClicked: root.applyCleanup() }
+            }
         }
     }
 
@@ -456,6 +556,19 @@ ContentPage {
             SettingsSwitch { text: Translation.tr("Recover stuck generation (pending desktop support)"); checked: root.snapshot?.config?.maintenance?.recover_stuck_generation ?? false; autoToggle: false; onToggledByUser: checked => root.setMaintenance("recover_stuck_generation", checked) }
             SettingsSwitch { text: Translation.tr("Recover stale composer (pending desktop support)"); checked: root.snapshot?.config?.maintenance?.recover_stale_composer ?? false; autoToggle: false; onToggledByUser: checked => root.setMaintenance("recover_stale_composer", checked) }
             SettingsNote { warning: true; icon: "info"; text: Translation.tr("ChatGPT Desktop has no verified semantic archive or delete control. These preferences persist but no chat is changed. Active or uncertain chats are never cleaned.") }
+            SettingsNote {
+                visible: root.pendingCleanupScope === "global" && root.pendingCleanupField === "delete_completed"
+                warning: true
+                text: Translation.tr("Save deletion preference? Chat deletion is not implemented.")
+            }
+            Flow {
+                visible: root.pendingCleanupScope === "global" && root.pendingCleanupField === "delete_completed"
+                Layout.fillWidth: true
+                Layout.preferredHeight: childrenRect.height
+                spacing: 6
+                DialogButton { buttonText: Translation.tr("Cancel"); onClicked: root.cancelConfirmation() }
+                DialogButton { buttonText: Translation.tr("Confirm preference"); enabled: !root.busy; onClicked: root.applyCleanup() }
+            }
         }
     }
 
@@ -466,6 +579,36 @@ ContentPage {
         icon: "history"
         title: Translation.tr("Recent activity")
         SettingsGroup {
+            Flow {
+                Layout.fillWidth: true
+                Layout.preferredHeight: childrenRect.height
+                spacing: 6
+                DialogButton { buttonText: Translation.tr("Refresh logs"); enabled: !root.logsBusy; onClicked: root.refreshLogs() }
+                DialogButton { buttonText: Translation.tr("Copy logs"); enabled: root.diagnosticText.length > 0; onClicked: root.copyLogs() }
+                DialogButton { buttonText: Translation.tr("Export to /tmp"); enabled: !root.busy; onClicked: root.runAction(["logs-export"]) }
+            }
+            SettingsNote {
+                text: Translation.tr("System logs may contain private data. Review before sharing. Exports use private permissions.")
+            }
+            StyledText {
+                visible: root.logMessage.length > 0
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: root.logMessage
+                color: Appearance.colors.colSecondary
+            }
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 320
+                clip: true
+                MaterialTextArea {
+                    width: parent.width
+                    readOnly: true
+                    selectByMouse: true
+                    enableSettingsSearch: false
+                    text: root.diagnosticText || Translation.tr("Open Activity or select Refresh logs to load diagnostics.")
+                }
+            }
             StyledText {
                 Layout.fillWidth: true
                 text: root.selectedProfile?.name ?? Translation.tr("Select a profile")

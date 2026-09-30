@@ -4,6 +4,16 @@
 >
 > These experiments were removed from the active Hadalis/Abyss runtime after live use did not deliver the intended behavior, despite source contracts and synthetic Wayland checks passing. This document is historical reference only and must not be treated as an active runtime contract.
 
+## 2026-09-30 Method A reintroduction — retired again
+
+The maintainer tested a narrow Confirmation-in-Abyss retry and reported that it
+**had no effect**. Its active runtime/test changes were reverted forward on
+`dev`; sources remain accessible at `f502d8754127` and `73d44691330c`.
+The later, unrelated `dialogBody.vacancyRole` forwarding was retained.
+
+For the specific attempted behavior, exact source commits, recorded outcome, and
+rollback boundary, see [Method A archive](ABYSS_CONFIRMATION_METHOD_A_2026-09-30.md).
+
 ## Retired scope
 
 ### Confirmation-in-Abyss

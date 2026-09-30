@@ -13,7 +13,6 @@ Item {
     required property string edge
     property string joinedEdge: ""
     readonly property string attachedEdge: edge
-    readonly property string popupJoinedEdge: joinedEdge
     property string outputName: ""
     property string identity: ""
     property var controller: null
@@ -65,7 +64,6 @@ Item {
     // Presentation policy only. The allocator remains a deterministic resting
     // layout producer; animation state is owned outside AbyssBodyPlacement.
     property string stackPolicy: ""
-    property bool placementPreferInward: false
     // Pyramid grouping follows the allocator's normal content-clearance scale.
     // Same-Edge popup intervals that overlap or come within this many logical
     // pixels participate in one visual neighborhood.
@@ -200,7 +198,6 @@ Item {
             allowInward:root.placementCanStackInward,
             stackPolicy:root.stackPolicy,
             stackProximity:root.stackProximity,
-            preferInward:root.placementPreferInward,
             record:root.requestedRecord})
         inputBounds: root.inputBounds
         mass: root.mass

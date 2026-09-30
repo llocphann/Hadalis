@@ -35,12 +35,6 @@ MouseArea {
     Accessible.name: root.item?.tooltipTitle || root.item?.title || Translation.tr("System tray item")
     Accessible.focusable: true
 
-    Component.onCompleted: PopupAnchorRegistry.registerAnchor(
-        root, "tray", () => [
-            root.item?.id
-        ], 300)
-    Component.onDestruction: PopupAnchorRegistry.unregisterAnchor(root)
-
     function activatePrimary(): void {
         if (!TrayService.smartToggle(root.item))
             root.item.activate()

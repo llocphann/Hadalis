@@ -19760,3 +19760,240 @@ rotate to an under-covered Frontend ↔ Backend interaction path outside
 Notifications. Prefer a subsystem with production process/IPC cost such as
 Bluetooth/network secondary controls or power/TLP, and search existing handoff
 ownership before promoting any candidate.
+
+
+## 79. Round 65 — connectivity process boundary and TLP group-derivation audit (2026-09-30)
+
+### Snapshot, concurrent delta and ownership
+
+- Authoritative `dev` at round start and immediately before this documentation
+  write: `0d05092faeb8fb6ba73247b8c896e56e02ad5ec2`.
+- The newest committed optimization-research checkpoint before this round is
+  Round 64 at
+  `45551e186f078395f8c40c562b0cf1304fc16230`.
+- Five commits are present after Round 64:
+  - `ef9de70329bf3f31a2d06b8b5596aecee5444f37` — dispatches the
+    deterministic Abyss lossless-allocation proposal oracle;
+  - `0d3750a41a96bf0617dcc27b9a7cd57f5a4c225c` — records that oracle
+    result;
+  - `ba5ae690dc59648a9bb7bddb1341b01aadf83e11` — implements lossless
+    Abyss/WaveVisualizer allocation reductions;
+  - `a661a29bafc0d0c698a2b57d7eabbd208eebd608` and
+    `0d05092faeb8fb6ba73247b8c896e56e02ad5ec2` — automation desktop
+    bridge fixes.
+- Those commits touch only Abyss/WaveVisualizer allocation work, deterministic
+  automation queue/results and the desktop bridge/tests. They do not modify
+  Network, Bluetooth, TLP services/pages or this handoff before the present
+  write.
+- `AGENTS.md`, `to-do/README.md`, Cloud Bot/Local Bot routing and the newest
+  handoff tail were re-read first.
+- Duplicate-ownership search retained:
+  - §50.1 for Network scan parsing/grouping;
+  - §50.9 for Bluetooth connected-device count;
+  - §54.9 for Bluetooth discovery ownership correctness;
+  - §63.6 for TLP settings/category final filter/map staging;
+  - §71.2 for TLP runtime token parsing.
+  The TLP group-level repeated derivation below is not owned by those items.
+
+### 79.1 Waffle Wi-Fi/Bluetooth bound-switch backend echo is a correctness/process-churn prerequisite, not a strict-lossless optimization
+
+Paths:
+
+- `modules/waffle/actionCenter/wifi/WifiControl.qml`;
+- `modules/waffle/actionCenter/bluetooth/BluetoothControl.qml`;
+- `services/Network.qml`;
+- Quickshell Bluetooth adapter state.
+
+Both controls bind `checked` to backend-owned state and use
+`onCheckedChanged` to mutate that same backend:
+
+- Wi-Fi: `checked: Network.wifiStatus !== "disabled"` then
+  `onCheckedChanged -> Network.enableWifi(checked); Network.rescanWifi()`;
+- Bluetooth: `checked: Bluetooth.defaultAdapter?.enabled ?? false` then
+  `onCheckedChanged -> adapter.enabled = checked` plus discovery mutation.
+
+A QML property-change handler is not interaction-only. Therefore backend state
+publication can feed back into the mutation path. For Wi-Fi this can launch
+`nmcli radio wifi ...` plus an explicit rescan when a backend-observed status
+change merely updates the bound switch.
+
+This is analogous in principle to the generic Settings event-source concern in
+§27.1, but here the consequence is an external radio/process action rather than
+Config persistence.
+
+Do **not** count a user-only signal migration as strict-lossless performance
+work. It intentionally removes currently occurring backend echoes and can alter
+monitor/rescan/discovery timing. Treat it as a correctness/lifecycle follow-up
+requiring an explicit interaction contract.
+
+The already-recorded Bluetooth discovery-owner defect (§54.9), including the
+unrelated Night Light discovery side effect, remains separate and is not
+re-counted.
+
+### 79.2 Network shell-pipeline removal is a real process candidate but needs failure/start/cancellation parity
+
+Path:
+
+- `services/Network.qml`.
+
+Two status helpers remain shell pipelines on an event-driven production path:
+
+- `updateNetworkName`:
+  `sh -c 'nmcli -t -f NAME c show --active | head -1'`;
+- `updateNetworkStrength`:
+  `sh -c "nmcli -f IN-USE,SIGNAL,SSID device wifi | awk ..."`.
+
+There is no existing handoff owner for these exact pipelines.
+
+A QML-side parser could preserve the selected first connection name and the
+active-row signal assignments while removing `head` / `awk`, and potentially
+the shell wrapper itself.
+
+However promotion to CONFIRMED is intentionally withheld because strict parity
+must still prove:
+
+- missing/unstartable `nmcli` behavior versus a successfully started shell;
+- shell pipeline exit-status behavior;
+- stderr behavior when commands/utilities are absent;
+- exact first-line semantics for empty/blank/CRLF output;
+- the number/order of `networkName` / `networkStrength` assignments;
+- multiple active-row behavior for the strength parser;
+- process shutdown on service destruction;
+- signal/cancellation behavior when the process is already running.
+
+Status: **HIGH CONFIDENCE / DETERMINISTIC PARITY-BENCHMARK REQUIRED**.
+
+Native Rust is not the first recommendation here. The dominant avoidable cost in
+these two helpers is the shell/filter pipeline around native `nmcli`; prove the
+simpler QML/same-language parser first. A Rust/NetworkManager D-Bus backend would
+have a much larger compatibility surface and is **RUST NOT JUSTIFIED before the
+pipeline baseline is measured**.
+
+### 79.3 Compute TLP group-level profile presentation once instead of once per row — CONFIRMED / P1-P2 Settings interaction
+
+Paths:
+
+- `services/TlpSettingsService.qml`;
+- `modules/settings/TlpPowerSettings.qml`;
+- `modules/settings/TlpSettingRow.qml`;
+- `modules/waffle/settings/pages/WTlpPage.qml`;
+- `modules/waffle/settings/WTlpSettingRow.qml`.
+
+This is distinct from §63.6. That item owns the service's final
+map/filter staging. The current issue is repeated **group-level presentation
+derivation**.
+
+#### A. Profile-guidance detection allocates/scans a whole subset only to ask whether the count is at least two
+
+Inside `groupsForCategory()`, every group except `TLP_PROFILE` currently
+executes:
+
+`group.settings.filter(... AC/BAT/SAV ...)`
+
+and only tests:
+
+`profiled.length < 2`.
+
+The matched array is never otherwise consumed.
+
+Strict-safe direction:
+
+- scan `group.settings` in current order;
+- count only profile strings exactly equal to `AC`, `BAT` or `SAV`;
+- stop immediately on the second match;
+- append the exact same fixed guidance only when the count reached two.
+
+The group/settings records are plain JS objects built from JSON schema and local
+fresh objects. No per-setting QObject NOTIFY dependency is captured by reading
+later profile fields after the second match.
+
+For a group with S settings and second matching profile at position K:
+
+- temporary profiled array: **1 -> 0**;
+- profile-property visits: **S -> K** when at least two matches exist;
+- zero/one-match groups still visit S entries and preserve the same no-guidance
+  result.
+
+Order, duplicates, group identity, group-description concatenation and later
+search filtering are unchanged.
+
+#### B. Classic and Waffle recompute the same group flags independently for every row
+
+For each displayed setting row, both TLP page families currently evaluate:
+
+- `TlpSettingsService.groupUsesCompactProfileRows(groupCard.modelData)`;
+- `TlpSettingsService._array(groupCard.modelData?.settings).length === 1`.
+
+`groupUsesCompactProfileRows()` itself:
+
+1. copies the group's settings through `_array()`;
+2. computes the first setting label;
+3. runs `.every(...)` across the group, calling `settingLabel()`.
+
+So for a group with S displayed rows, the current row bindings can perform:
+
+- S full group-array copies for `groupUsesCompactProfileRows`;
+- up to S x S setting/profile/label visits;
+- S additional full group-array copies solely for
+  `singleSettingGroup`;
+- plus the Repeater's own model conversion.
+
+Exact-safe direction:
+
+- derive one fresh group-settings array at the group-card boundary;
+- reuse it for the Repeater model and the single-setting test;
+- evaluate compact-profile-row eligibility once per group, either through a
+  private helper that accepts that already-fresh settings array or by hoisting
+  the exact existing helper result once;
+- bind every row's existing `compactProfileRows` and
+  `singleSettingGroup` properties to those group-card values.
+
+Strict-lossless proof:
+
+- `visibleGroups` is returned by `groupsForCategory()` as fresh plain JS
+  group objects with plain JS `settings` arrays;
+- nested row records therefore expose no independent QML NOTIFY signals that
+  would be lost by moving identical pure reads to the group card;
+- `settingLabel()` is deterministic over the definition key and static label
+  rules;
+- neither `TlpSettingRow.qml` nor `WTlpSettingRow.qml` has an
+  `onCompactProfileRowsChanged` or `onSingleSettingGroupChanged` side effect;
+- each row still receives the same two booleans and therefore computes the same
+  labels/badges/editors;
+- malformed/null settings retain the existing `_array()` fallback when the
+  group-level array is produced;
+- row order, duplicates, staged/effective values, callbacks, persistence,
+  Polkit/helper execution and TLP mutation lifecycle are untouched.
+
+Worst-case group-level work for S rows:
+
+- compact-profile scan: **O(S²) -> O(S)**;
+- full settings-array copies attributable to the two per-row flags:
+  **2S -> O(1)**;
+- the resulting row property values and rendered output are unchanged.
+
+This path is interaction-relevant because category/filter changes rebuild
+`visibleGroups` and can recreate/rebind every visible setting row. No
+whole-Hadalis percentage is claimed.
+
+### 79.4 Round-65 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one** (§79.3,
+**CONFIRMED / P1-P2 Settings interaction**).
+
+Separately:
+
+- §79.1 records a Wi-Fi/Bluetooth frontend-to-backend event-source correctness
+  prerequisite and does not increment the optimization count;
+- §79.2 records an unowned Network process-reduction candidate but leaves it at
+  parity/benchmark status.
+
+No runtime/product/native/script code was modified. Only this research handoff
+is updated, and no local deterministic job was required for the source-level
+TLP equivalence proof.
+
+Next audit should re-fetch current `dev`, reconcile concurrent work, then move
+outside TLP group presentation. Prefer another under-covered production
+process/lifecycle path such as Battery/TlpService charge-care materialization,
+PowerProfilePersistence startup ownership, or ThinkFan, while searching this
+handoff first for existing ownership.

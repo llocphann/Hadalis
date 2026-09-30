@@ -21949,3 +21949,128 @@ Next audit should re-fetch current `dev`, reconcile concurrent work and rotate
 outside CustomWidgets/Updates. Prefer an under-covered collection/process
 boundary such as Theme/Wallpaper metadata, FontSync/Icon discovery, or a
 deferred helper whose current-language cost scales with session/user data.
+
+
+## 93. Round 79 — SystemInfo os-release parse audit (2026-09-30)
+
+### Snapshot and ownership reconciliation
+
+- Authoritative `dev` at round start and immediately before this write:
+  `ebc98fc837445b7fcad0aaf20744c372aefc81d6` (Round 78).
+- No intervening commit exists after Round 78.
+- Theme/Font/Icon paths were re-read first:
+  - IconTheme path-name work is already owned by §51.16;
+  - ThemeService has active correctness/lifecycle ownership in §52.3 and
+    broader theme fan-out ownership elsewhere;
+  - FontSync process overlap is already explicitly grouped into the startup
+    measurement requirement in §24.5, so no independent Rust/process rewrite
+    is promoted without that evidence.
+- A current service-inventory coverage pass then selected low-ownership files.
+- `SystemInfo.qml` had only the §24.8 false-positive note that its 1 ms Timer
+  is one-shot. No existing item owns os-release parsing.
+- `DateTime.qml` was also checked. Its minute uptime refresh has a small
+  split-for-first-token allocation, but that two-token /proc file parse is too
+  small to count as a material standalone finding.
+
+### 93.1 Parse the required os-release keys in one source pass instead of nine full split/scans — CONFIRMED / P2 startup
+
+Path:
+
+- `services/SystemInfo.qml`.
+
+At startup, after reading `/etc/os-release` once, current code calls
+`_osReleaseValue(textOsRelease, key)` for nine keys:
+
+1. `PRETTY_NAME`;
+2. `NAME`;
+3. `ID`;
+4. `HOME_URL`;
+5. `DOCUMENTATION_URL`;
+6. `SUPPORT_URL`;
+7. `BUG_REPORT_URL`;
+8. `PRIVACY_POLICY_URL`;
+9. `LOGO`.
+
+Every call currently executes:
+
+`String(text ?? "").split("\n")`
+
+then scans from line zero until the first line starting with `key + "="`.
+
+For a normal file with N lines, the repeated work can therefore approach:
+
+- line-array allocations: **9**;
+- source-line visits: up to approximately **9N**.
+
+Strict-safe direction:
+
+- retain the exact one String coercion of the FileView text;
+- split into lines once, or scan newline boundaries directly;
+- in one ascending source pass, capture only the first occurrence of each of
+  the nine fixed keys;
+- apply the exact existing value normalization to each captured value:
+  - slice after the literal `KEY=` prefix;
+  - trim;
+  - if length >= 2 and first character is a matching single/double quote at
+    the end, strip exactly that outer quote pair;
+- after the pass, assign the resulting values to the same public properties in
+  the same current property-assignment order.
+
+A direct newline-bound implementation can avoid a line array entirely; a
+single split + one pass is already a large reduction and is simpler to prove.
+
+Strict-lossless proof:
+
+- input is a primitive string snapshot from FileView, not a getter-bearing
+  object;
+- literal LF remains the line separator;
+- empty lines and CR handling remain governed by the same per-value trim;
+- only exact `KEY=` prefixes match, as today;
+- duplicate keys preserve **first matching line wins** independently for each
+  key;
+- unknown keys remain ignored;
+- quoted and unquoted values preserve current behavior;
+- malformed unmatched quotes remain unstripped exactly as today;
+- missing keys still produce `""`;
+- `PRETTY_NAME` versus `NAME` fallback, distro-ID icon switch,
+  Nyarch substring override and LOGO fallback remain after parsing and in the
+  same current order;
+- no FileView read/reload, username/getent process, hostname read, public
+  property publication or startup scheduling is moved.
+
+With a one-split implementation:
+
+- line-array allocations: **9 -> 1**;
+- source parsing can be **up to ~9N -> N** line visits;
+- key-specific value normalization still occurs at most once per discovered
+  first occurrence.
+
+With a newline-bound scanner, the line array can additionally become **1 -> 0**.
+
+This is a cold startup reduction, not a whole-shell percentage.
+
+### 93.2 DateTime uptime token extraction is not counted
+
+Path checked:
+
+- `services/DateTime.qml`, `_refreshUptime()`.
+
+The current minute refresh trims `/proc/uptime` then splits on whitespace only
+to consume the first token. An index scan could remove that tiny array, but the
+file normally contains only two short numeric fields and refreshes once per
+minute.
+
+Status: **valid micro-optimization, intentionally not promoted**.
+
+### 93.3 Round-79 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one** (§93.1,
+**CONFIRMED / P2 startup**).
+
+No runtime/product/native/script code was modified. Only this handoff was
+updated; no deterministic local job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent work and keep
+diversifying low-ownership services. Prefer AwwwBackend, DankSocket, Booru
+response/normalization, Idle/privacy state, or another event-driven path whose
+cost scales materially with outputs/events rather than one tiny scalar parse.

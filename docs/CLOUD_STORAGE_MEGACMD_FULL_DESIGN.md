@@ -1,5 +1,7 @@
 # Hadalis Cloud Storage — detailed MEGAcmd → Rust → QML design
 
+> **Source audit update (2026-09-30):** This is the breadth-oriented **design** covering 76 documented MEGAcmd commands and ten proposed QML sections. Read [CLOUD_STORAGE_MEGACMD_SOURCE_AUDIT.md](CLOUD_STORAGE_MEGACMD_SOURCE_AUDIT.md) **before implementation** for confirmed vendor client argv re-tokenization, unescaped table cells, server autostart, the official SDK version-restore alternative, exact Hadalis Rust production packaging paths and evidence gates. In particular, a comprehensive UI blueprint is **not** a verified arbitrary-filename CLI file-manager implementation.
+
 **Status: research/design specification only; no source implementation, no runtime or account tests.**  
 Research date: 2026-09-30 (Asia/Ho_Chi_Minh). Hadalis reference: `llocphann/Hadalis@dev` inspected at `c8d86c6dd4b400533ac6794a7420a63f9dcce8f4`.  
 Official MEGAcmd source examined: `meganz/MEGAcmd` `master` (observed head `6505327a5a7a0e94f26f611f83b024aeeb63582c`, 2026-08-28); published `UserGuide.md` labels its generated commands **MEGAcmd 2.6.0**. This is a *documentation baseline*, **not** a claim about installed binaries or future feature support. Command options and output MUST be negotiated against the installed `mega-version -l` / per-command `--help` before activation.

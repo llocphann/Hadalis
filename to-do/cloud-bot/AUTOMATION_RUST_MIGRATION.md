@@ -494,6 +494,85 @@ Do **not** add Automation execution to the existing `scripts/native-dispatch` fa
 
 P0a can select the child wrapper directly in Python before dispatch. P1 should likewise use an Automation-specific, explicit backend selection. If a convenience backend-switch command is added later, it should operate only at safe idle/reconciled boundaries.
 
+## P1 privilege-broker migration refinement
+
+P1 can remain incremental: keep the Python `request()` client in `runner.py` and replace only the long-lived broker server after a compatibility-preparation step.
+
+### P1a — make the Python protocol dual-readable first
+
+The current receipt digest is:
+
+```text
+sha256(json.dumps(spec, sort_keys=True).encode())
+```
+
+Rust should not try to imitate Python JSON whitespace/Unicode escaping implicitly. A safer compatibility protocol is to add a v2 request form containing the canonical Python string itself:
+
+```json
+{
+  "key": "JOB-...:0",
+  "spec_json": "<json.dumps(spec, sort_keys=True)>"
+}
+```
+
+The server hashes the UTF-8 bytes of `spec_json`, parses that same string into the typed request and then performs the normal allowlist validation. Existing Python receipts are automatically compatible because their `input_sha256` was computed from those exact canonical bytes.
+
+Migration order:
+
+1. teach the Python broker to accept both legacy `{"key","spec"}` and v2 `{"key","spec_json"}`, while the client still sends v1;
+2. validate/restart that Python broker;
+3. switch the Python client to v2 and prove legacy receipt replay;
+4. only then introduce the Rust broker speaking v2 (optionally retaining v1 parsing during the transition).
+
+This avoids a receipt format fork and keeps explicit rollback possible.
+
+### P1b — Rust server contract
+
+The Rust broker should preserve the existing blocking/sequential design rather than adding async or request concurrency:
+
+- same `$XDG_RUNTIME_DIR/hadalis-automation-privilege.sock` endpoint;
+- same single-instance broker lock and stale-socket cleanup;
+- socket mode 0600 plus same-UID peer verification with `SO_PEERCRED`;
+- same 8192-byte request and 65536-byte response bounds;
+- same three-second connection read timeout and client-side 40-second request timeout;
+- one request handled at a time;
+- same per-request durable lock/tombstone semantics;
+- same empty-by-default policy and maximum 16 allowlisted service units;
+- same `sudo-cache|polkit` authentication enum;
+- same fixed operations only: service status and service restart;
+- same fixed `/usr/bin/systemctl` command construction;
+- same elevated `/usr/bin/timeout --signal=TERM --kill-after=2s 20s` wrapper plus outer bounded observation;
+- same environment allowlist;
+- same rule that a receipt without a terminal result returns `indeterminate` and is never re-elevated automatically.
+
+The broker remains a **same-user process**, not a root daemon. Elevation stays limited to the fixed child command.
+
+### Validation parity that Rust must implement server-side
+
+Do not rely on the Python client as the only validator. Rust must independently preserve:
+
+- exact allowed operation enum;
+- ASCII service-unit grammar and 100-character limit;
+- reason length semantics (Python counts Unicode characters, not UTF-8 bytes);
+- the credential-key rejection policy used by `SECRET_KEY`;
+- unknown-field rejection;
+- policy unknown-field rejection;
+- result/error-code behavior for denied units and authentication-required failures.
+
+### Redaction compatibility
+
+Unlike P0a, the privilege server itself owns the durable command result, so it cannot leave redaction only to the Python client. Port the narrow `privacy.redact` behavior needed for broker stdout/stderr and qualify it with a cross-language fixture corpus before Rust cutover.
+
+Do not port `public_result` or unrelated privacy policy into the broker. Only the redaction needed before its local durable receipt belongs in P1.
+
+### Service/backend switching
+
+Do not route the privilege broker through the existing generic `scripts/native-dispatch` failure fallback. A service-level selector must choose Python or Rust before accepting requests and keep that backend across automatic restarts.
+
+An explicit backend switch should stop the broker, inspect/reconcile any `dispatching` or `executing` privilege receipts, change the selected implementation, then restart. It must never use a Rust crash as a signal to replay the same request through Python.
+
+The existing install contract already tests that `hadalis-worker.service` has `NoNewPrivileges=yes` while `hadalis-privilege.service` does not. Extend that contract during P1 rather than changing the privilege topology.
+
 ## Security/systemd constraints to preserve
 
 The installed worker already has `KillMode=control-group`, `TasksMax=256`, `MemoryMax=2G`, `CPUQuota=200%` and `NoNewPrivileges=yes`. The Python runner additionally sets core/no-file/address-space/CPU rlimits so manual/standalone execution keeps a safety envelope. Keeping the Python runner in P0 preserves those limits automatically for the Rust helper and its target descendants.

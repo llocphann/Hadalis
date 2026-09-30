@@ -96,9 +96,9 @@ def main() -> None:
             with patch.object(control, "_ensure_runtime_services"), patch.object(control, "_await_dispatch"):
                 control.profile_action("restart", pid)
             item = store.read_snapshot()[1]["profiles"][pid]
-            assert item["job_id"] is None and item["request"] == "restart"
-            assert item["status"] == "scheduled"
-            assert any(entry["kind"] == "job_wait_abandoned"
+            assert item["job_id"] == "JOB-STUCK" and item["request"] == "restart"
+            assert item["status"] == "waiting_result"
+            assert any(entry["kind"] == "job_cancel_requested"
                        for entry in store.read_snapshot()[1]["events"])
 
             store.change_state(lambda _config, runtime: daemon._configuration_problem(

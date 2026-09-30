@@ -111,6 +111,22 @@ def _claim(config: dict, state: dict, now: int, profile_id: str) -> bool:
     return True
 
 
+def _recover_dispatched_restart(state: dict) -> None:
+    """Consume a legacy restart only when its dispatch is explicitly proven."""
+    for pid, item in state["profiles"].items():
+        pending = item["pending"] or {}
+        if (item["desired"] != "run" or item["request"] != "restart" or pending.get("operation") is not None or
+            pending.get("kind") != "initial" or pending.get("phase") != "acknowledged" or
+            not pending.get("counted") or not pending.get("conversation_id") or
+            pending.get("conversation_id") != (item["session"] or {}).get("conversation_id")):
+            continue
+        restarts = [e["at_unix"] for e in state["events"] if type(e.get("at_unix")) is int and
+            e.get("profile_id") == pid and e.get("kind") == "restart"]
+        if restarts and type(pending.get("prepared_at_unix")) is int and max(restarts) < pending["prepared_at_unix"]:
+            item["request"] = "continuation"
+            event(state, pid, "restart_reconciled", "Already acknowledged new chat retained; no prompt replay")
+
+
 def _release(state: dict, profile_id: str, now: int, status: str) -> None:
     item = state["profiles"][profile_id]
     item.update(run_active=False, request=None, status=status, status_detail="",
@@ -235,6 +251,7 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
     pending = {"user_message_id": str(uuid.uuid4()), "parent_message_id": parent,
         "conversation_id": session.get("conversation_id") if session else None,
         "project_id": project_id, "kind": prompt_kind, "prepared_at_unix": now,
+        "operation": kind, "command_seq": item["command_seq"],
         "poll_after_unix": now + CHAT_POLL_SECONDS, "counted": False, "phase": "dispatching"}
     def prepare(c, s):
         current = s["profiles"].get(profile_id)
@@ -244,7 +261,9 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
         if session and any(pid!=profile_id and other.get("session",{}).get("conversation_id")==session["conversation_id"] and other["run_active"] for pid,other in s["profiles"].items() if other.get("session")):
             current.update(desired="paused",status="session_conflict",last_error="Another profile already manages this conversation; original receipt retained")
             return False
-        current.update(pending=pending, status="thinking", status_detail="", last_activity_at_unix=now)
+        # This intent consumes the command durably, even if its ACK is lost.
+        # A later explicit Restart has its own sequence and survives the ACK.
+        current.update(pending=pending, request="continuation", status="thinking", status_detail="", last_activity_at_unix=now)
         if new_chat:
             current.update(session={"conversation_id":None, "project_id":project_id},
                 active_project_name=profile["project_name"], chat_started_at_unix=now, chat_iterations=0)
@@ -411,11 +430,15 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
             event(s,profile_id,"response_protocol_error",protocol_error);return
         if checkpoint is not None: current["checkpoint"] = checkpoint
         event(s, profile_id, "response", directive.kind.value)
-        if current["request"] == "restart" and current["desired"] == "run":
-            current["status"] = "rotating"; return
         if directive.kind is DirectiveKind.WAIT_RESULT:
             current.update(job_id=directive.argument, next_job_poll_at_unix=now, status="waiting_result")
+            if current["request"] == "restart" and current["desired"] == "run":
+                _write(state_dir()/"worker/cancellations"/directive.argument,
+                    {"profile_id":profile_id,"reason":"profile restart","at_unix":now})
+                event(s,profile_id,"job_cancel_requested",directive.argument)
             return
+        if current["request"] == "restart" and current["desired"] == "run":
+            current["status"] = "rotating"; return
         profile = _profile(c, profile_id)
         if directive.kind is DirectiveKind.CONNECTOR_BLOCKED:
             current.update(desired="paused", status="connector_blocked", last_error="GitHub connector needs attention")
@@ -484,8 +507,10 @@ def _wait_result(config: dict, state: dict, profile_id: str, now: int) -> None:
         if not current or current["job_id"] != item["job_id"]: return
         if payload is None:
             current.update(next_job_poll_at_unix=now+10,status="waiting_result"); return
+        restart = current["request"] == "restart"
         current.update(last_job_id=current["job_id"],last_result=str(payload.get("status","unknown")),job_id=None,
-                       next_job_poll_at_unix=None,job_poll_errors=0,request="continuation",status="continuing")
+                       next_job_poll_at_unix=None,job_poll_errors=0,
+                       request="restart" if restart else "continuation",status="rotating" if restart else "continuing")
         ids=[a["evidence_id"] for a in summary["actions"] if a.get("evidence_id")]
         current["job_evidence"]=(current["job_evidence"]+ids)[-128:]
         current["job_summary"]=summary
@@ -540,6 +565,7 @@ def tick(now: int | None = None, executor: ThreadPoolExecutor | None = None) -> 
         change_state(quarantine)
     def prepare(c,s):
         migrate_runtime(c,s)
+        _recover_dispatched_restart(s)
         _heartbeat(s,now)
         for p in c["profiles"]: _claim(c,s,now,p["id"])
     change_state(prepare)

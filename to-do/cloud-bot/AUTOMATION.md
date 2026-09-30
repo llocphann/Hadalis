@@ -11,6 +11,7 @@ Maintainer-authorized implementation, 2026-09-30. Target contract and audit:
 - [x] Settings follow-up: one Activity viewer, scrollable prompts, compact icon buttons, name/project row and masked per-profile GitHub token stored in system keyring.
 - [x] Shell process cleanup: stop only verified members of the stopped service; preserve independent Quickshell validation/workflow sessions and recheck ownership before escalation.
 - [x] Two-workflow monitoring: classify ChatGPT rate limits privately, bound conversation polling and persist a shared API cooldown while local receipts/jobs continue. Regression covers concurrent profiles, restart persistence and no prompt replay. Live Wull/MegaQML monitoring and current canonical validation are tracked separately.
+- [x] Restart is consumed once at durable dispatch; cancellation preserves WAIT_RESULT, final receipt and provenance before the fresh chat. Legacy recovery needs an acknowledged chat and an earlier explicit restart event.
 - [ ] Future/deferred: migrate the Linux/process-sensitive Automation execution substrate to Rust only after parity and benchmark gates in [`AUTOMATION_RUST_MIGRATION.md`](AUTOMATION_RUST_MIGRATION.md).
 
 Keep uncertain existing submissions and consumed job results. Do not reset

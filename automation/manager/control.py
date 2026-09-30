@@ -185,8 +185,8 @@ def profile_action(action: str, profile_id: str) -> dict:
             if action == "restart":
                 if item["job_id"] and not item["pending"]:
                     _write(state_dir()/"worker/cancellations"/item["job_id"],{"profile_id":profile_id,"reason":"profile restart","at_unix":int(time.time())})
-                    event(state, profile_id, "job_wait_abandoned", item["job_id"])
-                    item.update(job_id=None, next_job_poll_at_unix=None)
+                    event(state, profile_id, "job_cancel_requested", item["job_id"])
+                    item.update(status="waiting_result", next_job_poll_at_unix=0)
                 item["request"] = "restart"
             elif action == "start" and not item["pending"] and not item["job_id"]:
                 item["request"] = "new"

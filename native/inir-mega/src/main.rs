@@ -20,7 +20,7 @@ enum Command {
     Request,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 struct Request {
     protocol: u32,
     request_id: String,
@@ -39,7 +39,7 @@ enum Operation {
     AuthMfa,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 struct SecretInput {
     #[serde(default)]
     password: Option<String>,
@@ -87,6 +87,51 @@ fn classify_auth_prompt(text: &str) -> AuthPrompt {
         AuthPrompt::Failed
     } else {
         AuthPrompt::Unexpected
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AuthState {
+    AwaitPassword,
+    AwaitMfaOrComplete,
+    Terminal,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SecretWrite {
+    Password,
+    Mfa,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum AuthStep {
+    Write(SecretWrite),
+    Complete,
+    Failed,
+    RejectUnexpected,
+}
+
+fn advance_auth(state: &mut AuthState, prompt: AuthPrompt) -> AuthStep {
+    match (*state, prompt) {
+        (AuthState::AwaitPassword, AuthPrompt::Password) => {
+            *state = AuthState::AwaitMfaOrComplete;
+            AuthStep::Write(SecretWrite::Password)
+        }
+        (AuthState::AwaitMfaOrComplete, AuthPrompt::Mfa) => {
+            AuthStep::Write(SecretWrite::Mfa)
+        }
+        (AuthState::AwaitMfaOrComplete, AuthPrompt::Complete) => {
+            *state = AuthState::Terminal;
+            AuthStep::Complete
+        }
+        (_, AuthPrompt::Failed) => {
+            *state = AuthState::Terminal;
+            AuthStep::Failed
+        }
+        _ => {
+            *state = AuthState::Terminal;
+            AuthStep::RejectUnexpected
+        }
     }
 }
 
@@ -232,6 +277,66 @@ mod tests {
         assert_eq!(classify_auth_prompt("Login successful"), AuthPrompt::Complete);
         assert_eq!(classify_auth_prompt("Login failed"), AuthPrompt::Failed);
         assert_eq!(classify_auth_prompt("Enter something else:"), AuthPrompt::Unexpected);
+    }
+
+    struct FakeVendorHarness {
+        prompts: Vec<&'static str>,
+        writes: Vec<String>,
+    }
+
+    impl FakeVendorHarness {
+        fn run(mut self, password: &str, mfa: &str) -> (AuthStep, Vec<String>) {
+            let mut state = AuthState::AwaitPassword;
+            let mut terminal = AuthStep::RejectUnexpected;
+            for prompt in self.prompts {
+                match advance_auth(&mut state, classify_auth_prompt(prompt)) {
+                    AuthStep::Write(SecretWrite::Password) => self.writes.push(password.to_owned()),
+                    AuthStep::Write(SecretWrite::Mfa) => self.writes.push(mfa.to_owned()),
+                    step @ (AuthStep::Complete | AuthStep::Failed | AuthStep::RejectUnexpected) => {
+                        terminal = step;
+                        break;
+                    }
+                }
+            }
+            (terminal, self.writes)
+        }
+    }
+
+    #[test]
+    fn fake_vendor_harness_qualifies_password_then_mfa_flow() {
+        let password = "fixture-password-never-log";
+        let mfa = "123456";
+        let (terminal, writes) = FakeVendorHarness {
+            prompts: vec!["Password:", "Multi-factor authentication code:", "Login successful"],
+            writes: Vec::new(),
+        }
+        .run(password, mfa);
+        assert_eq!(terminal, AuthStep::Complete);
+        assert_eq!(writes, vec![password, mfa]);
+    }
+
+    #[test]
+    fn fake_vendor_harness_never_submits_secret_to_unknown_prompt() {
+        let password = "fixture-password-never-log";
+        let mfa = "123456";
+        let (terminal, writes) = FakeVendorHarness {
+            prompts: vec!["Enter account recovery key:"],
+            writes: Vec::new(),
+        }
+        .run(password, mfa);
+        assert_eq!(terminal, AuthStep::RejectUnexpected);
+        assert!(writes.is_empty());
+    }
+
+    #[test]
+    fn fake_vendor_harness_rejects_out_of_order_mfa_without_secret_write() {
+        let (terminal, writes) = FakeVendorHarness {
+            prompts: vec!["2FA code:"],
+            writes: Vec::new(),
+        }
+        .run("fixture-password-never-log", "123456");
+        assert_eq!(terminal, AuthStep::RejectUnexpected);
+        assert!(writes.is_empty());
     }
 
     #[test]

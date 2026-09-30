@@ -23163,3 +23163,256 @@ filesystem-backed service, or secondary Frontend↔Backend feature with
 production-scale work. Continue to avoid already-owned Config/Niri/Calendar/
 Autostart/ShellUpdates clusters unless new source evidence changes their
 classification.
+
+## 98. Round 84 — InnerTube auth process-lifetime and low-ownership deferred-service audit (2026-09-30)
+
+### Snapshot and duplicate-ownership audit
+
+- Authoritative `dev` at round start and immediately before this write:
+  `75f4f4eb2c54f727122edfaa9ab1b116d1aa1c85`
+  (`docs(research): audit Todo helper runtime`).
+- No intervening runtime/product commit exists after Round 83.
+- `AGENTS.md`, active Cloud/Local Bot routing and the newest handoff tail were
+  re-read.
+- Existing ownership was searched before classification. Nearby items already
+  own:
+  - §70.3 InnerTube JSONL buffer/publication micro-candidates;
+  - §81.2 NiriKeybinds native get/set/remove ownership;
+  - §89.1 MemoryPressure line-scan allocation;
+  - §50.9 BluetoothStatus count-only filtering;
+  - §33.9/§33.10 HyprlandXkb/HyprlandKeybind work;
+  - §51.6-§51.7 WorldClock local reductions;
+  - §69.3 LyricsService successful-line collection;
+  - PackageSearch/LauncherSearch local collection reductions from earlier
+    rounds.
+- Current code-search indexing can still surface stale commit `8f9c2b...`.
+  Exact `dev` file reads remain authoritative.
+
+### 98.1 InnerTube starts one Python helper per metadata/auth action; a persistent worker is architectural, not strict-lossless
+
+Paths:
+
+- `services/deferred/InnerTube.qml`;
+- `scripts/innertube.py`.
+
+The current feature-gated service creates independent QML `Process` instances
+for ping, browser detection/connect, OAuth, auth status, search, radio,
+playlist, library, rating, home, artist, album and lyrics operations.
+
+The ordinary browse calls each launch a fresh:
+
+`python3 scripts/innertube.py <command> ...`
+
+and each fresh helper reconstructs any required `ytmusicapi.YTMusic` client.
+Authenticated construction may reread the cookie jar and create a new
+authenticated client before the requested network operation.
+
+This is real interpreter/client startup overhead on user interactions, but a
+single persistent Python worker is **not strict-lossless from source shape
+alone**.
+
+Current independent-Process semantics include:
+
+- search and radio can overlap because they do not share one QML Process;
+- artist/album/home/library/rating/lyrics each have their own process ownership;
+- cancelling/replacing one Process does not automatically cancel unrelated
+  surfaces;
+- each request observes cookie/OAuth files afresh at process start;
+- parser/stdout state is process-local;
+- a helper crash cannot poison another operation's in-memory client state;
+- process exit remains the completion boundary for non-streaming collectors.
+
+A shared resident worker would need a request-ID protocol, independent
+cancellation, per-surface completion, stale-response rejection, cookie/auth
+reload rules, crash recovery and exact concurrency limits before it could be
+compared to the current behavior.
+
+Classification:
+**ARCHITECTURE / BENCHMARK candidate only; not counted**.
+
+Rust classification:
+**RUST NOT JUSTIFIED** for the browse layer. The actual YouTube Music API client
+is the Python `ytmusicapi` dependency; a Rust rewrite would replace a large
+external API/compatibility surface rather than only remove interpreter startup.
+
+### 98.2 InnerTube → ytmusic_auth child-interpreter removal is attractive but changes cancellation/side-effect lifetime — CONDITIONAL / not counted
+
+Paths:
+
+- `scripts/innertube.py`;
+- `scripts/ytmusic_auth.py`.
+
+Several auth paths launch a second Python interpreter from inside
+`innertube.py`:
+
+- `detect-browsers`:
+  `innertube.py -> python ytmusic_auth.py detect`;
+- automatic connect:
+  one detect child, then one extraction child per extraction attempt;
+- manual connect:
+  one `ytmusic_auth.py import` child.
+
+The default browser gets up to three extraction attempts; later detected
+browsers get one. Firefox-family extraction may be filesystem-only inside the
+child, whereas Chromium extraction can itself launch `yt-dlp`.
+
+It is tempting to import `ytmusic_auth.py` and call
+`detect_browsers()`, `import_cookies()` and extraction functions directly.
+That would remove one Python child per helper invocation while retaining the
+outer `innertube.py` process.
+
+However the child process is currently a real cancellation boundary.
+
+If Quickshell stops/kills the outer InnerTube Process while an auth child is
+running, the child may outlive the parent and can continue filesystem/cookie
+extraction side effects. In-process calls would instead die with the outer
+helper. Conversely, child crashes/import state cannot currently corrupt the
+parent interpreter.
+
+Strict-lossless explicitly preserves cancellation/process-lifetime and
+filesystem side effects, so direct import is **not CONFIRMED** without an
+explicit child-lifecycle compatibility contract.
+
+Classification:
+**CONDITIONAL process reduction / cancellation parity required**.
+
+A parity design would need to decide whether the intended contract is:
+
+1. preserve current potentially-independent child lifetime, or
+2. intentionally tighten cancellation so cookie work stops with the request.
+
+Choice 2 may be desirable, but it is a behavior/correctness change rather than
+strict-lossless optimization.
+
+### 98.3 YtMusic rating helpers are fallback-separated, not duplicate production work
+
+Paths:
+
+- `services/YtMusic.qml`;
+- `services/deferred/InnerTube.qml`;
+- `scripts/ytmusic_rate.py`.
+
+Current like/unlike routing is mutually exclusive:
+
+- when InnerTube account auth is active:
+  `InnerTube.rateSong() -> innertube.py rate`;
+- otherwise, when legacy YouTube Data OAuth is configured:
+  `ytmusic_rate.py like/unlike`.
+
+Therefore the two Python rating helpers do **not** both run for one rating
+interaction.
+
+They also use different auth/API contracts:
+
+- InnerTube path: YouTube Music / `ytmusicapi` authenticated client;
+- legacy path: YouTube Data API v3 OAuth token refresh + videos/rate endpoint.
+
+Do not count helper consolidation as a process optimization without explicitly
+changing/removing a supported fallback auth model.
+
+Status:
+**ALREADY PURPOSE-SEPARATED / no optimization counted**.
+
+### 98.4 NiriKeybind write path re-check: exact HEAD is native-first
+
+A broad code-search result exposed stale-looking
+`python3 niri-config.py set-bind/remove-bind` fragments. Exact current
+`services/deferred/NiriKeybinds.qml` instead routes:
+
+- `get-binds`;
+- `set-bind`;
+- `remove-bind`
+
+through:
+
+`scripts/native-dispatch niri ...`.
+
+The direct `parse_niri_keybinds.py` Process remains only the legacy
+cheatsheet fallback when the enriched native-first result cannot be applied.
+
+This confirms §81.2 remains current.
+
+Status:
+**ALREADY NATIVE / not recounted**.
+
+### 98.5 Low-ownership deferred/process services checked and closed
+
+Exact current sources also checked:
+
+- `services/deferred/SessionWarnings.qml`;
+- `services/deferred/KeyringStorage.qml`;
+- `services/PolkitService.qml`;
+- `services/PolkitServiceImpl.qml`;
+- `services/DankSocket.qml`;
+- `services/deferred/LatexRenderer.qml`.
+
+No new strict-lossless material factor is promoted:
+
+**SessionWarnings**
+
+- starts two `pidof` processes only when `refresh()` is requested;
+- one category answers package-manager activity, one download activity;
+- combining them into one plain `pidof` loses category identity;
+- adding a shell coordinator would be at least one shell + two child probes and
+  does not improve process count;
+- a dedicated native `/proc` scanner is not justified for this sparse action.
+
+**KeyringStorage**
+
+- secret-tool fetch/save is demand-driven;
+- save coalescing already preserves a pending write while a write is active;
+- nested-object cloning is deliberate QML publication/change-notification work;
+- two static secret-tool metadata properties make the current
+  `reduce/concat` construction immaterial;
+- native keyring replacement would expand security/backend compatibility rather
+  than remove a material hot-path factor.
+
+Rust:
+**NOT JUSTIFIED**.
+
+**PolkitService**
+
+- one startup `pidof` check avoids registering a duplicate desktop
+  authentication agent;
+- the actual Polkit module is loaded asynchronously only when appropriate;
+- removing the process probe changes duplicate-agent behavior/warnings;
+- native replacement of this one sparse detection is not justified.
+
+**DankSocket**
+
+- Round 80 remains current: timers are reconnect-only while a requested socket
+  is down; normal socket messages do not traverse an additional JS staging
+  buffer in this wrapper.
+
+**LatexRenderer**
+
+- §15.6 already owns its unbounded successful-render registry/cache debt;
+- changing membership storage/caching now would need an explicit public
+  mutation/eviction contract and is not a new strict-lossless group.
+
+### 98.6 Round-84 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **zero**.
+
+Newly closed/classified process candidates:
+
+- InnerTube persistent worker:
+  **ARCHITECTURE / BENCHMARK only**;
+- direct in-process `ytmusic_auth` calls:
+  **CONDITIONAL**, blocked on cancellation/side-effect parity;
+- InnerTube vs legacy YtMusic rating helpers:
+  **purpose-separated fallback paths**;
+- SessionWarnings/Keyring/Polkit native rewrites:
+  **RUST NOT JUSTIFIED**;
+- NiriKeybind writes:
+  **ALREADY NATIVE**.
+
+No runtime/product/native/script code was modified and no deterministic local
+job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent commits and
+rotate away from InnerTube/deferred helper process shape. Prefer a file-backed
+or event-driven service whose cost scales with records/events and whose
+existing handoff ownership is sparse. `Events.qml`, `Notepad.qml`,
+`ThemeService.qml`, or a secondary Frontend↔Backend path are reasonable next
+targets after duplicate-ownership search.

@@ -8,6 +8,14 @@ Submission intent is durable before dispatch. Lost acknowledgements reconcile th
 
 Generic objectives can research, analyze, code through GitHub, dispatch pinned local tests/diagnostics, inspect results, debug, fix and continue. WAIT_RESULT has profile ownership and can use a private local worker receipt while Git publication is down. Continuation receives only allowlisted observations, error codes and provenance; raw machine data stays local. Optional HADALIS_CHECKPOINT preserves phase, summary, next step and evidence IDs. HADALIS_DIAGNOSIS conclusions must cite observed worker evidence IDs. ChatGPT remains the reasoning agent; the backend and worker make deterministic protocol transitions only.
 
+Conversation reads use a 30-second cadence (configurable within 15–120 seconds),
+doubling for turns older than five minutes up to 120 seconds. The scheduler's
+two-second control heartbeat does not issue network requests on every tick.
+An explicit ChatGPT rate limit persists an account-wide 120-second cooldown
+(configurable within 60–300 seconds) across service restarts. Local job results,
+fsynced response receipts and user controls continue during cooldown; only the
+shared ChatGPT API resource waits. Pending prompt identities never change.
+
 Start, Pause, Resume, Stop and Restart affect one profile. Pending replies remain observable after Stop. Restart reconciles the pending reply first, or requests cancellation of a local job before scheduling a fresh chat. Cancel local job persists a cancellation request; action receipts prevent execution replay. Confirmed Remove archives local recovery metadata and removes only the profile, retaining ChatGPT history. Archive/delete preferences remain pending semantic Desktop support and do not perform chat cleanup.
 
 Backend, worker and the allowlisted privilege broker start under the user default target and have no lifecycle dependency on Quickshell or Desktop. Their systemd units bound process counts, memory and shutdown. Desktop is optional transport; its startup failure does not kill diagnostics/job publication/recovery. Privileged requests have fixed command/service allowlists, reasons and a durable local audit. Authenticate with an OS Polkit agent or sudo cache; Automation has no password field or persistent credential protocol. Risky shell changes require pinned canonical validation, staging and an independent rollback journal/watchdog. See automation/worker/README.md.

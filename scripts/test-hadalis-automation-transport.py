@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""Bound real API polling and recover rate limits without replaying work."""
+import json
+from pathlib import Path
+import subprocess
+import uuid
+from unittest.mock import patch
+
+from automation_test_helpers import environment, profile, Transport, daemon, store
+
+
+def main():
+    production_cadence = daemon.CHAT_POLL_SECONDS
+    assert 15 <= production_cadence <= 120
+    subprocess.run(["node", "--input-type=module", "-e", r'''
+import assert from "node:assert/strict";
+import {operationErrorCode} from "./automation/chat_bridge/native_errors.mjs";
+assert.equal(operationErrorCode({status:429}), "DESKTOP_RATE_LIMITED");
+assert.equal(operationErrorCode({message:'page.evaluate: qK: {"detail":"Too many requests"}'}), "DESKTOP_RATE_LIMITED");
+assert.equal(operationErrorCode({message:"HTTP 429"}), "DESKTOP_RATE_LIMITED");
+assert.equal(operationErrorCode({message:"GitHub plugin capability unavailable"}), "GITHUB_PLUGIN_UNAVAILABLE");
+assert.equal(operationErrorCode({message:"unsupported Desktop transport"}), "DESKTOP_CAPABILITY_UNAVAILABLE");
+assert.equal(operationErrorCode({message:"PRIVATE_CANARY auth body"}), "DESKTOP_OPERATION_UNAVAILABLE");
+'''], cwd=Path(__file__).resolve().parents[1], check=True, timeout=10)
+
+    with environment(), patch.object(daemon, "CHAT_POLL_SECONDS", production_cadence):
+        a, b = profile("Wull"), profile("Mega")
+        t = Transport()
+        with patch.object(daemon, "native_command", side_effect=t):
+            daemon.tick(100)
+            for now in range(102, 100 + production_cadence, 2):
+                daemon.tick(now)
+            assert t.count("poll") == 0
+            daemon.tick(100 + production_cadence)
+            assert t.count("poll") == 2
+            state = store.read_snapshot()[1]
+            for pid in (a, b):
+                assert state["profiles"][pid]["pending"]["poll_after_unix"] == 100 + 2 * production_cadence
+            daemon.tick(500)
+            for pid in (a, b):
+                assert t.pending(pid)["poll_after_unix"] == 500 + min(120, 2 * production_cadence)
+            assert t.count("submit") == 2
+
+    with environment():
+        a, b, worker = profile("Limited"), profile("Cached"), profile("Worker")
+        t = Transport()
+        with patch.object(daemon, "native_command", side_effect=t):
+            daemon.tick(100)
+        original = t.pending(a).copy()
+        cached = t.pending(b).copy()
+        worker_pending = t.pending(worker).copy()
+        t.reply(b)
+        t.reply(worker, "HADALIS_LOOP:WAIT_RESULT JOB-local")
+        daemon._observe_failure(a, 102, RuntimeError("DESKTOP_RATE_LIMITED"), pending=original)
+        # A crash left a fsynced reply, so no Desktop request is needed for B.
+        store._write(store.state_dir()/"responses"/b/(cached["user_message_id"]+".json"), {
+            "user_message_id":cached["user_message_id"], "conversation_id":cached["conversation_id"],
+            "response":{"message_id":str(uuid.uuid5(uuid.NAMESPACE_URL,cached["user_message_id"])), "text":"HADALIS_LOOP:CONTINUE"}, "at_unix":102})
+        store.change_state(lambda c,s:s["profiles"][worker].update(pending=None, job_id="JOB-local", next_job_poll_at_unix=0,
+            response_message_id=str(uuid.uuid5(uuid.NAMESPACE_URL,worker_pending["user_message_id"]))))
+        job = {"job":"JOB-local", "profile_id":worker, "status":"passed", "actions":[]}
+        with patch.object(daemon, "native_command", side_effect=t), patch.object(daemon, "job_result", return_value=job):
+            daemon.tick(104)
+            state = store.read_snapshot()[1]
+            until = 102 + daemon.RATE_LIMIT_SECONDS
+            assert state["transport_retry_at_unix"] == until
+            assert state["profiles"][a]["pending"]["user_message_id"] == original["user_message_id"]
+            assert state["profiles"][a]["status"] == "transport_rate_limited"
+            assert state["profiles"][b]["iterations"] == 1
+            assert state["profiles"][worker]["last_job_id"] == "JOB-local"
+            # Normalization and subsequent scheduler ticks preserve cooldown.
+            for now in range(106, until, 2):
+                daemon.tick(now)
+            assert t.count("submit") == 3 and t.count("poll") == 0
+            assert json.loads(store.state_path().read_text())["transport_retry_at_unix"] == until
+            t.reply(a)
+            daemon.tick(until)
+            assert store.read_snapshot()[1]["profiles"][a]["iterations"] == 1
+            assert t.count("poll") == 1
+            assert store.read_snapshot()[1]["profiles"][a]["prompts_sent"] == 1
+            # The other two profiles can now submit independent next steps.
+            assert t.count("submit") == 5
+    print("PASS: bounded two-profile API cadence, private rate-limit codes, durable shared cooldown, local job/cache progress and no prompt replay")
+
+
+if __name__ == "__main__":
+    main()

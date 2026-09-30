@@ -23,6 +23,8 @@ ROOT = Path(__file__).resolve().parents[2]
 NATIVE_CLI = ROOT / "automation/chat_bridge/native_cli.mjs"
 RESULTS = "automation/results"
 POLL_SECONDS = 2
+CHAT_POLL_SECONDS = max(15, min(120, int(os.environ.get("HADALIS_CHAT_POLL_SECONDS", "30"))))
+RATE_LIMIT_SECONDS = max(60, min(300, int(os.environ.get("HADALIS_RATE_LIMIT_SECONDS", "120"))))
 CONCURRENCY = max(1, min(8, int(os.environ.get("HADALIS_MANAGER_CONCURRENCY", "4"))))
 _INFLIGHT = {}
 
@@ -161,9 +163,17 @@ def _observe_failure(profile_id: str, now: int, exc: Exception, *, pending=None,
         else:
             item["next_run_at_unix"] = now + delay
         detail = str(exc)[:1000]
+        limited = not job and detail == "DESKTOP_RATE_LIMITED"
+        if limited:
+            # The account API is shared; jobs and local cached receipts are not.
+            state["transport_retry_at_unix"] = max(state["transport_retry_at_unix"], now + RATE_LIMIT_SECONDS)
+            if pending:
+                item["pending"]["poll_after_unix"] = max(now + delay, state["transport_retry_at_unix"])
+            else:
+                item["next_run_at_unix"] = max(now + delay, state["transport_retry_at_unix"])
         if item["last_error"] != detail or item[key] == 1:
             event(state, profile_id, "observation_retry", detail)
-        item.update(last_error=detail, status="transport_unavailable")
+        item.update(last_error=detail, status="transport_rate_limited" if limited else "transport_unavailable")
         # Observations are bounded/backed off, but never disabled by navigation,
         # a finite error counter, Desktop/network downtime or shell crashes.
     change_state(record)
@@ -225,7 +235,7 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
     pending = {"user_message_id": str(uuid.uuid4()), "parent_message_id": parent,
         "conversation_id": session.get("conversation_id") if session else None,
         "project_id": project_id, "kind": prompt_kind, "prepared_at_unix": now,
-        "poll_after_unix": now + POLL_SECONDS, "counted": False, "phase": "dispatching"}
+        "poll_after_unix": now + CHAT_POLL_SECONDS, "counted": False, "phase": "dispatching"}
     def prepare(c, s):
         current = s["profiles"].get(profile_id)
         if not current or current["pending"] or current["desired"] != "run" or current["remove_requested"]:
@@ -298,12 +308,12 @@ def _reports(text, evidence_ids):
 def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
     item = state["profiles"][profile_id]
     pending = item["pending"]
-    if now < pending.get("poll_after_unix", 0): return
+    cache = state_dir() / "responses" / profile_id / f"{pending.get('user_message_id', '')}.json"
+    if now < pending.get("poll_after_unix", 0) and not cache.exists(): return
     try:
         if not pending.get("user_message_id"):
             _legacy_adopt(config, item, profile_id, now)
             return
-        cache = state_dir() / "responses" / profile_id / f"{pending['user_message_id']}.json"
         if cache.exists():
             receipt = json.loads(cache.read_text())
             if receipt["user_message_id"] != pending["user_message_id"]:
@@ -363,8 +373,11 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
                 if result.get("conversation_id"):
                     current["pending"]["conversation_id"] = result["conversation_id"]
                     current["session"]["conversation_id"] = result["conversation_id"]
-                current["pending"]["poll_after_unix"] = now + (30 if result.get("uncertain") or result.get("streamError") else POLL_SECONDS)
+                age = max(0, now - pending["prepared_at_unix"])
+                cadence = min(120, CHAT_POLL_SECONDS * (2 if age >= 300 else 1))
+                current["pending"]["poll_after_unix"] = now + max(cadence, 30 if result.get("uncertain") or result.get("streamError") else 0)
                 current["poll_errors"] = 0
+                current["last_error"] = ""
                 current["status"] = "submission_uncertain" if result.get("uncertain") else "stream_failed" if result.get("streamError") else "thinking"
                 current["status_detail"] = "Observing the original message; no prompt resend" if result.get("uncertain") else ""
             change_state(waiting)
@@ -496,6 +509,12 @@ def _step_session(profile_id: str, now: int) -> None:
     if profile_id not in state["profiles"] or not any(p["id"]==profile_id for p in config["profiles"]): return
     item = state["profiles"][profile_id]
     if item["remove_requested"]: return
+    if now < state["transport_retry_at_unix"]:
+        cached = item["pending"] and (state_dir()/"responses"/profile_id/(item["pending"].get("user_message_id", "")+".json")).exists()
+        if not item["job_id"] and not cached:
+            return
+        if item["pending"] and not cached:
+            return
     if item["pending"]:
         _poll(config,state,profile_id,now); return
     if item["desired"] != "run" or not _profile(config,profile_id)["enabled"]:
@@ -539,8 +558,12 @@ def tick(now: int | None = None, executor: ThreadPoolExecutor | None = None) -> 
         if p["id"] in _INFLIGHT or item["remove_requested"]: continue
         if item["pending"]:
             at=item["pending"].get("poll_after_unix",0)
+            cached = (state_dir()/"responses"/p["id"]/(item["pending"].get("user_message_id", "")+".json")).exists()
+            at=0 if cached else max(at,state["transport_retry_at_unix"])
         elif item["job_id"]: at=item["next_job_poll_at_unix"] or 0
-        elif item["run_active"] or item["desired"]=="run": at=item["next_run_at_unix"] or 0
+        elif item["run_active"] or item["desired"]=="run":
+            at=item["next_run_at_unix"] or 0
+            if item["desired"]=="run":at=max(at,state["transport_retry_at_unix"])
         else: continue
         if at<=now: due.append(p["id"])
     due.sort(key=lambda pid:state["profiles"][pid]["last_transport_at_unix"])

@@ -1,4 +1,5 @@
 import {connectNative, nativeRead, resolveProject, nativeSubmit, nativeResume, discoverSubmission, projectTurn} from "./native_adapter.mjs";
+import {operationErrorCode} from "./native_errors.mjs";
 
 let browser;
 // A supervisor crash must not leave an orphan CDP client indefinitely alive.
@@ -56,11 +57,5 @@ try {
   console.log(JSON.stringify(result));
 } catch (error) {
   // Never serialize a raw request/headers or an HTTP error body.
-  const message=String(error.message);
-  const code=message.includes("legacy pending") ? "LEGACY_IDENTITY_AMBIGUOUS"
-    : /unsupported|capabilit|export contract|Desktop build/.test(message) ? "DESKTOP_CAPABILITY_UNAVAILABLE"
-    : message.includes("GitHub plugin") ? "GITHUB_PLUGIN_UNAVAILABLE"
-    : message.includes("project name") ? "PROJECT_UNAVAILABLE_OR_AMBIGUOUS"
-    : "DESKTOP_OPERATION_UNAVAILABLE";
-  console.error(code); process.exitCode = 1;
+  console.error(operationErrorCode(error)); process.exitCode = 1;
 } finally { clearTimeout(deadline); if (browser) await browser.close(); }

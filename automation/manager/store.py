@@ -143,6 +143,7 @@ def default_state(config: dict) -> dict:
             "engine_version": 1,
             "command_seq": 0, "command_ack_seq": 0,
             "manager_heartbeat_at_unix": None,
+            "transport_retry_at_unix": 0,
             "profiles": profiles, "events": []}
 
 
@@ -186,11 +187,15 @@ def normalize_state(raw: dict, config: dict) -> dict:
     heartbeat = raw.get("manager_heartbeat_at_unix")
     if type(heartbeat) is not int or heartbeat < 0:
         heartbeat = None
+    transport_retry = raw.get("transport_retry_at_unix", 0)
+    if type(transport_retry) is not int or transport_retry < 0:
+        transport_retry = 0
     if raw.get("engine_version",1) not in {1,2}:raise ValueError("unsupported scheduler engine version; state retained")
     return {"version": 1, "owner_id": owner, "requested_profile_id": requested,
             "engine_version": raw.get("engine_version", 1),
             "command_seq": command_seq, "command_ack_seq": command_ack_seq,
-            "manager_heartbeat_at_unix": heartbeat, "profiles": profiles, "events": events}
+            "manager_heartbeat_at_unix": heartbeat, "transport_retry_at_unix": transport_retry,
+            "profiles": profiles, "events": events}
 
 
 def event(state: dict, profile_id: str | None, kind: str, detail: str = "") -> None:

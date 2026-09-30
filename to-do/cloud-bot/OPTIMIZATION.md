@@ -40,3 +40,21 @@ Technical findings and the acceptance boundary:
 [`STRICT_LOSSLESS_OPTIMIZATION_AUDIT_2026-09-30.md`](../../docs/abyss/STRICT_LOSSLESS_OPTIMIZATION_AUDIT_2026-09-30.md).
 The general research program remains active; this scoped implementation is not
 a release-readiness declaration.
+
+## Maintainer implementation continuation — 2026-10-01
+
+The maintainer authorized further strict-lossless Abyss implementation and
+explicitly excluded automation changes/control because it serves two other
+tasks. Do not dispatch jobs, change its files/state, or restart its services for
+this continuation. Cloud-side tests use independent temporary fixtures/clones.
+
+- [x] Refine existing §59.3: Sidebar obstacle arrays 3 → 1; Dock combination
+  arrays 4 → 2. Retain both Sidebar progress reads before selected records and
+  keep the Dock's first concat phase. Notification obstacles remain unchanged.
+- [x] Native proposal and actual-production oracle: 2,356 cases + 21 reactive
+  steps, preserving reads/errors/reference identity/fresh arrays/NOTIFY.
+  Existing controller/wave oracle, body placement and geometry checks passed.
+- [ ] Run canonical local validation once on the new committed candidate SHA;
+  retain the clean log and classify failures without changing unrelated product
+  behavior. Live automation acceptance is not enabled.
+- [ ] Retain owner-session desktop acceptance separately from local tests.

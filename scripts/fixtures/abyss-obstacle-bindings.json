@@ -1,0 +1,7 @@
+{
+  "sha": "209cd2a21212b3f0d02db9488228d8567558960a",
+  "expressions": {
+    "sideObstacles": "[leftPanel,rightPanel].filter(body => body.progress > 0.001).map(body => body.record)",
+    "dockObstacles": "window.sideObstacles.concat(notification.progress > 0.001 ? [notification.record] : []).concat(popup.progress > 0.001 ? [popup.record] : [])"
+  }
+}

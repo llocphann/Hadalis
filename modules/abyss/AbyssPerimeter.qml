@@ -325,7 +325,15 @@ Scope {
                 edgeInsets: window.nativeInsets
                 moduleRecords: bar.visible ? bar.deformations : []
             }
-            readonly property var sideObstacles: [leftPanel,rightPanel].filter(body => body.progress > 0.001).map(body => body.record)
+            readonly property var sideObstacles: {
+                // Keep the filter phase before either selected record read.
+                const leftVisible = leftPanel.progress > 0.001
+                const rightVisible = rightPanel.progress > 0.001
+                const result = []
+                if (leftVisible) result.push(leftPanel.record)
+                if (rightVisible) result.push(rightPanel.record)
+                return result
+            }
             AbyssSpectrumController {
                 waves:liquid.waves
                 outputName:window.outputName
@@ -576,7 +584,12 @@ Scope {
                 along: (Geometry.horizontal(edge) ? window.width : window.height)/2-span/2
                 depth: AbyssStyle.dockThickness
                 padding: 12
-                obstacles: window.sideObstacles.concat(notification.progress > 0.001 ? [notification.record] : []).concat(popup.progress > 0.001 ? [popup.record] : [])
+                obstacles: {
+                    // Keep the first concat's evaluation/copy phase intact.
+                    const result = window.sideObstacles.concat(notification.progress > 0.001 ? [notification.record] : [])
+                    if (popup.progress > 0.001) result.push(popup.record)
+                    return result
+                }
                 source: "content/AbyssDockContent.qml"
                 HoverHandler { id: dockHover; parent: dock.contentItem; onHoveredChanged: { if (hovered) { dockClose.stop(); window.dockHovered = true } else dockClose.restart() } }
             }

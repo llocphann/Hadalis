@@ -24532,3 +24532,224 @@ Next audit should re-fetch current `dev`, reconcile concurrent commits and
 continue through zero/low-ownership current-QML collection paths. Prefer
 record-scaled private models; avoid fixed-size visual arrays and backend-owned
 sort copies unless a distinct staging allocation is proven.
+
+## 106. Round 92 — Desktop drag/drop fresh-array staging audit (2026-09-30)
+
+### Snapshot and ownership reconciliation
+
+- Authoritative `dev` at round start and immediately before this write:
+  `7979f2be3c345bead74527eb6ee244291f65923f`
+  (`docs(research): audit AI fade chunking`).
+- No intervening commit exists after Round 91.
+- Exact current paths re-read:
+  - `modules/background/desktopItems/DesktopDropCoordinator.qml`;
+  - `modules/background/desktopItems/DesktopImageChoice.qml`;
+  - `modules/background/Background.qml`.
+- Existing handoff ownership was searched for the coordinator, image-choice
+  signal path, `requestImageChoice()`, `_enqueue()`,
+  `_routeImageConversion()` and the exact `Array.from(...).map().filter()`
+  shapes.
+- Existing DesktopDropCoordinator ownership in §48 concerns
+  `DesktopItems.arrangePosition()` occupancy construction, not the URL-list
+  normalization paths below.
+
+### 106.1 Desktop drop/image routing can retain the mandatory Array.from snapshot while reusing that fresh array for mapping and filtering — CONFIRMED / P2 multi-file drag/drop interaction
+
+Paths:
+
+- `modules/background/desktopItems/DesktopDropCoordinator.qml`,
+  `_enqueue()`;
+- the same file, `requestImageChoice()`;
+- `modules/background/Background.qml`,
+  `_routeImageConversion()`.
+
+There are three related fresh-array pipelines.
+
+**A. Access/URL queue**
+
+Current:
+
+```qml
+root._queue = Array.from(urls ?? [])
+    .map(url => String(url ?? ""))
+    .filter(url => url.length > 0)
+```
+
+For N snapshot entries this creates:
+
+1. the N-element `Array.from` snapshot;
+2. an N-element mapped string array;
+3. a V-element filtered final queue.
+
+**B. Image-choice normalization**
+
+Current:
+
+```qml
+const paths = Array.from(urls ?? [])
+    .map(url => root._pathFromDropUrl(url))
+    .filter(path => path.length > 0 && root._isImage(path))
+```
+
+Again this creates:
+
+1. the N-element snapshot;
+2. an N-element mapped path array;
+3. the V-element final paths array emitted through
+   `imageChoiceRequested(paths, x, y)`.
+
+**C. Image-converter routing**
+
+Current:
+
+```qml
+const valid = Array.from(paths ?? [])
+    .filter(path => Images.isValidImageByName(String(path)))
+```
+
+This creates one N-element snapshot plus a V-element filtered array before the
+final list is retained in `_pendingImageConversion`.
+
+The strict-safe direction intentionally **does not** replace
+`Array.from(source).map(mapper)` with
+`Array.from(source, mapper)`.
+
+That shorter form would interleave source iteration with mapping. The current
+code first completes the full `Array.from` snapshot and only then begins
+mapping/filtering. Since drag/drop values can originate from QML sequence/list
+objects, strict-lossless preserves that snapshot-before-transform boundary.
+
+Exact-safe construction for A/B:
+
+1. execute the exact current `Array.from(source ?? [])` first;
+2. perform the existing mapper over every snapshot index in ascending order,
+   writing the mapped value back into that same fresh local array;
+3. only **after all mapper calls have completed**, perform the current filter
+   predicate in ascending order;
+4. compact passing values toward index zero within the same fresh array;
+5. truncate `array.length` to the passing count;
+6. publish/assign/emit that array at the exact current boundary.
+
+For C:
+
+1. preserve the current `Array.from(paths ?? [])` snapshot;
+2. run the same image predicate in ascending order;
+3. compact passing original values in place;
+4. truncate once;
+5. retain the same fresh array as `_pendingImageConversion`.
+
+This preserves the current three-phase order where present:
+
+`snapshot all source values -> map all values -> filter all mapped values`.
+
+Strict-lossless proof:
+
+- **QML sequence snapshot semantics:** the initial `Array.from` call remains
+  byte-for-contract equivalent. No live QML list is retained or mutated.
+- **source-read order:** source iteration completes before mapper calls exactly
+  as today.
+- **mapping order:** all mapper calls run once in index order before any filter
+  predicate in A/B.
+- **mapping behavior:**
+  - A still evaluates `String(url ?? "")`;
+  - B still calls `_pathFromDropUrl(url)`, including the same
+    `decodeURIComponent` try/catch and file-protocol trimming.
+- **filter order/predicate:**
+  - A still tests `url.length > 0`;
+  - B still tests `path.length > 0` first, then
+    `_isImage(path)` only through the same `&&` short-circuit;
+  - C still calls
+    `Images.isValidImageByName(String(path))` once per snapshot element.
+- **element identity:**
+  - A/B publish the same mapped primitive strings;
+  - C retains the same original snapshot element references/values for passing
+    entries, exactly as `filter()` does.
+- **duplicates:** duplicates remain duplicated and ordered.
+- **empty input:** still produces one fresh empty array from `Array.from`;
+  queue reset, early return and signal suppression remain unchanged.
+- **exceptions:** if source snapshot, mapper or predicate throws, publication
+  still does not occur. Keeping complete mapping before filtering also preserves
+  the current error ordering if a later mapper call fails.
+- **fresh identity:** every successful call still publishes/emits one fresh
+  ordinary array. No persistent cache or reused cross-call array is introduced.
+- **queue lifecycle:** `_queueIndex`, first-created selection,
+  recursive/sequential folder probing and desktop-item creation remain
+  untouched.
+- **signal/callback order:** `imageChoiceRequested` is still emitted once,
+  after complete path normalization/filtering and before the Background
+  handler's existing `DesktopImageChoice.openAt()` snapshot.
+- **conversion lifecycle:** placement state, widget enabling, retry timer,
+  converter discovery and later enqueue behavior are unchanged.
+
+Local source-derived allocation reduction:
+
+For A or B with N source rows and V survivors:
+
+- source snapshot arrays: unchanged, **1**;
+- N-element mapped arrays: **1 -> 0**;
+- V-element filter-result arrays: **1 -> 0**;
+- final published fresh array: still exactly the original fresh snapshot,
+  compacted to V elements;
+- mapper calls: unchanged, N;
+- predicate calls: unchanged, N subject to the same short-circuit.
+
+For C:
+
+- source snapshot arrays: unchanged, **1**;
+- V-element filter-result arrays: **1 -> 0**;
+- predicate calls: unchanged, N.
+
+This optimization is interaction-scoped, not a whole-shell speed claim. Its
+benefit scales with multi-file drops/conversion batches.
+
+Classification:
+**CONFIRMED / P2 multi-file drag/drop interaction**.
+
+### 106.2 Do not reuse the first drop-classification result to suppress later normalization/validation under strict-lossless
+
+The `DropArea.onDropped` handler already calls:
+
+`_pathFromDropUrl(url) -> _isImage(path)`
+
+to partition incoming URLs into image and non-image lists.
+
+Image URLs then pass through `requestImageChoice()`, which repeats path
+normalization/image validation before emitting the choice signal.
+
+That looks redundant, but the two validation phases are separated by:
+
+- completion of the whole initial drop classification;
+- possible `_enqueue(otherUrls,...)`;
+- synchronous queue processing/desktop-item creation or folder-probe start;
+- only then image-choice normalization and signal emission.
+
+Reusing first-pass path results would remove the later function calls and their
+current temporal boundary relative to other dropped items.
+
+The helpers appear pure, but strict-lossless preserves call/property-read/order
+semantics rather than assuming future purity.
+
+Status:
+**CONDITIONAL / not counted**.
+
+### 106.3 Round-92 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one**:
+
+- compact the fresh Desktop drag/drop snapshots in place after preserving the
+  existing snapshot/map/filter phase ordering
+  (§106.1, **CONFIRMED / P2 interaction**).
+
+Not counted:
+
+- reuse of the earlier DropArea image-classification result
+  (§106.2, ordering/purity contract required).
+
+No runtime/product/native/script code was modified and no deterministic local
+job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent commits and
+continue outside Desktop drag/drop. Prefer another low-ownership reactive
+collection or parser with more than fixed-size data. Candidate inventory can
+include `ThemesConfig` detection presentation, background typography/string
+models, or another request-completion model after duplicate-owner search.

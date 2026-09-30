@@ -24253,3 +24253,142 @@ Next audit should re-fetch current `dev`, reconcile any concurrent commits,
 then rotate away from automation scheduler internals. Prefer another
 record-scaled parser/model or private reactive collection not already owned by
 Dashboard/Weather/AI/Tray/Niri research.
+
+## 104. Round 90 — Shell Update commit-log presentation parse audit (2026-09-30)
+
+### Snapshot and duplicate-ownership reconciliation
+
+- Authoritative `dev` at round start and immediately before this write:
+  `47191f9f6b1e1ed854d4bdd65662c76e11a5288c`
+  (`docs(research): audit scheduler profile lookup`).
+- No intervening commit exists after Round 89.
+- A search-driven inventory of current QML collection operators was compared
+  against exact handoff filename ownership before selecting this path.
+- Nearby candidates were excluded as already owned:
+  - Network scan grouping §50.1 and shell pipelines §79.2;
+  - Calendar multi-day bucketing §67.1 and merge staging §68.2;
+  - News RSS parsing §91.1;
+  - OpenAI streamed tool-call key lookup §56.5;
+  - Gemini response maps are already classified as final output data under
+    §71.3.
+- `modules/shellUpdate/ShellUpdateOverlay.qml` had no existing owner for the
+  private commit-log parser below.
+
+### 104.1 Build commit presentation rows directly instead of filter + map staging — CONFIRMED / P2 on-demand overlay parse
+
+Paths:
+
+- `modules/shellUpdate/ShellUpdateOverlay.qml`;
+- `services/ShellUpdates.qml` for source/log cardinality.
+
+The overlay private helper currently parses both the incoming update log and
+recent installed history as:
+
+```qml
+return raw.split("\n").filter(l => l.length > 0).map(line => {
+    const parts = line.split("|")
+    return {
+        hash: parts[0] ?? "",
+        subject: parts[1] ?? "",
+        date: parts[2] ?? "",
+        author: parts[3] ?? ""
+    }
+})
+```
+
+Current backend ownership:
+
+- `recentLocalLog` is produced by
+  `git log --pretty=format:%h|%s|%cr|%an -15`, so that surface is bounded to
+  at most 15 commit rows;
+- incoming `commitLog` uses the same four-field format over
+  `HEAD..origin/<branch>` with no row cap, so its record count scales with the
+  remote delta when the details overlay opens.
+
+For L newline-split source rows with V nonempty rows, current presentation
+parsing creates:
+
+1. the L-element result of `raw.split("\n")`;
+2. a V-element filtered-string array;
+3. a V-element final row-object array;
+4. one L-row filter traversal followed by one V-row map traversal.
+
+Strict-safe direction:
+
+- preserve the initial `!raw || raw.length === 0` early return;
+- preserve one `raw.split("\n")` so generic newline/string semantics do not
+  change;
+- iterate those split strings once in source order;
+- skip exactly `line.length === 0`;
+- for each retained line, execute the same `line.split("|")`;
+- append the same four-field object with the same nullish fallbacks to one final
+  result array;
+- return that result after the complete scan.
+
+Strict-lossless proof:
+
+- **source type:** each element produced by `String.split` is an ordinary
+  primitive string; eliminating `Array.filter` cannot suppress getter/proxy
+  effects.
+- **predicate:** only zero-length strings are rejected today. Whitespace-only
+  lines remain accepted and continue through the field splitter.
+- **order:** retained rows are appended in original newline order, exactly as
+  filter then map.
+- **duplicates:** duplicate commit lines remain duplicate output rows.
+- **field parsing:** every accepted line still uses `split("|")`; embedded
+  extra delimiters continue producing extra unused fields while the first four
+  positions remain authoritative.
+- **missing fields:** the same `?? ""` behavior is retained.
+- **publication:** the helper still returns one fresh ordinary array of fresh
+  row objects; Repeater model identity/publication timing is unchanged.
+- **backend/process lifecycle:** git commands, detail-fetch chaining,
+  stdout collection, overlay open timing and recent-history loading are
+  untouched.
+- **malformed input:** empty raw input still returns `[]`; blank lines are
+  skipped exactly; no schema validation or correction is introduced.
+
+Local source-derived reduction per parser call:
+
+- temporary filtered-string arrays: **1 -> 0**;
+- collection traversals: **L + V -> L**;
+- split-lines array: unchanged;
+- final row objects/array: unchanged;
+- git subprocesses/network/filesystem work: unchanged.
+
+Because recent history is only 15 rows, the main value is the uncapped incoming
+update delta and removal of an obvious presentation-only staging allocation,
+not an end-to-end update speed claim.
+
+Classification:
+**CONFIRMED / P2 on-demand overlay parse**.
+
+### 104.2 Shell Update process/detail sequencing remains intentionally unchanged
+
+This audit also rechecked the surrounding detail pipeline:
+
+`commit log -> remote VERSION -> remote CHANGELOG -> local modifications`.
+
+The sequence defines observable progress/error behavior and repository snapshot
+timing. Local-modification detection also has existing ownership in §51.15.
+
+Parallelizing detail processes, caching commit logs across refreshes or skipping
+a source operation based only on current visible fields would change at least
+one of failure order, freshness, cancellation or publication timing.
+
+Status:
+**CLOSED for sequencing/concurrency changes under current strict contract**.
+
+### 104.3 Round-90 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one**:
+
+- one-pass Shell Update commit-log presentation row construction
+  (§104.1, **CONFIRMED / P2 on-demand overlay parse**).
+
+No runtime/product/native/script code was modified and no deterministic local
+job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent commits and
+continue the search-driven low-ownership inventory. Prefer a private
+interaction/model transformation with nontrivial record count rather than
+fixed-size UI literals or backend-owned sorted copies.

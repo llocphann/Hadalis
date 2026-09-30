@@ -1,6 +1,6 @@
 # Cloud Bot — Abyss Water Droplet Companion
 
-Status: **planned / not implemented**  
+Status: **in progress — renderer/attachment proof implemented, production integration disabled pending evidence**  
 Scope owner: Cloud Bot reasoning + source changes; Local Bot only runs explicit deterministic validation jobs.  
 Target shell family: **Abyss first**.  
 Primary constraint from maintainer: **do not implement this as a static image mascot. The Water Droplet Companion must be a genuinely animated, continuously alive runtime companion. Prefer Rust for the continuously running backend.**
@@ -354,3 +354,13 @@ This task is complete only when all of the following are true:
 ## Design principle
 
 **Rust makes the companion cheap to keep alive; Qt Quick makes it cheap to draw.** The backend decides *what the droplet is doing*, while the renderer decides *how that intent moves smoothly on screen*. The Water Droplet should feel native to Abyss because its shape, light, refraction, accent, motion gates and placement are derived from the existing Abyss material/geometry system—not because a blue mascot image was placed beside it.
+
+
+## Checkpoint — 2026-10-01 renderer/attachment proof
+
+- Source base: `209cd2a21212b3f0d02db9488228d8567558960a`.
+- Added a development-only procedural Wull renderer under `modules/abyss/companion/`; it uses Qt Quick Shapes/primitives and Abyss theme tokens, with no image asset path.
+- Added an edge-aware attachment host plus a top-edge proof scene. It is intentionally not wired into production shell ownership yet.
+- Added `docs/WULL_COMPANION_PROTOCOL_V1.md` to freeze the low-rate semantic stdio contract before daemon implementation.
+- Next gate: run deterministic QML/static contract checks and capture a bounded live screenshot/Quickshell diagnostic proving render + attachment before production integration.
+- Reference-asset note: the current task file contains no linked image URL/path at this HEAD; no repository reference image could be resolved from the task itself.

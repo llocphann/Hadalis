@@ -1,0 +1,114 @@
+import QtQuick
+import QtQuick.Shapes
+import qs.modules.abyss.looks
+
+Item {
+    id: root
+    property real energy: 0.45
+    property real gazeX: 0
+    property real gazeY: 0
+    property bool motionEnabled: AbyssStyle.motionEnabled && visible
+    property real squash: 0
+    property real bob: 0
+    property real sway: 0
+    property real shimmer: 0
+    signal pressed()
+
+    implicitWidth: 76
+    implicitHeight: 92
+    transformOrigin: Item.Bottom
+
+    scale: 1 + squash * 0.035
+    y: bob
+    rotation: sway * 2.2
+
+    Shape {
+        anchors.fill: parent
+        antialiasing: true
+        ShapePath {
+            strokeWidth: 1.2
+            strokeColor: Qt.alpha(AbyssStyle.specular, 0.58)
+            fillGradient: LinearGradient {
+                x1: 8; y1: 8; x2: root.width - 4; y2: root.height
+                GradientStop { position: 0; color: Qt.lighter(AbyssStyle.accent, 1.12) }
+                GradientStop { position: 0.42; color: AbyssStyle.surfaceRaised }
+                GradientStop { position: 1; color: AbyssStyle.surfaceDeep }
+            }
+            startX: root.width * 0.5; startY: 2
+            PathCubic { x: root.width * 0.12; y: root.height * 0.58; control1X: root.width * 0.44; control1Y: root.height * 0.18; control2X: root.width * 0.12; control2Y: root.height * 0.36 }
+            PathCubic { x: root.width * 0.5; y: root.height - 3; control1X: root.width * 0.08; control1Y: root.height * 0.83; control2X: root.width * 0.28; control2Y: root.height - 3 }
+            PathCubic { x: root.width * 0.88; y: root.height * 0.58; control1X: root.width * 0.72; control1Y: root.height - 3; control2X: root.width * 0.92; control2Y: root.height * 0.83 }
+            PathCubic { x: root.width * 0.5; y: 2; control1X: root.width * 0.88; control1Y: root.height * 0.36; control2X: root.width * 0.56; control2Y: root.height * 0.18 }
+        }
+    }
+
+    Rectangle {
+        width: 17; height: 28; radius: 10
+        x: 15 + shimmer * 5; y: 20 + shimmer * 3
+        rotation: 24
+        color: Qt.alpha(AbyssStyle.specular, 0.42)
+    }
+
+    Row {
+        spacing: 17
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: 48
+        Repeater {
+            model: 2
+            Item {
+                width: 12; height: 16
+                Rectangle { anchors.fill: parent; radius: width / 2; color: AbyssStyle.textColor }
+                Rectangle {
+                    width: 5; height: 6; radius: width / 2
+                    x: Math.max(1, Math.min(parent.width - width - 1, 3 + root.gazeX * 2))
+                    y: Math.max(1, Math.min(parent.height - height - 1, 4 + root.gazeY * 2))
+                    color: AbyssStyle.surfaceDeep
+                }
+                Rectangle { width: 2.5; height: 2.5; radius: 2; x: 2; y: 2; color: AbyssStyle.specular }
+            }
+        }
+    }
+
+    Shape {
+        width: 24; height: 12
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: 67
+        ShapePath {
+            fillColor: "transparent"
+            strokeColor: Qt.alpha(AbyssStyle.textColor, 0.86)
+            strokeWidth: 2
+            capStyle: ShapePath.RoundCap
+            startX: 3; startY: 4
+            PathCubic { x: 21; y: 4; control1X: 8; control1Y: 10; control2X: 16; control2Y: 10 }
+        }
+    }
+
+    TapHandler {
+        onTapped: {
+            root.pressed()
+            if (root.motionEnabled) squashBurst.restart()
+        }
+    }
+
+    SequentialAnimation {
+        id: squashBurst
+        NumberAnimation { target: root; property: "squash"; to: 1; duration: 85; easing.type: Easing.OutQuad }
+        NumberAnimation { target: root; property: "squash"; to: -0.35; duration: 150; easing.type: Easing.OutBack }
+        NumberAnimation { target: root; property: "squash"; to: 0; duration: 210; easing.type: Easing.OutCubic }
+    }
+    SequentialAnimation on bob {
+        running: root.motionEnabled; loops: Animation.Infinite
+        NumberAnimation { to: -2.4; duration: 1570; easing.type: Easing.InOutSine }
+        NumberAnimation { to: 1.2; duration: 2110; easing.type: Easing.InOutSine }
+    }
+    SequentialAnimation on sway {
+        running: root.motionEnabled; loops: Animation.Infinite
+        NumberAnimation { to: 1; duration: 2390; easing.type: Easing.InOutSine }
+        NumberAnimation { to: -0.7; duration: 3170; easing.type: Easing.InOutSine }
+    }
+    SequentialAnimation on shimmer {
+        running: root.motionEnabled && AbyssStyle.quality !== "performance"; loops: Animation.Infinite
+        NumberAnimation { to: 1; duration: 2800; easing.type: Easing.InOutSine }
+        NumberAnimation { to: 0; duration: 4300; easing.type: Easing.InOutSine }
+    }
+}

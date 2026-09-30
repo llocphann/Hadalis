@@ -7,8 +7,13 @@ Maintainer-authorized implementation, 2026-09-30. Target contract and audit:
 - [x] Conversation/message identity, independent monitoring and concurrent profiles.
 - [x] Bounded worker pool, execution receipts, publish retry and orphan cleanup.
 - [x] Evidence-driven workflows, private diagnostics and privilege/deployment recovery.
-- [ ] Frontend compatibility, regression checks and real Desktop acceptance.
+- [x] Frontend compatibility, regression checks and real Desktop acceptance.
 - [ ] Future/deferred: migrate the Linux/process-sensitive Automation execution substrate to Rust only after parity and benchmark gates in [`AUTOMATION_RUST_MIGRATION.md`](AUTOMATION_RUST_MIGRATION.md).
 
 Keep uncertain existing submissions and consumed job results. Do not reset
 profiles or resend prompts to make acceptance appear green.
+
+Implementation and focused Automation acceptance are complete. Whole-repository
+validation remains **FAIL**: 241 pass, 32 fail, 2 skip at `e3f91d57b`; the same
+32 failures were present at `bea23fc62`, with no Automation failures. See the
+architecture note for native acceptance and untested environment boundaries.

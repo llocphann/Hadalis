@@ -52,3 +52,42 @@ and live acceptance. Run focused behavior tests each phase and the canonical
 maintainer validator on published milestones. Label Desktop/native evidence
 separately. Full validator failures must be retained with exact SHA; no global
 PASS is inferred from focused tests or previous runs.
+
+## Implemented acceptance, 2026-10-01
+
+| Contract | Verification |
+| --- | --- |
+| Independent managed chats and simultaneous profiles | Two actual Desktop conversations had overlapping server streams while an unrelated chat remained selected. Both finished after scheduler restart, with distinct stable message IDs and one prompt each. The opt-in native test requires overlap, not just eventual completion. |
+| Quickshell independence and frontend compatibility | The actual Settings component loaded from repository and installed copies; confirmed removal archived its pending receipt while retaining the other profile. Killing the private Quickshell fixture left scheduler, worker and broker PIDs unchanged. Reloading the installed user shell also left all three backend PIDs unchanged. |
+| Durable recovery without replay | Storage fault injection, lost submission acknowledgements, persisted completion before scheduler crash, server-confirmed failed generation, interrupted worker actions and publication failures are covered by behavior tests. Superseding a managed turn with another user message preserves its receipt and isolates that profile instead of reattaching the wrong stream. |
+| Bounded workers and cleanup | Actual subprocess tests cover parallel jobs, shared-resource contention, cancellation, timeout, output limits, inherited pipes, orphan process groups and workspace cleanup. Publication retry consumes the saved result and never executes its actions again. Git observation contention returns without occupying waiting transport slots. |
+| Generic evidence-driven workflows | WAIT_RESULT can consume private receipts during publication outages. Continuations receive safe evidence summaries; diagnoses must cite observed evidence IDs. Diagnostics operate without a Quickshell process. Raw journals, screenshots, configuration and command output stay private. |
+| Safe legacy migration | Version-1 profiles/state and unknown receipts are retained. Automatic polling-error pauses recover only when a later explicit Start/Resume is evidenced; explicit Pause/Stop wins. Malformed profiles are quarantined without preventing valid profiles from progressing. |
+
+Focused regressions passed. The canonical validator at
+`e3f91d57bd2f574603adbc4dbbcf6110789f331a` reported **241 PASS / 32 FAIL /
+2 SKIP**. Its 32 failures match the prior `bea23fc62` validation; none are
+Automation regressions. Full-repository acceptance remains **NOT_COMPLETE**,
+and staged shell deployment correctly refuses a failed canonical validation.
+
+Native probes are opt-in:
+
+```bash
+HADALIS_TEST_NATIVE_LIVE=1 HADALIS_TEST_GITHUB=1 python3 scripts/test-hadalis-native-live.py
+HADALIS_TEST_SHELL_LIVE=1 python3 scripts/test-hadalis-automation-shell-live.py
+# Exercise an installed shell's component instead of repository QML:
+HADALIS_TEST_SHELL_LIVE=1 HADALIS_TEST_QML_ROOT="$HOME/.config/quickshell/inir" python3 scripts/test-hadalis-automation-shell-live.py
+```
+
+Private evidence is under `$XDG_STATE_HOME/hadalis-automation/acceptance` (or
+the standard state directory), outside Git. Real OS reboot, Desktop host restart,
+administrator authentication/elevated commands and full risky shell deployment
+were not exercised. Those require separate native qualification; unit/dependency
+and fault-injection evidence must not be described as a live reboot or privilege
+test. The default privilege allowlist is empty.
+
+A 60-second observation of one legacy pending chat measured the scheduler's
+main Python process at about **13 MiB PSS / 0.22% of one CPU core**. The whole
+scheduler service, including short-lived Node/CDP clients, used **99.5 MiB /
+15.33% of one core** in that sample. This identifies transport overhead; it is
+not a Python-versus-Bash benchmark or an idle/whole-system performance claim.

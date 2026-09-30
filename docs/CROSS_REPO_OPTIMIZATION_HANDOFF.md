@@ -22599,3 +22599,246 @@ with request-scaled work. AppCatalog package-state probing, Autostart
 file/reconciliation behavior, ShellUpdates update-status transport, or another
 service with a concrete production cost are reasonable next areas, subject to
 duplicate-ownership search first.
+
+## 96. Round 82 — AppCatalog installed-state parsing and refresh-recovery audit (2026-09-30)
+
+### Snapshot, delta and duplicate-ownership audit
+
+- Authoritative `dev` at round start and immediately before this documentation
+  write: `ba5037f10c2288c01f85b867a1c46392904928ad`
+  (`docs(research): audit CalendarSync recurrence allocations`).
+- The only commit after Round 80 is the Round-81 handoff documentation commit;
+  no runtime/product source changed between the audited snapshots.
+- Existing AppCatalog ownership was searched before promotion:
+  - §56.1 already owns category + text filter fusion;
+  - the old timer sweep only establishes that the 5-second refresh timer is
+    one-shot after install/remove, not persistent polling;
+  - no existing item owns the installed-package stdout parser, package-manager
+    helper fan-out, or refresh recovery behavior below.
+
+### 96.1 Installed-package parsing can avoid three staging arrays while preserving exact marker semantics — CONFIRMED / P1-P2 SoftwareView refresh
+
+Path:
+
+- `services/AppCatalog.qml`, `_installedProc.onExited`.
+
+Current installed-state stdout shape is:
+
+- native package names;
+- optionally the literal delimiter
+  `---FLATPAK---`;
+- Flatpak application IDs.
+
+Current parsing does:
+
+```qml
+const parts = raw.split("---FLATPAK---")
+const nativeLines = (parts[0] ?? "").split("\n")
+const flatpakLines = (parts[1] ?? "").split("\n")
+```
+
+and then runs the exact same operation over both line arrays:
+
+1. `trim()` each line;
+2. ignore empty strings;
+3. add every remaining string to one local `installedSet`.
+
+The native/Flatpak section identity is not retained after insertion; the same
+Set is used for all package-target membership checks.
+
+For a normal package listing containing many hundreds or thousands of rows,
+the current path therefore allocates:
+
+- one `parts` array;
+- one `nativeLines` array sized to the native package count;
+- one `flatpakLines` array sized to the Flatpak count;
+- plus the line strings themselves.
+
+Strict-safe direction:
+
+- retain `raw` exactly as captured;
+- find the first delimiter position with `indexOf()`;
+- find the second delimiter position only if the first exists;
+- scan lines by newline index directly within:
+  - range 0..first delimiter (or the whole string when absent);
+  - first-delimiter-end..second delimiter (or end-of-string);
+- for each range, preserve the exact current per-line
+  `slice(...).trim(); if (pkg.length > 0) installedSet.add(pkg)` behavior;
+- ignore everything after a second delimiter, matching the current
+  `parts[0]` / `parts[1]` behavior exactly.
+
+This is deliberately **not** the simpler
+`raw.split("\n").filter(line !== marker)` rewrite, because that would change
+malformed/multiple-marker semantics.
+
+Strict-lossless proof:
+
+- **normal native-only output:** identical trimmed strings enter
+  `installedSet` in the same order;
+- **native + Flatpak output:** first and second sections are processed in the
+  same order as today;
+- **empty output:** no Set entries are added;
+- **blank/interior-blank/CRLF lines:** each line still goes through JavaScript
+  `trim()`, so whitespace handling is unchanged;
+- **delimiter at the beginning/end:** the corresponding empty section still
+  contributes no package entry;
+- **delimiter embedded mid-line:** range boundaries reproduce
+  `String.split(delimiter)` rather than requiring a full marker line;
+- **multiple delimiters:** only the first two split parts are consumed and data
+  after the second marker remains ignored, exactly as today;
+- **duplicates:** Set deduplication and first-insertion order remain unchanged;
+- **publication:** `installedPackages` is still built and assigned once after
+  the complete parse;
+- **property reads:** catalog/target membership evaluation occurs only after the
+  same Set has been constructed;
+- **process/error behavior:** helper commands, stdout capture, exit handling and
+  start-failure handling are untouched.
+
+Local source-derived reduction:
+
+- large section/line staging arrays: **3 -> 0**;
+- package membership strings inserted into the Set: unchanged;
+- package-manager subprocess count: unchanged;
+- final installed-map entries/order/booleans: unchanged.
+
+This is a memory/allocation/GC reduction on a demand-driven interaction path,
+not a whole-shell performance percentage.
+
+Classification: **CONFIRMED / P1-P2 SoftwareView/manual/post-install refresh**.
+
+### 96.2 Package-manager helper fan-out is real, but direct de-shelling is not yet strict-lossless — HIGH CONFIDENCE process lead / RUST NOT JUSTIFIED
+
+Path:
+
+- `services/AppCatalog.qml`, `_detectPmProc` and `_refreshInstalled()`.
+
+Current capability detection is one Bash process whose `command -v` checks are
+shell builtins.
+
+Installed-state refresh is another Bash process and then, depending on the
+detected system:
+
+- pacman: `pacman -Qq`;
+- apt: `dpkg --get-selections | grep -v deinstall | awk '{print $1}'`;
+- dnf: `rpm -qa --qf ...`;
+- optional Flatpak: one additional `flatpak list`.
+
+The apt branch therefore has the clearest avoidable helper fan-out.
+
+Do **not** simply replace the Bash command with separate QML Process objects yet.
+The current single-shell contract has observable semantics:
+
+- only Bash startup failure takes the QML start-failure path;
+- native-command failures can still leave partial stdout for parsing;
+- when Flatpak is appended, the shell's final exit status can reflect the final
+  command rather than an earlier native-package failure;
+- native output is emitted before the delimiter and Flatpak output;
+- installed-state publication happens once after the one shell process exits.
+
+A multi-Process rewrite must explicitly preserve those partial-output,
+start-failure, ordering and one-publication behaviors.
+
+Same-language/process-lifecycle work should be evaluated before Rust, especially
+for the apt filter pipeline. The dominant data still comes from native package
+manager commands; replacing this sparse/demand-driven orchestration with a Rust
+backend would add distro-specific packaging/query compatibility for limited
+benefit.
+
+Rust classification: **RUST NOT JUSTIFIED at current evidence**.
+
+### 96.3 AppCatalog Frontend ↔ Backend contract trace
+
+Current linkage:
+
+`SoftwareView / appCatalog IPC`
+→ `AppCatalog`
+→ bundled catalog FileView
+→ package-manager capability detection
+→ installed-state shell command
+→ stdout normalization / installed Set
+→ per-catalog installed map
+→ reactive card state
+→ install/remove selection
+→ `ShellExec.execDetachedArgs()`
+→ terminal
+→ pacman/yay/paru/apt/dnf/flatpak
+→ one-shot 5-second installed-state recheck.
+
+Verified controls/contracts:
+
+- search text writes `AppCatalog.searchQuery`;
+- category controls write `selectedCategory`;
+- Refresh is disabled while `checkingInstalled` and calls
+  `AppCatalog.refresh()`;
+- installed cards route to `removeApp()`;
+- available non-installed cards route to `installApp()`;
+- package target precedence remains native PM first, then supported fallback;
+- pacman AUR selection respects detected yay/paru capability;
+- unsafe/empty configured terminal names fall back to `kitty`;
+- terminal command argv keeps package IDs separate from the shell script;
+- install/remove starts the one-shot five-second recheck;
+- card installed state derives only from the final published
+  `installedPackages` map;
+- helper start failures release `checkingInstalled` rather than leaving the
+  refresh spinner stuck.
+
+The §96.1 parser reduction does not alter any of these layers.
+
+### 96.4 Correctness prerequisite: Refresh cannot recover failed package-manager detection
+
+Paths:
+
+- `services/AppCatalog.qml`;
+- `modules/sidebarLeft/SoftwareView.qml`;
+- appCatalog IPC `refresh`.
+
+Package-manager detection is started only after the bundled catalog successfully
+loads:
+
+`_detectPmProc.running = true`.
+
+If that helper fails to start, current state is reset to:
+
+- `_detectedPm = "unknown"`;
+- Flatpak/AUR capability false/empty.
+
+The visible Refresh control and the `appCatalog:refresh` IPC method both call:
+
+`root.refresh() -> root._refreshInstalled()`.
+
+But `_refreshInstalled()` switches on `_detectedPm`; the `default` /
+`"unknown"` branch simply clears `checkingInstalled` and returns. Repository
+search finds no second runtime assignment that starts `_detectPmProc`.
+
+Therefore the advertised retry/recheck action cannot recover a package-manager
+detection start failure (or a later environment change that requires detection
+again) without recreating/reloading the service.
+
+Classification: **correctness/recovery prerequisite; not a performance
+finding and not counted**.
+
+A future fix should preserve the current installed-state refresh contract when
+capabilities are already known, while explicitly deciding when a refresh is
+also allowed to rerun capability detection.
+
+### 96.5 Round-82 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one**:
+
+- AppCatalog installed-state raw-string range scan
+  (§96.1, **CONFIRMED / P1-P2 interaction**).
+
+Not counted:
+
+- package-manager process de-shelling (§96.2,
+  **HIGH CONFIDENCE lead / RUST NOT JUSTIFIED**);
+- Refresh detection-recovery gap (§96.4, correctness prerequisite).
+
+No runtime/product/native/script code was modified and no deterministic local
+job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent commits and
+rotate away from AppCatalog. Prefer another under-covered production helper,
+persistent daemon, file-backed service or Frontend↔Backend boundary whose work
+scales with records/files/processes. Avoid ShellUpdates/Autostart/CalendarSync
+query paths unless new evidence changes their existing ownership.

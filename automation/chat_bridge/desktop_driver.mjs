@@ -78,9 +78,21 @@ async function findMainPage(browser) {
   throw new Error("main ChatGPT renderer not found");
 }
 
-async function verifyProject(page) {
+async function projectGuardCount(page) {
   const guard = page.getByRole("button", { name: PROJECT });
-  if ((await guard.count()) !== 1 || (await visibleCount(guard)) !== 1) {
+  if ((await guard.count()) === 1 && (await visibleCount(guard)) === 1)
+    return 1;
+  // Desktop removes the composer's project badge after the first prompt.
+  // The selected chat's containing project list remains the semantic proof
+  // of project membership; a sidebar project heading alone is insufficient.
+  const list = page.getByRole("list", { name: `Chats in ${PROJECT_NAME}`, exact: true });
+  if ((await list.count()) !== 1) return 0;
+  const selected = list.locator('[role="button"][aria-current="page"]');
+  return (await selected.count()) === 1 && (await visibleCount(selected)) === 1 ? 1 : 0;
+}
+
+async function verifyProject(page) {
+  if ((await projectGuardCount(page)) !== 1) {
     const error = new Error(`${PROJECT_NAME} project guard is not visible; waiting for target chat`);
     error.code = "HADALIS_DESKTOP_VIEW_CHANGED";
     throw error;
@@ -98,7 +110,7 @@ async function newChatFootprint(page) {
   if (selected.length > 1)
     throw new Error("multiple selected ChatGPT chats");
   return {
-    sameProject: (await visibleCount(page.getByRole("button", { name: PROJECT }))) === 1,
+    sameProject: (await projectGuardCount(page)) === 1,
     responseActions: await visibleCount(page.getByRole("button", { name: RESPONSE_ACTION })),
     markers: await loopMarkerCount(page),
     selectedChat: selected.length === 1 ? await selected[0].getAttribute("aria-label") : null
@@ -734,6 +746,27 @@ async function extractNearResponseAction(page, baselineActionCount = 0) {
 
       const result = await action.evaluate((button) => {
         const token = /HADALIS_LOOP:(?:CONTINUE|ROTATE|DONE)\b|HADALIS_LOOP:WAIT_RESULT[ \\t]+JOB-[A-Za-z0-9._-]+|HADALIS_LOOP:CONNECTOR_BLOCKED[ \\t]+GITHUB\b/g;
+        const turn = button.closest?.('[data-turn-key]');
+        if (turn) {
+          // Current Desktop places the answer toolbar next to a shared turn
+          // containing both the user prompt and the assistant reply. Read
+          // only its assistant message units, never the combined turn text.
+          if (button.closest('[data-chatgpt-search-unit-key$=":user"]')) return null;
+          let units = Array.from(turn.querySelectorAll(
+            '[data-chatgpt-search-unit-key$=":assistant"]'
+          ));
+          if (!units.length) units = Array.from(turn.querySelectorAll(
+            '[data-message-author-role="assistant"]'
+          ));
+          const text = units.map(unit => unit.innerText ?? "").join("\n");
+          if (/error in message stream|there was an error generating a response/i.test(text))
+            return null;
+          const markers = Array.from(text.matchAll(token), match => match[0].trim());
+          return markers.length ? {
+            depth: 0, text: markers[markers.length - 1], markerCount: markers.length,
+            extractionSignal: "assistant-turn"
+          } : null;
+        }
         let node = button;
 
         for (let depth = 0; depth < 12 && node && node.tagName !== "BODY";
@@ -823,9 +856,7 @@ export async function handoverCheck(page) {
     }
   }
   return {
-    projectGuardVisible: await visibleCount(
-      page.getByRole("button", { name: PROJECT })
-    ),
+    projectGuardVisible: await projectGuardCount(page),
     generationActive: (await visibleCount(
       page.getByRole("button", { name: /stop/i })
     )) > 0,
@@ -842,7 +873,7 @@ export async function observeDesktop(page) {
     title: await page.title(),
     url: page.url(),
     composerVisible: await visibleCount(composer),
-    projectGuardVisible: await visibleCount(page.getByRole("button", { name: PROJECT })),
+    projectGuardVisible: await projectGuardCount(page),
     sendVisible: await visibleCount(send),
     sendDisabled: (await send.count()) === 1 ? await send.isDisabled() : null
   };

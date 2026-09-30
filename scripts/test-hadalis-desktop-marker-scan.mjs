@@ -75,7 +75,8 @@ assert.throws(
   /expected exactly one post-submit/
 );
 
-function guardedPage({ stop = false, text = "", domText = text, projectLabel = null } = {}) {
+function guardedPage({ stop = false, text = "", domText = text, projectLabel = null,
+                       selectedProject = null } = {}) {
   const locator = (count, value = "", content = value) => ({
     count: async () => count,
     nth: () => ({ isVisible: async () => true }),
@@ -85,6 +86,10 @@ function guardedPage({ stop = false, text = "", domText = text, projectLabel = n
   return {
     getByRole: (role, options) => {
       if (role === "textbox") return locator(1, text, domText);
+      if (role === "list") return {
+        count: async () => 1,
+        locator: () => locator(options.name === `Chats in ${selectedProject}` ? 1 : 0)
+      };
       if (role === "button" && String(options.name) === "/stop/i") return locator(stop ? 1 : 0);
       if (role === "button" && String(options.name).includes("Project:")) {
         const label = projectLabel ?? `Project: ${process.env.HADALIS_CHATGPT_PROJECT ?? "Hadalis Cloud"}`;
@@ -112,8 +117,16 @@ await assert.rejects(
 await requireIdleComposer(guardedPage());
 await requireIdleComposer(guardedPage({ text: "\n", domText: "" }));
 await requireIdleComposer(guardedPage(), false);
+await requireIdleComposer(guardedPage({
+  projectLabel: "", selectedProject: process.env.HADALIS_CHATGPT_PROJECT ?? "Hadalis Cloud"
+}));
+await assert.rejects(
+  requireIdleComposer(guardedPage({ projectLabel: "", selectedProject: "Wrong project" })),
+  error => error.code === "HADALIS_DESKTOP_VIEW_CHANGED"
+);
 
-function handoverPage({ projectVisible = false, stop = false, draft = "" } = {}) {
+function handoverPage({ projectVisible = false, selectedProject = false,
+                        stop = false, draft = "" } = {}) {
   const item = {
     isVisible: async () => true,
     evaluate: async callback => callback({ textContent: draft })
@@ -122,6 +135,9 @@ function handoverPage({ projectVisible = false, stop = false, draft = "" } = {})
   return {
     getByRole: (role, options) => {
       if (role === "textbox") return locator(1);
+      if (role === "list") return {
+        count: async () => 1, locator: () => locator(selectedProject ? 1 : 0)
+      };
       if (role === "button" && String(options.name) === "/stop/i")
         return locator(stop ? 1 : 0);
       if (role === "button" && String(options.name).includes("Project:"))
@@ -137,6 +153,7 @@ assert.deepEqual(
     composerReady: true, draftPresent: false }
 );
 assert.equal((await handoverCheck(handoverPage({ projectVisible: true }))).projectGuardVisible, 1);
+assert.equal((await handoverCheck(handoverPage({ selectedProject: true }))).projectGuardVisible, 1);
 assert.equal((await handoverCheck(handoverPage({ stop: true }))).generationActive, true);
 assert.equal((await handoverCheck(handoverPage({ draft: "unsent" }))).draftPresent, true);
 await assert.rejects(
@@ -145,7 +162,8 @@ await assert.rejects(
 );
 assert.equal((await managedPoll(guardedPage(), { responseActionCount: 1 })).completed, false);
 
-function responsePage({ failed = false, assistantMarker = false, previousMarker = false } = {}) {
+function responsePage({ failed = false, assistantMarker = false, previousMarker = false,
+                        projectBadge = true, selectedProject = false, sharedTurn = false } = {}) {
   let retryClicks = 0;
   const button = {
     tagName: "BUTTON",
@@ -164,6 +182,10 @@ function responsePage({ failed = false, assistantMarker = false, previousMarker 
   };
   button.parentElement = response;
   response.parentElement = conversation;
+  if (sharedTurn) button.closest = selector => selector === '[data-turn-key]' ? {
+    innerText: conversation.innerText,
+    querySelectorAll: () => [response]
+  } : null;
   const item = {
     count: async () => 1,
     nth: () => item,
@@ -191,8 +213,11 @@ function responsePage({ failed = false, assistantMarker = false, previousMarker 
     page: {
       getByRole: (role, options) => {
         const name = String(options.name);
+        if (role === "list") return {
+          count: async () => 1, locator: () => selectedProject ? item : empty
+        };
         if (role !== "button") return empty;
-        if (name.includes("Project:")) return item;
+        if (name.includes("Project:")) return projectBadge ? item : empty;
         if (name === "/stop/i") return empty;
         if (name === "/regenerate|copy/i" && failed) return empty;
         return actions;
@@ -221,6 +246,17 @@ const completedResponse = responsePage({ assistantMarker: true });
 assert.equal(
   (await managedPoll(completedResponse.page, { responseActionCount: 0 })).response.text,
   "HADALIS_LOOP:CONTINUE"
+);
+const postSubmitResponse = responsePage({
+  assistantMarker: true, projectBadge: false, selectedProject: true, sharedTurn: true
+});
+assert.equal(
+  (await managedPoll(postSubmitResponse.page, { responseActionCount: 0 })).response.text,
+  "HADALIS_LOOP:CONTINUE"
+);
+await assert.rejects(
+  managedPoll(responsePage({ sharedTurn: true }).page, { responseActionCount: 0 }),
+  /no unique HADALIS_LOOP marker/
 );
 const previousCompleted = responsePage({ previousMarker: true });
 await assert.rejects(
@@ -263,6 +299,7 @@ function delayedNewChat({ busyPrevious = false, missingPreviousComposer = false,
     },
     getByRole: (role, options) => {
       if (role === "textbox") return locator(() => fresh || !missingPreviousComposer ? 1 : 0);
+      if (role === "list") return locator(0);
       const name = String(options.name);
       if (name === "/stop/i") return locator(() => !fresh && busyPrevious ? 1 : 0);
       if (name.includes("Project:"))

@@ -3,9 +3,9 @@
 Maintainer-authorized implementation, 2026-09-30. Target contract and audit:
 [`docs/AUTOMATION_ARCHITECTURE.md`](../../docs/AUTOMATION_ARCHITECTURE.md).
 
-- [ ] Durable config/state migration and receipt storage.
-- [ ] Conversation/message identity, independent monitoring and concurrent profiles.
-- [ ] Bounded worker pool, execution receipts, publish retry and orphan cleanup.
+- [x] Durable config/state migration and receipt storage.
+- [x] Conversation/message identity, independent monitoring and concurrent profiles.
+- [x] Bounded worker pool, execution receipts, publish retry and orphan cleanup.
 - [ ] Evidence-driven workflows, private diagnostics and privilege/deployment recovery.
 - [ ] Frontend compatibility, regression checks and real Desktop acceptance.
 

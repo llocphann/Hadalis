@@ -2,7 +2,9 @@
 
 import assert from "node:assert/strict";
 import {
+  managedPoll,
   markerAfterBaseline,
+  openHadalisNewChat,
   requireIdleComposer,
   scanLoopMarkerTokens
 } from "../automation/chat_bridge/desktop_driver.mjs";
@@ -71,15 +73,16 @@ assert.throws(
   /expected exactly one post-submit/
 );
 
-function guardedPage({ stop = false, text = "", projectLabel = null } = {}) {
-  const locator = (count, value = "") => ({
+function guardedPage({ stop = false, text = "", domText = text, projectLabel = null } = {}) {
+  const locator = (count, value = "", content = value) => ({
     count: async () => count,
     nth: () => ({ isVisible: async () => true }),
-    innerText: async () => value
+    innerText: async () => value,
+    evaluate: async callback => callback({ textContent: content })
   });
   return {
     getByRole: (role, options) => {
-      if (role === "textbox") return locator(1, text);
+      if (role === "textbox") return locator(1, text, domText);
       if (role === "button" && String(options.name) === "/stop/i") return locator(stop ? 1 : 0);
       if (role === "button" && String(options.name).includes("Project:")) {
         const label = projectLabel ?? `Project: ${process.env.HADALIS_CHATGPT_PROJECT ?? "Hadalis Cloud"}`;
@@ -92,9 +95,67 @@ function guardedPage({ stop = false, text = "", projectLabel = null } = {}) {
 
 await assert.rejects(requireIdleComposer(guardedPage({ stop: true })), /generation is active/);
 await assert.rejects(requireIdleComposer(guardedPage({ text: "draft" })), /non-empty/);
+await assert.rejects(requireIdleComposer(guardedPage({ text: "  " })), /non-empty/);
 await assert.rejects(requireIdleComposer(guardedPage({ projectLabel: "Project: Wrong project" })), /project guard/);
 await assert.rejects(requireIdleComposer(guardedPage({ projectLabel: "Project: HadalisXLocal" })), /project guard/);
 await requireIdleComposer(guardedPage());
+await requireIdleComposer(guardedPage({ text: "\n", domText: "" }));
 await requireIdleComposer(guardedPage(), false);
+await assert.rejects(
+  managedPoll(guardedPage({ projectLabel: "Project: Wrong project" }), { responseActionCount: 1 }),
+  /project guard/
+);
+assert.equal((await managedPoll(guardedPage(), { responseActionCount: 1 })).completed, false);
 
-console.log("PASS: desktop loop-marker token scanner");
+function delayedNewChat() {
+  const project = process.env.HADALIS_CHATGPT_PROJECT ?? "Hadalis Cloud";
+  let fresh = false;
+  let clicked = false;
+  const locator = (count, { body = "", label = null, click = null } = {}) => {
+    const item = {
+      count: async () => typeof count === "function" ? count() : count,
+      nth: () => item,
+      isVisible: async () => true,
+      isDisabled: async () => false,
+      getAttribute: async name => name === "aria-label" ? label : null,
+      innerText: async () => typeof body === "function" ? body() : body,
+      evaluate: async callback => click ? click() : callback({ textContent: "" })
+    };
+    return item;
+  };
+  const browser = { contexts: () => [{ pages: () => [page] }] };
+  const page = {
+    url: () => "app://-/index.html",
+    context: () => ({ browser: () => browser }),
+    locator: selector => {
+      if (selector === "body")
+        return locator(1, { body: () => fresh ? "" : "HADALIS_LOOP:CONTINUE" });
+      if (selector.includes('aria-current="page"'))
+        return locator(() => fresh ? 0 : 1, { label: "Previous chat" });
+      if (selector === `button[aria-label="New chat in ${project}"]`)
+        return locator(1, { click: () => {
+          clicked = true;
+          setTimeout(() => { fresh = true; }, 80);
+        } });
+      return locator(0);
+    },
+    getByRole: (role, options) => {
+      if (role === "textbox") return locator(1);
+      const name = String(options.name);
+      if (name === "/stop/i") return locator(0);
+      if (name.includes("Project:")) return locator(1);
+      if (name.includes("regenerate")) return locator(() => fresh ? 0 : 1);
+      if (name === `New chat in ${project}`) return locator(1);
+      return locator(0);
+    }
+  };
+  return { page, result: () => ({ clicked, fresh }) };
+}
+
+const navigation = delayedNewChat();
+const started = Date.now();
+assert.equal(await openHadalisNewChat(navigation.page), navigation.page);
+assert.deepEqual(navigation.result(), { clicked: true, fresh: true });
+assert.ok(Date.now() - started >= 80, "new-chat must wait for a visible transition");
+
+console.log("PASS: desktop marker, composer, project, and new-chat guards");

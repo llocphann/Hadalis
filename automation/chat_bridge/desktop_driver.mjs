@@ -66,7 +66,9 @@ async function findMainPage(browser) {
     for (const page of context.pages()) {
       if (page.url() !== MAIN_URL) continue;
       const composer = page.getByRole("textbox", { name: COMPOSER });
-      const newChat = page.getByRole("button", { name: `Start new chat in ${PROJECT_NAME}` });
+      const newChat = page.getByRole("button", {
+        name: new RegExp(`^(Start new chat in|New chat in) ${escapedProject}$`)
+      });
       if ((await visibleCount(composer)) === 1 || (await visibleCount(newChat)) > 0)
         return page;
     }
@@ -82,8 +84,29 @@ async function resolveComposer(page) {
   return requireOne(page.getByRole("textbox", { name: COMPOSER }), "composer");
 }
 
+async function newChatFootprint(page) {
+  const selected = await visibleItems(page.locator(
+    '[role="list"][aria-label^="Chats in "] [aria-current="page"][role="button"]'
+  ));
+  if (selected.length > 1)
+    throw new Error("multiple selected ChatGPT chats");
+  return {
+    sameProject: (await visibleCount(page.getByRole("button", { name: PROJECT }))) === 1,
+    responseActions: await visibleCount(page.getByRole("button", { name: RESPONSE_ACTION })),
+    markers: await loopMarkerCount(page),
+    selectedChat: selected.length === 1 ? await selected[0].getAttribute("aria-label") : null
+  };
+}
+
 export async function openHadalisNewChat(page) {
   await requireIdleComposer(page, false);
+  const before = await newChatFootprint(page);
+  if (before.sameProject && before.responseActions === 0 &&
+      before.markers === 0 && before.selectedChat === null) {
+    // An empty unsent chat in the target project is already a fresh session.
+    await verifyProject(page);
+    return page;
+  }
   let button = null;
   for (const name of [`Start new chat in ${PROJECT_NAME}`, `New chat in ${PROJECT_NAME}`]) {
     // Current Desktop presents both a labeled button and a second button
@@ -106,18 +129,30 @@ export async function openHadalisNewChat(page) {
 
   const browser = page.context().browser();
   const deadline = Date.now() + 15000;
+  let lastReason = "no observable transition";
 
   while (Date.now() < deadline) {
     try {
       const resolved = browser ? await findMainPage(browser) : page;
-      await resolveComposer(resolved);
-      await verifyProject(resolved);
+      await requireIdleComposer(resolved);
+      const after = await newChatFootprint(resolved);
+      if (after.responseActions !== 0 || after.markers !== 0 ||
+          (before.sameProject && before.selectedChat === after.selectedChat &&
+           before.responseActions === 0 && before.markers === 0))
+        throw new Error("previous chat is still visible");
+      await sleep(250);
+      await requireIdleComposer(resolved);
+      const stable = await newChatFootprint(resolved);
+      if (stable.responseActions !== 0 || stable.markers !== 0)
+        throw new Error("new chat did not stay empty");
       return resolved;
-    } catch {}
+    } catch (error) {
+      lastReason = String(error?.message ?? error);
+    }
     await sleep(250);
   }
 
-  throw new Error("new chat did not become ready");
+  throw new Error(`new chat did not become ready: ${lastReason}`);
 }
 
 export async function requireIdleComposer(page, requireProject = true) {
@@ -125,7 +160,9 @@ export async function requireIdleComposer(page, requireProject = true) {
   const composer = await resolveComposer(page);
   if ((await visibleCount(page.getByRole("button", { name: /stop/i }))) > 0)
     throw new Error("refusing to rotate while ChatGPT generation is active");
-  if ((await composer.innerText()).trim())
+  // Empty ProseMirror editors can report a layout newline via innerText.
+  // textContent is empty in that state and still detects whitespace drafts.
+  if (await composer.evaluate(element => (element.textContent ?? "").length > 0))
     throw new Error("refusing to rotate with a non-empty ChatGPT composer");
   return composer;
 }
@@ -543,17 +580,22 @@ export async function managedPoll(page, baseline) {
   if (!Number.isInteger(baseline?.responseActionCount) ||
       baseline.responseActionCount < 0)
     throw new Error("invalid managed completion baseline");
+  // The user can navigate Desktop between ticks. Reject a response when the
+  // configured project guard is no longer visible.
+  await verifyProject(page);
   const actions = page.getByRole("button", { name: RESPONSE_ACTION });
   const count = await visibleCount(actions);
   const stops = await visibleCount(page.getByRole("button", { name: /stop/i }));
   if (count <= baseline.responseActionCount || stops !== 0)
     return { completed: false, responseActionCount: count, generationActive: stops > 0 };
   await sleep(900);
+  await verifyProject(page);
   const secondCount = await visibleCount(actions);
   const secondStops = await visibleCount(page.getByRole("button", { name: /stop/i }));
   if (secondCount <= baseline.responseActionCount || secondStops !== 0)
     return { completed: false, responseActionCount: secondCount, generationActive: secondStops > 0 };
   const response = await extractNearResponseAction(page);
+  await verifyProject(page);
   if (!response || response.markerCount !== 1)
     throw new Error("new assistant response has no unique HADALIS_LOOP marker");
   return { completed: true, response };

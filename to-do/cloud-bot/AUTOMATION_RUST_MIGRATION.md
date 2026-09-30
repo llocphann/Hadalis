@@ -89,7 +89,7 @@ Candidate future layout should start smaller than the first audit proposed:
 
 ```text
 native/
-├── inir-automation-exec/             # P0: bounded exec-action supervisor + hidden child-exec mode
+├── inir-automation-exec/             # P0a: pre-exec child wrapper that becomes the target PID
 └── inir-automation-privileged/       # P1: Unix-socket privilege broker
 ```
 

@@ -1,0 +1,41 @@
+{
+  "id": "JOB-WULL-PROOF-001",
+  "profile_id": "profile-918f783d49cd45cd",
+  "base_sha": "a27b202ddfecf1369515978b51c75d34344abdea",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "scripts/validate-maintainer-local.sh"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1800
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "grep",
+          "-REn",
+          "(\\.png|\\.gif|\\.webp|\\.apng|\\.mp4|manifest\\.json|mascot)",
+          "modules/abyss/companion"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 30
+      }
+    },
+    {
+      "diagnostics": {
+        "checks": [
+          "services",
+          "processes",
+          "git",
+          "runtime",
+          "screenshot"
+        ],
+        "lines": 80
+      }
+    }
+  ]
+}

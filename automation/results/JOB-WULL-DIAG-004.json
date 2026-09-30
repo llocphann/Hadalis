@@ -1,0 +1,41 @@
+{
+  "actions": [
+    {
+      "cancelled": false,
+      "evidence_id": "JOB-WULL-DIAG-004:0",
+      "evidence_sha256": "6aaee3d755fa1d503b1806e973948724d8a4be20ade0c4eff3c7afc54669b172",
+      "exit_code": 0,
+      "index": 0,
+      "kind": "diagnostics",
+      "observed_at_unix": 1790801821,
+      "source_sha": "2e41e0aeca6917c6cdb3f42c075106b1912a65d2",
+      "timed_out": false
+    },
+    {
+      "cancelled": false,
+      "command_sha256": "52806e873f0cb5ecba70a2940b9ed1ec49134c508b839e4d22dce3794435bad0",
+      "evidence_id": "JOB-WULL-DIAG-004:1",
+      "exit_code": 46,
+      "index": 1,
+      "kind": "exec",
+      "observed_at_unix": 1790801821,
+      "source_sha": "2e41e0aeca6917c6cdb3f42c075106b1912a65d2",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_truncated": false,
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "313c296d687fa67fc70edd7390f488ab6d4bc944",
+  "evidence_location": "Private local evidence; raw output is not published",
+  "finished_at_unix": 1790801821,
+  "input_sha256": "1854484e0d289a49977fcc1555480b4d9d986dd4761fccd0d884910c70d0fb79",
+  "job": "JOB-WULL-DIAG-004",
+  "job_commit": "2e41e0aeca6917c6cdb3f42c075106b1912a65d2",
+  "profile_id": "profile-918f783d49cd45cd",
+  "started_at_unix": 1790801821,
+  "status": "failed"
+}

@@ -16,6 +16,7 @@ import Quickshell.Io
  * The helper talks to EasyEffectsServer directly with Python's AF_UNIX socket;
  * socat is not required for the DSP path.
  */
+ 
 Singleton {
     id: root
 

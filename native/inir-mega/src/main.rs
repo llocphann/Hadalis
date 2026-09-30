@@ -8,7 +8,7 @@ use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-const PROTOCOL_VERSION: u32 = 1;
+mod pty;\n\nconst PROTOCOL_VERSION: u32 = 1;
 
 #[derive(Debug, Parser)]
 #[command(about = "Typed, one-shot MEGAcmd adapter for Hadalis")]

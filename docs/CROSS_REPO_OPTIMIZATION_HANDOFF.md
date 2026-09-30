@@ -24392,3 +24392,143 @@ Next audit should re-fetch current `dev`, reconcile concurrent commits and
 continue the search-driven low-ownership inventory. Prefer a private
 interaction/model transformation with nontrivial record count rather than
 fixed-size UI literals or backend-owned sorted copies.
+
+## 105. Round 91 — AI streamed text fade-chunk compaction audit (2026-09-30)
+
+### Snapshot and ownership reconciliation
+
+- Authoritative `dev` at round start and immediately before this write:
+  `21063d1f5853ca5f37b2dc5dc565d4b1f2e6455d`
+  (`docs(research): audit update log parser`).
+- No intervening commit exists after Round 90.
+- Search-driven QML collection inventory identified
+  `modules/sidebarLeft/aiChat/MessageTextBlock.qml` as a current collection
+  path not previously named in the handoff.
+- Existing AI ownership was searched first:
+  - §59.4 owns request-message map/filter staging in `services/Ai.qml`;
+  - §56.5 owns OpenAI streamed tool-call first-key materialization;
+  - §71.3 closes Gemini annotation maps as final API/output data.
+- No existing item owns fade-chunk text splitting/filtering.
+
+### 105.1 Compact the fresh split array in place instead of allocating a second filtered chunk array — CONFIRMED / P1-P2 streamed AI text when fade-in is enabled
+
+Path:
+
+- `modules/sidebarLeft/aiChat/MessageTextBlock.qml`.
+
+Current ScriptModel binding:
+
+```qml
+values: root.fadeChunkSplitting
+    ? root.shownText
+        .split(/\n\n(?= {0,2})|\n(?= {0,2}[-\*])/g)
+        .filter(line => line.trim() !== "")
+    : [root.shownText]
+```
+
+`fadeChunkSplitting` is enabled when:
+
+- the block is not forced out of chunk splitting;
+- it is not being edited;
+- the shown text does not contain the table-style `\n|` marker;
+- `Config.options.sidebar.ai.textFadeIn` is enabled.
+
+Exact current configuration contract:
+
+- schema fallback in `modules/common/Config.qml`: `textFadeIn: false`;
+- shipped `defaults/config.json`: `"textFadeIn": true`.
+
+Thus this is conditional per user/config state, but it is active for fresh
+shipped defaults.
+
+The source `split()` already creates a fresh dense array of primitive strings.
+Current `filter()` then creates a second array containing only strings whose
+`trim()` result is nonempty.
+
+Strict-safe direction:
+
+1. keep the exact split regex and the same `shownText` read;
+2. assign the fresh split result to a local array;
+3. scan it once from index 0 to length-1;
+4. call the same `line.trim() !== ""` predicate exactly once per split chunk;
+5. write each passing string into the next compacted index of that same fresh
+   array;
+6. truncate `chunks.length` to the passing count;
+7. return the compacted array;
+8. leave the disabled branch as the same fresh `[root.shownText]` array.
+
+Strict-lossless proof:
+
+- **fresh ownership:** the source array exists only as the immediate result of
+  `String.prototype.split`; no other reference can observe its pre-compaction
+  contents.
+- **element type:** split results are primitive strings, not QML objects,
+  getters, proxies or mutable records.
+- **predicate/order:** every original chunk is visited once in original order
+  and evaluated with the same `trim() !== ""` test.
+- **survivor identity/value:** primitive strings are copied unchanged; no trim
+  result is published.
+- **duplicates:** duplicate text chunks remain duplicated and ordered.
+- **empty input/chunks:** all-empty/whitespace-only split elements still produce
+  an empty model; when chunk splitting is disabled, the exact one-element
+  `[shownText]` behavior remains.
+- **regex semantics:** the lookahead regex and all newline/list boundaries are
+  unchanged.
+- **binding dependencies:** the binding still reads
+  `root.fadeChunkSplitting` and `root.shownText`; a private helper need not
+  read any additional root/config state.
+- **publication:** ScriptModel still receives one fresh array per binding
+  evaluation. Only the private construction path changes.
+- **fade lifecycle:** `textLineOpacities`, delegate count/order, per-line
+  `onValuesChanged`, animation timing and completion behavior are untouched.
+
+For S split chunks and V retained chunks:
+
+- source split array: unchanged, one S-element array;
+- filtered-array allocation: **1 -> 0**;
+- predicate visits: unchanged, S;
+- copied survivor references/strings: V writes into the already-owned array
+  instead of V appends into a new filtered array.
+
+This is especially relevant during streamed responses because AI strategies
+append content incrementally; text-block state can reevaluate repeatedly while
+the response grows. The finding does not claim a network or model-generation
+speedup.
+
+Classification:
+**CONFIRMED / P1-P2 streamed AI rendering when text fade-in is enabled**.
+
+### 105.2 AiMessage save reconstruction fusion is deliberately not promoted
+
+Nearby `AiMessage.saveMessage()` currently:
+
+1. maps `messageContentColumnLayout.children` to each child's `segment`;
+2. filters falsy segments;
+3. maps retained segments to reconstructed Markdown strings;
+4. joins them.
+
+A more aggressive one-loop rewrite would interleave child `segment` reads
+with segment content/type reads, whereas the current code completes all child
+segment reads before reconstruction begins.
+
+Those are QML object/property accesses rather than plain JSON/string records.
+Under strict property-read/order semantics, the allocation win is not worth
+assuming equivalence without a stronger component contract.
+
+Status:
+**CLOSED / no strict promotion from source shape alone**.
+
+### 105.3 Round-91 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one**:
+
+- in-place compaction of the fresh AI fade-chunk split array
+  (§105.1, **CONFIRMED / P1-P2 conditional streamed rendering**).
+
+No runtime/product/native/script code was modified and no deterministic local
+job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent commits and
+continue through zero/low-ownership current-QML collection paths. Prefer
+record-scaled private models; avoid fixed-size visual arrays and backend-owned
+sort copies unless a distinct staging allocation is proven.

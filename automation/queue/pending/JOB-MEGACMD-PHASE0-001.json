@@ -1,0 +1,35 @@
+{
+  "id": "JOB-MEGACMD-PHASE0-001",
+  "base_sha": "bf81ce866901ca80ac3cb6adb6159481523f2945",
+  "profile_id": "profile-a4506b8191014e5c",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "-p",
+          "inir-mega",
+          "--manifest-path",
+          "native/Cargo.toml"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "check",
+          "-p",
+          "inir-mega",
+          "--manifest-path",
+          "native/Cargo.toml"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    }
+  ]
+}

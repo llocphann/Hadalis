@@ -20683,3 +20683,141 @@ No runtime/product/native/script file was modified and no local job was needed.
 Next audit should re-fetch current `dev`, reconcile concurrent changes and
 continue outside Cliphist. Prefer a search/launcher process boundary or another
 file-backed interaction path not already owned by §§57/60/76/77.
+
+
+## 84. Round 70 — VoiceSearch process/language ownership audit (2026-09-30)
+
+### Snapshot and existing ownership
+
+- Authoritative `dev` at round start and immediately before this write:
+  `ef707fcdec300dbfadf8b0a34e969d799ab9a914` (Round 69).
+- No intervening commit exists after Round 69.
+- Current source traced:
+  - `services/VoiceSearch.qml`;
+  - `scripts/voiceSearch/record-voice.sh`;
+  - `scripts/voiceSearch/transcribe-audio.py`.
+- Existing handoff ownership already establishes that VoiceSearch remains eagerly
+  materialized because it owns the `voiceSearch` IPC target, while its heavy
+  work is demand-driven (§§13.2/15.1/18.1).
+- §71.3 previously found no generic local collection reduction in
+  `VoiceSearch.qml`; this round specifically audits process/language ownership
+  rather than re-counting that closure.
+
+### 84.1 Explicit cloud-provider startup still probes local Whisper, but skipping it changes public status semantics
+
+The first `start()` / `startDictation()` executes:
+
+`_begin()`
+→ `ensureInitialized()`
+→ `refreshBackends()`
+→ Python local-backend `--provider probe`
+→ keyring readiness
+→ recording.
+
+When `configuredProvider` is explicitly `groq`, `gemini` or `openai`,
+the local probe is not required to resolve that configured provider.
+
+It is nevertheless observable work rather than a provably redundant side
+effect. The probe populates public singleton/IPC status fields:
+
+- `localAvailable`;
+- `detectedLocalExecutable`;
+- `detectedLocalModel`.
+
+The IPC `voiceSearch status` exposes those fields.
+
+Skipping the local probe or letting cloud recording start before it completes
+therefore changes both status freshness and first-recording timing.
+
+Status: **ARCHITECTURE / OUT OF STRICT-LOSSLESS for a mechanical skip**.
+
+A future lightweight IPC/status split may choose different semantics
+intentionally, but that is product/lifecycle design rather than a pure
+optimization.
+
+### 84.2 Local transcription intentionally re-probes executable/model freshness
+
+The QML probe discovers a candidate local executable/model before recording.
+However `transcribe-audio.py` local mode does not blindly trust that earlier
+snapshot. `_local_whisper()` calls `_probe_local()` again immediately before
+starting `whisper-cli`.
+
+That repeated lookup can look redundant, but it preserves a freshness/failure
+boundary across the recording interval:
+
+- executable can be removed/replaced;
+- configured/default model can disappear;
+- XDG data/cache environment can differ for the spawned process;
+- local availability can become false after the earlier QML probe.
+
+Reusing only `detectedLocalExecutable` / `detectedLocalModel` would change
+which failure is reported and when the subprocess is attempted.
+
+Status: **KEEP under strict-lossless** unless the protocol is explicitly changed
+to pass and validate one generation-owned local-backend snapshot.
+
+### 84.3 Native Rust rewrite is not justified by the current cost ownership
+
+Current demand path:
+
+`VoiceSearch IPC/UI`
+→ Bash `record-voice.sh`
+→ `timeout`
+→ `pw-record`
+→ Python `transcribe-audio.py`
+→ one of:
+  - network upload/generation request;
+  - `whisper-cli` local inference.
+
+The material costs are:
+
+- microphone recording duration;
+- network transfer/provider latency for cloud modes;
+- local Whisper inference for local mode.
+
+Python startup and adapter-side JSON/multipart work are small relative to those
+owners for the current bounded voice-search workflow.
+
+The shell recorder also carries exact observable behavior:
+
+- fixed temporary path;
+- stale-file removal before capture;
+- `timeout DURATIONs` process behavior;
+- mono 16 kHz s16 PipeWire command;
+- file nonempty verification;
+- exact stdout path / stderr error protocol;
+- exit code 0/1;
+- QML SIGTERM cancellation of the Bash process.
+
+Replacing that wrapper with native timers/process control would need explicit
+signal/timeout/file-cleanup parity and is not a free interpreter removal.
+
+Rust classification:
+
+- transcription adapter: **RUST NOT JUSTIFIED** at current evidence;
+- recording wrapper: **RUST NOT JUSTIFIED** absent measurements showing shell
+  setup rather than recording dominates;
+- local Whisper itself is already an external native inference process.
+
+Prefer optimizing provider/network/inference behavior only when measurements
+identify a real bottleneck. Do not migrate this path merely because Python or
+Bash appears in production.
+
+### 84.4 Round-70 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **zero**.
+
+This round closes a language-migration false positive and documents two
+freshness boundaries:
+
+- cloud-provider local-probe skipping is not lossless;
+- local transcription's second probe is intentionally fresher than the QML
+  snapshot.
+
+No runtime/product/native/script file was edited and no local job was needed.
+
+Next audit should re-fetch current `dev`, reconcile concurrent work and rotate
+to another under-covered interaction/runtime path rather than reopening
+VoiceSearch. Suitable next areas include timer/quick-note persistence,
+file-backed Notepad/Todo secondary actions, or another Settings/service boundary
+with measurable repeated parsing/allocation.

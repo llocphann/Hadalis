@@ -29,6 +29,13 @@ def main() -> None:
             assert [call.args[0][-1] for call in run.call_args_list] == [
                 control.UNITS["chatgpt"], control.UNITS["worker"], control.UNITS["bridge"]]
 
+    mismatched = services()
+    mismatched["bridge"]["working_directory"] = "/tmp/old-hadalis-checkout"
+    assert "old checkout" in control._runtime_unit_problem(mismatched)
+    mismatched["bridge"]["working_directory"] = str(control.ROOT)
+    mismatched["bridge"]["exec_start"] = "python3 -m automation.chat_bridge.controller"
+    assert "does not run" in control._runtime_unit_problem(mismatched)
+
     with patch.object(control, "service_states",
                       return_value=services(bridge="unavailable")):
         try:
@@ -64,7 +71,7 @@ def main() -> None:
 
             with patch.object(control, "service_states", return_value=services()):
                 stale_heartbeat = control.status()
-            assert "has not ticked" in stale_heartbeat["runtime"]["profiles"][pid]["last_error"]
+            assert "heartbeat is older" in stale_heartbeat["runtime"]["profiles"][pid]["last_error"]
 
             store.change_state(lambda _config, runtime: daemon._heartbeat(runtime, int(time.time())))
             assert store.read_snapshot()[1]["profiles"][pid]["status"] == "scheduled"
@@ -89,7 +96,7 @@ def main() -> None:
                     "pending": None, "next_job_poll_at_unix": int(time.time()) + 10})
 
             store.change_state(waiting_job)
-            with patch.object(control, "_ensure_runtime_services"):
+            with patch.object(control, "_ensure_runtime_services"), patch.object(control, "_await_dispatch"):
                 control.profile_action("restart", pid)
             item = store.read_snapshot()[1]["profiles"][pid]
             assert item["job_id"] is None and item["request"] == "restart"
@@ -103,6 +110,26 @@ def main() -> None:
             assert item["status"] == "invalid_configuration"
             assert any(entry["kind"] == "invalid_configuration"
                        for entry in store.read_snapshot()[1]["events"])
+    with tempfile.TemporaryDirectory() as tmp:
+        with patch.dict(os.environ, {
+                "XDG_CONFIG_HOME": tmp + "/config",
+                "XDG_STATE_HOME": tmp + "/state"}):
+            pid = "strict-lossless-research"
+            def owned(_config, runtime):
+                runtime["owner_id"] = pid
+                runtime["profiles"][pid]["status"] = "thinking"
+                runtime["manager_heartbeat_at_unix"] = int(time.time())
+            store.change_state(owned)
+            control._await_dispatch(pid)  # A live scheduler can acknowledge an owned run.
+            store.change_state(lambda _config, runtime: runtime.update({
+                "owner_id": None, "manager_heartbeat_at_unix": None}))
+            with patch.object(control, "DISPATCH_ACK_SECONDS", 0):
+                try:
+                    control._await_dispatch(pid)
+                except RuntimeError as exc:
+                    assert "was not dispatched" in str(exc)
+                else:
+                    raise AssertionError("a unit's ActiveState is not proof of dispatch")
     print("PASS: Automation runtime startup, heartbeat, errors and restart")
 
 

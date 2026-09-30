@@ -69,7 +69,7 @@ def profile_state() -> dict:
         "started_at_unix": None, "chat_started_at_unix": None,
         "last_run_at_unix": None, "next_run_at_unix": None,
         "last_activity_at_unix": None, "last_success": "", "last_error": "",
-        "pending": None, "request": None,
+        "pending": None, "request": None, "status_detail": "",
     }
 
 
@@ -98,7 +98,8 @@ def default_state(config: dict) -> dict:
                 "desired": "paused", "status": "error",
                 "last_error": "Legacy bridge state is unreadable",
             })
-    return {"version": 1, "owner_id": None, "manager_heartbeat_at_unix": None,
+    return {"version": 1, "owner_id": None, "requested_profile_id": None,
+            "manager_heartbeat_at_unix": None,
             "profiles": profiles, "events": []}
 
 
@@ -118,6 +119,9 @@ def normalize_state(raw: dict, config: dict) -> dict:
     owner = raw.get("owner_id")
     if owner not in profiles:
         owner = None
+    requested = raw.get("requested_profile_id")
+    if requested not in profiles:
+        requested = None
     events = raw.get("events", [])
     if not isinstance(events, list):
         events = []
@@ -125,7 +129,8 @@ def normalize_state(raw: dict, config: dict) -> dict:
     heartbeat = raw.get("manager_heartbeat_at_unix")
     if type(heartbeat) is not int or heartbeat < 0:
         heartbeat = None
-    return {"version": 1, "owner_id": owner, "manager_heartbeat_at_unix": heartbeat,
+    return {"version": 1, "owner_id": owner, "requested_profile_id": requested,
+            "manager_heartbeat_at_unix": heartbeat,
             "profiles": profiles, "events": events}
 
 

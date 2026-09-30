@@ -79,17 +79,34 @@ def _release(state: dict, owner: str, now: int, reason: str) -> None:
     item["request"] = None
     item["job_id"] = None
     item["status"] = reason
+    item["status_detail"] = ""
     item["last_activity_at_unix"] = now
     event(state, owner, reason)
 
 
 def _claim(config: dict, state: dict, now: int) -> str | None:
     owner = choose_profile(config, state, now)
+    if state["owner_id"] is None:
+        # An explicit Start/Resume/Restart outranks auto-continuous work once
+        # the prior owner has released the transport at a safe boundary.
+        requested = state.get("requested_profile_id")
+        if requested:
+            preferred = next((p for p in config["profiles"]
+                              if p["id"] == requested and p["enabled"]), None)
+            item = state["profiles"].get(requested)
+            if (preferred and item and item["desired"] == "run"
+                    and (item.get("next_run_at_unix") or 0) <= now):
+                owner = requested
+            elif not preferred or not item or item["desired"] != "run":
+                state["requested_profile_id"] = None
     if owner is None:
         return None
     if state["owner_id"] is None:
         state["owner_id"] = owner
+        if state.get("requested_profile_id") == owner:
+            state["requested_profile_id"] = None
         item = state["profiles"][owner]
+        item["status_detail"] = ""
         item["status"] = "starting"
         item["started_at_unix"] = now
         item["chat_started_at_unix"] = None
@@ -164,6 +181,7 @@ def _submit(config: dict, state: dict, owner: str, now: int) -> None:
                                    "poll_after_unix": now + POLL_SECONDS,
                                    "counted": False}
         current_item["status"] = "thinking"
+        current_item["status_detail"] = ""
         current_item["last_activity_at_unix"] = now
         event(current, owner, "prompt_prepared", kind)
     change_state(prepare)
@@ -387,7 +405,7 @@ def _heartbeat(state: dict, now: int) -> None:
     state["manager_heartbeat_at_unix"] = now
     for profile_id, item in state["profiles"].items():
         if item["desired"] == "run" and item["status"] == "scheduler_unavailable":
-            item["status"] = "scheduled"
+            item["status"] = "waiting_owner" if state["owner_id"] not in (None, profile_id) else "scheduled"
             item["last_error"] = ""
             event(state, profile_id, "scheduler_recovered")
 

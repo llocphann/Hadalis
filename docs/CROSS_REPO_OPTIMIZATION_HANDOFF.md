@@ -21840,3 +21840,112 @@ Next audit should re-fetch current `dev`, reconcile concurrent work and move
 outside News. Prefer another less-covered collection/process path such as
 CustomWidgets discovery, Wallpaper/Theme metadata, Updates parsing, or a
 deferred helper where interpreted/native ownership still needs classification.
+
+
+## 92. Round 78 — CustomWidgets missing-config seeding audit (2026-09-30)
+
+### Snapshot and duplicate-ownership check
+
+- Authoritative `dev` at round start and immediately before this write:
+  `8db250f74f3076d721ea4d3e186be787aecf4760` (Round 77).
+- No intervening commit exists after Round 77.
+- Current `services/CustomWidgets.qml` and `services/Updates.qml` were re-read.
+- Existing ownership was searched before promotion:
+  - §50.10 already owns the exact `Updates.qml` stdout line-count split
+    reduction, so Updates is not counted again;
+  - §71.3 records a broad CustomWidgets/public-service audit but does not own
+    `_seedMissingConfig()`.
+- CustomWidgets remains extension-sensitive, so this round does not remove or
+  narrow any public service state. The candidate is private initialization
+  bookkeeping only.
+
+### 92.1 Track whether a missing default was added instead of enumerating the completed update object — CONFIRMED / P2 cold initialization/sync
+
+Path:
+
+- `services/CustomWidgets.qml`, `_seedMissingConfig()`.
+
+The function currently:
+
+1. traverses every discovered custom widget;
+2. builds that widget's default key set;
+3. reads current Config for every default key;
+4. assigns each missing key into a fresh local `updates = {}`;
+5. after all work is complete, runs
+   `Object.keys(updates).length > 0`
+   solely to decide whether to call `Config.setNestedValues(updates)`.
+
+The final `Object.keys()` creates an array containing every missing nested
+Config path and traverses the whole completed update object even though the
+caller only needs one bit: whether at least one assignment occurred.
+
+Strict-safe direction:
+
+- initialize a local `hasUpdates = false` beside the existing fresh
+  `updates` object;
+- whenever the existing missing-key branch assigns
+  `updates[path] = defaults[key]`, set `hasUpdates = true`;
+- after the unchanged widget/default scans, call
+  `Config.setNestedValues(updates)` iff `hasUpdates`.
+
+Strict-lossless proof:
+
+- every widget is still visited in the same order;
+- `_widgetDefaults(widget, i)` is still called once at the same point;
+- every default key is enumerated in the same order;
+- every `_readCustomConfig(widget.id, key)` occurs in the same order and same
+  count;
+- the exact same path/value assignment occurs for each missing key;
+- duplicate path overwrite behavior, if malformed widget metadata produces it,
+  remains unchanged because the same assignments still target the same ordinary
+  local object in the same order;
+- `updates` is created as a plain object and receives only ordinary direct
+  property assignments in this function, so the removed final
+  `Object.keys()` has no getter/callback side effects;
+- when no key is missing, both versions skip `Config.setNestedValues()`;
+- when one or more keys are missing, both versions make exactly one
+  `Config.setNestedValues(updates)` call after the full scan;
+- Config mutation/persistence/publication timing relative to the scan is
+  unchanged;
+- no public CustomWidgets property identity, widget order, manifest state or
+  extension-visible service API changes.
+
+For M missing default paths:
+
+- final temporary key array: **1 -> 0**;
+- final key enumeration: **M -> 0**.
+
+The dominant scan still remains, because every Config key must be checked to
+preserve exact missing-value semantics.
+
+### 92.2 Manifest validation micro-work is deliberately not promoted
+
+Two nearby micro-optimizations were checked but are not counted:
+
+- `_validateManifest()` constructs the four-string
+  `["int", "real", "bool", "string"]` literal inside each config-key
+  validation iteration;
+- the function computes a fallback `qmlFile` local that is not subsequently
+  used inside validation.
+
+Both can be reduced for JSON-derived plain manifest objects, but manifest
+validation is a cold scan and the local costs are too small to justify padding
+the finding count. If §92.1 is ever implemented, these may be folded into the
+same narrowly-scoped batch only after retaining exact manifest field-read and
+warning behavior.
+
+### 92.3 Round-78 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one** (§92.1,
+**CONFIRMED / P2 cold initialization/sync**).
+
+Updates produced no new group because its relevant parser reduction is already
+owned by §50.10.
+
+No runtime/product/native/script code was modified. Only this handoff was
+updated; no deterministic local job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent work and rotate
+outside CustomWidgets/Updates. Prefer an under-covered collection/process
+boundary such as Theme/Wallpaper metadata, FontSync/Icon discovery, or a
+deferred helper whose current-language cost scales with session/user data.

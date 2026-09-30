@@ -1,5 +1,7 @@
 # Cloud Storage — last-mile edge-case audit (research round 6)
 
+> **Final freeze:** The decisions and acceptance tiers derived from this edge-case audit are consolidated in [CLOUD_STORAGE_MEGACMD_FINAL_IMPLEMENTATION_READINESS.md](CLOUD_STORAGE_MEGACMD_FINAL_IMPLEMENTATION_READINESS.md). Further source-only expansion is not required before Tier-A implementation.
+
 **Status: RESEARCH / DESIGN ONLY. No QML, Rust, package, runtime or MEGA-account operation was performed.**  
 Research date: 2026-09-30. Hadalis \`dev\` reference audited at \`b341635ee87465115b223b83ec81a3328a6b0a33\`. Official vendor source references are pinned to MEGAcmd \`6505327a5a7a0e94f26f611f83b024aeeb63582c\` and MEGA SDK \`74326bb0aa09b13f0a1ec8eab9611e4c0de98cc6\`; they are **not** evidence of the owner machine's installed version.
 

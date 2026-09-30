@@ -1,5 +1,7 @@
 # Cloud Storage — QML ↔ Rust ↔ MEGAcmd frontend/backend contract (research round 5)
 
+> **Implementation entry point round 7:** [CLOUD_STORAGE_MEGACMD_FINAL_IMPLEMENTATION_READINESS.md](CLOUD_STORAGE_MEGACMD_FINAL_IMPLEMENTATION_READINESS.md) freezes which operations may use this contract in v1 and which remain gated/withheld. The transport/state-machine rules below remain binding.
+
 > **Last-mile edge audit round 6 (2026-09-30):** [CLOUD_STORAGE_MEGACMD_LAST_MILE_EDGE_CASE_AUDIT.md](CLOUD_STORAGE_MEGACMD_LAST_MILE_EDGE_CASE_AUDIT.md) adds cross-process OS mutation locking, HOME/socket/client/server backend identity, safe vendor environment rules, null vendor stdin/unexpected-prompt handling, public-folder session states, string-only opaque IDs, strict UTF-8 identity, suspend-aware deadlines, secure journal durability and clipboard/notification privacy. These details are binding refinements of this contract; research only.
 
 **Status: RESEARCH / DESIGN ONLY. No QML, Rust, package or runtime implementation was changed; no \`mega-*\` command or real MEGA account was touched.**  

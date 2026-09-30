@@ -1,5 +1,7 @@
 # Cloud Storage / MEGAcmd — source-level audit and implementation blockers (research round 2)
 
+> **Final research freeze round 7 (2026-09-30):** [CLOUD_STORAGE_MEGACMD_FINAL_IMPLEMENTATION_READINESS.md](CLOUD_STORAGE_MEGACMD_FINAL_IMPLEMENTATION_READINESS.md) converts the accumulated source findings into a final readiness matrix. In particular, raw `--col-separator` output is not serialization, current `https` is deprecated/always-on, and arbitrary Drive filenames remain capability-gated.
+
 > **Last-mile audit round 6 (2026-09-30):** Read [CLOUD_STORAGE_MEGACMD_LAST_MILE_EDGE_CASE_AUDIT.md](CLOUD_STORAGE_MEGACMD_LAST_MILE_EDGE_CASE_AUDIT.md) for newly confirmed scriptable stdin/confirmation behavior, HOME/socket/PATH server identity, `mega-version` network/server behavior, public-folder session ambiguity, strict UTF-8/64-bit identity requirements and cross-process Hadalis locking. Research only.
 
 > **Round 3 follow-up (2026-09-30):** Before implementing the 76-command design, read the [protocol, cross-client and SDK decision study](CLOUD_STORAGE_MEGACMD_PROTOCOL_DECISIONS.md). It adds verified MEGA Desktop extension IPC (limited, private—not a supported management API), **remote-folder overlap** and SDK no-lock caveats, a confirmed silent-overwrite hazard in `mega-mv`, and definitive evidence that `mega-login email` cannot safely read a piped password in noninteractive mode. This is documentation research only.

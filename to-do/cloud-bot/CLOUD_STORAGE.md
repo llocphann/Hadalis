@@ -1,5 +1,7 @@
 # Cloud Storage — MEGAcmd ↔ Rust ↔ QML research
 
+> **Research round 7 — FINAL FREEZE:** [Final implementation readiness](../../docs/CLOUD_STORAGE_MEGACMD_FINAL_IMPLEMENTATION_READINESS.md) is now the implementation entry point. It freezes Tier A/B/C scope, dedicated Rust `inir-mega`, parser/capability rules, current MEGAcmd 2.6.0 corrections, packaging map and the fake/disposable qualification sequence. Further desk research is closed unless upstream changes.
+
 > **Research round 6:** [Last-mile edge-case audit](../../docs/CLOUD_STORAGE_MEGACMD_LAST_MILE_EDGE_CASE_AUDIT.md) covers cross-process locking, MEGAcmd environment/backend identity, interactive-prompt traps, strict Unicode/64-bit IDs, suspend/recovery, clipboard/notification privacy and package-upgrade races.
 
 > **Research round 5:** [Frontend/backend stability contract](../../docs/CLOUD_STORAGE_MEGACMD_FRONTEND_BACKEND_CONTRACT.md) defines the concrete QML deferred-service ↔ typed Rust ↔ MEGAcmd boundary, request/generation guards, no-replay writes and post-action reconciliation.
@@ -102,3 +104,19 @@ The autonomous Local Bot must not contact a real MEGA account, initiate a sync o
 - [ ] Validate the full round-6 fake-harness matrix before any live account/write implementation.
 - [ ] Decide exact Linux lock/state paths and privacy-preserving cross-restart account identifier after implementation-time filesystem/permission tests.
 - [ ] Capture installed MEGAcmd public-folder/account, unexpected-prompt, locale and package-upgrade fixtures on a disposable owner-approved environment.
+
+
+### Round-7 final research freeze
+- [x] Re-check current upstream MEGAcmd/SDK/Desktop source heads; no newer upstream source commit supersedes the pinned research snapshots.
+- [x] Re-check current MEGAcmd release behavior: transfers always HTTPS; \`https\` is deprecated; remove any planned HTTPS toggle.
+- [x] Account for MEGAcmd 2.6.0 lower-case \`http_proxy\`/\`https_proxy\` support without exposing proxy credentials in diagnostics.
+- [x] Add capability-gated WebDAV streaming-cache controls for \`file_service_reclaim_*\`; document that threshold is not a hard cap.
+- [x] Prove \`--col-separator\` emits raw unescaped values; freeze command-specific minimal-column parsers and fail-closed arbitrary path handling.
+- [x] Freeze bounded-snapshot semantics; vendor \`--limit\` without offset is not pagination.
+- [x] Freeze dedicated one-shot Rust \`inir-mega\`; no Python mutation fallback and no permanent Hadalis daemon for v1.
+- [x] Re-audit current Hadalis Settings/native packaging paths and define exact implementation files/tests.
+- [x] Freeze Tier A (read/ID-based), Tier B (installed/disposable-fixture gated), Tier C (withheld) scope.
+- [x] Freeze fake vendor harness as first implementation milestone.
+- [ ] IMPLEMENTATION: build Phase 0 substrate only after explicit code-change authorization.
+- [ ] LOCAL QUALIFICATION: capture the owner's installed MEGAcmd capability fixtures using sanitized/disposable data before enabling writes.
+- [ ] Reopen research only when an upstream MEGAcmd/SDK/Desktop change materially affects a frozen capability.

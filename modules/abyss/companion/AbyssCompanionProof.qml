@@ -1,16 +1,27 @@
+//@ pragma UseQApplication
+//@ pragma Env QS_NO_RELOAD_POPUP=1
+//@ pragma Env INIR_STANDALONE_WINDOW=1
+
 import QtQuick
+import QtQuick.Window
+import Quickshell
 import qs.modules.abyss.looks
 
-// Development-only proof surface. This is deliberately not wired into the
-// production shell until live attachment/hit-test evidence is collected.
-Rectangle {
+// Development-only Quickshell proof surface. This is deliberately not wired
+// into production shell ownership until live attachment/hit-test evidence is
+// collected.
+ApplicationWindow {
     id: root
     width: 520
     height: 260
+    visible: true
     color: AbyssStyle.surfaceDeep
+    title: "Wull procedural attachment proof"
 
     Rectangle {
-        anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
         height: AbyssStyle.perimeterThickness
         color: AbyssStyle.surfaceRaised
     }

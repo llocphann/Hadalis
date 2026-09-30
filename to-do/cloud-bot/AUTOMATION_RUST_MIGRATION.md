@@ -12,17 +12,16 @@ Do **not** rewrite all Automation in Rust. Migrate the Linux/process-sensitive e
 
 Priority order:
 
-1. **P0 — native Rust helper for the `exec` action only**
-   - add a small `inir-automation-exec` helper behind the existing `automation/worker/runner.py` `exec` branch;
-   - keep `runner.py` as the Python action orchestrator/security envelope;
-   - keep `automation/worker/process.py` for Git, diagnostics, deployment and other Python orchestration;
-   - retire `automation/worker/child.py` from the exec path only after native parity is proven.
+1. **P0a — Rust child/exec wrapper only**
+   - replace the Python `automation/worker/child.py` wrapper with a small `inir-automation-exec` binary that arms parent-death protection, durably records the executing process identity, then `exec`s the requested target in the same PID;
+   - keep Python `bounded_run` as the supervisor, pipe drainer, timeout/cancellation owner and process-group killer;
+   - keep `runner.py` as the Python action orchestrator/security envelope.
 2. **P1 — Rust privilege broker**
-   - broker/server and elevated process supervision in `automation/worker/privilege.py`
-3. **P2 — benchmark-gated worker daemon migration**
-   - consider `automation/worker/daemon.py` only after P0/P1 are proven and profiled
+   - broker/server and elevated fixed-command process supervision in `automation/worker/privilege.py`.
+3. **P0b/P2 — benchmark-gated native supervisor or worker-daemon migration**
+   - only consider moving Python `bounded_run`/worker scheduling after P0a/P1 measurements prove that the extra migration complexity has real value.
 4. **P3 — manager migration only if later profiling proves a meaningful bottleneck**
-   - `automation/manager/daemon.py` is not a current Rust priority
+   - `automation/manager/daemon.py` is not a current Rust priority.
 
 Initially keep these in Python:
 
@@ -160,23 +159,29 @@ Before adding native execution:
 
 Do not infer a required percentage improvement in advance.
 
-### Phase 1 — dormant Rust exec helper
+### Phase 1 — dormant Rust child/exec wrapper
 
-Add one dormant `inir-automation-exec` binary while Python remains the default. Do not move the whole runner or generic `bounded_run` in this phase.
+Add one dormant `inir-automation-exec` binary while Python remains the default. P0a should **not** add a second long-lived supervisor process.
 
-Recommended P0 handoff:
+The current `bounded_run(..., execution_receipt=path)` already has the ideal cut point: it launches `child.py` in a new session, and that wrapper becomes the target process through `execvpe`. Replace only that wrapper:
 
-1. Python resolves/validates `cwd`, builds the allowlisted environment with the existing `session_env`, computes the existing Python `command_sha256`, verifies native protocol capability, selects the backend, then writes the durable action `dispatching` intent including private `executor_backend` and protocol metadata.
-2. Python invokes `inir-automation-exec` with only bounded control arguments such as spec/receipt path and action index. Do not expose the target job argv as the helper's own process argv.
-3. The Rust supervisor validates that the request belongs to the expected private worker/action directory and that the existing receipt is the matching `dispatching` intent.
-4. A hidden child-exec mode arms `PR_SET_PDEATHSIG`, verifies its expected parent, updates the same action receipt to `executing` with the target process identity, fsyncs it, then execs the target in place. Preserve the current identity shape: integer `pid`, string `start_ticks`, string `boot_id`.
-5. The Rust supervisor owns target pipe draining, full-stream hashes/counts, per-stream capture limits, timeout and process-group TERM/KILL behavior. It must react to cancellation/termination without letting the target group silently escape.
-6. Target stdout/stderr must **not** be written durably by Rust before sanitization. Return bounded captured bytes through an ephemeral parent channel (for example base64 fields in the helper's captured JSON stdout); Python decodes with its existing UTF-8 `errors="replace"`, applies `privacy.redact`, adds evidence/source/timestamp provenance and writes the final `finished` action receipt.
-7. If the helper or Python runner disappears after dispatch but before the Python `finished` receipt is durable, preserve the existing conservative result: `indeterminate` / recovery required, never an automatic replay.
+1. Python validates the job/cwd, builds `session_env`, verifies Rust capability and selects the backend **before** writing `dispatching`.
+2. Python writes the current action `dispatching` intent plus private backend/protocol metadata.
+3. `bounded_run` starts either the existing Python child wrapper or `inir-automation-exec` with the expected parent PID, action receipt path and target argv. Existing stdout/stderr pipes, environment and `start_new_session=True` remain unchanged.
+4. Rust records the original parent PID, arms `PR_SET_PDEATHSIG(SIGKILL)`, verifies that the parent did not change and returns exit 125 without executing the target if that guard fails.
+5. Rust reads the existing action intent, updates it to `executing` with the same process-identity schema, writes it mode 0600 through temp-file + file fsync + atomic rename + directory fsync, and **must not exec the target if this durable write fails**.
+6. Rust then uses Unix exec semantics so the wrapper PID/process group becomes the target PID/process group. Python `bounded_run` continues to drain/hash/bound stdout/stderr, enforce timeout/cancellation, kill the group and observe the real target exit status exactly as it does today.
+7. Python `runner.py` keeps the current UTF-8 replacement, secret redaction, `command_sha256`, evidence/source/timestamp fields and final `finished` receipt.
 
-The helper's own exit code is a **transport/protocol status**, not the target command exit code. A successfully observed target that exits nonzero should still allow the helper itself to return transport success with the target `exit_code` inside the result envelope.
+This P0a path creates no durable raw-output artifact, introduces no result IPC protocol, does not duplicate privacy logic and does not add an extra resident supervisor while the command runs.
 
-This split keeps privacy policy and job orchestration in Python while moving the Linux child lifecycle into Rust.
+The first benchmark should therefore isolate the cost of the current Python `child.py` interpreter/import path versus the Rust wrapper using short commands such as a no-op/true process. Do not assume the end-to-end gain before measuring it.
+
+### Optional later P0b — native process supervisor
+
+Only after P0a is qualified should Hadalis reconsider moving nonblocking pipe draining, stream hashing, timeout/cancellation and process-group supervision out of Python.
+
+A standalone Rust supervisor launched by the still-Python runner adds an extra process layer and a new result protocol, so it can be slower for short commands even if its inner loop is faster. Prefer leaving `bounded_run` in Python unless measurements show meaningful CPU/RSS/high-output or cancellation benefits. If P0b is ever pursued, the second-pass ephemeral-output/privacy constraints below remain mandatory.
 
 ### Phase 2 — explicit A/B parity selector
 
@@ -350,19 +355,19 @@ Keep JavaScript while the Desktop adapter is tied to Electron/CDP semantics. A s
 
 The current source resolves several questions from the first audit.
 
-### P0 transport and receipt ownership
+### P0a transport and receipt ownership
 
-Use the existing durable filesystem ledger for request identity and phase state; do not add a persistent socket for the exec helper. The helper result itself should cross an **ephemeral pipe**, not a durable raw-output file.
+P0a needs **no new result transport at all**. The Rust wrapper inherits the exact target stdout/stderr pipes already owned by Python `bounded_run`, then replaces itself with the target through exec.
 
-Phase ownership should be explicit:
+Phase ownership stays simple:
 
 - Python writes `dispatching`, including backend/protocol selection and the legacy `command_sha256`.
-- Rust child-exec writes `executing` immediately before target exec, preserving the existing intent fields and durably recording process identity.
-- Python writes `finished` only after it has decoded and redacted captured output and added provenance.
+- Rust writes `executing` before exec, preserving the existing intent fields and durably recording its own identity, which becomes the target identity after exec.
+- Python writes `finished` after the existing capture/UTF-8 replacement/redaction/provenance path completes.
 
-This deliberately leaves a crash after target completion but before Python finalization as `indeterminate`, matching the current conservative semantics instead of persisting unredacted command output.
+This is stricter and simpler than the earlier P0 supervisor proposal: no base64 result envelope, no raw native result file and no duplicate output decoder are needed for P0a.
 
-A JSON result envelope with base64-encoded captured bytes is a reasonable P0 transport because the capture is already bounded. It keeps invalid UTF-8 byte-exact until Python applies the current decoder/redactor. Derive the outer helper capture bound from the configured per-stream capture limit; never make it unbounded.
+If P0b later moves the supervisor itself into Rust, captured output must still cross only an ephemeral bounded channel until Python redaction or an independently parity-proven Rust redactor has run.
 
 ### Keep environment discovery in Python
 
@@ -376,9 +381,9 @@ Likewise, the job `input_sha256` remains owned by the Python daemon because it h
 
 ### Rust binary layout
 
-For P0, prefer one `inir-automation-exec` binary with a private/hidden child-exec mode over two separately packaged binaries. The repository already uses direct `libc::prctl` parent-death handling in `inir-mpdd`, so this approach matches existing native style without introducing an async runtime.
+For P0a, prefer one `inir-automation-exec` wrapper binary. It does not need a persistent daemon mode or async runtime. The repository already uses direct `libc::prctl` parent-death handling in `inir-mpdd`, so the wrapper can follow an established native pattern.
 
-Extract a shared process crate only when P1 proves that the privilege broker needs the same primitives.
+Extract a shared process crate only when P1 or an evidence-backed P0b proves that multiple native components actually need the same primitives.
 
 ### Capability/version check
 
@@ -431,12 +436,63 @@ For fault testing, prefer dependency-injected Rust unit tests plus external kill
 
 ## Remaining open questions before implementation
 
-- Does the ephemeral result channel use base64 JSON on stdout or a dedicated inherited binary FD? Base64 JSON is simpler and byte-exact but adds bounded encoding overhead.
-- What exact helper transport-size formula and hard ceiling should be enforced for the configured maximum capture?
-- Should the Rust atomic receipt writer be local to the exec binary in P0, then extracted only when the privilege broker needs it?
-- Does live benchmarking justify P2 worker-daemon migration at all?
+- Should the Rust atomic receipt writer stay local to `inir-automation-exec` in P0a, then be extracted only when the privilege broker needs it?
+- Does P0a's measured startup/CPU/RSS improvement justify any P0b native supervisor work?
+- Does live benchmarking justify worker-daemon migration at all?
+- If P0b is justified, should its bounded result channel use base64 JSON or a dedicated inherited binary FD?
 
 Resolve the remaining questions with fixtures and measurements, not language preference.
+
+## Third-pass finding: the smallest useful Rust cutover is the child wrapper
+
+The current Python topology is:
+
+```text
+worker daemon
+  -> Python runner
+     -> Python child.py (new session / process-group leader)
+        -> exec target in the same PID
+```
+
+This is important because `child.py` is not an ordinary helper that remains beside the target. It is a pre-exec wrapper. Replacing it with Rust gives a very narrow migration:
+
+```text
+worker daemon
+  -> Python runner
+     -> Rust inir-automation-exec (new session / process-group leader)
+        -> exec target in the same PID
+```
+
+Therefore all existing Python supervision semantics remain in place:
+
+- the target still has the PID recorded by the pre-exec wrapper;
+- the target still owns the new process group created by `start_new_session=True`;
+- timeout/cancellation still call the existing `kill_group`;
+- stdout/stderr remain the exact pipes already monitored by Python;
+- complete-stream hashes/counts and per-stream truncation remain Python-owned;
+- secret redaction and public-result allowlisting remain unchanged;
+- the Python runner's rlimits and `NoNewPrivileges` continue to be inherited;
+- no new daemon/socket/result-file failure mode is introduced.
+
+The Rust wrapper should preserve the current child failure ordering: arm parent-death protection and verify the parent first; make the `executing` receipt durable second; execute arbitrary external code only third. A failed receipt fsync/rename must fail closed before target exec.
+
+This also changes the performance hypothesis. P0a may improve short-action latency because it removes a Python interpreter + import path from every `exec` action. A full Rust supervisor launched from the still-Python runner would add another process layer, so that broader migration is no longer assumed to be faster.
+
+### P0a parity details that are easy to miss
+
+- `start_ticks` is currently serialized as a **string**, not an integer; retain that shape until an explicitly versioned schema change.
+- The wrapper must inherit the exact environment supplied by Python; do not rediscover Wayland/Niri/D-Bus sockets in Rust.
+- The wrapper must inherit stdin/stdout/stderr exactly; stdin stays `DEVNULL` and target output must not go to journald through the wrapper.
+- The wrapper should preserve exit 125 for parent-death guard failure, matching the current child path.
+- An exec failure after the durable `executing` write is a completed failed action, not grounds to try the Python backend.
+- A malformed/missing action receipt must prevent target exec.
+- Capability probing and binary-path discovery happen before `dispatching`; a missing Rust binary after a Rust dispatch receipt exists is recovery-required, not a fallback trigger.
+
+### Separate selector contract
+
+Do **not** add Automation execution to the existing `scripts/native-dispatch` fallback contract. That selector intentionally runs Python after some Rust runtime failures. For an Automation action, a Rust failure can occur after the external command has already started, so the same fallback behavior could duplicate side effects.
+
+P0a can select the child wrapper directly in Python before dispatch. P1 should likewise use an Automation-specific, explicit backend selection. If a convenience backend-switch command is added later, it should operate only at safe idle/reconciled boundaries.
 
 ## Security/systemd constraints to preserve
 

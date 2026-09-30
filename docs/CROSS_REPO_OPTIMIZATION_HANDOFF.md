@@ -20349,3 +20349,188 @@ Next audit should re-fetch current `dev`, reconcile concurrent changes, then
 rotate to another under-covered production boundary. Prefer wallpaper/image
 analysis or file-backed media artwork where process/cache behavior is user
 interaction hot, while checking §§25/28/59 ownership first.
+
+
+## 82. Round 68 — wallpaper thumbnail prefetch allocation audit (2026-09-30)
+
+### Snapshot, delta and ownership
+
+- Authoritative `dev` at round start and immediately before this write:
+  `41cf4f1586ed48a6d138a4d8780377b17b64ec51` (Round 67).
+- No intervening commit exists after Round 67.
+- Current wallpaper/media-artwork ownership was searched before promotion.
+  Existing items retained rather than re-counted include:
+  - §§25.5-25.6 MediaArtworkResolver warm-cache / in-flight miss work;
+  - §28.2 warm thumbnail disk-cache existence discovery;
+  - §§39.1-39.3 thumbnail coordinator, exit-code and XDG correctness blockers;
+  - §60.7 Niri workspace min/max derivation;
+  - §66.1 duplicate Coverflow prefetch removal;
+  - §66.2 Skew color-sort invocation-local memoization.
+- The current `Wallpapers.qml` source was re-read around
+  `ensureThumbnailForPath()`, `getExpectedThumbnailPath()`,
+  `_singleThumbQueue`, `_singleThumbPending`,
+  `_knownThumbnailOutputs` and the batched wallpaper cache.
+
+### 82.1 Thumbnail prefetch can remove two private staging arrays per candidate path — CONFIRMED / P2 interaction-hot
+
+Path:
+
+- `services/Wallpapers.qml`.
+
+This is a local continuation of the Coverflow prefetch path in §66.1, but it is
+not the same underlying duplicate-prefetch owner. §66.1 removes a second whole
+prefetch pass. The remaining single pass still invokes
+`ensureThumbnailForPath()` for every eligible position in the radius.
+
+The normal radius is eight, so a full interior prefetch can visit up to 17
+positions; preview mode can visit up to nine.
+
+Two independent private allocations occur for every surviving thumbnail path.
+
+#### A. Size validation allocates a four-element literal array
+
+`ensureThumbnailForPath()` currently checks:
+
+`["normal", "large", "x-large", "xx-large"].includes(size)`.
+
+`generateThumbnail()` uses the same form.
+
+Strict-safe direction:
+
+- use direct strict string comparisons, or a pure helper containing those exact
+  comparisons;
+- keep `generateThumbnail()` throwing `Error("Invalid thumbnail size")` on
+  the same invalid values;
+- keep `ensureThumbnailForPath()` returning on the same invalid values.
+
+Parity:
+
+- `Array.prototype.includes` uses SameValueZero, but every candidate member is
+  a distinct string literal. For strings, numbers, objects, null/undefined and
+  NaN, membership against those four string literals is identical to the
+  corresponding chain of strict-equality checks;
+- no coercion occurs in either form;
+- short-circuit membership order can remain
+  normal -> large -> x-large -> xx-large;
+- no QML property dependency or callback is involved.
+
+Saving per validation:
+
+- four-element temporary array: **1 -> 0**.
+
+#### B. Freedesktop thumbnail URI encoding does not need a mapped segment array
+
+`getExpectedThumbnailPath()` currently executes:
+
+1. `parts = cleanPath.split("/")`;
+2. `encodedParts = parts.map(encodeSegment)`;
+3. `encodedParts.join("/")`;
+4. MD5 + cache-path construction.
+
+The `parts` array is a fresh, private local and is never exposed.
+
+Strict-safe direction:
+
+- retain the exact `split("/")`;
+- iterate its indices in ascending order;
+- replace each `parts[i]` with the exact current
+  `encodeURIComponent(...).replace(/[!'()*]/g, ...)` result;
+- join that same array.
+
+Strict-lossless proof:
+
+- segment evaluation order stays left-to-right;
+- empty segments from leading/repeated/trailing slashes remain present in the
+  same positions;
+- `encodeURIComponent` and the exact post-encoding replacement remain
+  unchanged;
+- a URI-encoding exception still occurs at the same segment before hashing or
+  publication;
+- mutations affect only the fresh local array, so partial progress before an
+  exception is not externally observable;
+- joined URL bytes, MD5 input, hash and output path are identical;
+- no filesystem check, thumbnail queue, process, signal, cache publication or
+  image-load timing is moved.
+
+Saving per path:
+
+- N-segment mapped array: **1 -> 0**;
+- the required split array remains one fresh private array.
+
+For a normal full-radius prefetch in which all 17 positions are eligible, the
+two exact-safe changes remove up to:
+
+- **17 four-element validation arrays**;
+- **17 encoded-segment arrays**;
+
+or **34 private JS arrays per remaining prefetch pass** after §66.1's duplicate
+pass is independently removed.
+
+This is a local allocation count, not an end-to-end shell percentage.
+
+### 82.2 Single-thumbnail queue cursor conversion is not promoted under the current property-state contract
+
+Path:
+
+- `services/Wallpapers.qml`.
+
+`_singleThumbQueue.shift()` has O(N) front-removal behavior and can look like
+an obvious cursor/ring-buffer target.
+
+It is not promoted as a strict-lossless change because
+`_singleThumbQueue` is QML property state. The current in-place `shift()`
+means the property value contains only not-yet-started requests after each
+dequeue.
+
+A cursor that retains processed prefixes changes the externally readable array
+contents; periodic compaction/reassignment changes property publication/change
+behavior. A private queue abstraction could be designed, but that is an
+architecture contract rather than a source-local guaranteed equivalence.
+
+Status: **OUT OF STRICT-LOSSLESS for a mechanical cursor substitution**.
+
+### 82.3 Known-thumbnail map clone growth is real but publication semantics block an in-place replacement
+
+Path:
+
+- `services/Wallpapers.qml`;
+- `modules/common/widgets/ThumbnailImage.qml`.
+
+`rememberThumbnail()` and `forgetThumbnail()` clone the complete
+`_knownThumbnailOutputs` object on every real membership change.
+
+As K distinct thumbnail paths become known, cumulative key copying can grow
+quadratically in the worst-shaped session.
+
+However the current assignment publishes a fresh object through a QML property
+on each membership change. Replacing it with an in-place object mutation or an
+internal Set would alter:
+
+- property identity;
+- changed-signal behavior;
+- externally readable private-property contents if representation changes.
+
+Core repository consumers currently use the imperative
+`hasKnownThumbnail()` API, but strict-lossless includes extension-visible
+state and publication semantics. Therefore do not promote a Set/mutate-in-place
+conversion solely from core consumer search.
+
+Status: **ARCHITECTURE / publication contract required**, not counted.
+
+### 82.4 Round-68 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one** (§82.1,
+**CONFIRMED / P2 interaction-hot**).
+
+Not counted:
+
+- §82.2 queue cursor conversion;
+- §82.3 known-thumbnail membership representation.
+
+No runtime/product/native/script code was modified and no local job was needed.
+
+Next audit should re-fetch current `dev`, reconcile concurrent changes, then
+rotate outside Wallpapers to avoid repeatedly mining the same subsystem.
+Prefer another interaction-hot file-backed path such as Clipboard/Cliphist
+secondary controls or search/launcher file/process boundaries, while honoring
+existing §§28/57/60/65 ownership.

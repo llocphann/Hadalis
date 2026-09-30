@@ -39,19 +39,6 @@ WindowDialog {
         Layout.rightMargin: -(Appearance.angelEverywhere ? Appearance.angel.roundingNormal : Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.large)
     }
     StyledListView {
-        id: wifiList
-        // When Abyss gives the connectivity dialog extra vacancy, use the
-        // larger viewport to relax row density. With many networks the desired
-        // extent naturally falls below the row's intrinsic size and scrolling
-        // remains unchanged. Capping avoids comically large rows for tiny lists.
-        readonly property real adaptiveDelegateHeight: {
-            if (!root.effectiveEmbedded || wifiList.count <= 0)
-                return 0
-            const gaps = Math.max(0, wifiList.count - 1) * wifiList.spacing
-            const usable = Math.max(0, wifiList.height
-                - wifiList.topMargin - wifiList.bottomMargin - gaps)
-            return Math.min(96, usable / wifiList.count)
-        }
         Layout.fillHeight: true
         Layout.fillWidth: true
         Layout.topMargin: -15
@@ -79,7 +66,6 @@ WindowDialog {
         delegate: WifiNetworkItem {
             required property WifiAccessPoint modelData
             wifiNetwork: modelData
-            adaptiveMinimumHeight: wifiList.adaptiveDelegateHeight
             anchors {
                 left: parent?.left
                 right: parent?.right

@@ -34,14 +34,6 @@ WindowDialog {
     }
     StyledListView {
         id: deviceList
-        readonly property real adaptiveDelegateHeight: {
-            if (!root.effectiveEmbedded || deviceList.count <= 0)
-                return 0
-            const gaps = Math.max(0, deviceList.count - 1) * deviceList.spacing
-            const usable = Math.max(0, deviceList.height
-                - deviceList.topMargin - deviceList.bottomMargin - gaps)
-            return Math.min(96, usable / deviceList.count)
-        }
         Layout.fillHeight: true
         Layout.fillWidth: true
         Layout.topMargin: -15
@@ -99,7 +91,6 @@ WindowDialog {
         delegate: BluetoothDeviceItem {
             required property BluetoothDevice modelData
             device: modelData
-            adaptiveMinimumHeight: deviceList.adaptiveDelegateHeight
             anchors {
                 left: parent?.left
                 right: parent?.right

@@ -67,11 +67,6 @@ DialogListItem {
         }
         spacing: 0
 
-        Item {
-            Layout.fillHeight: true
-            visible: root.adaptiveMinimumHeight > 0
-        }
-
         RowLayout {
             // Name
             spacing: 10

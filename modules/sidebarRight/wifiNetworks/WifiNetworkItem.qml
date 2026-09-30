@@ -27,13 +27,6 @@ DialogListItem {
         }
         spacing: 0
 
-        // Together with the trailing fill item this centers normal row content
-        // inside any extra height granted by the responsive dialog.
-        Item {
-            Layout.fillHeight: true
-            visible: root.adaptiveMinimumHeight > 0
-        }
-
         RowLayout {
             // Name
             spacing: 10

@@ -18964,3 +18964,43 @@ modules/common/widgets/CavaSpectrum.qml already retains per-instance selected, s
 ### 73.4 Conclusion / next checkpoint
 
 New confirmed optimization groups this round: **one** (§73.1). One additional distinct high-confidence lead (§73.2) remains outside confirmed counts. No product/runtime files were edited; no local oracle or runtime patch was executed. Next audit should re-fetch dev, reconcile concurrent changes, then inspect another interaction-hot or per-frame area such as modules/dashboard/DashboardLayout.js projection, without duplicating §65.1 or §73.1. All quantities here count only local operations, not shell performance.
+
+## 74. Round 60 — Dashboard projection's repeated X-axis collision work (2026-09-30)
+
+### Snapshot and ownership audit
+
+- Audited the current dev HEAD d25caf4f31b093328075fb64f11a73ad56261867 immediately after the Round-59 research commit. No intervening commit was present.
+- Re-read modules/dashboard/DashboardLayout.js at this exact ref. Full handoff search for DashboardLayout.js, freeRect, X-axis prefilter, DashboardCanvas, _fallbackPlacement and other collision ownership found no prior owner for this separate projection-path calculation. Round 59 §73.1 owns DashboardCanvas fallback's redundant *second whole obstacle loop*, not the repeated X comparisons inside DashboardLayout.freeRect().
+- This is research only. No runtime or packaging change is authorized.
+
+### 74.1 Reuse an X-axis overlap subset across all Y candidates for each fixed X — CONFIRMED mathematical parity for guarded numeric, plain-snapshot path / P1-P2 reactive workspace projection
+
+Path: modules/dashboard/DashboardLayout.js, freeRect() (lines 10–32) and its internal overlaps() predicate (lines 6–9), called from project() (lines 33–48).
+
+Current freeRect() enumerates the same widths/heights, then xs and ys in nested source order. For every in-bounds candidate rectangle at a fixed x, the obstacles.some callback reevaluates two *identical* X-axis overlap comparisons against each obstacle even though neither condition depends on y:
+
+1. x < other.x + other.width + gap - .001;
+2. other.x < x + w + gap - .001.
+
+Only after both hold does the original overlaps() check the two Y-axis comparisons. The current callback may short-circuit at the first complete X+Y collision.
+
+Strict-safe scoped direction:
+
+- Keep the original candidate-object creation, bounds guard, nested widths/heights/xs/ys iteration, cost expression, score comparison (strict less-than), tie winner, duplicate coordinates, chosen rect and output publication unchanged.
+- For a fixed (w,h,x), lazily build an ordered invocation-local subset of obstacle **indices**, containing exactly those for which the above two existing numeric X predicates both hold. Build it only after the first Y candidate passes the exact existing bounds guard. Do not deduplicate; keep source obstacle order.
+- For each such valid Y, check the original two Y-axis expressions over that subset, stopping at the first matching obstacle just as the old some() call stops. A full overlap exists iff both X predicates and both Y predicates hold; the subset proof is algebraic, and no floating-point reassociation of either individual comparison is required.
+- Preserve freeRect()'s existing generic route for caller-visible inputs with possible coercion side effects: the fast branch must require primitive-number w, h and gap, plus plain, primitive-number fields in the *internally created* obstacle rectangles. Public/direct freeRect() use must retain its original default path. project() creates desired coordinates using Math.min/Math.max and the bounded() conversion, and every accepted obstacle is the ordinary {x,y,width,height} candidate literal; if any field is not a primitive number, use the original loops. Avoid getter-backed/callable/mutable external state in the hoisted comparisons.
+- Non-finite primitive-number values still take the same literal comparisons (false in the same NaN branches); negative/positive zero comparisons also stay identical. Null or exotic malformed inputs that would throw/coerce through the old path must continue to use it, with the old error/short-circuit behavior. Do not move entry.visible, minimum-size, QML config or other reactive reads across project()'s current iteration.
+- The x subset lives only inside one (w,h,x) invocation, never as a retained cache. Since it depends only on new plain local objects and the primitive numeric gap already read as a project binding argument, it changes no QML dependency capture, external callback, object/array publication, signal, focus, animation, ordering, or extension-facing API. No Set/SameValueZero substitution is introduced.
+
+Local work: if O obstacles produce X x-values and Y y-values at a fixed size, up to **2 * X * Y * O** repeated X-axis comparisons are reduced to at most **2 * X * O** (often less because the subset is lazy and out-of-bounds candidates skip it). Y-axis work remains proportional to the actual x-matching subset and can still be cubic in a densely overlapping worst case; do **not** describe the *entire* freeRect search as generally O(O²). With O obstacles the enumerated lists each contain 3+2O entries before any bounds guard. This is only a local comparison reduction for reactive Dashboard layout projection, **not** a measured whole-shell performance percentage.
+
+The guard is important to the CONFIRMED classification: an unguarded rewrite of arbitrary public freeRect inputs can alter getter/coercion counts or error order and is **OUT OF STRICT-LOSSLESS**. Before eventual implementation, add deterministic old-versus-new oracle fixtures for ordinary disjoint/colliding rectangles, ties, duplicate x/y positions, empty obstacles, NaN/Infinity/-0 and nonprimitive coercion fallback; no such implementation/test was performed in this research round.
+
+### 74.2 Nearby non-factors / checkpoint
+
+- Do not also promote project() entries.filter(...).forEach(...) as a casual fuse: reading every entry.visible before all placement work is its present evaluation sequence, and interleaving those reads with placement can change property-read order for external entry objects.
+- bounded() repeating Number(value) is not automatically lossless for coercible objects with observable valueOf/getters; its scalar micro-saving is not an independent material item.
+- Round 59's DashboardCanvas responsive active-only pair scan remains HIGH CONFIDENCE pending malformed-state oracle (§73.2); the projection's X-axis proof does not resolve it.
+
+**New CONFIRMED group: one** (§74.1, explicitly guarded numeric/plain-snapshot path). No runtime/product files edited and no local job submitted. Next research should re-fetch current dev and diversify beyond Dashboard into a distinct render or user-interaction hot path.

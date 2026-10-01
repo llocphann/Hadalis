@@ -1,0 +1,30 @@
+{
+  "id": "JOB-WULL-DIAG-011",
+  "profile_id": "profile-db22878355564252",
+  "base_sha": "eadf9066e3b75dbfd11edc7fb7db76240fac2068",
+  "actions": [
+    {
+      "diagnostics": {
+        "checks": [
+          "services",
+          "processes",
+          "journal",
+          "runtime",
+          "hardware"
+        ],
+        "lines": 50
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "tmp=.wull-root-diag-011.qml; out=$(mktemp); err=$(mktemp); comb=$(mktemp); wins=$(mktemp); pid=''; cleanup(){ if [ -n \"$pid\" ] && kill -0 \"$pid\" 2>/dev/null; then kill \"$pid\" 2>/dev/null || true; wait \"$pid\" 2>/dev/null || true; fi; rm -f \"$tmp\" \"$out\" \"$err\" \"$comb\" \"$wins\"; }; trap cleanup EXIT INT TERM; printf '%s\\n' '//@ pragma UseQApplication' 'import QtQuick' 'import Quickshell' 'import qs.modules.abyss.companion' 'AbyssCompanionProof { }' > \"$tmp\"; qs -n -p \"$tmp\" >\"$out\" 2>\"$err\" & pid=$!; sleep 4; if ! kill -0 \"$pid\" 2>/dev/null; then wait \"$pid\" 2>/dev/null; rc=$?; pid=''; cat \"$out\" \"$err\" >\"$comb\"; grep -Eqi '(QQml|qml:|QML|module .* not installed|Type .* unavailable|is not a type|Cannot assign|ReferenceError|SyntaxError|Expected token|Cannot load)' \"$comb\" && exit 71; grep -Eqi '(Wayland|wayland|xcb|display|DISPLAY|platform plugin|QPA|compositor)' \"$comb\" && exit 72; grep -Eqi '(ABI|built against Qt|incompatible Qt|version mismatch|symbol lookup error|undefined symbol)' \"$comb\" && exit 73; grep -Eqi '(usage:|unknown option|no such file|does not exist|entry point|shell path)' \"$comb\" && exit 74; [ \"$rc\" -eq 255 ] && exit 75; exit 76; fi; niri msg -j windows >\"$wins\" 2>/dev/null || exit 81; grep -Fq 'Wull procedural attachment proof' \"$wins\" || exit 82; exit 0"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 20
+      }
+    }
+  ]
+}

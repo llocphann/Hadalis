@@ -55,6 +55,52 @@ try {
     assert.equal(partial.shell, true);
     assert.equal(partial.server, false);
     cases++;
+    // F1 preflight runs only after an explicit typed request. It must be
+    // static in BOTH missing and installed-looking fake-PATH environments.
+    const preflightParser = vm.runInNewContext(
+        fs.readFileSync(path.resolve(here,
+            "../services/deferred/CloudStoragePreflightProtocol.js"), "utf8")
+        + "\nparseConnectPreflightResponse", Object.create(null), {timeout: 2000});
+    function preflight(id, patch={}) {
+        const request = JSON.stringify({
+            protocol:1, request_id:id, operation:"connect_preflight",
+            params:{}, ...patch
+        }) + "\n";
+        const child = spawnSync(bin, ["request"], {
+            input:request, encoding:"utf8", timeout:6000, maxBuffer:65536,
+            shell:false, env:{PATH:dir, LANG:"C", LC_ALL:"C"}
+        });
+        assert.equal(child.error, undefined);
+        assert.equal(child.status, 0);
+        return child.stdout;
+    }
+    const partialPreflight = preflightParser(preflight("preflight-partial"),
+        "preflight-partial");
+    assert.equal(partialPreflight.dependenciesReady, false); cases++;
+    fs.chmodSync(path.join(dir, "mega-cmd-server"), 0o700);
+    const readyPreflight = preflightParser(preflight("preflight-ready"),
+        "preflight-ready");
+    assert.equal(readyPreflight.dependenciesReady, true);
+    assert.equal(readyPreflight.reason, "installed_vendor_not_qualified");
+    assert.equal(fs.existsSync(path.join(dir, "mega-cmd.executed")), false);
+    assert.equal(fs.existsSync(path.join(dir, "mega-cmd-server.executed")), false);
+    cases++;
+    for (const input of [
+        {secret: {password:"PRIVATE_FAKE_SECRET_CANARY"}},
+        {params: {raw_command:"mega-rm"}}
+    ]) {
+        const payload = preflight("preflight-rejected", input);
+        const response = JSON.parse(payload);
+        assert.equal(response.ok, false);
+        assert.equal(response.error.kind, "PREFLIGHT_INPUT_FORBIDDEN");
+        assert.equal(response.error.outcome, "not_dispatched");
+        assert.equal(payload.includes("PRIVATE_FAKE_SECRET_CANARY"), false);
+        assert.throws(() => preflightParser(payload, "preflight-rejected"));
+        cases++;
+    }
+    assert.equal(fs.existsSync(path.join(dir, "mega-cmd.executed")), false);
+    assert.equal(fs.existsSync(path.join(dir, "mega-cmd-server.executed")), false);
+
     console.log("PASS MegaQML fake-PATH Rust-to-QML static boundary: " + cases + " cases");
 } finally {
     fs.rmSync(dir, {recursive:true, force:true});

@@ -44,6 +44,7 @@ struct Request {
 #[serde(rename_all = "snake_case")]
 enum Operation {
     Detect,
+    ConnectPreflight,
     AuthBegin,
 }
 
@@ -372,6 +373,44 @@ fn handle_auth(request: Request) -> Response {
     }
 }
 
+// Explicit, non-vendor preflight: a separate typed opt-in operation. This
+// does not initiate an MEGA session, spawn vendor binaries or imply login.
+fn handle_connect_preflight(request: Request, path_env: Option<&str>) -> Response {
+    if request.params != json!({}) || request.secret.is_some() {
+        return auth_error(
+            request.request_id,
+            "validate",
+            "PREFLIGHT_INPUT_FORBIDDEN",
+            "not_dispatched",
+            "Connection readiness accepts no account details or credentials.",
+        );
+    }
+    let binaries = static_detection(path_env);
+    let shell = binaries.iter().any(|item| item.name == "mega-cmd" && item.executable);
+    let server = binaries.iter().any(|item| item.name == "mega-cmd-server" && item.executable);
+    Response {
+        protocol: PROTOCOL_VERSION,
+        request_id: request.request_id,
+        ok: true,
+        result: json!({
+            "adapter": "inir-mega",
+            "probe_kind": "static_connect_preflight",
+            "vendor_execution": "blocked_pending_disposable_qualification",
+            "connection_attempted": false,
+            "connected": false,
+            "auth_qualified": false,
+            "account_reads_enabled": false,
+            "dependencies_ready": shell && server,
+            "reason": if shell && server {
+                "installed_vendor_not_qualified"
+            } else {
+                "dependency_missing"
+            }
+        }),
+        error: None,
+    }
+}
+
 fn handle(request: Request) -> Response {
     if let Some(error) = validate_request(&request) {
         return Response {
@@ -413,6 +452,9 @@ fn handle(request: Request) -> Response {
                 }),
                 error: None,
             }
+        }
+        Operation::ConnectPreflight => {
+            handle_connect_preflight(request, env::var("PATH").ok().as_deref())
         }
         Operation::AuthBegin => handle_auth(request),
     }
@@ -610,6 +652,88 @@ mod tests {
         let error = response.error.unwrap();
         assert_eq!(error.kind, "MFA_INPUT_INVALID");
         assert_eq!(error.outcome, "not_dispatched");
+    }
+
+    #[test]
+    fn preflight_missing_does_not_start_vendor_or_advertise_live_read() {
+        let request = Request {
+            protocol: PROTOCOL_VERSION,
+            request_id: "preflight-1".into(),
+            operation: Operation::ConnectPreflight,
+            params: json!({}),
+            secret: None,
+        };
+        let response = handle_connect_preflight(request, Some(""));
+        assert!(response.ok);
+        assert_eq!(response.result["probe_kind"], "static_connect_preflight");
+        assert_eq!(response.result["dependencies_ready"], false);
+        assert_eq!(response.result["connected"], false);
+        assert_eq!(response.result["connection_attempted"], false);
+        assert_eq!(response.result["auth_qualified"], false);
+        assert_eq!(response.result["account_reads_enabled"], false);
+        assert_eq!(response.result["reason"], "dependency_missing");
+    }
+
+    #[test]
+    fn preflight_present_never_executes_fake_vendor() {
+        let root = env::temp_dir().join(format!(
+            "inir-mega-preflight-{}-{:?}", std::process::id(), std::thread::current().id()
+        ));
+        fs::create_dir_all(&root).unwrap();
+        let marker = root.join("vendor-executed");
+        for name in ["mega-cmd", "mega-cmd-server"] {
+            let file = root.join(name);
+            fs::write(&file, format!("#!/bin/sh\\ntouch '{}'\\n", marker.display())).unwrap();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let mut mode = fs::metadata(&file).unwrap().permissions();
+                mode.set_mode(0o700);
+                fs::set_permissions(&file, mode).unwrap();
+            }
+        }
+        let path = root.to_string_lossy().into_owned();
+        let response = handle_connect_preflight(Request {
+            protocol: PROTOCOL_VERSION,
+            request_id: "preflight-present".into(),
+            operation: Operation::ConnectPreflight,
+            params: json!({}),
+            secret: None,
+        }, Some(&path));
+        assert!(response.ok);
+        assert_eq!(response.result["dependencies_ready"], true);
+        assert_eq!(response.result["reason"], "installed_vendor_not_qualified");
+        assert_eq!(response.result["connected"], false);
+        assert_eq!(response.result["connection_attempted"], false);
+        assert!(!marker.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn preflight_rejects_secret_and_arbitrary_params_without_vendor() {
+        let response = handle_connect_preflight(Request {
+            protocol: PROTOCOL_VERSION,
+            request_id: "preflight-secret".into(),
+            operation: Operation::ConnectPreflight,
+            params: json!({}),
+            secret: Some(SecretInput {
+                password: Some("PRIVATE_TEST_CANARY".into()),
+                mfa_code: None,
+            }),
+        }, None);
+        assert!(!response.ok);
+        assert_eq!(response.error.unwrap().kind, "PREFLIGHT_INPUT_FORBIDDEN");
+        assert!(!serde_json::to_string(&response.result).unwrap().contains("PRIVATE_TEST_CANARY"));
+
+        let invalid = handle_connect_preflight(Request {
+            protocol: PROTOCOL_VERSION,
+            request_id: "preflight-params".into(),
+            operation: Operation::ConnectPreflight,
+            params: json!({"arbitrary_command": "mega-rm"}),
+            secret: None,
+        }, None);
+        assert!(!invalid.ok);
+        assert_eq!(invalid.error.unwrap().outcome, "not_dispatched");
     }
 
     #[test]

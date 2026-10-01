@@ -21,6 +21,7 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "f484789543a223c2972c99da8928c2064f9fbc95"
 SELF = "scripts/wull-manual-nested-pointer.py"
+INITIAL_SELF_BLOB = "1f86887e515045c65e33336f3df8ca80a0cc3e4c"
 CHILD = "scripts/wull-manual-pointer-child.py"
 NESTED_HELPER = "scripts/wull-manual-nested-niri.py"
 SAFE_REMOTES = {
@@ -34,7 +35,7 @@ SAFE_REMOTES = {
 # SHA-pinned implementation and real production interfaces. A changed
 # source dependency must be re-reviewed, never silently accepted as PASS.
 REVIEWED = {
-    CHILD: "b5e3d331fe75ff0cbad5bd75ab74acda3e5d9bee",
+    CHILD: "885ea99b8854d0804f73811ca170480bb1be2b2d",
     NESTED_HELPER: "7edf8328df1f9704f1331fbe1a5e84e659cd360a",
     "scripts/wull-fixtures/production-layer/shell.qml":
         "e16b6dcada26a27fd71cc670e30c55135401bcef",
@@ -94,8 +95,10 @@ def audit(source):
             raise RuntimeError("pointer_dependency_changed_after_review")
     revision = git("log", "--format=%H", BASE + ".." + source,
                    "--", SELF).splitlines()
-    if len(revision) != 1 or (
-            git("rev-parse", revision[0] + ":" + SELF)
+    if (len(revision) != 2
+            or git("rev-parse", revision[-1] + ":" + SELF)
+            != INITIAL_SELF_BLOB
+            or git("rev-parse", revision[0] + ":" + SELF)
             != git("rev-parse", source + ":" + SELF)):
         raise RuntimeError("unreviewed_pointer_coordinator_revision")
     # A Rust dependency change would invalidate the pre-run source review.
@@ -123,8 +126,8 @@ def native_layers(niri, socket_path):
         return None
 
 
-def stop_private_strays(private):
-    """Kill ONLY same-UID processes tied to this random private test path."""
+def private_strays(private):
+    """Enumerate only same-UID processes with this random private path in argv."""
     found = []
     stem = str(private.resolve()).encode()
     for entry in Path("/proc").iterdir():
@@ -133,19 +136,22 @@ def stop_private_strays(private):
         try:
             if entry.stat().st_uid != os.getuid():
                 continue
-            tokens = (entry / "cmdline").read_bytes().split(b"\0")
-            # Parent Python is NOT launched from this private path.
+            tokens = (entry / "cmdline").read_bytes().split(b"\\0")
             if any(stem in token for token in tokens):
                 found.append(int(entry.name))
         except (OSError, PermissionError):
             continue
-    for pid in found:
-        if pid != os.getpid():
-            try:
-                os.kill(pid, signal.SIGTERM)
-            except ProcessLookupError:
-                pass
-    return found
+    return [pid for pid in found if pid != os.getpid()]
+
+
+def stop_private_strays(private, force=False):
+    """Only touch verified owned private descendants; no group-ID guessing."""
+    for pid in private_strays(private):
+        try:
+            os.kill(pid, signal.SIGKILL if force else signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+
 
 
 def run_nested(niri, private, host_display, host_ipc, host_outputs):
@@ -155,7 +161,8 @@ def run_nested(niri, private, host_display, host_ipc, host_outputs):
         "child_exit_code": None, "child_result": "not_run",
         "child_reason": None, "child_checks": [],
         "nested_stopped": False, "host_outputs_unchanged": False,
-        "owned_private_strays": False
+        "owned_private_strays": False,
+        "forced_private_cleanup": False
     }
     private.mkdir(mode=0o700, parents=True)
     config = private / "nested.kdl"
@@ -275,7 +282,15 @@ def run_nested(niri, private, host_display, host_ipc, host_outputs):
         stop_owned(nested)
         trim_log(nested_log)
         trim_log(child_log)
-        stop_private_strays(private / "child")
+        child_dir = private / "child"
+        stop_private_strays(child_dir)
+        stray_deadline = time.monotonic() + 5
+        while private_strays(child_dir) and time.monotonic() < stray_deadline:
+            time.sleep(.20)
+        if private_strays(child_dir):
+            data["forced_private_cleanup"] = True
+            stop_private_strays(child_dir, force=True)
+            time.sleep(.4)
         if ipc:
             deadline = time.monotonic() + 5
             while time.monotonic() < deadline and alive_ipc(ipc):
@@ -284,7 +299,7 @@ def run_nested(niri, private, host_display, host_ipc, host_outputs):
         else:
             data["nested_stopped"] = nested is None or nested.poll() is not None
         data["host_outputs_unchanged"] = inventory(niri, host_ipc) == host_outputs
-        data["owned_private_strays"] = bool(stop_private_strays(private / "child"))
+        data["owned_private_strays"] = bool(private_strays(private / "child"))
 
 
 def publish(report, path):

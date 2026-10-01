@@ -290,7 +290,16 @@ assert 'fixture_ui_kind=shared' in quickshell_runner
 assert 'MEGAQML_FIXTURE_CASE=shared-race' in quickshell_runner
 assert 'race_stale_reply' in quickshell_classifier
 assert 'MEGAQML_QS_RACE_STAGE_STALE_REPLY' in classifier_test
-race_diagnostics = get("scripts/megaqml-fixtures/runtime-ui-race/shell.qml")
+race_diagnostics = get("scripts/megaqml-fixtures/runtime-ui-race/RaceStageGuard.js")
+race_unit = get("scripts/test-megaqml-race-stage-guard.mjs")
+assert 'import "./RaceStageGuard.js" as RaceStageGuard' in get(
+    "scripts/megaqml-fixtures/runtime-ui-race/shell.qml")
+assert 'RaceStageGuard.stageTwo(' in get(
+    "scripts/megaqml-fixtures/runtime-ui-race/shell.qml")
+assert 'cp -- scripts/megaqml-fixtures/runtime-ui-race/RaceStageGuard.js' in quickshell_runner
+assert 'THIRD_FINISHED' in race_unit and 'STALE_SNAPSHOT' in race_unit
+assert 'node scripts/test-megaqml-race-stage-guard.mjs' in get(
+    "scripts/test-megaqml-phase2p-contracts.sh")
 for cause in ("installed", "lease", "unavailable", "snapshot"):
     assert '"race_stale_' + cause + '"' in quickshell_classifier
     assert 'MEGAQML_QS_RACE_STAGE_STALE_' + cause.upper() in classifier_test
@@ -327,7 +336,7 @@ assert 'root.materialComponent.createObject(' in race_ui
 assert 'root.waffleComponent.createObject(' in race_ui
 for marker in ('"FIRST_START"', '"HIDE_ONE"', '"QUEUE"',
                '"SECOND_START"', '"LAST_RELEASE"', '"REACQUIRE"',
-               '"STALE_REPLY"', '"THIRD_RESULT"', '"FINAL_RELEASE"', '"TIMEOUT"'):
+               '"THIRD_RESULT"', '"FINAL_RELEASE"', '"TIMEOUT"'):
     assert marker in race_ui
 assert 'svc.requestSerial !== 3' in race_ui
 assert 'svc.generation !== beforeRelease + 1' in race_ui

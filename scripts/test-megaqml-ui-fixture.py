@@ -22,7 +22,8 @@ def write(path, source):
         raise SystemExit(66)
     target.write_text(source, encoding="utf-8")
 
-for name in ("CloudStorageService.qml", "CloudStorageStaticProtocol.js"):
+for name in ("CloudStorageService.qml", "CloudStorageStaticProtocol.js",
+             "CloudStoragePreflightProtocol.js"):
     source = repo / "services/deferred" / name
     write("services/deferred/" + name, source.read_text(encoding="utf-8"))
 write("services/deferred/qmldir",

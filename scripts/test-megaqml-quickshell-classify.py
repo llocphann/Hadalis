@@ -8,7 +8,7 @@ if len(sys.argv) != 4 or sys.argv[3] not in ("baseline", "dormant", "active-pres
                                                      "active-malformed", "active-exit-failure", "active-hang",
                                                      "refresh-coalesce", "refresh-stale-reacquire",
                                                      "recovery-exit", "recovery-timeout",
-                                                     "ui-material", "ui-waffle", "ui-shared", "ui-race"):
+                                                     "ui-material", "ui-waffle", "ui-shared", "ui-race", "ui-host"):
     raise SystemExit(64)
 raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
                 for p in sys.argv[1:3]).lower()
@@ -18,6 +18,25 @@ raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
 # Never echo Qt's original error string or local file paths.
 # Shared-page lifecycle labels are emitted only by the reviewed isolated
 # fixture. Never publish raw Qt errors, temporary paths or private data.
+host_stages = (
+    ("preflight", "host_preflight"),
+    ("host_load", "host_load"),
+    ("host_create", "host_create"),
+    ("host_error", "host_error"),
+    ("dormant", "host_dormant"),
+    ("first_page", "host_first_page"),
+    ("first_result", "host_first_result"),
+    ("hide_page", "host_hide_page"),
+    ("revisit_cache", "host_revisit_cache"),
+    ("second_result", "host_second_result"),
+    ("host_reset", "host_reset"),
+    ("reopen", "host_reopen"),
+    ("third_result", "host_third_result"),
+    ("final_release", "host_final_release"),
+    ("timeout", "host_timeout"),
+)
+matched_host_stage = next((category for token, category in host_stages
+                           if "megaqml_qs_host_stage_" + token in raw), None)
 race_stages = (
     ("preflight", "race_preflight"),
     ("load", "race_load"),
@@ -121,7 +140,11 @@ ui_stages = (
 )
 matched_ui_stage = next((category for token, category in ui_stages
                          if "megaqml_qs_ui_stage_" + token in raw), None)
-if matched_race_stage is not None:
+if matched_host_stage is not None:
+    kind = matched_host_stage
+elif "megaqml_qs_host_invalid" in raw:
+    kind = "unexpected_host_state"
+elif matched_race_stage is not None:
     kind = matched_race_stage
 elif "megaqml_qs_race_invalid" in raw:
     kind = "unexpected_race_state"
@@ -172,6 +195,7 @@ elif any(token in raw for token in ("megaqml_qs_active_present_ok",
                                   "megaqml_qs_ui_waffle_ok",
                                   "megaqml_qs_ui_shared_ok",
                                   "megaqml_qs_ui_race_ok",
+                                  "megaqml_qs_ui_host_ok",
                                   "megaqml_qs_dormant_ok",
                                   "megaqml_qs_baseline_ok")):
     kind = "sentinel_seen_nonzero_exit"

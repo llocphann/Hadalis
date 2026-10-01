@@ -2,7 +2,7 @@
 # Manual one-shot, no vendor calls, no background service, no user config access.
 set -euo pipefail
 umask 077
-case "${1:-}" in baseline|dormant|active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang|refresh-coalesce|refresh-stale-reacquire|recovery-exit|recovery-timeout|ui-material|ui-waffle|ui-shared|ui-race) kind="$1" ;; *) exit 64 ;; esac
+case "${1:-}" in baseline|dormant|active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang|refresh-coalesce|refresh-stale-reacquire|recovery-exit|recovery-timeout|ui-material|ui-waffle|ui-shared|ui-race|ui-host) kind="$1" ;; *) exit 64 ;; esac
 cd "$(git rev-parse --show-toplevel)"
 qs_bin=""
 if command -v qs >/dev/null 2>&1; then qs_bin="$(command -v qs)"
@@ -32,7 +32,7 @@ mkdir -p "$fixture_dir/services"
 # only via the synthetic MEGAQML_FIXTURE_CASE environment variable.
 fixture_kind="${kind%%-*}"
 source_fixture="scripts/megaqml-fixtures/runtime-$fixture_kind/shell.qml"
-if [[ "$kind" == ui-shared || "$kind" == ui-race ]]; then
+if [[ "$kind" == ui-shared || "$kind" == ui-race || "$kind" == ui-host ]]; then
   source_fixture="scripts/megaqml-fixtures/runtime-$kind/shell.qml"
 fi
 if [[ ! -f "$source_fixture" ]]; then
@@ -45,7 +45,11 @@ if [[ "$kind" == ui-* ]]; then
   # visual dependencies are synthetic stubs. No production dispatcher.
   fixture_ui_kind="${kind#ui-}"
   if [[ "$fixture_ui_kind" == race ]]; then fixture_ui_kind=shared; fi
-  "$safe_python" scripts/test-megaqml-ui-fixture.py "$fixture_ui_kind" "$fixture_dir" >/dev/null
+  if [[ "$kind" == ui-host ]]; then
+    "$safe_python" scripts/test-megaqml-host-ui-fixture.py "$fixture_dir" >/dev/null
+  else
+    "$safe_python" scripts/test-megaqml-ui-fixture.py "$fixture_ui_kind" "$fixture_dir" >/dev/null
+  fi
 fi
 if [[ "$kind" == dormant || "$kind" == active-* || "$kind" == refresh-* || "$kind" == recovery-* ]]; then
   cp -- services/deferred/CloudStorageService.qml "$fixture_dir/services/CloudStorageService.qml"
@@ -54,7 +58,7 @@ if [[ "$kind" == dormant || "$kind" == active-* || "$kind" == refresh-* || "$kin
 fi
 test ! -e "$fixture_dir/scripts/native-dispatch" || exit 75
 case "$kind" in
-  active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang|refresh-coalesce|refresh-stale-reacquire|recovery-exit|recovery-timeout|ui-material|ui-waffle|ui-shared|ui-race)
+  active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang|refresh-coalesce|refresh-stale-reacquire|recovery-exit|recovery-timeout|ui-material|ui-waffle|ui-shared|ui-race|ui-host)
     mkdir -p "$fixture_dir/scripts" "$work/allowed-bin"
     cp -- scripts/megaqml-fixtures/fake-static-dispatch.py "$fixture_dir/scripts/native-dispatch"
     chmod 700 "$fixture_dir/scripts/native-dispatch"
@@ -94,6 +98,7 @@ if "$safe_timeout" --kill-after=2s 12s "$qs_bin" --path "$fixture_dir/shell.qml"
     ui-waffle) marker=MEGAQML_QS_UI_WAFFLE_OK ;;
     ui-shared) marker=MEGAQML_QS_UI_SHARED_OK ;;
     ui-race) marker=MEGAQML_QS_UI_RACE_OK ;;
+    ui-host) marker=MEGAQML_QS_UI_HOST_OK ;;
   esac
   if "$safe_grep" -Fq "$marker" "$work/stdout" "$work/stderr"; then
     echo "PASS isolated Quickshell $kind smoke"

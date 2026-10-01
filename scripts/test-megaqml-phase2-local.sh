@@ -187,7 +187,7 @@ report="docs/evidence/megaqml/phase2p-${source_sha:0:12}-$(date -u +%Y%m%dT%H%M%
 mkdir -p docs/evidence/megaqml
 {
   printf '# MegaQML Phase 2p repeated synthetic race evidence\n\nSource SHA: `%s`\n\n' "$source_sha"
-  printf 'Scope: Phase 2o regression, eight independent fake-only Quickshell race attempts, a strictly verified source/evidence ancestry guard, and BOTH real copied-page manual preflight/replay and a separate six-second fake preflight timeout/reaping scenario inside quickshell_ui_shared. A single failed attempt fails the matrix. No full Hadalis UI or real vendor, account or mutation actions.\n\n'
+  printf 'Scope: Phase 2o regression, eight independent fake-only Quickshell race attempts, a strictly verified source/evidence ancestry guard, and four independently required real copied-page fake-only flows inside quickshell_ui_shared: manual Material/Waffle button + wrong-ID replay rejection, six-second preflight timeout/reaping, final-lease cancellation + clean Waffle reopening, and fake-installed readiness on both pages without connection/auth. A single failed attempt fails the matrix. No full Hadalis UI or real vendor, account or mutation actions.\n\n'
   printf 'qt_formatter_selection=%s;version_major_minor=%s\n\n' "$qt_formatter_selection" "$qt_public_version"
   printf '| Test | Result | Exit code | Source SHA |\n|---|---|---:|---|\n'
   while IFS=, read -r name state code sha; do

@@ -35,6 +35,18 @@ ShellRoot {
             && !snap.login && !snap.whoami && !snap.version
             && !svc.connected && !svc.liveAuthQualified && svc.safeError === ""
     }
+    function offlineControl(node) {
+        if (!node) return null
+        if (node.buttonText === "Check connection readiness (offline)")
+            return node
+        const children = node.children
+        if (!children) return null
+        for (let i = 0; i < children.length; i++) {
+            const found = root.offlineControl(children[i])
+            if (found) return found
+        }
+        return null
+    }
     Timer {
         interval: 55
         repeat: true
@@ -110,6 +122,37 @@ ShellRoot {
                     return
                 }
                 if (!root.missing(svc, 1)) return
+                if (!root.cachedCloud.setSection("overview")
+                        || root.cachedCloud.activeSection !== "overview"
+                        || svc.preflightSerial !== 0
+                        || svc.preflightState !== "not_requested") {
+                    root.fail("PREFLIGHT_BUTTON")
+                    return
+                }
+                const button = root.offlineControl(root.cachedCloud)
+                if (!button || !button.visible || !button.enabled
+                        || typeof button.clicked !== "function") {
+                    root.fail("PREFLIGHT_BUTTON")
+                    return
+                }
+                button.clicked()
+                if (svc.preflightSerial !== 1 || !svc.preflightBusy
+                        || svc.preflightState !== "checking"
+                        || !root.missing(svc, 1)) {
+                    root.fail("PREFLIGHT_BUTTON")
+                    return
+                }
+                root.stage = 10
+                return
+            }
+            if (root.stage === 10) {
+                if (svc.preflightState === "checking") return
+                if (svc.preflightBusy || svc.preflightSerial !== 1
+                        || svc.preflightState !== "dependency_missing"
+                        || svc.preflightError !== "" || !root.missing(svc, 1)) {
+                    root.fail("PREFLIGHT_RESULT")
+                    return
+                }
                 root.host.requestedIndex = 0
                 root.stage = 4
                 return
@@ -118,7 +161,10 @@ ShellRoot {
                 if (root.host.currentIndex !== 0 || !root.host.currentItem
                         || root.host.loading) return
                 if (root.cachedCloud.leaseHeld || svc.consumerCount !== 0
-                        || svc.backendState !== "stale") {
+                        || svc.backendState !== "stale"
+                        || svc.preflightBusy || svc.preflightSerial !== 1
+                        || svc.preflightState !== "not_requested"
+                        || svc.preflightError !== "") {
                     root.fail("HIDE_PAGE")
                     return
                 }
@@ -131,7 +177,9 @@ ShellRoot {
                         || root.host.loading) return
                 if (root.host.currentItem !== root.cachedCloud
                         || !root.cachedCloud.leaseHeld || svc.consumerCount !== 1
-                        || svc.requestSerial !== 2) {
+                        || svc.requestSerial !== 2
+                        || svc.preflightSerial !== 1
+                        || svc.preflightState !== "not_requested") {
                     root.fail("REVISIT_CACHE")
                     return
                 }
@@ -144,6 +192,35 @@ ShellRoot {
                     return
                 }
                 if (!root.missing(svc, 2)) return
+                if (svc.preflightSerial !== 1 || svc.preflightBusy
+                        || svc.preflightState !== "not_requested") {
+                    root.fail("PREFLIGHT_REVISIT")
+                    return
+                }
+                const cachedButton = root.offlineControl(root.cachedCloud)
+                if (!cachedButton || !cachedButton.visible || !cachedButton.enabled
+                        || typeof cachedButton.clicked !== "function") {
+                    root.fail("PREFLIGHT_REVISIT")
+                    return
+                }
+                cachedButton.clicked()
+                if (svc.preflightSerial !== 2 || !svc.preflightBusy
+                        || svc.preflightState !== "checking"
+                        || !root.missing(svc, 2)) {
+                    root.fail("PREFLIGHT_REVISIT")
+                    return
+                }
+                root.stage = 11
+                return
+            }
+            if (root.stage === 11) {
+                if (svc.preflightState === "checking") return
+                if (svc.preflightBusy || svc.preflightSerial !== 2
+                        || svc.preflightState !== "dependency_missing"
+                        || svc.preflightError !== "" || !root.missing(svc, 2)) {
+                    root.fail("PREFLIGHT_RESULT")
+                    return
+                }
                 root.host.loadEnabled = false
                 root.stage = 7
                 return
@@ -151,7 +228,10 @@ ShellRoot {
             if (root.stage === 7) {
                 if (svc.consumerCount !== 0
                         || svc.backendState !== "stale"
-                        || root.host.currentIndex !== -1) {
+                        || root.host.currentIndex !== -1
+                        || svc.preflightSerial !== 2
+                        || svc.preflightState !== "not_requested"
+                        || svc.preflightBusy) {
                     root.fail("HOST_RESET")
                     return
                 }
@@ -164,7 +244,9 @@ ShellRoot {
                 if (root.host.currentIndex !== 1 || !root.host.currentItem
                         || root.host.loading) return
                 if (!root.host.currentItem.leaseHeld
-                        || svc.consumerCount !== 1 || svc.requestSerial !== 3) {
+                        || svc.consumerCount !== 1 || svc.requestSerial !== 3
+                        || svc.preflightSerial !== 2
+                        || svc.preflightState !== "not_requested") {
                     root.fail("REOPEN")
                     return
                 }
@@ -177,6 +259,13 @@ ShellRoot {
                     return
                 }
                 if (!root.missing(svc, 3)) return
+                if (svc.preflightSerial !== 2 || svc.preflightBusy
+                        || svc.preflightState !== "not_requested"
+                        || svc.preflightError !== "" || svc.connected
+                        || svc.liveAuthQualified) {
+                    root.fail("PREFLIGHT_REOPEN")
+                    return
+                }
                 root.host.loadEnabled = false
                 if (svc.consumerCount !== 0 || svc.backendState !== "stale") {
                     root.fail("FINAL_RELEASE")

@@ -49,9 +49,11 @@ Item {
         enabled: root.interactive
         opacity: root.reveal
         rotation: root.edge === "left" ? 90 : root.edge === "right" ? -90 : root.edge === "bottom" ? 180 : 0
-        transformOrigin: Item.Bottom
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
+        // Centered bounds contain the rotated clickable body for all four
+        // output edges. Verified in the offscreen four-edge prototype; keep
+        // compositor input-mask changes as a separate qualification gate.
+        transformOrigin: Item.Center
+        anchors.centerIn: parent
         onPressed: root.activated()
     }
 

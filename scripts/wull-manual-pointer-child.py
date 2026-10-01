@@ -353,10 +353,14 @@ def main():
     original_geometry = output_geometry_signature(
         niri_json(niri, "outputs"), output)
     selected_mode = os.environ.get("WULL_PRIVATE_POINTER_MODE", "")
-    if selected_mode not in ("", "candidate-mask", "candidate-mask-bottom"):
+    if selected_mode not in (
+            "", "candidate-mask", "candidate-mask-bottom",
+            "candidate-mask-right"):
         stop("unreviewed_pointer_probe_mode")
     candidate_mode = selected_mode != ""
-    selected_edge = "bottom" if selected_mode == "candidate-mask-bottom" else "top"
+    selected_edge = (
+        "bottom" if selected_mode == "candidate-mask-bottom" else
+        "right" if selected_mode == "candidate-mask-right" else "top")
     helper = __import__("runpy").run_path(
         str(ROOT / "scripts/wull-pointer-targets.py"),
         run_name="wull_pointer_child_only")

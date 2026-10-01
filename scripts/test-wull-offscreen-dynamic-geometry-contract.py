@@ -211,7 +211,7 @@ for mutation in (
     assert safe["status"] == "inconclusive"
 
 for mutation in (
-    lambda data: data.update(status="pass", reason=None),
+    lambda data: data.update(status="inconclusive", reason=None),
     lambda data: data.update(global_spring_extrema_proven=True),
     lambda data: data.update(native_backend_traces="pass"),
     lambda data: data.update(wayland_pointer_hover="pass"),

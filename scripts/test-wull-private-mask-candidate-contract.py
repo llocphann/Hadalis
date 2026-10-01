@@ -107,17 +107,37 @@ with tempfile.TemporaryDirectory(prefix="wull-candidate-inert-") as tmp:
     assert right_env["QT_QPA_PLATFORM"] == "wayland"
     assert perimeter_path.read_text(encoding="utf-8") == original
 
+    # Left must independently stage the SAME guarded private vertical BBOX.
+    left_config = __import__("json").loads(
+        (ROOT / "defaults/config.json").read_text())
+    left_config["abyss"]["companion"].update({
+        "enabled": True, "interactive": True, "edge": "left", "size": 1})
+    left_shell, left_env = child["phase_config"](
+        folder / "candidate-left", child["PRODUCTION"], "candidate-left",
+        left_config, candidate_mask=True)
+    left_mask = left_shell / "modules/abyss/AbyssPerimeter.qml"
+    assert left_mask.is_file() and not left_mask.is_symlink()
+    assert left_mask.read_text() == right_mask.read_text()
+    assert 'verticalCandidate ? 92 : 76' in left_mask.read_text()
+    left_config_path = folder / "candidate-left/xdg/config/illogical-impulse/config.json"
+    assert __import__("json").loads(
+        left_config_path.read_text())["abyss"]["companion"]["edge"] == "left"
+    assert left_env["QT_QPA_PLATFORM"] == "wayland"
+    assert perimeter_path.read_text(encoding="utf-8") == original
+
 assert parent["REVIEWED"]["scripts/wull-private-mask-candidate.py"] == (
     "91049b2ca2beb7b1936af624adca5133d251ea3c")
 assert parent["REVIEWED"]["scripts/wull-manual-pointer-child.py"] == (
-    "071f4eb257a52d2a35e8d06962ab9dfe6c90f802")
+    "c099fc6a1a62b06218d69dd3ec526df18de701db")
 source_parent = PARENT.read_text(encoding="utf-8")
 source_child = CHILD.read_text(encoding="utf-8")
 for marker in (
     '--acknowledge-nested-pointer-candidate',
     '--acknowledge-nested-pointer-candidate-bottom',
     '--acknowledge-nested-pointer-candidate-right',
+    '--acknowledge-nested-pointer-candidate-left',
     '"wull-mask-right-"',
+    '"wull-mask-left-"',
     '"wull-mask-bottom-"',
     'candidate_mode=candidate_mode',
     '"private_candidate_mask_tested"',
@@ -138,6 +158,7 @@ for marker in (
     '"WULL_PRIVATE_POINTER_MODE"',
     '"candidate-mask-bottom"',
     '"candidate-mask-right"',
+    '"candidate-mask-left"',
     'helper["all_edge_targets"]',
 ):
     assert marker in source_child or marker in source_parent, marker

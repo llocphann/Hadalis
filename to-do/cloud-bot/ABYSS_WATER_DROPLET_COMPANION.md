@@ -662,3 +662,53 @@ This task is complete only when all of the following are true:
   untouched; global canonical, physical other-edge input,
   multioutput/hotplug, visual quality and long-running shell
   resource qualification remain separate.
+
+
+## Checkpoint — 2026-10-01 first real pointer matrix failure and coordinate-qualified rerun
+
+- Latest exact-source **real** nested pointer receipt:
+  `docs/wull-pointer-acceptance-20261001T161301Z-8af536c9-115ab32a9825.json`
+  on `115ab32a98251453edc76c84bdc8558068186aab`
+  has overall **FAILED** status. One compositor-owned nested output
+  and private source-built real Rust backend were verified; disabled
+  candidate-center underlay control and enabled exterior underlay
+  control both passed **by event counts**. The enabled candidate
+  body-center click was instead observed by the full-output
+  underlay (`underlay_not_clicked=false`), with zero real bridge
+  click marker and zero real Rust reaction. Production layer, underlay,
+  private daemon and nested compositor cleanup all passed, and host
+  output count stayed unchanged. **Critical evidence limitation**:
+  event counts do not prove that the native pointer actually moved
+  to the requested candidate coordinates. Do not label this proven
+  production input-mask failure or narrow the Region yet.
+- Source-only follow-up
+  `a83f630f7f4bdc73953bc75b7b14b888e6544219` adds bounded
+  actual underlay-event coordinate verification to the private
+  child: disabled-center and enabled-exterior now must produce
+  exactly one matched left-click within six logical pixels of
+  their requested point; the enabled-body underlay event is
+  independently tested for positional alignment. Wrong/missing
+  or ambiguous positions are **INCONCLUSIVE**, not production
+  regressions. Only allow further mask/host analysis once
+  underlay coordinates corroborate the target. Raw locations
+  remain local private logs, while sanitized reports publish
+  bounded alignment labels only. `a784b3db6157d4c05368fee0ec79925a1a51f468`
+  re-reviews/pins the exact child and increments the coordinator's
+  self guard; `03d237620ada9dd170d31163ef6081bd40a66042`
+  adds a synthetic inert-parser contract and updated pins.
+  The technical investigation is in
+  `docs/WULL_NESTED_POINTER_ACCEPTANCE_DESIGN.md`
+  (updated `e4553da088fa1bdde5b2c0991f26ff835f6fb96e`).
+- Await **one clean exact-SHA local grouped run** of the three
+  inert contracts and the explicit owned nested pointer runner
+  using the now-available already-installed native CLI. If the
+  next pointer receipt shows both controls aligned but the
+  enabled body underlay aligned too, investigate **runtime host
+  visibility/activation versus compositor input mask** with a
+  separate, read-only or test-only fixture before editing
+  production. If coordinates are off target, diagnose native
+  pixel-vs-logical-output mapping instead of changing Wull.
+  Full canonical, visual/animation signoff, physical four-edge
+  pointer and multioutput/hotplug, resource long-run and
+  reload/suspend remain unqualified. Stable and production
+  input mask/default-off remain unchanged.

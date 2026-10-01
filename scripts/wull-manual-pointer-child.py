@@ -46,6 +46,24 @@ def niri_json(niri, command):
     return body
 
 
+def output_geometry_signature(outputs, name):
+    """Strict single-output logical geometry/scale identity, never publish raw."""
+    if not isinstance(outputs, dict) or len(outputs) != 1 or name not in outputs:
+        stop("nested_output_topology_changed_before_injection")
+    current = outputs[name]
+    if not isinstance(current, dict) or not isinstance(current.get("logical"), dict):
+        stop("nested_output_geometry_unavailable_before_injection")
+    logical = current["logical"]
+    fields = ("x", "y", "width", "height")
+    if any(type(logical.get(field)) is not int for field in fields):
+        stop("nested_output_geometry_unavailable_before_injection")
+    if not (logical["x"] == logical["y"] == 0
+            and logical["width"] >= 480 and logical["height"] >= 240):
+        stop("nested_output_geometry_invalid_before_injection")
+    return (tuple(logical[field] for field in fields),
+            current.get("scale"), current.get("current_mode"))
+
+
 def namespaced(layers, name):
     return [x for x in layers if isinstance(x, dict)
             and x.get("namespace") == name]
@@ -332,6 +350,8 @@ def main():
     if not all((niri, qs, dbus, cargo)):
         stop("required_nested_test_dependency_unavailable")
     output, width, height = verify_isolation(niri)
+    original_geometry = output_geometry_signature(
+        niri_json(niri, "outputs"), output)
     selected_mode = os.environ.get("WULL_PRIVATE_POINTER_MODE", "")
     if selected_mode not in ("", "candidate-mask", "candidate-mask-bottom"):
         stop("unreviewed_pointer_probe_mode")
@@ -419,6 +439,8 @@ def main():
                                 / os.environ["WAYLAND_DISPLAY"]).is_socket()
                         or output not in verify_live):
                     stop("nested_identity_lost_before_injection")
+                if output_geometry_signature(verify_live, output) != original_geometry:
+                    stop("nested_output_geometry_changed_before_injection")
                 result = run(command, env, 6)
                 if result.returncode:
                     stop("native_virtual_pointer_command_unavailable")
@@ -592,6 +614,28 @@ def main():
                     and not relay_pids(private_relay), 6):
                 report["status"] = "failed"
                 report["reason"] = "baseline_to_candidate_cleanup_unproven"
+                return
+            # The additional post-unmap witness shares the SAME requested
+            # exterior point with the baseline and upcoming candidate.
+            # Its observed event discriminates pointer drift that started
+            # before the private candidate's new layer was mapped.
+            before = underlay_count()
+            try:
+                inject(points["outside_host_control"])
+            except RuntimeError as e:
+                report["status"] = "inconclusive"
+                report["reason"] = str(e)
+                return
+            after_unmap = underlay_target_status(
+                underlay_log, before, points["outside_host_control"])
+            report["checks"].append({
+                "case": "after_baseline_unmap_exterior_underlay_control",
+                "status": "pass" if after_unmap == "matched"
+                          else "inconclusive",
+                "target_alignment": after_unmap})
+            if after_unmap != "matched":
+                report["status"] = "inconclusive"
+                report["reason"] = "post_baseline_unmap_pointer_target_unverified"
                 return
             candidate_trace = folder / "candidate-relay.private.jsonl"
             enabled_proc = start_production(

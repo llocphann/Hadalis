@@ -37,7 +37,8 @@ write("services/Appearance.qml",
       "pragma Singleton\nimport QtQuick\nQtObject {"
       " readonly property QtObject colors: QtObject {"
       " property color colOnSurface: \"white\";"
-      " property color colSubtext: \"gray\""
+      " property color colSubtext: \"gray\";"
+      " property color colOnLayer0: \"white\""
       " } }\n")
 
 stub = {
@@ -47,6 +48,7 @@ stub = {
     "modules/common/widgets/SettingsTaskNavigator.qml":
         "import QtQuick\nItem { property bool showIntro: true;"
         " property string currentValue: \"\"; property var options: [];"
+        " property bool highContrastSelection: false;"
         " signal selected(var value) }\n",
     "modules/common/widgets/SettingsCardSection.qml":
         "import QtQuick\nItem { property bool expanded: false;"
@@ -62,8 +64,12 @@ stub = {
     "modules/common/widgets/StyledText.qml":
         "import QtQuick\nText {}\n",
     "modules/common/widgets/RippleButton.qml":
-        "import QtQuick\nItem { property string buttonText: \"\";"
+        "import QtQuick\nimport QtQuick.Controls\n"
+        "Control { property string buttonText: \"\";"
         " signal clicked() }\n",
+    "modules/common/widgets/MaterialSymbol.qml":
+        "import QtQuick\nItem { property string text: \"\";"
+        " property int iconSize: 16; property color color: \"white\" }\n",
     "modules/waffle/settings/WSettingsPage.qml":
         "import QtQuick\nItem { property int settingsPageIndex: -1;"
         " property string pageTitle: \"\"; property string pageIcon: \"\";"
@@ -86,6 +92,8 @@ stub = {
     "modules/waffle/settings/WSettingsButton.qml":
         "import QtQuick\nItem { property string label: \"\";"
         " property string icon: \"\"; property string buttonText: \"\";"
+        " property string buttonIcon: \"\";"
+        " property string accessibleButtonName: \"\";"
         " signal buttonClicked() }\n",
 }
 for path, contents in stub.items():

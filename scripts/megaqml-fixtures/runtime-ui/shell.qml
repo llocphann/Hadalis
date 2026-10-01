@@ -9,6 +9,8 @@ ShellRoot {
     id: root
     readonly property string kind: String(Quickshell.env("MEGAQML_UI_KIND"))
     property var page: null
+    property var component: null
+    property real componentStarted: 0
     property real started: 0
     Timer {
         interval: 75
@@ -17,6 +19,7 @@ ShellRoot {
         onTriggered: {
             const svc = Deferred.CloudStorageService
             if (root.kind !== "material" && root.kind !== "waffle") {
+                console.log("MEGAQML_QS_UI_STAGE_SCENARIO")
                 console.log("MEGAQML_QS_UI_INVALID")
                 Qt.quit()
                 return
@@ -24,6 +27,7 @@ ShellRoot {
             if (root.page === null) {
                 if (svc.consumerCount !== 0 || svc.requestSerial !== 0
                         || svc.backendState !== "not_checked") {
+                    console.log("MEGAQML_QS_UI_STAGE_PREFLIGHT")
                     console.log("MEGAQML_QS_UI_INVALID")
                     Qt.quit()
                     return
@@ -31,14 +35,23 @@ ShellRoot {
                 const location = root.kind === "material"
                     ? "modules/settings/CloudStorageConfig.qml"
                     : "modules/waffle/settings/pages/WCloudStoragePage.qml"
-                const component = Qt.createComponent(location)
-                if (component.status !== Component.Ready) {
+                // QML can load a component asynchronously. Keep the same
+                // component instance; never spawn a second service or page.
+                if (root.component === null) {
+                    root.componentStarted = Date.now()
+                    root.component = Qt.createComponent(Qt.resolvedUrl(location))
+                }
+                if (root.component && root.component.status === Component.Loading
+                        && Date.now() - root.componentStarted < 3000) return
+                if (!root.component || root.component.status !== Component.Ready) {
+                    console.log("MEGAQML_QS_UI_STAGE_COMPONENT")
                     console.log("MEGAQML_QS_UI_INVALID")
                     Qt.quit()
                     return
                 }
-                const page = component.createObject(null, { visible: false, width: 1024 })
+                const page = root.component.createObject(null, { visible: false, width: 1024 })
                 if (!page) {
+                    console.log("MEGAQML_QS_UI_STAGE_CONSTRUCT")
                     console.log("MEGAQML_QS_UI_INVALID")
                     Qt.quit()
                     return
@@ -55,6 +68,7 @@ ShellRoot {
                         || !page.activateSettingsSearchSection("overview")
                         || page.activeSection !== "overview"
                         || svc.consumerCount !== 0 || svc.requestSerial !== 0) {
+                    console.log("MEGAQML_QS_UI_STAGE_NAVIGATION")
                     console.log("MEGAQML_QS_UI_INVALID")
                     page.destroy()
                     Qt.quit()
@@ -80,6 +94,8 @@ ShellRoot {
                     && svc.backendState === "stale"
                 root.page.destroy()
                 root.page = null
+                if (!valid) console.log("MEGAQML_QS_UI_STAGE_DETECTION")
+                else if (!released) console.log("MEGAQML_QS_UI_STAGE_RELEASE")
                 console.log(valid && released
                     ? (root.kind === "material"
                         ? "MEGAQML_QS_UI_MATERIAL_OK"
@@ -88,6 +104,7 @@ ShellRoot {
                 Qt.quit()
             } else if (Date.now() - root.started >= 5250
                     || svc.backendState === "unavailable") {
+                console.log("MEGAQML_QS_UI_STAGE_DEADLINE")
                 console.log("MEGAQML_QS_UI_INVALID")
                 root.page.visible = false
                 root.page.destroy()

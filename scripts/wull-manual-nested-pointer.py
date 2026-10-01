@@ -95,7 +95,7 @@ def audit(source):
             raise RuntimeError("pointer_dependency_changed_after_review")
     revision = git("log", "--format=%H", BASE + ".." + source,
                    "--", SELF).splitlines()
-    if (len(revision) != 8
+    if (len(revision) != 9
             or git("rev-parse", revision[-1] + ":" + SELF)
             != INITIAL_SELF_BLOB
             or git("rev-parse", revision[0] + ":" + SELF)
@@ -279,7 +279,8 @@ def run_nested(niri, private, host_display, host_ipc, host_outputs):
                 data["child_checks"] = raw.get("checks", [])
                 for item in ("nested_verified", "underlay_unmapped",
                              "production_unmapped", "private_daemon_stopped",
-                             "real_rust_binary_built", "whole_host_mask_changed"):
+                             "real_rust_binary_built", "whole_host_mask_changed",
+                             "injection_backend"):
                     data[item] = raw.get(item)
             except (ValueError, KeyError, TypeError):
                 data["child_reason"] = "child_summary_unreadable"
@@ -428,7 +429,9 @@ def main():
         "preflight_reason": reason,
         "scope": "owned_single_output_nested_niri_real_production_pointer",
         "observation": observations,
-        "native_pointer_backend": "native_wlr_protocol_only_if_available",
+        "native_pointer_backend": (
+            observations.get("injection_backend", "unavailable_or_unverified")
+            if observations else "unavailable_or_unverified"),
         "host_user_config_changed": False,
         "production_mask_changed": False,
         "visual_and_multioutput_acceptance": "not_run",

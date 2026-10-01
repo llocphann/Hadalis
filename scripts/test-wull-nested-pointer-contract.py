@@ -45,6 +45,8 @@ for marker in (
     'nested_path.parent != runtime',
     'outputs[0][1].get("x") != 0',
     'outputs[0][1].get("y") != 0',
+    'no_keyboard_focus',
+    '/ os.environ["WAYLAND_DISPLAY"]).is_socket()',
     'namespaced(niri_json(niri, "layers"), "hadalis:abyss-perimeter")',
     '"NIRI_SOCKET"',
     '"WAYLAND_DISPLAY"',
@@ -76,7 +78,7 @@ parent = runpy.run_path(str(ROOT / "scripts/wull-manual-nested-pointer.py"),
 child = runpy.run_path(str(ROOT / "scripts/wull-manual-pointer-child.py"),
                        run_name="wull_pointer_inert_child")
 assert parent["REVIEWED"]["scripts/wull-manual-pointer-child.py"] == (
-    "885ea99b8854d0804f73811ca170480bb1be2b2d")
+    "bfed36f31cd9f34fd3f180581eb90377dce7ce16")
 assert parent["REVIEWED"]["scripts/wull-fixtures/pointer-underlay/companion-relay.py"] == (
     "7e450db1db23e3c250859b0271a655d6325f0bc8")
 
@@ -106,6 +108,14 @@ with mock.patch.dict(child["verify_isolation"].__globals__["os"].environ, {
             assert str(error) == "nested_identity_unverified"
         else:
             raise AssertionError("Host/socket collision not refused")
+
+# Deterministic keyboard-focus policy is inert and rejects unknown modes.
+no_focus = child["no_keyboard_focus"]
+assert no_focus([{"keyboard_interactivity": "none"}])
+assert no_focus([{"keyboard_interactivity": "WlrKeyboardFocus.None"}])
+assert not no_focus([{"keyboard_interactivity": "exclusive"}])
+assert not no_focus([{"keyboard_interactivity": "unknown"}])
+assert not no_focus([])
 
 # Exercise exact lower-layer QML staging and private config without a window.
 with tempfile.TemporaryDirectory(prefix="wull-nested-pointer-inert-") as root:

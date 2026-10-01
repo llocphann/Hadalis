@@ -65,7 +65,8 @@ for marker in (
     'rust_present',
     'real_bridge_click_received',
     'rust_happy_pulse_ack',
-    'underlay_count() == before + 1',
+    'underlay_target_status(',
+    'report["checks"]',
     'report["production_unmapped"]',
     'report["underlay_unmapped"]',
     'report["private_daemon_stopped"]',
@@ -84,18 +85,22 @@ parent = runpy.run_path(str(ROOT / "scripts/wull-manual-nested-pointer.py"),
 child = runpy.run_path(str(ROOT / "scripts/wull-manual-pointer-child.py"),
                        run_name="wull_pointer_inert_child")
 assert parent["REVIEWED"]["scripts/wull-manual-pointer-child.py"] == (
-    "d05961f299be9b9b9e1c53c2d2eb41c8cc882589")
+    "b441a172c571ec434980c054389b40dac415c824")
 assert parent["REVIEWED"]["scripts/wull-fixtures/pointer-underlay/companion-relay.py"] == (
     "7e450db1db23e3c250859b0271a655d6325f0bc8")
 
-# Relative-only positioning has no independent absolute-position proof.
-# Until the actual controls pass, missed clicks MUST stay inconclusive.
+# Both native backends must prove TARGET COORDINATES in the real full-
+# output underlay. An off-target click is a tool/geometry diagnostic,
+# never evidence of a Wull-specific input-mask defect.
 for required in (
-    'relative_disabled_pointer_control_unverified',
-    'relative_exterior_pointer_control_unverified',
-    'relative_body_pointer_target_unverified',
+    'def underlay_target_status(',
+    'disabled_pointer_target_unverified',
+    'exterior_pointer_target_unverified',
+    'body_pointer_target_unverified',
+    '"target_alignment": disabled_hit',
+    '"target_alignment": exterior_hit',
+    '"underlay_target_alignment": body_underlay_hit',
     'relative_empty_margin_pointer_target_unverified',
-    'inconclusive" if actor_kind == "wlrctl" else "failed"',
 ):
     assert required in child_text, required
 
@@ -125,6 +130,34 @@ except RuntimeError as error:
     assert str(error) == "unreviewed_pointer_backend"
 else:
     raise AssertionError("Unknown injection backend accepted")
+
+# Synthetic local log records exercise the strict witness parser only.
+# These are NOT real desktop events and never enter published reports.
+witness_status = child["underlay_target_status"]
+with tempfile.TemporaryDirectory(prefix="wull-pointer-witness-contract-") as temp:
+    logfile = Path(temp) / "underlay.private.log"
+    prefix = "WULL_POINTER_UNDERLAY_PRESS "
+    logfile.write_text("WULL_POINTER_UNDERLAY_QML_READY\n")
+    assert witness_status(logfile, 0, (250, 140)) == "no_click"
+    logfile.write_text(prefix + '{"x":250,"y":140,"button":1}\n')
+    assert witness_status(logfile, 0, (250, 140)) == "matched"
+    assert witness_status(logfile, 0, (256, 146)) == "matched"
+    assert witness_status(logfile, 0, (257, 146)) == "off_target"
+    assert witness_status(logfile, 1, (250, 140)) == "no_click"
+    logfile.write_text(prefix + '{"x":250,"y":140,"button":1}\n' +
+                       prefix + '{"x":250,"y":140,"button":1}\n')
+    assert witness_status(logfile, 0, (250, 140)) == "ambiguous_multiple_clicks"
+    logfile.write_text(prefix + '{"x":"250","y":140,"button":1}\n')
+    assert witness_status(logfile, 0, (250, 140)) == "witness_record_unparseable"
+    logfile.write_text(prefix + '{"x":250,"y":140,"button":3}\n')
+    assert witness_status(logfile, 0, (250, 140)) == "witness_record_unparseable"
+    for before, target in ((-1, (250, 140)), (0, (True, 140))):
+        try:
+            witness_status(logfile, before, target)
+        except RuntimeError as error:
+            assert str(error) == "invalid_pointer_witness_arguments"
+        else:
+            raise AssertionError("Unsafe witness arguments accepted")
 
 # Bounded early-exit cleanup never signals a potentially recycled group.
 stop_group = parent["stop_owned_child_group"]

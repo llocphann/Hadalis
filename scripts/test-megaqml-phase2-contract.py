@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """MegaQML Phase 2a static contract. Never invokes MEGAcmd."""
 from pathlib import Path
+import re
 r = Path(__file__).resolve().parents[1]
 get = lambda p: (r / p).read_text(encoding="utf-8")
 s = get("services/deferred/CloudStorageService.qml")
@@ -53,7 +54,7 @@ assert 'qml_minimal' in runner and 'qml_modern_syntax' in runner and 'qml_blocke
 assert '/usr/lib/qt6/bin/qmlformat qmlformat6 qmlformat' in runner
 assert 'qt_formatter_selection=' in runner and 'version_major_minor=' in runner
 assert 'modern_probe_pass' in runner and 'fallback_probe_unqualified' in runner
-assert 'docs/evidence/megaqml/phase2o-' in runner
+assert 'docs/evidence/megaqml/phase2p-' in runner
 quickshell_runner = get("scripts/test-megaqml-quickshell-smoke.sh")
 quickshell_base = get("scripts/megaqml-fixtures/runtime-baseline/shell.qml")
 quickshell_dormant = get("scripts/megaqml-fixtures/runtime-dormant/shell.qml")
@@ -296,7 +297,28 @@ for cause in ("installed", "lease", "unavailable", "snapshot"):
     assert '"STALE_' + cause.upper() + '"' in race_diagnostics
 assert 'run_test quickshell_ui_shared bash scripts/test-megaqml-quickshell-smoke.sh ui-shared' in runner
 assert 'run_test quickshell_ui_race bash scripts/test-megaqml-quickshell-smoke.sh ui-race' in runner
-assert 'quickshell_ui_shared quickshell_ui_race quickshell_ui_host; do' in runner
+assert 'run_test megaqml_race_repeatability bash scripts/test-megaqml-race-repeat.sh' in runner
+assert 'run_test megaqml_race_repeat_contract bash scripts/test-megaqml-phase2p-contracts.sh' in runner
+wrapper = get("scripts/test-megaqml-race-repeat.sh")
+repeat_unit = get("scripts/test-megaqml-race-repeat-contract.py")
+guard = get("scripts/test-megaqml-phase2p-history-guard.py")
+guard_unit = get("scripts/test-megaqml-phase2p-history-guard-contract.py")
+combined = get("scripts/test-megaqml-phase2p-contracts.sh")
+for token in ("repetitions=8", "race_repeat_passes",
+              "race_repeat_first_failure", "race_repeat_failure_category"):
+    assert token in wrapper
+assert "PRIVATE_PATH_AND_PASSWORD_CANARY" in repeat_unit
+assert "phase2p-" in guard and "unreviewed changed path" in guard
+assert "tampered evidence" in guard_unit
+assert "bash -n scripts/test-megaqml-race-repeat.sh" in combined
+assert 'test-megaqml-phase2p-history-guard.py "$expected" "$remote_sha"' in runner
+assert 'test-megaqml-phase2p-history-guard.py "$source_sha" "$remote_sha"' in runner
+actual = re.findall(r'^\s*run_test ([a-z0-9_]+) ', runner, re.MULTILINE)
+expected = re.search(r'EXPECTED_TESTS = """([\s\S]*?)"""\.split\(\)', guard)
+assert expected is not None and len(actual) == 40
+assert actual == expected.group(1).split()
+
+assert 'quickshell_ui_shared quickshell_ui_race megaqml_race_repeatability quickshell_ui_host; do' in runner
 race_ui = get("scripts/megaqml-fixtures/runtime-ui-race/shell.qml")
 assert 'import "./services/deferred" as Deferred' in race_ui
 assert 'property bool sawStaleInstalled: false' in race_ui
@@ -312,7 +334,7 @@ assert 'svc.generation !== beforeRelease + 1' in race_ui
 assert 'MEGAQML_QS_UI_RACE_OK' in race_ui
 assert 'mega-login' not in race_ui and 'scripts/native-dispatch' not in race_ui
 assert 'megaqml-race-unit-' in ui_fixture_contract
-assert 'quickshell_ui_waffle quickshell_ui_shared quickshell_ui_race quickshell_ui_host; do' in runner
+assert 'quickshell_ui_waffle quickshell_ui_shared quickshell_ui_race megaqml_race_repeatability quickshell_ui_host; do' in runner
 assert 'quickshell_ui_waffle quickshell_ui_shared; do' not in runner
 assert '"ui-material", "ui-waffle", "ui-shared"' in quickshell_classifier
 assert 'MEGAQML_QS_SHARED_STAGE_HIDE_ONE' in classifier_test
@@ -325,11 +347,12 @@ assert 'export PATH="$work/allowed-bin"' in quickshell_runner
 assert 'cp -- scripts/megaqml-fixtures/fake-static-dispatch.py' in quickshell_runner
 # This complete runner publishes Phase 2m evidence. The focused
 # standalone loader runner intentionally retains the historical 2k prefix.
-assert 'docs/evidence/megaqml/phase2o-' in runner
+assert 'docs/evidence/megaqml/phase2p-' in runner
 assert 'docs/evidence/megaqml/phase2k-' not in runner
 assert 'docs/evidence/megaqml/phase2l-' not in runner
 assert 'docs/evidence/megaqml/phase2m-' not in runner
 assert 'docs/evidence/megaqml/phase2n-' not in runner
+assert 'docs/evidence/megaqml/phase2o-' not in runner
 # Full requalification must tolerate only independently reviewed Wull commits
 # on shared dev and fail closed on unrelated concurrent source changes.
 assert 'wull_only_advance()' in runner
@@ -368,4 +391,4 @@ for allowlisted in ('docs/wull-*', 'scripts/wull-*', 'scripts/test-wull-*',
     assert allowlisted in focused
 assert 'scripts/native-dispatch' not in focused
 assert 'mega-login' not in focused
-print("PASS MegaQML Phase 2o static source contract")
+print("PASS MegaQML Phase 2p static source contract")

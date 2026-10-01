@@ -973,3 +973,171 @@ hover/popup interaction, visual fit,
 multioutput/fractional scale/hotplug,
 suspend/reload/long-running resources
 and canonical validation remain separate.
+
+
+## First real LEFT run INCONCLUSIVE at final empty margin; five-witness no-input gate
+
+Independent LEFT private-side mask report
+`docs/wull-mask-left-20261001T175020Z-5a11aa42-5b72e0e3294c.json`
+was actually published on `dev` from exact
+`source_sha=5b72e0e3294c32276c306b3c6911fd9fa4e79fb1`
+with `status=inconclusive`, NOT PASS,
+`child_reason=candidate_margin_target_unverified`,
+`native_pointer_backend=forced_wlr_protocols_wdotool`.
+Its first SEVEN separate real witnesses passed:
+disabled full-host body-center underlay alignment,
+enabled production exterior alignment,
+genuine production body bridge/real Rust
+happy-pulse without underlay penetration,
+observed blocked full-host empty margin with
+no false Wull activation, separately
+matched post-baseline-unmap exterior click
+BEFORE the candidate mapped, independently
+matched exterior click AFTER the new private
+LEFT candidate mapped, and genuine candidate
+body bridge/real Rust response without
+underlay penetration. The eighth real check
+`candidate_empty_margin_pass_through`
+did produce an actual underlay event and did
+NOT falsely activate the Wull body, but its
+recorded location was `target_alignment=off_target`.
+The runner therefore correctly stopped
+`INCONCLUSIVE` instead of classifying the
+side-edge BBOX as a failed input mask or
+claiming pass-through acceptance. Separate
+private Niri, owned-layer/daemon cleanup,
+no strays and unchanged host outputs passed;
+production mask, user config and stable
+were untouched.
+
+Before asking the maintainer for another
+real pointer trial, the original exact-session
+PRIVATE underlay log can discriminate a
+final-stage pointer position discrepancy.
+The source-pinned previous LEFT child and
+pure target code have fixed logical left
+body-center and inside-empty-margin targets:
+`body=(round(x+49),round(y+56))`, margin
+`inside=(body[0],round(y+9))`. Thus their
+REQUESTED x is identical and the requested
+margin y is 47 logical pixels above the
+body center, within at most 1 px of
+round-half-to-even ambiguity. The old
+disabled-body-center underlay control
+was explicitly `matched` (max 6 px
+error); exterior underlay controls before/
+after baseline cleanup and after private
+candidate mapping all request the EXACT
+same separate exterior location and are
+individually `matched`. No real underlay
+events were observed in production
+empty margin or either enabled body click.
+Therefore the old log should contain
+exactly FIVE, unambiguously ordered,
+real left-button underlay clicks:
+disabled body center, enabled exterior,
+post-unmap exterior, candidate exterior,
+and the final off-target candidate margin.
+
+`scripts/wull-private-left-margin-diagnostic.py`
+(created `5b09ca99107ea1c7107c3d32d3e1e40eabc1077e`)
+is a read-only, no-compositor/no-pointer
+tool for ONLY this exact old public report.
+It requires its original SHA, exact
+eight-check order, actual real Rust/bridge
+body responses, cleanup, forced native
+backend, five correctly shaped private
+left-button log witnesses and repeatability
+of the three previously matched same
+exterior targets (max 12 px relative).
+The candidate's final observed underlay
+point is compared categorically against
+the earlier actual aligned disabled
+body-center witness shifted vertically
+by -47, allowing 7 px uncertainty from
+the previous witness and source rounding.
+It returns ONLY coarse magnitude
+bucket, evidence-supported axis and
+sign, and booleans for proximity to
+previous disabled-body and candidate
+exterior positions. It cannot
+recover the precise requested or
+observed x/y from the public report;
+it never outputs actual private
+coordinates, private paths or full logs,
+and cannot establish causality. If
+its five-event sequence is ambiguous,
+the correct outcome remains INCONCLUSIVE.
+
+`scripts/wull-private-left-margin-publish.py`
+(created `008cd132c79dd657b361e76b8a8ef64aea5bac02`)
+is an optional separate EXPLICIT
+publisher of its allowlisted categorical
+result in a permission-private fresh
+`dev` clone only. It pins the exact
+diagnostic and original public LEFT
+report blobs, and the original
+test child and target source blobs
+at the report source commit. It
+verifies a trusted fetch/push origin,
+original source ancestry, user-owned
+original private log, no untracked
+files, and the exact public enum/boolean
+schema, and publishes exactly one
+uniquely named new redacted result to
+`docs/wull-pointer-left-margin-drift-20261001T175020Z-5a11aa42-5b72e0e3294c.json`.
+Its non-forced concurrent Git retry
+may rebase ONLY its own single
+unpublished redacted receipt commit
+within the private clone, with
+post-fetch source/ancestry and
+changed-path audits. It never
+merges/rebases/resets the user's
+original divergent checkout, starts
+new Niri, Rust or wdotool, or
+modifies real QML. Both independently
+inert parser/negative-case and
+redacted-payload/clone contract tests
+are staged as
+`scripts/test-wull-private-left-margin-diagnostic.py`
+(created `778d5fa5ad42666bdb6a5d1c8ba7af5cdf65b1e3`,
+corrected `f4024d971c7971b38472f3fd93cd6e4ab16ccdf2`)
+and
+`scripts/test-wull-private-left-margin-publish-contract.py`
+(created `cfb24dc8fc9f58fe9dc1ccbbd0ebf7b8e1b2c68e`).
+These additions are source-staged,
+NOT YET locally run and no new
+retrospective LEFT report has been
+published at this checkpoint.
+
+NEXT LOCAL GATE: run both strictly
+inert retrospective contracts in
+an entirely fresh permission-private
+dev clone, then ONLY explicitly
+classify the prior LEFT five private
+underlay witnesses and publish the
+redacted categorical receipt if valid.
+If the old private log is absent or
+source-pinned witness count is
+ambiguous, STOP INCONCLUSIVE,
+do not silently repeat the LEFT
+physical pointer test. If evidence
+is valid, use relative axis/direction
+and stale-position booleans to
+design a BOUNDED new independent
+pointer instrumentation, if needed,
+before an isolated new LEFT trial.
+The existing TOP, BOTTOM and RIGHT
+separately source-pinned private
+A/B PASS reports remain valid within
+their one-output, size=1 scopes;
+production Region, default-off
+and stable remain unchanged.
+Even after all four private
+BBOX edges eventually PASS,
+curved-silhouette hit region,
+hover/popup, visuals, multioutput/
+hotplug/fractional scaling,
+suspend/reload/lifecycle and
+canonical wide validation must
+remain separately unqualified.

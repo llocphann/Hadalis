@@ -18,11 +18,11 @@ import subprocess
 import sys
 import time
 
-BASE = "dd6af6e5672f80322a034b0c102b476d05b9f5d3"
+BASE = "b5eaf719c5b9d161c862f8e9176b6f4dd3d93739"
 SELF = "scripts/wull-manual-nested-niri.py"
 CONTRACT = "scripts/test-wull-nested-niri-contract.py"
 INNER = "scripts/wull-manual-production-layer.py"
-INNER_BLOB = "269a1ba8d0de6edd7a9913180fab34a3472286b3"
+INNER_BLOB = "75b0f44d18abd135492c9e460765aeef5bd58d5c"
 FIXTURE = "scripts/wull-fixtures/production-layer/shell.qml"
 FIXTURE_BLOB = "e16b6dcada26a27fd71cc670e30c55135401bcef"
 INITIAL_SELF_BLOB = "4d1a1481fcfae202f91a4569c81fada5eaea8590"
@@ -63,19 +63,19 @@ def audit(target):
         raise RuntimeError("Reviewed production-layer child changed")
     if git("rev-parse", target + ":" + FIXTURE) != FIXTURE_BLOB:
         raise RuntimeError("Reviewed production-layer QML changed")
+    if git("rev-parse", BASE + ":" + SELF) != INITIAL_SELF_BLOB:
+        raise RuntimeError("Reviewed nested observer baseline source changed")
     for path in (SELF, CONTRACT):
         changes = git("log", "--format=%H", BASE + ".." + target,
                       "--", path).splitlines()
-        expected = 2 if path == SELF else 1
-        if len(changes) != expected or (
+        expected = 1 if path == SELF else 0
+        if len(changes) != expected:
+            raise RuntimeError("Nested observer changed outside reviewed revisions")
+        if expected and (
             git("rev-parse", changes[0] + ":" + path)
             != git("rev-parse", target + ":" + path)
         ):
-            raise RuntimeError("Nested observer changed outside reviewed revisions")
-        if path == SELF and (
-            git("rev-parse", changes[-1] + ":" + SELF) != INITIAL_SELF_BLOB
-        ):
-            raise RuntimeError("Initial nested observer source changed")
+            raise RuntimeError("Nested observer differs from reviewed revision")
 
 
 def inventory(binary, target):

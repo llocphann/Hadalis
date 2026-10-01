@@ -347,6 +347,25 @@ for fixed in ('cancel_pending', 'cancel_release', 'cancel_reap',
 assert 'root.releaseCase' in shared_ui
 assert 'root.goodMissing(svc, 4, 1)' in shared_ui
 assert 'MEGAQML_QS_UI_SHARED_RELEASE_OK' in shared_ui
+# Fake-installed dependency readiness has a separate source+runtime shape:
+# the two copied pages must trigger opt-in checks without live auth.
+present_ui = get("scripts/megaqml-fixtures/runtime-ui-preflight-present/shell.qml")
+assert 'bash scripts/test-megaqml-quickshell-smoke.sh ui-preflight-present' in f1_shared_wrapper
+assert 'MEGAQML_FIXTURE_CASE=present' in quickshell_runner
+assert 'ui-preflight-present) marker=MEGAQML_QS_UI_PRESENT_OK' in quickshell_runner
+assert 'runtime-ui-preflight-present/shell.qml' in quickshell_runner
+assert 'MEGAQML_QS_UI_PRESENT_OK' in present_ui
+assert 'svc.preflightState !== "dependencies_ready"' in present_ui
+assert '!svc.connected && !svc.liveAuthQualified' in present_ui
+assert 'svc.backendState === "installed_disconnected"' in present_ui
+assert 'button.clicked()' in present_ui and 'button.buttonClicked()' in present_ui
+assert '"ui-preflight-present"' in quickshell_classifier
+for fixed in ('dormant', 'load', 'create', 'material_start',
+              'static_present', 'material_button', 'material_ready',
+              'waffle_join', 'waffle_button', 'waffle_ready',
+              'partial_release', 'final_release', 'timeout'):
+    assert 'present_' + fixed in quickshell_classifier, fixed
+    assert 'MEGAQML_QS_PRESENT_STAGE_' + fixed.upper() in classifier_test, fixed
 assert 'preflightDeadline.stop()' in s
 assert 'root._preflightGeneration = -1' in s
 assert 'root._preflightGeneration !== root.generation' in s

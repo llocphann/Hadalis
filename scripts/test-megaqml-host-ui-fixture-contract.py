@@ -49,4 +49,24 @@ with tempfile.TemporaryDirectory(prefix="megaqml-realhost-unit-") as tmp:
     assert not (fixture / "modules/settings/SettingsPageRegistryData.qml").exists()
     assert not (fixture / "modules/settings/SettingsOverlay.qml").exists()
     assert not (fixture / "waffleSettings.qml").exists()
+    # Actually exercise the real Material page button via the copied host:
+    # initial navigation, cached revisit and fresh reopened host. The shell
+    # executes in isolated Quickshell with the Python-only fake dispatcher.
+    shell = (fixture / "shell.qml").read_text(encoding="utf-8")
+    for token in (
+            'root.offlineControl(root.cachedCloud)',
+            'button.clicked()',
+            'cachedButton.clicked()',
+            'root.host.requestedIndex = 0',
+            'root.host.requestedIndex = 1',
+            'root.host.loadEnabled = false',
+            'svc.preflightSerial !== 1',
+            'svc.preflightSerial !== 2',
+            'svc.preflightState !== "not_requested"',
+            'svc.preflightState !== "dependency_missing"',
+            'root.fail("PREFLIGHT_REOPEN")',
+            'MEGAQML_QS_UI_HOST_OK'):
+        assert token in shell, token
+    assert "mega-login" not in shell
+    assert "scripts/native-dispatch" not in shell
 print("PASS MegaQML exact real host and page temporary fixture contract")

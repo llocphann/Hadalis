@@ -141,7 +141,9 @@ Scope {
             readonly property bool presented: !GlobalStates.screenLocked
                 && (!fullscreenCovered || (Config.options?.abyss?.perimeter?.visibleInFullscreen ?? false))
             readonly property bool editorOpen: GlobalStates.abyssEditing && GlobalStates.abyssEditorTargetOutput === outputName
+            // A dead/uninitialized daemon must never leave an interactive host.
             readonly property bool companionHostActive: root.companionSessionVisible
+                && companionBridge.ready
                 && root.companionTargetOutput === window.outputName
                 && window.presented && field.ready
             function companionAlongPosition(): real {
@@ -338,6 +340,8 @@ Scope {
             AbyssCompanion {
                 id: companion
                 z: 24
+                // Unlike reveal's normal fade, a backend loss hides immediately.
+                opacity: companionBridge.ready ? 1 : 0
                 edge: root.companionEdge
                 scale: root.companionScale
                 interactive: root.companionInteractive && window.companionHostActive

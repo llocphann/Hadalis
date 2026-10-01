@@ -156,6 +156,40 @@ WSettingsPage {
         }
     }
     WSettingsCard {
+        visible: root.activeSection === "overview"
+        title: Translation.tr("Connection readiness (offline)")
+        icon: "shield"
+        WSettingsInfoBar {
+            severity: WSettingsInfoBar.Severity.Info
+            message: Translation.tr("Manual local check only. No MEGAcmd server, account or network connection is started.")
+        }
+        WSettingsInfoBar {
+            severity: CloudStorageService.preflightState === "dependencies_ready"
+                ? WSettingsInfoBar.Severity.Info : WSettingsInfoBar.Severity.Warning
+            message: CloudStorageService.preflightState === "checking"
+                ? Translation.tr("Checking local connection prerequisites")
+                : CloudStorageService.preflightState === "dependencies_ready"
+                ? Translation.tr("Local executables found. Live connection remains disabled pending qualification.")
+                : CloudStorageService.preflightState === "dependency_missing"
+                ? Translation.tr("Local executables are missing; live connection remains disabled.")
+                : CloudStorageService.preflightState === "unavailable"
+                ? Translation.tr("Offline readiness could not be verified.")
+                : Translation.tr("Run the offline check when you want to assess readiness.")
+        }
+        WSettingsInfoBar {
+            visible: CloudStorageService.preflightError.length > 0
+            severity: WSettingsInfoBar.Severity.Warning
+            message: CloudStorageService.preflightError
+        }
+        WSettingsButton {
+            label: Translation.tr("Connection readiness")
+            icon: "shield"
+            buttonText: Translation.tr("Check connection readiness (offline)")
+            enabled: root.leaseHeld && !CloudStorageService.preflightBusy
+            onButtonClicked: CloudStorageService.requestConnectPreflight()
+        }
+    }
+    WSettingsCard {
         visible: root.activeSection !== "overview"
         title: root.currentSection.label
         icon: "folder"

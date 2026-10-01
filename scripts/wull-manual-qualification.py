@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 
-APPROVED_SOURCE = "d7d6290bc9e27b17c18c9576fc94ff12e470cca5"
+APPROVED_SOURCE = "22cd281781b0d221ad92a2165e0730609a843354"
 SELF = "scripts/wull-manual-qualification.py"
 MAX_LOG = 1048576
 
@@ -137,6 +137,41 @@ def run_check(name, argv, limit_seconds, env, log_dir):
     print(name + ": " + result["status"] + " (exit " + str(rc) + ")", flush=True)
     return result
 
+
+
+def push_report_with_bounded_retry(payload, path):
+    """Retry only a clean unpublished report after reviewing newer dev."""
+    for attempt in range(4):
+        pushed = subprocess.run(
+            ["git", "push", "origin", "HEAD:refs/heads/dev"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+        if pushed.returncode == 0:
+            return
+        if attempt == 3:
+            stop("Report push failed; committed report remains local")
+        if not clean() or git("diff-tree", "--no-commit-id", "--name-only",
+                              "-r", "HEAD") != str(path):
+            raise RuntimeError("Cannot safely retry a changed report commit")
+        parent = git("rev-parse", "HEAD^")
+        remote = fetch()
+        audit(remote)
+        if subprocess.run(
+            ["git", "merge-base", "--is-ancestor", parent, remote],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        ).returncode:
+            raise RuntimeError("Unexpected remote history; report stays local")
+        # Rebase only the single unpublished report commit, never shared work.
+        git("rebase", "--onto", remote, parent)
+        if not clean() or git("diff-tree", "--no-commit-id", "--name-only",
+                              "-r", "HEAD") != str(path):
+            raise RuntimeError("Rebased report differs from the reviewed path")
+        payload["publication_parent_sha"] = git("rev-parse", "HEAD^")
+        path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        git("add", "--", str(path))
+        if git("diff", "--cached", "--name-only") != str(path):
+            raise RuntimeError("Rebased report has unexpected staged content")
+        git("commit", "--amend", "--no-edit")
 
 def main():
     # Historical full mode is retained explicitly. Targeted mode omits the
@@ -286,8 +321,9 @@ def main():
                if focused else
                "test(wull): publish sanitized native and canonical qualification")
     git("commit", "-m", message, "--", str(report_path))
-    # Never force-push or rebase a result onto changed history.
-    git("push", "origin", "HEAD:refs/heads/dev")
+    # Only a single unpublished receipt may be rebased after a reviewed
+    # fast-forward; no force push or shared-history rewrite is permitted.
+    push_report_with_bounded_retry(report, report_path)
     print("REPORT_PUBLISHED:", report_path, flush=True)
     print("REPORT_COMMIT:", git("rev-parse", "HEAD"), flush=True)
 

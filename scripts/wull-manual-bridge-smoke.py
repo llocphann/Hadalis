@@ -13,7 +13,7 @@ import sys
 import tempfile
 import time
 
-ANCHOR = "d7d6290bc9e27b17c18c9576fc94ff12e470cca5"
+ANCHOR = "22cd281781b0d221ad92a2165e0730609a843354"
 SELF = "scripts/wull-manual-bridge-smoke.py"
 FIXTURE = "scripts/wull-fixtures/bridge-exit"
 REVIEWED = {
@@ -185,6 +185,41 @@ def run_case(qs, kind, private_dir):
     return result
 
 
+
+def push_report_with_bounded_retry(payload, path):
+    """Retry only a clean unpublished report after reviewing newer dev."""
+    for attempt in range(4):
+        pushed = subprocess.run(
+            ["git", "push", "origin", "HEAD:refs/heads/dev"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+        if pushed.returncode == 0:
+            return
+        if attempt == 3:
+            raise RuntimeError("Report push failed; committed report remains local")
+        if not clean() or git("diff-tree", "--no-commit-id", "--name-only",
+                              "-r", "HEAD") != str(path):
+            raise RuntimeError("Cannot safely retry a changed report commit")
+        parent = git("rev-parse", "HEAD^")
+        remote = fetch()
+        audit(remote)
+        if subprocess.run(
+            ["git", "merge-base", "--is-ancestor", parent, remote],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        ).returncode:
+            raise RuntimeError("Unexpected remote history; report stays local")
+        # Rebase only the single unpublished report commit, never shared work.
+        git("rebase", "--onto", remote, parent)
+        if not clean() or git("diff-tree", "--no-commit-id", "--name-only",
+                              "-r", "HEAD") != str(path):
+            raise RuntimeError("Rebased report differs from the reviewed path")
+        payload["publication_parent_sha"] = git("rev-parse", "HEAD^")
+        path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        git("add", "--", str(path))
+        if git("diff", "--cached", "--name-only") != str(path):
+            raise RuntimeError("Rebased report has unexpected staged content")
+        git("commit", "--amend", "--no-edit")
+
 def main():
     os.umask(0o077)
     if Path.cwd().resolve() != Path(git("rev-parse", "--show-toplevel")).resolve():
@@ -254,7 +289,7 @@ def main():
         raise RuntimeError("Unexpected untracked files")
     git("commit", "-m", "test(wull): publish sanitized isolated bridge lifecycle", "--",
         str(path))
-    git("push", "origin", "HEAD:refs/heads/dev")
+    push_report_with_bounded_retry(summary, path)
     print("BRIDGE_RESULT:", result, flush=True)
     print("REPORT_PUBLISHED:", path, flush=True)
 

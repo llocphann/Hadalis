@@ -1214,3 +1214,79 @@ production input change.
   live visual/multioutput/fractional scale,
   suspend/reload/hotplug/lifecycle and
   canonical-wide qualification are pending.
+
+
+## Checkpoint — 2026-10-02 right real A/B PASS; left isolated candidate gate staged
+
+- New independently published real RIGHT side scale=1
+  PRIVATE dynamic BBOX A/B PASS in
+  `docs/wull-mask-right-20261001T174248Z-cd6a3010-cdbe02bbcd61.json`,
+  source `cdbe02bbcd61720f07852fd7eb62929d14004188`.
+  All eight phase controls and single owned nested
+  output/process/layer/Rust cleanup passed with
+  forced native absolute wdotool, including separate
+  old production exact-coordinate body/Rust controls,
+  unmap-before-remap exterior target, and the
+  independent private candidate's correctly
+  aligned exterior, real body bridge/Rust,
+  and positive margin pass-through without false
+  activation. TOP and BOTTOM have separate
+  real PRIVATE dynamic mask PASS reports.
+  The previous large two-axis transient TOP
+  off-target observation remains unresolved;
+  these successes do not prove lifetime reliability.
+- Separate private LEFT-side mode is now
+  SOURCE-STAGED only; NOT physically accepted.
+  Child commit
+  `57d81d35e1e0f6543f61195f275eba5cd5f0a982`
+  adds explicit `candidate-mask-left` using
+  existing source-measured vertical 98x112 host
+  / (3,18,92,76) rotated body geometry,
+  existing exact after-unmap witness, private
+  actual Rust and real producer A/B controls.
+  Parent commit
+  `5e2ca4470c04926b7200df89b730bded154eed7b`
+  pins exact changed child and 14 audited
+  parent revisions, adds ONLY the explicit
+  `--acknowledge-nested-pointer-candidate-left`
+  and publishes sanitized
+  `docs/wull-mask-left-*.json` with separate
+  left-only scope. All top, bottom, right
+  and original production modes remain.
+  Inert contracts
+  `db97e763d244a98ba6a351b3568658255749b7fa`
+  and `ccfbe7e947e82c3865651f6aeaf90dbbd1a07c20`
+  pin the new child/parent left-only markers,
+  and independently stage a PRIVATE
+  left-edge side BBOX QML/config while
+  asserting unchanged real production source.
+  Technical details in
+  `docs/WULL_NESTED_POINTER_ACCEPTANCE_DESIGN.md`
+  latest left staging checkpoint
+  `d54fc99cd2e2e7b32ae591112b7c434c76e72b43`.
+- **NEXT SINGLE LOCAL GATE**: user launches one
+  fresh clean permission-restricted temporary
+  `dev` clone, never touches any
+  original potentially divergent `dev`
+  checkout; four inert Wull pointer contracts
+  must pass, then ONLY new explicit real
+  LEFT candidate A/B on a newly owned
+  isolated nested Niri, with independent
+  matched underlay controls, genuine bridge/
+  private Rust body response, positive
+  empty-margin pass-through and verified
+  cleanup. Read published unique exact-source
+  `docs/wull-mask-left-*.json` first;
+  FAILED/INCONCLUSIVE cannot qualify left.
+  After all four edges achieve private
+  pointer PASS, NEXT scope is precise
+  curved silhouette/input region design,
+  hover and popup, actual visuals,
+  multimonitor/hotplug/fractional scale,
+  lifecycle/reload/suspend, and
+  canonical-wide/long-run validation.
+  Do not silently swap the shipped full-host
+  Region for a rectangular private test
+  BBOX. Leave shipped Wull default-off,
+  real production Region and `stable`
+  untouched before further evidence.

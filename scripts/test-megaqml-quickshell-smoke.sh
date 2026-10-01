@@ -28,7 +28,15 @@ safe_timeout="$(command -v timeout)"
 # fake dispatcher inside the temporary fixture; never run vendor software.
 fixture_dir="$work/fixture"
 mkdir -p "$fixture_dir/services"
-cp -- "scripts/megaqml-fixtures/runtime-$kind/shell.qml" "$fixture_dir/shell.qml"
+# Both active scenarios intentionally share one fixture; variant arrives
+# only via the synthetic MEGAQML_FIXTURE_CASE environment variable.
+fixture_kind="${kind%%-*}"
+source_fixture="scripts/megaqml-fixtures/runtime-$fixture_kind/shell.qml"
+if [[ ! -f "$source_fixture" ]]; then
+  echo 'FIXTURE_SOURCE_MISSING'
+  exit 76
+fi
+cp -- "$source_fixture" "$fixture_dir/shell.qml"
 if [[ "$kind" == dormant || "$kind" == active-* ]]; then
   cp -- services/deferred/CloudStorageService.qml "$fixture_dir/services/CloudStorageService.qml"
   cp -- services/deferred/CloudStorageStaticProtocol.js "$fixture_dir/services/CloudStorageStaticProtocol.js"

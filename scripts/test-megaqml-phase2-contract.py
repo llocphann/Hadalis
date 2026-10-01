@@ -59,7 +59,13 @@ quickshell_base = get("scripts/megaqml-fixtures/runtime-baseline/shell.qml")
 quickshell_dormant = get("scripts/megaqml-fixtures/runtime-dormant/shell.qml")
 assert 'INIR_NATIVE_BIN_DIR="$work/no-native-binaries"' in quickshell_runner
 assert 'QT_QPA_PLATFORM=offscreen' in quickshell_runner
-assert 'runtime-$kind/shell.qml' in quickshell_runner
+assert 'fixture_kind="${kind%%-*}"' in quickshell_runner
+assert 'runtime-$fixture_kind/shell.qml' in quickshell_runner
+for case_name in ("baseline", "dormant", "active-present", "active-missing"):
+    # The active cases use the same source fixture, not a nonexistent
+    # runtime-active-present/ runtime-active-missing directory.
+    fixture_kind = case_name.split("-", 1)[0]
+    assert (r / f"scripts/megaqml-fixtures/runtime-{fixture_kind}/shell.qml").is_file()
 assert 'cp -- services/deferred/CloudStorageService.qml' in quickshell_runner
 assert 'cp -- services/deferred/CloudStorageStaticProtocol.js' in quickshell_runner
 assert 'test ! -e "$fixture_dir/scripts/native-dispatch"' in quickshell_runner

@@ -290,7 +290,9 @@ for push_attempt in 1 2 3; do
     echo 'PUBLICATION_RETRY_REMOTE_NOT_ADVANCED'
     break
   fi
-  if ! git merge-base --is-ancestor "$source_sha" "$remote_sha" ||       ! python3 scripts/test-megaqml-phase2p-history-guard.py           "$source_sha" "$remote_sha" >/dev/null; then
+  if ! git merge-base --is-ancestor "$source_sha" "$remote_sha" || \
+      ! python3 scripts/test-megaqml-phase2p-history-guard.py \
+          "$source_sha" "$remote_sha" >/dev/null; then
     echo 'PUBLICATION_RETRY_UNREVIEWED_REMOTE'
     break
   fi
@@ -298,16 +300,21 @@ for push_attempt in 1 2 3; do
     echo 'PUBLICATION_RETRY_REPORT_COLLISION'
     break
   fi
-  if ! python3 scripts/test-megaqml-phase2p-history-guard.py       "$source_sha" "$(git rev-parse HEAD)" >/dev/null; then
+  if ! python3 scripts/test-megaqml-phase2p-history-guard.py \
+      "$source_sha" "$(git rev-parse HEAD)" >/dev/null; then
     echo 'PUBLICATION_RETRY_UNVERIFIED_LOCAL'
     break
   fi
-  if ! git merge --no-ff --no-edit       -m "merge(dev): preserve verified MegaQML evidence and concurrent Wull"       "$remote_sha" >/dev/null; then
+  if ! git merge --no-ff --no-edit \
+      -m "merge(dev): preserve verified MegaQML evidence and concurrent Wull" \
+      "$remote_sha" >/dev/null; then
     git merge --abort >/dev/null 2>&1 || true
     echo 'PUBLICATION_RETRY_MERGE_FAILED'
     break
   fi
-  if [[ -n "$(git status --porcelain --untracked-files=all)" ]] ||       ! python3 scripts/test-megaqml-phase2p-history-guard.py           "$source_sha" "$(git rev-parse HEAD)" >/dev/null; then
+  if [[ -n "$(git status --porcelain --untracked-files=all)" ]] || \
+      ! python3 scripts/test-megaqml-phase2p-history-guard.py \
+          "$source_sha" "$(git rev-parse HEAD)" >/dev/null; then
     echo 'PUBLICATION_RETRY_POSTMERGE_INVALID'
     break
   fi

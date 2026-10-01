@@ -1,0 +1,65 @@
+{
+  "id": "JOB-WULL-HOST-021",
+  "profile_id": "profile-a9eb4056d6df403b",
+  "base_sha": "8a1023b6e368b8fc600e5b75e5e0e85aa748a86c",
+  "resources": [
+    "shell:inir"
+  ],
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-production-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 60
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "make",
+          "-s",
+          "test-perimeter-contracts"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "inir-companiond"
+        ],
+        "cwd": "native",
+        "timeout_seconds": 900
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "scripts/test-native-production-contract.sh"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "scripts/validate-maintainer-local.sh",
+          "--current-repo"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1800
+      }
+    }
+  ]
+}

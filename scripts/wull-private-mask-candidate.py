@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Source-guarded PRIVATE top-edge Wull hit-mask candidate.
+"""Source-guarded PRIVATE four-edge Wull BBOX hit-mask candidate.
 
 This module never edits production. Only the explicitly opted-in owned nested
 pointer child may stage this QML copy outside the checkout. The candidate is
-a RECTANGLE around the production centered 76x92 top-edge body at size=1,
-not the curved droplet path and not an approved production implementation.
+a RECTANGLE around the source-measured production body (76x92 horizontal,
+92x76 vertical) at size=1, not its curved silhouette or an approved
+production implementation. Right/left/bottom require NEW physical tests.
 """
 from pathlib import Path
 
@@ -15,18 +16,26 @@ INPUT_MARKER = (
 )
 BODY_WIDTH = 76
 BODY_HEIGHT = 92
-CANDIDATE = """// PRIVATE_NESTED_WULL_CANDIDATE_MASK: top-only, scale=1.
+CANDIDATE = """// PRIVATE_NESTED_WULL_CANDIDATE_MASK: four-edge BBOX, scale=1.
                 Region {
+                    readonly property bool verticalCandidate:
+                        root.companionEdge === "left"
+                        || root.companionEdge === "right"
+                    readonly property real bodyBBoxWidth:
+                        verticalCandidate ? 92 : 76
+                    readonly property real bodyBBoxHeight:
+                        verticalCandidate ? 76 : 92
                     readonly property bool candidateActive:
                         WullHostPolicy.acceptsInput(
                             window.companionHostActive, companion.interactive,
                             companion.visible)
-                        && root.companionEdge === "top"
+                        && ["top", "bottom", "left", "right"].includes(
+                            root.companionEdge)
                         && root.companionScale === 1
-                    x: companion.x + (companion.implicitWidth - 76) / 2
-                    y: companion.y + (companion.implicitHeight - 92) / 2
-                    width: candidateActive ? 76 : 0
-                    height: candidateActive ? 92 : 0
+                    x: companion.x + (companion.implicitWidth - bodyBBoxWidth) / 2
+                    y: companion.y + (companion.implicitHeight - bodyBBoxHeight) / 2
+                    width: candidateActive ? bodyBBoxWidth : 0
+                    height: candidateActive ? bodyBBoxHeight : 0
                 }"""
 
 
@@ -37,7 +46,11 @@ def candidate_source(perimeter: str, body: str) -> str:
     if perimeter.count(INPUT_MARKER) != 1:
         raise ValueError("unreviewed_production_mask_or_multiple_regions")
     # These are intentional constraints on the static first physical probe.
-    for item in ('width: 76; height: 92', 'anchors.centerIn: parent',
+    for item in ('implicitWidth: verticalEdge ? 98 : 112',
+                 'implicitHeight: verticalEdge ? 112 : 98',
+                 'width: 76; height: 92', 'anchors.centerIn: parent',
+                 'transformOrigin: Item.Center',
+                 'rotation: root.edge === "left" ? 90',
                  'enabled: root.interactive', 'onPressed: root.activated()'):
         if item not in body:
             raise ValueError("unreviewed_centered_top_body")

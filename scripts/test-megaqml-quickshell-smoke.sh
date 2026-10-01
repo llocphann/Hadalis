@@ -2,7 +2,7 @@
 # Manual one-shot, no vendor calls, no background service, no user config access.
 set -euo pipefail
 umask 077
-case "${1:-}" in baseline|dormant|active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed) kind="$1" ;; *) exit 64 ;; esac
+case "${1:-}" in baseline|dormant|active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang) kind="$1" ;; *) exit 64 ;; esac
 cd "$(git rev-parse --show-toplevel)"
 qs_bin=""
 if command -v qs >/dev/null 2>&1; then qs_bin="$(command -v qs)"
@@ -44,7 +44,7 @@ if [[ "$kind" == dormant || "$kind" == active-* ]]; then
 fi
 test ! -e "$fixture_dir/scripts/native-dispatch" || exit 75
 case "$kind" in
-  active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed)
+  active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang)
     mkdir -p "$fixture_dir/scripts" "$work/allowed-bin"
     cp -- scripts/megaqml-fixtures/fake-static-dispatch.py "$fixture_dir/scripts/native-dispatch"
     chmod 700 "$fixture_dir/scripts/native-dispatch"
@@ -63,6 +63,8 @@ if "$safe_timeout" --kill-after=2s 12s "$qs_bin" --path "$fixture_dir/shell.qml"
     active-present) marker=MEGAQML_QS_ACTIVE_PRESENT_OK ;;
     active-missing) marker=MEGAQML_QS_ACTIVE_MISSING_OK ;;
     active-wrong-id|active-unsafe-secret|active-malformed) marker=MEGAQML_QS_REJECTED_OK ;;
+    active-exit-failure) marker=MEGAQML_QS_EXIT_FAILURE_OK ;;
+    active-hang) marker=MEGAQML_QS_TIMEOUT_OK ;;
   esac
   if "$safe_grep" -Fq "$marker" "$work/stdout" "$work/stderr"; then
     echo "PASS isolated Quickshell $kind smoke"

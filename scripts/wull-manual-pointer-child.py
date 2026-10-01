@@ -72,7 +72,9 @@ def verify_isolation(niri):
     outputs = [(name, value["logical"]) for name, value in active.items()
                if isinstance(value, dict) and isinstance(value.get("logical"), dict)]
     if len(outputs) != 1 or (not isinstance(outputs[0][1].get("width"), int)
-                             or not isinstance(outputs[0][1].get("height"), int)):
+                             or not isinstance(outputs[0][1].get("height"), int)
+                             or outputs[0][1].get("x") != 0
+                             or outputs[0][1].get("y") != 0):
         stop("nested_single_output_geometry_unavailable")
     if namespaced(niri_json(niri, "layers"), "hadalis:abyss-perimeter"):
         stop("preexisting_nested_abyss_layer")
@@ -129,6 +131,18 @@ def owned_cleanup(proc, exact_binary, private_relay):
     for pid in private_pids(exact_binary) + relay_pids(private_relay):
         try:
             os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+    deadline = time.monotonic() + 4
+    while time.monotonic() < deadline:
+        if not private_pids(exact_binary) and not relay_pids(private_relay):
+            break
+        time.sleep(.20)
+    # If an owned private helper ignored TERM, escalate only after rechecking
+    # its unique private executable/relay path; never target a group by stale ID.
+    for pid in private_pids(exact_binary) + relay_pids(private_relay):
+        try:
+            os.kill(pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
 

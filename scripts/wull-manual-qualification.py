@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 
-APPROVED_SOURCE = "a7c7c6f794c54d41912c21de51a2c89061437b62"
+APPROVED_SOURCE = "f6008cdaebf465ae7065c0e822f141b92d2f25f2"
 SELF = "scripts/wull-manual-qualification.py"
 MAX_LOG = 1048576
 
@@ -38,7 +38,8 @@ def source_sensitive(path):
             "native/Cargo.toml", "native/Cargo.lock",
             "modules/abyss/AbyssPerimeter.qml", "modules/common/Config.qml",
             "defaults/config.json", "scripts/native-dispatch",
-            "scripts/test-wull-production-contract.py", "Makefile",
+            "scripts/test-wull-production-contract.py",
+            "scripts/test-wull-host-policy.py", "Makefile",
             "scripts/validate-maintainer-local.sh",
         }
         or path.startswith("scripts/test-perimeter-")

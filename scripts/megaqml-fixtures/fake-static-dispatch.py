@@ -7,7 +7,8 @@ import sys
 if sys.argv[1:] != ["mega", "request"]:
     raise SystemExit(64)
 scenario = os.environ.get("MEGAQML_FIXTURE_CASE")
-if scenario not in ("present", "missing", "wrong-id", "unsafe-secret", "malformed", "exit-failure", "hang", "coalesce", "stale-reacquire", "retry-exit", "retry-timeout", "shared-race"):
+if scenario not in ("present", "missing", "wrong-id", "unsafe-secret", "malformed", "exit-failure", "hang", "coalesce", "stale-reacquire", "retry-exit", "retry-timeout", "shared-race",
+                    "preflight-third-wrong-id"):
     raise SystemExit(65)
 line = sys.stdin.readline(8193)
 if len(line) > 8192:
@@ -73,7 +74,10 @@ if operation == "connect_preflight":
     print(json.dumps({
         "protocol": 1,
         "request_id": ("cloud-preflight-replayed"
-                       if scenario == "wrong-id" else identifier),
+                       if scenario == "wrong-id" or (
+                           scenario == "preflight-third-wrong-id"
+                           and identifier == "cloud-preflight-3")
+                       else identifier),
         "ok": True, "error": None, "result": preflight
     }, separators=(",", ":")), flush=True)
     raise SystemExit(0)

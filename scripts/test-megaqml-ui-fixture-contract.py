@@ -179,3 +179,37 @@ with tempfile.TemporaryDirectory(prefix="megaqml-race-unit-") as temp:
     assert (fixture / "services/deferred/CloudStorageService.qml").read_bytes() == (
         repo / "services/deferred/CloudStorageService.qml").read_bytes()
     assert not (fixture / "scripts/native-dispatch").exists()
+# The separate overlap fixture exercises two real children reaching both
+# deadlines, then verifies static retry and manual preflight retry after reap.
+overlap_shell = (repo / "scripts/megaqml-fixtures/runtime-ui-preflight-overlap/shell.qml"
+                 ).read_text(encoding="utf-8")
+for token in (
+        'root.offlineControl(root.page)',
+        'button.clicked()',
+        'root.bothChildrenStarted = true',
+        'svc._pendingInput !== ""',
+        'svc._preflightInput !== ""',
+        'svc.preflightError',
+        'Offline readiness invalidated by static dependency timeout.',
+        'svc.refreshStatic()',
+        'svc.requestSerial !== 2',
+        'svc.preflightSerial !== 2',
+        'root.fail("CANCEL_REAP")',
+        'root.fail("STATIC_RECOVER")',
+        'root.fail("PREFLIGHT_RECOVER")',
+        'MEGAQML_QS_UI_OVERLAP_OK'):
+    assert token in overlap_shell, token
+assert "mega-login" not in overlap_shell
+assert "scripts/native-dispatch" not in overlap_shell
+with tempfile.TemporaryDirectory(prefix="megaqml-overlap-unit-") as temp:
+    fixture = Path(temp)
+    (fixture / "shell.qml").write_text(overlap_shell, encoding="utf-8")
+    child = subprocess.run([sys.executable, str(generator), "shared", str(fixture)],
+                           capture_output=True, text=True, timeout=3, check=True)
+    assert child.stdout.strip() == "PASS isolated MegaQML shared source-only UI fixture"
+    assert child.stderr == ""
+    assert (fixture / "services/deferred/CloudStorageService.qml").read_bytes() == (
+        repo / "services/deferred/CloudStorageService.qml").read_bytes()
+    assert (fixture / "modules/settings/CloudStorageConfig.qml").is_file()
+    assert not (fixture / "scripts/native-dispatch").exists()
+

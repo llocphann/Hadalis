@@ -48,6 +48,20 @@ Singleton {
         if (root.consumerCount === 0) {
             root.generation++
             root.refreshPending = false
+            // Cancel an in-flight opt-in probe when its final UI lease goes.
+            // A new consumer cannot dispatch another probe until the old
+            // process exits; never leave a timer able to revive stale state.
+            root._preflightGeneration = -1
+            root._preflightInput = ""
+            preflightDeadline.stop()
+            if (root.preflightBusy || preflightProc.running) {
+                if (preflightProc.startObserved) {
+                    preflightProc.signal(9)
+                } else {
+                    preflightProc.running = false
+                    root.preflightBusy = false
+                }
+            }
             root.preflightState = "not_requested"
             root.preflightError = ""
             if (root.dependencySnapshot !== null)
@@ -151,7 +165,9 @@ Singleton {
         stderr: StdioCollector {} // No raw child output in UI.
         onStarted: {
             preflightProc.startObserved = true
-            if (!root.preflightBusy || root._preflightInput.length === 0) {
+            if (!root.preflightBusy || root.consumerCount === 0
+                    || root._preflightGeneration !== root.generation
+                    || root._preflightInput.length === 0) {
                 preflightProc.signal(9)
                 return
             }
@@ -171,11 +187,16 @@ Singleton {
         interval: 6000
         repeat: false
         onTriggered: {
-            // Discard any late response without changing static-detect generation.
+            // Discard late replies. A now-hidden page must not surface a
+            // timeout error or clear the current static dependency snapshot.
+            const stillDemanded = root.consumerCount > 0
+                && root._preflightGeneration === root.generation
             root._preflightGeneration = -1
             root._preflightInput = ""
-            root.preflightState = "unavailable"
-            root.preflightError = "Offline connection readiness check timed out."
+            if (stillDemanded) {
+                root.preflightState = "unavailable"
+                root.preflightError = "Offline connection readiness check timed out."
+            }
             if (preflightProc.startObserved) {
                 preflightProc.signal(9)
             } else {

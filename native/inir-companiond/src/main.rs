@@ -44,10 +44,10 @@ fn spawn_stdin_reader(tx: SyncSender<InputRecord>) {
 }
 
 fn write_message(out: &mut impl Write, message: &StateMessage) -> bool {
-    serde_json::to_writer(&mut *out, message)
-        .and_then(|_| out.write_all(b"\n"))
-        .and_then(|_| out.flush())
-        .is_ok()
+    if serde_json::to_writer(&mut *out, message).is_err() {
+        return false;
+    }
+    out.write_all(b"\n").and_then(|_| out.flush()).is_ok()
 }
 
 fn elapsed_ms(started: Instant) -> u64 {

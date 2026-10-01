@@ -634,4 +634,28 @@ for token in ('operation:"feature_gates_preview"', '"FEATURE_GATE_INPUT_FORBIDDE
 assert 'run_test megaqml_fake_vendor_boundary' in runner
 assert 'run_test megaqml_rust_build' in runner
 
+# The frontend has a strict, independently tested *offline* parser; it is
+# not wired to actual account/session data, and cannot flip an F3 feature on.
+gate_parser = get("services/deferred/CloudStorageFeatureGateProtocol.js")
+for token in (
+        'function parseOfflineFeatureGatePreview(payload, requestId)',
+        'try { envelope = JSON.parse(payload) }',
+        'vendor_execution !== "blocked_pending_disposable_qualification"',
+        'result.installed_version_qualified !== false',
+        'result.account_reads_enabled !== false',
+        'result.writes_enabled !== false',
+        'entry.read !== false || entry.write !== false',
+        '"reason", "write"',
+        'Object.freeze([])',
+        'installed_version_unqualified'):
+    assert token in gate_parser, token
+for token in (
+        '../services/deferred/CloudStorageFeatureGateProtocol.js',
+        'PASS MegaQML denied offline capability preview:',
+        'x=>x.result.domains.drive.write=true',
+        'x=>x.result.domains.overview.read=true',
+        'x=>x.result.domains.security.reason="supported"',
+        'x=>x.result.secret="PRIVATE_CAPABILITY_CANARY"'):
+    assert token in module_test, token
+
 print("PASS MegaQML Phase 2p static source contract")

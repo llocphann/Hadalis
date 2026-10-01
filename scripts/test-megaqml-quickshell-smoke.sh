@@ -72,6 +72,8 @@ case "$kind" in
     if [[ "$kind" == ui-* ]]; then
       if [[ "$kind" == ui-race ]]; then
         export MEGAQML_FIXTURE_CASE=shared-race
+      elif [[ "$kind" == ui-shared ]]; then
+        export MEGAQML_FIXTURE_CASE=preflight-third-wrong-id
       else
         export MEGAQML_FIXTURE_CASE=missing
       fi

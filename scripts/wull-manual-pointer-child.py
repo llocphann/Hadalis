@@ -570,6 +570,104 @@ def main():
             else "body_triggered_from_empty_host_margin"
             if margin_clicked_body else None
         )
+        if candidate_mode:
+            # Compare baseline and PRIVATE source-shadow mask on the SAME
+            # verified nested Niri output, never mutate the checkout.
+            if report["status"] != "pass":
+                report["reason"] = "baseline_pointer_control_not_qualified"
+                return
+            if margin_reached_underlay:
+                report["status"] = "inconclusive"
+                report["reason"] = "baseline_margin_already_passed_through"
+                return
+            owned_cleanup(enabled_proc, binary, private_relay)
+            enabled_proc = None
+            if not wait_for(
+                    lambda: not namespaced(niri_json(niri, "layers"),
+                                           "hadalis:abyss-perimeter")
+                    and not private_pids(binary)
+                    and not relay_pids(private_relay), 6):
+                report["status"] = "failed"
+                report["reason"] = "baseline_to_candidate_cleanup_unproven"
+                return
+            candidate_trace = folder / "candidate-relay.private.jsonl"
+            enabled_proc = start_production(
+                "candidate", True, candidate=True, trace_path=candidate_trace)
+            report["private_candidate_mask_tested"] = True
+            if not wait_for(
+                    lambda: "rust_present" in trace_kinds(candidate_trace), 7):
+                report["status"] = "inconclusive"
+                report["reason"] = "candidate_rust_present_unconfirmed"
+                return
+
+            before = underlay_count()
+            inject(points["outside_host_control"])
+            candidate_exterior = underlay_target_status(
+                underlay_log, before, points["outside_host_control"])
+            report["checks"].append({
+                "case": "candidate_exterior_underlay_control",
+                "status": "pass" if candidate_exterior == "matched"
+                          else "inconclusive",
+                "target_alignment": candidate_exterior})
+            if candidate_exterior != "matched":
+                report["status"] = "inconclusive"
+                report["reason"] = "candidate_exterior_pointer_unverified"
+                return
+
+            prior = trace_kinds(candidate_trace)
+            before = underlay_count()
+            inject(points["body_center"])
+            current = trace_kinds(candidate_trace)
+            candidate_hit = underlay_target_status(
+                underlay_log, before, points["body_center"])
+            candidate_bridge = current.count("real_bridge_click_received") == (
+                prior.count("real_bridge_click_received") + 1)
+            candidate_rust = current.count("rust_happy_pulse_ack") == (
+                prior.count("rust_happy_pulse_ack") + 1)
+            candidate_body = (candidate_hit == "no_click"
+                              and candidate_bridge and candidate_rust)
+            report["checks"].append({
+                "case": "candidate_body_real_bridge_and_rust",
+                "status": "pass" if candidate_body else (
+                    "inconclusive" if candidate_hit not in ("no_click", "matched")
+                    else "failed"),
+                "underlay_target_alignment": candidate_hit,
+                "real_bridge_clicked": candidate_bridge,
+                "real_rust_reacted": candidate_rust})
+            if not candidate_body:
+                report["status"] = (
+                    "inconclusive" if candidate_hit not in ("no_click", "matched")
+                    else "failed")
+                report["reason"] = "candidate_body_activation_unproven"
+                return
+
+            prior = trace_kinds(candidate_trace)
+            before = underlay_count()
+            inject(points["inside_host_outside_body"])
+            current = trace_kinds(candidate_trace)
+            candidate_margin = underlay_target_status(
+                underlay_log, before, points["inside_host_outside_body"])
+            extra_activation = (
+                current.count("real_bridge_click_received")
+                != prior.count("real_bridge_click_received"))
+            candidate_pass = (
+                candidate_margin == "matched" and not extra_activation)
+            report["checks"].append({
+                "case": "candidate_empty_margin_pass_through",
+                "status": "pass" if candidate_pass else (
+                    "inconclusive" if candidate_margin not in ("matched", "no_click")
+                    else "failed"),
+                "target_alignment": candidate_margin,
+                "unexpected_body_click": extra_activation})
+            report["status"] = (
+                "pass" if candidate_pass else
+                "inconclusive" if candidate_margin not in ("matched", "no_click")
+                else "failed")
+            report["reason"] = (
+                None if candidate_pass else
+                "candidate_margin_target_unverified"
+                if candidate_margin not in ("matched", "no_click")
+                else "candidate_margin_pass_through_unproven")
     except (OSError, ValueError, json.JSONDecodeError, subprocess.TimeoutExpired,
             RuntimeError) as exc:
         # No exception contents enter the published receipt.

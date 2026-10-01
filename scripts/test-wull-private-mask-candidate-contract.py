@@ -88,6 +88,25 @@ with tempfile.TemporaryDirectory(prefix="wull-candidate-inert-") as tmp:
     assert env["QT_QPA_PLATFORM"] == "wayland"
     assert perimeter_path.read_text(encoding="utf-8") == original
 
+    # Independently stage a RIGHT-edge private copy, not a production edit.
+    # The runtime still needs a separately owned real nested compositor test.
+    right_config = __import__("json").loads(
+        (ROOT / "defaults/config.json").read_text())
+    right_config["abyss"]["companion"].update({
+        "enabled": True, "interactive": True, "edge": "right", "size": 1})
+    right_shell, right_env = child["phase_config"](
+        folder / "candidate-right", child["PRODUCTION"], "candidate-right",
+        right_config, candidate_mask=True)
+    right_mask = right_shell / "modules/abyss/AbyssPerimeter.qml"
+    assert right_mask.is_file() and not right_mask.is_symlink()
+    assert "PRIVATE_NESTED_WULL_CANDIDATE_MASK" in right_mask.read_text()
+    assert 'verticalCandidate ? 92 : 76' in right_mask.read_text()
+    right_config_path = folder / "candidate-right/xdg/config/illogical-impulse/config.json"
+    assert __import__("json").loads(
+        right_config_path.read_text())["abyss"]["companion"]["edge"] == "right"
+    assert right_env["QT_QPA_PLATFORM"] == "wayland"
+    assert perimeter_path.read_text(encoding="utf-8") == original
+
 assert parent["REVIEWED"]["scripts/wull-private-mask-candidate.py"] == (
     "91049b2ca2beb7b1936af624adca5133d251ea3c")
 assert parent["REVIEWED"]["scripts/wull-manual-pointer-child.py"] == (

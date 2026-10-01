@@ -1500,3 +1500,120 @@ production input change.
   hotplug/reload/suspend/lifecycle,
   reliability or canonical-wide
   validation.
+
+
+## Checkpoint — 2026-10-02 four-edge BBOX live PASS; inert curve feasibility next
+
+- New exact-source REAL LEFT differential
+  `docs/wull-mask-left-20261001T180740Z-22d0c52b-df1cb0eef52e.json`,
+  `source_sha=df1cb0eef52e4089833704c32510d65239c5ae41`,
+  is **PASS** on one verified newly owned
+  Niri output, private source-shadow BBOX,
+  scale=1. The new independent margin
+  witness BEFORE the candidate-body event,
+  genuine body bridge + private Rust,
+  and unchanged final adjacent
+  candidate-body→margin witness ALL
+  passed, with exact underlay alignment
+  and zero accidental body activation.
+  Production A/B controls,
+  post-baseline-unmap witness,
+  new candidate exterior,
+  host output invariants and full
+  owned cleanup passed separately.
+  Latest four unique physical private
+  dynamic BBOX A/B receipts are now
+  TOP `docs/wull-mask-candidate-20261001T173129Z-ce33db3c-8efa0b7d7341.json`,
+  BOTTOM `docs/wull-mask-bottom-20261001T173542Z-10d599c4-9ac701f650dc.json`,
+  RIGHT `docs/wull-mask-right-20261001T174248Z-cd6a3010-cdbe02bbcd61.json`,
+  LEFT new report above; all FOUR are
+  real individual bounded PASSes.
+  Earlier separate TOP/LEFT real
+  off-target runs and their
+  retrospective categorical drift
+  reports REMAIN unresolved
+  reliability observations. No
+  production Wull input Region,
+  Rust native backend, defaults,
+  host setup or `stable` has
+  been changed.
+- New source-only visual-shape
+  feasibility research:
+  `scripts/wull-silhouette-band-prototype.py`
+  commit `d9d5ab6d4b80fb1fbf22292c693a66e5464bded3`
+  plus strict inert
+  `scripts/test-wull-silhouette-band-prototype.py`
+  latest fix
+  `d7465907230d047c0ff647da6b884000f121856a`.
+  Pins the exact current
+  `WaterDropletBody.qml` four-cubic
+  source blob, models the static
+  76x92 path interior with
+  400 samples per cubic and
+  1.7px conservative
+  side inset at three samples
+  per 1px row, coalesces
+  identical spans and maps
+  rectangles through source-measured
+  four-edge rotations/host offsets.
+  The independent prototype-formula
+  estimate is ~43 rectangles,
+  ~3006 interior px versus
+  6992 px body BBOX (~43%),
+  showing a STATIC tight
+  alpha-like hit approximation
+  may exclude too much visible
+  tip/stroke/halo/animated body.
+  This estimate is NOT
+  live QML/Quickshell performance,
+  visual-ergonomic acceptance,
+  production release approval
+  or a maintainer-host run
+  of the new Python contract.
+  No script generates a live
+  mask or injects pointer input.
+  Official Quickshell `Region`
+  documents nested Rect/Ellipse
+  compositing but has no
+  verified arbitrary Qt
+  `PathCubic` alpha hit mask.
+  Design analysis and every
+  evidence boundary in
+  `docs/WULL_NESTED_POINTER_ACCEPTANCE_DESIGN.md`
+  (latest checkpoint commit
+  `26dd1c1b2ff71083f250637aa77b9739281ce464`).
+- **NEXT SOURCE / LOCAL GATE:** run
+  ONLY the new static silhouette
+  inert contract on a clean
+  throwaway current `dev`
+  clone to check real
+  Python/Qt-source agreement;
+  do NOT instantiate a
+  43-Region live mask
+  or replace the currently
+  source-shadow tested
+  BBOX automatically.
+  Next resolve accessible
+  interactive footprint,
+  animated bob/sway/stretch/
+  tilt/squash + pulse halo
+  envelope and rotation/scale
+  transform obligations,
+  Quickshell version/API
+  compatibility and nested
+  pointer+hover witnesses
+  BEFORE any source-guarded
+  private visual mask trial.
+  Independently test
+  repeatability of the
+  observed rare off-target
+  virtual-pointer transients.
+  Actual curved-shape/halo
+  quality, hover/popup,
+  multioutput/fractional
+  scaling, hotplug,
+  suspend/reload/lifecycle,
+  long-run resources
+  and canonical-wide
+  validation remain
+  unqualified.

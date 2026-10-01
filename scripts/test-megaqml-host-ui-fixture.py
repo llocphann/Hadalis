@@ -83,16 +83,14 @@ fresh("services/Config.qml",
     " property int small: 10 } }\n"
     " readonly property QtObject colors: QtObject {"
     " property color colOnSurface: 'white'; property color colSubtext: 'gray';"
-    " property color colError: 'red'; property color colOnLayer1: 'white'"
+    " property color colError: 'red'; property color colOnLayer1: 'white';"
+    " property color colOnLayer0: 'white'"
     " } }\n", encoding="utf-8")
 
 widgets = {
     "SettingsMaterialPreset.qml":
         "pragma Singleton\nimport QtQuick\n"
         "QtObject { property color cardColor: 'transparent' }\n",
-    "MaterialSymbol.qml":
-        "import QtQuick\nItem { property string text: '';"
-        " property int iconSize: 12; property color color: 'white' }\n",
     "RippleButtonWithIcon.qml":
         "import QtQuick\nItem { property string materialIcon: '';"
         " property string mainText: ''; signal clicked() }\n",

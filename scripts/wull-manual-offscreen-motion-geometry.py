@@ -31,7 +31,7 @@ SAFE_REMOTES = {
     "ssh://git@github.com/llocphann/Hadalis.git",
 }
 PINNED = {
-    FIXTURE: "548daff91ca9a1d7961bedd098fd314159cb520d",
+    FIXTURE: "11df91496a8bb9b18d79498e86d1f734d78dc574",
     "modules/abyss/companion/WaterDropletBody.qml":
         "fc5b1c227026786ab553685bc170daff74e82517",
     "modules/abyss/companion/AbyssCompanion.qml":
@@ -109,7 +109,8 @@ def model_summary(rows):
     observed = set()
     flags = {}
     for row in rows:
-        if not isinstance(row, dict) or row.get("valid") is not True:
+        if (not isinstance(row, dict) or row.get("valid") is not True
+                or row.get("pose_state_verified") is not True):
             raise ValueError("invalid_offscreen_qt_pose")
         edge = row.get("edge")
         phase = row.get("phase")

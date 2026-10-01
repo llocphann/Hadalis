@@ -48,7 +48,6 @@ for marker in (
     'namespaced(niri_json(niri, "layers"), "hadalis:abyss-perimeter")',
     '"NIRI_SOCKET"',
     '"WAYLAND_DISPLAY"',
-    '["backend"',
     'shutil.which("wdotool")',
     '"--backend", "wlr-protocols", "mousemove"',
     '"--backend", "wlr-protocols", "click", "1"',

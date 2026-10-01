@@ -129,6 +129,40 @@ for token in ('root.material.setSection("overview")',
 assert "mega-login" not in shared_shell
 assert 'operation: "connect_preflight"' not in shared_shell  # page owns it
 
+# Fake-present is a distinct lifecycle path: executable readiness is NOT
+# authenticated, and both copied page controls must receive inert responses.
+present_shell = (repo / "scripts/megaqml-fixtures/runtime-ui-preflight-present/shell.qml"
+                 ).read_text(encoding="utf-8")
+for token in (
+        'root.materialComponent.createObject(',
+        'root.waffleComponent.createObject(',
+        'root.buttonUnder(root.material)',
+        'root.buttonUnder(root.waffle)',
+        'button.clicked()',
+        'button.buttonClicked()',
+        'svc.preflightState !== "dependencies_ready"',
+        'svc.backendState === "installed_disconnected"',
+        '!svc.connected && !svc.liveAuthQualified',
+        'MEGAQML_QS_UI_PRESENT_OK'):
+    assert token in present_shell, token
+assert "mega-login" not in present_shell
+assert "scripts/native-dispatch" not in present_shell
+with tempfile.TemporaryDirectory(prefix="megaqml-present-unit-") as temp:
+    fixture = Path(temp)
+    (fixture / "shell.qml").write_text(present_shell, encoding="utf-8")
+    child = subprocess.run([sys.executable, str(generator), "shared", str(fixture)],
+                           capture_output=True, text=True, timeout=3, check=True)
+    assert child.stdout.strip() == "PASS isolated MegaQML shared source-only UI fixture"
+    assert child.stderr == ""
+    for relative in ("modules/settings/CloudStorageConfig.qml",
+                     "modules/waffle/settings/pages/WCloudStoragePage.qml"):
+        assert (fixture / relative).is_file()
+    for name in ("CloudStorageService.qml", "CloudStorageStaticProtocol.js",
+                 "CloudStoragePreflightProtocol.js"):
+        assert (fixture / "services/deferred" / name).read_bytes() == (
+            repo / "services/deferred" / name).read_bytes()
+    assert not (fixture / "scripts/native-dispatch").exists()
+
 # Reuse the same temporary shared fixture builder with the independent race
 # shell; no production root or second CloudStorageService instance allowed.
 with tempfile.TemporaryDirectory(prefix="megaqml-race-unit-") as temp:

@@ -42,7 +42,9 @@ class Transport:
         with self.lock: self.calls.append((op,data))
         if self.down: raise RuntimeError("Desktop unavailable")
         if op=="project": return {"project_id":"project-"+data["name"]}
-        if op=="preflight":return {"ready":True}
+        if op=="preflight":return {"ready":True, **({"thinking_effort":data["thinking_effort"],
+            "model":"chat-instant" if data["thinking_effort"]=="instant" else "chat-thinking"}
+            if data.get("thinking_effort") not in {None,"auto"} else {})}
         if op=="submit":
             with self.lock:
                 self.active+=1;self.peak=max(self.peak,self.active)

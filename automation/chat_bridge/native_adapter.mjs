@@ -225,7 +225,7 @@ export async function resolveProject(page, name) {
   return matches[0];
 }
 
-const THINKING_EFFORTS = new Set(["auto", "min", "standard", "extended", "xhigh", "max"]);
+const THINKING_EFFORTS = new Set(["auto", "instant", "min", "standard", "extended", "xhigh", "max"]);
 
 function thinkingEffort(input) {
   const effort = input.thinking_effort ?? "auto";
@@ -238,18 +238,22 @@ export function selectThinkingModel(metadata, effort, preferredModel = "auto") {
   if (effort === "auto") return {model:preferredModel};
   const categories = Array.isArray(metadata?.categories) ? metadata.categories.slice(0, 128).filter(Boolean) : [];
   const enabled = categories.filter(c => c.disabled_by_admin !== true);
-  const models = (Array.isArray(metadata?.models) ? metadata.models : []).slice(0, 128).filter(m =>
+  const allModels = (Array.isArray(metadata?.models) ? metadata.models : []).slice(0, 128).filter(m =>
     typeof m?.slug === "string" && /^[a-zA-Z0-9._:-]{1,128}$/.test(m.slug) &&
-    m.is_work_mode_model !== true && m.disabled_by_admin !== true && !m.tags?.includes("hidden") &&
-    m.configurable_thinking_effort === true &&
-    Array.isArray(m.thinking_efforts) && m.thinking_efforts.some(e => e?.thinking_effort === effort) &&
-    (!categories.length || enabled.some(c => c.default_model === m.slug || c.supported_models?.includes(m.slug))));
+    m.is_work_mode_model !== true && m.disabled_by_admin !== true && !(Array.isArray(m.tags) && m.tags.includes("hidden")) &&
+    (!categories.length || enabled.some(c => c.default_model === m.slug || (Array.isArray(c.supported_models) && c.supported_models.includes(m.slug)))));
+  const instant = enabled.filter(c => c.model_lane === "instant");
+  const models = effort === "instant"
+    ? allModels.filter(m => instant.some(c => c.default_model === m.slug))
+    : allModels.filter(m => m.configurable_thinking_effort === true && Array.isArray(m.thinking_efforts) &&
+        m.thinking_efforts.some(e => e?.thinking_effort === effort));
   const find = slug => models.find(m => m.slug === slug);
-  // An established chat keeps its model. A new automatic chat follows the
-  // server's default or declared thinking lane, never an arbitrary Work model.
-  const model = preferredModel !== "auto" ? find(preferredModel)
-    : find(metadata?.default_model_slug) ?? enabled.filter(c => c.model_lane === "thinking")
-      .map(c => find(c.default_model)).find(Boolean) ?? (!categories.length && models.length === 1 ? models[0] : null);
+  // Keep a compatible established model; an explicit lane change chooses its
+  // enabled default. Instant never means Auto or an arbitrary Work model.
+  const lane = effort === "instant" ? instant : enabled.filter(c => c.model_lane === "thinking");
+  const model = find(preferredModel) ?? lane.map(c => find(c.default_model)).find(Boolean)
+    ?? (effort !== "instant" ? find(metadata?.default_model_slug) : null)
+    ?? (!categories.length && models.length === 1 ? models[0] : null);
   if (!model) throw new Error("THINKING_EFFORT_UNAVAILABLE");
   return {model:model.slug, thinking_effort:effort};
 }
@@ -271,6 +275,8 @@ export async function nativeSubmit(page, input) {
   if (!UUID.test(input.user_message_id) || !UUID.test(input.parent_message_id)) throw new Error("invalid submission identity");
   if (input.conversation_id && !UUID.test(input.conversation_id)) throw new Error("invalid conversation identity");
   const effort = thinkingEffort(input);
+  if (effort === "instant" && (typeof input.model !== "string" || input.model === "auto" ||
+      !/^[a-zA-Z0-9._:-]{1,128}$/.test(input.model))) throw new Error("THINKING_EFFORT_UNAVAILABLE");
   return page.evaluate(async input => {
     const {api, transport} = window.__hadalisNative, receipts = window.__hadalisReceipts;
     if (receipts.has(input.user_message_id)) return receipts.get(input.user_message_id);
@@ -286,7 +292,7 @@ export async function nativeSubmit(page, input) {
       hints.push(`plugin:${ids[0]}`);
     }
     const request = { action: "next", model: input.model || "auto",
-      ...(input.thinking_effort === "auto" ? {} : {thinking_effort:input.thinking_effort}),
+      ...(["auto", "instant"].includes(input.thinking_effort) ? {} : {thinking_effort:input.thinking_effort}),
       parent_message_id: input.parent_message_id, messages: [{ id: input.user_message_id,
         author: {role: "user"}, content: {content_type: "text", parts: [input.prompt]},
         metadata: {system_hints: hints} }], system_hints: hints,

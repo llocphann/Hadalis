@@ -5456,5 +5456,8 @@
   "Standard": "Standard",
   "Extended": "Extended",
   "Effort unavailable": "Effort unavailable",
-  "Next turn · Auto uses the default · model support varies": "Next turn · Auto uses the default · model support varies"
+  "Instant": "Instant",
+  "Set default": "Set default",
+  "Default: %1": "Default: %1",
+  "Next turn · default applies to new profiles": "Next turn · default applies to new profiles"
 }

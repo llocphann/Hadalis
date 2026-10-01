@@ -12,7 +12,9 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ID = "strict-lossless-research"
 MODES = {"manual", "continuous", "interval", "duration", "iterations"}
 LIMIT_ACTIONS = {"stop", "pause", "rotate"}
-THINKING_EFFORTS = {"auto", "min", "standard", "extended", "xhigh", "max"}
+THINKING_LEVELS = {"instant", "standard", "extended"}
+DEFAULT_THINKING_EFFORT = "extended"
+THINKING_EFFORTS = THINKING_LEVELS | {"auto", "min", "xhigh", "max"}
 MAX_PROFILES = 64
 GENERIC_PROMPT = "Carry out this profile's objective step by step. Set the objective here before starting.\n"
 CUSTOM_CONTINUATION_PROMPT = "Continue this profile's objective from its latest checkpoint and local evidence. Finish with one HADALIS_LOOP directive.\n"
@@ -32,7 +34,7 @@ MAINTENANCE_DEFAULTS = {
 PROFILE_DEFAULTS = {
     "description": "",
     "project_name": "Hadalis Cloud",
-    "thinking_effort": "auto",  # Omit the request override for existing profiles.
+    "thinking_effort": DEFAULT_THINKING_EFFORT,
     "enabled": False,
     "requires_github": True,
     "stop_on_done": False,  # Preserve v1 continuous-loop semantics on import.
@@ -84,7 +86,8 @@ def default_profile() -> dict:
 
 
 def default_config() -> dict:
-    return {"version": 1, "maintenance": deepcopy(MAINTENANCE_DEFAULTS),
+    return {"version": 1, "default_thinking_effort": DEFAULT_THINKING_EFFORT,
+            "maintenance": deepcopy(MAINTENANCE_DEFAULTS),
             "profiles": [default_profile()]}
 
 
@@ -139,6 +142,11 @@ def normalize_config(raw: object) -> tuple[dict, list[str]]:
         raise ValueError("configuration must be an object")
     if raw.get("version", 1) != 1:
         raise ValueError("unsupported automation configuration version")
+    issues = []
+    thinking_default = raw.get("default_thinking_effort", DEFAULT_THINKING_EFFORT)
+    if not isinstance(thinking_default, str) or thinking_default not in THINKING_LEVELS:
+        thinking_default = DEFAULT_THINKING_EFFORT
+        issues.append("invalid default_thinking_effort; using High")
     maintenance = deepcopy(MAINTENANCE_DEFAULTS)
     incoming = raw.get("maintenance", {})
     if not isinstance(incoming, dict):
@@ -149,16 +157,21 @@ def normalize_config(raw: object) -> tuple[dict, list[str]]:
     if maintenance["archive_completed"] and maintenance["delete_completed"]:
         maintenance["delete_completed"] = False
     profiles = []
-    issues = []
     seen = set()
-    source = raw.get("profiles", [default_profile()])
+    fallback = {**default_profile(), "thinking_effort": thinking_default}
+    source = raw.get("profiles", [fallback])
     if not isinstance(source, list):
-        source = [default_profile()]
+        source = [fallback]
         issues.append("invalid profile list; using default")
     for index, item in enumerate(source[:MAX_PROFILES]):
         try:
-            defaults = default_profile() if isinstance(item, dict) and item.get("id") == DEFAULT_ID else None
+            defaults = default_profile() if isinstance(item, dict) and item.get("id") == DEFAULT_ID else deepcopy(PROFILE_DEFAULTS)
+            defaults["thinking_effort"] = thinking_default
             profile = validate_profile(item, defaults=defaults)
+            # Auto was the old, unset UI choice. Resolve it to the saved level
+            # for future turns; durable pending requests are never rewritten.
+            if profile["thinking_effort"] == "auto":
+                profile["thinking_effort"] = thinking_default
             if profile["id"] in seen:
                 raise ValueError("duplicate id")
             seen.add(profile["id"])
@@ -168,10 +181,11 @@ def normalize_config(raw: object) -> tuple[dict, list[str]]:
     if len(source) > MAX_PROFILES:
         issues.append("profile count exceeds limit")
     if not profiles and source:
-        profiles = [default_profile()]
+        profiles = [fallback]
         profiles[0]["enabled"] = False
         issues.append("no valid profiles; default is disabled")
-    return {"version": 1, "maintenance": maintenance, "profiles": profiles}, issues
+    return {"version": 1, "default_thinking_effort": thinking_default,
+            "maintenance": maintenance, "profiles": profiles}, issues
 
 
 def update_profile(profile: dict, changes: object, *, confirm_delete: bool = False) -> dict:
@@ -186,11 +200,15 @@ def update_profile(profile: dict, changes: object, *, confirm_delete: bool = Fal
     return validate_profile(merged, defaults=default_profile() if profile["id"] == DEFAULT_ID else None)
 
 
-def new_profile(name: str, *, copy: dict | None = None) -> dict:
+def new_profile(name: str, *, copy: dict | None = None,
+                thinking_default: str = DEFAULT_THINKING_EFFORT) -> dict:
+    if not isinstance(thinking_default, str) or thinking_default not in THINKING_LEVELS:
+        raise ValueError("invalid default_thinking_effort")
     source = deepcopy(copy if copy is not None else default_profile())
     source.update({"id": "profile-" + uuid.uuid4().hex[:16], "name": name,
                    "enabled": False, "mode": "manual", "delete_completed": False})
     if copy is None:
+        source["thinking_effort"] = thinking_default
         source["prompt"] = GENERIC_PROMPT
         source["stop_on_done"] = True
         source["continuation_prompt"] = CUSTOM_CONTINUATION_PROMPT

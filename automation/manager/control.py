@@ -6,7 +6,7 @@ import subprocess
 import time
 
 from .model import (CUSTOM_CONTINUATION_PROMPT, CUSTOM_ROTATION_PROMPT,
-                    DEFAULT_ID, MAX_PROFILES, MAINTENANCE_DEFAULTS, PROFILE_DEFAULTS,
+                    DEFAULT_ID, MAX_PROFILES, MAINTENANCE_DEFAULTS, PROFILE_DEFAULTS, THINKING_LEVELS,
                     default_prompt, new_profile, update_profile)
 from .store import change, change_state, event, profile_state, read_snapshot, state_dir, _write
 
@@ -242,12 +242,22 @@ def create_profile(name: str, duplicate_id: str | None = None) -> dict:
             source = next((item for item in config["profiles"] if item["id"] == duplicate_id), None)
             if source is None:
                 raise ValueError("source profile not found")
-        profile = new_profile(name, copy=source)
+        profile = new_profile(name, copy=source, thinking_default=config["default_thinking_effort"])
         config["profiles"].append(profile)
         state["profiles"][profile["id"]] = profile_state()
         event(state, profile["id"], "created")
         return {"ok": True, "profile_id": profile["id"]}
     return change(mutate)
+
+
+def set_thinking_default(effort: str) -> dict:
+    if not isinstance(effort, str) or effort not in THINKING_LEVELS:
+        raise ValueError("invalid default_thinking_effort")
+    def mutate(config: dict, state: dict):
+        config["default_thinking_effort"] = effort
+        event(state, None, "thinking_default_updated", effort)
+    change(mutate)
+    return {"ok": True}
 
 
 def set_profile(profile_id: str, field: str, value_json: str, confirm_delete: bool = False) -> dict:

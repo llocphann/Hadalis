@@ -73,9 +73,10 @@ ShellRoot {
             if (!page.loaded) return
             if (test.step === -2) {
                 const effort = test.named("automationThinkingEffort")
-                if (!test.check(effort && effort.value === 0 && effort.stepSize === 1, "legacy profile defaults to Auto slider")) return
+                if (!test.check(effort && effort.value === 2 && effort.stepSize === 1 && page.thinkingLabels.join("/") === "Instant/Medium/High",
+                    "three Chat levels default to High")) return
                 effort.value = 1
-                effort.moved()
+                effort.pressedChanged()
                 test.step = -1
                 return
             }
@@ -88,13 +89,25 @@ ShellRoot {
                 return
             }
             if (test.step === -3) {
-                if (!test.check(test.named("automationThinkingEffort").value === 0, "independent profile keeps Auto")) return
+                if (!test.check(test.named("automationThinkingEffort").value === 2, "independent profile keeps High")) return
                 page.selectedProfileId = "strict-lossless-research"
                 test.step = -4
                 return
             }
             if (test.step === -4) {
                 if (!test.check(test.named("automationThinkingEffort").value === 1, "profile switch restores saved effort")) return
+                const setDefault = test.named("automationThinkingDefault")
+                if (!test.check(setDefault.enabled && setDefault.iconName === "star", "default button has an icon and accepts Medium")) return
+                setDefault.clicked()
+                test.step = -5
+                return
+            }
+            if (test.step === -5) {
+                if (page.busy || page.defaultThinkingEffort !== "standard") return
+                if (!test.check(!test.named("automationThinkingDefault").enabled && page.profiles.find(p => p.id === "fixture-keep").thinking_effort === "extended",
+                    "saved default is visible without changing another profile")) return
+                if (!test.check(page.snapshot.runtime.profiles[page.selectedProfileId].pending.prepared_at_unix === 100,
+                    "default update preserves pending turn")) return
                 test.step = 0
             }
             if (test.step === 0) {
@@ -330,7 +343,7 @@ def main() -> int:
     after = services()
     assert {u: v["MainPID"] for u,v in after.items()} == {u: v["MainPID"] for u,v in before.items()}, "backend restarted/died with Quickshell"
     _write(base / "result.json", {"sha":subprocess.check_output(["git","rev-parse","HEAD"],cwd=ROOT,text=True).strip(),
-        "qml_source":str(qml_root), "frontend_removal":"pass", "prompt_scroll":"pass", "centered_button_row":"pass", "thinking_effort_slider":"pass",
+        "qml_source":str(qml_root), "frontend_removal":"pass", "prompt_scroll":"pass", "centered_button_row":"pass", "thinking_effort_slider":"pass", "thinking_default_button":"pass",
         "single_activity_view":"pass", "masked_token_private_stdin":"pass", "private_shell_crash":"SIGKILL",
         "independent_backend":"pass", "services_before":before,"services_after":after})
     print(f"PASS: native scrolling, centered icon buttons, single log view, masked token stdin, removal and Quickshell crash with backend PIDs unchanged; {base / 'result.json'}")

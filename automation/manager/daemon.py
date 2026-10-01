@@ -221,7 +221,7 @@ def _observe_failure(profile_id: str, now: int, exc: Exception, *, pending=None,
         item.update(last_error=detail, status="transport_rate_limited" if limited else "transport_unavailable")
         if not pending and not job and detail == "THINKING_EFFORT_UNAVAILABLE":
             item.update(status="thinking_unavailable",
-                status_detail="Thinking level unavailable for this chat. Choose Auto or another level.")
+                status_detail="Thinking level unavailable for this chat. Choose another level.")
         # Observations are bounded/backed off, but never disabled by navigation,
         # a finite error counter, Desktop/network downtime or shell crashes.
     change_state(record)

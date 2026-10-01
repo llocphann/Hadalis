@@ -32,6 +32,8 @@ def main(argv: list[str]) -> dict:
         return control.create_profile(args[0])
     if operation == "profile-duplicate" and len(args) == 2:
         return control.create_profile(args[1], args[0])
+    if operation == "thinking-default" and len(args) == 1:
+        return control.set_thinking_default(args[0])
     if operation == "profile-set" and len(args) in {3, 4}:
         if len(args) == 4 and args[3] != "confirm-delete":
             raise ValueError("invalid confirmation")

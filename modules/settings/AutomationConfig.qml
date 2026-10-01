@@ -43,12 +43,18 @@ ContentPage {
     readonly property var profiles: root.snapshot?.config?.profiles ?? []
     readonly property var selectedProfile: root.profiles.find(p => p.id === root.selectedProfileId) ?? null
     readonly property var selectedState: root.snapshot?.runtime?.profiles?.[root.selectedProfileId] ?? null
-    readonly property var thinkingEfforts: ["auto", "standard", "extended"]
-    readonly property var thinkingLabels: ["Auto", "Standard", "Extended"]
-    readonly property string savedThinkingEffort: root.selectedProfile?.thinking_effort ?? "auto"
+    readonly property var thinkingEfforts: ["instant", "standard", "extended"]
+    readonly property var thinkingLabels: ["Instant", "Medium", "High"]
+    readonly property string savedThinkingEffort: root.selectedProfile?.thinking_effort ?? "extended"
+    readonly property string defaultThinkingEffort: root.snapshot?.config?.default_thinking_effort ?? "extended"
+
+    function thinkingIndex(effort): int {
+        const index = root.thinkingEfforts.indexOf(effort)
+        return index < 0 ? 2 : index
+    }
 
     onSavedThinkingEffortChanged: if (!thinkingSlider.pressed)
-        thinkingSlider.value = Math.max(0, root.thinkingEfforts.indexOf(root.savedThinkingEffort))
+        thinkingSlider.value = root.thinkingIndex(root.savedThinkingEffort)
 
     function activateSettingsSearchSection(section: string): bool {
         const label = String(section ?? "").toLowerCase()
@@ -158,7 +164,7 @@ ContentPage {
         promptEditor.text = root.selectedProfile.prompt
         continuationEditor.text = root.selectedProfile.continuation_prompt
         rotationEditor.text = root.selectedProfile.rotation_prompt
-        thinkingSlider.value = Math.max(0, root.thinkingEfforts.indexOf(root.savedThinkingEffort))
+        thinkingSlider.value = root.thinkingIndex(root.savedThinkingEffort)
     }
 
     function statusLabel(value): string {
@@ -545,7 +551,7 @@ ContentPage {
                 spacing: 8
                 MaterialSymbol { text: "psychology"; iconSize: Appearance.font.pixelSize.large; color: Appearance.colors.colSubtext }
                 StyledText { Layout.fillWidth: true; text: Translation.tr("Thinking effort"); color: Appearance.colors.colOnSurface }
-                StyledText { text: Translation.tr(root.thinkingLabels[Math.round(thinkingSlider.value)] ?? "Auto"); color: Appearance.colors.colPrimary }
+                StyledText { text: Translation.tr(root.thinkingLabels[Math.round(thinkingSlider.value)] ?? "High"); color: Appearance.colors.colPrimary }
             }
             StyledSlider {
                 id: thinkingSlider
@@ -557,19 +563,37 @@ ContentPage {
                 snapMode: Slider.SnapAlways
                 configuration: StyledSlider.Configuration.S
                 stopIndicatorValues: [0, 1, 2]
-                value: Math.max(0, root.thinkingEfforts.indexOf(root.savedThinkingEffort))
+                value: root.thinkingIndex(root.savedThinkingEffort)
                 enabled: !root.busy
                 Accessible.name: Translation.tr("Thinking effort")
                 settingsSearchLabel: Translation.tr("Thinking effort")
                 settingsSearchKeywords: ["chat", "reasoning", "effort", "thinking", "model"]
-                tooltipContent: Translation.tr(root.thinkingLabels[Math.round(value)] ?? "Auto")
-                onMoved: {
+                tooltipContent: Translation.tr(root.thinkingLabels[Math.round(value)] ?? "High")
+                function saveLevel(): void {
                     if (pressed || root.busy) return
                     const effort = root.thinkingEfforts[Math.round(value)]
                     if (effort && effort !== root.savedThinkingEffort) root.setProfile("thinking_effort", effort)
                 }
+                onMoved: saveLevel()
+                onPressedChanged: if (!pressed) saveLevel()
             }
-            SettingsNote { icon: "chat"; text: Translation.tr("Next turn · Auto uses the default · model support varies") }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                AutomationButton {
+                    objectName: "automationThinkingDefault"
+                    iconName: "star"
+                    buttonText: Translation.tr("Set default")
+                    enabled: !root.busy && root.thinkingEfforts[Math.round(thinkingSlider.value)] !== root.defaultThinkingEffort
+                    onClicked: root.runAction(["thinking-default", root.thinkingEfforts[Math.round(thinkingSlider.value)]])
+                }
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("Default: %1").arg(Translation.tr(root.thinkingLabels[root.thinkingIndex(root.defaultThinkingEffort)]))
+                    color: Appearance.colors.colSubtext
+                }
+            }
+            SettingsNote { icon: "chat"; text: Translation.tr("Next turn · default applies to new profiles") }
         }
 
         SettingsGroup {

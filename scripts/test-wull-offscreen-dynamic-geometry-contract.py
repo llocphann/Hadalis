@@ -35,7 +35,7 @@ def blob(path):
         b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
 
 
-assert blob(RUNNER) == "71262816d9d64c97061c90e03bed9acee76bdc18"
+assert blob(RUNNER) == "8270d405809bff86599e570399dd05a390e22601"
 for name, digest in model["DYNAMIC_PINS"].items():
     assert blob(ROOT / name) == digest, name
 assert model["frozen"]["PINNED"][
@@ -83,6 +83,9 @@ for literal in (
     "QT_QPA_PLATFORM\": \"offscreen\"",
     "\"WAYLAND_DISPLAY\", \"NIRI_SOCKET\"",
     "resource.setrlimit(resource.RLIMIT_FSIZE, (MAX_LOG, MAX_LOG))",
+    '"QML_IMPORT_PATH", "QML2_IMPORT_PATH"',
+    "private_dynamic_child_cleanup_unverified",
+    "os.killpg(proc.pid, 0)",
     "os.killpg(proc.pid, signal.SIGTERM)",
     "private_dynamic_receipt_push_refused",
     "\"git\", \"push\", \"origin\", \"HEAD:refs/heads/dev\"",

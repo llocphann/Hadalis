@@ -33,6 +33,7 @@ for literal in (
     "Repeater {", "import qs.modules.abyss.companion",
     "body.motionEnabled = false",
     "body.stateStretch = 1",
+    "pose_state_verified: poseVerified",
     'root.collect("neutral")',
     'root.collect("stretch_target")',
     "body.mapToItem(host, 0, 0)",
@@ -45,7 +46,7 @@ assert "WaterDropletBody {" not in qml
 m = runpy.run_path(str(SCRIPT), run_name="wull_offscreen_inert_contract")
 assert m["BASE"] == "07c81fef4217f634a8a8910a1903a7d9007c878a"
 assert m["PINNED"][m["FIXTURE"]] == (
-    "548daff91ca9a1d7961bedd098fd314159cb520d")
+    "11df91496a8bb9b18d79498e86d1f734d78dc574")
 assert m["PINNED"]["modules/abyss/companion/WaterDropletBody.qml"] == (
     "fc5b1c227026786ab553685bc170daff74e82517")
 assert m["EDGES"] == ("top", "right", "bottom", "left")
@@ -67,7 +68,8 @@ def synthetic(edge, scale, phase):
     top = -4.5 if protrusion else by
     tipy = -.4 if protrusion else tipy
     result = dict(
-        valid=True, edge=edge, requested_scale=scale, phase=phase,
+        valid=True, pose_state_verified=True,
+        edge=edge, requested_scale=scale, phase=phase,
         host_width=hostw, host_height=hosth,
         stage_host_width=hostw*scale,
         stage_host_height=hosth*scale,
@@ -107,6 +109,7 @@ for bad in (
     rows[:-1],
     [*rows[:-1], rows[0]],
     [{**rows[0], "requested_scale": 1.25}, *rows[1:]],
+    [{**rows[0], "pose_state_verified": False}, *rows[1:]],
     [{**rows[0], "bbox_inside_host": False}, *rows[1:]],
     [{**rows[0], "stage_host_width": 999}, *rows[1:]],
     [{**rows[0], "bbox_left": "private"}, *rows[1:]],

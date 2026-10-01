@@ -101,6 +101,59 @@ try {
     assert.equal(fs.existsSync(path.join(dir, "mega-cmd.executed")), false);
     assert.equal(fs.existsSync(path.join(dir, "mega-cmd-server.executed")), false);
 
+    // Next-phase staging: the protocol can describe all 10 domains but
+    // never confuses offline policy with installed-version proof. Fake PATH
+    // includes executable-looking shells that MUST NOT be launched.
+    function preview(id, patch={}) {
+        const request = JSON.stringify({
+            protocol:1, request_id:id, operation:"feature_gates_preview",
+            params:{}, ...patch
+        }) + "\n";
+        const child = spawnSync(bin, ["request"], {
+            input:request, encoding:"utf8", timeout:6000, maxBuffer:65536,
+            shell:false, env:{PATH:dir, LANG:"C", LC_ALL:"C"}
+        });
+        assert.equal(child.error, undefined);
+        assert.equal(child.status, 0);
+        return child.stdout;
+    }
+    const previewPayload = JSON.parse(preview("gates-preview"));
+    assert.equal(previewPayload.ok, true);
+    assert.equal(previewPayload.request_id, "gates-preview");
+    assert.equal(previewPayload.error, null);
+    const gates = previewPayload.result;
+    assert.equal(gates.probe_kind, "offline_policy_preview");
+    assert.equal(gates.vendor_execution,
+        "blocked_pending_disposable_qualification");
+    for (const flag of ["installed_version_qualified",
+        "connection_attempted", "connected", "auth_qualified",
+        "account_reads_enabled", "writes_enabled"])
+        assert.equal(gates[flag], false);
+    assert.deepEqual(Object.keys(gates.domains).sort(), [
+        "overview", "drive", "transfers", "sync", "backups",
+        "sharing", "contacts", "mounts", "security", "preferences"
+    ].sort());
+    for (const entry of Object.values(gates.domains)) {
+        assert.equal(entry.read, false);
+        assert.equal(entry.write, false);
+        assert.equal(entry.reason, "installed_version_unqualified");
+    }
+    cases++;
+    for (const patch of [
+        {secret:{password:"PRIVATE_FAKE_GATE_PASSWORD"}},
+        {params:{enable_live:true, account:"PRIVATE_FAKE_GATE_ACCOUNT"}}
+    ]) {
+        const payload = preview("gates-reject", patch);
+        const result = JSON.parse(payload);
+        assert.equal(result.ok, false);
+        assert.equal(result.error.kind, "FEATURE_GATE_INPUT_FORBIDDEN");
+        assert.equal(result.error.outcome, "not_dispatched");
+        assert.equal(payload.includes("PRIVATE_FAKE_GATE_"), false);
+        cases++;
+    }
+    for (const name of ["mega-cmd", "mega-cmd-server"])
+        assert.equal(fs.existsSync(path.join(dir, name + ".executed")), false);
+
     // Bad JSON enum values can carry secret-like strings in serde errors;
     // the production binary must emit only a fixed, never-raw diagnostic.
     const invalid = spawnSync(bin, ["request"], {

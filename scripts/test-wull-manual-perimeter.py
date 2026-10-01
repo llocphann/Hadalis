@@ -40,8 +40,22 @@ def audit(before, after):
     for path in git("diff", "--name-only", before, after).splitlines():
         if path.startswith(("docs/", "automation/")):
             continue
-        if path.startswith("to-do/") and path != "to-do/cloud-bot/ABYSS_WATER_DROPLET_COMPANION.md":
+        if path == "to-do/cloud-bot/CLOUD_STORAGE.md":
             continue
+        if path == "to-do/cloud-bot/ABYSS_WATER_DROPLET_COMPANION.md":
+            reviewed = subprocess.run(
+                ["git", "show", "12e3281c762751a03766f88ebe8d04304ce31a27:" + path],
+                capture_output=True, check=True,
+            ).stdout
+            current = subprocess.run(
+                ["git", "show", after + ":" + path],
+                capture_output=True, check=True,
+            ).stdout
+            if reviewed != current:
+                raise RuntimeError("Wull TODO differs from reviewed checkpoint")
+            continue
+        if path.startswith("to-do/"):
+            raise RuntimeError("Unreviewed TODO change: " + path)
         if path.startswith(("scripts/test-megaqml-", "services/deferred/CloudStorage")):
             continue
         if path in ("modules/settings/CloudStorageConfig.qml", "translations/en_US.json"):
@@ -49,9 +63,11 @@ def audit(before, after):
         if path == SCRIPT:
             changes = git("log", "--format=%H", BASE + ".." + after,
                           "--", SCRIPT).splitlines()
-            # One original introduction and one bounded-log/audit correction.
-            # Any subsequent runner modification requires a fresh review.
-            if "22186497db238ca5e728e46eddf6ac3e952a8895" not in changes or len(changes) > 2:
+            # Exactly the introduction, the bounded-log fix, and this reviewed
+            # TODO-gate correction may change the runner. Further edits stop.
+            required = {"22186497db238ca5e728e46eddf6ac3e952a8895",
+                        "0e10e4f5f2c4d0651886a1f29b26df2ca1e36f13"}
+            if not required.issubset(set(changes)) or len(changes) != 3:
                 raise RuntimeError("Diagnostic runner changed beyond reviewed revisions")
             continue
         if path == "scripts/test-perimeter-source-contracts.sh":

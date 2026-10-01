@@ -8,6 +8,7 @@ ShellRoot {
     id: root
     readonly property string scenario: String(Quickshell.env("MEGAQML_FIXTURE_CASE"))
     property bool requested: false
+    property real requestedAt: 0
     Timer {
         interval: 75
         repeat: true
@@ -16,25 +17,64 @@ ShellRoot {
         onTriggered: {
             ticks++
             const service = Deferred.CloudStorageService
-            if (!["present", "missing", "wrong-id", "unsafe-secret", "malformed"].includes(root.scenario)) {
+            if (!["present", "missing", "wrong-id", "unsafe-secret", "malformed", "exit-failure", "hang"].includes(root.scenario)) {
                 console.log("MEGAQML_QS_ACTIVE_INVALID")
                 Qt.quit()
                 return
             }
             if (!root.requested) {
                 root.requested = true
+                root.requestedAt = Date.now()
                 service.registerConsumer()
                 return
             }
             const invalidReply = ["wrong-id", "unsafe-secret", "malformed"].includes(root.scenario)
-            const targetState = invalidReply ? "unavailable"
+            const lifecycleFailure = ["exit-failure", "hang"].includes(root.scenario)
+            const targetState = invalidReply || lifecycleFailure ? "unavailable"
                 : root.scenario === "present" ? "installed_disconnected" : "dependency_missing"
             if (service.backendState !== targetState) {
-                if (ticks >= 68 || service.backendState === "unavailable") {
+                if (Date.now() - root.requestedAt >= (root.scenario === "hang" ? 10200 : 5100)
+                        || service.backendState === "unavailable") {
                     console.log("MEGAQML_QS_ACTIVE_INVALID")
                     service.unregisterConsumer()
                     Qt.quit()
                 }
+                return
+            }
+            if (lifecycleFailure) {
+                // Deadline must invalidate the response, kill/reap the Python-only
+                // fake child and never leak fabricated stderr into safeError.
+                if (service.readBusy) {
+                    if (Date.now() - root.requestedAt > 10200) {
+                        console.log("MEGAQML_QS_ACTIVE_INVALID")
+                        service.unregisterConsumer()
+                        Qt.quit()
+                    }
+                    return
+                }
+                const elapsed = Date.now() - root.requestedAt
+                const expectedError = root.scenario === "hang"
+                    ? "Static dependency check timed out."
+                    : "Rust helper failed before static detection completed."
+                const valid = service.consumerCount === 1
+                    && service.requestSerial === 1
+                    && service.readBusy === false
+                    && service.dependencySnapshot === null
+                    && service.backendState === "unavailable"
+                    && service.safeError === expectedError
+                    && service.refreshPending === false
+                    && service.connected === false
+                    && service.liveAuthQualified === false
+                    && (root.scenario !== "hang" || (elapsed >= 5750 && elapsed < 8800))
+                service.unregisterConsumer()
+                if (valid && service.consumerCount === 0) {
+                    console.log(root.scenario === "hang"
+                        ? "MEGAQML_QS_TIMEOUT_OK"
+                        : "MEGAQML_QS_EXIT_FAILURE_OK")
+                } else {
+                    console.log("MEGAQML_QS_ACTIVE_INVALID")
+                }
+                Qt.quit()
                 return
             }
             if (invalidReply) {

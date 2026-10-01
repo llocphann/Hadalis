@@ -630,3 +630,35 @@ This task is complete only when all of the following are true:
 - The user's latest one-command local run printed **all three new inert contracts PASS**: `WULL_POINTER_UNDERLAY_INERT_CONTRACT_PASS`, `WULL_PRIVATE_RELAY_INERT_CONTRACT_PASS` and `WULL_NESTED_POINTER_INERT_CONTRACT_PASS`. Its next **CLI availability** gate stopped with `Neither wdotool nor wlrctl is installed; no pointer input attempted`. The script did **not** invoke `scripts/wull-manual-nested-pointer.py` this time, and therefore produced no new real-pointer JSON receipt. Do NOT count these inert tests as actual pointer validation, and do NOT repeat the exact same unavailable-input probe.
 - Verify and use one native-only virtual-pointer CLI that is already packaged by the user's distro; `wlrctl` is available in official Debian, Ubuntu and Fedora packaging, with documented native relative `pointer move <dx> <dy>` and `pointer click` actions. In Niri, access to its own Wayland socket admits `wlr-virtual-pointer`, but this does NOT license input into the current desktop. An explicit **user-approved** OS package installation may be suggested separately from tests; never silently download/build/install, never modify a package manager without informed approval, and never substitute host-global uinput. If the distro has no verified package, stop and collect non-sensitive distro/package-manager information, rather than guessing a third-party repository. Underlay control failures with the relative backend must remain `INCONCLUSIVE`.
 - When a verified native CLI is available, resume the clean-`dev` single-command sequence: three inert contracts and then the opt-in `scripts/wull-manual-nested-pointer.py --acknowledge-nested-pointer`, which creates its owned nested session and publishes only sanitized exact-source evidence. Production code/mask/default-off behavior and `stable` remain unchanged. Physical top-edge click, four-edge input, popup interactions, visual quality, multioutput/reload/suspend, long-run full-shell resources and unresolved canonical-wide acceptance remain independent open gates.
+
+
+## Checkpoint — 2026-10-01 Arch Linux: Cargo-only native pointer dependency
+
+- Maintainer confirms Arch Linux: one clean-`dev` grouped run on
+  `8f2bcb3f38065ca17e8914befd3d9578cb60e9ee` logged all three
+  pointer inert contracts **PASS**, then stopped at `No verified wlrctl
+  package found for Arch Linux`. Neither `wdotool` nor `wlrctl`
+  was installed and NO new real pointer event/report occurred.
+- Public upstream `cushycush/wdotool` explicitly supports
+  `cargo install wdotool` from crates.io, plus native
+  `--backend wlr-protocols` absolute `mousemove` and `click`
+  commands. It can be installed with `cargo install --locked wdotool
+  --root ~/.local` as the normal user, **only after the maintainer
+  explicitly approves building third-party code**. The next single
+  local command must first fast-forward clean `dev` and run all three
+  inert contracts, detect a currently available native pointer CLI,
+  otherwise explain the Cargo source/install destination and require
+  interactive explicit yes before executing `cargo install`. Add
+  `~/.local/bin` to PATH only for this shell. Never run Cargo as
+  root, pipe downloaded scripts into the shell, use AUR without
+  review, allow the uinput/portal input fallback, or test the live
+  host directly. The nested runner itself forces
+  `--backend wlr-protocols` and validates a distinct owned Niri
+  socket before input. Any missing protocol remains INCONCLUSIVE.
+- Pointer acceptance is NOT yet achieved: inspect a freshly
+  published `docs/wull-pointer-acceptance-*.json` exact-source receipt
+  before any claims or changes to Wull's current whole-host Region.
+  Keep production QML, native code, default-off and `stable`
+  untouched; global canonical, physical other-edge input,
+  multioutput/hotplug, visual quality and long-running shell
+  resource qualification remain separate.

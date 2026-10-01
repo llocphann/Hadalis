@@ -114,9 +114,10 @@ def main():
                     "printing raw click coordinates or rerunning input.")
     parser.add_argument("--receipt", type=Path, required=True)
     args = parser.parse_args()
+    if args.receipt.is_symlink():
+        raise ValueError("untrusted_or_oversized_receipt")
     receipt_path = args.receipt.resolve(strict=True)
-    if (receipt_path.is_symlink()
-            or receipt_path.stat().st_size > 65536
+    if (receipt_path.stat().st_size > 65536
             or receipt_path.stat().st_size <= 0):
         raise ValueError("untrusted_or_oversized_receipt")
     match = NAME.fullmatch(receipt_path.name)

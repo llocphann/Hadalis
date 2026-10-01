@@ -44,6 +44,16 @@ cases = (
      "ui-material", "ui_consumer_release"),
     ("MEGAQML_QS_UI_STAGE_DEADLINE /home/private/path", 
      "ui-waffle", "ui_detection_deadline"),
+    ("MEGAQML_QS_UI_CAUSE_DEFAULT_PROPERTY /home/private/secret password=abc\\n"
+     "MEGAQML_QS_UI_STAGE_COMPONENT", "ui-material", "ui_cause_default_property"),
+    ("MEGAQML_QS_UI_CAUSE_TYPE_RESOLUTION /home/private/name",
+     "ui-waffle", "ui_cause_type_resolution"),
+    ("MEGAQML_QS_UI_CAUSE_MISSING_IMPORT", "ui-material", "ui_cause_missing_import"),
+    ("MEGAQML_QS_UI_CAUSE_PROPERTY_ASSIGNMENT", "ui-waffle", "ui_cause_property_assignment"),
+    ("MEGAQML_QS_UI_CAUSE_SINGLETON", "ui-material", "ui_cause_singleton"),
+    ("MEGAQML_QS_UI_CAUSE_LOADING_TIMEOUT", "ui-waffle", "ui_cause_loading_timeout"),
+    ("MEGAQML_QS_UI_CAUSE_NO_DETAIL", "ui-material", "ui_cause_no_detail"),
+    ("MEGAQML_QS_UI_CAUSE_OTHER", "ui-waffle", "ui_cause_other"),
     ("", "baseline", "no_diagnostic_output"),
 )
 with tempfile.TemporaryDirectory(prefix="megaqml-classifier-") as temp:

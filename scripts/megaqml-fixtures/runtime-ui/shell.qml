@@ -12,6 +12,44 @@ ShellRoot {
     property var component: null
     property real componentStarted: 0
     property real started: 0
+    // Inspect local error strings without ever logging their raw contents,
+    // which may contain private file paths or environment-specific details.
+    function emitComponentCause() {
+        if (!root.component) {
+            console.log("MEGAQML_QS_UI_CAUSE_ABSENT")
+            return
+        }
+        if (root.component.status === Component.Loading) {
+            console.log("MEGAQML_QS_UI_CAUSE_LOADING_TIMEOUT")
+            return
+        }
+        let detail = ""
+        try { detail = String(root.component.errorString()).toLowerCase() }
+        catch (ignored) { console.log("MEGAQML_QS_UI_CAUSE_NO_ERROR_API"); return }
+        if (detail.includes("non-existent default property") ||
+                detail.includes("nonexistent default property")) {
+            console.log("MEGAQML_QS_UI_CAUSE_DEFAULT_PROPERTY")
+        } else if (detail.includes("is not a type") ||
+                detail.includes("unavailable type")) {
+            console.log("MEGAQML_QS_UI_CAUSE_TYPE_RESOLUTION")
+        } else if ((detail.includes("module ") && detail.includes("is not installed")) ||
+                   detail.includes("failed to import")) {
+            console.log("MEGAQML_QS_UI_CAUSE_MISSING_IMPORT")
+        } else if (detail.includes("non-existent property") ||
+                   detail.includes("read-only property") ||
+                   detail.includes("cannot override final property")) {
+            console.log("MEGAQML_QS_UI_CAUSE_PROPERTY_ASSIGNMENT")
+        } else if (detail.includes("singleton")) {
+            console.log("MEGAQML_QS_UI_CAUSE_SINGLETON")
+        } else if (detail.includes("syntax error") ||
+                   detail.includes("unexpected token")) {
+            console.log("MEGAQML_QS_UI_CAUSE_SYNTAX")
+        } else if (!detail) {
+            console.log("MEGAQML_QS_UI_CAUSE_NO_DETAIL")
+        } else {
+            console.log("MEGAQML_QS_UI_CAUSE_OTHER")
+        }
+    }
     Timer {
         interval: 75
         repeat: true
@@ -44,6 +82,7 @@ ShellRoot {
                 if (root.component && root.component.status === Component.Loading
                         && Date.now() - root.componentStarted < 3000) return
                 if (!root.component || root.component.status !== Component.Ready) {
+                    root.emitComponentCause()
                     console.log("MEGAQML_QS_UI_STAGE_COMPONENT")
                     console.log("MEGAQML_QS_UI_INVALID")
                     Qt.quit()

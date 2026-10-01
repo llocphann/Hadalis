@@ -162,6 +162,17 @@ for stage in ("SCENARIO", "PREFLIGHT", "COMPONENT", "CONSTRUCT",
     assert 'MEGAQML_QS_UI_STAGE_' + stage in ui_shell
 assert 'Qt.resolvedUrl(location)' in ui_shell
 assert 'Component.Loading' in ui_shell
+assert 'root.component.errorString()' in ui_shell
+for cause in ("DEFAULT_PROPERTY", "TYPE_RESOLUTION", "MISSING_IMPORT",
+              "PROPERTY_ASSIGNMENT", "SINGLETON", "SYNTAX", "LOADING_TIMEOUT",
+              "NO_ERROR_API", "NO_DETAIL", "ABSENT", "OTHER"):
+    assert 'MEGAQML_QS_UI_CAUSE_' + cause in ui_shell
+for category in ("ui_cause_default_property", "ui_cause_type_resolution",
+                 "ui_cause_missing_import", "ui_cause_property_assignment",
+                 "ui_cause_singleton", "ui_cause_loading_timeout", "ui_cause_other"):
+    assert category in quickshell_classifier
+assert 'MEGAQML_QS_UI_CAUSE_DEFAULT_PROPERTY' in classifier_test
+assert 'MEGAQML_QS_UI_CAUSE_TYPE_RESOLUTION' in classifier_test
 for safe_category in ("ui_component_load", "ui_component_create", "ui_navigation",
                       "ui_detection", "ui_consumer_release", "ui_detection_deadline"):
     assert safe_category in quickshell_classifier

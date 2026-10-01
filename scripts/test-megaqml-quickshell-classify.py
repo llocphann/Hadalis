@@ -14,6 +14,23 @@ raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
                 for p in sys.argv[1:3]).lower()
 # Never publish the local QML engine's error text, paths or arbitrary data.
 # Fixed stage tokens are emitted by the reviewed fixture only.
+# More specific fixed cause tokens precede the broad UI component stage.
+# Never echo Qt's original error string or local file paths.
+ui_causes = (
+    ("default_property", "ui_cause_default_property"),
+    ("type_resolution", "ui_cause_type_resolution"),
+    ("missing_import", "ui_cause_missing_import"),
+    ("property_assignment", "ui_cause_property_assignment"),
+    ("singleton", "ui_cause_singleton"),
+    ("syntax", "ui_cause_syntax"),
+    ("loading_timeout", "ui_cause_loading_timeout"),
+    ("no_error_api", "ui_cause_no_error_api"),
+    ("no_detail", "ui_cause_no_detail"),
+    ("absent", "ui_cause_component_absent"),
+    ("other", "ui_cause_other"),
+)
+matched_ui_cause = next((category for token, category in ui_causes
+                         if "megaqml_qs_ui_cause_" + token in raw), None)
 ui_stages = (
     ("scenario", "ui_invalid_scenario"),
     ("preflight", "ui_preflight"),
@@ -26,7 +43,9 @@ ui_stages = (
 )
 matched_ui_stage = next((category for token, category in ui_stages
                          if "megaqml_qs_ui_stage_" + token in raw), None)
-if matched_ui_stage is not None:
+if matched_ui_cause is not None:
+    kind = matched_ui_cause
+elif matched_ui_stage is not None:
     kind = matched_ui_stage
 elif "megaqml_qs_ui_invalid" in raw:
     kind = "unexpected_ui_component_state"

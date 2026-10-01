@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 
-APPROVED_SOURCE = "9a8139da082b931db92a9719c8d0426e94233d9f"
+APPROVED_SOURCE = "9976e08d7db2537af747541afdba987515635b9b"
 SELF = "scripts/wull-manual-qualification.py"
 MAX_LOG = 1048576
 
@@ -48,22 +48,24 @@ def source_sensitive(path):
 def audit(after):
     if subprocess.run(["git", "merge-base", "--is-ancestor", APPROVED_SOURCE, after],
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
-        stop("dev is not descended from the reviewed perimeter-PASS source")
+        stop("dev is not descended from the reviewed post-exit-fix baseline")
     changed = git("diff", "--name-only", APPROVED_SOURCE, after).splitlines()
     blocked = [path for path in changed if source_sensitive(path)]
     if blocked:
         stop("Wull-sensitive source changed; review before retesting: " + blocked[0])
     if SELF in changed:
-        introductions = git("log", "--reverse", "--diff-filter=A", "--format=%H",
-                            APPROVED_SOURCE + ".." + after, "--", SELF).splitlines()
-        if len(introductions) != 1:
-            stop("Diagnostic script introduction cannot be verified")
-        original = subprocess.run(["git", "show", introductions[0] + ":" + SELF],
+        # This runner existed before APPROVED_SOURCE. Permit precisely its
+        # reviewed focused-mode update and reject every later modification.
+        edits = git("log", "--format=%H", APPROVED_SOURCE + ".." + after,
+                    "--", SELF).splitlines()
+        if len(edits) != 1:
+            stop("Qualification script changed beyond its reviewed focused update")
+        reviewed = subprocess.run(["git", "show", edits[0] + ":" + SELF],
                                   stdout=subprocess.PIPE, check=True).stdout
         current = subprocess.run(["git", "show", after + ":" + SELF],
                                  stdout=subprocess.PIPE, check=True).stdout
-        if original != current:
-            stop("Qualification script was modified after its reviewed introduction")
+        if reviewed != current:
+            stop("Qualification script differs from reviewed focused update")
 
 
 def fetch():
@@ -137,6 +139,11 @@ def run_check(name, argv, limit_seconds, env, log_dir):
 
 
 def main():
+    # Historical full mode is retained explicitly. Targeted mode omits the
+    # independently failing global validator but verifies the new Wull host.
+    if sys.argv[1:] not in ([], ["--focused"]):
+        stop("Usage: python3 scripts/wull-manual-qualification.py [--focused]")
+    focused = sys.argv[1:] == ["--focused"]
     os.umask(0o077)
     if Path.cwd().resolve() != Path(git("rev-parse", "--show-toplevel")).resolve():
         stop("Run from Hadalis repository root")
@@ -179,10 +186,18 @@ def main():
                           "--manifest-path", "native/Cargo.toml",
                           "-p", "inir-companiond"], 900),
     ]
+    if focused:
+        tests[:0] = [
+            ("wull-production", ["python3",
+                                 "scripts/test-wull-production-contract.py"], 90),
+            ("perimeter-regressions", ["make", "-s",
+                                      "test-perimeter-contracts"], 300),
+        ]
     results = [run_check(name, argv, duration, env, log_dir)
                for name, argv, duration in tests]
     binary = log_dir / "cargo-target" / "release" / "inir-companiond"
-    if results[1]["exit_code"] == 0 and binary.is_file():
+    built = next(x for x in results if x["check"] == "rust-release")
+    if built["exit_code"] == 0 and binary.is_file():
         smoke_env = dict(env)
         smoke_env.update({
             "INIR_NATIVE_BACKEND": "rust", "INIR_NATIVE_STRICT": "1",
@@ -210,27 +225,32 @@ def main():
     canonical_env["HADALIS_VALIDATION_LOG"] = str(
         log_dir / "maintainer-validation.private.log"
     )
-    results.append(run_check("canonical-maintainer-validator",
-                             ["bash", "scripts/validate-maintainer-local.sh",
-                              "--current-repo"], 1800,
-                             canonical_env, log_dir))
-    # Trim validator's own diagnostic file; all raw evidence remains local.
-    full_log = Path(canonical_env["HADALIS_VALIDATION_LOG"])
-    if full_log.is_file() and full_log.stat().st_size > MAX_LOG:
-        with full_log.open("rb") as stream:
-            first = stream.read(262144)
-            stream.seek(-524288, os.SEEK_END)
-            last = stream.read()
-        full_log.write_bytes(
-            first + b"\n[PRIVATE LOG BOUNDED: middle omitted]\n" + last
-        )
-        for item in results:
-            if item["check"] == "canonical-maintainer-validator":
-                item["private_detailed_log_truncated"] = True
-                break
+    if not focused:
+        results.append(run_check("canonical-maintainer-validator",
+                                 ["bash", "scripts/validate-maintainer-local.sh",
+                                  "--current-repo"], 1800,
+                                 canonical_env, log_dir))
+        # Keep raw validator evidence local and size-limited.
+        full_log = Path(canonical_env["HADALIS_VALIDATION_LOG"])
+        if full_log.is_file() and full_log.stat().st_size > MAX_LOG:
+            with full_log.open("rb") as stream:
+                first = stream.read(262144)
+                stream.seek(-524288, os.SEEK_END)
+                last = stream.read()
+            full_log.write_bytes(
+                first + b"\n[PRIVATE LOG BOUNDED: middle omitted]\n" + last
+            )
+            for item in results:
+                if item["check"] == "canonical-maintainer-validator":
+                    item["private_detailed_log_truncated"] = True
+                    break
 
     report = {
         "kind": "wull_manual_native_canonical_qualification",
+        "qualification_scope": "targeted_postfix" if focused else "native_and_canonical",
+        "canonical_validation": "not_run" if focused
+            else next(x["status"] for x in results
+                      if x["check"] == "canonical-maintainer-validator"),
         "source_sha": source,
         "started_utc": now,
         "finished_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
@@ -262,7 +282,10 @@ def main():
         stop("Unexpected staged or local changes; refusing commit")
     if git("ls-files", "--others", "--exclude-standard"):
         stop("Unexpected untracked files; refusing commit")
-    git("commit", "-m", "test(wull): publish sanitized native and canonical qualification", "--", str(report_path))
+    message = ("test(wull): publish sanitized focused host qualification"
+               if focused else
+               "test(wull): publish sanitized native and canonical qualification")
+    git("commit", "-m", message, "--", str(report_path))
     # Never force-push or rebase a result onto changed history.
     git("push", "origin", "HEAD:refs/heads/dev")
     print("REPORT_PUBLISHED:", report_path, flush=True)

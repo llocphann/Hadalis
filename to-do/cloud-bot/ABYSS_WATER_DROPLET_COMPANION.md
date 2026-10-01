@@ -1399,3 +1399,104 @@ production input change.
   acceptance and canonical-wide
   validation remain separate after
   four-edge private pointer qualification.
+
+
+## Checkpoint — 2026-10-02 existing left drift verified; left pre-body differential source staged
+
+- The previously staged no-input retrospective LEFT
+  analysis has now actually completed and published
+  `docs/wull-pointer-left-margin-drift-20261001T175020Z-5a11aa42-5b72e0e3294c.json`.
+  The exact original left test source
+  `5b72e0e3294c32276c306b3c6911fd9fa4e79fb1`
+  remains **INCONCLUSIVE** only at its last
+  candidate empty-margin click; the first
+  seven real pointer controls and cleanup
+  passed. The five-witness exact-session
+  classifier independently found the
+  final actual underlay click displaced
+  96+ pixels in at least one relative
+  axis, BOTH axes changed, horizontal
+  positive/vertical negative, near
+  neither its former disabled-body-center
+  nor candidate exterior actual point.
+  This is prior real input log evidence,
+  NOT proof of any virtual backend,
+  compositor or candidate input-mask
+  root cause. New TOP, BOTTOM and RIGHT
+  dynamic private single-output scale=1
+  separate real PASS reports remain
+  source-pinned. The old off-target TOP
+  trial remains a distinct unresolved
+  flakiness observation.
+- New source-only guarded physical
+  differential on **LEFT ONLY**:
+  child `3e9f843906edf1654ef3b150bad9de2413e61826`
+  adds an independent
+  `candidate_left_margin_before_body_control`
+  on the SAME left empty-host-margin target
+  immediately after a matched candidate
+  exterior click and BEFORE the real
+  candidate-body bridge/Rust click.
+  It requires exact matched underlay
+  alignment at the unchanged 6px
+  tolerance and zero accidental
+  bridge/Rust response; else stops
+  FAILED on matched+false activation
+  or INCONCLUSIVE on absent/ambiguous/
+  off-target coordinates. If it PASSes,
+  the runner still performs the original
+  adjacent real body click then the
+  original final margin target, without
+  interposed actions. This can bound
+  whether the second margin misses
+  only after a Wull body event, but
+  does NOT identify causality.
+  Parent `9c36779c39d08cdc95c9882fe79973c02b8622e6`
+  exact-source pins the new child blob
+  `8dd65a0d10d5a8d1475be0939dbb78a0f977dd35`
+  and increases audited coordinator
+  history from 14 to 15 revisions.
+  Separate inert pointer tests updated
+  `c1f274ecc8fe44ec663cdd7a3984dbc81db4ef85`
+  for pure differential decision and
+  `ddf0f55afbd28ea3dab93986ab3a27952a11c5c5`
+  for candidate source pin and left-only
+  witness. Documentation in
+  `docs/WULL_NESTED_POINTER_ACCEPTANCE_DESIGN.md`
+  checkpoint
+  `38798daceb1df9e58be614aa947fefe5f72a8d8c`.
+  Existing production Region/default-off,
+  native Rust and top/bottom/right
+  original pointer test semantics
+  unchanged. No LEFT differential
+  local real result exists yet.
+- **NEXT SINGLE LOCAL GATE:** fresh
+  clean permission-private temporary
+  `dev` clone, NEVER reset/rebase/merge
+  the maintainer's original potentially
+  divergent local branch. Run all FOUR
+  existing inert Wull pointer contracts,
+  then ONE explicit
+  `python3 scripts/wull-manual-nested-pointer.py
+  --acknowledge-nested-pointer-candidate-left`
+  on a verified newly owned nested
+  one-output Niri using native absolute
+  backend, real private Rust and the
+  added pre-body same-target witness.
+  Require unique exact-source sanitized
+  `docs/wull-mask-left-*.json` report;
+  inspect pre-body candidate margin
+  result and direct body→final-margin
+  result independently. If either
+  misses coordinates, STOP
+  INCONCLUSIVE and analyze phase
+  without blind retry. Do not
+  mutate `stable`, production
+  QML or host configuration.
+  Four-edge private pointer gating
+  does NOT qualify curved exact
+  silhouette, hover/popup/visual
+  fit, multioutput/fractional-scale,
+  hotplug/reload/suspend/lifecycle,
+  reliability or canonical-wide
+  validation.

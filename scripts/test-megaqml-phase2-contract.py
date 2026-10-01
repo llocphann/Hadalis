@@ -94,7 +94,12 @@ assert 'service.unregisterConsumer()' in active_fixture
 assert 'MEGAQML_QS_ACTIVE_PRESENT_OK' in active_fixture
 assert 'MEGAQML_QS_ACTIVE_MISSING_OK' in active_fixture
 assert 'json.dumps(' in fake_dispatch and 'subprocess' not in fake_dispatch
-assert 'PASS MegaQML synthetic runtime dispatcher: 12 cases plus four second requests and two race requests' in fake_contract
+# Assert the fixture exercises behavior, not a historical summary count:
+# the fake-only static+preflight overlap is individually checked for a
+# bounded initial hang and an inert second-request recovery.
+assert '"overlap-timeout"' in fake_contract
+assert 'subprocess.TimeoutExpired' in fake_contract
+assert 'fake simultaneous deadline and inert retry fixture' in fake_contract
 assert 'shared-race' in fake_dispatch
 assert '((2, True), (3, False))' in fake_contract
 recovery_fixture = get("scripts/megaqml-fixtures/runtime-recovery/shell.qml")

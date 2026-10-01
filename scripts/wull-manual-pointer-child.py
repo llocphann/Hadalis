@@ -223,6 +223,20 @@ def underlay_target_status(path, before, requested, *, tolerance=6):
             else "off_target")
 
 
+def left_pre_body_margin_decision(alignment, unexpected_activation):
+    """Fail closed: a real aligned underlay event is mandatory before body."""
+    if alignment not in (
+            "matched", "no_click", "off_target",
+            "ambiguous_multiple_clicks", "witness_record_unparseable"
+    ) or type(unexpected_activation) is not bool:
+        stop("invalid_left_pre_body_witness")
+    if alignment != "matched":
+        return ("inconclusive", "left_pre_body_margin_pointer_unverified")
+    if unexpected_activation:
+        return ("failed", "left_pre_body_margin_false_body_activation")
+    return ("pass", None)
+
+
 def trace_kinds(path):
     if not path.is_file():
         return []
@@ -665,6 +679,37 @@ def main():
                 report["status"] = "inconclusive"
                 report["reason"] = "candidate_exterior_pointer_unverified"
                 return
+
+            # LEFT-ONLY differential: try the SAME source-pinned empty
+            # margin BEFORE the candidate's first body click. The original
+            # body -> final-margin transition below is NOT interrupted.
+            # A miss here implicates the exterior -> margin phase; if this
+            # passes but the original final margin misses after the body,
+            # the transient arose at a later phase. Neither proves cause.
+            if selected_edge == "left":
+                prior_left = trace_kinds(candidate_trace)
+                before_left = underlay_count()
+                inject(points["inside_host_outside_body"])
+                left_pre_body_alignment = underlay_target_status(
+                    underlay_log, before_left,
+                    points["inside_host_outside_body"])
+                after_left = trace_kinds(candidate_trace)
+                left_pre_body_activation = (
+                    after_left.count("real_bridge_click_received")
+                    != prior_left.count("real_bridge_click_received")
+                    or after_left.count("rust_happy_pulse_ack")
+                    != prior_left.count("rust_happy_pulse_ack"))
+                left_status, left_reason = left_pre_body_margin_decision(
+                    left_pre_body_alignment, left_pre_body_activation)
+                report["checks"].append({
+                    "case": "candidate_left_margin_before_body_control",
+                    "status": left_status,
+                    "target_alignment": left_pre_body_alignment,
+                    "unexpected_body_click": left_pre_body_activation})
+                if left_status != "pass":
+                    report["status"] = left_status
+                    report["reason"] = left_reason
+                    return
 
             prior = trace_kinds(candidate_trace)
             before = underlay_count()

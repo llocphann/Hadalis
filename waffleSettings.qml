@@ -136,6 +136,12 @@ ApplicationWindow {
             name: Translation.tr("Battery"),
             icon: "battery-saver",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WTlpPage.qml")
+        },
+        {
+            key: "cloud-storage",
+            name: Translation.tr("Cloud Storage"),
+            icon: "cloud",
+            component: Qt.resolvedUrl("modules/waffle/settings/pages/WCloudStoragePage.qml")
         }
     ]
     
@@ -174,7 +180,8 @@ ApplicationWindow {
         Qt.callLater(() => {
             settingsContent.openSearchResult({
                 pageIndex: root.currentPage,
-                targetLabel: targetLabel
+                targetLabel: targetLabel,
+                section: root.currentPage === 19 ? targetLabel : ""
             })
         })
     }

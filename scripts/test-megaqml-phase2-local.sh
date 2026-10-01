@@ -23,6 +23,7 @@ run_test() {
 }
 run_test megaqml_phase2_contract python3 scripts/test-megaqml-phase2-contract.py
 run_test settings_navigation python3 scripts/test-settings-information-architecture.py
+run_test megaqml_waffle_navigation python3 scripts/test-megaqml-waffle-contract.py
 run_test megaqml_static_protocol node scripts/test-megaqml-phase2-protocol.mjs
 # Compile the reviewed local Rust source offline; never search an installed vendor.
 if command -v cargo >/dev/null 2>&1; then

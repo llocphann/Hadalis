@@ -475,7 +475,7 @@ fn run() -> Result<()> {
 }
 
 fn main() {
-    if let Err(error) = run() {
+    if run().is_err() {
         let safe = json!({
             "protocol": PROTOCOL_VERSION,
             "request_id": "",
@@ -489,7 +489,7 @@ fn main() {
             }
         });
         println!("{safe}");
-        eprintln!("inir-mega request rejected: {}", error.root_cause());
+        eprintln!("inir-mega request rejected"); // Never include untrusted JSON/errors.
         std::process::exit(2);
     }
 }

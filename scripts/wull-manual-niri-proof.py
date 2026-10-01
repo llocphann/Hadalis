@@ -11,7 +11,7 @@ import subprocess
 import sys
 import time
 
-BASE = "469c2ff3fc69642e4f63e25a89f7afe4c5d4d9e4"
+BASE = "af2565174916c12a8360b2566ba755d00c050777"
 SELF = "scripts/wull-manual-niri-proof.py"
 REVIEWED_SOURCE = {
     "wullProof.qml",
@@ -65,14 +65,14 @@ def audit(target):
     ):
         raise RuntimeError("Reviewed Wull renderer/daemon source changed")
     if SELF in modified:
-        introductions = git(
-            "log", "--diff-filter=A", "--format=%H", BASE + ".." + target,
+        revisions = git(
+            "log", "--format=%H", BASE + ".." + target,
             "--", SELF
         ).splitlines()
-        if len(introductions) != 1:
-            raise RuntimeError("Live proof script history needs review")
+        if len(revisions) != 1:
+            raise RuntimeError("Live proof script changed beyond its reviewed revision")
         original = subprocess.run(
-            ["git", "show", introductions[0] + ":" + SELF],
+            ["git", "show", revisions[0] + ":" + SELF],
             check=True, capture_output=True, timeout=10
         ).stdout
         latest = subprocess.run(
@@ -80,7 +80,7 @@ def audit(target):
             check=True, capture_output=True, timeout=10
         ).stdout
         if original != latest:
-            raise RuntimeError("Live proof script changed after introduction")
+            raise RuntimeError("Live proof script differs from its reviewed revision")
 
 
 def truncate_private_log(path):

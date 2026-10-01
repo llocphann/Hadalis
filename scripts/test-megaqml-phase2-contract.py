@@ -54,4 +54,17 @@ assert '/usr/lib/qt6/bin/qmlformat qmlformat6 qmlformat' in runner
 assert 'qt_formatter_selection=' in runner and 'version_major_minor=' in runner
 assert 'modern_probe_pass' in runner and 'fallback_probe_unqualified' in runner
 assert 'docs/evidence/megaqml/phase2d-' in runner
-print("PASS MegaQML Phase 2a static source contract")
+quickshell_runner = get("scripts/test-megaqml-quickshell-smoke.sh")
+quickshell_base = get("scripts/megaqml-fixtures/runtime-baseline/shell.qml")
+quickshell_dormant = get("scripts/megaqml-fixtures/runtime-dormant/shell.qml")
+assert 'INIR_NATIVE_BIN_DIR="$work/no-native-binaries"' in quickshell_runner
+assert 'QT_QPA_PLATFORM=offscreen' in quickshell_runner
+assert 'runtime-$kind/shell.qml' in quickshell_runner
+assert 'quickshell_baseline' in runner and 'quickshell_service_dormant' in runner
+assert 'MEGAQML_QS_BASELINE_OK' in quickshell_base
+assert 'MEGAQML_QS_DORMANT_OK' in quickshell_dormant
+assert 'service.consumerCount === 0' in quickshell_dormant
+assert 'service.requestSerial === 0' in quickshell_dormant
+assert 'registerConsumer()' not in quickshell_dormant
+assert 'docs/evidence/megaqml/phase2e-' in runner
+print("PASS MegaQML Phase 2e static source contract")

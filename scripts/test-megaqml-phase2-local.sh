@@ -24,7 +24,7 @@ run_test() {
     case "$name" in
       # Parser/tool baselines can fail even with correct new source.
       # Never translate those into a false MegaQML source failure.
-      qml_minimal|qml_modern_syntax|qml_baseline|qml_waffle_baseline) qt_unqualified=1 ;;
+      qml_minimal|qml_modern_syntax|qml_baseline|qml_waffle_baseline|quickshell_baseline) qt_unqualified=1 ;;
       *) failed=1 ;;
     esac
   fi
@@ -34,6 +34,19 @@ run_test megaqml_phase2_contract python3 scripts/test-megaqml-phase2-contract.py
 run_test settings_navigation python3 scripts/test-settings-information-architecture.py
 run_test megaqml_waffle_navigation python3 scripts/test-megaqml-waffle-contract.py
 run_test megaqml_static_protocol node scripts/test-megaqml-phase2-protocol.mjs
+# Optional actual Quickshell singleton creation; zero consumers and isolated
+# shell root. The fixture cannot resolve the production native-dispatch path.
+if command -v qs >/dev/null 2>&1 || command -v quickshell >/dev/null 2>&1; then
+  run_test quickshell_baseline bash scripts/test-megaqml-quickshell-smoke.sh baseline
+  if grep -q '^quickshell_baseline,PASS,' "$scratch/safe.csv"; then
+    run_test quickshell_service_dormant bash scripts/test-megaqml-quickshell-smoke.sh dormant
+  else
+    printf 'quickshell_service_dormant,SKIP,127,%s\n' "$source_sha" >> "$scratch/safe.csv"
+  fi
+else
+  printf 'quickshell_baseline,SKIP,127,%s\n' "$source_sha" >> "$scratch/safe.csv"
+  printf 'quickshell_service_dormant,SKIP,127,%s\n' "$source_sha" >> "$scratch/safe.csv"
+fi
 # Compile the reviewed local Rust source offline; never search an installed vendor.
 if command -v cargo >/dev/null 2>&1; then
   run_test megaqml_rust_build cargo build --locked --offline --manifest-path native/Cargo.toml -p inir-mega
@@ -119,11 +132,11 @@ else
     printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
   done
 fi
-report="docs/evidence/megaqml/phase2d-${source_sha:0:12}-$(date -u +%Y%m%dT%H%M%SZ).md"
+report="docs/evidence/megaqml/phase2e-${source_sha:0:12}-$(date -u +%Y%m%dT%H%M%SZ).md"
 mkdir -p docs/evidence/megaqml
 {
-  printf '# MegaQML Phase 2d synthetic local evidence\n\nSource SHA: `%s`\n\n' "$source_sha"
-  printf 'Scope: static source contracts, synthetic parser cases and optional QML syntax parsing; no QML runtime or vendor/account execution. No vendor process, account, QML rendering or live acceptance.\n\n'
+  printf '# MegaQML Phase 2e synthetic plus optional runtime smoke evidence\n\nSource SHA: `%s`\n\n' "$source_sha"
+  printf 'Scope: static synthetic contracts plus optional isolated non-rendering Quickshell singleton creation. No Settings UI rendering, vendor execution, credentials or live MEGA acceptance.\n\n'
   printf 'qt_formatter_selection=%s;version_major_minor=%s\n\n' "$qt_formatter_selection" "$qt_public_version"
   printf '| Test | Result | Exit code | Source SHA |\n|---|---|---:|---|\n'
   while IFS=, read -r name state code sha; do
@@ -145,6 +158,11 @@ mkdir -p docs/evidence/megaqml
     echo 'qml_waffle_blocker=tool_cannot_parse_existing_waffle_page'
   elif grep -q '^qml_minimal,SKIP,' "$scratch/safe.csv"; then
     echo 'qml_blocker=qmlformat_unavailable'
+  fi
+  if grep -q '^quickshell_baseline,FAIL,' "$scratch/safe.csv"; then
+    echo 'quickshell_runtime_blocker=baseline_environment_or_tool_failure'
+  elif grep -q '^quickshell_baseline,SKIP,' "$scratch/safe.csv"; then
+    echo 'quickshell_runtime_blocker=quickshell_not_available'
   fi
   if [[ "$failed" != 0 ]]; then
     echo 'Aggregate: FAIL (one or more executed required/new-source tests).'
@@ -173,7 +191,7 @@ if [[ "$(git diff --cached --name-only)" != "$report" ]] || ! git diff --cached 
   git reset --quiet -- "$report"
   echo 'PUBLICATION_SKIPPED_INDEX'; exit "$failed"
 fi
-if ! git commit --quiet -m "test(megaqml): Phase 2d synthetic evidence ${source_sha:0:12}" -- "$report"; then
+if ! git commit --quiet -m "test(megaqml): Phase 2e static and isolated runtime evidence ${source_sha:0:12}" -- "$report"; then
   echo 'PUBLICATION_SKIPPED_COMMIT'; exit "$failed"
 fi
 evidence_sha="$(git rev-parse HEAD)"

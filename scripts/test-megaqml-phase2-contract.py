@@ -551,4 +551,53 @@ assert "CloudStoragePreflightProtocol.js" in get("scripts/test-megaqml-quickshel
 assert "connect_preflight" in boundary
 assert "CloudStoragePreflightProtocol.js" in module_test
 
+# F1 visual refinement must preserve source behavior and compact controls.
+# High contrast is opt-in to Cloud Storage; unrelated Settings tabs stay as-is.
+nav = get("modules/common/widgets/SettingsTaskNavigator.qml")
+selection = get("modules/common/widgets/SelectionGroupButton.qml")
+selection_array = get("modules/common/widgets/ConfigSelectionArray.qml")
+group_button = get("modules/common/widgets/GroupButton.qml")
+waffle_page = get("modules/waffle/settings/pages/WCloudStoragePage.qml")
+waffle_button = get("modules/waffle/settings/WSettingsButton.qml")
+for shared in (nav, selection, selection_array):
+    assert "property bool highContrastSelection: false" in shared
+assert "highContrastSelection: true" in p
+assert "highContrastSelection: root.highContrastSelection" in nav
+assert "highContrastSelection: root.highContrastSelection" in selection_array
+assert "selectionOutlineWidth: root.highContrastSelection && root.toggled ? 2 : 0" in selection
+assert "colOnPrimaryContainer" in selection
+assert "Font.DemiBold" in selection
+assert "property int selectionOutlineWidth: 0" in group_button
+assert "border.width: root.selectionOutlineWidth" in group_button
+for page in (p, waffle_page):
+    for label in ('buttonText: Translation.tr("Recheck")',
+                  'buttonText: Translation.tr("Offline check")'):
+        assert label in page, label
+    for text in ("Static only · no server start",
+                 "Offline only · no server or login",
+                 "Sign-in and cloud access disabled"):
+        assert text in page, text
+    assert 'Check connection readiness (offline)' in page  # a11y, not visual label
+    assert "CloudStorageService.requestConnectPreflight()" in page
+    assert "CloudStorageService.refreshStatic()" in page
+assert "contentItem: RowLayout" in p
+assert 'text: "refresh"' in p and 'text: "shield"' in p
+assert 'buttonIcon: "arrow-clockwise"' in waffle_page
+assert 'buttonIcon: "shield"' in waffle_page
+assert 'accessibleButtonName: Translation.tr("Check connection readiness (offline)")' in waffle_page
+assert "Accessible.name:" in waffle_button
+builder = get("scripts/test-megaqml-ui-fixture.py")
+host_builder = get("scripts/test-megaqml-host-ui-fixture.py")
+assert '"modules/common/widgets/MaterialSymbol.qml":' in builder
+assert '"Control { property string buttonText:' in builder
+assert '" property bool highContrastSelection: false;"' in builder
+assert '" property string accessibleButtonName:' in builder
+assert '"MaterialSymbol.qml":' not in host_builder  # no duplicate stub
+for fixture in (
+        "scripts/megaqml-fixtures/runtime-ui-shared/shell.qml",
+        "scripts/megaqml-fixtures/runtime-ui-host/shell.qml",
+        "scripts/megaqml-fixtures/runtime-ui-preflight-present/shell.qml",
+        "scripts/megaqml-fixtures/runtime-ui-preflight-overlap/shell.qml"):
+    assert 'node.buttonText === "Offline check"' in get(fixture), fixture
+
 print("PASS MegaQML Phase 2p static source contract")

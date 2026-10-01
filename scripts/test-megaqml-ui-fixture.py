@@ -7,7 +7,7 @@ The only executable supplied by the shell runner is its separate Python fake.
 from pathlib import Path
 import sys
 
-if len(sys.argv) != 3 or sys.argv[1] not in ("material", "waffle"):
+if len(sys.argv) != 3 or sys.argv[1] not in ("material", "waffle", "shared"):
     raise SystemExit(64)
 kind = sys.argv[1]
 repo = Path(__file__).resolve().parents[1]
@@ -109,27 +109,30 @@ for directory, filenames in stub_directories.items():
     write(directory + "/qmldir", "".join(
         Path(name).stem + " 1.0 " + name + "\n" for name in sorted(filenames)))
 
-if kind == "material":
-    path = "modules/settings/CloudStorageConfig.qml"
-    replacements = {
-        "import qs.services.deferred\n": 'import "../../services/deferred"\n',
-        "import qs.services\n": 'import "../../services"\n',
-        "import qs.modules.common.widgets\n": 'import "../common/widgets"\n',
-        "import qs.modules.common\n": 'import "../common"\n',
-    }
-else:
-    path = "modules/waffle/settings/pages/WCloudStoragePage.qml"
-    replacements = {
-        "import qs.services.deferred\n": 'import "../../../../services/deferred"\n',
-        "import qs.services\n": 'import "../../../../services"\n',
-        "import qs.modules.waffle.settings\n": 'import ".."\n',
-    }
-source = (repo / path).read_text(encoding="utf-8")
-for before, after in replacements.items():
-    if source.count(before) != 1:
-        raise SystemExit(67)
-    source = source.replace(before, after, 1)
-if "import qs." in source:
-    raise SystemExit(68)
-write(path, source)
+# Shared test places both untouched real page bodies in the SAME temporary
+# Quickshell module tree; the one exact copied service is a common singleton.
+for page_kind in (("material", "waffle") if kind == "shared" else (kind,)):
+    if page_kind == "material":
+        path = "modules/settings/CloudStorageConfig.qml"
+        replacements = {
+            "import qs.services.deferred\n": 'import "../../services/deferred"\n',
+            "import qs.services\n": 'import "../../services"\n',
+            "import qs.modules.common.widgets\n": 'import "../common/widgets"\n',
+            "import qs.modules.common\n": 'import "../common"\n',
+        }
+    else:
+        path = "modules/waffle/settings/pages/WCloudStoragePage.qml"
+        replacements = {
+            "import qs.services.deferred\n": 'import "../../../../services/deferred"\n',
+            "import qs.services\n": 'import "../../../../services"\n',
+            "import qs.modules.waffle.settings\n": 'import ".."\n',
+        }
+    source = (repo / path).read_text(encoding="utf-8")
+    for before, after in replacements.items():
+        if source.count(before) != 1:
+            raise SystemExit(67)
+        source = source.replace(before, after, 1)
+    if "import qs." in source:
+        raise SystemExit(68)
+    write(path, source)
 print("PASS isolated MegaQML " + kind + " source-only UI fixture")

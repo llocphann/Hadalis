@@ -57,3 +57,33 @@ for kind, relative, replacement in (
         assert not (fixture / "services/Config.qml").exists()
         assert not (fixture / "modules/settings/OverviewConfig.qml").exists()
 print("PASS MegaQML isolated Material and Waffle UI source fixture contract")
+
+# A shared fixture must resolve both real page bodies from one exact copied
+# service singleton; do not use independent temp configurations per page.
+with tempfile.TemporaryDirectory(prefix="megaqml-shared-unit-") as temp:
+    fixture = Path(temp)
+    (fixture / "shell.qml").write_bytes((
+        repo / "scripts/megaqml-fixtures/runtime-ui-shared/shell.qml").read_bytes())
+    child = subprocess.run([sys.executable, str(generator), "shared", str(fixture)],
+                           capture_output=True, text=True, timeout=3, check=True)
+    assert child.stdout.strip() == "PASS isolated MegaQML shared source-only UI fixture"
+    assert child.stderr == ""
+    for relative, required_import, body_anchor in (
+        ("modules/settings/CloudStorageConfig.qml",
+         'import "../../services/deferred"', "ContentPage {"),
+        ("modules/waffle/settings/pages/WCloudStoragePage.qml",
+         'import "../../../../services/deferred"', "// Independent Waffle"),
+    ):
+        actual = (fixture / relative).read_text(encoding="utf-8")
+        original = (repo / relative).read_text(encoding="utf-8")
+        assert required_import in actual and "import qs." not in actual
+        assert original[original.index(body_anchor):] in actual
+    for name in ("CloudStorageService.qml", "CloudStorageStaticProtocol.js"):
+        assert (fixture / "services/deferred" / name).read_bytes() == (
+            repo / "services/deferred" / name).read_bytes()
+    assert "ContentPage 1.0 ContentPage.qml" in (
+        fixture / "modules/common/qmldir").read_text()
+    assert "WSettingsPage 1.0 WSettingsPage.qml" in (
+        fixture / "modules/waffle/settings/qmldir").read_text()
+    assert not (fixture / "scripts/native-dispatch").exists()
+    assert not (fixture / "services/Config.qml").exists()

@@ -35,7 +35,7 @@ SAFE_REMOTES = {
 # SHA-pinned implementation and real production interfaces. A changed
 # source dependency must be re-reviewed, never silently accepted as PASS.
 REVIEWED = {
-    CHILD: "bfed36f31cd9f34fd3f180581eb90377dce7ce16",
+    CHILD: "b0eec12eb1cc1ac615f6bf585b37ffccea4e344d",
     NESTED_HELPER: "7edf8328df1f9704f1331fbe1a5e84e659cd360a",
     "scripts/wull-fixtures/production-layer/shell.qml":
         "e16b6dcada26a27fd71cc670e30c55135401bcef",
@@ -95,7 +95,7 @@ def audit(source):
             raise RuntimeError("pointer_dependency_changed_after_review")
     revision = git("log", "--format=%H", BASE + ".." + source,
                    "--", SELF).splitlines()
-    if (len(revision) != 5
+    if (len(revision) != 6
             or git("rev-parse", revision[-1] + ":" + SELF)
             != INITIAL_SELF_BLOB
             or git("rev-parse", revision[0] + ":" + SELF)
@@ -384,8 +384,8 @@ def main():
     elif not Path(host_ipc).is_socket() or not (
             Path(runtime) / desktop).is_socket():
         reason = "host_wayland_or_niri_socket_missing"
-    elif shutil.which("wdotool") is None:
-        reason = "native_wdotool_missing_no_input_injected"
+    elif not (shutil.which("wdotool") or shutil.which("wlrctl")):
+        reason = "native_pointer_cli_missing_no_input_injected"
     elif not all(shutil.which(x) for x in ("cargo", "dbus-run-session")) or not (
             shutil.which("qs") or shutil.which("quickshell")):
         reason = "nested_pointer_dependencies_unavailable"
@@ -428,7 +428,7 @@ def main():
         "preflight_reason": reason,
         "scope": "owned_single_output_nested_niri_real_production_pointer",
         "observation": observations,
-        "native_pointer_backend": "forced_wlr_protocols_only_if_available",
+        "native_pointer_backend": "native_wlr_protocol_only_if_available",
         "host_user_config_changed": False,
         "production_mask_changed": False,
         "visual_and_multioutput_acceptance": "not_run",

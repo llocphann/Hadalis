@@ -5,6 +5,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "CloudStorageStaticProtocol.js" as StaticProtocol
+import "CloudStoragePreflightProtocol.js" as PreflightProtocol
 
 // Dormant, static-only phase. Never execute a vendor client before Connect.
 Singleton {
@@ -23,10 +24,22 @@ Singleton {
     readonly property bool connected: false
     readonly property bool liveAuthQualified: false
     readonly property bool installed: root.dependencySnapshot?.installed ?? false
+    // Opt-in, vendor-free F1 preflight is independent of automatic detection.
+    property bool preflightBusy: false
+    property string preflightState: "not_requested"
+    property string preflightError: ""
+    property int preflightSerial: 0
+    property int _preflightGeneration: -1
+    property string _preflightId: ""
+    property string _preflightInput: ""
 
     function registerConsumer() {
         root.consumerCount++
-        if (root.consumerCount === 1) root.refreshStatic()
+        if (root.consumerCount === 1) {
+            root.preflightState = "not_requested"
+            root.preflightError = ""
+            root.refreshStatic()
+        }
     }
 
     function unregisterConsumer() {
@@ -35,6 +48,8 @@ Singleton {
         if (root.consumerCount === 0) {
             root.generation++
             root.refreshPending = false
+            root.preflightState = "not_requested"
+            root.preflightError = ""
             if (root.dependencySnapshot !== null)
                 root.backendState = "stale"
         }
@@ -86,6 +101,87 @@ Singleton {
         if (root.consumerCount > 0 && root.refreshPending) {
             root.refreshPending = false
             Qt.callLater(root.refreshStatic)
+        }
+    }
+
+    function requestConnectPreflight() {
+        // Requires a visible consumer's explicit action; never starts a vendor.
+        if (root.consumerCount === 0 || root.preflightBusy || preflightProc.running) return
+        root.preflightBusy = true
+        root.preflightState = "checking"
+        root.preflightError = ""
+        root._preflightGeneration = root.generation
+        root._preflightId = "cloud-preflight-" + (++root.preflightSerial)
+        root._preflightInput = JSON.stringify({
+            protocol: 1, request_id: root._preflightId,
+            operation: "connect_preflight", params: {}
+        }) + "\n"
+        preflightProc.startObserved = false
+        preflightProc.stdinEnabled = true
+        preflightDeadline.restart()
+        preflightProc.running = true
+    }
+
+    function finishPreflight(exitCode, payload) {
+        root.preflightBusy = false
+        if (root.consumerCount === 0 || root._preflightGeneration !== root.generation)
+            return
+        if (exitCode !== 0) {
+            root.preflightState = "unavailable"
+            root.preflightError = "Offline connection readiness check failed."
+            return
+        }
+        try {
+            const result = PreflightProtocol.parseConnectPreflightResponse(
+                payload, root._preflightId)
+            root.preflightState = result.dependenciesReady
+                ? "dependencies_ready" : "dependency_missing"
+            root.preflightError = ""
+        } catch (ignored) {
+            root.preflightState = "unavailable"
+            root.preflightError = "Incompatible offline connection readiness response."
+        }
+    }
+
+    Process {
+        id: preflightProc
+        property bool startObserved: false
+        command: [Quickshell.shellPath("scripts/native-dispatch"), "mega", "request"]
+        stdout: StdioCollector { id: preflightReply }
+        stderr: StdioCollector {} // No raw child output in UI.
+        onStarted: {
+            preflightProc.startObserved = true
+            if (!root.preflightBusy || root._preflightInput.length === 0) {
+                preflightProc.signal(9)
+                return
+            }
+            preflightProc.write(root._preflightInput)
+            root._preflightInput = ""
+            preflightProc.stdinEnabled = false
+        }
+        onExited: (exitCode, exitStatus) => {
+            preflightDeadline.stop()
+            preflightProc.startObserved = false
+            root.finishPreflight(exitCode, preflightReply.text)
+        }
+    }
+
+    Timer {
+        id: preflightDeadline
+        interval: 6000
+        repeat: false
+        onTriggered: {
+            // Discard any late response without changing static-detect generation.
+            root._preflightGeneration = -1
+            root._preflightInput = ""
+            root.preflightState = "unavailable"
+            root.preflightError = "Offline connection readiness check timed out."
+            if (preflightProc.startObserved) {
+                preflightProc.signal(9)
+            } else {
+                preflightProc.running = false
+                root.preflightBusy = false
+            }
         }
     }
 

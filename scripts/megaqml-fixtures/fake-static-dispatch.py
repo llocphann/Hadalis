@@ -16,11 +16,15 @@ try:
     request = json.loads(line)
 except ValueError:
     raise SystemExit(67)
+# Fake protocol only: opt-in static readiness never invokes a vendor.
+operation = request.get("operation") if isinstance(request, dict) else None
 if not isinstance(request, dict) or request.get("protocol") != 1 or (
-        request.get("operation") != "detect") or request.get("params") != {}:
+        operation not in ("detect", "connect_preflight")) or (
+        request.get("params") != {}) or request.get("secret") is not None:
     raise SystemExit(68)
 identifier = request.get("request_id")
-if not isinstance(identifier, str) or not identifier.startswith("cloud-detect-") or (
+prefix = "cloud-preflight-" if operation == "connect_preflight" else "cloud-detect-"
+if not isinstance(identifier, str) or not identifier.startswith(prefix) or (
         len(identifier) > 64) or not identifier.replace("-", "").isalnum():
     raise SystemExit(69)
 if scenario == "retry-exit" and identifier == "cloud-detect-1":
@@ -53,6 +57,26 @@ if scenario in ("coalesce", "stale-reacquire") and identifier == "cloud-detect-1
 present = scenario == "present" or (
     scenario in ("coalesce", "stale-reacquire") and identifier == "cloud-detect-1") or (
     scenario == "shared-race" and identifier in ("cloud-detect-1", "cloud-detect-2"))
+if operation == "connect_preflight":
+    preflight = {
+        "adapter": "inir-mega",
+        "probe_kind": "static_connect_preflight",
+        "vendor_execution": "blocked_pending_disposable_qualification",
+        "connection_attempted": False,
+        "connected": False,
+        "auth_qualified": False,
+        "account_reads_enabled": False,
+        "dependencies_ready": present,
+        "reason": ("installed_vendor_not_qualified"
+                   if present else "dependency_missing")
+    }
+    print(json.dumps({
+        "protocol": 1,
+        "request_id": ("cloud-preflight-replayed"
+                       if scenario == "wrong-id" else identifier),
+        "ok": True, "error": None, "result": preflight
+    }, separators=(",", ":")), flush=True)
+    raise SystemExit(0)
 names = ("mega-cmd", "mega-login", "mega-cmd-server", "mega-whoami", "mega-version")
 available = (present, present, present, False, present)
 result = {

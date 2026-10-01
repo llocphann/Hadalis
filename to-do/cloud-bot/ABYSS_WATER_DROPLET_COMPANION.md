@@ -387,3 +387,14 @@ This task is complete only when all of the following are true:
 - Blockers before production integration: bounded visual/screenshot acceptance of the proof scene, Rust companion core/bridge implementation and tests, hidden-idle/resource evidence, settings/policy wiring, and later canonical/live desktop validation.
 - Next: implement the smallest standalone `inir-companiond` Rust core milestone (typed protocol + deterministic state machine/scheduling tests) without wiring production QML ownership yet; keep visual proof acceptance as a separate gate before Phase 3 production attachment.
 
+## Checkpoint — 2026-10-01 Rust companion core dispatched
+
+- Phase: **Phase 1 Rust core implementation + exact-SHA validation; production integration remains disabled**.
+- Renderer prerequisite remains structurally qualified: `JOB-WULL-PROOF-012:0` / `:1` passed Quickshell load plus Niri window mapping for the committed root-level proof. This is not visual/maintainer acceptance.
+- Core implementation commit: `5a54934a83169c570988417f121b298f1002f69a`. Added standalone workspace member `native/inir-companiond` with typed protocol/state, monotonic input sequencing, bounded 8 KiB line intake, bounded 64-record stdin channel, deterministic semantic reaction/scheduling state machine, hidden state with no scheduled wakeup, malformed-input recovery, and unit tests. `Cargo.lock` is pinned and the existing installer still does not copy/package `inir-companiond`, so Wull is not enabled in production.
+- Concurrent repository work after the core commit touched MEGAcmd rather than Wull. Validation is therefore pinned to a newer exact source rather than assuming the core SHA remained HEAD.
+- `JOB-WULL-CORE-013` was recorded `status=invalid` with `actions=[]`: a concurrent commit landed between the read and the job-file commit, so its declared `base_sha` did not equal the job commit's first parent. It produced no runtime/test evidence and will not be reused.
+- Active validation: `JOB-WULL-CORE-014` was introduced by `d24eb5f9a65e401c75a747bf4518679a7c585b52` with first parent/base `6dadecde913e067c7910404563e82080010f4931`. It runs `cargo test --locked -p inir-companiond` plus a deterministic stdin/stdout protocol smoke for hidden -> show -> click -> hide.
+- Blocker: `JOB-WULL-CORE-014` has no result receipt yet. No Rust PASS is claimed until its exact-source actions return successfully.
+- Next: inspect only `JOB-WULL-CORE-014`. On PASS, continue with the QML stdio bridge and low-rate state interpolation while keeping production ownership disabled; on failure, diagnose only from the worker evidence before changing source.
+

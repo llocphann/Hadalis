@@ -8,7 +8,7 @@ if sys.argv[1:] != ["mega", "request"]:
     raise SystemExit(64)
 scenario = os.environ.get("MEGAQML_FIXTURE_CASE")
 if scenario not in ("present", "missing", "wrong-id", "unsafe-secret", "malformed", "exit-failure", "hang", "coalesce", "stale-reacquire", "retry-exit", "retry-timeout", "shared-race",
-                    "preflight-third-wrong-id", "preflight-timeout"):
+                    "preflight-third-wrong-id", "preflight-timeout", "overlap-timeout"):
     raise SystemExit(65)
 line = sys.stdin.readline(8193)
 if len(line) > 8192:
@@ -44,6 +44,17 @@ if scenario == "exit-failure":
     raise SystemExit(23)
 if scenario == "hang":
     # Bounded fake hang: no background job, vendor process or network I/O.
+    import time
+    until = time.monotonic() + 9.5
+    while time.monotonic() < until:
+        time.sleep(0.1)
+    raise SystemExit(24)
+if scenario == "overlap-timeout" and (
+        (operation == "detect" and identifier == "cloud-detect-1") or
+        (operation == "connect_preflight" and identifier == "cloud-preflight-1")):
+    # Both first fake-only requests intentionally hang. The static deadline
+    # must invalidate and reap the concurrently running opt-in preflight;
+    # subsequent requests exit quickly so isolated recovery can be proven.
     import time
     until = time.monotonic() + 9.5
     while time.monotonic() < until:

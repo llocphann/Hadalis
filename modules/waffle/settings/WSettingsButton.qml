@@ -11,6 +11,7 @@ WSettingsRow {
     
     property string buttonText: ""
     property string buttonIcon: ""
+    property string accessibleButtonName: ""
     property bool accent: false
     
     signal buttonClicked()
@@ -18,6 +19,8 @@ WSettingsRow {
     control: Component {
         WButton {
             text: root.buttonText
+            Accessible.name: root.accessibleButtonName.length > 0
+                ? root.accessibleButtonName : root.buttonText
             icon.name: root.buttonIcon
             
             colBackground: root.accent

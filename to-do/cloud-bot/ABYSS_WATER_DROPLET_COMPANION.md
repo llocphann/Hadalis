@@ -1617,3 +1617,159 @@ production input change.
   and canonical-wide
   validation remain
   unqualified.
+
+
+## Checkpoint — 2026-10-02 static curve and motion footprint: separate inert source risk gates
+
+- Latest four-edge independently published
+  PRIVATE, scale=1, single-output Niri dynamic
+  BBOX trials all remain real PASS; they
+  do not qualify the final production
+  hit shape, animated geometry, hover or
+  rare pointer reliability. The earlier
+  distinct TOP/LEFT off-target old
+  runs and retrospective classification
+  reports remain unresolved, and no
+  new runtime or host-local geometry
+  test receipt is available for this
+  checkpoint.
+- New strictly inert animation/scale
+  feasibility tool
+  `scripts/wull-motion-footprint-feasibility.py`
+  first source commit
+  `cf700d32453b20742b4a32882a1b7516d22d0a32`,
+  corrected original body
+  implicit-dimensions pin
+  `6a9aeeb9d4738e3fc11ebfaaf5c6a603bb45b3c7`,
+  deterministic nominal bob
+  float normalization
+  `c6968fc7963839ee33f59c0c89d59c07aec44bfa`.
+  Its independent INERT
+  source/trust/negative contract is
+  `scripts/test-wull-motion-footprint-feasibility.py`
+  commit
+  `8786afdbbebb037812f37d8dd27e4fad734321ca`.
+  The tool SHA-pins ALL four original
+  production body, bridge, wrapper
+  and host-QML source blobs; no
+  Niri, Quickshell, Rust, native pointer,
+  live input Region or host config
+  is touched. It derives ONLY the
+  nominal input-clamped source-formula
+  values, not actual frame extrema
+  through Qt SpringAnimation/OutBack,
+  actual mask mapping, observed Rust
+  state frequency, or rendered pixels.
+- Significant SOURCE-LEVEL
+  counterexample to static 76x92
+  mask promotion: the bridge permits
+  target `squash=0,stretch=1`,
+  explicit body bottom-origin
+  `yScale=1.06`, and the upper
+  Bézier point at item y=2
+  would map to item y=-3.4
+  when other transforms
+  are analytically held at
+  identity. With actual source
+  TOP body host offset y=3,
+  tip would nominally reach
+  host y=-0.4, outside both
+  original test-candidate
+  static body bbox top y=3
+  and host y=0. This is an
+  admissible isolated
+  source-state risk, NOT an
+  actually witnessed rendered
+  Qt/Rust pose. Simple
+  source-size arithmetic
+  also gives top static
+  body 114x138 at parent
+  scale1.5 vs host112x98,
+  and rotated side body
+  138x114 vs host98x112;
+  exact Qt parent scale
+  pivot, compositor mapping,
+  clipping and region refresh
+  remain unverified.
+  Bridge-clamped nominal
+  `state_xScale` .925–1.075
+  and `state_yScale`
+  .905–1.095, root tap
+  squash scale targets
+  .98775–1.035, and
+  state/sway expression
+  nominal angles -9.6–
+  +10.59 degrees MUST NOT
+  be mistaken for guaranteed
+  live SpringAnimation
+  extrema. The pulse halo
+  at full intensity has
+  nominal 76x90.16
+  local extent; treating
+  any bright halo/ripple
+  as a click target is
+  a separate UX decision.
+- This is why even the
+  existing source-pinned
+  four-cubic static
+  approximately 43-band,
+  43%-BBOX conservative
+  outline study cannot
+  be promoted to a moving
+  exact hit shape, or
+  used to claim actual
+  Quickshell runtime
+  performance. Current
+  real full-host mask,
+  Wull default-off,
+  native backend and
+  `stable` remain unchanged.
+  Expanded technical
+  design with precise
+  source-bounded vs
+  unqualified runtime
+  observations in
+  `docs/WULL_NESTED_POINTER_ACCEPTANCE_DESIGN.md`
+  checkpoint commit
+  `c755f46276aae77aa01922d57a3b42b6f37639ea`.
+- **NEXT SINGLE LOCAL ACTION:**
+  run BOTH standalone
+  inert geometric test
+  scripts on a fresh
+  clean private `dev`
+  clone:
+  `python3 scripts/test-wull-silhouette-band-prototype.py`
+  and
+  `python3 scripts/test-wull-motion-footprint-feasibility.py`;
+  print BOTH inert redacted
+  model summaries, record
+  PASS/FAIL locally.
+  No host pointer input
+  or production changes.
+  Then design an explicit
+  PRIVATE motion-aware
+  body-interaction
+  hypothesis with generous
+  touch target for all
+  pose/tip boundaries,
+  possible decorative
+  halo distinction,
+  exact source-pinned
+  Quickshell runtime
+  version and real
+  `mapToItem`/Region
+  live geometry probes.
+  Qualify each edge,
+  sizes 0.65/1/1.5,
+  motion extrema, hover,
+  popup, multimonitor
+  fractional/hotplug,
+  lifecycle/resource
+  and canonical-wide
+  behavior separately.
+  Do not implement
+  a production mask
+  based on the 43-band
+  feasibility or
+  nominal transform
+  arithmetic alone.

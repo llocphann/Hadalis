@@ -31,4 +31,11 @@ module_test = get("scripts/test-megaqml-phase2-protocol.mjs")
 assert 'import assert from "node:assert/strict"' in module_test
 assert 'fileURLToPath(import.meta.url)' in module_test
 assert 'require("node:' not in module_test
+boundary = get("scripts/test-megaqml-phase2-rust-boundary.mjs")
+runner = get("scripts/test-megaqml-phase2-local.sh")
+assert 'spawnSync(bin, ["request"]' in boundary
+assert 'PATH:dir' in boundary and 'shell:false' in boundary
+assert 'operation:"detect"' in boundary and 'auth_begin' not in boundary
+assert 'cargo build --locked --offline --manifest-path native/Cargo.toml -p inir-mega' in runner
+assert 'qml_minimal' in runner and 'qml_blocker=' in runner
 print("PASS MegaQML Phase 2a static source contract")

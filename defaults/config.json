@@ -2072,6 +2072,15 @@
         "sidebars": {
             "hoverEnabled": true
         },
+        "companion": {
+            "enabled": false,
+            "output": "",
+            "edge": "auto",
+            "along": 0.72,
+            "size": 1,
+            "interactive": true,
+            "soundEnabled": false
+        },
         "quality": "balanced",
         "positions": [],
         "spectrum": {"configured": false, "enabled": false, "strength": 0.45, "edge": "bar", "multiMonitorMode": "primary"},

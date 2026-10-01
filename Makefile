@@ -62,6 +62,7 @@ test-perimeter-contracts:
 	@python3 scripts/test-iris-production-surface-contract.py
 	@python3 scripts/test-connected-input-lifecycle.py
 	@python3 scripts/test-quick-notes-corner-contract.py
+	@python3 scripts/test-wull-production-contract.py
 	@bash scripts/test-perimeter-compatibility-placement-contract.sh
 	@bash scripts/test-perimeter-family-contracts.sh
 	@bash scripts/test-perimeter-route-contracts.sh

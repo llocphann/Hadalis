@@ -480,6 +480,15 @@ Singleton {
                 property JsonObject sidebars: JsonObject {
                     property bool hoverEnabled: true
                 }
+                property JsonObject companion: JsonObject {
+                    property bool enabled: false
+                    property string output: ""
+                    property string edge: "auto"
+                    property real along: 0.72
+                    property real size: 1
+                    property bool interactive: true
+                    property bool soundEnabled: false
+                }
                 property JsonObject spectrum: JsonObject {
                     property bool configured: false
                     property bool enabled: false

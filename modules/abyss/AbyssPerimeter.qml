@@ -6,6 +6,7 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.abyss.bar
+import qs.modules.abyss.companion
 import qs.modules.abyss.looks
 import "looks/AbyssGeometry.js" as Geometry
 import "looks/AbyssLayout.js" as ModuleLayout
@@ -14,6 +15,40 @@ import "looks/AbyssPresentation.js" as Presentation
 Scope {
     id: root
     property string largeTargetOutput: GlobalStates.resolveOutputName("",[])
+    readonly property var companionOptions: Config.options?.abyss?.companion
+    readonly property bool companionEnabled: Config.ready && (companionOptions?.enabled ?? false)
+    readonly property string companionTargetOutput: GlobalStates.resolveOutputName(
+        companionOptions?.output ?? "", Config.options?.bar?.screenList ?? [])
+    readonly property string companionEdge: {
+        const configured = String(companionOptions?.edge ?? "auto")
+        return ["top", "right", "bottom", "left"].includes(configured)
+            ? configured : root.barEdge
+    }
+    readonly property real companionAlong: Math.max(0.08,
+        Math.min(0.92, Number(companionOptions?.along ?? 0.72)))
+    readonly property real companionScale: Math.max(0.65,
+        Math.min(1.5, Number(companionOptions?.size ?? 1)))
+    readonly property bool companionInteractive: companionOptions?.interactive ?? true
+    readonly property bool companionSessionVisible: companionEnabled
+        && companionTargetOutput.length > 0
+        && !GlobalStates.screenLocked
+        && !Appearance.gameModeMinimal
+        && (!GameMode.hasFullscreenOnOutput(companionTargetOutput)
+            || (Config.options?.abyss?.perimeter?.visibleInFullscreen ?? false))
+
+    function syncCompanionVisibility(): void {
+        if (root.companionSessionVisible)
+            companionBridge.show()
+        else
+            companionBridge.hide()
+    }
+
+    onCompanionSessionVisibleChanged: root.syncCompanionVisibility()
+
+    CompanionBridge {
+        id: companionBridge
+        useNativeDispatcher: root.companionEnabled
+    }
     // Match the mature ScreenCorners keyboard lease: hover previews may exist on
     // several outputs, but only one Quick Notes editor may own keyboard focus.
     property string quickNotesEditorOutput: ""
@@ -88,7 +123,10 @@ Scope {
         }
     }
     AbyssOsdController {}
-    Component.onCompleted: Notifications.ensureInitialized()
+    Component.onCompleted: {
+        Notifications.ensureInitialized()
+        root.syncCompanionVisibility()
+    }
     Variants {
         model: Quickshell.screens
         PanelWindow {
@@ -103,6 +141,18 @@ Scope {
             readonly property bool presented: !GlobalStates.screenLocked
                 && (!fullscreenCovered || (Config.options?.abyss?.perimeter?.visibleInFullscreen ?? false))
             readonly property bool editorOpen: GlobalStates.abyssEditing && GlobalStates.abyssEditorTargetOutput === outputName
+            readonly property bool companionHostActive: root.companionSessionVisible
+                && root.companionTargetOutput === window.outputName
+                && window.presented && field.ready
+            function companionAlongPosition(): real {
+                const horizontal = Geometry.horizontal(root.companionEdge)
+                const extent = horizontal ? window.width : window.height
+                const span = horizontal ? companion.implicitWidth * root.companionScale
+                    : companion.implicitHeight * root.companionScale
+                const margin = Math.max(32, span * 0.5 + 12)
+                return Math.max(margin, Math.min(extent - margin,
+                    extent * root.companionAlong))
+            }
             onPresentedChanged: if (!presented && editorOpen) GlobalStates.abyssEditing = false
             screen: modelData
             // Keep the Top surface mapped across fullscreen, preserving stack order.
@@ -134,6 +184,7 @@ Scope {
             }
             readonly property Region nativeInputMask: Region {
                 Region { regions: window.presented && field.ready && bar.visible ? bar.inputRegions : [] }
+                Region { item: window.companionHostActive && companion.interactive && companion.visible ? companion : emptyInput }
                 Region { regions: window.presented && field.ready && editor.visible ? editor.regions : [] }
                 Region { item: window.presented && revealTrigger.visible ? revealTrigger : emptyInput }
                 Region { item: window.presented && dockTrigger.visible ? dockTrigger : emptyInput }
@@ -282,6 +333,44 @@ Scope {
                     }
                     if (window.transientPopupHoverKind === kind)
                         window.transientPopupHoverKind = ""
+                }
+            }
+            AbyssCompanion {
+                id: companion
+                z: 24
+                edge: root.companionEdge
+                scale: root.companionScale
+                interactive: root.companionInteractive && window.companionHostActive
+                reveal: !window.companionHostActive ? 0
+                    : companionBridge.visibility === "present" ? 1
+                    : companionBridge.visibility === "peeking" ? 0.46 : 0
+                gazeX: companionBridge.gazeX
+                gazeY: companionBridge.gazeY
+                energy: companionBridge.energy
+                bodySquash: companionBridge.squash
+                bodyStretch: companionBridge.stretch
+                bodyLean: companionBridge.lean
+                bodyTip: companionBridge.tip
+                ripple: companionBridge.ripple
+                eyeOpen: companionBridge.eyeOpen
+                mouthCurve: companionBridge.mouthCurve
+                pulse: companionBridge.pulse
+
+                x: Geometry.horizontal(edge)
+                    ? window.companionAlongPosition() - implicitWidth * 0.5
+                    : edge === "left"
+                        ? AbyssStyle.perimeterThickness - 5
+                        : window.width - AbyssStyle.perimeterThickness - implicitWidth + 5
+                y: Geometry.horizontal(edge)
+                    ? edge === "top"
+                        ? AbyssStyle.perimeterThickness - 5
+                        : window.height - AbyssStyle.perimeterThickness - implicitHeight + 5
+                    : window.companionAlongPosition() - implicitHeight * 0.5
+
+                onActivated: companionBridge.sendEvent("click")
+                onHoveredChanged: {
+                    if (window.companionHostActive)
+                        companionBridge.sendEvent("hover", hovered)
                 }
             }
             Item {

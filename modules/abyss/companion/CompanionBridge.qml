@@ -41,6 +41,27 @@ Item {
         return Math.max(minimum, Math.min(maximum, number))
     }
 
+    function resetState() {
+        root.ready = false
+        root.requestedVisible = false
+        root.outboundSeq = 0
+        root.inboundSeq = 0
+        root.visibility = "hidden"
+        root.mood = "calm"
+        root.activity = "idle"
+        root.energy = 0
+        root.gazeX = 0
+        root.gazeY = 0
+        root.squash = 0
+        root.stretch = 0
+        root.lean = 0
+        root.tip = 0
+        root.ripple = 0
+        root.eyeOpen = 1
+        root.mouthCurve = 0.12
+        root.pulse = 0
+    }
+
     function sendEvent(eventName, activeValue) {
         if (!backendProcess.running || !root.ready)
             return false
@@ -113,6 +134,16 @@ Item {
 
         if (!wasReady && root.requestedVisible)
             Qt.callLater(() => root.sendEvent("show"))
+    }
+
+    onBackendEnabledChanged: {
+        if (root.backendEnabled) {
+            backendProcess.running = true
+        } else {
+            if (backendProcess.running)
+                backendProcess.running = false
+            root.resetState()
+        }
     }
 
     Component.onCompleted: {

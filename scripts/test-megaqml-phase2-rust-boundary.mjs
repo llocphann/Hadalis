@@ -141,6 +141,7 @@ try {
     cases++;
     for (const patch of [
         {secret:{password:"PRIVATE_FAKE_GATE_PASSWORD"}},
+        {secret:{}},
         {params:{enable_live:true, account:"PRIVATE_FAKE_GATE_ACCOUNT"}}
     ]) {
         const payload = preview("gates-reject", patch);

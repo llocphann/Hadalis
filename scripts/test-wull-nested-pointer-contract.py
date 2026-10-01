@@ -23,6 +23,9 @@ for marker in (
     '"--acknowledge-nested-pointer"',
     '"--acknowledge-nested-pointer-candidate"',
     '"--acknowledge-nested-pointer-candidate-bottom"',
+    '"--acknowledge-nested-pointer-candidate-right"',
+    '"wull-mask-right-"',
+    '"owned_single_output_nested_niri_right_candidate_mask_A_B"',
     "BASE = ",
     "REVIEWED = ",
     'shutil.which("wlrctl")',
@@ -47,6 +50,7 @@ for marker in (
     'candidate_mode=candidate_mode',
     'candidate_edge=candidate_edge',
     '"candidate-mask-bottom"',
+    '"candidate-mask-right"',
 
 ):
     assert marker in parent_text, marker
@@ -67,6 +71,7 @@ for marker in (
     'native_relative_wlrctl_unverified',
     'helper["all_edge_targets"]',
     '"edge": selected_edge',
+    '"candidate-mask-right"',
     'pointer_commands(actor, actor_kind, point)',
     '"--backend", "wlr-protocols", "mousemove"',
     '"--backend", "wlr-protocols", "click", "1"',
@@ -96,7 +101,7 @@ parent = runpy.run_path(str(ROOT / "scripts/wull-manual-nested-pointer.py"),
 child = runpy.run_path(str(ROOT / "scripts/wull-manual-pointer-child.py"),
                        run_name="wull_pointer_inert_child")
 assert parent["REVIEWED"]["scripts/wull-manual-pointer-child.py"] == (
-    "5f2f9ec54546193cd3acfdb98a5f3db621174450")
+    "071f4eb257a52d2a35e8d06962ab9dfe6c90f802")
 assert parent["REVIEWED"]["scripts/wull-fixtures/pointer-underlay/companion-relay.py"] == (
     "7e450db1db23e3c250859b0271a655d6325f0bc8")
 

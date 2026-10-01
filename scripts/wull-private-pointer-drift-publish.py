@@ -226,7 +226,8 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (RuntimeError, OSError, ValueError, json.JSONDecodeError) as e:
+    except (RuntimeError, OSError, ValueError, json.JSONDecodeError,
+            subprocess.TimeoutExpired) as e:
         print("INCONCLUSIVE:", str(e).split(":")[0], file=sys.stderr)
         print("No production files or original local checkout changed.",
               file=sys.stderr)

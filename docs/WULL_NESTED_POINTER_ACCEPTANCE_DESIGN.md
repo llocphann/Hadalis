@@ -1881,3 +1881,301 @@ must precede any
 private live shape
 probe or production
 mask edit.
+
+
+## Observed inert motion/curve PASS; actual-QML offscreen 24-pose geometry gate staged
+
+The EXACT published, independently source-pinned host-local
+INERT evidence
+`docs/wull-motion-inert-20261001T182922Z-d5584c0e-3e27fdeb5c43.json`
+(Git blob
+`7a7b9f3024a8eba8523551b84a1e79a4f7caaf5a`,
+`source_sha=3e27fdeb5c43b0a0cbad6c09f02c979bcaa4da07`)
+records PASS for BOTH real execution of the standalone
+four-cubic scanline and nominal-motion source
+Python contracts. Its observed inert static
+interior is 3,006 of 6,992 body-box pixels
+in 43 bands on each edge. It separately
+records the SOURCE-FORMULA stretch=1
+counterexample's nominal top-tip coordinate
+as -0.4 in top host space; source nominal
+body dimensions at scale1.5 were 114x138
+horizontal / 138x114 vertical. Both programs
+were actual locally executed and their
+allowlisted results pushed from a verified
+throwaway dev clone. Their receipt explicitly
+says no live Qt/Quickshell geometry, no actual
+Rust animation, no Niri Region/pointer/hover,
+no canonical acceptance and no production edit.
+Do NOT turn a source arithmetic PASS into
+an actual observed Qt transform/pass-through PASS.
+
+The next evidence gate is the TRUE source-pinned
+original QML transformation in a PRIVATE
+`QT_QPA_PLATFORM=offscreen` local Quickshell
+instance. The former offscreen centered four-edge
+prototype tested only the idle body at
+scale=1 and did not qualify time-varying
+source geometry. New source-staged fixture
+`scripts/wull-fixtures/motion-geometry/shell.qml`
+(commit
+`07c81fef4217f634a8a8910a1903a7d9007c878a`,
+blob
+`548daff91ca9a1d7961bedd098fd314159cb520d`)
+imports the real unmodified
+`AbyssCompanion`/
+`WaterDropletBody` from the
+reviewed module source in a
+detached private offscreen
+`ShellRoot`; it does NOT
+copy or replace the live
+companion module.
+It constructs all 4 edges
+times 3 parent scales
+0.65,1.0,1.5,
+then measures both the
+true neutral geometry
+and the SOURCE-ADMISSIBLE,
+deliberately frozen
+`stateStretch=1` target
+geometry = 24 independent
+QML `mapToItem`
+samples. Only the private
+fixture assigns the
+original body instance's
+`motionEnabled=false`,
+`bob/sway/squash/lean/tip=0`
+so these samples
+isolate actual Qt
+single-transform mapping,
+NOT animation
+interpolation/overshoot,
+real daemon state or
+real screen
+pointer events.
+The source-pinned
+runner
+`scripts/wull-manual-offscreen-motion-geometry.py`
+(created
+`b12c5db4b4fac4609997d4eb544ec2054f9fe073`,
+redaction tightened
+`9364ab83497111f4b02041f2657c1021ea56171b`)
+enforces a new
+current-user-owned
+mode-0700 fresh
+temporary `dev`
+clone, trusted
+fetch/push origin,
+exact Git blob pins
+for the fixture,
+unmodified Wull
+body and wrapper,
+source style, Config,
+defaults and
+production perimeter,
+and a distinct
+private D-Bus
+session. It explicitly
+clears inherited
+Wayland/Niri socket
+and QML override
+variables, launches
+Quickshell offscreen
+only, bounds
+time/log size,
+requires an
+exact 24-unique-pose
+QML marker and
+checks true numeric
+bounds and
+parent scale
+mapping for
+each source
+host edge/size.
+The pass/fail
+classification
+will report if
+all NEUTRAL
+source-scale
+static body boxes
+still map inside
+the measured
+original host;
+all nominal
+stretch tip/body
+outside static
+bbox/host flags
+are reported
+categorically
+PER EDGE AND
+PER SCALE. A
+source-model
+counterexample
+does NOT
+pre-fill
+observed Qt
+flags: the
+fixture's actual
+Qt geometry
+determines them.
+If runtime
+neutral geometry
+or host parent
+scaling differs,
+the resulting
+private offscreen
+evidence stays
+INCONCLUSIVE
+rather than
+approving the
+static mask.
+
+A separate
+`scripts/test-wull-offscreen-motion-geometry-contract.py`
+(commit
+`a71f105cc0420baff4b7cb808a6d4f3cd549d6aa`)
+tests the
+no-input runner,
+fixture and
+original source
+pins, synthetic
+unique-pose/geometry
+parser, negative
+malformed or
+fabricated body
+bounds and
+sanitized
+published report
+schema without
+launching Qt.
+The runner can
+non-force publish
+only ONE
+uniquely named
+`docs/wull-qt-motion-*.json`
+containing
+source SHA,
+24-pose
+QML geometry
+classification,
+optional short
+numeric sanitized
+local Quickshell/
+Qt versions and
+boolean/edge-scale
+categories, NEVER
+the actual
+private measured
+coordinates, log,
+host sockets
+or screenshots.
+If concurrent
+Git publication
+requires a retry,
+ONLY the
+runner's own
+single unpublished
+redacted receipt
+commit is rebased
+inside the
+disposable clone,
+never the
+maintainer's
+original worktree.
+The fixture,
+runner and
+test are
+SOURCE STAGED,
+not yet
+executed locally.
+
+IMPORTANT: host's QML
+`scale` property
+also scales the
+PARENT in
+stage coordinates,
+so the old
+unscaled dimensional
+comparison at
+scale=1.5
+(114x138 body vs
+112x98 unscaled
+host) alone CANNOT
+demonstrate actual
+Qt clipping.
+The new two-frame
+actual-QML
+offscreen gate
+compares BOTH the
+measured host
+and body in
+the SAME parent/
+stage coordinate
+systems. Only
+actual measured
+edge/scale
+QML rows can
+resolve those
+specific geometry
+relations.
+The separate
+nominal source
+tip-at--0.4
+prediction
+likewise must
+be confirmed
+in actual
+frozen Qt/QML
+before treating
+that position
+as rendered geometry.
+Even a 24/24
+clean offscreen
+fixture does
+NOT establish
+a moving
+SpringAnimation
+envelope,
+hover or
+Wayland Region
+behavior.
+
+NEXT LOCAL GATE:
+on a clean
+owned private
+temporary dev
+clone, run the
+INERT standalone
+offscreen parser
+contract first;
+then ONLY explicitly
+launch the
+offscreen fixture
+via
+`python3
+scripts/wull-manual-offscreen-motion-geometry.py
+--acknowledge-private-offscreen-qt-motion`.
+Inspect the
+unique exact
+source-pinned
+redacted
+`docs/wull-qt-motion-*.json`
+whether it
+reports PASS
+or INCONCLUSIVE,
+and plan
+a separately
+guarded
+real nested
+Niri dynamic
+hover/tap/shape
+probe only after
+actual Qt
+transform mapping
+is established.
+No production
+input mask, Rust
+or stable ref
+may change
+during this
+research gate.

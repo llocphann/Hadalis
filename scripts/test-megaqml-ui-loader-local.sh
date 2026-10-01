@@ -114,20 +114,20 @@ if [[ "$(git status --porcelain --untracked-files=all)" != "?? $report" ]]; then
 fi
 # The report stays pinned to the tested source SHA. If Wull publishes
 # concurrently, fast-forward only across explicitly reviewed Wull paths.
-fetch_remote_dev || { echo 'PUBLICATION_SKIPPED_REMOTE_FETCH'; exit "$failed"; }
+fetch_remote_dev || { echo 'PUBLICATION_SKIPPED_REMOTE_FETCH'; exit 69; }
 if [[ "$remote_sha" != "$(git rev-parse HEAD)" ]]; then
   if ! wull_only_advance "$source_sha" "$remote_sha"; then
     echo 'PUBLICATION_SKIPPED_REMOTE_MOVED_UNREVIEWED'
-    exit "$failed"
+    exit 69
   fi
   if ! git merge --ff-only FETCH_HEAD >/dev/null; then
     echo 'PUBLICATION_SKIPPED_REMOTE_NOT_FAST_FORWARD'
-    exit "$failed"
+    exit 69
   fi
 fi
 if [[ "$(git status --porcelain --untracked-files=all)" != "?? $report" ]]; then
   echo 'PUBLICATION_SKIPPED_DIRTY_AFTER_MERGE'
-  exit "$failed"
+  exit 69
 fi
 if [[ -z "$(git config user.name || true)" || -z "$(git config user.email || true)" ]]; then
   echo 'PUBLICATION_SKIPPED_GIT_IDENTITY'

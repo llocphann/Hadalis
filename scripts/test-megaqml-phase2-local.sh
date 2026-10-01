@@ -100,7 +100,7 @@ else
 fi
 # Compile the reviewed local Rust source offline; never search an installed vendor.
 if command -v cargo >/dev/null 2>&1; then
-  run_test megaqml_rust_build cargo build --locked --offline --manifest-path native/Cargo.toml -p inir-mega
+  run_test megaqml_rust_build bash -c 'cargo build --locked --offline --manifest-path native/Cargo.toml -p inir-mega && cargo test --locked --offline --manifest-path native/Cargo.toml -p inir-mega'
   if grep -q '^megaqml_rust_build,PASS,' "$scratch/safe.csv"; then
     run_test megaqml_fake_vendor_boundary node scripts/test-megaqml-phase2-rust-boundary.mjs native/target/debug/inir-mega
   else

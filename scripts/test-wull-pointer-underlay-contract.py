@@ -26,7 +26,18 @@ for marker in (
 ):
     assert marker in fixture, marker
 assert fixture.count("PanelWindow {") == 1
-assert "AbyssPerimeter" not in fixture
+# Treat comment text as documentation, not executable QML. Only prohibit
+# actually importing or instantiating the production component in underlay.
+qml_code = [
+    line.split("//", 1)[0].strip()
+    for line in fixture.splitlines()
+]
+assert not any(line.startswith("import qs.modules.abyss") for line in qml_code)
+assert not any(
+    line.startswith("AbyssPerimeter")
+    and line[len("AbyssPerimeter"):].lstrip().startswith("{")
+    for line in qml_code
+)
 assert "INIR_COMPANIOND" not in fixture
 assert "Quickshell.env" not in fixture
 

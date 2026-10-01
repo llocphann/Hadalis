@@ -50,6 +50,15 @@ ShellRoot {
         const body = root.bodyOf(host)
         if (!body)
             return {valid: false}
+        const expectedStretch = phase === "stretch_target" ? 1 : 0
+        const poseVerified = body.motionEnabled === false
+            && Math.abs(body.bob) < 0.0001
+            && Math.abs(body.sway) < 0.0001
+            && Math.abs(body.squash) < 0.0001
+            && Math.abs(body.stateSquash) < 0.0001
+            && Math.abs(body.stateLean) < 0.0001
+            && Math.abs(body.stateTip) < 0.0001
+            && Math.abs(body.stateStretch - expectedStretch) < 0.0001
         const corners = [
             body.mapToItem(host, 0, 0),
             body.mapToItem(host, body.width, 0),
@@ -84,6 +93,7 @@ ShellRoot {
             edge: spec.edge,
             requested_scale: spec.scale,
             phase: phase,
+            pose_state_verified: poseVerified,
             host_width: host.width,
             host_height: host.height,
             stage_host_width: eWidth,

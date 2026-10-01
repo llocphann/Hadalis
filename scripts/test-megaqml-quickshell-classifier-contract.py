@@ -20,6 +20,10 @@ cases = (
      "active-malformed", "unexpected_active_state"),
     ("PRIVATE_FAKE_STDERR_CANARY /home/private/key", "active-exit-failure", "unclassified"),
     ("MEGAQML_QS_ACTIVE_INVALID token=secret", "active-hang", "unexpected_active_state"),
+    ("MEGAQML_QS_REFRESH_INVALID password=test-secret",
+     "refresh-coalesce", "unexpected_refresh_state"),
+    ("MEGAQML_QS_REFRESH_INVALID /home/private/secret",
+     "refresh-stale-reacquire", "unexpected_refresh_state"),
     ("", "baseline", "no_diagnostic_output"),
 )
 with tempfile.TemporaryDirectory(prefix="megaqml-classifier-") as temp:

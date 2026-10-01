@@ -5,11 +5,14 @@ import sys
 
 if len(sys.argv) != 4 or sys.argv[3] not in ("baseline", "dormant", "active-present", "active-missing",
                                                      "active-wrong-id", "active-unsafe-secret",
-                                                     "active-malformed", "active-exit-failure", "active-hang"):
+                                                     "active-malformed", "active-exit-failure", "active-hang",
+                                                     "refresh-coalesce", "refresh-stale-reacquire"):
     raise SystemExit(64)
 raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
                 for p in sys.argv[1:3]).lower()
-if "megaqml_qs_active_invalid" in raw:
+if "megaqml_qs_refresh_invalid" in raw:
+    kind = "unexpected_refresh_state"
+elif "megaqml_qs_active_invalid" in raw:
     kind = "unexpected_active_state"
 elif "megaqml_qs_dormant_invalid" in raw:
     kind = "unexpected_dormant_state"
@@ -30,6 +33,8 @@ elif any(token in raw for token in ("megaqml_qs_active_present_ok",
                                   "megaqml_qs_rejected_ok",
                                   "megaqml_qs_exit_failure_ok",
                                   "megaqml_qs_timeout_ok",
+                                  "megaqml_qs_coalesced_ok",
+                                  "megaqml_qs_reacquire_ok",
                                   "megaqml_qs_dormant_ok",
                                   "megaqml_qs_baseline_ok")):
     kind = "sentinel_seen_nonzero_exit"

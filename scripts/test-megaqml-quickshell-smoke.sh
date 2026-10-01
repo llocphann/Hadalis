@@ -2,7 +2,7 @@
 # Manual one-shot, no vendor calls, no background service, no user config access.
 set -euo pipefail
 umask 077
-case "${1:-}" in baseline|dormant|active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang|refresh-coalesce|refresh-stale-reacquire|recovery-exit|recovery-timeout|ui-material|ui-waffle|ui-shared|ui-preflight-timeout|ui-race|ui-host) kind="$1" ;; *) exit 64 ;; esac
+case "${1:-}" in baseline|dormant|active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang|refresh-coalesce|refresh-stale-reacquire|recovery-exit|recovery-timeout|ui-material|ui-waffle|ui-shared|ui-preflight-timeout|ui-preflight-release|ui-race|ui-host) kind="$1" ;; *) exit 64 ;; esac
 cd "$(git rev-parse --show-toplevel)"
 qs_bin=""
 if command -v qs >/dev/null 2>&1; then qs_bin="$(command -v qs)"
@@ -34,7 +34,7 @@ fixture_kind="${kind%%-*}"
 source_fixture="scripts/megaqml-fixtures/runtime-$fixture_kind/shell.qml"
 if [[ "$kind" == ui-shared || "$kind" == ui-race || "$kind" == ui-host ]]; then
   source_fixture="scripts/megaqml-fixtures/runtime-$kind/shell.qml"
-elif [[ "$kind" == ui-preflight-timeout ]]; then
+elif [[ "$kind" == ui-preflight-timeout || "$kind" == ui-preflight-release ]]; then
   source_fixture="scripts/megaqml-fixtures/runtime-ui-shared/shell.qml"
 fi
 if [[ ! -f "$source_fixture" ]]; then
@@ -49,7 +49,7 @@ if [[ "$kind" == ui-* ]]; then
   # Only real Cloud Storage page and service files are copied; all unrelated
   # visual dependencies are synthetic stubs. No production dispatcher.
   fixture_ui_kind="${kind#ui-}"
-  if [[ "$fixture_ui_kind" == race || "$fixture_ui_kind" == preflight-timeout ]]; then fixture_ui_kind=shared; fi
+  if [[ "$fixture_ui_kind" == race || "$fixture_ui_kind" == preflight-timeout || "$fixture_ui_kind" == preflight-release ]]; then fixture_ui_kind=shared; fi
   if [[ "$kind" == ui-host ]]; then
     "$safe_python" scripts/test-megaqml-host-ui-fixture.py "$fixture_dir" >/dev/null
   else
@@ -64,7 +64,7 @@ if [[ "$kind" == dormant || "$kind" == active-* || "$kind" == refresh-* || "$kin
 fi
 test ! -e "$fixture_dir/scripts/native-dispatch" || exit 75
 case "$kind" in
-  active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang|refresh-coalesce|refresh-stale-reacquire|recovery-exit|recovery-timeout|ui-material|ui-waffle|ui-shared|ui-preflight-timeout|ui-race|ui-host)
+  active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang|refresh-coalesce|refresh-stale-reacquire|recovery-exit|recovery-timeout|ui-material|ui-waffle|ui-shared|ui-preflight-timeout|ui-preflight-release|ui-race|ui-host)
     mkdir -p "$fixture_dir/scripts" "$work/allowed-bin"
     cp -- scripts/megaqml-fixtures/fake-static-dispatch.py "$fixture_dir/scripts/native-dispatch"
     chmod 700 "$fixture_dir/scripts/native-dispatch"
@@ -79,6 +79,9 @@ case "$kind" in
       elif [[ "$kind" == ui-preflight-timeout ]]; then
         export MEGAQML_FIXTURE_CASE=preflight-timeout
         export MEGAQML_PREFLIGHT_TIMEOUT=1
+      elif [[ "$kind" == ui-preflight-release ]]; then
+        export MEGAQML_FIXTURE_CASE=preflight-timeout
+        export MEGAQML_PREFLIGHT_RELEASE=1
       else
         export MEGAQML_FIXTURE_CASE=missing
       fi
@@ -109,6 +112,7 @@ if "$safe_timeout" --kill-after=2s 12s "$qs_bin" --path "$fixture_dir/shell.qml"
     ui-waffle) marker=MEGAQML_QS_UI_WAFFLE_OK ;;
     ui-shared) marker=MEGAQML_QS_UI_SHARED_OK ;;
     ui-preflight-timeout) marker=MEGAQML_QS_UI_SHARED_TIMEOUT_OK ;;
+    ui-preflight-release) marker=MEGAQML_QS_UI_SHARED_RELEASE_OK ;;
     ui-race) marker=MEGAQML_QS_UI_RACE_OK ;;
     ui-host) marker=MEGAQML_QS_UI_HOST_OK ;;
   esac

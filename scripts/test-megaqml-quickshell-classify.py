@@ -9,7 +9,7 @@ if len(sys.argv) != 4 or sys.argv[3] not in ("baseline", "dormant", "active-pres
                                                      "refresh-coalesce", "refresh-stale-reacquire",
                                                      "recovery-exit", "recovery-timeout",
                                                      "ui-material", "ui-waffle", "ui-shared", "ui-preflight-timeout",
-                                                     "ui-preflight-release", "ui-race", "ui-host"):
+                                                     "ui-preflight-release", "ui-preflight-present", "ui-race", "ui-host"):
     raise SystemExit(64)
 raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
                 for p in sys.argv[1:3]).lower()
@@ -93,6 +93,25 @@ shared_stages = (
 )
 matched_shared_stage = next((category for token, category in shared_stages
                              if "megaqml_qs_shared_stage_" + token in raw), None)
+# Installed-executable readiness remains STATIC, never a live connection.
+# The fixture only emits fixed tokens; no raw filesystem/vendor text escapes.
+present_stages = (
+    ("dormant", "present_dormant"),
+    ("load", "present_load"),
+    ("create", "present_create"),
+    ("material_start", "present_material_start"),
+    ("static_present", "present_static_present"),
+    ("material_button", "present_material_button"),
+    ("material_ready", "present_material_ready"),
+    ("waffle_join", "present_waffle_join"),
+    ("waffle_button", "present_waffle_button"),
+    ("waffle_ready", "present_waffle_ready"),
+    ("partial_release", "present_partial_release"),
+    ("final_release", "present_final_release"),
+    ("timeout", "present_timeout"),
+)
+matched_present_stage = next((category for token, category in present_stages
+                              if "megaqml_qs_present_stage_" + token in raw), None)
 ui_runtime = (
     ("page_gone", "ui_runtime_page_gone"),
     ("page_hidden", "ui_runtime_page_hidden"),
@@ -172,6 +191,10 @@ elif matched_shared_stage is not None:
     kind = matched_shared_stage
 elif "megaqml_qs_shared_invalid" in raw:
     kind = "unexpected_shared_state"
+elif matched_present_stage is not None:
+    kind = matched_present_stage
+elif "megaqml_qs_present_invalid" in raw:
+    kind = "unexpected_present_state"
 elif matched_ui_runtime is not None:
     kind = matched_ui_runtime
 elif matched_ui_type is not None:

@@ -1,5 +1,7 @@
 # Cloud Storage — MEGAcmd ↔ Rust ↔ QML implementation
 
+> **Phase 2b failure triage (2026-10-01):** Safe published evidence `phase2a-06af7ed3ef80-20261001T111436Z.md` records source contract + navigation PASS (exit 0), protocol + combined QML syntax FAIL (exit 1). The synthetic protocol harness had CommonJS imports in a `.mjs` file; corrected to ESM and guarded by source tests. QML failure cause is not in the published report; future tests split an existing-page baseline, service and page, with allowlisted diagnostic category/numeric location only. Both failures remain unqualified until fresh SHA-pinned evidence; no real MEGA was accessed.
+
 > **Phase 2b (2026-10-01, source only):** Static detection now uses an allowlisted pure JS parser with adversarial Node fixtures. Exact request ID/protocol, fake-qualified auth-but-live-disabled, no secret argv, no Python fallback, binary consistency and discarded paths are enforced. Synthetic local run and rendered QML still require evidence; no live MEGA actions are enabled.
 
 > **Phase 2a source scaffold (2026-10-01; QML runtime pending):** A dormant static-only CloudStorageService, a ten-route Settings shell visible for ii/Abyss/Waffle, search, translations and focused static source tests were added. Backend remains detect-only for UI: Connect, auth credentials, account reads and all writes are withheld. No live MEGA, installed-version acceptance or rendered UI PASS is claimed.

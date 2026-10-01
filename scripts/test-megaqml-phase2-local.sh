@@ -27,9 +27,13 @@ run_test megaqml_static_protocol node scripts/test-megaqml-phase2-protocol.mjs
 # Optional Qt parser smoke: no QML runtime, account, mutation or output publication.
 # qmlformat writes to stdout by default; never pass -i/-F.
 if command -v qmlformat >/dev/null 2>&1; then
-  run_test qml_syntax sh -c 'qmlformat modules/settings/CloudStorageConfig.qml >/dev/null && qmlformat services/deferred/CloudStorageService.qml >/dev/null'
+  run_test qml_baseline qmlformat modules/settings/OverviewConfig.qml
+  run_test qml_service qmlformat services/deferred/CloudStorageService.qml
+  run_test qml_page qmlformat modules/settings/CloudStorageConfig.qml
 else
-  printf 'qml_syntax,SKIP,127,%s\n' "$source_sha" >> "$scratch/safe.csv"
+  printf 'qml_baseline,SKIP,127,%s\n' "$source_sha" >> "$scratch/safe.csv"
+  printf 'qml_service,SKIP,127,%s\n' "$source_sha" >> "$scratch/safe.csv"
+  printf 'qml_page,SKIP,127,%s\n' "$source_sha" >> "$scratch/safe.csv"
 fi
 report="docs/evidence/megaqml/phase2a-${source_sha:0:12}-$(date -u +%Y%m%dT%H%M%SZ).md"
 mkdir -p docs/evidence/megaqml
@@ -40,6 +44,11 @@ mkdir -p docs/evidence/megaqml
   while IFS=, read -r name state code sha; do
     printf '| %s | %s | %s | %s |\n' "$name" "$state" "$code" "$sha"
   done < "$scratch/safe.csv"
+  for qt_case in qml_baseline qml_service qml_page; do
+    if grep -q "^${qt_case},FAIL," "$scratch/safe.csv"; then
+      python3 scripts/test-megaqml-qt-diagnostic.py "$qt_case" "$scratch/$qt_case.raw"
+    fi
+  done
   if [[ "$failed" == 0 ]]; then echo 'Aggregate: PASS (synthetic only).'
   else echo 'Aggregate: FAIL (synthetic).'; fi
 } > "$report"

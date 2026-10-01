@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 "use strict";
 // Pure synthetic cases; never invoke MEGAcmd or access user information.
-const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const vm = require("node:vm");
-const path = require("node:path");
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import vm from "node:vm";
+import path from "node:path";
+import {fileURLToPath} from "node:url";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const parse = vm.runInNewContext(
     fs.readFileSync(path.join(__dirname, "../services/deferred/CloudStorageStaticProtocol.js"), "utf8")
     + "\nparseDetectResponse", Object.create(null), {timeout: 2000});

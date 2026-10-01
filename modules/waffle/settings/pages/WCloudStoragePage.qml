@@ -12,7 +12,7 @@ WSettingsPage {
     settingsPageIndex: 19
     pageTitle: Translation.tr("Cloud Storage")
     pageIcon: "cloud"
-    pageDescription: Translation.tr("MEGAcmd dependency status")
+    pageDescription: Translation.tr("MEGAcmd status")
 
     property bool leaseHeld: false
     property string activeGroup: "overview"
@@ -103,12 +103,12 @@ WSettingsPage {
         }
         WSettingsInfoBar {
             severity: WSettingsInfoBar.Severity.Info
-            message: Translation.tr("Static detection only: opening Settings never starts the MEGAcmd server.")
+            message: Translation.tr("Static only · no server start")
         }
     }
     WSettingsCard {
         visible: root.activeSection === "overview"
-        title: Translation.tr("MEGAcmd dependency status")
+        title: Translation.tr("MEGAcmd status")
         icon: "cloud"
         WSettingsInfoBar {
             severity: CloudStorageService.backendState === "installed_disconnected"
@@ -116,12 +116,12 @@ WSettingsPage {
             message: CloudStorageService.backendState === "checking"
                 ? Translation.tr("Checking executables")
                 : CloudStorageService.backendState === "installed_disconnected"
-                ? Translation.tr("MEGAcmd detected; not connected")
+                ? Translation.tr("Detected · disconnected")
                 : CloudStorageService.backendState === "dependency_missing"
-                ? Translation.tr("MEGAcmd shell or server executable missing")
+                ? Translation.tr("Required tools missing")
                 : CloudStorageService.backendState === "stale"
-                ? Translation.tr("Last check is stale")
-                : Translation.tr("Dependency state not verified")
+                ? Translation.tr("Previous result stale")
+                : Translation.tr("Not checked")
         }
         WSettingsInfoBar {
             visible: CloudStorageService.dependencySnapshot !== null
@@ -148,33 +148,34 @@ WSettingsPage {
             message: CloudStorageService.safeError
         }
         WSettingsButton {
-            label: Translation.tr("MEGAcmd dependency status")
+            label: Translation.tr("MEGAcmd status")
             icon: "cloud"
-            buttonText: Translation.tr("Recheck dependencies")
+            buttonIcon: "arrow-clockwise"
+            buttonText: Translation.tr("Recheck")
             enabled: root.leaseHeld && !CloudStorageService.readBusy
             onButtonClicked: CloudStorageService.refreshStatic()
         }
     }
     WSettingsCard {
         visible: root.activeSection === "overview"
-        title: Translation.tr("Connection readiness (offline)")
+        title: Translation.tr("Offline readiness")
         icon: "shield"
         WSettingsInfoBar {
             severity: WSettingsInfoBar.Severity.Info
-            message: Translation.tr("Manual local check only. No MEGAcmd server, account or network connection is started.")
+            message: Translation.tr("Offline only · no server or login")
         }
         WSettingsInfoBar {
             severity: CloudStorageService.preflightState === "dependencies_ready"
                 ? WSettingsInfoBar.Severity.Info : WSettingsInfoBar.Severity.Warning
             message: CloudStorageService.preflightState === "checking"
-                ? Translation.tr("Checking local connection prerequisites")
+                ? Translation.tr("Checking local tools")
                 : CloudStorageService.preflightState === "dependencies_ready"
-                ? Translation.tr("Local executables found. Live connection remains disabled pending qualification.")
+                ? Translation.tr("Tools ready · sign-in disabled")
                 : CloudStorageService.preflightState === "dependency_missing"
-                ? Translation.tr("Local executables are missing; live connection remains disabled.")
+                ? Translation.tr("Tools missing · offline only")
                 : CloudStorageService.preflightState === "unavailable"
-                ? Translation.tr("Offline readiness could not be verified.")
-                : Translation.tr("Run the offline check when you want to assess readiness.")
+                ? Translation.tr("Check unavailable")
+                : Translation.tr("Not checked")
         }
         WSettingsInfoBar {
             visible: CloudStorageService.preflightError.length > 0
@@ -182,9 +183,10 @@ WSettingsPage {
             message: CloudStorageService.preflightError
         }
         WSettingsButton {
-            label: Translation.tr("Connection readiness")
+            label: Translation.tr("Offline readiness")
             icon: "shield"
-            buttonText: Translation.tr("Check connection readiness (offline)")
+            buttonIcon: "shield"
+            buttonText: Translation.tr("Offline check")
             enabled: root.leaseHeld && !CloudStorageService.preflightBusy
             onButtonClicked: CloudStorageService.requestConnectPreflight()
         }
@@ -195,19 +197,19 @@ WSettingsPage {
         icon: "folder"
         WSettingsInfoBar {
             severity: WSettingsInfoBar.Severity.Warning
-            message: Translation.tr("Unavailable until installed-version capabilities and parsers are qualified.")
+            message: Translation.tr("Unavailable · verification pending")
         }
     }
     WSettingsCard {
-        title: Translation.tr("Qualification boundary")
+        title: Translation.tr("Safety")
         icon: "shield"
         WSettingsInfoBar {
             severity: WSettingsInfoBar.Severity.Warning
-            message: Translation.tr("Sign-in, account reads and writes remain disabled; do not enter MEGA credentials.")
+            message: Translation.tr("Sign-in and cloud access disabled")
         }
         WSettingsInfoBar {
             severity: WSettingsInfoBar.Severity.Info
-            message: Translation.tr("Closing Settings does not stop external MEGA Desktop or vendor sync.")
+            message: Translation.tr("Closing Settings won\u0027t stop external sync")
         }
     }
 }

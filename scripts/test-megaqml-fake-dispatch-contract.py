@@ -116,4 +116,24 @@ for forbidden in ({"secret": {"password": "PRIVATE_FAKE_SECRET_CANARY"}},
     assert child.returncode == 68 and child.stdout == ""
     assert "PRIVATE_FAKE_SECRET_CANARY" not in child.stderr
 print("PASS MegaQML fake dispatcher inert preflight: 2 success and 2 rejection cases")
+# Preserve the old fake static detection scenario while exercising a new
+# opt-in-only wrong-ID replay: requests one and two must be accepted, third
+# must carry a mismatched ID, and all remain offline with no account actions.
+env = dict(os.environ, MEGAQML_FIXTURE_CASE="preflight-third-wrong-id")
+for serial in (1, 2, 3):
+    request = {"protocol": 1, "request_id": f"cloud-preflight-{serial}",
+               "operation": "connect_preflight", "params": {}}
+    child = subprocess.run(
+        [sys.executable, str(fake), "mega", "request"],
+        input=json.dumps(request) + "\n", capture_output=True,
+        text=True, env=env, timeout=3, check=True)
+    result = json.loads(child.stdout)
+    assert result["ok"] is True and not child.stderr
+    assert result["request_id"] == (
+        "cloud-preflight-replayed" if serial == 3 else f"cloud-preflight-{serial}")
+    assert result["result"]["connected"] is False
+    assert result["result"]["connection_attempted"] is False
+    assert result["result"]["account_reads_enabled"] is False
+    assert result["result"]["dependencies_ready"] is False
+print("PASS MegaQML fake-only F1 preflight: valid twice, wrong-ID third")
 

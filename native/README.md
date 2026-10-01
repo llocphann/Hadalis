@@ -2,9 +2,9 @@
 
 Hadalis uses this Rust workspace as its production backend. Python implementations remain installed as an explicit rollback path, not the default selector.
 
-The workspace builds the production helpers plus the development-gated `inir-companiond` Wull backend. Packaged/source-installed production runtimes place enabled helper binaries in `native/bin/`; `inir-companiond` is intentionally not copied or packaged yet while Wull production integration remains disabled. A source checkout can also use `native/target/release/` for development validation.
+The workspace builds the production helpers, including the dedicated `inir-mega` Cloud Storage adapter, plus the development-gated `inir-companiond` Wull backend. Packaged/source-installed current runtimes place enabled helper binaries in `native/bin/`; `inir-companiond` is intentionally not copied or packaged yet while Wull production integration remains disabled. A source checkout can also use `native/target/release/` for development validation.
 
-`scripts/native-dispatch` defaults to Rust. Explicit environment overrides have highest priority, then persisted selector state, then packaged binaries. If a Rust binary is unavailable or fails and strict mode is off, the dispatcher logs the failure and executes the retained Python implementation.
+`scripts/native-dispatch` defaults to Rust. Explicit environment overrides have highest priority, then persisted selector state, then packaged binaries. Existing compatibility routes may use their retained Python fallback when strict mode is off. The `mega` route is an exception: it always requires `inir-mega` and never falls back to Python, even when the generic backend selector is set to Python.
 
 Use `scripts/native-backend python` for emergency fallback, `scripts/native-backend rust` to return to production, and `scripts/native-backend status` to inspect state. Required migration `050-rust-native-default` clears benchmark-only selector overrides and promotes existing installations once.
 

@@ -17,6 +17,7 @@ NATIVE_BINARY_MARKERS = (
     "inir-native",
     "inir-mpdd",
     "inir-theme",
+    "inir-mega",
 )
 
 RUNTIME_ROOTS = (

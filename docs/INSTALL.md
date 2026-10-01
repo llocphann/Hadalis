@@ -1,6 +1,6 @@
 # Installation
 
-> **Native runtime:** Rust is the production backend. Source installs compile the locked Rust 1.95+ workspace and install `inir-inputd`, `inir-mpdd`, `inir-native`, and `inir-theme`. Python remains available only as an explicit fallback through `scripts/native-backend status|rust|python`.
+> **Native runtime:** Rust is the production backend. Current source installs compile the locked Rust 1.95+ workspace and install `inir-inputd`, `inir-mpdd`, `inir-native`, `inir-theme`, and the dedicated `inir-mega` Cloud Storage adapter. Python remains available as an explicit fallback for older compatibility routes through `scripts/native-backend status|rust|python`; Cloud Storage itself has no Python fallback. The pinned non-VCS Arch package gains `inir-mega` only when its reviewed source snapshot advances to a commit that contains the adapter.
 
 
 > **Primary path: Arch Linux.** `./setup install` also has distro-specific dependency routing for mutable Fedora systems and Debian/Ubuntu. Fedora Atomic/immutable systems and other distributions fall back to generic/manual guidance, so expect more manual intervention outside the primary Arch path.

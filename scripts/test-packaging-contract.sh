@@ -135,7 +135,9 @@ done
 
 # Rust is now part of the shipped runtime. Direct shell packages therefore
 # need Cargo at build time, must be architecture-specific, and must install all
-# four qualified helpers under the selector-owned runtime directory.
+# four baseline helpers under the selector-owned runtime directory. The pinned
+# non-VCS package source currently predates inir-mega, so the rolling package has
+# the additional current-source Cloud Storage assertion below.
 arch_native_bins=(inir-inputd inir-mpdd inir-native inir-theme)
 for pair in \
   "$stable_pkg:$stable_srcinfo" \
@@ -156,6 +158,13 @@ for pair in \
       || fail "$recipe does not package native binary: $binary"
   done
 done
+
+grep -Fq 'inir-mega' "$git_pkg" \
+  || fail "$git_pkg does not package the current-source Cloud Storage Rust helper"
+if grep -Fq 'inir-mega' "$stable_pkg"; then
+  git cat-file -e "$source_ref:native/inir-mega/Cargo.toml" 2>/dev/null \
+    || fail "$stable_pkg claims inir-mega but its pinned source snapshot does not contain the adapter"
+fi
 
 # The primary local aggregate should exercise the same fast release-boundary
 # contracts even when hosted CI cannot start a runner. Target membership is the

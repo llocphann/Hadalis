@@ -86,7 +86,7 @@ test-prefix-install:
 		docs="$$stage/opt/inir/share/doc/inir-shell"; \
 		test -f "$$runtime/shell.qml"; \
 		test -f "$$runtime/qmldir"; \
-		for binary in inir-inputd inir-mpdd inir-native inir-theme; do test -x "$$runtime/native/bin/$$binary"; done; \
+		for binary in inir-inputd inir-mpdd inir-native inir-theme inir-mega; do test -x "$$runtime/native/bin/$$binary"; done; \
 		test -f "$$docs/README.md"; \
 		test -f "$$docs/AUDIO_MEDIA.md"; \
 		test -f "$$docs/INSTALL.md"; \

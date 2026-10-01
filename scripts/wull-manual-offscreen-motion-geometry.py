@@ -299,19 +299,28 @@ def public_report(proof, source, parent, qs_version, qt_version):
             or proof.get("qt_parent_scale_mapping_consistent") is not True
             or proof.get("real_backend_animation") != "not_run"
             or proof.get("wayland_region_pointer_hover") != "not_run"
-            or type(source) is not str or len(source) != 40
-            or type(parent) is not str or len(parent) != 40):
+            or proof.get("all_neutral_static_bbox_inside_host")
+                is not (proof.get("status") == "pass")
+            or proof.get("reason") != (
+                None if proof.get("status") == "pass"
+                else "neutral_actual_qt_geometry_changed")
+            or type(source) is not str
+            or not re.fullmatch(r"[0-9a-f]{40}", source)
+            or type(parent) is not str
+            or not re.fullmatch(r"[0-9a-f]{40}", parent)):
         raise ValueError("unreviewed_offscreen_report_input")
     per = proof.get("per_scale_stretch_geometry")
     if (not isinstance(per, dict) or set(per) != {str(s) for s in SCALES}
-            or any(set(record) != {
-                "stretched_tip_outside_source_static_edges",
-                "stretched_bbox_outside_source_static_edges",
-                "stretched_tip_outside_host_edges",
-                "stretched_bbox_outside_host_edges"}
+            or any(type(record) is not dict
+                   or set(record) != {
+                       "stretched_tip_outside_source_static_edges",
+                       "stretched_bbox_outside_source_static_edges",
+                       "stretched_tip_outside_host_edges",
+                       "stretched_bbox_outside_host_edges"}
                    or any(type(v) is not list or len(v) > len(EDGES)
                           or len(v) != len(set(v))
                           or any(edge not in EDGES for edge in v)
+                          or v != [edge for edge in EDGES if edge in v]
                           for v in record.values())
                    for record in per.values())):
         raise ValueError("unreviewed_offscreen_qt_geometry_categories")
@@ -403,8 +412,10 @@ def main():
         stop("remote_diverged_after_offscreen_probe")
     git("merge", "--ff-only", remote)
     parent = git("rev-parse", "HEAD")
-    data = public_report(proof, source, parent, version_of("qs", "--version"),
-                         version_of("qtpaths6", "--qt-version"))
+    data = public_report(
+        proof, source, parent,
+        version_of("qs" if shutil.which("qs") else "quickshell", "--version"),
+        version_of("qtpaths6", "--qt-version"))
     name = ("wull-qt-motion-"
             + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             + "-" + secrets.token_hex(4) + "-" + source[:12] + ".json")

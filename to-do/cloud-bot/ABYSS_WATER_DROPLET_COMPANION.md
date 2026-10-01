@@ -2144,3 +2144,52 @@ production input change.
   backend
   and
   `stable`.
+
+
+- **Last pre-local safety refinement**:
+  the actual
+  original-QML offscreen
+  fixture must
+  demonstrate that
+  it applied the
+  intended frozen
+  `stateStretch=0/1`
+  target state
+  BEFORE reporting
+  Qt geometry.
+  Fixture updated
+  `d114a768a26ec6956bfd1f83d14a2aebb6a82e54`,
+  latest exact
+  blob
+  `11df91496a8bb9b18d79498e86d1f734d78dc574`;
+  reporter updated
+  `82f6f078282dc7a73dd727f1cd003c91dea5391b`,
+  blob
+  `0dd833ed05d54e9d1045553a1da8be8f66b6511a`;
+  inert contract
+  updated
+  `17632a74eb9b472e39684f44c0eb088314c8c0c3`,
+  blob
+  `fc98c43a40502e94e493a3d7ce565d969f0d1e8a`.
+  Any of 24 missing
+  frozen-state
+  witnesses makes
+  the actual-QML
+  test inconclusive;
+  it cannot publish
+  an unchanged
+  neutral 24-pose
+  PASS disguised
+  as stretched
+  geometry.
+  See the latest
+  technical doc
+  amendment
+  `45f38dc104697230f05f4deb2df3e83882cc23c0`.
+  Run only the
+  updated inert
+  contract then
+  guarded offscreen
+  runner in
+  ONE disposable
+  private clone.

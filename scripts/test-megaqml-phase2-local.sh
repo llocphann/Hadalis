@@ -268,9 +268,49 @@ if ! git commit --quiet -m "test(megaqml): Phase 2p repeated synthetic race evid
   echo 'PUBLICATION_SKIPPED_COMMIT'; exit "$failed"
 fi
 evidence_sha="$(git rev-parse HEAD)"
-if git push --quiet origin HEAD:refs/heads/dev; then
-  printf 'PUBLICATION=PUSHED_SAFE_SUMMARY\nEVIDENCE_COMMIT=%s\n' "$evidence_sha"
-else
-  printf 'PUBLICATION=LOCAL_ONLY\nLOCAL_EVIDENCE_COMMIT=%s\n' "$evidence_sha"
-fi
+# Wull may publish between the final fetch and our evidence push. Retry only
+# after validating the newer remote against the exact tested SOURCE_SHA.
+# A merge here preserves both independent commits; NEVER rebase/force-push.
+for push_attempt in 1 2 3; do
+  if git push --quiet origin HEAD:refs/heads/dev; then
+    printf 'PUBLICATION=PUSHED_SAFE_SUMMARY\nEVIDENCE_COMMIT=%s\n' "$evidence_sha"
+    exit "$failed"
+  fi
+  [[ "$push_attempt" -lt 3 ]] || break
+  if ! fetch_remote_dev; then
+    echo 'PUBLICATION_RETRY_FETCH_FAILED'
+    break
+  fi
+  # A transport error after a successful server-side push is not a conflict.
+  if git merge-base --is-ancestor "$evidence_sha" "$remote_sha"; then
+    printf 'PUBLICATION=ALREADY_PUSHED_SAFE_SUMMARY\nEVIDENCE_COMMIT=%s\n' "$evidence_sha"
+    exit "$failed"
+  fi
+  if git merge-base --is-ancestor "$remote_sha" HEAD; then
+    echo 'PUBLICATION_RETRY_REMOTE_NOT_ADVANCED'
+    break
+  fi
+  if ! git merge-base --is-ancestor "$source_sha" "$remote_sha" ||       ! python3 scripts/test-megaqml-phase2p-history-guard.py           "$source_sha" "$remote_sha" >/dev/null; then
+    echo 'PUBLICATION_RETRY_UNREVIEWED_REMOTE'
+    break
+  fi
+  if git cat-file -e "${remote_sha}:${report}" 2>/dev/null; then
+    echo 'PUBLICATION_RETRY_REPORT_COLLISION'
+    break
+  fi
+  if ! python3 scripts/test-megaqml-phase2p-history-guard.py       "$source_sha" "$(git rev-parse HEAD)" >/dev/null; then
+    echo 'PUBLICATION_RETRY_UNVERIFIED_LOCAL'
+    break
+  fi
+  if ! git merge --no-ff --no-edit       -m "merge(dev): preserve verified MegaQML evidence and concurrent Wull"       "$remote_sha" >/dev/null; then
+    git merge --abort >/dev/null 2>&1 || true
+    echo 'PUBLICATION_RETRY_MERGE_FAILED'
+    break
+  fi
+  if [[ -n "$(git status --porcelain --untracked-files=all)" ]] ||       ! python3 scripts/test-megaqml-phase2p-history-guard.py           "$source_sha" "$(git rev-parse HEAD)" >/dev/null; then
+    echo 'PUBLICATION_RETRY_POSTMERGE_INVALID'
+    break
+  fi
+done
+printf 'PUBLICATION=LOCAL_ONLY\nLOCAL_EVIDENCE_COMMIT=%s\n' "$evidence_sha"
 exit "$failed"

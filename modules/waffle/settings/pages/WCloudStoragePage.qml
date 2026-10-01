@@ -187,6 +187,7 @@ WSettingsPage {
             icon: "shield"
             buttonIcon: "shield"
             buttonText: Translation.tr("Offline check")
+            accessibleButtonName: Translation.tr("Check connection readiness (offline)")
             enabled: root.leaseHeld && !CloudStorageService.preflightBusy
             onButtonClicked: CloudStorageService.requestConnectPreflight()
         }

@@ -20,6 +20,7 @@ for route in ("overview", "drive", "transfers", "sync", "backups", "sharing", "c
 assert 'operation: "detect"' in s and 'StaticProtocol.parseDetectResponse(payload, root._pendingId)' in s
 assert 'import "CloudStorageStaticProtocol.js" as StaticProtocol' in s
 assert 'root.dependencySnapshot = null' in s
+assert s.index('readDeadline.restart()') < s.index('readProc.running = true')
 assert 'root._pendingId' in s
 assert 'root._pendingGeneration === root.generation' in s
 assert 'readonly property bool connected: false' in s

@@ -56,6 +56,8 @@ Singleton {
             protocol: 1, request_id: root._pendingId, operation: "detect", params: {}
         }) + "\n"
         readProc.stdinEnabled = true
+        // Start the deadline BEFORE spawning; missing executables must not hang the UI.
+        readDeadline.restart()
         readProc.running = true
     }
 
@@ -95,7 +97,6 @@ Singleton {
             readProc.write(root._pendingInput)
             root._pendingInput = ""
             readProc.stdinEnabled = false
-            readDeadline.restart()
         }
         onExited: (exitCode, exitStatus) => {
             readDeadline.stop()

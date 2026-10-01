@@ -34,6 +34,7 @@ run_test megaqml_phase2_contract python3 scripts/test-megaqml-phase2-contract.py
 run_test settings_navigation python3 scripts/test-settings-information-architecture.py
 run_test megaqml_waffle_navigation python3 scripts/test-megaqml-waffle-contract.py
 run_test megaqml_static_protocol node scripts/test-megaqml-phase2-protocol.mjs
+run_test megaqml_quickshell_diagnostics python3 scripts/test-megaqml-quickshell-classifier-contract.py
 # Optional actual Quickshell singleton creation; zero consumers and isolated
 # shell root. The fixture cannot resolve the production native-dispatch path.
 if command -v qs >/dev/null 2>&1 || command -v quickshell >/dev/null 2>&1; then

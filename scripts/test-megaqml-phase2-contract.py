@@ -66,6 +66,9 @@ assert 'test ! -e "$fixture_dir/scripts/native-dispatch"' in quickshell_runner
 assert 'import "./services" as Deferred' in quickshell_dormant
 quickshell_classifier = get("scripts/test-megaqml-quickshell-classify.py")
 assert 'quickshell_smoke_category=' in quickshell_classifier
+classifier_test = get("scripts/test-megaqml-quickshell-classifier-contract.py")
+assert 'PASS MegaQML isolated runtime diagnostic redaction' in classifier_test
+assert 'run_test megaqml_quickshell_diagnostics' in runner
 assert 'print(f"quickshell_smoke_category=' in quickshell_classifier
 assert 'quickshell_baseline' in runner and 'quickshell_service_dormant' in runner
 assert 'MEGAQML_QS_BASELINE_OK' in quickshell_base

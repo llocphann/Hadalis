@@ -717,3 +717,69 @@ CLI invocations. This is a plausible *alternative
 hypothesis*, NOT independently validated as the cause,
 and is deliberately not enabled by this differential
 probe. See https://github.com/cushycush/wdotool .
+
+
+## New exact-source dynamic TOP A/B PASS with pre-remap discrimination; BOTTOM next
+
+The new real independently owned single-output nested-Niri report
+`docs/wull-mask-candidate-20261001T173129Z-ce33db3c-8efa0b7d7341.json`
+has `source_sha=8efa0b7d73418af9fc52b117199e2a691e0158ac`,
+`status=pass`, and
+`native_pointer_backend=forced_wlr_protocols_wdotool`.
+Unlike the previous `INCONCLUSIVE` dynamic-generator probe, this
+run includes the NEW discriminating
+`after_baseline_unmap_exterior_underlay_control`: the old
+full-host production stage was stopped and all its private
+layers/Rust processes were unmapped before an independent
+exterior underlay click confirmed **matched** coordinates.
+The baseline itself had correctly aligned disabled-center and
+enabled-exterior control clicks, a genuine enabled body bridge
+click and a real private Rust happy/pulse reaction with no
+underlay body click, plus an observed blocked empty
+full-host margin without accidental body activation.
+
+After the intermediate control PASS, the PRIVATE dynamic
+four-edge BBOX generator was instantiated on **TOP, scale=1**
+only. It independently confirmed a correctly aligned
+exterior underlay click, exactly its expected actual
+body bridge/Rust click without underlay click, and a
+positive **matched** formerly blocked empty-margin
+underlay click without activating the body. Nested
+Wayland/Niri endpoint isolation, a single clean output,
+owned private layers/Rust daemon/compositor cleanup, no
+private strays and unchanged host outputs ALL passed.
+No shipped production QML mask, default-off behavior
+or host user configuration was changed.
+
+The earlier dynamic-generator
+`docs/wull-mask-candidate-20261001T170950Z-105fd7a8-1518db798d10.json`
+remains **INCONCLUSIVE** after a first candidate exterior
+off-target click, and its old-log retrospective diagnosis
+documents large two-axis drift. The new independent
+PASS is positive TOP evidence, NOT proof that the
+earlier transient was cured or that all pointer events
+are deterministic. The new intermediary witness
+bounds WHERE future repeat drift may begin, but an
+all-PASS trial cannot establish WHY the earlier
+drift occurred.
+
+**Next independent real gate:** run ONLY
+`python3 scripts/wull-manual-nested-pointer.py
+--acknowledge-nested-pointer-candidate-bottom`
+from a fresh clean permission-private `dev` clone
+after the four inert pointer contracts succeed.
+The bottom trial must qualify its own existing
+production full-host controls first, then the
+post-baseline-unmap exact-target witness, then
+the independently mapped bottom private dynamic
+mask exterior/body/margin witnesses with real
+Rust and full owned cleanup. Publish under distinct
+`docs/wull-mask-bottom-*.json` and inspect that
+unique exact-source report before any side-edge
+expansion. Do not interpret off-target underlay
+coordinates as a Wull production-mask failure.
+Bottom/left/right live pointer, hover/popup,
+true multioutput and scaling, real visual quality,
+long-run/lifecycle and canonical wide validation
+remain unqualified. Keep production Region and
+`stable` unchanged.

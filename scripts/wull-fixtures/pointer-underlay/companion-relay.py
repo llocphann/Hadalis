@@ -39,7 +39,12 @@ def require_isolated_session():
         raise RuntimeError("private_exact_binary_unavailable")
     if not trace.is_absolute() or trace.exists() or not trace.parent.is_dir():
         raise RuntimeError("private_trace_path_unavailable")
-    checkout = Path(__file__).resolve().parents[3]
+    checkout_text = env.get("WULL_PRIVATE_POINTER_CHECKOUT", "")
+    if not checkout_text:
+        raise RuntimeError("private_checkout_identity_unavailable")
+    checkout = Path(checkout_text).resolve()
+    if not checkout.is_dir() or not (checkout / "AGENTS.md").is_file():
+        raise RuntimeError("private_checkout_identity_unavailable")
     if trace == checkout or checkout in trace.parents:
         raise RuntimeError("private_pointer_trace_inside_checkout")
     return executable, trace
@@ -93,6 +98,10 @@ def main():
                             value = json.loads(line)
                         except (ValueError, UnicodeDecodeError):
                             continue
+                        if (isinstance(value, dict) and value.get("v") == 1
+                                and value.get("type") == "state"
+                                and value.get("visibility") == "present"):
+                            marker("rust_present")
                         if (isinstance(value, dict) and value.get("v") == 1
                                 and value.get("type") == "state"
                                 and value.get("mood") == "happy"

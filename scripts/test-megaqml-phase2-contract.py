@@ -53,7 +53,7 @@ assert 'qml_minimal' in runner and 'qml_modern_syntax' in runner and 'qml_blocke
 assert '/usr/lib/qt6/bin/qmlformat qmlformat6 qmlformat' in runner
 assert 'qt_formatter_selection=' in runner and 'version_major_minor=' in runner
 assert 'modern_probe_pass' in runner and 'fallback_probe_unqualified' in runner
-assert 'docs/evidence/megaqml/phase2j-' in runner
+assert 'docs/evidence/megaqml/phase2k-' in runner
 quickshell_runner = get("scripts/test-megaqml-quickshell-smoke.sh")
 quickshell_base = get("scripts/megaqml-fixtures/runtime-baseline/shell.qml")
 quickshell_dormant = get("scripts/megaqml-fixtures/runtime-dormant/shell.qml")
@@ -64,7 +64,7 @@ assert 'runtime-$fixture_kind/shell.qml' in quickshell_runner
 for case_name in ("baseline", "dormant", "active-present", "active-missing",
                   "active-wrong-id", "active-unsafe-secret", "active-malformed",
                   "refresh-coalesce", "refresh-stale-reacquire",
-                  "recovery-exit", "recovery-timeout"):
+                  "recovery-exit", "recovery-timeout", "ui-material", "ui-waffle"):
     # The active cases use the same source fixture, not a nonexistent
     # runtime-active-present/ runtime-active-missing directory.
     fixture_kind = case_name.split("-", 1)[0]
@@ -141,8 +141,29 @@ for required_case in ("quickshell_reject_wrong_id", "quickshell_reject_unsafe_se
     assert required_case in runner
 assert 'export MEGAQML_FIXTURE_CASE="${kind#*-}"' in quickshell_runner
 assert 'run_test megaqml_fake_dispatch_fixture' in runner
+ui_fixture_source = get("scripts/test-megaqml-ui-fixture.py")
+ui_fixture_contract = get("scripts/test-megaqml-ui-fixture-contract.py")
+ui_shell = get("scripts/megaqml-fixtures/runtime-ui/shell.qml")
+for token in ("CloudStorageConfig.qml", "WCloudStoragePage.qml",
+              "CloudStorageService.qml", "CloudStorageStaticProtocol.js"):
+    assert token in ui_fixture_source
+assert "import qs." in ui_fixture_source  # rewritten only in temporary copy
+assert 'source.replace(before, after, 1)' in ui_fixture_source
+assert 'scripts/native-dispatch' in ui_fixture_contract
+assert 'PASS MegaQML isolated Material and Waffle UI source fixture contract' in ui_fixture_contract
+assert 'run_test megaqml_ui_component_fixture' in runner
+for runtime_case, marker in (("quickshell_ui_material", "MEGAQML_QS_UI_MATERIAL_OK"),
+                             ("quickshell_ui_waffle", "MEGAQML_QS_UI_WAFFLE_OK")):
+    assert 'run_test ' + runtime_case in runner and marker in ui_shell
+assert 'root.page.visible = false' in ui_shell
+assert 'root.page.destroy()' in ui_shell
+for shell_case in ("ui-material", "ui-waffle"):
+    assert shell_case in quickshell_runner
+assert 'scripts/test-megaqml-ui-fixture.py' in quickshell_runner
+assert 'MEGAQML_UI_KIND' in quickshell_runner
+assert 'MEGAQML_FIXTURE_CASE=missing' in quickshell_runner
 assert 'quickshell_active_present' in runner and 'quickshell_active_missing' in runner
 assert 'export PATH="$work/allowed-bin"' in quickshell_runner
 assert 'cp -- scripts/megaqml-fixtures/fake-static-dispatch.py' in quickshell_runner
-assert 'docs/evidence/megaqml/phase2j-' in runner
-print("PASS MegaQML Phase 2j static source contract")
+assert 'docs/evidence/megaqml/phase2k-' in runner
+print("PASS MegaQML Phase 2k static source contract")

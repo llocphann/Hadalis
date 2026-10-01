@@ -36,6 +36,7 @@ run_test megaqml_waffle_navigation python3 scripts/test-megaqml-waffle-contract.
 run_test megaqml_static_protocol node scripts/test-megaqml-phase2-protocol.mjs
 run_test megaqml_quickshell_diagnostics python3 scripts/test-megaqml-quickshell-classifier-contract.py
 run_test megaqml_fake_dispatch_fixture python3 scripts/test-megaqml-fake-dispatch-contract.py
+run_test megaqml_ui_component_fixture python3 scripts/test-megaqml-ui-fixture-contract.py
 # Optional actual Quickshell singleton creation; zero consumers and isolated
 # shell root. The fixture cannot resolve the production native-dispatch path.
 if command -v qs >/dev/null 2>&1 || command -v quickshell >/dev/null 2>&1; then
@@ -54,18 +55,20 @@ if command -v qs >/dev/null 2>&1 || command -v quickshell >/dev/null 2>&1; then
       run_test quickshell_refresh_stale_reacquire bash scripts/test-megaqml-quickshell-smoke.sh refresh-stale-reacquire
       run_test quickshell_recover_exit bash scripts/test-megaqml-quickshell-smoke.sh recovery-exit
       run_test quickshell_recover_timeout bash scripts/test-megaqml-quickshell-smoke.sh recovery-timeout
+      run_test quickshell_ui_material bash scripts/test-megaqml-quickshell-smoke.sh ui-material
+      run_test quickshell_ui_waffle bash scripts/test-megaqml-quickshell-smoke.sh ui-waffle
     else
-      for case_name in quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout; do
+      for case_name in quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle; do
         printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
       done
     fi
   else
-    for case_name in quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout; do
+    for case_name in quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle; do
       printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
     done
   fi
 else
-  for case_name in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout; do
+  for case_name in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle; do
     printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
   done
 fi
@@ -154,11 +157,11 @@ else
     printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
   done
 fi
-report="docs/evidence/megaqml/phase2j-${source_sha:0:12}-$(date -u +%Y%m%dT%H%M%SZ).md"
+report="docs/evidence/megaqml/phase2k-${source_sha:0:12}-$(date -u +%Y%m%dT%H%M%SZ).md"
 mkdir -p docs/evidence/megaqml
 {
-  printf '# MegaQML Phase 2j failure-recovery isolated Quickshell evidence\n\nSource SHA: `%s`\n\n' "$source_sha"
-  printf 'Scope: synthetic source contracts and isolated Quickshell fake dispatcher, including queued retry after nonzero exit/timeout, consumer generation, invalid replies and deadline. No rendered Settings UI, vendor execution, credentials or live MEGA acceptance.\n\n'
+  printf '# MegaQML Phase 2k isolated Cloud Storage UI component evidence\n\nSource SHA: `%s`\n\n' "$source_sha"
+  printf 'Scope: source contracts, isolated Quickshell fake dispatcher and actual reviewed Material/Waffle Cloud Storage page bodies instantiated with temporary UI-dependency stubs, including navigation and consumer lease. This is NOT the full Hadalis visual render or live MEGA acceptance. No vendor or account operations.\n\n'
   printf 'qt_formatter_selection=%s;version_major_minor=%s\n\n' "$qt_formatter_selection" "$qt_public_version"
   printf '| Test | Result | Exit code | Source SHA |\n|---|---|---:|---|\n'
   while IFS=, read -r name state code sha; do
@@ -181,7 +184,7 @@ mkdir -p docs/evidence/megaqml
   elif grep -q '^qml_minimal,SKIP,' "$scratch/safe.csv"; then
     echo 'qml_blocker=qmlformat_unavailable'
   fi
-  for qs_case in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout; do
+  for qs_case in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle; do
     if grep -q "^${qs_case},FAIL," "$scratch/safe.csv"; then
       # The local smoke helper prints only allowlisted diagnostics.
       grep '^quickshell_smoke_category=' "$scratch/$qs_case.raw" || true
@@ -219,7 +222,7 @@ if [[ "$(git diff --cached --name-only)" != "$report" ]] || ! git diff --cached 
   git reset --quiet -- "$report"
   echo 'PUBLICATION_SKIPPED_INDEX'; exit "$failed"
 fi
-if ! git commit --quiet -m "test(megaqml): Phase 2j queued retry after child exit and timeout evidence ${source_sha:0:12}" -- "$report"; then
+if ! git commit --quiet -m "test(megaqml): Phase 2k isolated Material and Waffle component smoke evidence ${source_sha:0:12}" -- "$report"; then
   echo 'PUBLICATION_SKIPPED_COMMIT'; exit "$failed"
 fi
 evidence_sha="$(git rev-parse HEAD)"

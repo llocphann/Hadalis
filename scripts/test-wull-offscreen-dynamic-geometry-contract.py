@@ -35,6 +35,7 @@ def blob(path):
         b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
 
 
+assert blob(RUNNER) == "71262816d9d64c97061c90e03bed9acee76bdc18"
 for name, digest in model["DYNAMIC_PINS"].items():
     assert blob(ROOT / name) == digest, name
 assert model["frozen"]["PINNED"][
@@ -75,6 +76,7 @@ for forbidden in ("Process {", "wdotool", "ydotool", "uinput", "Niri {"):
 
 for literal in (
     "explicit_private_dynamic_opt_in_required",
+    "private_dynamic_quickshell_version_differs_from_frozen",
     "frozen[\"guard\"](state)",
     "frozen[\"audit\"](commit)",
     "offscreen_dynamic_source_changed_after_review",

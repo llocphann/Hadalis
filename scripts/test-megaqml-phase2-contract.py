@@ -335,6 +335,22 @@ assert 'MEGAQML_QS_SHARED_STAGE_PREFLIGHT_TIMEOUT' in classifier_test
 assert 'MEGAQML_QS_SHARED_STAGE_PREFLIGHT_RELEASE' in classifier_test
 assert 'root.sawPreflightChildStart' in shared_ui
 assert 'MEGAQML_QS_UI_SHARED_TIMEOUT_OK' in shared_ui
+# An in-flight probe must be canceled on the final page release; its
+# stale response cannot revive the previous UI or block a fresh static read.
+assert 'bash scripts/test-megaqml-quickshell-smoke.sh ui-preflight-release' in f1_shared_wrapper
+assert 'MEGAQML_PREFLIGHT_RELEASE=1' in quickshell_runner
+assert 'ui-preflight-release) marker=MEGAQML_QS_UI_SHARED_RELEASE_OK' in quickshell_runner
+for fixed in ('cancel_pending', 'cancel_release', 'cancel_reap',
+              'cancel_reopen', 'cancel_recheck', 'cancel_final'):
+    assert 'shared_' + fixed in quickshell_classifier, fixed
+    assert 'MEGAQML_QS_SHARED_STAGE_' + fixed.upper() in classifier_test, fixed
+assert 'root.releaseCase' in shared_ui
+assert 'root.goodMissing(svc, 4, 1)' in shared_ui
+assert 'MEGAQML_QS_UI_SHARED_RELEASE_OK' in shared_ui
+assert 'preflightDeadline.stop()' in s
+assert 'root._preflightGeneration = -1' in s
+assert 'root._preflightGeneration !== root.generation' in s
+assert 'preflightProc.signal(9)' in s
 
 assert 'run_test quickshell_ui_race bash scripts/test-megaqml-quickshell-smoke.sh ui-race' in runner
 assert 'run_test megaqml_race_repeatability bash scripts/test-megaqml-race-repeat.sh' in runner

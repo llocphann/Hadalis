@@ -50,18 +50,20 @@ if command -v qs >/dev/null 2>&1 || command -v quickshell >/dev/null 2>&1; then
       run_test quickshell_reject_malformed bash scripts/test-megaqml-quickshell-smoke.sh active-malformed
       run_test quickshell_exit_failure bash scripts/test-megaqml-quickshell-smoke.sh active-exit-failure
       run_test quickshell_deadline_reap bash scripts/test-megaqml-quickshell-smoke.sh active-hang
+      run_test quickshell_refresh_coalesce bash scripts/test-megaqml-quickshell-smoke.sh refresh-coalesce
+      run_test quickshell_refresh_stale_reacquire bash scripts/test-megaqml-quickshell-smoke.sh refresh-stale-reacquire
     else
-      for case_name in quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap; do
+      for case_name in quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire; do
         printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
       done
     fi
   else
-    for case_name in quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap; do
+    for case_name in quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire; do
       printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
     done
   fi
 else
-  for case_name in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap; do
+  for case_name in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire; do
     printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
   done
 fi
@@ -150,11 +152,11 @@ else
     printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
   done
 fi
-report="docs/evidence/megaqml/phase2h-${source_sha:0:12}-$(date -u +%Y%m%dT%H%M%SZ).md"
+report="docs/evidence/megaqml/phase2i-${source_sha:0:12}-$(date -u +%Y%m%dT%H%M%SZ).md"
 mkdir -p docs/evidence/megaqml
 {
-  printf '# MegaQML Phase 2h process lifecycle isolated Quickshell evidence\n\nSource SHA: `%s`\n\n' "$source_sha"
-  printf 'Scope: source contracts, synthetic detector and isolated Quickshell fake dispatcher including invalid replies, nonzero child exit and bounded hanging child. No rendered Settings UI, vendor execution, credentials or live MEGA acceptance.\n\n'
+  printf '# MegaQML Phase 2i consecutive-request isolated Quickshell evidence\n\nSource SHA: `%s`\n\n' "$source_sha"
+  printf 'Scope: synthetic source contracts and isolated Quickshell fake dispatcher, including two consecutive requests, coalesced refresh, stale consumer generation, invalid replies and deadline. No rendered Settings UI, vendor execution, credentials or live MEGA acceptance.\n\n'
   printf 'qt_formatter_selection=%s;version_major_minor=%s\n\n' "$qt_formatter_selection" "$qt_public_version"
   printf '| Test | Result | Exit code | Source SHA |\n|---|---|---:|---|\n'
   while IFS=, read -r name state code sha; do
@@ -177,7 +179,7 @@ mkdir -p docs/evidence/megaqml
   elif grep -q '^qml_minimal,SKIP,' "$scratch/safe.csv"; then
     echo 'qml_blocker=qmlformat_unavailable'
   fi
-  for qs_case in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap; do
+  for qs_case in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire; do
     if grep -q "^${qs_case},FAIL," "$scratch/safe.csv"; then
       # The local smoke helper prints only allowlisted diagnostics.
       grep '^quickshell_smoke_category=' "$scratch/$qs_case.raw" || true
@@ -215,7 +217,7 @@ if [[ "$(git diff --cached --name-only)" != "$report" ]] || ! git diff --cached 
   git reset --quiet -- "$report"
   echo 'PUBLICATION_SKIPPED_INDEX'; exit "$failed"
 fi
-if ! git commit --quiet -m "test(megaqml): Phase 2h fake child exit and timeout evidence ${source_sha:0:12}" -- "$report"; then
+if ! git commit --quiet -m "test(megaqml): Phase 2i coalesced refresh and consumer-generation evidence ${source_sha:0:12}" -- "$report"; then
   echo 'PUBLICATION_SKIPPED_COMMIT'; exit "$failed"
 fi
 evidence_sha="$(git rev-parse HEAD)"

@@ -53,7 +53,7 @@ assert 'qml_minimal' in runner and 'qml_modern_syntax' in runner and 'qml_blocke
 assert '/usr/lib/qt6/bin/qmlformat qmlformat6 qmlformat' in runner
 assert 'qt_formatter_selection=' in runner and 'version_major_minor=' in runner
 assert 'modern_probe_pass' in runner and 'fallback_probe_unqualified' in runner
-assert 'docs/evidence/megaqml/phase2h-' in runner
+assert 'docs/evidence/megaqml/phase2i-' in runner
 quickshell_runner = get("scripts/test-megaqml-quickshell-smoke.sh")
 quickshell_base = get("scripts/megaqml-fixtures/runtime-baseline/shell.qml")
 quickshell_dormant = get("scripts/megaqml-fixtures/runtime-dormant/shell.qml")
@@ -62,7 +62,8 @@ assert 'QT_QPA_PLATFORM=offscreen' in quickshell_runner
 assert 'fixture_kind="${kind%%-*}"' in quickshell_runner
 assert 'runtime-$fixture_kind/shell.qml' in quickshell_runner
 for case_name in ("baseline", "dormant", "active-present", "active-missing",
-                  "active-wrong-id", "active-unsafe-secret", "active-malformed"):
+                  "active-wrong-id", "active-unsafe-secret", "active-malformed",
+                  "refresh-coalesce", "refresh-stale-reacquire"):
     # The active cases use the same source fixture, not a nonexistent
     # runtime-active-present/ runtime-active-missing directory.
     fixture_kind = case_name.split("-", 1)[0]
@@ -91,7 +92,20 @@ assert 'service.unregisterConsumer()' in active_fixture
 assert 'MEGAQML_QS_ACTIVE_PRESENT_OK' in active_fixture
 assert 'MEGAQML_QS_ACTIVE_MISSING_OK' in active_fixture
 assert 'json.dumps(' in fake_dispatch and 'subprocess' not in fake_dispatch
-assert 'PASS MegaQML synthetic runtime dispatcher: 7 cases' in fake_contract
+assert 'PASS MegaQML synthetic runtime dispatcher: 9 cases plus two second requests' in fake_contract
+refresh_fixture = get("scripts/megaqml-fixtures/runtime-refresh/shell.qml")
+assert 'service.refreshStatic()' in refresh_fixture
+assert 'service.unregisterConsumer()' in refresh_fixture
+assert 'service.registerConsumer()' in refresh_fixture
+assert 'MEGAQML_QS_COALESCED_OK' in refresh_fixture
+assert 'MEGAQML_QS_REACQUIRE_OK' in refresh_fixture
+assert 'service.requestSerial === 2' in refresh_fixture
+assert 'stale-reacquire' in fake_dispatch and 'coalesce' in fake_dispatch
+assert 'run_test quickshell_refresh_coalesce' in runner
+assert 'run_test quickshell_refresh_stale_reacquire' in runner
+for run_type in ("refresh-coalesce", "refresh-stale-reacquire"):
+    assert run_type in quickshell_runner
+assert 'export MEGAQML_FIXTURE_CASE="${kind#*-}"' in quickshell_runner
 assert 'MEGAQML_QS_EXIT_FAILURE_OK' in active_fixture
 assert 'MEGAQML_QS_TIMEOUT_OK' in active_fixture
 assert 'Static dependency check timed out.' in active_fixture
@@ -110,10 +124,10 @@ for invalid_case in ("wrong-id", "unsafe-secret", "malformed"):
 for required_case in ("quickshell_reject_wrong_id", "quickshell_reject_unsafe_secret",
                       "quickshell_reject_malformed"):
     assert required_case in runner
-assert 'export MEGAQML_FIXTURE_CASE="${kind#active-}"' in quickshell_runner
+assert 'export MEGAQML_FIXTURE_CASE="${kind#*-}"' in quickshell_runner
 assert 'run_test megaqml_fake_dispatch_fixture' in runner
 assert 'quickshell_active_present' in runner and 'quickshell_active_missing' in runner
 assert 'export PATH="$work/allowed-bin"' in quickshell_runner
 assert 'cp -- scripts/megaqml-fixtures/fake-static-dispatch.py' in quickshell_runner
-assert 'docs/evidence/megaqml/phase2h-' in runner
-print("PASS MegaQML Phase 2h static source contract")
+assert 'docs/evidence/megaqml/phase2i-' in runner
+print("PASS MegaQML Phase 2i static source contract")

@@ -99,7 +99,29 @@ def main():
             assert item["status"] == "waiting_result" and item["job_id"] == "JOB-observation"
             assert item["status_detail"] == "" and item["pending"] is None
             assert item["iterations"] == 1 and transport.count("submit") == 1
-    print("PASS: durable closed/interrupted stream evidence, independent profile completion, bounded events, rate-limit/restart observation and no prompt replay")
+    with environment():
+        pid=profile("Status-only observation");transport=ObservedTransport()
+        with patch.object(daemon,"native_command",side_effect=transport):
+            daemon.tick(100);original=transport.pending(pid).copy();uid=original["user_message_id"]
+            transport.observation[uid]={"server_stream_status":"IS_STREAMING","client_stream_error":True,"history_checked":True}
+            daemon.tick(102)
+            verified=transport.pending(pid)["history_verified_at_unix"]
+            assert verified==102
+            assert transport.pending(pid)["history_poll_after_unix"]==102+daemon.CHAT_HISTORY_POLL_SECONDS
+            transport.observation[uid]["history_checked"]=False
+            daemon.tick(500)
+            assert transport.count("resume")==0
+            assert transport.pending(pid)["history_verified_at_unix"]==verified
+            assert transport.pending(pid)["observation"]["history_checked"] is False
+            assert transport.pending(pid)["user_message_id"]==original["user_message_id"]
+            assert transport.count("submit")==1
+            transport.observation[uid].update(history_checked=True,client_stream_error=False,client_stream_found=True)
+            daemon.tick(560)
+            assert transport.count("resume")==0 # Healthy streams need no reattachment.
+            transport.observation[uid].update(client_stream_error=True)
+            daemon.tick(620);assert transport.count("resume")==1
+            assert transport.pending(pid)["resume_attempts"]==1
+    print("PASS: durable closed/interrupted stream evidence, status-only monitoring without reattachment, periodic exact-turn history, independent completion and no prompt replay")
 
 
 if __name__ == "__main__":

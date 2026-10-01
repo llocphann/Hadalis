@@ -222,23 +222,42 @@ export async function nativeModelCatalog(page) {
 
 export async function pollNativeTurn(page, pending) {
   const path = `/conversation/${pending.conversation_id}`;
-  const conversation = await nativeRead(page, path, {}, pending.project_id);
-  const result = projectTurn(conversation, pending);
-  if (result.completed || !result.submitted || result.superseded || result.terminal_failed) return result;
   const local = await nativeStreamStatus(page, pending);
+  const now = Date.now()/1000;
+  const verifiedAt = pending.history_verified_at_unix, historyAfter = pending.history_poll_after_unix;
+  // A recent exact-turn history permits a cheap status read between audits.
+  // Missing Desktop receipts, uncertain submissions, clock changes and stale
+  // or malformed schedules always require history. A status-only read cannot
+  // authorize final consumption, terminal recovery or stream reattachment.
+  const recent = pending.phase === "acknowledged" && local.found && !local.streamComplete &&
+    Number.isSafeInteger(verifiedAt) && Number.isSafeInteger(historyAfter) &&
+    verifiedAt <= now && now < historyAfter && historyAfter <= verifiedAt + 300;
+  let earlyStatus;
+  if (recent) {
+    earlyStatus = await nativeServerStreamStatus(page, pending.conversation_id);
+    if (earlyStatus === "IS_STREAMING") return {completed:false, submitted:true, terminal_failed:false,
+      history_checked:false, client_stream_found:true, client_stream_error:local.streamError === true,
+      client_stream_complete:false, server_stream_status:earlyStatus};
+  }
+  const conversation = await nativeRead(page, path, {}, pending.project_id);
+  const result = {...projectTurn(conversation, pending), history_checked:true};
+  if (result.completed || !result.submitted || result.superseded || result.terminal_failed) return result;
   // A disconnected client is observation evidence, never proof that server
   // generation failed. Preserve it even when the server has no final message.
-  const observed = {...result, client_stream_error:local.streamError === true,
+  const observed = {...result, client_stream_found:local.found === true, client_stream_error:local.streamError === true,
     client_stream_complete:local.streamComplete === true};
   const aged = Number.isFinite(pending.prepared_at_unix) &&
     Date.now()/1000 - pending.prepared_at_unix >= 300;
   if (!local.streamError && !local.streamComplete && !result.streamError && !aged) return observed;
-  const status = await nativeServerStreamStatus(page, pending.conversation_id);
+  // FAILURE must still be bracketed by two histories; a pre-read status cannot
+  // fail a different user turn that arrived between these observations.
+  const status = earlyStatus && earlyStatus !== "FAILURE" ? earlyStatus
+    : await nativeServerStreamStatus(page, pending.conversation_id);
   if (status !== "FAILURE") return {...observed, server_stream_status:status};
   // Status is conversation-scoped. Bracket it with exact-turn reads so a later
   // human submission or a persisted final response cannot fail the wrong turn.
   const latest = await nativeRead(page, path, {}, pending.project_id);
-  const verified = projectTurn(latest, pending);
+  const verified = {...projectTurn(latest, pending), history_checked:true};
   if (verified.completed || verified.superseded || !verified.submitted) return verified;
   if (latest.current_node !== conversation.current_node) return verified;
   return {...verified, terminal_failed:true, server_stream_status:status,

@@ -15,14 +15,14 @@ const finished={conversation_id:chat,current_node:"final",mapping:{...history.ma
   final:{id:"final",parent:user,message:message("final","assistant")}}};
 const previousWindow=globalThis.window;
 
-async function observe({status="FAILURE",latest=history,receipt=true,receiptState={streamError:true},aged=false,serverError=null,capability=true}={}) {
+async function observe({status="FAILURE",initial=history,latest=history,receipt=true,receiptState={streamError:true},aged=false,serverError=null,capability=true,schedule={}}={}) {
   const calls=[];let reads=0;
   globalThis.window={__hadalisReceipts:new Map(receipt?[[user,{conversation_id:chat,...receiptState}]]:[]),
     __hadalisNative:{serverStreamStatus:capability,api:{safeGet:async(path,options)=>{
       calls.push(path);
       if (path===`/conversation/${chat}`) {
         assert.equal(options.additionalHeaders["chatgpt-project-id"],pending.project_id);
-        return structuredClone(reads++ ? latest : history);
+        return structuredClone(reads++ ? latest : initial);
       }
       assert.equal(path,"/conversation/{conversation_id}/stream_status");
       assert.equal(options.parameters.path.conversation_id,chat);
@@ -30,7 +30,7 @@ async function observe({status="FAILURE",latest=history,receipt=true,receiptStat
       return {status,privateBody:"PRIVATE_CANARY"};
     }}}};
   const result=await pollNativeTurn({evaluate:async(fn,arg)=>fn(arg)},
-    {...pending,prepared_at_unix:pending.prepared_at_unix-(aged?600:0)});
+    {...pending,prepared_at_unix:pending.prepared_at_unix-(aged?600:0),...schedule});
   assert.equal(JSON.stringify(result).includes("PRIVATE_CANARY"),false);
   return {result,calls};
 }
@@ -69,6 +69,30 @@ try {
   assert.equal((await observe({latest:changed})).result.terminal_failed,false);
   const restarted=await observe({receipt:false,aged:true});
   assert.equal(restarted.result.terminal_failed,true); // Desktop receipt loss cannot disable recovery.
+  const now=Math.floor(Date.now()/1000);
+  const schedule={phase:"acknowledged",history_verified_at_unix:now-30,history_poll_after_unix:now+90};
+  const light=await observe({status:"IS_STREAMING",schedule});
+  assert.equal(light.result.history_checked,false);
+  assert.deepEqual(light.calls,["/conversation/{conversation_id}/stream_status"]);
+  assert.equal(light.result.terminal_failed,false);
+  assert.equal(light.result.client_stream_error,true);
+  assert.equal((await observe({status:"COMPLETE",initial:finished,schedule})).result.completed,true);
+  const ended=await observe({status:"FAILURE",schedule});
+  assert.equal(ended.result.terminal_failed,true);
+  assert.equal(ended.calls.filter(p=>p===`/conversation/${chat}`).length,2);
+  assert.equal(ended.calls.length,4); // Fresh histories still bracket FAILURE.
+  assert.equal((await observe({status:"FAILURE",latest:next,schedule})).result.superseded,true);
+  for (const invalid of [
+    {...schedule,phase:"dispatching"},
+    {...schedule,history_poll_after_unix:now-1},
+    {...schedule,history_verified_at_unix:now+10},
+    {...schedule,history_poll_after_unix:now+400},
+    {...schedule,history_verified_at_unix:null},
+  ]) assert.equal((await observe({status:"IS_STREAMING",schedule:invalid})).result.history_checked,true);
+  assert.equal((await observe({status:"IS_STREAMING",receipt:false,schedule})).result.history_checked,true);
+  assert.equal((await observe({initial:finished,receiptState:{streamComplete:true},schedule})).result.completed,true);
+  const audit=await observe({initial:next,schedule:{...schedule,history_poll_after_unix:now-1}});
+  assert.equal(audit.result.superseded,true);
   assert.equal((await observe({receipt:false})).calls.length,1);
   assert.equal((await observe({capability:false})).result.terminal_failed,false);
   assert.equal((await observe({serverError:{responseStatus:404}})).result.terminal_failed,false);

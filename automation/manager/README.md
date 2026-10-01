@@ -41,6 +41,12 @@ while a newer owner Pause/Stop remains authoritative.
 Conversation reads use a 30-second cadence (configurable within 15–120 seconds),
 doubling for turns older than five minutes up to 120 seconds. The scheduler's
 two-second control heartbeat does not issue network requests on every tick.
+Once history verifies an acknowledged turn, active streams use the lightweight
+server status between full history audits (initially every two minutes,
+configurable within 60–300 seconds). Completion/failure, a missing Desktop
+receipt or an uncertain/stale schedule requires exact-turn history immediately.
+Status-only observations cannot authorize terminal recovery, final-response
+consumption or stream reattachment. Healthy streams need no reattachment.
 Due profile reads reserve separate account API slots, initially ten seconds
 apart (configurable within 1–30 seconds). Generations and local jobs remain
 parallel; a read reservation never owns a profile or queues its worker.

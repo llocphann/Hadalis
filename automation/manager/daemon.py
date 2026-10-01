@@ -24,6 +24,7 @@ NATIVE_CLI = ROOT / "automation/chat_bridge/native_cli.mjs"
 RESULTS = "automation/results"
 POLL_SECONDS = 2
 CHAT_POLL_SECONDS = max(15, min(120, int(os.environ.get("HADALIS_CHAT_POLL_SECONDS", "30"))))
+CHAT_HISTORY_POLL_SECONDS = max(60, min(300, int(os.environ.get("HADALIS_CHAT_HISTORY_POLL_SECONDS", "120"))))
 RATE_LIMIT_SECONDS = max(60, min(300, int(os.environ.get("HADALIS_RATE_LIMIT_SECONDS", "120"))))
 MAX_RATE_LIMIT_SECONDS = 1800
 TRANSPORT_POLL_SPACING_SECONDS = max(1, min(30, int(os.environ.get("HADALIS_TRANSPORT_POLL_SPACING_SECONDS", "10"))))
@@ -451,7 +452,8 @@ def _response_observation(result: dict, now: int) -> tuple[dict, str]:
     elif server != "IS_STREAMING" and (client_error or result.get("streamError")):
         status, detail = "stream_failed", "Stream interrupted. Original turn retained."
     return {"at_unix": now, "status": status, "server_stream_status": server,
-            "client_stream_error": client_error, "client_stream_complete": client_complete}, detail
+            "client_stream_error": client_error, "client_stream_complete": client_complete,
+            "history_checked": result.get("history_checked") if type(result.get("history_checked")) is bool else None}, detail
 
 
 def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
@@ -471,7 +473,7 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
         else:
             if not _reserve_poll(profile_id, pending, now): return
             result = native_command("poll", pending=pending)
-            if result.get("submitted") or result.get("completed"): _poll_succeeded(now)
+            if result.get("history_checked") is not False and (result.get("submitted") or result.get("completed")): _poll_succeeded(now)
         if not result.get("completed"):
             if result.get("superseded"):
                 # A user advanced this managed conversation before its final
@@ -508,7 +510,8 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
                     if current["generation_recoveries"]>3:current.update(desired="paused",status="recovery_required")
                     event(s,profile_id,"generation_terminal_failed","Distinct evidence/reconciliation step scheduled; original prompt never replayed")
                 change_state(failed_generation);return
-            resume_due = result.get("submitted") and result.get("conversation_id") and now-pending["prepared_at_unix"]>=60 and pending.get("resume_attempts",0)<3 and now>=pending.get("resume_after_unix",0)
+            interrupted = result.get("client_stream_error") is True or result.get("client_stream_found") is False or result.get("streamError") is True
+            resume_due = interrupted and result.get("history_checked") is not False and result.get("server_stream_status") not in {"COMPLETE","FAILURE"} and result.get("submitted") and result.get("conversation_id") and now-pending["prepared_at_unix"]>=60 and pending.get("resume_attempts",0)<3 and now>=pending.get("resume_after_unix",0)
             if resume_due:
                 # Resume reattaches an existing stream only. Persist the bounded
                 # attempt before IPC, including when its acknowledgement is lost.
@@ -526,6 +529,9 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
                 if result.get("conversation_id"):
                     current["pending"]["conversation_id"] = result["conversation_id"]
                     current["session"]["conversation_id"] = result["conversation_id"]
+                if result.get("history_checked") is True and result.get("submitted"):
+                    current["pending"].update(history_verified_at_unix=now,
+                        history_poll_after_unix=now+CHAT_HISTORY_POLL_SECONDS)
                 observation, detail = _response_observation(result, now)
                 age = max(0, now - pending["prepared_at_unix"])
                 cadence = min(120, CHAT_POLL_SECONDS * (2 if age >= 300 else 1))

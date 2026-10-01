@@ -18,14 +18,14 @@ import subprocess
 import sys
 import time
 
-BASE = "cfe5a7eda916e0667825199112b7a6f7b0483e74"
+BASE = "ef4316953e2254104741a4f9bd0b780e4c9a7836"
 SELF = "scripts/wull-manual-nested-niri.py"
 CONTRACT = "scripts/test-wull-nested-niri-contract.py"
 INNER = "scripts/wull-manual-production-layer.py"
-INNER_BLOB = "75b0f44d18abd135492c9e460765aeef5bd58d5c"
+INNER_BLOB = "b6bb9a390042ef90c88478d495cd0f3e6e1ae832"
 FIXTURE = "scripts/wull-fixtures/production-layer/shell.qml"
 FIXTURE_BLOB = "e16b6dcada26a27fd71cc670e30c55135401bcef"
-INITIAL_SELF_BLOB = "ac4fa343e5e4680ef8e561ddd5cb3021dd8e90ff"
+INITIAL_SELF_BLOB = "acbea356a22daed2b92f239db326b964172ede70"
 ORIGINS = {
     "https://github.com/llocphann/Hadalis",
     "https://github.com/llocphann/Hadalis.git",

@@ -83,6 +83,22 @@ def main():
             assert item["status"] == "completed" and item["iterations"] == 1
             assert item["pending"] is None and item["generation_recoveries"] == 0
             assert transport.count("submit") == 2
+    with environment():
+        pid = profile("Await job")
+        transport = ObservedTransport()
+        with patch.object(daemon, "native_command", side_effect=transport):
+            daemon.tick(100)
+            uid = transport.pending(pid)["user_message_id"]
+            store.change_state(lambda c, s: s["profiles"][pid]["pending"].update(resume_attempts=3))
+            transport.observation[uid] = {"server_stream_status": "COMPLETE", "client_stream_error": True}
+            daemon.tick(500)
+            assert store.read_snapshot()[1]["profiles"][pid]["status_detail"]
+            transport.reply(pid, "HADALIS_LOOP:WAIT_RESULT JOB-observation")
+            daemon.tick(560)
+            item = store.read_snapshot()[1]["profiles"][pid]
+            assert item["status"] == "waiting_result" and item["job_id"] == "JOB-observation"
+            assert item["status_detail"] == "" and item["pending"] is None
+            assert item["iterations"] == 1 and transport.count("submit") == 1
     print("PASS: durable closed/interrupted stream evidence, independent profile completion, bounded events, rate-limit/restart observation and no prompt replay")
 
 

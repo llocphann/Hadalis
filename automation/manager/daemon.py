@@ -479,7 +479,7 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
             current["session"] = {"conversation_id":result["conversation_id"], "project_id":pending["project_id"]}
         current.update(pending=None, response_message_id=response["message_id"],
             iterations=current["iterations"]+1, chat_iterations=current["chat_iterations"]+1,
-            poll_errors=0, last_error="", last_activity_at_unix=now,
+            poll_errors=0, last_error="", status_detail="", last_activity_at_unix=now,
             last_success=directive.kind.value if directive else "protocol_error", loop_state=directive.kind.value.lower() if directive else "protocol_error")
         if protocol_error:
             current.update(desired="paused",status="evidence_required",last_error=protocol_error)

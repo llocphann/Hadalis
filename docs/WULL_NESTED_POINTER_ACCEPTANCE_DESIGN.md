@@ -559,3 +559,73 @@ until that evidence exists. The existing
 bottom-edge candidate source remains STAGED,
 not physically qualified. Production region,
 default-off and `stable` remain unchanged.
+
+
+## Retrospective old-log classification can now publish sanitized evidence from isolated clone
+
+The earlier dynamic private top candidate report
+`docs/wull-mask-candidate-20261001T170950Z-105fd7a8-1518db798d10.json`
+is still **INCONCLUSIVE** on its first candidate exterior coordinate
+witness. No second real top pass and no bottom real receipt have been
+published as of the source-only next gate. The old private underlay log
+may still hold a precise explanation about whether the candidate first
+exterior hit deviated horizontally, vertically or possibly reflected
+a stale previous position. Without that private observation, it is
+incorrect to choose a timing adjustment, increase tolerance, rewrite
+production, or assert a virtual-pointer backend fault.
+
+`scripts/wull-private-pointer-drift-publish.py` (source-only commit
+`dc06dd36aabc688f1945205bb4a814c58f91d90e`) is a separate
+**explicit opt-in retrospective** publisher. It requires a fresh,
+clean, permission-private `dev` clone under
+`${XDG_STATE_HOME:-~/.local/state}/hadalis/wull-drift-publish.*/repo`,
+verifies the trusted GitHub origin/push URLs, exact old public
+report blob, exact reviewed read-only diagnostic script blob and
+ancestry of the original source SHA, and reads ONLY the original
+run's existing private underlay log. It requires exactly the known
+off-target receipt sequence and exactly three left-button underlay
+witness records. It constructs a strict public schema consisting of
+pre-reviewed classification enums, a single boolean for proximity
+to the old disabled-center witness, Git source provenance and
+explicit no-input/no-production-change annotations. It never
+publishes or prints raw screen coordinates, raw logs, usernames,
+session paths, screenshots or private runtime endpoints.
+Its distinct fixed-name JSON report is
+`docs/wull-pointer-drift-20261001T170950Z-105fd7a8-1518db798d10.json`.
+It refuses to overwrite an existing report.
+
+The clone-only publisher synchronizes by **fast-forward** on fresh
+`dev`, creates only its own sanitized report commit, pushes
+non-forced, and, if another Cloud Bot publishes concurrently, may
+rebase ONLY its own single unpublished sanitized report after
+verifying the old parent is an ancestor, current exact source pins
+still hold, and the changed path is exclusively its own report.
+It does not fetch/merge/rebase/reset the maintainer's original
+potentially diverged checkout. If the private prior-run log has
+been deleted or cannot prove an unambiguous three-event
+sequence, publishing stops **INCONCLUSIVE**, and no new
+cursor action is taken.
+
+`scripts/test-wull-private-pointer-drift-publish-contract.py`
+(added `fbd1e709b0b64046afa9e619426e409973dce59b`)
+provides an inert payload sanitization and explicit-action
+safety contract. This new helper and contract are source-staged;
+their run result and old-log classifications must not be
+represented as successful before a real local invocation.
+
+An independently researched possible future discriminator,
+NOT an identified cause: the external `wdotool`
+documentation confirms the `wlr-protocols` backend issues
+absolute `motion_absolute` using an enumerated output
+and documents `wdotool prime` for maintaining virtual
+input devices between commands. Upstream testing notes
+the importance of compositor roundtrips for dispatch
+reliability:
+https://github.com/cushycush/wdotool and
+https://github.com/cushycush/wdotool/blob/main/docs/testing.md .
+The existing Wull child currently invokes `mousemove`
+and `click` in separate short-lived CLI processes.
+This makes persistent-input-session behavior a
+**hypothesis to test only after** the existing private
+log classification has been received. Do not introduce
+`prime`, host-global input or a new backend on assumption.

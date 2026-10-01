@@ -916,3 +916,75 @@ production input change.
   Production/default-off and `stable` stay
   unchanged; all other four-edge and full-system
   qualification remains separate.
+
+
+## Checkpoint — 2026-10-02 old private top pointer log: sanitized autonomous publication staged
+
+- As of review of `dev`, the only new dynamic private
+  top candidate run is still
+  `docs/wull-mask-candidate-20261001T170950Z-105fd7a8-1518db798d10.json`,
+  source `1518db798d1012592cdbceb29115cceb72cffd9b`,
+  **INCONCLUSIVE** at the FIRST post-remap candidate
+  exterior witness: `target_alignment=off_target`.
+  Its four real full-production controls passed and
+  all owned private compositor, underlay, production
+  layer and Rust cleanup passed. A separate older top
+  candidate PASS still exists but did NOT test the
+  latest dynamic four-edge BBOX generator. Bottom has
+  no independent real acceptance report.
+- Latest additional source-only progress:
+  `scripts/wull-private-pointer-drift-publish.py`
+  commit `dc06dd36aabc688f1945205bb4a814c58f91d90e`
+  supports one EXPLICIT, input-free retrospective
+  classification and Git publication in a permission-private
+  TEMPORARY clone of `dev`; never modifies the
+  maintainer's potentially divergent original local branch.
+  Its only imported measurement logic is the previously
+  reviewed source-pinned
+  `scripts/wull-private-pointer-drift-diagnostic.py`
+  blob `91c2207e7d96aa8852f6d6f8df0ea1cb28d647d2`;
+  it also pins the exact public original report blob.
+  It reads the prior run's private underlay log by
+  the known session ID; it requires an unambiguous
+  three-event and exact-source sequence; it emits
+  only reviewed categorical axis/magnitude/relative
+  direction, one prior-center-proximity boolean and
+  explicit no-new-input/no-production-change fields.
+  Its unique fixed public result path is
+  `docs/wull-pointer-drift-20261001T170950Z-105fd7a8-1518db798d10.json`.
+  Concurrent Git pushes are handled ONLY by guarded,
+  non-forced replay of that single unpublished
+  sanitized commit in the temporary clone. If
+  old logs were not retained or source changes
+  invalidate exact blobs, stop INCONCLUSIVE rather
+  than guess.
+- The publisher's inert/test-only payload and
+  source guard contract is
+  `scripts/test-wull-private-pointer-drift-publish-contract.py`
+  created `fbd1e709b0b64046afa9e619426e409973dce59b`.
+  Existing diagnostic inert parser contract must
+  PASS in the same local invocation before any
+  Git publication. The technical design appendage
+  is in `docs/WULL_NESTED_POINTER_ACCEPTANCE_DESIGN.md`
+  updated `87c5c295bfb1ba0c8cc97d66b1bb24a8fe32d828`.
+- **NEXT LOCAL GATE:** one clean permission-private
+  temp `dev` clone outside the user's original
+  checkout; run BOTH no-input inert drift
+  contracts, then explicitly invoke
+  `python3 scripts/wull-private-pointer-drift-publish.py --publish-existing-top-off-target`
+  if they pass. Inspect only the resulting
+  unique sanitized public report on `dev`.
+  This avoids another expensive Rust rebuild and
+  real Niri pointer run before the existing log
+  evidence is consumed.
+  Independently, external wdotool documentation
+  confirms a possible transient virtual-device
+  lifecycle variable and documents `wdotool prime`,
+  but this is just a hypothesis. Do not change
+  injection timing, install new tools, enable
+  host-global injection, run a blind second
+  pointer attempt or qualify bottom until
+  old-log evidence or a new separately
+  authorized bounded instrumented test exists.
+  Current production Region, default-off and
+  `stable` remain unchanged.

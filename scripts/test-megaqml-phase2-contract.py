@@ -53,7 +53,7 @@ assert 'qml_minimal' in runner and 'qml_modern_syntax' in runner and 'qml_blocke
 assert '/usr/lib/qt6/bin/qmlformat qmlformat6 qmlformat' in runner
 assert 'qt_formatter_selection=' in runner and 'version_major_minor=' in runner
 assert 'modern_probe_pass' in runner and 'fallback_probe_unqualified' in runner
-assert 'docs/evidence/megaqml/phase2l-' in runner
+assert 'docs/evidence/megaqml/phase2m-' in runner
 quickshell_runner = get("scripts/test-megaqml-quickshell-smoke.sh")
 quickshell_base = get("scripts/megaqml-fixtures/runtime-baseline/shell.qml")
 quickshell_dormant = get("scripts/megaqml-fixtures/runtime-dormant/shell.qml")
@@ -93,7 +93,9 @@ assert 'service.unregisterConsumer()' in active_fixture
 assert 'MEGAQML_QS_ACTIVE_PRESENT_OK' in active_fixture
 assert 'MEGAQML_QS_ACTIVE_MISSING_OK' in active_fixture
 assert 'json.dumps(' in fake_dispatch and 'subprocess' not in fake_dispatch
-assert 'PASS MegaQML synthetic runtime dispatcher: 11 cases plus four second requests' in fake_contract
+assert 'PASS MegaQML synthetic runtime dispatcher: 12 cases plus four second requests and two race requests' in fake_contract
+assert 'shared-race' in fake_dispatch
+assert '((2, True), (3, False))' in fake_contract
 recovery_fixture = get("scripts/megaqml-fixtures/runtime-recovery/shell.qml")
 assert 'svc.refreshStatic()' in recovery_fixture
 assert 'svc.requestSerial === 2' in recovery_fixture
@@ -239,12 +241,35 @@ for safe_category in ("ui_component_load", "ui_component_create", "ui_navigation
     assert safe_category in quickshell_classifier
 assert 'MEGAQML_QS_UI_STAGE_COMPONENT' in classifier_test
 assert 'MEGAQML_QS_UI_STAGE_CONSTRUCT' in classifier_test
-for shell_case in ("ui-material", "ui-waffle", "ui-shared"):
+for shell_case in ("ui-material", "ui-waffle", "ui-shared", "ui-race"):
     assert shell_case in quickshell_runner
 assert 'scripts/test-megaqml-ui-fixture.py' in quickshell_runner
 assert 'runtime-ui-shared/shell.qml' in quickshell_runner
 assert 'ui-shared) marker=MEGAQML_QS_UI_SHARED_OK' in quickshell_runner
+assert 'ui-race) marker=MEGAQML_QS_UI_RACE_OK' in quickshell_runner
+assert 'runtime-$kind/shell.qml' in quickshell_runner
+assert 'fixture_ui_kind=shared' in quickshell_runner
+assert 'MEGAQML_FIXTURE_CASE=shared-race' in quickshell_runner
+assert 'race_stale_reply' in quickshell_classifier
+assert 'MEGAQML_QS_RACE_STAGE_STALE_REPLY' in classifier_test
 assert 'run_test quickshell_ui_shared bash scripts/test-megaqml-quickshell-smoke.sh ui-shared' in runner
+assert 'run_test quickshell_ui_race bash scripts/test-megaqml-quickshell-smoke.sh ui-race' in runner
+assert 'quickshell_ui_shared quickshell_ui_race; do' in runner
+race_ui = get("scripts/megaqml-fixtures/runtime-ui-race/shell.qml")
+assert 'import "./services/deferred" as Deferred' in race_ui
+assert 'property bool sawStaleInstalled: false' in race_ui
+assert 'function onBackendStateChanged()' in race_ui
+assert 'root.materialComponent.createObject(' in race_ui
+assert 'root.waffleComponent.createObject(' in race_ui
+for marker in ('"FIRST_START"', '"HIDE_ONE"', '"QUEUE"',
+               '"SECOND_START"', '"LAST_RELEASE"', '"REACQUIRE"',
+               '"STALE_REPLY"', '"THIRD_RESULT"', '"FINAL_RELEASE"', '"TIMEOUT"'):
+    assert marker in race_ui
+assert 'svc.requestSerial !== 3' in race_ui
+assert 'svc.generation !== beforeRelease + 1' in race_ui
+assert 'MEGAQML_QS_UI_RACE_OK' in race_ui
+assert 'mega-login' not in race_ui and 'scripts/native-dispatch' not in race_ui
+assert 'megaqml-race-unit-' in ui_fixture_contract
 assert 'quickshell_ui_waffle quickshell_ui_shared; do' in runner
 assert '"ui-material", "ui-waffle", "ui-shared"' in quickshell_classifier
 assert 'MEGAQML_QS_SHARED_STAGE_HIDE_ONE' in classifier_test
@@ -257,8 +282,9 @@ assert 'export PATH="$work/allowed-bin"' in quickshell_runner
 assert 'cp -- scripts/megaqml-fixtures/fake-static-dispatch.py' in quickshell_runner
 # This complete runner publishes new Phase 2l evidence. The focused
 # standalone loader runner intentionally retains the historical 2k prefix.
-assert 'docs/evidence/megaqml/phase2l-' in runner
+assert 'docs/evidence/megaqml/phase2m-' in runner
 assert 'docs/evidence/megaqml/phase2k-' not in runner
+assert 'docs/evidence/megaqml/phase2l-' not in runner
 # Full requalification must tolerate only independently reviewed Wull commits
 # on shared dev and fail closed on unrelated concurrent source changes.
 assert 'wull_only_advance()' in runner

@@ -243,3 +243,59 @@ maintainer-installed, verified `wdotool` binary instead. All other
 edge input, actual popup noninterference, visual and global release
 gates remain separate; never shrink the production input Region
 on a tool-availability failure.
+
+
+## First real nested click failure and target-coordinate diagnostic
+
+The maintainer's first real native input run published
+`docs/wull-pointer-acceptance-20261001T161301Z-8af536c9-115ab32a9825.json`
+on exact source `115ab32a98251453edc76c84bdc8558068186aab`.
+It is **FAILED**, not accepted: nested Niri and private endpoint identity
+passed, disabled-center underlay control passed, enabled-outside-host
+underlay control passed, and all owned cleanup passed. In the enabled
+body-center phase, the underlay still received a click and neither
+the real production bridge nor the real private Rust daemon recorded
+the required click/reaction. That narrows the problem to actual pointer
+target placement, production host activation/visibility, or the
+compositor-visible input mask. It does **not** yet prove that the
+production Region is incorrect: the original two full-output underlay
+positive controls counted clicks but never checked their coordinates.
+The prior `rust_present` relay event proves real backend state, not
+that the actual per-output host is active and correctly hit-tested.
+
+Two guarded source-only diagnostic updates on dev:
+- `a83f630f7f4bdc73953bc75b7b14b888e6544219` adds
+  `underlay_target_status` to the private child. It parses the
+  *actual* recorded mouse coordinates from the existing **private**
+  full-output underlay witness. Both disabled body-center and enabled
+  exterior control now require **exactly one** matched left-click
+  within six logical pixels of each predicted requested point;
+  missing, multiple, malformed or off-target clicks are
+  `INCONCLUSIVE` on either backend, not Wull defects.
+  For the enabled body phase, any underlay click is separately
+  compared with the candidate body point. An off-target or ambiguous
+  underlay event is likewise `INCONCLUSIVE`; a matched underlay
+  click at the expected candidate, with no real bridge/Rust event,
+  is the narrower failure warranting host/mask investigation.
+  Raw coordinates remain exclusively in local private logs:
+  the sanitized public per-case receipt publishes only
+  `matched`, `off_target`, `no_click`, or bounded ambiguity
+  classifications and the independent real-bridge/Rust booleans.
+- `a784b3db6157d4c05368fee0ec79925a1a51f468`
+  reviews/pins that exact new child blob in the coordinator and
+  advances its guarded self-revision count to eight.
+  `03d237620ada9dd170d31163ef6081bd40a66042`
+  adds synthetic *inert* witness-parser cases, bounded-target
+  rejection and the updated exact child blob requirement.
+  These are NOT new live pointer results.
+
+Run the three inert prerequisites before the next optional
+single-command isolated nested probe from clean fast-forward-only
+`dev`, now that a native pointer CLI is available. Evaluate
+`target_alignment` on both controls and
+`underlay_target_alignment` on the enabled body before attributing
+the failure. If both controls and body-underlay alignment match
+but the daemon did not react, design a **separate test-only**
+production-host visibility/input-mask diagnostic without changing
+the production mask. Do not shrink the mask, disable default-off
+behavior, infer visual qualification or modify `stable`.

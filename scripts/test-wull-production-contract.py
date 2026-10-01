@@ -89,6 +89,23 @@ assert "root.ready = false" in exit_handler
 assert "if (!wasReady && root.requestedVisible)" in bridge
 assert 'Qt.callLater(() => root.sendEvent("show"))' in bridge
 
+# Unexpected exits retry with a finite exponential budget. Explicit disable
+# cancels pending retries, and stale stdout cannot restore an unready host.
+for marker in (
+    "property int restartAttempts: 0",
+    "readonly property int maxRestartAttempts: 4",
+    "restartTimer.interval = 500 * Math.pow(2, root.restartAttempts)",
+    "root.restartAttempts += 1",
+    "restartTimer.stop()",
+    "stableConnectionTimer.stop()",
+    "root.scheduleRestart()",
+    "interval: 30000",
+    "if (!root.backendEnabled || !backendProcess.running || !line",
+):
+    assert marker in bridge, marker
+assert bridge.count("root.scheduleRestart()") == 2
+assert "root.restartAttempts = 0" in bridge
+
 # Canonical validation must keep exercising the Wull production contract
 # while excluding the branch-mutating, manually invoked diagnostic workflow.
 validator = (ROOT / "scripts/validate-maintainer-local.sh").read_text()

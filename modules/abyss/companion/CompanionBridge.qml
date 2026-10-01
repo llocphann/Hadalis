@@ -14,6 +14,10 @@ Item {
     readonly property bool backendEnabled: backendCommand.length > 0
     property bool ready: false
     property bool requestedVisible: false
+    // Four bounded retries per unstable spell (500, 1000, 2000, 4000 ms).
+    // Stable initial handshakes reset the budget only after 30 seconds.
+    property int restartAttempts: 0
+    readonly property int maxRestartAttempts: 4
     property int outboundSeq: 0
     property double inboundSeq: 0
 
@@ -62,8 +66,17 @@ Item {
         root.pulse = 0
     }
 
+    function scheduleRestart() {
+        if (!root.backendEnabled || backendProcess.running || restartTimer.running
+                || root.restartAttempts >= root.maxRestartAttempts)
+            return
+        restartTimer.interval = 500 * Math.pow(2, root.restartAttempts)
+        root.restartAttempts += 1
+        restartTimer.restart()
+    }
+
     function sendEvent(eventName, activeValue) {
-        if (!backendProcess.running || !root.ready)
+        if (!root.backendEnabled || !backendProcess.running || !root.ready)
             return false
 
         root.outboundSeq += 1
@@ -93,7 +106,10 @@ Item {
     }
 
     function acceptLine(line) {
-        if (!line || line.length > 8192)
+        // A late line from a disabled/terminated child must never restore
+        // readiness or make the host visible after configuration changed.
+        if (!root.backendEnabled || !backendProcess.running || !line
+                || line.length > 8192)
             return
 
         let message
@@ -130,6 +146,8 @@ Item {
         root.mouthCurve = root.boundedNumber(face.mouth, root.mouthCurve, -1, 1)
         root.pulse = root.boundedNumber(message.pulse, root.pulse, 0, 1)
         root.ready = true
+        if (!wasReady)
+            stableConnectionTimer.restart()
         root.stateAccepted(sequence)
 
         if (!wasReady && root.requestedVisible)
@@ -137,6 +155,9 @@ Item {
     }
 
     onBackendEnabledChanged: {
+        restartTimer.stop()
+        stableConnectionTimer.stop()
+        root.restartAttempts = 0
         if (root.backendEnabled) {
             backendProcess.running = true
         } else {
@@ -149,6 +170,26 @@ Item {
     Component.onCompleted: {
         if (root.backendEnabled)
             backendProcess.running = true
+    }
+
+    Timer {
+        id: restartTimer
+        repeat: false
+        interval: 500
+        onTriggered: {
+            if (root.backendEnabled && !backendProcess.running)
+                backendProcess.running = true
+        }
+    }
+
+    Timer {
+        id: stableConnectionTimer
+        repeat: false
+        interval: 30000
+        onTriggered: {
+            if (root.backendEnabled && backendProcess.running && root.ready)
+                root.restartAttempts = 0
+        }
     }
 
     Process {
@@ -165,11 +206,16 @@ Item {
             if (!running) {
                 root.ready = false
                 root.inboundSeq = 0
+                stableConnectionTimer.stop()
+                root.scheduleRestart()
             }
         }
 
         onExited: (_exitCode, _exitStatus) => {
             root.ready = false
+            root.inboundSeq = 0
+            stableConnectionTimer.stop()
+            root.scheduleRestart()
         }
     }
 }

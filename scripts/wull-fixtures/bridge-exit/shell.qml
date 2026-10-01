@@ -6,8 +6,10 @@ import "./companion" as Companion
 ShellRoot {
     id: root
     readonly property string testCase: Quickshell.env("WULL_SMOKE_CASE") ?? ""
-    property bool backendOn: testCase === "exit-restart"
-    property string stage: testCase === "disabled" ? "disabled" : "initial"
+    property bool backendOn: ["exit-restart", "auto-restart",
+                               "crash-budget"].includes(testCase)
+    property string stage: testCase.startsWith("disabled") ? "disabled"
+        : testCase === "crash-budget" ? "budget" : "initial"
 
     Companion.CompanionBridge {
         id: bridge
@@ -35,9 +37,9 @@ ShellRoot {
     }
 
     Component.onCompleted: {
-        if (root.testCase === "exit-restart")
+        if (["exit-restart", "auto-restart", "crash-budget"].includes(root.testCase))
             bridge.show()
-        else if (root.testCase !== "disabled" && root.testCase !== "disabled-override") {
+        else if (!root.testCase.startsWith("disabled")) {
             console.log("WULL_BRIDGE_FIXTURE_INVALID")
             Qt.quit()
         }
@@ -73,9 +75,13 @@ ShellRoot {
                 return
             }
             console.log("WULL_BRIDGE_EXIT_GATE_OK")
-            root.backendOn = false
             root.stage = "restarting"
-            rearm.restart()
+            if (root.testCase === "exit-restart") {
+                root.backendOn = false
+                rearm.restart()
+            }
+            // auto-restart intentionally keeps the backend enabled and
+            // requires the bridge's own bounded retry to reconnect.
         }
     }
 
@@ -89,7 +95,21 @@ ShellRoot {
     }
 
     Timer {
-        interval: 8000
+        interval: 9600
+        running: root.testCase === "crash-budget"
+        onTriggered: {
+            if (bridge.backendEnabled && !bridge.ready
+                    && bridge.restartAttempts === bridge.maxRestartAttempts) {
+                console.log("WULL_BRIDGE_CRASH_BUDGET_OK")
+            } else {
+                console.log("WULL_BRIDGE_FIXTURE_INVALID")
+            }
+            Qt.quit()
+        }
+    }
+
+    Timer {
+        interval: root.testCase === "crash-budget" ? 11000 : 8000
         running: true
         onTriggered: {
             console.log("WULL_BRIDGE_FIXTURE_TIMEOUT")

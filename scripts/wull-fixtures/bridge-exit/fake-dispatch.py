@@ -30,6 +30,10 @@ def emit(visibility):
 
 
 emit("hidden")
+if os.environ.get("WULL_SMOKE_CASE") == "crash-budget":
+    # Every launch exits immediately to exercise the finite retry budget.
+    raise SystemExit(71)
+
 for line in sys.stdin:
     try:
         record = json.loads(line)

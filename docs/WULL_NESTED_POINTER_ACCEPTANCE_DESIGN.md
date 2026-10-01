@@ -408,3 +408,81 @@ witnesses, real bridge/Rust and owned cleanup) before considering
 a minimal real production integration, which would still need
 four-edge, hover/popup and live-host qualification. `stable`
 and shipped default-off Wull have not been changed.
+
+
+## Private top-edge A/B PASS; bottom-edge qualification staged
+
+The new maintainer-owned real comparison receipt
+`docs/wull-mask-candidate-20261001T165308Z-a3bc585f-124f02155679.json`
+on exact source `124f02155679949e60a810e54a9c216fbfd2fabe`
+has overall **PASS** on one top edge with scale=1 and a single
+privately owned nested Niri output. The original production full
+mask qualified in the SAME private compositor first: actual disabled
+body-center and enabled exterior clicks had `target_alignment=matched`,
+the enabled body click reached the real production bridge and private
+Rust happy/pulse without touching underlay, and the old full-host
+empty margin remained blocked (no body click). The candidate copied
+ONLY the guarded `AbyssPerimeter.qml` input region outside the
+checkout; it separately demonstrated an aligned exterior underlay
+click, a real body bridge/Rust click with no underlay click, AND a
+positive `target_alignment=matched` underlay click at the formerly
+blocked empty host margin with no accidental body activation.
+Nested identity, process/layer cleanup and host-output count passed.
+The backend was native `wdotool --backend wlr-protocols`. This is
+**positive evidence for the private rectangular candidate at top,
+scale=1, one nested output**, not proof of full deployment safety
+or a reason to edit production already. Production Wull and
+`stable` remain unchanged.
+
+Next source-only staged gate: a guarded private **bottom edge**
+A/B trial. A prior exact-source postchange offscreen production
+geometry receipt
+`docs/wull-production-geometry-20261001T151838Z-fd6d4452-fca3953264b1.json`
+observed the centered Wull body on all four edges:
+top/bottom full host 112x98, body BBOX (18,3,76,92);
+left/right full host 98x112, rotated body BBOX (3,18,92,76).
+This is geometry only, NOT actual four-edge pointer acceptance.
+`scripts/wull-pointer-targets.py` (commit
+`62c483451d91c7b0e5e1f1184fd84f8b04443c14`)
+now proposes conservative four-edge body center, host empty margin
+and exterior candidate points, with pure bounds validation; its
+original `top_edge_targets` still drives the exact same top path.
+`scripts/wull-private-mask-candidate.py` (commit
+`5b928b852664e8369f74fa17243e78cc92a402c8`)
+generates a PRIVATE body BBOX Region that selects 76x92 on
+horizontal edges and 92x76 on vertical edges, conditioned on
+reviewed interactive host state, allowed edge and size=1. It
+guards exact centered production body/rotation source and replaces
+only one old mask Region. Despite generating all four variants,
+ONLY the top variant has the independent real pointer evidence.
+
+`4e32eaa1f874540b5f71ceca34c5a4b697734568`
+adds an allowlisted `candidate-mask-bottom` child mode with the
+correct bottom production config and target geometry; the default
+legacy production and original top candidate modes continue to
+select top. `3309b00ac035ff5944283073aef8e181382339e8`
+pins those reviewed child/candidate/geometry blobs and adds a
+DIFFERENT explicitly opt-in coordinator argument
+`--acknowledge-nested-pointer-candidate-bottom`.
+Bottom reports have a distinct unique
+`docs/wull-mask-bottom-*.json` prefix and a bottom-specific
+scope, while top uses its original distinct report prefix.
+The coordinator's reviewed self-revision guard advances to 11.
+`4d5080b87951885e40b920d6e603a5e064f35cb9`
+extends the all-private inert mask contract with the four
+offscreen-measured BBOX relationships and top-path equivalence;
+`6b210355f794d2490059f5de46251ece32f313ea`
+updates the original nested pointer source-pinning and
+bottom-only opt-in assertions. The next LOCAL trial must execute
+four inert pointer tests first, followed by a fresh top candidate
+regression (because the private mask generator is now dynamic),
+and only if that returns an explicitly observed PASS, run the
+bottom candidate mode on its own private owned nested compositor.
+The bottom run independently re-verifies old production full
+host controls and then private candidate controls.
+
+The bottom-stage source is reviewed but **NOT locally executed**
+as of this checkpoint. Do not promote this provisional BBOX
+to shipped production while bottom/right/left live pointer,
+hover/popup, host visual quality, true multioutput/lifecycle
+and canonical-wide gates remain outstanding.

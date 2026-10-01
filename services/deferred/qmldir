@@ -18,3 +18,4 @@ singleton PackageSearch 1.0 PackageSearch.qml
 singleton SessionWarnings 1.0 SessionWarnings.qml
 singleton SongRec 1.0 SongRec.qml
 singleton Ydotool 1.0 Ydotool.qml
+singleton CloudStorageService 1.0 CloudStorageService.qml

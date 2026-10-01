@@ -30,6 +30,7 @@ Singleton {
     function isPageApplicable(index: int): bool {
         if (index < 0 || index >= root.pages.length
                 || root.isHiddenLegacyIndex(index)) return false
+        if (index === 36) return true // Cloud Storage applies to ii, Abyss and Waffle.
         if (root.abyssFamily)
             return ![11,26].includes(index)
         if (root.waffleFamily)

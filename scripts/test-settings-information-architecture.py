@@ -41,7 +41,7 @@ def main() -> None:
         assert len(page_indices) == len(set(page_indices)), "duplicate default page"
         excluded = {18, 19, 21, 27, 28}
         if family == "abyss": excluded.update({26, 30, 31})
-        assert set(page_indices) == set(range(36 if family == "abyss" else 30)) - excluded
+        assert set(page_indices) == (set(range(37)) if family == "abyss" else (set(range(30)) | {36})) - excluded
         if family == "abyss":
             assert next(group for group in groups if group["label"] == "Abyss")["pages"] == [2,32,34,33,22,23,16]
 

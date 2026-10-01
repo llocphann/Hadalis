@@ -8,7 +8,7 @@ if len(sys.argv) != 4 or sys.argv[3] not in ("baseline", "dormant", "active-pres
                                                      "active-malformed", "active-exit-failure", "active-hang",
                                                      "refresh-coalesce", "refresh-stale-reacquire",
                                                      "recovery-exit", "recovery-timeout",
-                                                     "ui-material", "ui-waffle"):
+                                                     "ui-material", "ui-waffle", "ui-shared"):
     raise SystemExit(64)
 raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
                 for p in sys.argv[1:3]).lower()
@@ -16,6 +16,25 @@ raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
 # Fixed stage tokens are emitted by the reviewed fixture only.
 # More specific fixed cause tokens precede the broad UI component stage.
 # Never echo Qt's original error string or local file paths.
+# Shared-page lifecycle labels are emitted only by the reviewed isolated
+# fixture. Never publish raw Qt errors, temporary paths or private data.
+shared_stages = (
+    ("preflight", "shared_preflight"),
+    ("load", "shared_load"),
+    ("create", "shared_create"),
+    ("navigation", "shared_navigation"),
+    ("register", "shared_register"),
+    ("first_result", "shared_first_result"),
+    ("hide_one", "shared_hide_one"),
+    ("second_start", "shared_second_start"),
+    ("second_result", "shared_second_result"),
+    ("final_release", "shared_final_release"),
+    ("reacquire", "shared_reacquire"),
+    ("third_result", "shared_third_result"),
+    ("timeout", "shared_timeout"),
+)
+matched_shared_stage = next((category for token, category in shared_stages
+                             if "megaqml_qs_shared_stage_" + token in raw), None)
 ui_runtime = (
     ("page_gone", "ui_runtime_page_gone"),
     ("page_hidden", "ui_runtime_page_hidden"),
@@ -83,7 +102,11 @@ ui_stages = (
 )
 matched_ui_stage = next((category for token, category in ui_stages
                          if "megaqml_qs_ui_stage_" + token in raw), None)
-if matched_ui_runtime is not None:
+if matched_shared_stage is not None:
+    kind = matched_shared_stage
+elif "megaqml_qs_shared_invalid" in raw:
+    kind = "unexpected_shared_state"
+elif matched_ui_runtime is not None:
     kind = matched_ui_runtime
 elif matched_ui_type is not None:
     kind = matched_ui_type
@@ -124,6 +147,7 @@ elif any(token in raw for token in ("megaqml_qs_active_present_ok",
                                   "megaqml_qs_timeout_recovery_ok",
                                   "megaqml_qs_ui_material_ok",
                                   "megaqml_qs_ui_waffle_ok",
+                                  "megaqml_qs_ui_shared_ok",
                                   "megaqml_qs_dormant_ok",
                                   "megaqml_qs_baseline_ok")):
     kind = "sentinel_seen_nonzero_exit"

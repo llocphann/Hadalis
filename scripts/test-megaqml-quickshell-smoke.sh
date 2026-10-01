@@ -40,6 +40,9 @@ if [[ ! -f "$source_fixture" ]]; then
   exit 76
 fi
 cp -- "$source_fixture" "$fixture_dir/shell.qml"
+if [[ "$kind" == ui-race ]]; then
+  cp -- scripts/megaqml-fixtures/runtime-ui-race/RaceStageGuard.js "$fixture_dir/RaceStageGuard.js"
+fi
 if [[ "$kind" == ui-* ]]; then
   # Only real Cloud Storage page and service files are copied; all unrelated
   # visual dependencies are synthetic stubs. No production dispatcher.

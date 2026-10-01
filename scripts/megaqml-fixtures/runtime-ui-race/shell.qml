@@ -5,6 +5,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import "./services/deferred" as Deferred
+import "./RaceStageGuard.js" as RaceStageGuard
 
 ShellRoot {
     id: root
@@ -141,37 +142,26 @@ ShellRoot {
                 return
             }
             if (root.stage === 2) {
-                // Keep fail-closed stale rejection; classify the specific
-                // observed reason without printing private Qt diagnostics.
-                if (root.sawStaleInstalled
-                        || svc.backendState === "installed_disconnected") {
-                    root.fail("STALE_INSTALLED")
+                const outcome = RaceStageGuard.stageTwo({
+                    sawStaleInstalled: root.sawStaleInstalled,
+                    backendState: svc.backendState,
+                    materialLease: root.material.leaseHeld,
+                    waffleLease: root.waffle.leaseHeld,
+                    consumers: svc.consumerCount,
+                    requestSerial: svc.requestSerial,
+                    readBusy: svc.readBusy,
+                    snapshot: svc.dependencySnapshot,
+                    safeError: svc.safeError,
+                    connected: svc.connected,
+                    liveAuthQualified: svc.liveAuthQualified
+                })
+                if (outcome === "WAIT") return
+                if (outcome === "THIRD_PENDING" || outcome === "THIRD_FINISHED") {
+                    // Stage 3 also validates the actual final missing result.
+                    root.stage = 3
                     return
                 }
-                if (!root.material.leaseHeld || root.waffle.leaseHeld
-                        || svc.consumerCount !== 1) {
-                    root.fail("STALE_LEASE")
-                    return
-                }
-                if (svc.backendState === "unavailable") {
-                    root.fail("STALE_UNAVAILABLE")
-                    return
-                }
-                if (svc.dependencySnapshot !== null) {
-                    root.fail("STALE_SNAPSHOT")
-                    return
-                }
-                if (svc.requestSerial > 3) {
-                    root.fail("STALE_REPLY")
-                    return
-                }
-                if (svc.requestSerial < 3) return
-                if (svc.requestSerial !== 3 || !svc.readBusy
-                        || svc.backendState !== "checking") {
-                    root.fail("THIRD_START")
-                    return
-                }
-                root.stage = 3
+                root.fail(outcome)
                 return
             }
             if (root.stage === 3) {

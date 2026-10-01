@@ -1269,3 +1269,112 @@ visuals, multioutput/fractional scale,
 hotplug/suspend/reload/lifecycle,
 reproducibility and canonical-wide
 validation remain separate.
+
+
+## Full four-edge size=1 private BBOX pointer coverage verified; curved silhouette qualification separated
+
+The NEW exact-source real LEFT differential A/B receipt
+`docs/wull-mask-left-20261001T180740Z-22d0c52b-df1cb0eef52e.json`
+has `source_sha=df1cb0eef52e4089833704c32510d65239c5ae41`,
+`status=pass`, verified
+`native_pointer_backend=forced_wlr_protocols_wdotool`,
+and scope ONLY
+`owned_single_output_nested_niri_left_candidate_mask_A_B`.
+All nine independent phase witnesses qualify:
+the unchanged production disabled body-center and
+enabled exterior exact-coordinate underlay controls,
+real bridge/private Rust happy-pulse body event without
+underlay penetration, observed full-host empty margin
+blocked with zero false body activation,
+the new pre-candidate-remap exact exterior underlay
+witness, and after-remap candidate exterior.
+The added LEFT-only
+`candidate_left_margin_before_body_control`
+measured the SAME empty-host-margin target
+**before** touching the candidate body, with one
+correctly aligned underlay event and NO accidental
+body click. The very next real candidate body click
+triggered the actual bridge and private Rust
+without an underlay click; the original final
+body→margin click ALSO produced a correctly aligned
+underlay event with no false body activation.
+Single-output nested endpoints, complete owned
+Niri/layer/daemon cleanup, zero private strays
+and host output invariants all passed; no host
+configuration or real production mask was changed.
+
+The four separately published latest source-pinned
+real PRIVATE dynamic BBOX trials now cover
+TOP `docs/wull-mask-candidate-20261001T173129Z-ce33db3c-8efa0b7d7341.json`,
+BOTTOM `docs/wull-mask-bottom-20261001T173542Z-10d599c4-9ac701f650dc.json`,
+RIGHT `docs/wull-mask-right-20261001T174248Z-cd6a3010-cdbe02bbcd61.json`,
+and the latest LEFT receipt above. This is
+**one independent single-output Niri, size=1
+PASS per edge** for a PRIVATE source-shadow
+RECTANGULAR body BBOX and genuine Rust events,
+not a production rollout or statistical
+reliability result. Keep the historical
+TOP dynamic candidate first-exterior
+off-target `INCONCLUSIVE` and the historical
+LEFT direct body→margin off-target
+`INCONCLUSIVE` together with both categorical
+old-log drift receipts. The later successful
+LEFT before-body/after-body differential
+does NOT explain or cure either historical
+transient and does not make unlimited
+pointer targeting repeatable.
+
+**NEXT DESIGN GATE: exact shape versus bounded hit region.**
+The shipped Wull currently contributes
+`Region { item: ... ? companion : emptyInput }`,
+which covers the whole companion host footprint.
+The tested private generator instead uses the
+source-measured static body BBOX, 76x92
+(horizontal) / 92x76 (vertical), centered in
+the 112x98 / 98x112 host. The actual
+`WaterDropletBody.qml` visual outline is
+FOUR curved `PathCubic` sections beginning
+near its top center, NOT the full rectangle.
+Further, the actual droplet has a pulse
+halo, state-driven squash/stretch/tilt,
+continuous bob/sway and four-edge rotation,
+while `AbyssCompanion.qml` supports a
+0.65–1.5 host scale. Thus the physical
+four-edge scale=1 body BBOX successes do
+NOT establish that a static, narrower
+silhouette region would capture all
+visible/animated body clicks and hover.
+Do not remove the host mask in production
+based on pointer BBOX results alone.
+
+Quickshell's documented
+`Region` API combines nested
+Rect/Ellipse regions, allows item-bound
+rectangles, and supports subtraction;
+`Region.item` uses item geometry,
+not alpha or a Qt Quick `ShapePath`
+Bézier alpha mask. No documented
+portable arbitrary-Bézier clickthrough
+`RegionShape` is established for the
+repository's target Quickshell version.
+The lowest-risk research path is a
+separate **INERT, source-pinned static
+four-cubic silhouette scanline prototype**:
+derive interior bands from the exact
+reviewed 76x92 shape, rotate/center
+them against already source-measured
+four-edge BBOXes, and count conservatively
+enclosed hit area, tip coverage and
+runtime region budget without touching
+any QML or generating a live mask.
+Only after the static geometry and
+Quickshell version compatibility are
+verified should a separately staged
+PRIVATE additive Region prototype
+be tested with real body/tip/corner,
+hover and pass-through witnesses on
+new owned Niri runs, then motion
+envelopes and size/scale variants.
+Rectangle BBOX remains only the
+qualified private baseline, not an
+approved exact-curve mask.

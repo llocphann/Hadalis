@@ -82,3 +82,38 @@ for serial, present in ((2, True), (3, False)):
     assert [b["executable"] for b in result["result"]["binaries"]] == [
         present, present, present, False, present]
 print("PASS MegaQML synthetic runtime dispatcher: 12 cases plus four second requests and two race requests")
+# F1 offline preflight uses exactly the same fake-only transport with a
+# distinct request ID prefix. These fixtures can never execute MEGAcmd.
+for scenario, ready in (("present", True), ("missing", False)):
+    env = dict(os.environ, MEGAQML_FIXTURE_CASE=scenario)
+    request = {"protocol": 1, "request_id": "cloud-preflight-1",
+               "operation": "connect_preflight", "params": {}}
+    child = subprocess.run([sys.executable, str(fake), "mega", "request"],
+                           input=json.dumps(request) + "\\n", capture_output=True,
+                           text=True, env=env, timeout=3, check=True)
+    response = json.loads(child.stdout)
+    assert child.stderr == "" and response["request_id"] == "cloud-preflight-1"
+    assert response["ok"] is True and response["error"] is None
+    result = response["result"]
+    assert result["probe_kind"] == "static_connect_preflight"
+    assert result["vendor_execution"] == "blocked_pending_disposable_qualification"
+    assert result["dependencies_ready"] is ready
+    assert result["reason"] == (
+        "installed_vendor_not_qualified" if ready else "dependency_missing")
+    for field in ("connected", "connection_attempted", "auth_qualified",
+                  "account_reads_enabled"):
+        assert result[field] is False
+    assert "path" not in child.stdout.lower()
+# Malformed preflight may not smuggle secrets or arbitrary raw commands.
+for forbidden in ({"secret": {"password": "PRIVATE_FAKE_SECRET_CANARY"}},
+                  {"params": {"command": "mega-rm"}}):
+    request = {"protocol": 1, "request_id": "cloud-preflight-2",
+               "operation": "connect_preflight", "params": {}, **forbidden}
+    env = dict(os.environ, MEGAQML_FIXTURE_CASE="present")
+    child = subprocess.run([sys.executable, str(fake), "mega", "request"],
+                           input=json.dumps(request) + "\\n", capture_output=True,
+                           text=True, env=env, timeout=3)
+    assert child.returncode == 68 and child.stdout == ""
+    assert "PRIVATE_FAKE_SECRET_CANARY" not in child.stderr
+print("PASS MegaQML fake dispatcher inert preflight: 2 success and 2 rejection cases")
+

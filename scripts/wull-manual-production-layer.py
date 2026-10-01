@@ -15,9 +15,9 @@ import subprocess
 import sys
 import time
 
-BASE = "b5eaf719c5b9d161c862f8e9176b6f4dd3d93739"
+BASE = "0b563b79bf82788a397f75d81070b4bc6e7930ac"
 SELF = "scripts/wull-manual-production-layer.py"
-INITIAL_SELF_BLOB = "269a1ba8d0de6edd7a9913180fab34a3472286b3"
+INITIAL_SELF_BLOB = "75b0f44d18abd135492c9e460765aeef5bd58d5c"
 FIXTURE = "scripts/wull-fixtures/production-layer/shell.qml"
 FIXTURE_BLOB = "e16b6dcada26a27fd71cc670e30c55135401bcef"
 NAMESPACE = "hadalis:abyss-perimeter"
@@ -71,7 +71,7 @@ def audit(target):
     if git("rev-parse", BASE + ":" + SELF) != INITIAL_SELF_BLOB:
         raise RuntimeError("Reviewed production-layer baseline runner changed")
     if SELF in modified:
-        # Exactly one reviewed source-guard reanchor after qualified geometry.
+        # Exactly one reviewed process-cleanup hardening after qualification.
         revisions = git("log", "--format=%H",
                         BASE + ".." + target, "--", SELF).splitlines()
         if len(revisions) != 1 or (
@@ -128,7 +128,7 @@ def bound_log(path):
 def stop_owned(proc, binary):
     # Only touch the private process group this invocation created and the
     # exact executable in its unique private cargo target directory.
-    if proc is not None:
+    if proc is not None and proc.poll() is None:
         try:
             os.killpg(proc.pid, signal.SIGTERM)
         except ProcessLookupError:

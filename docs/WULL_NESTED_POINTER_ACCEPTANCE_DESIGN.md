@@ -299,3 +299,15 @@ but the daemon did not react, design a **separate test-only**
 production-host visibility/input-mask diagnostic without changing
 the production mask. Do not shrink the mask, disable default-off
 behavior, infer visual qualification or modify `stable`.
+
+
+Diagnostic receipt backend provenance follow-up: source-only commit `6670066439c8899b42ba528e5cf81f9b71ce9ee4`
+also projects the private child's bounded `injection_backend` classification
+into the sanitized top-level `native_pointer_backend` field. This
+distinguishes `forced_wlr_protocols_wdotool` from
+`native_relative_wlrctl_unverified` when analyzing alignment, without
+publishing the user's executable path or environment. The coordinator
+self-review count advances from eight to **nine** reviewed commits.
+`1de19ca38f1738e0167b01a169c63f67d43cf1a4` adds an
+inert contract assertion for the allowlisted provenance field.
+The new coordinate-verified pointer run still needs local execution.

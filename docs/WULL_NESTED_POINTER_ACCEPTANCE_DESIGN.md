@@ -783,3 +783,95 @@ true multioutput and scaling, real visual quality,
 long-run/lifecycle and canonical wide validation
 remain unqualified. Keep production Region and
 `stable` unchanged.
+
+
+## REAL bottom private A/B PASS; standalone right candidate next
+
+The NEW independently verified actual Niri pointer receipt is
+`docs/wull-mask-bottom-20261001T173542Z-10d599c4-9ac701f650dc.json`,
+`source_sha=9ac701f650dce381487fa00a56f24520c5c83289`,
+`status=pass`,
+`scope=owned_single_output_nested_niri_bottom_candidate_mask_A_B`,
+`native_pointer_backend=forced_wlr_protocols_wdotool`.
+All eight existing phase checks succeeded with actual
+source-pinned bottom position and one newly owned private
+Niri output: correct-coordinate old-production
+disabled-center and enabled exterior underlay controls,
+the real production Wull bridge/Rust happy-pulse body click
+without underlay penetration, observed full-host
+empty margin blocked with no false Wull activation,
+the new exact-target exterior underlay click AFTER
+baseline fully unmapped but BEFORE candidate mapped,
+then the newly mapped bottom **private** dynamic BBOX
+candidate's independently correct-coordinate exterior,
+genuine Wull body bridge/Rust click without underlay
+penetration, and positive matched empty-margin underlay
+pass-through without accidental body activation.
+Original host output count and all distinct nested
+endpoints, owned-layer/daemon/compositor cleanup and
+private stray checks passed. Nothing changed the real
+production input Region, user host config or `stable`.
+
+This adds independent real evidence for the BOTTOM
+horizontal mask, in addition to the separately source-
+pinned latest dynamic TOP private candidate PASS
+`docs/wull-mask-candidate-20261001T173129Z-ce33db3c-8efa0b7d7341.json`.
+The older top trial's categorically proven transient
+off-target wdotool underlay click remains an unresolved
+reliability observation; later PASS trials do NOT prove
+the transient root cause was corrected. The two horizontal
+edge PASSes are bounded one-output, size=1,
+private-shadow BBOX results, NOT global or production
+input-mask acceptance.
+
+The NEXT independently qualified physical orientation
+is **RIGHT**. Existing reviewed
+`scripts/wull-pointer-targets.py` already computes
+the side-edge host 98x112 and the rotated mapped body
+BBOX x=3,y=18,width=92,height=76, using exact prior
+postchange source-measured geometry. The reviewed
+dynamic shadow candidate already branches to
+a 92x76 centered BBOX on left/right with correct
+input state and scale=1 guards. Those source and
+geometry results have not yet proved right/left
+physical pointer routing.
+
+The child-only mode `candidate-mask-right`
+is newly explicit and separately allowlisted
+(`scripts/wull-manual-pointer-child.py`
+commit `555d735f2a99fd18b7588d757810c009e5ebfea2`).
+The unchanged production/full-host, intermediate
+after-unmap witness, and candidate body/exterior/
+margin checks now select the reviewed **RIGHT**
+geometry/config only if that mode was explicitly
+set by the same nested-only parent. Parent
+`scripts/wull-manual-nested-pointer.py`
+commit `a86e2284907207bb0811a820298e5bd57bcfd3ed`
+pins the new exact child blob, advances its
+reviewed self-history guard to 13 and adds
+`--acknowledge-nested-pointer-candidate-right`.
+It reports only
+`owned_single_output_nested_niri_right_candidate_mask_A_B`
+with a unique `docs/wull-mask-right-*.json`
+prefix. Existing top, bottom and original production
+explicit opt-ins are otherwise unchanged. The two
+separate inert source contracts re-pin the new child
+and right-only permission/receipt markers in
+`ef65b9483b78cba5b6f0c7bcbff55593cd7078dc`
+and `b627e658fb4e4a53dc07a967c0d19a96c96d45f1`.
+
+The next one-command local gate from a NEW clean,
+permission-restricted temporary `dev` clone should
+run all four existing inert pointer contracts and
+ONLY the explicit new RIGHT physical private A/B test.
+It must publish a new unique sanitized exact-source
+right receipt regardless of PASS/FAILED/INCONCLUSIVE
+and stop without automatically testing LEFT or
+altering production. Inspect every witness, exact
+forced native backend, private Rust response and
+owned cleanup in that receipt first. Do not
+promote a private rectangle to shipped production
+on only three edges. LEFT, popup/hover, live
+visuals, actual multioutput/hotplug/fractional
+scaling, canonical-wide and long-running lifecycle
+gates remain separate and pending.

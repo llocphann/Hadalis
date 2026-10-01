@@ -7,6 +7,8 @@ import ast
 import json
 from pathlib import Path
 import runpy
+import signal
+import subprocess
 import tempfile
 from unittest import mock
 
@@ -81,6 +83,36 @@ assert parent["REVIEWED"]["scripts/wull-manual-pointer-child.py"] == (
     "bfed36f31cd9f34fd3f180581eb90377dce7ce16")
 assert parent["REVIEWED"]["scripts/wull-fixtures/pointer-underlay/companion-relay.py"] == (
     "7e450db1db23e3c250859b0271a655d6325f0bc8")
+
+# Bounded early-exit cleanup never signals a potentially recycled group.
+stop_group = parent["stop_owned_child_group"]
+class ExitedChild:
+    pid = 123456
+    def poll(self):
+        return 0
+with mock.patch("os.killpg") as group_signal:
+    stop_group(ExitedChild())
+    assert not group_signal.called
+
+# Owned, still-running child: terminate its entire private session, so a
+# blocked private Cargo/wdotool child cannot survive a coordinator timeout.
+class HungChild:
+    pid = 123456
+    def __init__(self):
+        self.waits = 0
+    def poll(self):
+        return None
+    def wait(self, timeout):
+        self.waits += 1
+        if self.waits == 1:
+            raise subprocess.TimeoutExpired("owned-private-child", timeout)
+        return -9
+with mock.patch("os.killpg") as group_signal:
+    stop_group(HungChild())
+    assert group_signal.call_args_list == [
+        mock.call(123456, signal.SIGTERM),
+        mock.call(123456, signal.SIGKILL)
+    ]
 
 # Parent's Niri parser is the already-reviewed one from the standalone proof.
 parse = parent["startup_identity"]

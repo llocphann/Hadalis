@@ -1,7 +1,8 @@
 use std::env;
 use std::fs;
 use std::io::{self, Read};
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -11,6 +12,9 @@ use serde_json::{Value, json};
 mod pty;
 
 const PROTOCOL_VERSION: u32 = 1;
+const LIVE_AUTH_VENDOR_ENABLED: bool = false;
+const AUTH_VENDOR_TIMEOUT_SECS: u64 = 30;
+const AUTH_VENDOR_OUTPUT_CAP: usize = 32 * 1024;
 
 #[derive(Debug, Parser)]
 #[command(about = "Typed, one-shot MEGAcmd adapter for Hadalis")]
@@ -41,7 +45,6 @@ struct Request {
 enum Operation {
     Detect,
     AuthBegin,
-    AuthMfa,
 }
 
 #[derive(Deserialize)]
@@ -96,10 +99,16 @@ fn find_in_path(name: &'static str, path_env: Option<&str>) -> VendorBinary {
 }
 
 fn static_detection(path_env: Option<&str>) -> Vec<VendorBinary> {
-    ["mega-login", "mega-cmd-server", "mega-whoami", "mega-version"]
-        .into_iter()
-        .map(|name| find_in_path(name, path_env))
-        .collect()
+    [
+        "mega-cmd",
+        "mega-login",
+        "mega-cmd-server",
+        "mega-whoami",
+        "mega-version",
+    ]
+    .into_iter()
+    .map(|name| find_in_path(name, path_env))
+    .collect()
 }
 
 #[derive(Debug, Serialize)]
@@ -201,6 +210,168 @@ fn validate_request(request: &Request) -> Option<SafeError> {
     None
 }
 
+#[cfg(unix)]
+fn disable_core_dumps() -> Result<()> {
+    let limit = libc::rlimit {
+        rlim_cur: 0,
+        rlim_max: 0,
+    };
+    if unsafe { libc::setrlimit(libc::RLIMIT_CORE, &limit) } != 0 {
+        return Err(std::io::Error::last_os_error()).context("disable inir-mega core dumps");
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn disable_core_dumps() -> Result<()> {
+    Ok(())
+}
+
+fn is_safe_login_email(value: &str) -> bool {
+    if value.is_empty() || value.len() > 254 || !value.is_ascii() {
+        return false;
+    }
+    let Some((local, domain)) = value.split_once('@') else {
+        return false;
+    };
+    if local.is_empty() || domain.is_empty() || domain.contains('@') || !domain.contains('.') {
+        return false;
+    }
+    let local_ok = local
+        .bytes()
+        .all(|byte| byte.is_ascii_alphanumeric() || b"._%+-".contains(&byte));
+    let domain_ok = domain
+        .bytes()
+        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'.' || byte == b'-');
+    local_ok && domain_ok
+}
+
+fn auth_error(
+    request_id: String,
+    stage: &'static str,
+    kind: &'static str,
+    outcome: &'static str,
+    user_message: &'static str,
+) -> Response {
+    Response {
+        protocol: PROTOCOL_VERSION,
+        request_id,
+        ok: false,
+        result: json!({"state": "blocked"}),
+        error: Some(SafeError {
+            stage,
+            kind,
+            outcome,
+            user_message,
+        }),
+    }
+}
+
+fn handle_auth(request: Request) -> Response {
+    let Request {
+        request_id,
+        params,
+        secret,
+        ..
+    } = request;
+    let email = params.get("email").and_then(Value::as_str).unwrap_or("");
+    let password = secret
+        .as_ref()
+        .and_then(|value| value.password.as_deref())
+        .unwrap_or("");
+    let mfa = secret
+        .as_ref()
+        .and_then(|value| value.mfa_code.as_deref())
+        .filter(|value| !value.is_empty());
+
+    if !is_safe_login_email(email) || password.is_empty() || password.len() > 4096 {
+        return auth_error(
+            request_id,
+            "validate",
+            "AUTH_INPUT_REQUIRED",
+            "not_dispatched",
+            "A valid email and password are required.",
+        );
+    }
+    if mfa.is_some_and(|value| value.len() != 6 || !value.bytes().all(|byte| byte.is_ascii_digit())) {
+        return auth_error(
+            request_id,
+            "validate",
+            "MFA_INPUT_INVALID",
+            "not_dispatched",
+            "Enter a valid six-digit two-factor authentication code.",
+        );
+    }
+
+    if !LIVE_AUTH_VENDOR_ENABLED {
+        return auth_error(
+            request_id,
+            "dispatch",
+            "AUTH_VENDOR_NOT_QUALIFIED",
+            "not_dispatched",
+            "MEGAcmd sign-in is staged but remains disabled until installed-version disposable qualification passes.",
+        );
+    }
+
+    let shell = find_in_path("mega-cmd", env::var("PATH").ok().as_deref());
+    let Some(program) = shell.path.as_deref() else {
+        return auth_error(
+            request_id,
+            "detect",
+            "MEGACMD_INTERACTIVE_SHELL_MISSING",
+            "not_dispatched",
+            "MEGAcmd interactive shell is not installed.",
+        );
+    };
+
+    match pty::run_auth_dialog(
+        Path::new(program),
+        email,
+        password,
+        mfa,
+        Duration::from_secs(AUTH_VENDOR_TIMEOUT_SECS),
+        AUTH_VENDOR_OUTPUT_CAP,
+    ) {
+        Ok(result) => match result.outcome {
+            pty::AuthDialogOutcome::Authenticated => Response {
+                protocol: PROTOCOL_VERSION,
+                request_id,
+                ok: true,
+                result: json!({"state": "vendor_reported_authenticated"}),
+                error: None,
+            },
+            pty::AuthDialogOutcome::MfaRequired => Response {
+                protocol: PROTOCOL_VERSION,
+                request_id,
+                ok: true,
+                result: json!({"state": "mfa_required"}),
+                error: None,
+            },
+            pty::AuthDialogOutcome::Failed => auth_error(
+                request_id,
+                "dispatch",
+                "AUTH_REJECTED",
+                "confirmed_failed",
+                "MEGAcmd rejected the sign-in request.",
+            ),
+            pty::AuthDialogOutcome::Unexpected => auth_error(
+                request_id,
+                "dispatch",
+                "AUTH_PROMPT_UNSUPPORTED",
+                "unknown",
+                "MEGAcmd requested an unsupported interactive response.",
+            ),
+        },
+        Err(_) => auth_error(
+            request_id,
+            "dispatch",
+            "AUTH_VENDOR_UNKNOWN",
+            "unknown",
+            "MEGAcmd sign-in did not finish with a recognized result.",
+        ),
+    }
+}
+
 fn handle(request: Request) -> Response {
     if let Some(error) = validate_request(&request) {
         return Response {
@@ -215,8 +386,12 @@ fn handle(request: Request) -> Response {
     match request.operation {
         Operation::Detect => {
             let binaries = static_detection(env::var("PATH").ok().as_deref());
-            let login_available = binaries.iter().any(|item| item.name == "mega-login" && item.executable);
-            let server_available = binaries.iter().any(|item| item.name == "mega-cmd-server" && item.executable);
+            let interactive_shell_available = binaries
+                .iter()
+                .any(|item| item.name == "mega-cmd" && item.executable);
+            let server_available = binaries
+                .iter()
+                .any(|item| item.name == "mega-cmd-server" && item.executable);
             Response {
                 protocol: PROTOCOL_VERSION,
                 request_id: request.request_id,
@@ -224,67 +399,22 @@ fn handle(request: Request) -> Response {
                 result: json!({
                     "adapter": "inir-mega",
                     "probe_kind": "static_no_vendor_execution",
-                    "vendor_execution": "disabled_until_pty_transport_qualification",
-                    "auth_transport": "pty_required",
+                    "vendor_execution": if LIVE_AUTH_VENDOR_ENABLED {
+                        "auth_transport_enabled"
+                    } else {
+                        "auth_blocked_pending_disposable_qualification"
+                    },
+                    "auth_transport": "private_pty_fake_qualified",
                     "secret_argv": false,
                     "python_mutation_fallback": false,
-                    "login_available": login_available,
+                    "interactive_shell_available": interactive_shell_available,
                     "server_available": server_available,
                     "binaries": binaries
                 }),
                 error: None,
             }
-        },
-        Operation::AuthBegin => {
-            let has_email = request.params.get("email").and_then(Value::as_str)
-                .is_some_and(|value| !value.trim().is_empty());
-            let has_password = request.secret.as_ref()
-                .and_then(|secret| secret.password.as_deref())
-                .is_some_and(|value| !value.is_empty());
-            let error = if !has_email || !has_password {
-                Some(SafeError {
-                    stage: "validate",
-                    kind: "AUTH_INPUT_REQUIRED",
-                    outcome: "not_dispatched",
-                    user_message: "Email and password are required.",
-                })
-            } else {
-                Some(SafeError {
-                    stage: "dispatch",
-                    kind: "AUTH_VENDOR_NOT_QUALIFIED",
-                    outcome: "not_dispatched",
-                    user_message: "MEGAcmd sign-in is not enabled until the PTY harness is qualified.",
-                })
-            };
-            Response {
-                protocol: PROTOCOL_VERSION,
-                request_id: request.request_id,
-                ok: false,
-                result: json!({"next": "blocked"}),
-                error,
-            }
         }
-        Operation::AuthMfa => {
-            let has_code = request.secret.as_ref()
-                .and_then(|secret| secret.mfa_code.as_deref())
-                .is_some_and(|value| !value.is_empty());
-            Response {
-                protocol: PROTOCOL_VERSION,
-                request_id: request.request_id,
-                ok: false,
-                result: json!({"next": "blocked"}),
-                error: Some(SafeError {
-                    stage: if has_code { "dispatch" } else { "validate" },
-                    kind: if has_code { "AUTH_VENDOR_NOT_QUALIFIED" } else { "MFA_INPUT_REQUIRED" },
-                    outcome: "not_dispatched",
-                    user_message: if has_code {
-                        "MEGAcmd two-factor authentication is not enabled until the PTY harness is qualified."
-                    } else {
-                        "Two-factor authentication code is required."
-                    },
-                }),
-            }
-        }
+        Operation::AuthBegin => handle_auth(request),
     }
 }
 
@@ -292,6 +422,7 @@ fn run() -> Result<()> {
     let args = Args::parse();
     match args.command {
         Command::Request => {
+            disable_core_dumps()?;
             let mut input = String::new();
             io::stdin().read_to_string(&mut input).context("read request stdin")?;
             let request: Request = serde_json::from_str(&input).context("parse request JSON")?;
@@ -331,7 +462,7 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
         let marker = root.join("executed");
-        let fake = root.join("mega-login");
+        let fake = root.join("mega-cmd");
         fs::write(&fake, format!("#!/bin/sh\\ntouch '{}'\\n", marker.display())).unwrap();
         #[cfg(unix)]
         {
@@ -342,7 +473,7 @@ mod tests {
         }
         let path_value = root.to_string_lossy().into_owned();
         let detected = static_detection(Some(&path_value));
-        assert!(detected.iter().any(|item| item.name == "mega-login" && item.executable));
+        assert!(detected.iter().any(|item| item.name == "mega-cmd" && item.executable));
         assert!(!marker.exists());
         fs::remove_dir_all(root).unwrap();
     }
@@ -423,22 +554,36 @@ mod tests {
     }
 
     #[test]
+    fn safe_login_email_rejects_command_text() {
+        assert!(is_safe_login_email("fixture@example.invalid"));
+        assert!(!is_safe_login_email("fixture@example.invalid\nlogout"));
+        assert!(!is_safe_login_email("fixture name@example.invalid"));
+        assert!(!is_safe_login_email("fixture@example"));
+    }
+
+    #[test]
     fn secrets_are_not_part_of_serialized_response() {
-        let password = "phase0-secret-password";
+        let password = "phase1-secret-password";
+        let mfa = "123456";
+        let email = "fixture@example.invalid";
         let request = Request {
             protocol: PROTOCOL_VERSION,
             request_id: "auth-1".into(),
             operation: Operation::AuthBegin,
-            params: json!({"email": "fixture@example.invalid"}),
-            secret: Some(SecretInput { password: Some(password.into()), mfa_code: None }),
+            params: json!({"email": email}),
+            secret: Some(SecretInput {
+                password: Some(password.into()),
+                mfa_code: Some(mfa.into()),
+            }),
         };
         let encoded = serde_json::to_string(&handle(request)).unwrap();
         assert!(!encoded.contains(password));
-        assert!(!encoded.contains("fixture@example.invalid"));
+        assert!(!encoded.contains(mfa));
+        assert!(!encoded.contains(email));
     }
 
     #[test]
-    fn auth_is_fail_closed_until_pty_vendor_is_qualified() {
+    fn auth_is_fail_closed_until_installed_vendor_is_qualified() {
         let response = handle(Request {
             protocol: PROTOCOL_VERSION,
             request_id: "auth-2".into(),
@@ -448,6 +593,23 @@ mod tests {
         });
         assert!(!response.ok);
         assert_eq!(response.error.unwrap().kind, "AUTH_VENDOR_NOT_QUALIFIED");
+    }
+
+    #[test]
+    fn invalid_mfa_is_rejected_before_vendor_dispatch() {
+        let response = handle(Request {
+            protocol: PROTOCOL_VERSION,
+            request_id: "auth-3".into(),
+            operation: Operation::AuthBegin,
+            params: json!({"email": "fixture@example.invalid"}),
+            secret: Some(SecretInput {
+                password: Some("secret".into()),
+                mfa_code: Some("12 456".into()),
+            }),
+        });
+        let error = response.error.unwrap();
+        assert_eq!(error.kind, "MFA_INPUT_INVALID");
+        assert_eq!(error.outcome, "not_dispatched");
     }
 
     #[test]

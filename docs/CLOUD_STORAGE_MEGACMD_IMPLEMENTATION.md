@@ -18,14 +18,22 @@ This does not permit insecure `mega-login EMAIL PASSWORD` argv. Authentication i
 
 1. QML collects email/password in masked controls.
 2. `CloudStorageService` sends one typed request to `inir-mega` over stdin.
-3. Rust starts the vendor login client with nonsecret argv only and a private PTY.
+3. Rust starts the interactive `mega-cmd` shell with no account secret in argv, disables PTY echo and sends only a strictly validated `login <email>` command inside the private PTY.
 4. Rust recognizes only fixture-qualified password/MFA/success/failure prompts.
 5. Password and MFA are written only to the PTY after the corresponding known prompt.
 6. Unknown prompts, timeout, EOF, output-cap, backend epoch change, or parser ambiguity fail closed.
-7. The Rust response reports only normalized state such as `mfa_required`, `authenticated`, or a safe error. It never echoes email/password/MFA.
+7. The Rust response reports only normalized state such as `mfa_required`, `vendor_reported_authenticated`, or a safe error. It never echoes email/password/MFA.
 8. Credentials are not persisted by Hadalis. Vendor session persistence remains MEGAcmd-owned.
 
-Before vendor execution is enabled, the fake vendor harness must prove password and MFA never appear in argv/stdout/stderr/result data and that unexpected prompts cannot cause secret submission.
+Before live vendor execution is enabled, the production-shaped fake vendor harness must prove password and MFA never appear in argv/stdout/stderr/result data, that unexpected prompts cannot cause secret submission, and that timeout/output growth is bounded.
+
+### 2.1 One-shot MFA handshake
+
+`inir-mega` does not keep a credential-bearing vendor process alive between JSON requests. `auth_begin` accepts email/password and an optional `mfa_code`. A first submit may return `mfa_required`; the future QML service may retain the password only in its transient masked draft state long enough for the user to enter the MFA code, then resubmit the same typed operation. Rust starts a fresh private PTY for that second attempt.
+
+This avoids a hidden long-lived auth daemon, cross-request secret files, and replay tokens. It also means a separate `auth_mfa` request is not a valid protocol shape because there is no persistent PTY session to continue. The scriptable `mega-login` client remains forbidden for in-page authentication because its account login syntax would place password/auth-code material in argv.
+
+Live `mega-cmd` authentication remains compile-time fail-closed until the exact installed MEGAcmd prompt/capability behavior is qualified on an explicitly permitted disposable account and an authoritative post-login session readback is defined. Fake PTY qualification alone does not flip that gate.
 
 ## 3. Phase ordering
 

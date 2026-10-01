@@ -17,7 +17,7 @@ use std::time::{Duration, Instant};
 use anyhow::{Context, Result, bail};
 
 #[cfg(unix)]
-use crate::{AuthPrompt, AuthState, AuthStep, SecretWrite, advance_auth, classify_auth_prompt};
+use crate::{AuthState, AuthStep, SecretWrite, advance_auth, classify_auth_prompt};
 
 #[cfg(unix)]
 struct PtyPair {
@@ -63,9 +63,19 @@ fn open_private_pty() -> Result<PtyPair> {
 }
 
 #[cfg(unix)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum AuthDialogOutcome {
+    Authenticated,
+    MfaRequired,
+    Failed,
+    Unexpected,
+}
+
+#[cfg(unix)]
 #[derive(Debug)]
-pub(crate) struct FakeAuthResult {
-    pub(crate) terminal: AuthStep,
+pub(crate) struct AuthDialogResult {
+    pub(crate) outcome: AuthDialogOutcome,
+    #[allow(dead_code)]
     pub(crate) transcript: String,
 }
 
@@ -78,19 +88,25 @@ fn stop_child(child: &mut Child) {
 }
 
 #[cfg(unix)]
-pub(crate) fn run_fake_auth_dialog(
-    program: &Path,
-    password: &str,
-    mfa: &str,
-) -> Result<FakeAuthResult> {
-    let PtyPair { master, slave } = open_private_pty()?;
+fn write_private_line(writer: &mut File, value: &str) -> Result<()> {
+    writer.write_all(value.as_bytes())?;
+    writer.write_all(b"\n")?;
+    writer.flush()?;
+    Ok(())
+}
+
+#[cfg(unix)]
+fn configure_child(program: &Path, slave: RawFd) -> Result<Command> {
     let stdin_fd = unsafe { libc::dup(slave) };
     let stdout_fd = unsafe { libc::dup(slave) };
     if stdin_fd < 0 || stdout_fd < 0 {
         unsafe {
-            if stdin_fd >= 0 { libc::close(stdin_fd); }
-            if stdout_fd >= 0 { libc::close(stdout_fd); }
-            libc::close(master);
+            if stdin_fd >= 0 {
+                libc::close(stdin_fd);
+            }
+            if stdout_fd >= 0 {
+                libc::close(stdout_fd);
+            }
             libc::close(slave);
         }
         return Err(std::io::Error::last_os_error()).context("duplicate PTY slave");
@@ -100,29 +116,65 @@ pub(crate) fn run_fake_auth_dialog(
     command
         .stdin(unsafe { Stdio::from_raw_fd(stdin_fd) })
         .stdout(unsafe { Stdio::from_raw_fd(stdout_fd) })
-        .stderr(unsafe { Stdio::from_raw_fd(slave) });
+        .stderr(unsafe { Stdio::from_raw_fd(slave) })
+        .env_remove("MEGACMD_DO_NOT_REDACT_LINES");
 
     unsafe {
         command.pre_exec(|| {
             if libc::setsid() < 0 {
                 return Err(std::io::Error::last_os_error());
             }
+            if libc::ioctl(libc::STDIN_FILENO, libc::TIOCSCTTY, 0) < 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            let limit = libc::rlimit {
+                rlim_cur: 0,
+                rlim_max: 0,
+            };
+            if libc::setrlimit(libc::RLIMIT_CORE, &limit) != 0 {
+                return Err(std::io::Error::last_os_error());
+            }
             Ok(())
         });
     }
+    Ok(command)
+}
 
-    let mut child = command.spawn().context("spawn fake auth vendor")?;
+#[cfg(unix)]
+pub(crate) fn run_auth_dialog(
+    program: &Path,
+    email: &str,
+    password: &str,
+    mfa: Option<&str>,
+    timeout: Duration,
+    output_cap: usize,
+) -> Result<AuthDialogResult> {
+    let PtyPair { master, slave } = open_private_pty()?;
+    let mut command = configure_child(program, slave)?;
+    let mut child = command.spawn().context("spawn MEGAcmd interactive shell")?;
     let mut reader = unsafe { File::from_raw_fd(master) };
-    let mut writer = reader.try_clone().context("clone PTY master")?;
+    let mut writer = match reader.try_clone() {
+        Ok(writer) => writer,
+        Err(error) => {
+            stop_child(&mut child);
+            return Err(error).context("clone auth PTY master");
+        }
+    };
+
+    if let Err(error) = write_private_line(&mut writer, &format!("login {email}")) {
+        stop_child(&mut child);
+        return Err(error).context("write login command to auth PTY");
+    }
+
     let mut state = AuthState::AwaitPassword;
     let mut transcript = String::new();
     let mut pending = Vec::new();
-    let deadline = Instant::now() + Duration::from_secs(2);
+    let deadline = Instant::now() + timeout;
 
     loop {
         if Instant::now() >= deadline {
             stop_child(&mut child);
-            bail!("fake auth vendor deadline exceeded");
+            bail!("auth vendor deadline exceeded");
         }
         let remaining = deadline.saturating_duration_since(Instant::now());
         let timeout_ms = remaining.as_millis().min(100).max(1) as i32;
@@ -134,7 +186,7 @@ pub(crate) fn run_fake_auth_dialog(
         let poll_rc = unsafe { libc::poll(&mut pollfd, 1, timeout_ms) };
         if poll_rc < 0 {
             stop_child(&mut child);
-            return Err(std::io::Error::last_os_error()).context("poll fake auth PTY");
+            return Err(std::io::Error::last_os_error()).context("poll auth PTY");
         }
         if poll_rc == 0 {
             continue;
@@ -145,44 +197,82 @@ pub(crate) fn run_fake_auth_dialog(
             Ok(0) => break,
             Ok(_) => {
                 pending.push(byte[0]);
+                if transcript.len().saturating_add(pending.len()) > output_cap {
+                    stop_child(&mut child);
+                    bail!("auth vendor output cap exceeded");
+                }
                 if byte[0] != b'\n' && byte[0] != b':' {
                     continue;
                 }
-                let text = String::from_utf8(pending.clone()).context("fake auth prompt UTF-8")?;
+                let text = match String::from_utf8(pending.clone()) {
+                    Ok(text) => text,
+                    Err(error) => {
+                        stop_child(&mut child);
+                        return Err(error).context("auth prompt UTF-8");
+                    }
+                };
                 transcript.push_str(&text);
                 pending.clear();
                 match advance_auth(&mut state, classify_auth_prompt(&text)) {
                     AuthStep::Write(SecretWrite::Password) => {
-                        writer.write_all(password.as_bytes())?;
-                        writer.write_all(b"\n")?;
-                        writer.flush()?;
+                        if let Err(error) = write_private_line(&mut writer, password) {
+                            stop_child(&mut child);
+                            return Err(error).context("write password to auth PTY");
+                        }
                     }
                     AuthStep::Write(SecretWrite::Mfa) => {
-                        writer.write_all(mfa.as_bytes())?;
-                        writer.write_all(b"\n")?;
-                        writer.flush()?;
+                        let Some(code) = mfa else {
+                            stop_child(&mut child);
+                            return Ok(AuthDialogResult {
+                                outcome: AuthDialogOutcome::MfaRequired,
+                                transcript,
+                            });
+                        };
+                        if let Err(error) = write_private_line(&mut writer, code) {
+                            stop_child(&mut child);
+                            return Err(error).context("write MFA code to auth PTY");
+                        }
                     }
-                    terminal @ (AuthStep::Complete | AuthStep::Failed | AuthStep::RejectUnexpected) => {
+                    AuthStep::Complete => {
                         stop_child(&mut child);
-                        return Ok(FakeAuthResult { terminal, transcript });
+                        return Ok(AuthDialogResult {
+                            outcome: AuthDialogOutcome::Authenticated,
+                            transcript,
+                        });
+                    }
+                    AuthStep::Failed => {
+                        stop_child(&mut child);
+                        return Ok(AuthDialogResult {
+                            outcome: AuthDialogOutcome::Failed,
+                            transcript,
+                        });
+                    }
+                    AuthStep::RejectUnexpected => {
+                        stop_child(&mut child);
+                        return Ok(AuthDialogResult {
+                            outcome: AuthDialogOutcome::Unexpected,
+                            transcript,
+                        });
                     }
                 }
             }
             Err(error) if error.raw_os_error() == Some(libc::EIO) => break,
-            Err(error) => return Err(error).context("read fake auth PTY"),
+            Err(error) => {
+                stop_child(&mut child);
+                return Err(error).context("read auth PTY");
+            }
         }
     }
 
-    let status = child.wait().context("wait fake auth vendor")?;
+    let status = child.wait().context("wait auth vendor")?;
     if !status.success() {
-        bail!("fake auth vendor exited unsuccessfully");
+        bail!("auth vendor exited unsuccessfully");
     }
-    Ok(FakeAuthResult {
-        terminal: AuthStep::RejectUnexpected,
+    Ok(AuthDialogResult {
+        outcome: AuthDialogOutcome::Unexpected,
         transcript,
     })
 }
-
 
 #[cfg(all(test, unix))]
 mod tests {
@@ -208,24 +298,62 @@ mod tests {
         path
     }
 
+    fn qualified_script() -> &'static str {
+        "#!/bin/sh\nIFS= read -r command\n[ \"$command\" = \"login fixture@example.invalid\" ] || exit 40\nprintf 'Password:'\nIFS= read -r password\nprintf 'Multi-factor authentication code:'\nIFS= read -r mfa\nprintf 'Login successful\\n'\n"
+    }
+
     #[test]
     fn pty_password_mfa_flow_is_qualified_without_echoing_secrets() {
-        let vendor = fake_vendor(
-            "#!/bin/sh\nprintf 'Password:'\nIFS= read -r password\nprintf 'Multi-factor authentication code:'\nIFS= read -r mfa\nprintf 'Login successful\\n'\n",
-        );
-        let result = run_fake_auth_dialog(&vendor, "fixture-password-never-log", "123456").unwrap();
-        assert_eq!(result.terminal, AuthStep::Complete);
+        let vendor = fake_vendor(qualified_script());
+        let result = run_auth_dialog(
+            &vendor,
+            "fixture@example.invalid",
+            "fixture-password-never-log",
+            Some("123456"),
+            Duration::from_secs(2),
+            4096,
+        )
+        .unwrap();
+        assert_eq!(result.outcome, AuthDialogOutcome::Authenticated);
+        assert!(!result.transcript.contains("fixture@example.invalid"));
         assert!(!result.transcript.contains("fixture-password-never-log"));
         assert!(!result.transcript.contains("123456"));
         let _ = fs::remove_dir_all(vendor.parent().unwrap());
     }
 
     #[test]
+    fn pty_missing_mfa_returns_required_without_persisting_dialog() {
+        let vendor = fake_vendor(qualified_script());
+        let result = run_auth_dialog(
+            &vendor,
+            "fixture@example.invalid",
+            "fixture-password-never-log",
+            None,
+            Duration::from_secs(2),
+            4096,
+        )
+        .unwrap();
+        assert_eq!(result.outcome, AuthDialogOutcome::MfaRequired);
+        assert!(!result.transcript.contains("fixture-password-never-log"));
+        let _ = fs::remove_dir_all(vendor.parent().unwrap());
+    }
+
+    #[test]
     fn pty_unknown_prompt_fails_closed_without_hanging() {
-        let vendor = fake_vendor("#!/bin/sh\nprintf 'Enter account recovery key:'\nsleep 30\n");
+        let vendor = fake_vendor(
+            "#!/bin/sh\nIFS= read -r command\nprintf 'Enter account recovery key:'\nsleep 30\n",
+        );
         let started = Instant::now();
-        let result = run_fake_auth_dialog(&vendor, "fixture-password-never-log", "123456").unwrap();
-        assert_eq!(result.terminal, AuthStep::RejectUnexpected);
+        let result = run_auth_dialog(
+            &vendor,
+            "fixture@example.invalid",
+            "fixture-password-never-log",
+            Some("123456"),
+            Duration::from_secs(2),
+            4096,
+        )
+        .unwrap();
+        assert_eq!(result.outcome, AuthDialogOutcome::Unexpected);
         assert!(started.elapsed() < Duration::from_secs(5));
         assert!(!result.transcript.contains("fixture-password-never-log"));
         assert!(!result.transcript.contains("123456"));
@@ -234,11 +362,37 @@ mod tests {
 
     #[test]
     fn pty_silent_vendor_is_bounded() {
-        let vendor = fake_vendor("#!/bin/sh\nsleep 30\n");
+        let vendor = fake_vendor("#!/bin/sh\nIFS= read -r command\nsleep 30\n");
         let started = Instant::now();
-        let error = run_fake_auth_dialog(&vendor, "fixture-password-never-log", "123456").unwrap_err();
+        let error = run_auth_dialog(
+            &vendor,
+            "fixture@example.invalid",
+            "fixture-password-never-log",
+            Some("123456"),
+            Duration::from_millis(250),
+            4096,
+        )
+        .unwrap_err();
         assert!(started.elapsed() < Duration::from_secs(5));
         assert!(error.to_string().contains("deadline exceeded"));
+        let _ = fs::remove_dir_all(vendor.parent().unwrap());
+    }
+
+    #[test]
+    fn pty_vendor_output_is_capped() {
+        let vendor = fake_vendor(
+            "#!/bin/sh\nIFS= read -r command\ni=0\nwhile [ $i -lt 256 ]; do printf x; i=$((i+1)); done\nprintf ':'\nsleep 30\n",
+        );
+        let error = run_auth_dialog(
+            &vendor,
+            "fixture@example.invalid",
+            "fixture-password-never-log",
+            Some("123456"),
+            Duration::from_secs(2),
+            64,
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("output cap exceeded"));
         let _ = fs::remove_dir_all(vendor.parent().unwrap());
     }
 }

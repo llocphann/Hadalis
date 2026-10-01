@@ -8,7 +8,8 @@ if len(sys.argv) != 4 or sys.argv[3] not in ("baseline", "dormant", "active-pres
                                                      "active-malformed", "active-exit-failure", "active-hang",
                                                      "refresh-coalesce", "refresh-stale-reacquire",
                                                      "recovery-exit", "recovery-timeout",
-                                                     "ui-material", "ui-waffle", "ui-shared", "ui-preflight-timeout", "ui-race", "ui-host"):
+                                                     "ui-material", "ui-waffle", "ui-shared", "ui-preflight-timeout",
+                                                     "ui-preflight-release", "ui-race", "ui-host"):
     raise SystemExit(64)
 raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
                 for p in sys.argv[1:3]).lower()
@@ -64,6 +65,12 @@ shared_stages = (
     # Prefix of PREFLIGHT_MATERIAL overlaps PREFLIGHT: longest tokens first.
     ("preflight_timeout", "shared_preflight_timeout"),
     ("preflight_release", "shared_preflight_release"),
+    ("cancel_pending", "shared_cancel_pending"),
+    ("cancel_release", "shared_cancel_release"),
+    ("cancel_reap", "shared_cancel_reap"),
+    ("cancel_reopen", "shared_cancel_reopen"),
+    ("cancel_recheck", "shared_cancel_recheck"),
+    ("cancel_final", "shared_cancel_final"),
     ("preflight_material", "shared_preflight_material"),
     ("preflight_waffle", "shared_preflight_waffle"),
     ("preflight", "shared_preflight"),

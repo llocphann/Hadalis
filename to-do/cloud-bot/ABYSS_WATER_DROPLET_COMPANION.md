@@ -852,3 +852,67 @@ production input change.
   popup/hover, actual multi-output/hotplug, reload/suspend,
   whole-shell long-run resources, visuals and canonical-wide
   validation remain outstanding.
+
+
+## Checkpoint — 2026-10-01 dynamic top A/B remap off-target; read-only retro diagnosis
+
+- Local clean temporary-clone run **DID publish** the new report
+  `docs/wull-mask-candidate-20261001T170950Z-105fd7a8-1518db798d10.json`
+  on exact source `1518db798d1012592cdbceb29115cceb72cffd9b`:
+  **INCONCLUSIVE**, not FAIL or PASS. Four baseline real
+  full-production checks succeeded (disabled-body and
+  enabled-exterior actual coordinates matched, actual body click
+  reached bridge and private real Rust happy/pulse, full-host
+  empty margin remained blocked). After baseline cleaned,
+  the FIRST newly remapped private dynamic-candidate exterior
+  control registered a real underlay click at the WRONG
+  location (`target_alignment=off_target`).
+  The runner stopped before candidate body and margin
+  checks, and before any bottom-edge run. It verified
+  private nested endpoints, process/layer cleanup and
+  unchanged host output count. The older `124f0215...`
+  top-size1 private A/B **PASS** remains separate
+  historical evidence; this new run has not requalified
+  the now-dynamic four-edge candidate source.
+- Added **read-only local retrospective** diagnosis
+  `scripts/wull-private-pointer-drift-diagnostic.py`
+  commit `55907217e8e1a18d9ae74cc5b129578db45f1aa8`,
+  with symlink-rejection correction
+  `a0f1e06f2f934298312e19a2df74563e604bc395`,
+  and synthetic inert parser contract
+  `scripts/test-wull-private-pointer-drift-diagnostic.py`
+  commit `06c640e1ee1385e75524c6c3eb2a3650c2ffa031`.
+  It accepts only the existing exact report sequence,
+  reads the corresponding owned PRIVATE previous-run
+  underlay log on the user's host, compares baseline
+  and candidate exterior witness locations against
+  each other (identical target expected), and prints
+  only coarse drift magnitude/direction and possible
+  stale-disabled-center categorization. No raw
+  coordinates, new physical pointer input, new
+  dependencies, user config, Git checkout or production
+  source changes. Detailed constraints are in
+  `docs/WULL_NESTED_POINTER_ACCEPTANCE_DESIGN.md`,
+  updated `ea8152e80104f1169aa0c56f16c6942281527efb`.
+- **NEXT ONE-COMMAND LOCAL GATE**: from any original
+  Hadalis Git checkout, fetch the current remote `dev`
+  WITHOUT merging/rebasing/resetting the user's
+  divergent local `dev`. Stage ONLY that read-only
+  diagnostic, its inert synthetic contract and the
+  one public sanitized target report in a new
+  permission-restricted temporary directory using
+  `git show origin/dev:...`. Run the inert test,
+  then classify the user's existing local private
+  Niri-session underlay witness (if retained).
+  Capture ONLY the short categorical output. If
+  source log is absent or input count ambiguous,
+  report INCONCLUSIVE and design a new isolated
+  instrumentation gate; do not guess. Avoid another
+  expensive full Rust/Niri pointer rerun until
+  this existing evidence is read.
+  Do not increase mouse-target tolerance, call
+  host-global injection, make production changes,
+  or promote bottom/right/left as accepted.
+  Production/default-off and `stable` stay
+  unchanged; all other four-edge and full-system
+  qualification remains separate.

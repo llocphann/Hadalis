@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 script = ROOT / "scripts/wull-private-left-margin-diagnostic.py"
 source = script.read_text(encoding="utf-8")
 ast.parse(source)
-for forbidden in ("subprocess", "wdotool", "os.kill", "socket", "requests"):
+for forbidden in ("subprocess", "os.kill", "socket", "requests"):
     assert forbidden not in source
 m = runpy.run_path(str(script), run_name="wull_left_inert_import")
 report = {

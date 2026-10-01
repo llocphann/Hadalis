@@ -90,6 +90,30 @@ with tempfile.TemporaryDirectory(prefix="megaqml-shared-unit-") as temp:
     assert not (fixture / "scripts/native-dispatch").exists()
     assert not (fixture / "services/Config.qml").exists()
 
+# The shared fixture must signal the actual controls of BOTH copied pages,
+# not bypass their signal handlers with direct service calls. This is only a
+# source-level fixture invariant; the one-service runtime result is separate.
+shared_shell = (repo / "scripts/megaqml-fixtures/runtime-ui-shared/shell.qml"
+                ).read_text(encoding="utf-8")
+for token in (
+        'root.offlineControl(root.material)',
+        'root.offlineControl(root.waffle)',
+        'materialButton.clicked()',
+        'waffleButton.buttonClicked()',
+        'svc.preflightSerial !== 1',
+        'svc.preflightSerial !== 2',
+        'svc.preflightState !== "dependency_missing"',
+        'svc.preflightState !== "not_requested"',
+        'root.goodMissing(svc, 3, 2)',
+        'MEGAQML_QS_SHARED_STAGE_',
+        'console.log("MEGAQML_QS_UI_SHARED_OK")'):
+    assert token in shared_shell, token
+for token in ('root.material.setSection("overview")',
+              'root.waffle.setSection("overview")'):
+    assert token in shared_shell, token
+assert "mega-login" not in shared_shell
+assert 'operation: "connect_preflight"' not in shared_shell  # page owns it
+
 # Reuse the same temporary shared fixture builder with the independent race
 # shell; no production root or second CloudStorageService instance allowed.
 with tempfile.TemporaryDirectory(prefix="megaqml-race-unit-") as temp:

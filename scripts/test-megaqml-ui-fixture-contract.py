@@ -36,6 +36,18 @@ for kind, relative, replacement in (
             assert (fixture / "services/deferred" / name).read_bytes() == (
                 repo / "services/deferred" / name).read_bytes()
         assert (fixture / "services/Translation.qml").is_file()
+        if kind == "material":
+            assert "ContentPage 1.0 ContentPage.qml" in (
+                fixture / "modules/common/qmldir").read_text()
+            assert "StyledText 1.0 StyledText.qml" in (
+                fixture / "modules/common/widgets/qmldir").read_text()
+            assert not (fixture / "modules/waffle/settings/qmldir").exists()
+        else:
+            assert "WSettingsPage 1.0 WSettingsPage.qml" in (
+                fixture / "modules/waffle/settings/qmldir").read_text()
+            assert "WSettingsInfoBar 1.0 WSettingsInfoBar.qml" in (
+                fixture / "modules/waffle/settings/qmldir").read_text()
+            assert not (fixture / "modules/common/qmldir").exists()
         assert not (fixture / "scripts/native-dispatch").exists()
         assert not (fixture / "services/Config.qml").exists()
         assert not (fixture / "modules/settings/OverviewConfig.qml").exists()

@@ -26,6 +26,35 @@ ShellRoot {
         let detail = ""
         try { detail = String(root.component.errorString()).toLowerCase() }
         catch (ignored) { console.log("MEGAQML_QS_UI_CAUSE_NO_ERROR_API"); return }
+        // Fixed, exact known type names only; never emit raw errorString().
+        // Nested type errors are often more useful than the root's generic
+        // "CloudStorageConfig unavailable" / "WCloudStoragePage unavailable".
+        const typeHints = [
+            ["contentpage", "CONTENT_PAGE"],
+            ["settingstasknavigator", "TASK_NAVIGATOR"],
+            ["settingscardsection", "CARD_SECTION"],
+            ["settingsgroup", "SETTINGS_GROUP"],
+            ["styledcombobox", "STYLED_COMBO"],
+            ["settingsnote", "SETTINGS_NOTE"],
+            ["styledtext", "STYLED_TEXT"],
+            ["ripplebutton", "RIPPLE_BUTTON"],
+            ["wsettingspage", "W_SETTINGS_PAGE"],
+            ["wsettingscard", "W_SETTINGS_CARD"],
+            ["wsettingsdropdown", "W_SETTINGS_DROPDOWN"],
+            ["wsettingsinfobar", "W_INFO_BAR"],
+            ["wsettingsbutton", "W_SETTINGS_BUTTON"],
+            ["cloudstorageservice", "SHARED_SERVICE"],
+            ["translation", "TRANSLATION"],
+            ["appearance", "APPEARANCE"]
+        ]
+        for (const [typeName, fixedCode] of typeHints) {
+            if (detail.includes(typeName + " is not a type") ||
+                    detail.includes("type " + typeName + " unavailable") ||
+                    detail.includes(typeName + " unavailable")) {
+                console.log("MEGAQML_QS_UI_TYPE_" + fixedCode)
+                return
+            }
+        }
         if (detail.includes("non-existent default property") ||
                 detail.includes("nonexistent default property")) {
             console.log("MEGAQML_QS_UI_CAUSE_DEFAULT_PROPERTY")

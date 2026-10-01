@@ -5,7 +5,6 @@ Never import repository-wide services, spawn commands, or copy the production di
 The only executable supplied by the shell runner is its separate Python fake.
 """
 from pathlib import Path
-import shutil
 import sys
 
 if len(sys.argv) != 3 or sys.argv[1] not in ("material", "waffle"):
@@ -90,6 +89,21 @@ for path, contents in stub.items():
     if kind == "waffle" and "modules/common/" in path:
         continue
     write(path, contents)
+
+# Register the small stub module types explicitly so an isolated local
+# directory import resolves predictably without an ambient Hadalis import path.
+# These qmldir files and type stubs exist only under the disposable fixture.
+stub_directories = {}
+for relative in stub:
+    if kind == "material" and "modules/waffle/" in relative:
+        continue
+    if kind == "waffle" and "modules/common/" in relative:
+        continue
+    parent = str(Path(relative).parent)
+    stub_directories.setdefault(parent, []).append(Path(relative).name)
+for directory, filenames in stub_directories.items():
+    write(directory + "/qmldir", "".join(
+        Path(name).stem + " 1.0 " + name + "\n" for name in sorted(filenames)))
 
 if kind == "material":
     path = "modules/settings/CloudStorageConfig.qml"

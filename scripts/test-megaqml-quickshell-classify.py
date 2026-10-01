@@ -16,6 +16,26 @@ raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
 # Fixed stage tokens are emitted by the reviewed fixture only.
 # More specific fixed cause tokens precede the broad UI component stage.
 # Never echo Qt's original error string or local file paths.
+ui_types = (
+    ("content_page", "ui_type_content_page"),
+    ("task_navigator", "ui_type_task_navigator"),
+    ("card_section", "ui_type_card_section"),
+    ("settings_group", "ui_type_settings_group"),
+    ("styled_combo", "ui_type_styled_combo"),
+    ("settings_note", "ui_type_settings_note"),
+    ("styled_text", "ui_type_styled_text"),
+    ("ripple_button", "ui_type_ripple_button"),
+    ("w_settings_page", "ui_type_w_settings_page"),
+    ("w_settings_card", "ui_type_w_settings_card"),
+    ("w_settings_dropdown", "ui_type_w_settings_dropdown"),
+    ("w_info_bar", "ui_type_w_info_bar"),
+    ("w_settings_button", "ui_type_w_settings_button"),
+    ("shared_service", "ui_type_shared_service"),
+    ("translation", "ui_type_translation"),
+    ("appearance", "ui_type_appearance"),
+)
+matched_ui_type = next((category for token, category in ui_types
+                        if "megaqml_qs_ui_type_" + token in raw), None)
 ui_causes = (
     ("default_property", "ui_cause_default_property"),
     ("type_resolution", "ui_cause_type_resolution"),
@@ -43,7 +63,9 @@ ui_stages = (
 )
 matched_ui_stage = next((category for token, category in ui_stages
                          if "megaqml_qs_ui_stage_" + token in raw), None)
-if matched_ui_cause is not None:
+if matched_ui_type is not None:
+    kind = matched_ui_type
+elif matched_ui_cause is not None:
     kind = matched_ui_cause
 elif matched_ui_stage is not None:
     kind = matched_ui_stage

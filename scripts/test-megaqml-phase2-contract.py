@@ -149,6 +149,10 @@ for token in ("CloudStorageConfig.qml", "WCloudStoragePage.qml",
     assert token in ui_fixture_source
 assert "import qs." in ui_fixture_source  # rewritten only in temporary copy
 assert 'source.replace(before, after, 1)' in ui_fixture_source
+assert 'stub_directories = {}' in ui_fixture_source
+assert '" 1.0 " + name' in ui_fixture_source
+assert 'ContentPage 1.0 ContentPage.qml' in ui_fixture_contract
+assert 'WSettingsPage 1.0 WSettingsPage.qml' in ui_fixture_contract
 assert 'scripts/native-dispatch' in ui_fixture_contract
 assert 'PASS MegaQML isolated Material and Waffle UI source fixture contract' in ui_fixture_contract
 assert 'run_test megaqml_ui_component_fixture' in runner
@@ -163,6 +167,15 @@ for stage in ("SCENARIO", "PREFLIGHT", "COMPONENT", "CONSTRUCT",
 assert 'Qt.resolvedUrl(location)' in ui_shell
 assert 'Component.Loading' in ui_shell
 assert 'root.component.errorString()' in ui_shell
+for typ in ("CONTENT_PAGE", "W_SETTINGS_PAGE", "SHARED_SERVICE",
+            "TRANSLATION", "APPEARANCE", "W_INFO_BAR"):
+    assert '"MEGAQML_QS_UI_TYPE_" + fixedCode' in ui_shell
+    assert '"' + typ + '"' in ui_shell
+for category in ("ui_type_content_page", "ui_type_w_settings_page",
+                 "ui_type_shared_service", "ui_type_translation",
+                 "ui_type_w_info_bar"):
+    assert category in quickshell_classifier
+assert 'MEGAQML_QS_UI_TYPE_CONTENT_PAGE' in classifier_test
 for cause in ("DEFAULT_PROPERTY", "TYPE_RESOLUTION", "MISSING_IMPORT",
               "PROPERTY_ASSIGNMENT", "SINGLETON", "SYNTAX", "LOADING_TIMEOUT",
               "NO_ERROR_API", "NO_DETAIL", "ABSENT", "OTHER"):

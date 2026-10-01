@@ -1895,3 +1895,252 @@ production input change.
   lifecycle and
   rare old TOP/LEFT
   pointer drift.
+
+
+## Checkpoint — 2026-10-02 local inert geometry+motion PASS; private real-QML offscreen phase staged
+
+- Verified new SANITIZED, SOURCE-PINNED,
+  actually locally executed inert
+  geometry/motion receipt
+  `docs/wull-motion-inert-20261001T182922Z-d5584c0e-3e27fdeb5c43.json`
+  (`source_sha=3e27fdeb5c43b0a0cbad6c09f02c979bcaa4da07`):
+  separate static four-cubic band contract
+  PASS and nominal body motion/scale
+  arithmetic contract PASS. Static
+  43 bands/edge cover 3,006 of
+  6,992 unanimated body-box pixels
+  with inset. The source nominal
+  stretch=1 upper tip may reach
+  y=-0.4 relative to the TOP host
+  under the isolated authored
+  y-scale formula. Crucially
+  the published report states
+  ACTUAL Qt/QML transformation,
+  rendered Rust animation frames,
+  Niri region/hover, multioutput,
+  canonical validation and
+  production mask release were
+  NOT RUN. The distinct
+  historical TOP and LEFT
+  off-target pointer transients
+  remain open reliability
+  evidence despite new four-edge
+  separate static body
+  BBOX pointer PASSes.
+- A NEW isolated actual
+  unmodified-QML offscreen
+  fixture is source-staged:
+  `scripts/wull-fixtures/motion-geometry/shell.qml`
+  commit
+  `07c81fef4217f634a8a8910a1903a7d9007c878a`.
+  It loads the original
+  reviewed
+  `AbyssCompanion` and
+  `WaterDropletBody`
+  at all FOUR output
+  edges and THREE
+  parent scaling
+  configurations
+  0.65/1.0/1.5,
+  disables animation
+  ONLY inside the
+  offscreen fixture
+  to isolate the
+  nominal Qt transform
+  mapping and
+  samples both
+  neutral and
+  source-permitted
+  stretch=1 states
+  for 24 distinct
+  actual QML
+  measurements.
+  Real Qt
+  `mapToItem` for
+  item-to-host
+  body box and
+  path tip and
+  host-to-stage
+  parent scaling
+  are measured
+  jointly to
+  avoid the
+  previous
+  incomparable
+  scale1.5 body
+  versus UNSCALED
+  host dimensional
+  arithmetic.
+- New separate
+  private exact-source
+  runner
+  `scripts/wull-manual-offscreen-motion-geometry.py`
+  initial commit
+  `b12c5db4b4fac4609997d4eb544ec2054f9fe073`,
+  hardened
+  `9364ab83497111f4b02041f2657c1021ea56171b`.
+  It requires an
+  entirely NEW
+  current-user-owned
+  permission-0700
+  clean temporary
+  `dev` clone
+  and trusted
+  Git fetch/push
+  remote, pins
+  fixture and
+  original body,
+  wrapper, style,
+  Config/default
+  and unchanged
+  perimeter source
+  Git blob hashes;
+  launches a
+  PRIVATE D-Bus
+  `QT_QPA_PLATFORM=offscreen`
+  Quickshell only
+  after stripping
+  inherited
+  Wayland/Niri
+  socket and
+  QML override
+  environments.
+  Strictly requires
+  24 unique finite
+  pose rows,
+  checks all
+  source-measured
+  host geometry,
+  actual host
+  stage scaling
+  and recovers
+  consistent
+  tip/static/host
+  inclusion flags
+  from the private
+  numerical QML
+  data. If any
+  neutral baseline
+  geometry
+  regresses,
+  result is
+  INCONCLUSIVE,
+  not silently
+  accepted.
+  Publishes only
+  edge/scale
+  CATEGORICAL
+  stretch-inclusion
+  flags, source,
+  optional
+  normalized
+  Qt/Quickshell
+  version and
+  scope in
+  one uniquely
+  named sanitized
+  `docs/wull-qt-motion-*.json`
+  receipt, never
+  actual host
+  coordinates,
+  screen logs,
+  sockets or
+  screenshots.
+  Concurrent
+  Git retry
+  rebases only
+  that fresh
+  unpublished
+  private clone
+  receipt commit;
+  never the
+  maintainer's
+  potentially
+  divergent
+  checkout.
+- An independent
+  parser/negative
+  inert contract
+  `scripts/test-wull-offscreen-motion-geometry-contract.py`
+  source commit
+  `a71f105cc0420baff4b7cb808a6d4f3cd549d6aa`
+  source-pins
+  the fixture,
+  verifies
+  exact
+  24-pose
+  cross-product
+  and rejects
+  missing,
+  duplicated,
+  fabricated
+  booleans,
+  untrusted
+  numeric fields,
+  unexpected
+  private log
+  or
+  unsanitized
+  public
+  receipt
+  fields
+  without
+  launching
+  Qt or
+  any
+  pointer tool.
+  Detailed
+  scope/evidence
+  handoff in
+  `docs/WULL_NESTED_POINTER_ACCEPTANCE_DESIGN.md`
+  updated commit
+  `3f505c93ec5a802702bad5ad8f07ee868e74b4c6`.
+- **NEXT SINGLE LOCAL GATE:**
+  one new
+  permission-private
+  clean
+  throwaway `dev`
+  clone.
+  FIRST run
+  only
+  `python3 scripts/test-wull-offscreen-motion-geometry-contract.py`,
+  then ONE
+  explicit
+  `python3 scripts/wull-manual-offscreen-motion-geometry.py
+  --acknowledge-private-offscreen-qt-motion`.
+  Inspect
+  new distinct
+  exact-source
+  `docs/wull-qt-motion-*.json`
+  report before
+  any additional
+  physical
+  pointer,
+  animated
+  hover or
+  production
+  change. This
+  is ACTUAL
+  Qt frozen-pose
+  geometry only,
+  NOT a moving
+  SpringAnimation
+  envelope,
+  native Rust
+  state,
+  Wayland
+  input mask,
+  multioutput,
+  fractional
+  scale,
+  resource/lifecycle
+  or canonical
+  release gate.
+  Preserve
+  default-off,
+  existing
+  production
+  host mask,
+  backend
+  and
+  `stable`.

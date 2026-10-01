@@ -27,7 +27,7 @@ fetch_remote_dev() {
   remote_sha="$(git rev-parse FETCH_HEAD)"
 }
 fetch_remote_dev || { echo 'REMOTE_FETCH_FAILED'; exit 68; }
-if [[ "$remote_sha" != "$expected" ]] && ! wull_only_advance "$expected" "$remote_sha"; then
+if [[ "$remote_sha" != "$expected" ]] && ! wull_only_advance "$expected" "$remote_sha" && ! python3 scripts/test-megaqml-phase2p-history-guard.py "$expected" "$remote_sha" >/dev/null; then
   echo 'REMOTE_MISMATCH_UNREVIEWED'
   exit 68
 fi
@@ -58,6 +58,7 @@ run_test megaqml_fake_dispatch_fixture python3 scripts/test-megaqml-fake-dispatc
 run_test megaqml_ui_component_fixture python3 scripts/test-megaqml-ui-fixture-contract.py
 run_test megaqml_real_host_route_preflight python3 scripts/test-megaqml-host-route-contract.py
 run_test megaqml_real_host_fixture python3 scripts/test-megaqml-host-ui-fixture-contract.py
+run_test megaqml_race_repeat_contract bash scripts/test-megaqml-phase2p-contracts.sh
 # Optional actual Quickshell singleton creation; zero consumers and isolated
 # shell root. The fixture cannot resolve the production native-dispatch path.
 if command -v qs >/dev/null 2>&1 || command -v quickshell >/dev/null 2>&1; then
@@ -80,19 +81,20 @@ if command -v qs >/dev/null 2>&1 || command -v quickshell >/dev/null 2>&1; then
       run_test quickshell_ui_waffle bash scripts/test-megaqml-quickshell-smoke.sh ui-waffle
       run_test quickshell_ui_shared bash scripts/test-megaqml-quickshell-smoke.sh ui-shared
       run_test quickshell_ui_race bash scripts/test-megaqml-quickshell-smoke.sh ui-race
+      run_test megaqml_race_repeatability bash scripts/test-megaqml-race-repeat.sh
       run_test quickshell_ui_host bash scripts/test-megaqml-quickshell-smoke.sh ui-host
     else
-      for case_name in quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle quickshell_ui_shared quickshell_ui_race quickshell_ui_host; do
+      for case_name in quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle quickshell_ui_shared quickshell_ui_race megaqml_race_repeatability quickshell_ui_host; do
         printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
       done
     fi
   else
-    for case_name in quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle quickshell_ui_shared quickshell_ui_race quickshell_ui_host; do
+    for case_name in quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle quickshell_ui_shared quickshell_ui_race megaqml_race_repeatability quickshell_ui_host; do
       printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
     done
   fi
 else
-  for case_name in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle quickshell_ui_shared quickshell_ui_race quickshell_ui_host; do
+  for case_name in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle quickshell_ui_shared quickshell_ui_race megaqml_race_repeatability quickshell_ui_host; do
     printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
   done
 fi
@@ -181,11 +183,11 @@ else
     printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
   done
 fi
-report="docs/evidence/megaqml/phase2o-${source_sha:0:12}-$(date -u +%Y%m%dT%H%M%SZ).md"
+report="docs/evidence/megaqml/phase2p-${source_sha:0:12}-$(date -u +%Y%m%dT%H%M%SZ).md"
 mkdir -p docs/evidence/megaqml
 {
-  printf '# MegaQML Phase 2o real host isolated Loader lifecycle evidence\n\nSource SHA: `%s`\n\n' "$source_sha"
-  printf 'Scope: Full Phase 2n 36-case regression plus the exact real SettingsPageHost and full Material Cloud Storage page bodies executed together with temporary inert widget/service stubs, copied original pure loading JS and fake Python static dispatcher. The new isolated host checks cache revisit, loadEnabled reset and reopen; no production shell or real vendor. No full Hadalis render, installed vendor execution or account operations.\n\n'
+  printf '# MegaQML Phase 2p repeated synthetic race evidence\n\nSource SHA: `%s`\n\n' "$source_sha"
+  printf 'Scope: Phase 2o regression plus eight independent fake-only Quickshell race attempts and a strictly verified source/evidence ancestry guard. A single failed attempt fails the matrix. No full Hadalis UI or real vendor, account or mutation actions.\n\n'
   printf 'qt_formatter_selection=%s;version_major_minor=%s\n\n' "$qt_formatter_selection" "$qt_public_version"
   printf '| Test | Result | Exit code | Source SHA |\n|---|---|---:|---|\n'
   while IFS=, read -r name state code sha; do
@@ -208,7 +210,10 @@ mkdir -p docs/evidence/megaqml
   elif grep -q '^qml_minimal,SKIP,' "$scratch/safe.csv"; then
     echo 'qml_blocker=qmlformat_unavailable'
   fi
-  for qs_case in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle quickshell_ui_shared quickshell_ui_race quickshell_ui_host; do
+  if grep -qE "^megaqml_race_repeatability,(PASS|FAIL)," "$scratch/safe.csv"; then
+    grep -E "^race_repeat_(attempts|passes|first_failure|failure_category)=(8|[0-8]|[a-z_]+)$" "$scratch/megaqml_race_repeatability.raw" || true
+  fi
+  for qs_case in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle quickshell_ui_shared quickshell_ui_race megaqml_race_repeatability quickshell_ui_host; do
     if grep -q "^${qs_case},FAIL," "$scratch/safe.csv"; then
       # The local smoke helper prints only allowlisted diagnostics.
       grep '^quickshell_smoke_category=' "$scratch/$qs_case.raw" || true
@@ -238,7 +243,7 @@ fi
 # publication. Fast-forward only the reviewed Wull-only remote ancestry.
 fetch_remote_dev || { echo 'PUBLICATION_SKIPPED_REMOTE_FETCH'; exit 69; }
 if [[ "$remote_sha" != "$(git rev-parse HEAD)" ]]; then
-  if ! wull_only_advance "$source_sha" "$remote_sha"; then
+  if ! wull_only_advance "$source_sha" "$remote_sha" && ! python3 scripts/test-megaqml-phase2p-history-guard.py "$source_sha" "$remote_sha" >/dev/null; then
     echo 'PUBLICATION_SKIPPED_REMOTE_MOVED_UNREVIEWED'
     exit 69
   fi
@@ -259,7 +264,7 @@ if [[ "$(git diff --cached --name-only)" != "$report" ]] || ! git diff --cached 
   git reset --quiet -- "$report"
   echo 'PUBLICATION_SKIPPED_INDEX'; exit "$failed"
 fi
-if ! git commit --quiet -m "test(megaqml): Phase 2o real SettingsPageHost isolated lifecycle smoke evidence ${source_sha:0:12}" -- "$report"; then
+if ! git commit --quiet -m "test(megaqml): Phase 2p repeated synthetic race evidence ${source_sha:0:12}" -- "$report"; then
   echo 'PUBLICATION_SKIPPED_COMMIT'; exit "$failed"
 fi
 evidence_sha="$(git rev-parse HEAD)"

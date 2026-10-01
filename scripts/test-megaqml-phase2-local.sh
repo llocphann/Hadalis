@@ -167,7 +167,7 @@ mkdir -p docs/evidence/megaqml
   if [[ "$failed" != 0 ]]; then
     echo 'Aggregate: FAIL (one or more executed required/new-source tests).'
   elif [[ "$qt_unqualified" != 0 ]]; then
-    echo 'Aggregate: PASS (executed required tests); QML parsing UNQUALIFIED due to baseline/tool failure.'
+    echo 'Aggregate: PASS (executed required tests); optional Qt/Quickshell baseline or environment UNQUALIFIED.'
   elif grep -q ',SKIP,' "$scratch/safe.csv"; then
     echo 'Aggregate: PASS (executed tests); some tests SKIPPED/UNQUALIFIED.'
   else

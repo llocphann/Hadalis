@@ -63,4 +63,52 @@ for(const [payload,id] of [
     [JSON.stringify(good())+"\n"+JSON.stringify(good()),"test-id"],
     ["x".repeat(65537),"test-id"]
 ]) { assert.throws(() => parse(payload,id)); count++; }
+// A preflight is opt-in and static; it must never be parsed as a live session.
+const preflight = vm.runInNewContext(
+    fs.readFileSync(path.join(__dirname,
+        "../services/deferred/CloudStoragePreflightProtocol.js"), "utf8")
+    + "\\nparseConnectPreflightResponse", Object.create(null), {timeout: 2000});
+const readyPreflight = () => ({
+    protocol: 1, request_id: "preflight-test", ok: true, error: null,
+    result: {
+        adapter: "inir-mega", probe_kind: "static_connect_preflight",
+        vendor_execution: "blocked_pending_disposable_qualification",
+        connection_attempted: false, connected: false, auth_qualified: false,
+        account_reads_enabled: false, dependencies_ready: true,
+        reason: "installed_vendor_not_qualified"
+    }
+});
+assert.equal(preflight(JSON.stringify(readyPreflight()), "preflight-test")
+    .dependenciesReady, true);
+const unavailablePreflight = readyPreflight();
+unavailablePreflight.result.dependencies_ready = false;
+unavailablePreflight.result.reason = "dependency_missing";
+assert.equal(preflight(JSON.stringify(unavailablePreflight()), "preflight-test")
+    .dependenciesReady, false);
+let preflightCases = 2;
+for (const modify of [
+    x=>x.request_id="preflight-old",
+    x=>x.protocol=2,
+    x=>x.ok=false,
+    x=>x.error={kind:"FAIL"},
+    x=>x.result.connected=true,
+    x=>x.result.connection_attempted=true,
+    x=>x.result.auth_qualified=true,
+    x=>x.result.account_reads_enabled=true,
+    x=>x.result.vendor_execution="auth_transport_enabled",
+    x=>x.result.reason="ready_to_authenticate",
+    x=>x.result.dependencies_ready=false,
+    x=>x.result.private_path="/private/sensitive/path",
+    x=>x.result.probe_kind="vendor_connected"
+]) {
+    const specimen = readyPreflight(); modify(specimen);
+    assert.throws(() => preflight(JSON.stringify(specimen), "preflight-test"));
+    preflightCases++;
+}
+assert.throws(() => preflight(JSON.stringify(readyPreflight())
+    + JSON.stringify(readyPreflight()), "preflight-test")); preflightCases++;
+assert.throws(() => preflight("x".repeat(65537), "preflight-test")); preflightCases++;
+console.log("PASS MegaQML F1 vendor-free preflight parser: "
+    + preflightCases + " synthetic cases");
+
 console.log("PASS MegaQML static protocol: "+count+" synthetic cases");

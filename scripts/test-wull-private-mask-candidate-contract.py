@@ -91,7 +91,7 @@ with tempfile.TemporaryDirectory(prefix="wull-candidate-inert-") as tmp:
 assert parent["REVIEWED"]["scripts/wull-private-mask-candidate.py"] == (
     "91049b2ca2beb7b1936af624adca5133d251ea3c")
 assert parent["REVIEWED"]["scripts/wull-manual-pointer-child.py"] == (
-    "424de561d81f027dbc73e29fb8599e99b4f1d571")
+    "5f2f9ec54546193cd3acfdb98a5f3db621174450")
 source_parent = PARENT.read_text(encoding="utf-8")
 source_child = CHILD.read_text(encoding="utf-8")
 for marker in (
@@ -110,6 +110,9 @@ for marker in (
     'candidate_empty_margin_pass_through',
     'candidate_body_real_bridge_and_rust',
     'candidate_exterior_underlay_control',
+    'after_baseline_unmap_exterior_underlay_control',
+    'post_baseline_unmap_pointer_target_unverified',
+    'nested_output_geometry_changed_before_injection',
     'baseline_to_candidate_cleanup_unproven',
     '"WULL_PRIVATE_POINTER_MODE"',
     '"candidate-mask-bottom"',

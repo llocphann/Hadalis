@@ -1132,3 +1132,78 @@ production input change.
   visuals/popup, multioutput/hotplug/scale,
   long-run/lifecycle and canonical-wide validation
   remain unchanged/unqualified.
+
+
+## Checkpoint — 2026-10-02 real bottom PASS; right independent A/B now staged
+
+- New exact-source independently real PASS on
+  `docs/wull-mask-bottom-20261001T173542Z-10d599c4-9ac701f650dc.json`,
+  source `9ac701f650dce381487fa00a56f24520c5c83289`,
+  **BOTTOM** dynamic private BBOX candidate scale=1
+  on one verified newly owned Niri output with forced
+  absolute native wdotool. Every expected baseline,
+  post-baseline-unmap target witness and independent
+  candidate exterior, bridge/real-Rust body and
+  positive empty-margin pass-through check passed.
+  The old production full-host margin remained
+  blocked; true Wull body responses never leaked
+  to the underlay; all owned layers, private Rust
+  processes and the nested compositor stopped,
+  and host outputs were unchanged. The distinct
+  latest dynamic TOP private candidate real PASS
+  remains `docs/wull-mask-candidate-20261001T173129Z-ce33db3c-8efa0b7d7341.json`.
+  The previous dynamic TOP off-target
+  INCONCLUSIVE trial and its categorical
+  two-axis drift evidence remain unresolved
+  reliability observations, not proof that
+  new wdotool timing fixes are necessary.
+- Dedicated right-side private trial has been
+  SOURCE-STAGED, **not physically executed**.
+  Original source-measured right host/BBOX is
+  98x112 / (x=3,y=18,w=92,h=76), already
+  pure geometry-checked by the existing four-edge
+  inert helper; the existing PRIVATE dynamic
+  source generator selects a centered 92x76
+  side-edge rectangle. New child commit
+  `555d735f2a99fd18b7588d757810c009e5ebfea2`
+  adds ONLY `candidate-mask-right` explicit
+  mode using the same guarded actual production
+  host, exact-coordinate underlay controls and
+  real Rust body response. Parent commit
+  `a86e2284907207bb0811a820298e5bd57bcfd3ed`
+  pins the new child blob, advances audited
+  parent revision count from 12 to 13,
+  adds the explicit
+  `--acknowledge-nested-pointer-candidate-right`
+  option and publishes a new separate
+  `docs/wull-mask-right-*.json` scope/receipt
+  without modifying top/bottom/production modes.
+  Updated inert contracts are commits
+  `ef65b9483b78cba5b6f0c7bcbff55593cd7078dc`
+  and `b627e658fb4e4a53dc07a967c0d19a96c96d45f1`.
+  Full technical acceptance history is in
+  `docs/WULL_NESTED_POINTER_ACCEPTANCE_DESIGN.md`
+  updated `674879bebb8c660fda55ebd5380d3fda28fe1285`.
+- **NEXT SINGLE LOCAL GATE**: from fresh
+  permission-private clean dev clone, run
+  four existing inert Wull pointer contracts
+  first and then ONLY the new explicit
+  RIGHT dynamic private candidate A/B
+  on its own newly owned nested Niri.
+  Require unique source-pin and full parent
+  production dependency audit, observed
+  absolute native backend, eight real witness
+  checks, cleanup and publication of a
+  distinct sanitized
+  `docs/wull-mask-right-*.json` receipt.
+  Do not automatically try LEFT yet:
+  first read, validate and debug the independent
+  RIGHT result. If positional witness misses,
+  classify as INCONCLUSIVE and do not mislabel
+  as production-mask defect or silently retry.
+  Stable and shipped production Region/default-off
+  remain unchanged. LEFT physical trial,
+  nonrectangular silhouette, popups/hover,
+  live visual/multioutput/fractional scale,
+  suspend/reload/hotplug/lifecycle and
+  canonical-wide qualification are pending.

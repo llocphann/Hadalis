@@ -486,3 +486,76 @@ as of this checkpoint. Do not promote this provisional BBOX
 to shipped production while bottom/right/left live pointer,
 hover/popup, host visual quality, true multioutput/lifecycle
 and canonical-wide gates remain outstanding.
+
+
+## Follow-up: new top A/B run is INCONCLUSIVE on first candidate exterior witness
+
+The temporary-clone run has produced a new real,
+unique exact-source report
+`docs/wull-mask-candidate-20261001T170950Z-105fd7a8-1518db798d10.json`,
+source `1518db798d1012592cdbceb29115cceb72cffd9b`,
+overall **INCONCLUSIVE**. The full-host production
+disabled-center and enabled-exterior controls both aligned
+with the requested coordinates, and its enabled body
+click reached both the production bridge and the real
+private Rust daemon. The old full-host empty margin
+remained blocked. After destroying the old production
+stage and remapping the private BBOX candidate in the
+SAME nested output, the FIRST candidate enabled-exterior
+underlay click occurred at an **off-target** location.
+No candidate body, margin or bottom-edge measurements
+were performed in this new run. All private layers,
+Rust processes and nested Niri were cleaned, and host
+output count remained unchanged.
+
+This outcome does NOT overturn the separately
+source-pinned top-edge private-mask PASS from
+`124f02155679949e60a810e54a9c216fbfd2fabe`,
+but does require investigation of physical pointer
+repeatability across stage remapping before using
+the newer dynamic BBOX generator to qualify bottom.
+Do not label an off-target *underlay* click a Wull
+mask defect. Do not increase positional tolerance
+or silently retry until a flaky first event disappears
+and then mark the run PASS.
+
+New read-only, source-only retrospective helper
+`scripts/wull-private-pointer-drift-diagnostic.py`
+(created `55907217e8e1a18d9ae74cc5b129578db45f1aa8`,
+receipt-symlink check fixed
+`a0f1e06f2f934298312e19a2df74563e604bc395`)
+takes that ONE sanitized report and finds its
+private exact-run underlay log by the report's
+random session ID in the current user's
+`XDG_STATE_HOME/hadalis/wull-pointer-<id>`
+(or `~/.local/state`). It requires the exact
+five-check observed sequence, exactly three
+real left-click underlay witnesses, valid
+same-source suffix and the forced native wdotool
+backend. It compares the first production exterior
+witness and the candidate exterior witness,
+which deliberately share the **same** requested
+coordinates, and returns only horizontal/vertical
+direction categories and a coarse maximum-offset
+bucket. It also checks whether the candidate
+event landed near the earlier disabled-center
+witness, a possible stale-event indicator.
+No absolute mouse coordinates, raw log or private
+environment data enter GitHub. The helper does
+NOT move the pointer, run Quickshell or change
+the checkout. Independent synthetic/parser tests
+were added in
+`06c640e1ee1385e75524c6c3eb2a3650c2ffa031`.
+
+NEXT: obtain this read-only categorical
+diagnostic from the maintainer's **existing**
+private log. If the log is missing or the
+witness count is ambiguous, keep the result
+INCONCLUSIVE and design a new explicit
+bounded isolated pointer instrumentation,
+not a blind repeated full-suite retry.
+Avoid speculative timing or driver workarounds
+until that evidence exists. The existing
+bottom-edge candidate source remains STAGED,
+not physically qualified. Production region,
+default-off and `stable` remain unchanged.

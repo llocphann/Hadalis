@@ -17,6 +17,10 @@ raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
 # More specific fixed cause tokens precede the broad UI component stage.
 # Never echo Qt's original error string or local file paths.
 ui_runtime = (
+    ("page_gone", "ui_runtime_page_gone"),
+    ("page_hidden", "ui_runtime_page_hidden"),
+    ("lease_service_mismatch", "ui_runtime_lease_service_mismatch"),
+    ("lease_not_activated", "ui_runtime_lease_not_activated"),
     ("page_lease_absent", "ui_runtime_page_lease_absent"),
     ("service_consumers_zero", "ui_runtime_service_consumers_zero"),
     ("service_consumers_multiple", "ui_runtime_service_consumers_multiple"),

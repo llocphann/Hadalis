@@ -12,6 +12,16 @@ ShellRoot {
     property var component: null
     property real componentStarted: 0
     property real started: 0
+    property bool createdOnce: false
+    // The real Settings pages are child Items of an onscreen Settings
+    // container. An unparented dynamic QtQuick Item is not an equivalent
+    // lifecycle fixture, even when its own visible flag is set to true.
+    Item {
+        id: pageHost
+        visible: true
+        width: 1024
+        height: 768
+    }
     // Inspect local error strings without ever logging their raw contents,
     // which may contain private file paths or environment-specific details.
     function emitComponentCause() {
@@ -82,8 +92,14 @@ ShellRoot {
     // Report only reviewed state labels; never include QML paths,
     // process stderr, account data or raw service errors in the report.
     function emitDeadlineCause(svc) {
-        if (root.page === null || !root.page.leaseHeld) {
-            console.log("MEGAQML_QS_UI_RUNTIME_PAGE_LEASE_ABSENT")
+        if (root.page === null) {
+            console.log("MEGAQML_QS_UI_RUNTIME_PAGE_GONE")
+        } else if (!root.page.visible) {
+            console.log("MEGAQML_QS_UI_RUNTIME_PAGE_HIDDEN")
+        } else if (!root.page.leaseHeld) {
+            console.log(svc.consumerCount > 0
+                ? "MEGAQML_QS_UI_RUNTIME_LEASE_SERVICE_MISMATCH"
+                : "MEGAQML_QS_UI_RUNTIME_LEASE_NOT_ACTIVATED")
         } else if (svc.consumerCount === 0) {
             console.log("MEGAQML_QS_UI_RUNTIME_SERVICE_CONSUMERS_ZERO")
         } else if (svc.consumerCount !== 1) {
@@ -120,6 +136,12 @@ ShellRoot {
                 return
             }
             if (root.page === null) {
+                if (root.createdOnce) {
+                    console.log("MEGAQML_QS_UI_RUNTIME_PAGE_GONE")
+                    console.log("MEGAQML_QS_UI_INVALID")
+                    Qt.quit()
+                    return
+                }
                 if (svc.consumerCount !== 0 || svc.requestSerial !== 0
                         || svc.backendState !== "not_checked") {
                     console.log("MEGAQML_QS_UI_STAGE_PREFLIGHT")
@@ -145,7 +167,7 @@ ShellRoot {
                     Qt.quit()
                     return
                 }
-                const page = root.component.createObject(null, { visible: false, width: 1024 })
+                const page = root.component.createObject(pageHost, { visible: false, width: 1024 })
                 if (!page) {
                     console.log("MEGAQML_QS_UI_STAGE_CONSTRUCT")
                     console.log("MEGAQML_QS_UI_INVALID")
@@ -153,6 +175,7 @@ ShellRoot {
                     return
                 }
                 root.page = page
+                root.createdOnce = true
                 const expectedIndex = root.kind === "material" ? 36 : 19
                 if (page.settingsPageIndex !== expectedIndex
                         || page.leaseHeld || page.activeSection !== "overview"
@@ -172,6 +195,19 @@ ShellRoot {
                 }
                 root.started = Date.now()
                 page.visible = true
+                return
+            }
+            // An explicit parent and a genuine visibility transition should
+            // activate a page lease. Fail early rather than hiding a missing
+            // onVisibleChanged event behind an eight-second detect deadline.
+            if (Date.now() - root.started >= 600 && !root.page.leaseHeld) {
+                console.log(!root.page.visible
+                    ? "MEGAQML_QS_UI_RUNTIME_PAGE_HIDDEN"
+                    : (svc.consumerCount > 0
+                        ? "MEGAQML_QS_UI_RUNTIME_LEASE_SERVICE_MISMATCH"
+                        : "MEGAQML_QS_UI_RUNTIME_LEASE_NOT_ACTIVATED"))
+                console.log("MEGAQML_QS_UI_INVALID")
+                Qt.quit()
                 return
             }
             if (svc.backendState === "dependency_missing" && !svc.readBusy) {

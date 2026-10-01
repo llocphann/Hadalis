@@ -73,6 +73,14 @@ cases = (
      "ui-material", "ui_runtime_service_unavailable"),
     ("MEGAQML_QS_UI_RUNTIME_NO_REQUEST", "ui-material", "ui_runtime_no_request"),
     ("MEGAQML_QS_UI_RUNTIME_UNEXPECTED_STATE", "ui-material", "ui_runtime_unexpected_state"),
+    ("MEGAQML_QS_UI_RUNTIME_PAGE_GONE /home/private",
+     "ui-material", "ui_runtime_page_gone"),
+    ("MEGAQML_QS_UI_RUNTIME_PAGE_HIDDEN /home/private",
+     "ui-waffle", "ui_runtime_page_hidden"),
+    ("MEGAQML_QS_UI_RUNTIME_LEASE_SERVICE_MISMATCH password=secret",
+     "ui-material", "ui_runtime_lease_service_mismatch"),
+    ("MEGAQML_QS_UI_RUNTIME_LEASE_NOT_ACTIVATED /home/private",
+     "ui-waffle", "ui_runtime_lease_not_activated"),
     ("", "baseline", "no_diagnostic_output"),
 )
 with tempfile.TemporaryDirectory(prefix="megaqml-classifier-") as temp:

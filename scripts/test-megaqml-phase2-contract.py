@@ -167,6 +167,18 @@ for stage in ("SCENARIO", "PREFLIGHT", "COMPONENT", "CONSTRUCT",
 assert 'Qt.resolvedUrl(location)' in ui_shell
 assert 'Component.Loading' in ui_shell
 assert 'root.emitDeadlineCause(svc)' in ui_shell
+assert 'id: pageHost' in ui_shell
+assert 'root.component.createObject(pageHost, { visible: false, width: 1024 })' in ui_shell
+assert 'root.createdOnce = true' in ui_shell
+assert 'Date.now() - root.started >= 600 && !root.page.leaseHeld' in ui_shell
+for category in ("ui_runtime_page_gone", "ui_runtime_page_hidden",
+                 "ui_runtime_lease_service_mismatch",
+                 "ui_runtime_lease_not_activated"):
+    assert category in quickshell_classifier
+for marker in ("PAGE_GONE", "PAGE_HIDDEN", "LEASE_SERVICE_MISMATCH",
+               "LEASE_NOT_ACTIVATED"):
+    assert 'MEGAQML_QS_UI_RUNTIME_' + marker in ui_shell
+assert 'MEGAQML_QS_UI_RUNTIME_LEASE_NOT_ACTIVATED' in classifier_test
 assert 'Date.now() - root.started >= 8500' in ui_shell
 for runtime_code in ("PAGE_LEASE_ABSENT", "SERVICE_CONSUMERS_ZERO", "NO_REQUEST",
                      "SERVICE_UNAVAILABLE", "CHECKING_BUSY", "UNEXPECTED_STATE"):

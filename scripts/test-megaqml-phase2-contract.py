@@ -53,7 +53,7 @@ assert 'qml_minimal' in runner and 'qml_modern_syntax' in runner and 'qml_blocke
 assert '/usr/lib/qt6/bin/qmlformat qmlformat6 qmlformat' in runner
 assert 'qt_formatter_selection=' in runner and 'version_major_minor=' in runner
 assert 'modern_probe_pass' in runner and 'fallback_probe_unqualified' in runner
-assert 'docs/evidence/megaqml/phase2m-' in runner
+assert 'docs/evidence/megaqml/phase2n-' in runner
 quickshell_runner = get("scripts/test-megaqml-quickshell-smoke.sh")
 quickshell_base = get("scripts/megaqml-fixtures/runtime-baseline/shell.qml")
 quickshell_dormant = get("scripts/megaqml-fixtures/runtime-dormant/shell.qml")
@@ -157,6 +157,14 @@ assert 'ContentPage 1.0 ContentPage.qml' in ui_fixture_contract
 assert 'WSettingsPage 1.0 WSettingsPage.qml' in ui_fixture_contract
 assert 'scripts/native-dispatch' in ui_fixture_contract
 assert 'PASS MegaQML isolated Material and Waffle UI source fixture contract' in ui_fixture_contract
+host_preflight = get("scripts/test-megaqml-host-route-contract.py")
+assert 'run_test megaqml_real_host_route_preflight python3 scripts/test-megaqml-host-route-contract.py' in runner
+for route in ("settings.qml", "SettingsOverlay.qml", "SettingsFocus.qml",
+              "SettingsPageHost.qml", "waffleSettings.qml", "WSettingsContent.qml"):
+    assert route in host_preflight
+assert 'PASS MegaQML real Settings host route source-only preflight' in host_preflight
+assert 'connected: false' in host_preflight
+assert 'liveAuthQualified: false' in host_preflight
 assert 'kind == "shared"' in ui_fixture_source
 assert 'megaqml-shared-unit-' in ui_fixture_contract
 assert 'PASS isolated MegaQML shared source-only UI fixture' in ui_fixture_contract
@@ -286,9 +294,10 @@ assert 'export PATH="$work/allowed-bin"' in quickshell_runner
 assert 'cp -- scripts/megaqml-fixtures/fake-static-dispatch.py' in quickshell_runner
 # This complete runner publishes Phase 2m evidence. The focused
 # standalone loader runner intentionally retains the historical 2k prefix.
-assert 'docs/evidence/megaqml/phase2m-' in runner
+assert 'docs/evidence/megaqml/phase2n-' in runner
 assert 'docs/evidence/megaqml/phase2k-' not in runner
 assert 'docs/evidence/megaqml/phase2l-' not in runner
+assert 'docs/evidence/megaqml/phase2m-' not in runner
 # Full requalification must tolerate only independently reviewed Wull commits
 # on shared dev and fail closed on unrelated concurrent source changes.
 assert 'wull_only_advance()' in runner
@@ -327,4 +336,4 @@ for allowlisted in ('docs/wull-*', 'scripts/wull-*', 'scripts/test-wull-*',
     assert allowlisted in focused
 assert 'scripts/native-dispatch' not in focused
 assert 'mega-login' not in focused
-print("PASS MegaQML Phase 2m static source contract")
+print("PASS MegaQML Phase 2n static source contract")

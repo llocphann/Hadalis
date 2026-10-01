@@ -56,6 +56,7 @@ run_test megaqml_static_protocol node scripts/test-megaqml-phase2-protocol.mjs
 run_test megaqml_quickshell_diagnostics python3 scripts/test-megaqml-quickshell-classifier-contract.py
 run_test megaqml_fake_dispatch_fixture python3 scripts/test-megaqml-fake-dispatch-contract.py
 run_test megaqml_ui_component_fixture python3 scripts/test-megaqml-ui-fixture-contract.py
+run_test megaqml_real_host_route_preflight python3 scripts/test-megaqml-host-route-contract.py
 # Optional actual Quickshell singleton creation; zero consumers and isolated
 # shell root. The fixture cannot resolve the production native-dispatch path.
 if command -v qs >/dev/null 2>&1 || command -v quickshell >/dev/null 2>&1; then
@@ -178,11 +179,11 @@ else
     printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
   done
 fi
-report="docs/evidence/megaqml/phase2m-${source_sha:0:12}-$(date -u +%Y%m%dT%H%M%SZ).md"
+report="docs/evidence/megaqml/phase2n-${source_sha:0:12}-$(date -u +%Y%m%dT%H%M%SZ).md"
 mkdir -p docs/evidence/megaqml
 {
-  printf '# MegaQML Phase 2m adversarial shared Cloud Storage UI component evidence\n\nSource SHA: `%s`\n\n' "$source_sha"
-  printf 'Scope: Phase 2l regression plus adversarial delayed fake installed replies across two real page bodies in one copied service. Close one consumer while a read is pending, queue a refresh, release the final old consumer, reacquire a new page, reject stale replies and verify a third missing snapshot. All unrelated visuals remain isolated stubs. No full Hadalis render, installed vendor execution or account operations.\n\n'
+  printf '# MegaQML Phase 2n real Settings host route preflight evidence\n\nSource SHA: `%s`\n\n' "$source_sha"
+  printf 'Scope: Full Phase 2m synthetic 35-case regression, plus read-only source preflight of real Material/ii, Abyss overlay and SettingsFocus host routes and the independent Waffle Settings Loader. The new host preflight does not execute the full Hadalis UI or prove real widget rendering; all Quickshell runtime tests retain inert visual stubs. No full Hadalis render, installed vendor execution or account operations.\n\n'
   printf 'qt_formatter_selection=%s;version_major_minor=%s\n\n' "$qt_formatter_selection" "$qt_public_version"
   printf '| Test | Result | Exit code | Source SHA |\n|---|---|---:|---|\n'
   while IFS=, read -r name state code sha; do
@@ -256,7 +257,7 @@ if [[ "$(git diff --cached --name-only)" != "$report" ]] || ! git diff --cached 
   git reset --quiet -- "$report"
   echo 'PUBLICATION_SKIPPED_INDEX'; exit "$failed"
 fi
-if ! git commit --quiet -m "test(megaqml): Phase 2m isolated delayed shared-page race smoke evidence ${source_sha:0:12}" -- "$report"; then
+if ! git commit --quiet -m "test(megaqml): Phase 2n real Settings host route preflight smoke evidence ${source_sha:0:12}" -- "$report"; then
   echo 'PUBLICATION_SKIPPED_COMMIT'; exit "$failed"
 fi
 evidence_sha="$(git rev-parse HEAD)"

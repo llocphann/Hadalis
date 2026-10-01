@@ -23,11 +23,12 @@ run_test() {
 }
 run_test megaqml_phase2_contract python3 scripts/test-megaqml-phase2-contract.py
 run_test settings_navigation python3 scripts/test-settings-information-architecture.py
+run_test megaqml_static_protocol node scripts/test-megaqml-phase2-protocol.mjs
 report="docs/evidence/megaqml/phase2a-${source_sha:0:12}-$(date -u +%Y%m%dT%H%M%SZ).md"
 mkdir -p docs/evidence/megaqml
 {
   printf '# MegaQML Phase 2a synthetic local evidence\n\nSource SHA: `%s`\n\n' "$source_sha"
-  printf 'Scope: static source contracts only. No vendor process, account, QML rendering or live acceptance.\n\n'
+  printf 'Scope: static source contracts and synthetic parser cases only. No vendor process, account, QML rendering or live acceptance.\n\n'
   printf '| Test | Result | Exit code | Source SHA |\n|---|---|---:|---|\n'
   while IFS=, read -r name state code sha; do
     printf '| %s | %s | %s | %s |\n' "$name" "$state" "$code" "$sha"

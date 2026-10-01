@@ -1,5 +1,7 @@
 # Cloud Storage — MEGAcmd ↔ Rust ↔ QML implementation
 
+> **Phase 2b (2026-10-01, source only):** Static detection now uses an allowlisted pure JS parser with adversarial Node fixtures. Exact request ID/protocol, fake-qualified auth-but-live-disabled, no secret argv, no Python fallback, binary consistency and discarded paths are enforced. Synthetic local run and rendered QML still require evidence; no live MEGA actions are enabled.
+
 > **Phase 2a source scaffold (2026-10-01; QML runtime pending):** A dormant static-only CloudStorageService, a ten-route Settings shell visible for ii/Abyss/Waffle, search, translations and focused static source tests were added. Backend remains detect-only for UI: Connect, auth credentials, account reads and all writes are withheld. No live MEGA, installed-version acceptance or rendered UI PASS is claimed.
 
 > **Implementation authorization (2026-10-01):** maintainer authorized design and source implementation on `dev`. Historical “research only” statements below describe the evidence state when written and no longer prohibit QML/Rust/source work for this task. Live account/data actions remain gated to an explicitly permitted disposable environment.

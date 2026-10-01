@@ -17,8 +17,10 @@ assert 'settingsPageIndex: 36' in p and 'activateSettingsSearchSection' in p
 assert 'registerConsumer()' in p and 'unregisterConsumer()' in p
 for route in ("overview", "drive", "transfers", "sync", "backups", "sharing", "contacts", "mounts", "security", "preferences"):
     assert 'key:"' + route + '"' in p, route
-assert 'operation: "detect"' in s and 'static_no_vendor_execution' in s
-assert 'request_id !== root._pendingId' in s
+assert 'operation: "detect"' in s and 'StaticProtocol.parseDetectResponse(payload, root._pendingId)' in s
+assert 'import "CloudStorageStaticProtocol.js" as StaticProtocol' in s
+assert 'root.dependencySnapshot = null' in s
+assert 'root._pendingId' in s
 assert 'root._pendingGeneration === root.generation' in s
 assert 'readonly property bool connected: false' in s
 assert 'readonly property bool liveAuthQualified: false' in s

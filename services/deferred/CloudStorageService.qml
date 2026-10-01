@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "CloudStorageStaticProtocol.js" as StaticProtocol
 
 // Dormant, static-only phase. Never execute a vendor client before Connect.
 Singleton {
@@ -48,6 +49,7 @@ Singleton {
         root.readBusy = true
         root.safeError = ""
         root.backendState = "checking"
+        root.dependencySnapshot = null
         root._pendingGeneration = root.generation
         root._pendingId = "cloud-detect-" + (++root.requestSerial)
         root._pendingInput = JSON.stringify({
@@ -60,39 +62,21 @@ Singleton {
     function finishRead(exitCode, payload) {
         root.readBusy = false
         if (root.consumerCount > 0 && root._pendingGeneration === root.generation) {
-            // An invalid or oversized reply never becomes a plausible success.
-            if (exitCode !== 0 || payload.length > 65536) {
+            if (exitCode !== 0) {
+                root.dependencySnapshot = null
                 root.backendState = "unavailable"
-                root.safeError = "Rust helper unavailable or response too large."
+                root.safeError = "Rust helper failed before static detection completed."
             } else {
                 try {
-                    const reply = JSON.parse(payload)
-                    const result = reply.result
-                    if (reply.protocol !== 1 || reply.request_id !== root._pendingId
-                            || reply.ok !== true || !result
-                            || result.probe_kind !== "static_no_vendor_execution"
-                            || result.vendor_execution !== "auth_blocked_pending_disposable_qualification"
-                            || !Array.isArray(result.binaries))
-                        throw new Error("protocol")
-                    const names = ["mega-cmd", "mega-login", "mega-cmd-server",
-                        "mega-whoami", "mega-version"]
-                    if (result.binaries.length !== names.length
-                            || result.binaries.some((entry, i) =>
-                                entry.name !== names[i] || typeof entry.executable !== "boolean"))
-                        throw new Error("inventory")
-                    // Never surface vendor paths, raw stderr or arbitrary vendor text.
-                    const shell = result.binaries[0].executable
-                    const server = result.binaries[2].executable
-                    root.dependencySnapshot = {
-                        installed: shell && server, shell: shell, server: server,
-                        observedAt: Date.now()
-                    }
-                    root.backendState = shell && server
+                    const normalized = StaticProtocol.parseDetectResponse(payload, root._pendingId)
+                    root.dependencySnapshot = Object.assign({observedAt: Date.now()}, normalized)
+                    root.backendState = normalized.installed
                         ? "installed_disconnected" : "dependency_missing"
                     root.safeError = ""
                 } catch (ignored) {
+                    root.dependencySnapshot = null
                     root.backendState = "unavailable"
-                    root.safeError = "Incompatible Cloud Storage backend response."
+                    root.safeError = "Incompatible or oversized Cloud Storage response."
                 }
             }
         }
@@ -127,6 +111,7 @@ Singleton {
             root.generation++
             root.readBusy = false
             root.backendState = "unavailable"
+            root.dependencySnapshot = null
             root.safeError = "Static dependency check timed out."
             // This request is static-only: stopping it cannot cancel a vendor mutation.
             readProc.running = false

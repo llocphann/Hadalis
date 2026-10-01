@@ -35,18 +35,30 @@ run_test settings_navigation python3 scripts/test-settings-information-architect
 run_test megaqml_waffle_navigation python3 scripts/test-megaqml-waffle-contract.py
 run_test megaqml_static_protocol node scripts/test-megaqml-phase2-protocol.mjs
 run_test megaqml_quickshell_diagnostics python3 scripts/test-megaqml-quickshell-classifier-contract.py
+run_test megaqml_fake_dispatch_fixture python3 scripts/test-megaqml-fake-dispatch-contract.py
 # Optional actual Quickshell singleton creation; zero consumers and isolated
 # shell root. The fixture cannot resolve the production native-dispatch path.
 if command -v qs >/dev/null 2>&1 || command -v quickshell >/dev/null 2>&1; then
   run_test quickshell_baseline bash scripts/test-megaqml-quickshell-smoke.sh baseline
   if grep -q '^quickshell_baseline,PASS,' "$scratch/safe.csv"; then
     run_test quickshell_service_dormant bash scripts/test-megaqml-quickshell-smoke.sh dormant
+    if grep -q '^quickshell_service_dormant,PASS,' "$scratch/safe.csv"; then
+      run_test quickshell_active_present bash scripts/test-megaqml-quickshell-smoke.sh active-present
+      run_test quickshell_active_missing bash scripts/test-megaqml-quickshell-smoke.sh active-missing
+    else
+      for case_name in quickshell_active_present quickshell_active_missing; do
+        printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
+      done
+    fi
   else
-    printf 'quickshell_service_dormant,SKIP,127,%s\n' "$source_sha" >> "$scratch/safe.csv"
+    for case_name in quickshell_service_dormant quickshell_active_present quickshell_active_missing; do
+      printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
+    done
   fi
 else
-  printf 'quickshell_baseline,SKIP,127,%s\n' "$source_sha" >> "$scratch/safe.csv"
-  printf 'quickshell_service_dormant,SKIP,127,%s\n' "$source_sha" >> "$scratch/safe.csv"
+  for case_name in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing; do
+    printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
+  done
 fi
 # Compile the reviewed local Rust source offline; never search an installed vendor.
 if command -v cargo >/dev/null 2>&1; then
@@ -133,11 +145,11 @@ else
     printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
   done
 fi
-report="docs/evidence/megaqml/phase2e-${source_sha:0:12}-$(date -u +%Y%m%dT%H%M%SZ).md"
+report="docs/evidence/megaqml/phase2f-${source_sha:0:12}-$(date -u +%Y%m%dT%H%M%SZ).md"
 mkdir -p docs/evidence/megaqml
 {
-  printf '# MegaQML Phase 2e synthetic plus optional runtime smoke evidence\n\nSource SHA: `%s`\n\n' "$source_sha"
-  printf 'Scope: static synthetic contracts plus optional isolated non-rendering Quickshell singleton creation. No Settings UI rendering, vendor execution, credentials or live MEGA acceptance.\n\n'
+  printf '# MegaQML Phase 2f synthetic and isolated active-service evidence\n\nSource SHA: `%s`\n\n' "$source_sha"
+  printf 'Scope: synthetic source and runtime cases plus isolated non-rendering Quickshell detect exchange with Python-only fake dispatcher. No Settings UI rendering, vendor execution, credentials or live MEGA acceptance.\n\n'
   printf 'qt_formatter_selection=%s;version_major_minor=%s\n\n' "$qt_formatter_selection" "$qt_public_version"
   printf '| Test | Result | Exit code | Source SHA |\n|---|---|---:|---|\n'
   while IFS=, read -r name state code sha; do
@@ -160,7 +172,7 @@ mkdir -p docs/evidence/megaqml
   elif grep -q '^qml_minimal,SKIP,' "$scratch/safe.csv"; then
     echo 'qml_blocker=qmlformat_unavailable'
   fi
-  for qs_case in quickshell_baseline quickshell_service_dormant; do
+  for qs_case in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing; do
     if grep -q "^${qs_case},FAIL," "$scratch/safe.csv"; then
       # The local smoke helper prints only allowlisted diagnostics.
       grep '^quickshell_smoke_category=' "$scratch/$qs_case.raw" || true
@@ -178,7 +190,7 @@ mkdir -p docs/evidence/megaqml
   elif grep -q ',SKIP,' "$scratch/safe.csv"; then
     echo 'Aggregate: PASS (executed tests); some tests SKIPPED/UNQUALIFIED.'
   else
-    echo 'Aggregate: PASS (all synthetic checks only; not rendered QML or live vendor).'
+    echo 'Aggregate: PASS (synthetic and isolated Quickshell checks; no rendered Settings UI or live vendor).'
   fi
 } > "$report"
 cat "$scratch/safe.csv"
@@ -198,7 +210,7 @@ if [[ "$(git diff --cached --name-only)" != "$report" ]] || ! git diff --cached 
   git reset --quiet -- "$report"
   echo 'PUBLICATION_SKIPPED_INDEX'; exit "$failed"
 fi
-if ! git commit --quiet -m "test(megaqml): Phase 2e static and isolated runtime evidence ${source_sha:0:12}" -- "$report"; then
+if ! git commit --quiet -m "test(megaqml): Phase 2f isolated synthetic detect evidence ${source_sha:0:12}" -- "$report"; then
   echo 'PUBLICATION_SKIPPED_COMMIT'; exit "$failed"
 fi
 evidence_sha="$(git rev-parse HEAD)"

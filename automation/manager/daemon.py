@@ -314,7 +314,7 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
     if protocol.get("kind") == "response_protocol" or item["status"] == "evidence_required" or "unsupported diagnosis" in item["last_error"]:
         prompt += "\nThe previous response completed and its private receipt is retained, but its protocol/evidence was rejected. Continue from the existing effects; do not replay the completed turn or repeat jobs/commands. Correct the protocol: use normal source citations for repository findings, and HADALIS_DIAGNOSIS only for local machine/runtime conclusions supported by these observed worker evidence IDs: " + json.dumps(item["job_evidence"]) + ". Collect fresh diagnostics if required.\n"
     if kind=="recovery":
-        prompt += "\nThe server confirmed that the previous generation ended with failure. This is a new recovery step, not a replay. Inspect current dev, private worker receipt summaries and evidence before any mutation. Do not repeat commands/jobs whose outcome is uncertain. Reconcile existing effects and continue from the checkpoint.\n"+json.dumps(item["failed_turn"])
+        prompt += "\nThe server confirmed that the previous generation ended with failure. This is a new recovery step, not a replay. Inspect the objective repository's current target branch, private worker receipt summaries and evidence before any mutation. Do not repeat commands/jobs whose outcome is uncertain. Reconcile existing effects and continue from the checkpoint.\n"+json.dumps(item["failed_turn"])
     if item["checkpoint"]:
         prompt += "\n\nDurable profile checkpoint:\n" + json.dumps(item["checkpoint"], ensure_ascii=False)
     if item["last_job_id"]:

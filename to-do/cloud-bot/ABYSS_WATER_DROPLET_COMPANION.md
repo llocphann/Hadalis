@@ -374,3 +374,16 @@ This task is complete only when all of the following are true:
 - Test dispatched: `JOB-WULL-PROOF-007`, introduced by commit `92091826c525e34365cba0fe6b33aaa5406a9e81`, is pinned to base/test source `822a19f1086a967a75e1e939c3a540eb0e4cb473` and invokes the repository-confirmed `qs -n -p` standalone path before bounded runtime/service/screenshot diagnostics.
 - Blocker: no Quickshell-native receipt or live visual evidence has passed yet; therefore renderer attachment is not accepted and Wull is not wired into production ownership.
 - Next: inspect `JOB-WULL-PROOF-007`; if the exact pinned SHA loads under Quickshell, use its bounded diagnostics to advance renderer/attachment proof. If it fails, diagnose only from its published evidence before any further source change.
+
+## Checkpoint — 2026-10-01 committed renderer/attachment mapping proof
+
+- Phase: **Phase 2 renderer/attachment proof structurally qualified; visual acceptance still pending; production integration remains disabled**.
+- CURRENT audited/tested path: root-level `wullProof.qml` commit `12575c626658bb73f5c716b28531c7561eef23f1`, validation job commit/source `c9b725f2aa4eb4f426d89a51004c6b5e55d7b96e`, receipt published at `4e20fda46df9faad552c60ab1a0821e5283b8f66`.
+- Diagnosis evidence: `JOB-WULL-DIAG-010:1` proved the generated minimal standalone window survived while the nested Wull entry matched the QML-error classifier; `JOB-WULL-DIAG-011:1` then passed with a temporary root-level wrapper and required Niri to map the Wull proof title.
+- Source fix: `37e69d6963762c745c8ca5451e41b075d2fe1ea6` added the missing `QtQuick.Controls` import to the development proof surface; `12575c626658bb73f5c716b28531c7561eef23f1` added the permanent repository-root `wullProof.qml` entry so `qs.modules.*` resolves against the Hadalis shell root.
+- Proof PASS: `JOB-WULL-PROOF-012:0` and `:1` both exited 0 on source `c9b725f2aa4eb4f426d89a51004c6b5e55d7b96e`; the committed proof stayed alive and Niri mapped `Wull procedural attachment proof`.
+- Scope boundary: this PASS covers Quickshell load + Niri window mapping of the procedural renderer/attachment scene only. It does **not** claim screenshot/appearance acceptance, popup hit-test acceptance, canonical maintainer validation, performance qualification, or production ownership.
+- Phase 1 audit started after the proof: the native workspace currently has `inir-protocol` plus five binaries and no companion daemon; `docs/WULL_COMPANION_PROTOCOL_V1.md` freezes newline-delimited JSON state/event messages with version and monotonic sequence requirements.
+- Blockers before production integration: bounded visual/screenshot acceptance of the proof scene, Rust companion core/bridge implementation and tests, hidden-idle/resource evidence, settings/policy wiring, and later canonical/live desktop validation.
+- Next: implement the smallest standalone `inir-companiond` Rust core milestone (typed protocol + deterministic state machine/scheduling tests) without wiring production QML ownership yet; keep visual proof acceptance as a separate gate before Phase 3 production attachment.
+

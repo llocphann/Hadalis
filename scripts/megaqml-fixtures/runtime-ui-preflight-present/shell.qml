@@ -29,7 +29,7 @@ ShellRoot {
     }
     function buttonUnder(node) {
         if (!node) return null
-        if (node.buttonText === "Check connection readiness (offline)")
+        if (node.buttonText === "Offline check")
             return node
         const children = node.children
         if (!children) return null

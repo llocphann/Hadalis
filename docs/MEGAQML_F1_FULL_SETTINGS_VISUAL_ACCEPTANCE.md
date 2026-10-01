@@ -4,7 +4,7 @@
 test report or evidence that any desktop click succeeded. It adds no new
 synthetic subphase and does not unlock live vendor/auth/account/write features.
 
-**Qualified synthetic baseline:** source
+**Last qualified synthetic baseline before the compact-UI changes:** source
 `f7bf4d6eebbcd43344503f7cbaf717a4e64e9c66`;
 `docs/evidence/megaqml/phase2p-f7bf4d6eebbc-20261001T182658Z.md`:
 40/40 PASS, 0 FAIL, 0 SKIP, 8/8 independent fake-only race repeats.
@@ -49,9 +49,11 @@ Settings values automatically as part of this plan.
 
 ## Gate 0 — verify what the desktop will actually load
 
-1. Start with the exact fully qualified source above. The owner must
-   establish that the **running/deployed** Settings QML payload and
-   `scripts/native-dispatch` match the qualified source. A matching
+1. First obtain fresh 40/40 exact-source local qualification for the
+   current compact-UI `dev` revision; the historical baseline above does not
+   qualify these later visual changes. The owner must establish that the
+   **running/deployed** Settings QML payload and `scripts/native-dispatch`
+   match the newly qualified source. A matching
    Git HEAD alone is **not enough** when the original worktree is dirty,
    the installed config is a copy, or another checkout is running.
 2. From a separate clean checkout of shared `dev` (no new branch), compare
@@ -97,9 +99,11 @@ using `QS_SETTINGS_PAGE=36 QS_SETTINGS_SECTION=overview inir settings-window
   missing dependency, installed-but-disconnected, or a safe helper error
   depending on the owner's environment. Never claim installed client
   qualification merely because an executable appears in `PATH`.
-- Physically click **Recheck dependencies**; verify no duplicate spin or
-  permanent "Checking executables" state. Physically click **Check
-  connection readiness (offline)** once; verify an understandable bounded
+- The selected Overview/area tab has a distinct outline, clear background
+  and readable icon/text contrast against inactive tabs.
+- Physically click the compact **Recheck** icon button; verify no duplicate
+  spin or permanent "Checking executables" state. Physically click the
+  compact **Offline check** shield button once; verify a bounded
   readiness/error result. Click rapidly again while busy and verify no
   duplicate visible request or irreversible UI stall.
 - Navigate away and back, then close and reopen standalone Settings.

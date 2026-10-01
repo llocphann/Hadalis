@@ -101,6 +101,7 @@ ShellRoot {
     function newPhase(): var {
         return {
             samples: 0, active: true, stretch_witness: false,
+            transition_witness: false, target_reached_witness: false,
             bob_witness: false, sway_witness: false,
             bbox_outside_static: false, bbox_outside_host: false,
             tip_outside_static: false, tip_outside_host: false,
@@ -122,6 +123,12 @@ ShellRoot {
             sample.active = sample.active && body.motionEnabled === true
             sample.stretch_witness = sample.stretch_witness || (root.phase === "stretch"
                 ? current.stretch > 0.2 : current.stretch < 0.8)
+            // An instantaneous or failed transition must NOT earn a motion PASS.
+            sample.transition_witness = sample.transition_witness
+                || (current.stretch > 0.12 && current.stretch < 0.88)
+            sample.target_reached_witness = sample.target_reached_witness
+                || (root.phase === "stretch"
+                    ? current.stretch > 0.85 : current.stretch < 0.15)
             sample.bob_witness = sample.bob_witness || Math.abs(current.bob) > 0.05
             sample.sway_witness = sample.sway_witness || Math.abs(current.sway) > 0.01
             for (const flag of ["bbox_outside_static", "bbox_outside_host",

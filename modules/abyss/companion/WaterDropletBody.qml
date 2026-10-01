@@ -12,6 +12,15 @@ Item {
     property real bob: 0
     property real sway: 0
     property real shimmer: 0
+    property real stateSquash: 0
+    property real stateStretch: 0
+    property real stateLean: 0
+    property real stateTip: 0
+    property real ripple: 0
+    property real eyeOpen: 1
+    property real mouthCurve: 0.12
+    property real pulse: 0
+    readonly property bool hovered: hoverHandler.hovered
     signal pressed()
 
     implicitWidth: 76
@@ -20,7 +29,23 @@ Item {
 
     scale: 1 + squash * 0.035
     y: bob
-    rotation: sway * 2.2
+    rotation: sway * 2.2 + stateLean * 5.0 + stateTip * 2.4
+    transform: Scale {
+        origin.x: root.width * 0.5
+        origin.y: root.height
+        xScale: 1 + root.stateSquash * 0.05 - root.stateStretch * 0.025
+        yScale: 1 - root.stateSquash * 0.035 + root.stateStretch * 0.06
+    }
+
+    Rectangle {
+        z: -1
+        anchors.centerIn: parent
+        width: parent.width * (0.82 + root.pulse * 0.18)
+        height: parent.height * (0.78 + root.pulse * 0.20)
+        radius: width * 0.5
+        color: Qt.alpha(AbyssStyle.accent, 0.16)
+        opacity: root.pulse * 0.48
+    }
 
     Shape {
         anchors.fill: parent
@@ -57,14 +82,27 @@ Item {
             model: 2
             Item {
                 width: 12; height: 16
-                Rectangle { anchors.fill: parent; radius: width / 2; color: AbyssStyle.textColor }
                 Rectangle {
-                    width: 5; height: 6; radius: width / 2
-                    x: Math.max(1, Math.min(parent.width - width - 1, 3 + root.gazeX * 2))
-                    y: Math.max(1, Math.min(parent.height - height - 1, 4 + root.gazeY * 2))
-                    color: AbyssStyle.surfaceDeep
+                    width: parent.width
+                    height: Math.max(1, parent.height * root.eyeOpen)
+                    anchors.centerIn: parent
+                    radius: width / 2
+                    color: AbyssStyle.textColor
+
+                    Rectangle {
+                        width: 5; height: Math.min(6, parent.height)
+                        radius: width / 2
+                        x: Math.max(1, Math.min(parent.width - width - 1, 3 + root.gazeX * 2))
+                        y: Math.max(0, Math.min(parent.height - height, (parent.height - height) * 0.5 + root.gazeY * 2))
+                        color: AbyssStyle.surfaceDeep
+                    }
+                    Rectangle {
+                        width: 2.5; height: Math.min(2.5, parent.height)
+                        radius: 2
+                        x: 2; y: Math.min(2, Math.max(0, parent.height - height))
+                        color: AbyssStyle.specular
+                    }
                 }
-                Rectangle { width: 2.5; height: 2.5; radius: 2; x: 2; y: 2; color: AbyssStyle.specular }
             }
         }
     }
@@ -78,16 +116,56 @@ Item {
             strokeColor: Qt.alpha(AbyssStyle.textColor, 0.86)
             strokeWidth: 2
             capStyle: ShapePath.RoundCap
-            startX: 3; startY: 4
-            PathCubic { x: 21; y: 4; control1X: 8; control1Y: 10; control2X: 16; control2Y: 10 }
+            startX: 3; startY: 6 - root.mouthCurve * 2
+            PathCubic {
+                x: 21; y: 6 - root.mouthCurve * 2
+                control1X: 8; control1Y: 6 + root.mouthCurve * 8
+                control2X: 16; control2Y: 6 + root.mouthCurve * 8
+            }
         }
     }
 
+    HoverHandler {
+        id: hoverHandler
+        enabled: root.enabled
+    }
+
     TapHandler {
+        enabled: root.enabled
         onTapped: {
             root.pressed()
-            if (root.motionEnabled) squashBurst.restart()
+            if (root.motionEnabled)
+                squashBurst.restart()
         }
+    }
+
+    Behavior on stateSquash {
+        enabled: root.motionEnabled
+        SpringAnimation { spring: 3.2; damping: 0.34 }
+    }
+    Behavior on stateStretch {
+        enabled: root.motionEnabled
+        SpringAnimation { spring: 2.8; damping: 0.36 }
+    }
+    Behavior on stateLean {
+        enabled: root.motionEnabled
+        SpringAnimation { spring: 2.5; damping: 0.42 }
+    }
+    Behavior on stateTip {
+        enabled: root.motionEnabled
+        SpringAnimation { spring: 2.4; damping: 0.44 }
+    }
+    Behavior on eyeOpen {
+        enabled: root.motionEnabled
+        NumberAnimation { duration: 110; easing.type: Easing.OutQuad }
+    }
+    Behavior on mouthCurve {
+        enabled: root.motionEnabled
+        NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+    }
+    Behavior on pulse {
+        enabled: root.motionEnabled
+        NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
     }
 
     SequentialAnimation {
@@ -98,13 +176,13 @@ Item {
     }
     SequentialAnimation on bob {
         running: root.motionEnabled; loops: Animation.Infinite
-        NumberAnimation { to: -2.4; duration: 1570; easing.type: Easing.InOutSine }
-        NumberAnimation { to: 1.2; duration: 2110; easing.type: Easing.InOutSine }
+        NumberAnimation { to: -1.2 - root.energy * 2.4; duration: 1570; easing.type: Easing.InOutSine }
+        NumberAnimation { to: 0.6 + root.energy * 1.2; duration: 2110; easing.type: Easing.InOutSine }
     }
     SequentialAnimation on sway {
         running: root.motionEnabled; loops: Animation.Infinite
-        NumberAnimation { to: 1; duration: 2390; easing.type: Easing.InOutSine }
-        NumberAnimation { to: -0.7; duration: 3170; easing.type: Easing.InOutSine }
+        NumberAnimation { to: 0.45 + root.energy; duration: 2390; easing.type: Easing.InOutSine }
+        NumberAnimation { to: -0.3 - root.energy * 0.7; duration: 3170; easing.type: Easing.InOutSine }
     }
     SequentialAnimation on shimmer {
         running: root.motionEnabled && AbyssStyle.quality !== "performance"; loops: Animation.Infinite

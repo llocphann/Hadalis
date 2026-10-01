@@ -1,4 +1,5 @@
 module qs.modules.abyss.companion
 AbyssCompanion 1.0 AbyssCompanion.qml
 AbyssCompanionProof 1.0 AbyssCompanionProof.qml
+CompanionBridge 1.0 CompanionBridge.qml
 WaterDropletBody 1.0 WaterDropletBody.qml

@@ -184,6 +184,20 @@ for required in ("SettingsPageHost.qml", "root.host.requestedIndex = 1",
                  '"FINAL_RELEASE"'):
     assert required in real_host
 assert "mega-login" not in real_host and "scripts/native-dispatch" not in real_host
+for token in (
+    "root.offlineControl(root.cachedCloud)",
+    "button.clicked()", "cachedButton.clicked()",
+    'svc.preflightSerial !== 1', 'svc.preflightSerial !== 2',
+    'svc.preflightState !== "not_requested"',
+    'svc.preflightState !== "dependency_missing"',
+    'root.fail("PREFLIGHT_REOPEN")'):
+    assert token in real_host, token
+for category in ("host_preflight_button", "host_preflight_result",
+                 "host_preflight_revisit", "host_preflight_reopen"):
+    assert category in quickshell_classifier, category
+for fixed in ("PREFLIGHT_BUTTON", "PREFLIGHT_RESULT",
+              "PREFLIGHT_REVISIT", "PREFLIGHT_REOPEN"):
+    assert "MEGAQML_QS_HOST_STAGE_" + fixed in classifier_test, fixed
 assert 'connected: false' in host_preflight
 assert 'liveAuthQualified: false' in host_preflight
 assert 'kind == "shared"' in ui_fixture_source

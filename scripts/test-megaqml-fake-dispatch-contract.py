@@ -136,4 +136,20 @@ for serial in (1, 2, 3):
     assert result["result"]["account_reads_enabled"] is False
     assert result["result"]["dependencies_ready"] is False
 print("PASS MegaQML fake-only F1 preflight: valid twice, wrong-ID third")
+# The deliberately hung F1 preflight is a bounded, vendor-free fake.
+# The smoke fixture owns the real 6s timeout; this pure contract checks that
+# the Python-only dispatcher does not accidentally return a ready state early.
+env = dict(os.environ, MEGAQML_FIXTURE_CASE="preflight-timeout")
+request = {"protocol": 1, "request_id": "cloud-preflight-1",
+           "operation": "connect_preflight", "params": {}}
+try:
+    subprocess.run(
+        [sys.executable, str(fake), "mega", "request"],
+        input=json.dumps(request) + "\n", capture_output=True,
+        text=True, env=env, timeout=0.6)
+except subprocess.TimeoutExpired:
+    pass
+else:
+    raise AssertionError("hung preflight fake returned before deadline")
+print("PASS MegaQML inert preflight timeout fixture remains pending")
 

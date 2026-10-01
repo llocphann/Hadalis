@@ -1290,3 +1290,112 @@ production input change.
   BBOX. Leave shipped Wull default-off,
   real production Region and `stable`
   untouched before further evidence.
+
+
+## Checkpoint — 2026-10-02 first left physical gate INCONCLUSIVE; five private witness analysis next
+
+- Exact-source REAL LEFT edge single-output,
+  scale=1 private candidate report
+  `docs/wull-mask-left-20261001T175020Z-5a11aa42-5b72e0e3294c.json`
+  source `5b72e0e3294c32276c306b3c6911fd9fa4e79fb1`
+  was independently published as **INCONCLUSIVE**,
+  NOT PASS. Seven earlier real checks passed,
+  including baseline native pointer controls,
+  actual baseline and private candidate
+  body bridge + Rust, full production empty
+  margin blocked with no false activation,
+  and correctly aligned exterior underlay
+  controls before/after baseline teardown
+  and after private LEFT candidate remap.
+  Eighth test `candidate_empty_margin_pass_through`
+  recorded exactly one real underlay click,
+  no accidental body activation, but
+  `target_alignment=off_target`.
+  The runner correctly marked
+  `candidate_margin_target_unverified`.
+  Owned nested compositor/layers/Rust cleanup
+  and host output invariance passed. This
+  is not evidence that the LEFT candidate
+  mask is faulty or that it passes.
+  The separate latest dynamic TOP, BOTTOM
+  and RIGHT private one-output, size=1
+  A/B trials remain real PASS within
+  their limited scopes. Previous TOP
+  off-target pointer drift remains
+  a separate unresolved observation.
+- New input-FREE retrospective path now
+  staged, not yet run:
+  `scripts/wull-private-left-margin-diagnostic.py`
+  commit `5b09ca99107ea1c7107c3d32d3e1e40eabc1077e`,
+  `scripts/wull-private-left-margin-publish.py`
+  commit `008cd132c79dd657b361e76b8a8ef64aea5bac02`,
+  plus dedicated inert negative contracts
+  `scripts/test-wull-private-left-margin-diagnostic.py`
+  (latest fix `f4024d971c7971b38472f3fd93cd6e4ab16ccdf2`)
+  and
+  `scripts/test-wull-private-left-margin-publish-contract.py`
+  commit `cfb24dc8fc9f58fe9dc1ccbbd0ebf7b8e1b2c68e`.
+  EXACT report/blob, original child/target
+  source SHA and same-user prior private log
+  are all allowlisted. The old report's
+  first 7 qualified controls imply exactly
+  FIVE real underlay clicks: disabled
+  body center, enabled exterior,
+  after-unmap exterior, candidate exterior,
+  candidate last empty margin. The
+  three exterior controls target the
+  same position and must be consistent
+  within 12 px of one another.
+  The old disabled-center matched
+  underlay witness shares exactly
+  the LEFT margin's REQUESTED x;
+  its requested y is exactly
+  47 px below disabled center within
+  at most 1 px round-to-even ambiguity.
+  Using only these relative geometry
+  anchors, the helper emits coarse
+  direction/magnitude buckets, flags
+  whether the last click landed near
+  the previous disabled-center
+  or candidate exterior positions,
+  and NEVER exports raw x/y, log,
+  exact private paths, sockets or
+  host identifying data. The
+  publisher can non-force push only
+  its own single categorical result
+  `docs/wull-pointer-left-margin-drift-20261001T175020Z-5a11aa42-5b72e0e3294c.json`
+  from a clean permission-private
+  throwaway `dev` clone, leaving
+  the owner's original possibly
+  divergent checkout untouched.
+  The full technical design and
+  source-derived caveats are in
+  `docs/WULL_NESTED_POINTER_ACCEPTANCE_DESIGN.md`
+  updated `4933959a2f374f9d72d9ffa11efc79dd1ca5cb6a`.
+- **NEXT LOCAL ACTION:** on user's host,
+  one permission-private fresh `dev`
+  clone; run BOTH new inert contracts;
+  then explicitly run only
+  `python3 scripts/wull-private-left-margin-publish.py
+  --publish-existing-left-margin-off-target`.
+  This reads the previous private log,
+  publishes a safely categorical result
+  and **does not execute Niri/Rust/wdotool**.
+  If private log is missing or any
+  witness/source is ambiguous, stop
+  INCONCLUSIVE, DO NOT launch a new
+  blind physical pointer test, expand
+  source scope or lower any position
+  tolerance. Review the unique
+  sanitized report first to decide
+  whether the next physical trial
+  needs additional phase-local input
+  instrumentation. Production Region,
+  default-off and `stable` remain
+  unchanged. Precise curved visual
+  input Region, hover/popup, multioutput,
+  fractional scaling, hotplug, suspend,
+  long-run reliability, aesthetic
+  acceptance and canonical-wide
+  validation remain separate after
+  four-edge private pointer qualification.

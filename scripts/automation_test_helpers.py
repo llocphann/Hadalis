@@ -19,9 +19,11 @@ def environment():
         store.change(lambda c,s: c["profiles"][0].update(enabled=False))
         with patch.object(control, "_ensure_runtime_services"), patch.object(control, "_await_dispatch"), \
              patch.object(control.time, "time", return_value=100), \
-             patch.object(daemon, "CHAT_POLL_SECONDS", 2):
+             patch.object(daemon, "CHAT_POLL_SECONDS", 2), \
+             patch.object(daemon, "TRANSPORT_POLL_SPACING_SECONDS", 0):
             # Existing receipt fixtures use a compressed virtual clock. The
-            # transport regression exercises the production cadence separately.
+            # fake transport has no shared account quota. The transport
+            # regression exercises production cadence/admission separately.
             yield
 
 

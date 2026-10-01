@@ -25,6 +25,8 @@ RESULTS = "automation/results"
 POLL_SECONDS = 2
 CHAT_POLL_SECONDS = max(15, min(120, int(os.environ.get("HADALIS_CHAT_POLL_SECONDS", "30"))))
 RATE_LIMIT_SECONDS = max(60, min(300, int(os.environ.get("HADALIS_RATE_LIMIT_SECONDS", "120"))))
+MAX_RATE_LIMIT_SECONDS = 1800
+TRANSPORT_POLL_SPACING_SECONDS = max(1, min(30, int(os.environ.get("HADALIS_TRANSPORT_POLL_SPACING_SECONDS", "10"))))
 CONCURRENCY = max(1, min(8, int(os.environ.get("HADALIS_MANAGER_CONCURRENCY", "4"))))
 _INFLIGHT = {}
 NATIVE_ERROR_CODES = {"DESKTOP_RATE_LIMITED", "DESKTOP_OPERATION_UNAVAILABLE", "DESKTOP_OPERATION_TIMEOUT",
@@ -214,6 +216,32 @@ def _same_pending(item: dict | None, pending: dict) -> bool:
     return bool(item and item["pending"] and _pending_key(item["pending"]) == _pending_key(pending))
 
 
+def _reserve_poll(profile_id: str, pending: dict, now: int) -> bool:
+    """Pace only shared API reads; waiting profiles/jobs keep independent slots."""
+    def reserve(config, state):
+        item = state["profiles"].get(profile_id)
+        if not _same_pending(item, pending) or item["remove_requested"]: return False
+        at = max(state["transport_retry_at_unix"], state["transport_next_poll_at_unix"])
+        if now < at:
+            item["pending"]["poll_after_unix"] = max(item["pending"].get("poll_after_unix", 0), at)
+            return False
+        state["transport_next_poll_at_unix"] = now + TRANSPORT_POLL_SPACING_SECONDS
+        return True
+    return change_state(reserve)
+
+
+def _poll_succeeded(now: int) -> None:
+    def record(config, state):
+        # One successful read between repeated 429s is not quota recovery.
+        # Decay only after a quiet interval, never for a cached local receipt or
+        # an older in-flight read that completed after a newer rate limit.
+        count = state["transport_rate_limit_count"]
+        delay = min(MAX_RATE_LIMIT_SECONDS, RATE_LIMIT_SECONDS * 2 ** max(0, count - 1))
+        if count and now >= state["transport_rate_limit_at_unix"] + max(600, 2 * delay):
+            state["transport_rate_limit_count"] = 0
+    change_state(record)
+
+
 def _observe_failure(profile_id: str, now: int, exc: Exception, *, pending=None, job=False) -> None:
     def record(config, state):
         item = state["profiles"].get(profile_id)
@@ -235,7 +263,14 @@ def _observe_failure(profile_id: str, now: int, exc: Exception, *, pending=None,
         limited = not job and detail == "DESKTOP_RATE_LIMITED"
         if limited:
             # The account API is shared; jobs and local cached receipts are not.
-            state["transport_retry_at_unix"] = max(state["transport_retry_at_unix"], now + RATE_LIMIT_SECONDS)
+            # Concurrent failures during one cooldown belong to the same retry
+            # round. Escalation and pacing survive profile replacement/reboot.
+            if not state["transport_rate_limit_count"] or now >= state["transport_retry_at_unix"]:
+                state["transport_rate_limit_count"] = min(6, state["transport_rate_limit_count"] + 1)
+            count = max(1, state["transport_rate_limit_count"])
+            cooldown = min(MAX_RATE_LIMIT_SECONDS, RATE_LIMIT_SECONDS * 2 ** (count - 1))
+            state["transport_rate_limit_at_unix"] = max(state["transport_rate_limit_at_unix"], now)
+            state["transport_retry_at_unix"] = max(state["transport_retry_at_unix"], now + cooldown)
             if pending:
                 item["pending"]["poll_after_unix"] = max(now + delay, state["transport_retry_at_unix"])
             else:
@@ -432,7 +467,9 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
                 raise ValueError("response receipt identity mismatch")
             result = {"completed":True, "conversation_id":receipt["conversation_id"], "response":receipt["response"]}
         else:
+            if not _reserve_poll(profile_id, pending, now): return
             result = native_command("poll", pending=pending)
+            if result.get("submitted") or result.get("completed"): _poll_succeeded(now)
         if not result.get("completed"):
             if result.get("superseded"):
                 # A user advanced this managed conversation before its final

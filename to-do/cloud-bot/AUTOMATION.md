@@ -22,15 +22,17 @@ Maintainer-authorized implementation, 2026-09-30. Target contract and audit:
 - [x] Per-profile Chat slider offers Instant / Medium / High, initially High, with a saved default for new profiles. Instant selects its enabled Chat lane; Medium/High use standard/extended thinking. Capability-checked model/effort are pinned in durable intent, compatible lane changes work in an existing chat, and legacy pending submissions remain unchanged.
 - [x] Each future turn selects the highest enabled Chat model from live account metadata, with numeric version ordering and no legacy-model pinning. Instant/Thinking lanes stay distinct; unsupported highest-model effort fails before dispatch, and pending turns are retained unchanged.
 - [x] Custom workflows follow their own objective repository/branch. GitHub research citations are distinct from verified local machine diagnostics; rejected completed responses keep precise reasons and correction context. Guarded monitor Resume cannot override a later owner Stop/Pause or replay a pending turn/job.
+- [x] Repeated account API 429s use durable bounded exponential retry rounds; a successful read between limits cannot reset the sequence. Due profile reads reserve staggered API slots without serializing generations, local jobs or cached receipts.
 - [ ] Future/deferred: migrate the Linux/process-sensitive Automation execution substrate to Rust only after parity and benchmark gates in [`AUTOMATION_RUST_MIGRATION.md`](AUTOMATION_RUST_MIGRATION.md).
 
 Keep uncertain existing submissions and consumed job results. Do not reset
 profiles or resend prompts to make acceptance appear green.
 
 The maintainer explicitly removed automatic continuation after a five-hour
-Codex/Work limit from this task. No five-hour quota timer is added. A separately
-requested ten-minute Codex heartbeat monitors Wull Companion and MegaQML, reads
-bounded logs and repairs/reconciles errors while respecting later user Stop/Pause.
+Codex/Work limit from this task. No five-hour quota timer is added. The maintainer
+subsequently chose backend-only operation instead of restoring the deleted
+ten-minute Codex heartbeat. Direct monitoring reads bounded logs and respects
+later user Stop/Pause and profile removal.
 Existing profile descriptions remain compatible in config; only their editor
 is removed. Tokens authenticate local Git, not the ChatGPT GitHub connector.
 

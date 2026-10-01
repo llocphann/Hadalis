@@ -11,7 +11,9 @@ from automation_test_helpers import environment, profile, Transport, daemon, sto
 
 def main():
     production_cadence = daemon.CHAT_POLL_SECONDS
+    production_spacing = daemon.TRANSPORT_POLL_SPACING_SECONDS
     assert 15 <= production_cadence <= 120
+    assert 1 <= production_spacing <= 30
     subprocess.run(["node", "--input-type=module", "-e", r'''
 import assert from "node:assert/strict";
 import {operationErrorCode} from "./automation/chat_bridge/native_errors.mjs";
@@ -115,7 +117,66 @@ assert.equal(operationErrorCode({message:"PRIVATE_CANARY auth body"}), "DESKTOP_
             assert item["poll_errors"] == 0 and item["last_error"] == ""
             t.down=True;daemon.tick(102)
             assert t.pending(pid)["poll_after_unix"] == 132
-    print("PASS: bounded two-profile API cadence, private rate-limit codes, durable shared cooldown, local job/cache progress and no prompt replay")
+
+    # Two due profiles consume distinct shared read slots; their generations
+    # remain simultaneous and their exact pending identities survive admission.
+    with environment(), patch.object(daemon,"TRANSPORT_POLL_SPACING_SECONDS",production_spacing):
+        a,b=profile("Paced A"),profile("Paced B");t=Transport()
+        with patch.object(daemon,"native_command",side_effect=t):
+            daemon.tick(100);assert t.count("submit")==2
+            identities={pid:t.pending(pid)["user_message_id"] for pid in (a,b)}
+            t.reply(a,"HADALIS_LOOP:DONE");t.reply(b,"HADALIS_LOOP:DONE")
+            daemon.tick(102);assert t.count("poll")==1
+            state=store.read_snapshot()[1]
+            waiting=[pid for pid in (a,b) if state["profiles"][pid]["pending"]]
+            assert len(waiting)==1
+            pid=waiting[0]
+            assert state["profiles"][pid]["pending"]["user_message_id"]==identities[pid]
+            assert state["transport_next_poll_at_unix"]==102+production_spacing
+            assert json.loads(store.state_path().read_text())["transport_next_poll_at_unix"]==102+production_spacing
+            daemon.tick(102+production_spacing-1);assert t.count("poll")==1
+            daemon.tick(102+production_spacing);assert t.count("poll")==2
+            assert t.count("submit")==2
+            assert all(store.read_snapshot()[1]["profiles"][p]["iterations"]==1 for p in (a,b))
+
+    # Repeated 429 retry rounds increase durable backoff; concurrent failures in
+    # one round and an isolated successful read cannot reset/amplify it.
+    with environment():
+        a,b=profile("Rate A"),profile("Rate B");t=Transport()
+        with patch.object(daemon,"native_command",side_effect=t):daemon.tick(100)
+        def limit(pid,now):
+            daemon._observe_failure(pid,now,daemon.NativeOperationError(
+                {"code":"DESKTOP_RATE_LIMITED","resource":"conversation","http_status":429},"poll"),pending=t.pending(pid))
+        limit(a,102);limit(b,103)
+        state=store.read_snapshot()[1]
+        assert state["transport_rate_limit_count"]==1
+        assert state["transport_retry_at_unix"]==103+daemon.RATE_LIMIT_SECONDS
+        for expected in range(2,8):
+            now=store.read_snapshot()[1]["transport_retry_at_unix"]
+            limit(a,now)
+            state=store.read_snapshot()[1]
+            count=min(6,expected)
+            delay=min(daemon.MAX_RATE_LIMIT_SECONDS,daemon.RATE_LIMIT_SECONDS*2**(count-1))
+            assert state["transport_rate_limit_count"]==count
+            assert state["transport_retry_at_unix"]==now+delay
+            assert json.loads(store.state_path().read_text())["transport_rate_limit_count"]==count
+            daemon._poll_succeeded(now+1)
+            assert store.read_snapshot()[1]["transport_rate_limit_count"]==count
+            with patch.object(daemon,"native_command",side_effect=t):daemon.tick(now+delay-1)
+            assert t.count("poll")==0 and t.count("submit")==2
+        state=store.read_snapshot()[1];at=state["transport_rate_limit_at_unix"]
+        daemon._poll_succeeded(at-1)
+        assert store.read_snapshot()[1]["transport_rate_limit_count"]==6
+        daemon._poll_succeeded(at+2*daemon.MAX_RATE_LIMIT_SECONDS)
+        assert store.read_snapshot()[1]["transport_rate_limit_count"]==0
+        legacy=dict(state)
+        for key in ("transport_next_poll_at_unix","transport_rate_limit_count","transport_rate_limit_at_unix"):
+            legacy.pop(key)
+        migrated=store.normalize_state(legacy,store.read_snapshot()[0])
+        assert migrated["transport_retry_at_unix"]==state["transport_retry_at_unix"]
+        assert migrated["transport_rate_limit_count"]==0
+        assert migrated["profiles"][a]["pending"]["user_message_id"]==t.pending(a)["user_message_id"]
+    print("PASS: paced independent profile reads, adaptive bounded retry rounds, durable cooldown/admission, local job/cache progress and no prompt replay")
 
 
 if __name__ == "__main__":

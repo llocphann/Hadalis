@@ -36,8 +36,16 @@ identity atomically so a newer owner Stop/Pause wins.
 Conversation reads use a 30-second cadence (configurable within 15–120 seconds),
 doubling for turns older than five minutes up to 120 seconds. The scheduler's
 two-second control heartbeat does not issue network requests on every tick.
-An explicit ChatGPT rate limit persists an account-wide 120-second cooldown
-(configurable within 60–300 seconds) across service restarts. Local job results,
+Due profile reads reserve separate account API slots, initially ten seconds
+apart (configurable within 1–30 seconds). Generations and local jobs remain
+parallel; a read reservation never owns a profile or queues its worker.
+An explicit ChatGPT rate limit starts an account-wide 120-second cooldown
+(initial delay configurable within 60–300 seconds). Repeated retry rounds
+double the delay up to thirty minutes, persisted across service restarts and
+profile replacement. Failures already in flight share one retry round; one
+successful read cannot erase a run of limits. A quiet interval of at least ten
+minutes and twice the current delay permits a successful read to reset backoff.
+Local job results,
 fsynced response receipts and user controls continue during cooldown; only the
 shared ChatGPT API resource waits. Pending prompt identities never change.
 HTTP status and the affected resource (conversation history, stream status,

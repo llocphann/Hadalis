@@ -1,4 +1,4 @@
-import {connectNative, nativeRead, nativeStreamStatus, nativeServerStreamStatus, pollNativeTurn, resolveProject, nativeSubmit, nativeResume, discoverSubmission} from "./native_adapter.mjs";
+import {connectNative, nativeRead, nativeStreamStatus, nativeServerStreamStatus, pollNativeTurn, resolveProject, nativePreflight, nativeSubmit, nativeResume, discoverSubmission} from "./native_adapter.mjs";
 import {operationErrorCode} from "./native_errors.mjs";
 
 let browser;
@@ -15,15 +15,7 @@ try {
   const page = connection.page;
   let result;
   if (input.op === "project") result = {project_id: await resolveProject(page, input.name)};
-  else if (input.op === "preflight") result=await page.evaluate(requiresGithub=>{
-    if(requiresGithub){
-      const plugins=window.__hadalisNative.transport.scope.queryClient.getQueryCache().getAll()
-        .filter(q=>q.queryKey[0]==="plugins" && Array.isArray(q.state.data)).flatMap(q=>q.state.data)
-        .map(x=>x.plugin).filter(p=>p?.id==="github@openai-curated-remote" && p.installed && p.enabled && p.remotePluginId);
-      if(new Set(plugins.map(p=>p.remotePluginId)).size!==1)throw new Error("GitHub plugin capability unavailable");
-    }
-    return {ready:true};
-  },input.requires_github);
+  else if (input.op === "preflight") result = await nativePreflight(page, input);
   else if (input.op === "read") result = await nativeRead(page, `/conversation/${input.conversation_id}`, {}, input.project_id);
   else if (input.op === "stream_status") result = await nativeStreamStatus(page, input.pending);
   else if (input.op === "server_stream_status") result = {status:await nativeServerStreamStatus(page, input.pending.conversation_id)};

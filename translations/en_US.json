@@ -5451,5 +5451,10 @@
   "Add to Quick Actions": "Add to Quick Actions",
   "Remove from Quick Actions": "Remove from Quick Actions",
   "Drag to reorder · eye hides · minus removes.": "Drag to reorder · eye hides · minus removes.",
-  "Close application picker": "Close application picker"
+  "Close application picker": "Close application picker",
+  "Thinking effort": "Thinking effort",
+  "Standard": "Standard",
+  "Extended": "Extended",
+  "Effort unavailable": "Effort unavailable",
+  "Next turn · Auto uses the default · model support varies": "Next turn · Auto uses the default · model support varies"
 }

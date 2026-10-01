@@ -4,6 +4,16 @@ Settings is a frontend to the installed `~/.local/share/hadalis-automation/contr
 
 The scheduler independently manages each profile's project, conversation, user-message ID, final-response receipt and checkpoint. It uses bounded concurrency (default 4, maximum 8) and fair admission. Waiting for a response/job holds no global owner or queue. Only equal conversation IDs and truly shared resources serialize. Navigation, opening another project and normal Desktop use do not change monitoring. Editing the managed chat itself pauses continuation to preserve its history.
 
+Each profile has a discrete Chat thinking-effort slider (Auto / Standard /
+Extended). Existing profiles default
+to `auto`, which omits the override and preserves their previous request behavior.
+Explicit levels (`min`, `standard`, `extended`, `xhigh`, `max`) are checked against
+the account's Chat model metadata before dispatch. New automatic chats follow an
+available default/thinking model; continuation keeps its established model.
+Unsupported choices fail before submission instead of silently falling back.
+The resolved model and effort are captured in durable dispatch intent. Editing
+the slider affects the next turn and cannot replay or change a pending turn.
+
 Submission intent is durable before dispatch. Lost acknowledgements reconcile the exact message ID and never resend. An unidentified legacy pending chat remains quarantined while other profiles progress. Completed responses are persisted before counters or continuation. Desktop/network downtime backs off observation, bounded to 300 seconds, without permanently disabling it. Up to three read-only stream reattachments resume existing server streams without a new message. A server-confirmed terminal generation failure archives its receipt and permits a distinct checkpoint/evidence recovery step, bounded to three automatic recoveries. Ambiguous generation/action outcomes are never replayed. Invalid final directives or unsupported diagnosis evidence retain the completed receipt and pause only that profile.
 
 Generic objectives can research, analyze, code through GitHub, dispatch pinned local tests/diagnostics, inspect results, debug, fix and continue. WAIT_RESULT has profile ownership and can use a private local worker receipt while Git publication is down. Continuation receives only allowlisted observations, error codes and provenance; raw machine data stays local. Optional HADALIS_CHECKPOINT preserves phase, summary, next step and evidence IDs. HADALIS_DIAGNOSIS conclusions must cite observed worker evidence IDs. ChatGPT remains the reasoning agent; the backend and worker make deterministic protocol transitions only.

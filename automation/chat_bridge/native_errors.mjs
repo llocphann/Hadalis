@@ -6,6 +6,7 @@ export function operationErrorCode(error) {
     return "DESKTOP_RATE_LIMITED";
   if (message.includes("legacy pending")) return "LEGACY_IDENTITY_AMBIGUOUS";
   if (message.includes("GitHub plugin")) return "GITHUB_PLUGIN_UNAVAILABLE";
+  if (message === "THINKING_EFFORT_UNAVAILABLE") return "THINKING_EFFORT_UNAVAILABLE";
   if (/unsupported|capabilit|export contract|Desktop build/.test(message))
     return "DESKTOP_CAPABILITY_UNAVAILABLE";
   if (message.includes("project name")) return "PROJECT_UNAVAILABLE_OR_AMBIGUOUS";

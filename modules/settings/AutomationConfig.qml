@@ -43,6 +43,12 @@ ContentPage {
     readonly property var profiles: root.snapshot?.config?.profiles ?? []
     readonly property var selectedProfile: root.profiles.find(p => p.id === root.selectedProfileId) ?? null
     readonly property var selectedState: root.snapshot?.runtime?.profiles?.[root.selectedProfileId] ?? null
+    readonly property var thinkingEfforts: ["auto", "standard", "extended"]
+    readonly property var thinkingLabels: ["Auto", "Standard", "Extended"]
+    readonly property string savedThinkingEffort: root.selectedProfile?.thinking_effort ?? "auto"
+
+    onSavedThinkingEffortChanged: if (!thinkingSlider.pressed)
+        thinkingSlider.value = Math.max(0, root.thinkingEfforts.indexOf(root.savedThinkingEffort))
 
     function activateSettingsSearchSection(section: string): bool {
         const label = String(section ?? "").toLowerCase()
@@ -152,6 +158,7 @@ ContentPage {
         promptEditor.text = root.selectedProfile.prompt
         continuationEditor.text = root.selectedProfile.continuation_prompt
         rotationEditor.text = root.selectedProfile.rotation_prompt
+        thinkingSlider.value = Math.max(0, root.thinkingEfforts.indexOf(root.savedThinkingEffort))
     }
 
     function statusLabel(value): string {
@@ -172,6 +179,7 @@ ContentPage {
             disabled: "Disabled", running: "Running",
             submission_uncertain: "Verifying submission", stream_failed: "Response interrupted",
             response_unavailable: "Response unavailable", transport_rate_limited: "Rate limited",
+            thinking_unavailable: "Effort unavailable",
             recovering_generation: "Recovering workflow", recovery_required: "Recovery needs review",
             session_changed: "Managed chat changed", session_conflict: "Managed chat conflict", evidence_required: "Evidence needs review"
         }
@@ -180,7 +188,7 @@ ContentPage {
 
     function statusColor(value): color {
         if (["active", "running", "continuing"].includes(value)) return Appearance.colors.colPrimary
-        if (["failed", "connector_blocked", "blocked", "transport_unavailable", "transport_rate_limited", "stream_failed", "response_unavailable", "scheduler_unavailable", "invalid_configuration", "parked_unresolved"].includes(value)) return Appearance.colors.colTertiary
+        if (["failed", "connector_blocked", "blocked", "transport_unavailable", "transport_rate_limited", "thinking_unavailable", "stream_failed", "response_unavailable", "scheduler_unavailable", "invalid_configuration", "parked_unresolved"].includes(value)) return Appearance.colors.colTertiary
         if (["starting", "stopping", "thinking", "waiting_result", "waiting_desktop", "waiting_owner", "recovering_pending", "rotating", "restart_queued", "pausing"].includes(value)) return Appearance.colors.colSecondary
         return Appearance.colors.colSubtext
     }
@@ -529,6 +537,39 @@ ContentPage {
                 text: root.selectedState?.status_detail ?? ""
             }
             SettingsNote { visible: !!root.selectedState?.checkpoint; text: Translation.tr("Checkpoint: %1").arg(root.selectedState?.checkpoint?.summary ?? root.selectedState?.checkpoint?.phase ?? "") }
+        }
+
+        SettingsGroup {
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                MaterialSymbol { text: "psychology"; iconSize: Appearance.font.pixelSize.large; color: Appearance.colors.colSubtext }
+                StyledText { Layout.fillWidth: true; text: Translation.tr("Thinking effort"); color: Appearance.colors.colOnSurface }
+                StyledText { text: Translation.tr(root.thinkingLabels[Math.round(thinkingSlider.value)] ?? "Auto"); color: Appearance.colors.colPrimary }
+            }
+            StyledSlider {
+                id: thinkingSlider
+                objectName: "automationThinkingEffort"
+                Layout.fillWidth: true
+                from: 0
+                to: root.thinkingEfforts.length - 1
+                stepSize: 1
+                snapMode: Slider.SnapAlways
+                configuration: StyledSlider.Configuration.S
+                stopIndicatorValues: [0, 1, 2]
+                value: Math.max(0, root.thinkingEfforts.indexOf(root.savedThinkingEffort))
+                enabled: !root.busy
+                Accessible.name: Translation.tr("Thinking effort")
+                settingsSearchLabel: Translation.tr("Thinking effort")
+                settingsSearchKeywords: ["chat", "reasoning", "effort", "thinking", "model"]
+                tooltipContent: Translation.tr(root.thinkingLabels[Math.round(value)] ?? "Auto")
+                onMoved: {
+                    if (pressed || root.busy) return
+                    const effort = root.thinkingEfforts[Math.round(value)]
+                    if (effort && effort !== root.savedThinkingEffort) root.setProfile("thinking_effort", effort)
+                }
+            }
+            SettingsNote { icon: "chat"; text: Translation.tr("Next turn · Auto uses the default · model support varies") }
         }
 
         SettingsGroup {

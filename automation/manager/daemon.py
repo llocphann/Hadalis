@@ -219,6 +219,9 @@ def _observe_failure(profile_id: str, now: int, exc: Exception, *, pending=None,
         if item["last_error"] != detail or item[key] == 1:
             event(state, profile_id, "observation_retry", detail)
         item.update(last_error=detail, status="transport_rate_limited" if limited else "transport_unavailable")
+        if not pending and not job and detail == "THINKING_EFFORT_UNAVAILABLE":
+            item.update(status="thinking_unavailable",
+                status_detail="Thinking level unavailable for this chat. Choose Auto or another level.")
         # Observations are bounded/backed off, but never disabled by navigation,
         # a finite error counter, Desktop/network downtime or shell crashes.
     change_state(record)
@@ -265,7 +268,18 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
             change_state(changed)
             return
         parent = cursor["current_node"]
-    if profile["requires_github"]:native_command("preflight",requires_github=True)
+    effort = profile["thinking_effort"]
+    selection = {}
+    if profile["requires_github"] or effort != "auto":
+        options = {}
+        if effort != "auto":
+            options["thinking_effort"] = effort
+            if session: options["model"] = cursor.get("model") or "auto"
+        ready = native_command("preflight", requires_github=profile["requires_github"], **options)
+        if effort != "auto":
+            if ready.get("ready") is not True or ready.get("thinking_effort") != effort or not isinstance(ready.get("model"), str):
+                raise RuntimeError("THINKING_EFFORT_UNAVAILABLE")
+            selection = {"model": ready["model"]}
     prompt_kind = "rotation" if kind in {"rotation","recovery"} else "initial" if new_chat else "continuation"
     prompt = effective_prompt(profile, prompt_kind)
     prompt += "\nManaged profile ID: " + profile_id + "\n"
@@ -280,6 +294,7 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
     pending = {"user_message_id": str(uuid.uuid4()), "parent_message_id": parent,
         "conversation_id": session.get("conversation_id") if session else None,
         "project_id": project_id, "kind": prompt_kind, "prepared_at_unix": now,
+        "thinking_effort": effort, **selection,
         "operation": kind, "command_seq": item["command_seq"],
         "poll_after_unix": now + CHAT_POLL_SECONDS, "counted": False, "phase": "dispatching"}
     def prepare(c, s):
@@ -287,6 +302,7 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
         if not current or current["pending"] or current["desired"] != "run" or current["remove_requested"]:
             return False
         if current["command_seq"] != item["command_seq"]: return False
+        if _profile(c, profile_id)["thinking_effort"] != effort: return False
         if session and any(pid!=profile_id and other.get("session",{}).get("conversation_id")==session["conversation_id"] and other["run_active"] for pid,other in s["profiles"].items() if other.get("session")):
             current.update(desired="paused",status="session_conflict",last_error="Another profile already manages this conversation; original receipt retained")
             return False

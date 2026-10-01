@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ID = "strict-lossless-research"
 MODES = {"manual", "continuous", "interval", "duration", "iterations"}
 LIMIT_ACTIONS = {"stop", "pause", "rotate"}
+THINKING_EFFORTS = {"auto", "min", "standard", "extended", "xhigh", "max"}
 MAX_PROFILES = 64
 GENERIC_PROMPT = "Carry out this profile's objective step by step. Set the objective here before starting.\n"
 CUSTOM_CONTINUATION_PROMPT = "Continue this profile's objective from its latest checkpoint and local evidence. Finish with one HADALIS_LOOP directive.\n"
@@ -31,6 +32,7 @@ MAINTENANCE_DEFAULTS = {
 PROFILE_DEFAULTS = {
     "description": "",
     "project_name": "Hadalis Cloud",
+    "thinking_effort": "auto",  # Omit the request override for existing profiles.
     "enabled": False,
     "requires_github": True,
     "stop_on_done": False,  # Preserve v1 continuous-loop semantics on import.
@@ -118,6 +120,8 @@ def validate_profile(raw: object, *, defaults: dict | None = None) -> dict:
         raise ValueError("invalid mode")
     if profile["duration_action"] not in LIMIT_ACTIONS:
         raise ValueError("invalid duration_action")
+    if not isinstance(profile["thinking_effort"], str) or profile["thinking_effort"] not in THINKING_EFFORTS:
+        raise ValueError("invalid thinking_effort")
     for key, (minimum, maximum) in INTEGER_LIMITS.items():
         value = profile[key]
         if type(value) is not int or not minimum <= value <= maximum:

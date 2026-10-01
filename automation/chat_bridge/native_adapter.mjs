@@ -225,9 +225,52 @@ export async function resolveProject(page, name) {
   return matches[0];
 }
 
+const THINKING_EFFORTS = new Set(["auto", "min", "standard", "extended", "xhigh", "max"]);
+
+function thinkingEffort(input) {
+  const effort = input.thinking_effort ?? "auto";
+  if (!THINKING_EFFORTS.has(effort)) throw new Error("THINKING_EFFORT_UNAVAILABLE");
+  return effort;
+}
+
+export function selectThinkingModel(metadata, effort, preferredModel = "auto") {
+  thinkingEffort({thinking_effort:effort});
+  if (effort === "auto") return {model:preferredModel};
+  const categories = Array.isArray(metadata?.categories) ? metadata.categories.slice(0, 128).filter(Boolean) : [];
+  const enabled = categories.filter(c => c.disabled_by_admin !== true);
+  const models = (Array.isArray(metadata?.models) ? metadata.models : []).slice(0, 128).filter(m =>
+    typeof m?.slug === "string" && /^[a-zA-Z0-9._:-]{1,128}$/.test(m.slug) &&
+    m.is_work_mode_model !== true && m.disabled_by_admin !== true && !m.tags?.includes("hidden") &&
+    m.configurable_thinking_effort === true &&
+    Array.isArray(m.thinking_efforts) && m.thinking_efforts.some(e => e?.thinking_effort === effort) &&
+    (!categories.length || enabled.some(c => c.default_model === m.slug || c.supported_models?.includes(m.slug))));
+  const find = slug => models.find(m => m.slug === slug);
+  // An established chat keeps its model. A new automatic chat follows the
+  // server's default or declared thinking lane, never an arbitrary Work model.
+  const model = preferredModel !== "auto" ? find(preferredModel)
+    : find(metadata?.default_model_slug) ?? enabled.filter(c => c.model_lane === "thinking")
+      .map(c => find(c.default_model)).find(Boolean) ?? (!categories.length && models.length === 1 ? models[0] : null);
+  if (!model) throw new Error("THINKING_EFFORT_UNAVAILABLE");
+  return {model:model.slug, thinking_effort:effort};
+}
+
+export async function nativePreflight(page, input) {
+  const effort = thinkingEffort(input);
+  if (input.requires_github) await page.evaluate(() => {
+    const plugins = window.__hadalisNative.transport.scope.queryClient.getQueryCache().getAll()
+      .filter(q => q.queryKey[0] === "plugins" && Array.isArray(q.state.data)).flatMap(q => q.state.data)
+      .map(x => x.plugin).filter(p => p?.id === "github@openai-curated-remote" && p.installed && p.enabled && p.remotePluginId);
+    if (new Set(plugins.map(p => p.remotePluginId)).size !== 1) throw new Error("GitHub plugin capability unavailable");
+  });
+  if (effort === "auto") return {ready:true};
+  const metadata = await nativeRead(page, "/models", {iim:false, include_icons:false});
+  return {ready:true, ...selectThinkingModel(metadata, effort, input.model || "auto")};
+}
+
 export async function nativeSubmit(page, input) {
   if (!UUID.test(input.user_message_id) || !UUID.test(input.parent_message_id)) throw new Error("invalid submission identity");
   if (input.conversation_id && !UUID.test(input.conversation_id)) throw new Error("invalid conversation identity");
+  const effort = thinkingEffort(input);
   return page.evaluate(async input => {
     const {api, transport} = window.__hadalisNative, receipts = window.__hadalisReceipts;
     if (receipts.has(input.user_message_id)) return receipts.get(input.user_message_id);
@@ -243,6 +286,7 @@ export async function nativeSubmit(page, input) {
       hints.push(`plugin:${ids[0]}`);
     }
     const request = { action: "next", model: input.model || "auto",
+      ...(input.thinking_effort === "auto" ? {} : {thinking_effort:input.thinking_effort}),
       parent_message_id: input.parent_message_id, messages: [{ id: input.user_message_id,
         author: {role: "user"}, content: {content_type: "text", parts: [input.prompt]},
         metadata: {system_hints: hints} }], system_hints: hints,
@@ -289,7 +333,7 @@ export async function nativeSubmit(page, input) {
       receipt.localError = String(error.message).slice(0, 1000);
       throw new Error("Desktop submission outcome uncertain; reconcile message identity");
     }
-  }, input);
+  }, {...input, thinking_effort:effort});
 }
 
 export async function discoverSubmission(page, pending) {

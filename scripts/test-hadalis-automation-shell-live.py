@@ -34,7 +34,7 @@ import qs.modules.common
 import qs.modules.settings
 ShellRoot {
     id: test
-    property int step: 0
+    property int step: -2
     property bool done: false
     property int captures: 0
     function items(item) {
@@ -71,6 +71,32 @@ ShellRoot {
         interval: 250; repeat: true; running: !test.done
         onTriggered: {
             if (!page.loaded) return
+            if (test.step === -2) {
+                const effort = test.named("automationThinkingEffort")
+                if (!test.check(effort && effort.value === 0 && effort.stepSize === 1, "legacy profile defaults to Auto slider")) return
+                effort.value = 1
+                effort.moved()
+                test.step = -1
+                return
+            }
+            if (test.step === -1) {
+                if (page.busy || page.selectedProfile.thinking_effort !== "standard") return
+                if (!test.check(page.snapshot.runtime.profiles[page.selectedProfileId].pending.prepared_at_unix === 100,
+                    "saving effort retains pending turn")) return
+                page.selectedProfileId = "fixture-keep"
+                test.step = -3
+                return
+            }
+            if (test.step === -3) {
+                if (!test.check(test.named("automationThinkingEffort").value === 0, "independent profile keeps Auto")) return
+                page.selectedProfileId = "strict-lossless-research"
+                test.step = -4
+                return
+            }
+            if (test.step === -4) {
+                if (!test.check(test.named("automationThinkingEffort").value === 1, "profile switch restores saved effort")) return
+                test.step = 0
+            }
             if (test.step === 0) {
                 if (!test.check(page.snapshot.runtime.engine_version === 2, "v2 state readable")) return
                 const name = test.named("automationProfileName")
@@ -304,7 +330,7 @@ def main() -> int:
     after = services()
     assert {u: v["MainPID"] for u,v in after.items()} == {u: v["MainPID"] for u,v in before.items()}, "backend restarted/died with Quickshell"
     _write(base / "result.json", {"sha":subprocess.check_output(["git","rev-parse","HEAD"],cwd=ROOT,text=True).strip(),
-        "qml_source":str(qml_root), "frontend_removal":"pass", "prompt_scroll":"pass", "centered_button_row":"pass",
+        "qml_source":str(qml_root), "frontend_removal":"pass", "prompt_scroll":"pass", "centered_button_row":"pass", "thinking_effort_slider":"pass",
         "single_activity_view":"pass", "masked_token_private_stdin":"pass", "private_shell_crash":"SIGKILL",
         "independent_backend":"pass", "services_before":before,"services_after":after})
     print(f"PASS: native scrolling, centered icon buttons, single log view, masked token stdin, removal and Quickshell crash with backend PIDs unchanged; {base / 'result.json'}")

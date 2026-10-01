@@ -44,9 +44,10 @@ mod tests {
         let domains = preview["domains"].as_object().unwrap();
         assert_eq!(domains.len(), DOMAINS.len());
         for name in DOMAINS {
-            assert_eq!(domains[name]["read"], false, "{name}");
-            assert_eq!(domains[name]["write"], false, "{name}");
-            assert_eq!(domains[name]["reason"], "installed_version_unqualified");
+            let domain = domains.get(name).expect("explicit locked domain");
+            assert_eq!(domain["read"], false, "{name}");
+            assert_eq!(domain["write"], false, "{name}");
+            assert_eq!(domain["reason"], "installed_version_unqualified");
         }
         for field in ["installed_version_qualified", "connection_attempted",
             "connected", "auth_qualified", "account_reads_enabled", "writes_enabled"] {

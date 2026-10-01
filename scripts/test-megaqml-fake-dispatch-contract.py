@@ -89,7 +89,7 @@ for scenario, ready in (("present", True), ("missing", False)):
     request = {"protocol": 1, "request_id": "cloud-preflight-1",
                "operation": "connect_preflight", "params": {}}
     child = subprocess.run([sys.executable, str(fake), "mega", "request"],
-                           input=json.dumps(request) + "\\n", capture_output=True,
+                           input=json.dumps(request) + "\n", capture_output=True,
                            text=True, env=env, timeout=3, check=True)
     response = json.loads(child.stdout)
     assert child.stderr == "" and response["request_id"] == "cloud-preflight-1"
@@ -111,7 +111,7 @@ for forbidden in ({"secret": {"password": "PRIVATE_FAKE_SECRET_CANARY"}},
                "operation": "connect_preflight", "params": {}, **forbidden}
     env = dict(os.environ, MEGAQML_FIXTURE_CASE="present")
     child = subprocess.run([sys.executable, str(fake), "mega", "request"],
-                           input=json.dumps(request) + "\\n", capture_output=True,
+                           input=json.dumps(request) + "\n", capture_output=True,
                            text=True, env=env, timeout=3)
     assert child.returncode == 68 and child.stdout == ""
     assert "PRIVATE_FAKE_SECRET_CANARY" not in child.stderr

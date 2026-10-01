@@ -7,7 +7,7 @@ import sys
 if sys.argv[1:] != ["mega", "request"]:
     raise SystemExit(64)
 scenario = os.environ.get("MEGAQML_FIXTURE_CASE")
-if scenario not in ("present", "missing", "wrong-id", "unsafe-secret", "malformed", "exit-failure", "hang", "coalesce", "stale-reacquire", "retry-exit", "retry-timeout"):
+if scenario not in ("present", "missing", "wrong-id", "unsafe-secret", "malformed", "exit-failure", "hang", "coalesce", "stale-reacquire", "retry-exit", "retry-timeout", "shared-race"):
     raise SystemExit(65)
 line = sys.stdin.readline(8193)
 if len(line) > 8192:
@@ -44,11 +44,15 @@ if scenario == "hang":
     while time.monotonic() < until:
         time.sleep(0.1)
     raise SystemExit(24)
+if scenario == "shared-race" and identifier in ("cloud-detect-1", "cloud-detect-2"):
+    import time
+    time.sleep(0.8)  # Delayed installed replies; third detect is missing.
 if scenario in ("coalesce", "stale-reacquire") and identifier == "cloud-detect-1":
     import time
     time.sleep(0.8)  # Consumer changes happen before first reply.
 present = scenario == "present" or (
-    scenario in ("coalesce", "stale-reacquire") and identifier == "cloud-detect-1")
+    scenario in ("coalesce", "stale-reacquire") and identifier == "cloud-detect-1") or (
+    scenario == "shared-race" and identifier in ("cloud-detect-1", "cloud-detect-2"))
 names = ("mega-cmd", "mega-login", "mega-cmd-server", "mega-whoami", "mega-version")
 available = (present, present, present, False, present)
 result = {

@@ -10,7 +10,7 @@ fake = Path(__file__).resolve().parent / "megaqml-fixtures/fake-static-dispatch.
 source = fake.read_text(encoding="utf-8")
 assert "subprocess" not in source and "os.system" not in source
 assert '"mega", "request"' in source
-for scenario in ("present", "missing", "wrong-id", "unsafe-secret", "malformed", "exit-failure", "hang", "coalesce", "stale-reacquire", "retry-exit", "retry-timeout"):
+for scenario in ("present", "missing", "wrong-id", "unsafe-secret", "malformed", "exit-failure", "hang", "coalesce", "stale-reacquire", "retry-exit", "retry-timeout", "shared-race"):
     env = dict(os.environ, MEGAQML_FIXTURE_CASE=scenario)
     request = {"protocol": 1, "request_id": "cloud-detect-1",
                "operation": "detect", "params": {}}
@@ -49,7 +49,7 @@ for scenario in ("present", "missing", "wrong-id", "unsafe-secret", "malformed",
     assert result["result"]["secret_argv"] is (scenario == "unsafe-secret")
     assert [item["name"] for item in result["result"]["binaries"]] == [
         "mega-cmd", "mega-login", "mega-cmd-server", "mega-whoami", "mega-version"]
-    expected = scenario == "present" or (scenario in ("coalesce", "stale-reacquire"))
+    expected = scenario == "present" or (scenario in ("coalesce", "stale-reacquire", "shared-race"))
     assert [item["executable"] for item in result["result"]["binaries"]] == [
         expected, expected, expected, False, expected]
     assert all(item["path"] is None for item in result["result"]["binaries"])
@@ -67,4 +67,18 @@ for scenario in ("coalesce", "stale-reacquire", "retry-exit", "retry-timeout"):
     assert not result["result"]["server_available"]
     assert all(not x["executable"] for x in result["result"]["binaries"])
     assert not child.stderr
-print("PASS MegaQML synthetic runtime dispatcher: 11 cases plus four second requests")
+# Check two extra race replies without exposing fake paths.
+env = dict(os.environ, MEGAQML_FIXTURE_CASE="shared-race")
+for serial, present in ((2, True), (3, False)):
+    req = {"protocol": 1, "request_id": f"cloud-detect-{serial}",
+           "operation": "detect", "params": {}}
+    child = subprocess.run([sys.executable, str(fake), "mega", "request"],
+                           input=json.dumps(req) + "\n", capture_output=True,
+                           text=True, env=env, timeout=3, check=True)
+    result = json.loads(child.stdout)
+    assert child.stderr == "" and result["request_id"] == f"cloud-detect-{serial}"
+    assert result["result"]["interactive_shell_available"] is present
+    assert result["result"]["server_available"] is present
+    assert [b["executable"] for b in result["result"]["binaries"]] == [
+        present, present, present, False, present]
+print("PASS MegaQML synthetic runtime dispatcher: 12 cases plus four second requests and two race requests")

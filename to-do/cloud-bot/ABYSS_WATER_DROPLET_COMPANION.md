@@ -1184,6 +1184,13 @@ production input change.
   Full technical acceptance history is in
   `docs/WULL_NESTED_POINTER_ACCEPTANCE_DESIGN.md`
   updated `674879bebb8c660fda55ebd5380d3fda28fe1285`.
+- Additional inert RIGHT shadow-staging contract
+  `6f11029cf852079396c37e7a9ea71dce16747eae`
+  independently writes/validates a private right-edge
+  `AbyssPerimeter.qml` shadow and right-edge
+  scale=1 isolated config while asserting the
+  shipped production source stays unchanged.
+  This is SOURCE-STAGED, not compositor acceptance.
 - **NEXT SINGLE LOCAL GATE**: from fresh
   permission-private clean dev clone, run
   four existing inert Wull pointer contracts

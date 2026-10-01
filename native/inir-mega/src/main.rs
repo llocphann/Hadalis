@@ -683,7 +683,7 @@ mod tests {
         let marker = root.join("vendor-executed");
         for name in ["mega-cmd", "mega-cmd-server"] {
             let file = root.join(name);
-            fs::write(&file, format!("#!/bin/sh\\ntouch '{}'\\n", marker.display())).unwrap();
+            fs::write(&file, format!("#!/bin/sh\nprintf MARKER > '{}'\n", marker.display())).unwrap();
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;

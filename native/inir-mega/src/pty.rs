@@ -20,6 +20,21 @@ use anyhow::{Context, Result, bail};
 use crate::{AuthState, AuthStep, SecretWrite, advance_auth, classify_auth_prompt};
 
 #[cfg(unix)]
+const BLOCKED_VENDOR_ENV: [&str; 4] = [
+    "MEGACMD_DO_NOT_REDACT_LINES",
+    "MEGACMD_DISABLE_UTF8_VALIDATIONS",
+    "MEGACMD_LOGLEVEL",
+    "MEGACMD_JSON_LOGS",
+];
+
+#[cfg(unix)]
+fn sanitize_vendor_environment(command: &mut Command) {
+    for name in BLOCKED_VENDOR_ENV {
+        command.env_remove(name);
+    }
+}
+
+#[cfg(unix)]
 struct PtyPair {
     master: RawFd,
     slave: RawFd,
@@ -116,8 +131,8 @@ fn configure_child(program: &Path, slave: RawFd) -> Result<Command> {
     command
         .stdin(unsafe { Stdio::from_raw_fd(stdin_fd) })
         .stdout(unsafe { Stdio::from_raw_fd(stdout_fd) })
-        .stderr(unsafe { Stdio::from_raw_fd(slave) })
-        .env_remove("MEGACMD_DO_NOT_REDACT_LINES");
+        .stderr(unsafe { Stdio::from_raw_fd(slave) });
+    sanitize_vendor_environment(&mut command);
 
     unsafe {
         command.pre_exec(|| {
@@ -300,6 +315,37 @@ mod tests {
 
     fn qualified_script() -> &'static str {
         "#!/bin/sh\nIFS= read -r command\n[ \"$command\" = \"login fixture@example.invalid\" ] || exit 40\nprintf 'Password:'\nIFS= read -r password\nprintf 'Multi-factor authentication code:'\nIFS= read -r mfa\nprintf 'Login successful\\n'\n"
+    }
+
+    #[test]
+    fn vendor_environment_strips_debug_overrides_and_preserves_session_context() {
+        let mut command = Command::new("/bin/sh");
+        command
+            .arg("-c")
+            .arg(
+                r#"
+test -z "${MEGACMD_DO_NOT_REDACT_LINES+x}" || exit 41
+test -z "${MEGACMD_DISABLE_UTF8_VALIDATIONS+x}" || exit 42
+test -z "${MEGACMD_LOGLEVEL+x}" || exit 43
+test -z "${MEGACMD_JSON_LOGS+x}" || exit 44
+test "$MEGACMD_SOCKET_NAME" = "fixture-socket" || exit 45
+test "$HOME" = "/fixture/home" || exit 46
+test "$http_proxy" = "http://proxy.invalid:8080" || exit 47
+test "$https_proxy" = "https://proxy.invalid:8443" || exit 48
+test "$LANG" = "en_US.UTF-8" || exit 49
+"#,
+            )
+            .env("MEGACMD_DO_NOT_REDACT_LINES", "1")
+            .env("MEGACMD_DISABLE_UTF8_VALIDATIONS", "1")
+            .env("MEGACMD_LOGLEVEL", "debug")
+            .env("MEGACMD_JSON_LOGS", "1")
+            .env("MEGACMD_SOCKET_NAME", "fixture-socket")
+            .env("HOME", "/fixture/home")
+            .env("http_proxy", "http://proxy.invalid:8080")
+            .env("https_proxy", "https://proxy.invalid:8443")
+            .env("LANG", "en_US.UTF-8");
+        sanitize_vendor_environment(&mut command);
+        assert!(command.status().unwrap().success());
     }
 
     #[test]

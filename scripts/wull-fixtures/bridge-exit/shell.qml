@@ -7,9 +7,11 @@ ShellRoot {
     id: root
     readonly property string testCase: Quickshell.env("WULL_SMOKE_CASE") ?? ""
     property bool backendOn: ["exit-restart", "auto-restart",
-                               "crash-budget"].includes(testCase)
+                               "crash-budget", "disable-pending",
+                               "budget-reset"].includes(testCase)
     property string stage: testCase.startsWith("disabled") ? "disabled"
-        : testCase === "crash-budget" ? "budget" : "initial"
+        : ["crash-budget", "budget-reset"].includes(testCase)
+            ? "budget" : "initial"
 
     Companion.CompanionBridge {
         id: bridge
@@ -37,7 +39,8 @@ ShellRoot {
     }
 
     Component.onCompleted: {
-        if (["exit-restart", "auto-restart", "crash-budget"].includes(root.testCase))
+        if (["exit-restart", "auto-restart", "crash-budget",
+             "disable-pending", "budget-reset"].includes(root.testCase))
             bridge.show()
         else if (!root.testCase.startsWith("disabled")) {
             console.log("WULL_BRIDGE_FIXTURE_INVALID")
@@ -75,13 +78,20 @@ ShellRoot {
                 return
             }
             console.log("WULL_BRIDGE_EXIT_GATE_OK")
-            root.stage = "restarting"
-            if (root.testCase === "exit-restart") {
+            if (root.testCase === "disable-pending") {
+                // Cancel the first 500ms retry before its deadline.
+                root.stage = "disabled-after-exit"
                 root.backendOn = false
-                rearm.restart()
+                verifyCancelled.restart()
+            } else {
+                root.stage = "restarting"
+                if (root.testCase === "exit-restart") {
+                    root.backendOn = false
+                    rearm.restart()
+                }
+                // auto-restart keeps the backend enabled and requires
+                // the bridge's own bounded retry to reconnect.
             }
-            // auto-restart intentionally keeps the backend enabled and
-            // requires the bridge's own bounded retry to reconnect.
         }
     }
 
@@ -95,12 +105,14 @@ ShellRoot {
     }
 
     Timer {
-        interval: 9600
-        running: root.testCase === "crash-budget"
+        id: verifyCancelled
+        interval: 850
         onTriggered: {
-            if (bridge.backendEnabled && !bridge.ready
-                    && bridge.restartAttempts === bridge.maxRestartAttempts) {
-                console.log("WULL_BRIDGE_CRASH_BUDGET_OK")
+            if (root.stage === "disabled-after-exit"
+                    && !bridge.backendEnabled && !bridge.ready
+                    && !bridge.requestedVisible
+                    && bridge.restartAttempts === 0) {
+                console.log("WULL_BRIDGE_DISABLE_CANCEL_OK")
             } else {
                 console.log("WULL_BRIDGE_FIXTURE_INVALID")
             }
@@ -109,7 +121,60 @@ ShellRoot {
     }
 
     Timer {
-        interval: root.testCase === "crash-budget" ? 11000 : 8000
+        interval: 9600
+        running: ["crash-budget", "budget-reset"].includes(root.testCase)
+        onTriggered: {
+            if (!bridge.backendEnabled || bridge.ready
+                    || bridge.restartAttempts !== bridge.maxRestartAttempts) {
+                console.log("WULL_BRIDGE_FIXTURE_INVALID")
+                Qt.quit()
+                return
+            }
+            if (root.testCase === "budget-reset") {
+                root.backendOn = false
+                root.stage = "budget-reset"
+                budgetRearm.restart()
+            } else {
+                console.log("WULL_BRIDGE_CRASH_BUDGET_OK")
+                Qt.quit()
+            }
+        }
+    }
+
+    Timer {
+        id: budgetRearm
+        interval: 125
+        onTriggered: {
+            if (bridge.restartAttempts !== 0 || bridge.backendEnabled) {
+                console.log("WULL_BRIDGE_FIXTURE_INVALID")
+                Qt.quit()
+                return
+            }
+            root.backendOn = true
+            bridge.show()
+            budgetConfirm.restart()
+        }
+    }
+
+    Timer {
+        id: budgetConfirm
+        interval: 350
+        onTriggered: {
+            if (root.stage === "budget-reset" && bridge.backendEnabled
+                    && !bridge.ready && bridge.requestedVisible
+                    && bridge.restartAttempts >= 1
+                    && bridge.restartAttempts < bridge.maxRestartAttempts) {
+                console.log("WULL_BRIDGE_BUDGET_RESET_OK")
+            } else {
+                console.log("WULL_BRIDGE_FIXTURE_INVALID")
+            }
+            Qt.quit()
+        }
+    }
+
+    Timer {
+        interval: root.testCase === "budget-reset" ? 12500
+            : root.testCase === "crash-budget" ? 11000 : 8000
         running: true
         onTriggered: {
             console.log("WULL_BRIDGE_FIXTURE_TIMEOUT")

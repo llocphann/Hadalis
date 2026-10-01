@@ -61,6 +61,9 @@ race_stages = (
 matched_race_stage = next((category for token, category in race_stages
                            if "megaqml_qs_race_stage_" + token in raw), None)
 shared_stages = (
+    # Prefix of PREFLIGHT_MATERIAL overlaps PREFLIGHT: longest tokens first.
+    ("preflight_material", "shared_preflight_material"),
+    ("preflight_waffle", "shared_preflight_waffle"),
     ("preflight", "shared_preflight"),
     ("load", "shared_load"),
     ("create", "shared_create"),
@@ -74,9 +77,7 @@ shared_stages = (
     ("reacquire", "shared_reacquire"),
     ("third_result", "shared_third_result"),
     ("button_material", "shared_button_material"),
-    ("preflight_material", "shared_preflight_material"),
     ("button_waffle", "shared_button_waffle"),
-    ("preflight_waffle", "shared_preflight_waffle"),
     ("timeout", "shared_timeout"),
 )
 matched_shared_stage = next((category for token, category in shared_stages

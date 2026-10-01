@@ -13,12 +13,13 @@ import sys
 import tempfile
 import time
 
-ANCHOR = "6403d2b8e2fcdafd150e7f5274026df788359f67"
+ANCHOR = "a7c7c6f794c54d41912c21de51a2c89061437b62"
 SELF = "scripts/wull-manual-bridge-smoke.py"
 FIXTURE = "scripts/wull-fixtures/bridge-exit"
 REVIEWED = {
     "modules/abyss/AbyssPerimeter.qml",
     "modules/abyss/companion/CompanionBridge.qml",
+    "modules/abyss/companion/WullHostPolicy.js",
     FIXTURE + "/fake-dispatch.py",
 }
 VALID_URLS = {
@@ -52,7 +53,7 @@ def audit(after):
     if affected:
         raise RuntimeError("Reviewed Wull bridge or fixture changed: " + sorted(affected)[0])
     # This is the sole reviewed disabled-override fixture revision.
-    if git("rev-parse", after + ":" + FIXTURE + "/shell.qml") != "3d98e21ed82c29352e054b0df7c03b9a19e8f2c8":
+    if git("rev-parse", after + ":" + FIXTURE + "/shell.qml") != "99356b4b8baf321f3e37a2595775a3753411d33d":
         raise RuntimeError("Disabled-override fixture differs from reviewed version")
     if SELF in changes:
         revisions = git("log", "--format=%H",
@@ -82,6 +83,8 @@ def run_case(qs, kind, private_dir):
     shutil.copyfile(FIXTURE + "/shell.qml", fixture_dir / "shell.qml")
     shutil.copyfile("modules/abyss/companion/CompanionBridge.qml",
                     fixture_dir / "companion/CompanionBridge.qml")
+    shutil.copyfile("modules/abyss/companion/WullHostPolicy.js",
+                    fixture_dir / "companion/WullHostPolicy.js")
     fake = fixture_dir / "scripts/native-dispatch"
     shutil.copyfile(FIXTURE + "/fake-dispatch.py", fake)
     fake.chmod(0o700)

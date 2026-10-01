@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 
-APPROVED_SOURCE = "af2565174916c12a8360b2566ba755d00c050777"
+APPROVED_SOURCE = "a7c7c6f794c54d41912c21de51a2c89061437b62"
 SELF = "scripts/wull-manual-qualification.py"
 MAX_LOG = 1048576
 
@@ -225,6 +225,8 @@ def main():
         tests[:0] = [
             ("wull-production", ["python3",
                                  "scripts/test-wull-production-contract.py"], 90),
+            ("wull-host-policy", ["python3",
+                                  "scripts/test-wull-host-policy.py"], 90),
             ("perimeter-regressions", ["make", "-s",
                                       "test-perimeter-contracts"], 300),
         ]

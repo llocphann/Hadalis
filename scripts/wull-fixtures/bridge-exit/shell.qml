@@ -2,6 +2,7 @@
 import QtQuick
 import Quickshell
 import "./companion" as Companion
+import "./companion/WullHostPolicy.js" as WullHostPolicy
 
 ShellRoot {
     id: root
@@ -12,6 +13,12 @@ ShellRoot {
     property string stage: testCase.startsWith("disabled") ? "disabled"
         : ["crash-budget", "budget-reset"].includes(testCase)
             ? "budget" : "initial"
+    property string currentOutput: "DP-1"
+    readonly property bool hostActive: WullHostPolicy.hostActive(
+        bridge.backendEnabled && bridge.requestedVisible, bridge.ready,
+        "DP-1", root.currentOutput, true, true)
+    readonly property bool hostInput: WullHostPolicy.acceptsInput(
+        root.hostActive, true, bridge.visibility === "present")
 
     Companion.CompanionBridge {
         id: bridge
@@ -20,13 +27,31 @@ ShellRoot {
         useNativeDispatcher: root.backendOn
         onStateAccepted: (_sequence) => {
             if (root.stage === "initial" && bridge.visibility === "present") {
+                if (!root.hostActive || !root.hostInput) {
+                    console.log("WULL_BRIDGE_FIXTURE_INVALID")
+                    Qt.quit()
+                    return
+                }
+                root.currentOutput = "DP-2"
+                if (root.hostActive || root.hostInput) {
+                    console.log("WULL_BRIDGE_FIXTURE_INVALID")
+                    Qt.quit()
+                    return
+                }
+                root.currentOutput = "DP-1"
+                if (!root.hostActive || !root.hostInput) {
+                    console.log("WULL_BRIDGE_FIXTURE_INVALID")
+                    Qt.quit()
+                    return
+                }
                 root.stage = "exiting"
                 if (!bridge.sendEvent("click")) {
                     console.log("WULL_BRIDGE_FIXTURE_INVALID")
                     Qt.quit()
                 }
             } else if (root.stage === "restarting" && bridge.visibility === "present") {
-                if (bridge.ready && bridge.requestedVisible) {
+                if (bridge.ready && bridge.requestedVisible
+                        && root.hostActive && root.hostInput) {
                     console.log("WULL_BRIDGE_RESTART_OK")
                     Qt.quit()
                 }
@@ -54,7 +79,8 @@ ShellRoot {
         running: root.testCase === "disabled" || root.testCase === "disabled-override"
         onTriggered: {
             if (!bridge.backendEnabled && !bridge.ready
-                    && bridge.visibility === "hidden") {
+                    && bridge.visibility === "hidden"
+                    && !root.hostActive && !root.hostInput) {
                 console.log("WULL_BRIDGE_DISABLED_OK")
             } else {
                 console.log("WULL_BRIDGE_FIXTURE_INVALID")
@@ -72,7 +98,8 @@ ShellRoot {
             // after the fake daemon has unexpectedly exited.
             if (root.stage !== "exiting" || bridge.ready
                     || !bridge.requestedVisible
-                    || bridge.visibility !== "present") {
+                    || bridge.visibility !== "present"
+                    || root.hostActive || root.hostInput) {
                 console.log("WULL_BRIDGE_FIXTURE_INVALID")
                 Qt.quit()
                 return
@@ -111,7 +138,8 @@ ShellRoot {
             if (root.stage === "disabled-after-exit"
                     && !bridge.backendEnabled && !bridge.ready
                     && !bridge.requestedVisible
-                    && bridge.restartAttempts === 0) {
+                    && bridge.restartAttempts === 0
+                    && !root.hostActive && !root.hostInput) {
                 console.log("WULL_BRIDGE_DISABLE_CANCEL_OK")
             } else {
                 console.log("WULL_BRIDGE_FIXTURE_INVALID")

@@ -268,7 +268,7 @@ Singleton {
         {key:"abyss-popups",name:"Popups",icon:"chat_bubble",desc:"Popup and indicator placement",component:"modules/settings/AbyssPopupsConfig.qml"},
         {key:"abyss-modules",name:"Modules",icon:"widgets",desc:"Edge modules and behavior",component:"modules/settings/AbyssModulesConfig.qml"},
         {key:"automation",name:Translation.tr("Automation"),icon:"smart_toy",desc:Translation.tr("ChatGPT sessions and service health"),component:"modules/settings/AutomationConfig.qml"},
-        {key:"cloud-storage",name:Translation.tr("Cloud Storage"),icon:"cloud",desc:Translation.tr("MEGAcmd dependency status"),component:"modules/settings/CloudStorageConfig.qml"}
+        {key:"cloud-storage",name:Translation.tr("Cloud Storage"),icon:"cloud",desc:Translation.tr("MEGAcmd status"),component:"modules/settings/CloudStorageConfig.qml"}
     ]
 
     // v7 information architecture: navigation reflects the user's intent,

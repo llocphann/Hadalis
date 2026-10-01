@@ -53,7 +53,7 @@ assert 'qml_minimal' in runner and 'qml_modern_syntax' in runner and 'qml_blocke
 assert '/usr/lib/qt6/bin/qmlformat qmlformat6 qmlformat' in runner
 assert 'qt_formatter_selection=' in runner and 'version_major_minor=' in runner
 assert 'modern_probe_pass' in runner and 'fallback_probe_unqualified' in runner
-assert 'docs/evidence/megaqml/phase2k-' in runner
+assert 'docs/evidence/megaqml/phase2l-' in runner
 quickshell_runner = get("scripts/test-megaqml-quickshell-smoke.sh")
 quickshell_base = get("scripts/megaqml-fixtures/runtime-baseline/shell.qml")
 quickshell_dormant = get("scripts/megaqml-fixtures/runtime-dormant/shell.qml")
@@ -155,6 +155,24 @@ assert 'ContentPage 1.0 ContentPage.qml' in ui_fixture_contract
 assert 'WSettingsPage 1.0 WSettingsPage.qml' in ui_fixture_contract
 assert 'scripts/native-dispatch' in ui_fixture_contract
 assert 'PASS MegaQML isolated Material and Waffle UI source fixture contract' in ui_fixture_contract
+assert 'kind == "shared"' in ui_fixture_source
+assert 'megaqml-shared-unit-' in ui_fixture_contract
+assert 'PASS isolated MegaQML shared source-only UI fixture' in ui_fixture_contract
+shared_ui = get("scripts/megaqml-fixtures/runtime-ui-shared/shell.qml")
+for sentinel in ("MEGAQML_QS_UI_SHARED_OK", '"PREFLIGHT"', '"LOAD"',
+                 '"REGISTER"', '"HIDE_ONE"', '"SECOND_RESULT"',
+                 '"REACQUIRE"', '"FINAL_RELEASE"', '"TIMEOUT"'):
+    assert sentinel in shared_ui
+for lease_step in ("svc.consumerCount !== 2", "svc.requestSerial !== 1",
+                   "root.goodMissing(svc, 1, 2)", "root.goodMissing(svc, 2, 1)",
+                   "root.goodMissing(svc, 3, 1)",
+                   "root.material.visible = false", "root.waffle.visible = false"):
+    assert lease_step in shared_ui
+assert 'root.materialComponent.createObject(' in shared_ui
+assert 'root.waffleComponent.createObject(' in shared_ui
+assert 'import "./services/deferred" as Deferred' in shared_ui
+assert 'svc.refreshStatic()' in shared_ui
+assert "mega-login" not in shared_ui and "scripts/native-dispatch" not in shared_ui
 assert 'run_test megaqml_ui_component_fixture' in runner
 for runtime_case, marker in (("quickshell_ui_material", "MEGAQML_QS_UI_MATERIAL_OK"),
                              ("quickshell_ui_waffle", "MEGAQML_QS_UI_WAFFLE_OK")):
@@ -221,9 +239,17 @@ for safe_category in ("ui_component_load", "ui_component_create", "ui_navigation
     assert safe_category in quickshell_classifier
 assert 'MEGAQML_QS_UI_STAGE_COMPONENT' in classifier_test
 assert 'MEGAQML_QS_UI_STAGE_CONSTRUCT' in classifier_test
-for shell_case in ("ui-material", "ui-waffle"):
+for shell_case in ("ui-material", "ui-waffle", "ui-shared"):
     assert shell_case in quickshell_runner
 assert 'scripts/test-megaqml-ui-fixture.py' in quickshell_runner
+assert 'runtime-ui-shared/shell.qml' in quickshell_runner
+assert 'ui-shared) marker=MEGAQML_QS_UI_SHARED_OK' in quickshell_runner
+assert 'run_test quickshell_ui_shared bash scripts/test-megaqml-quickshell-smoke.sh ui-shared' in runner
+assert 'quickshell_ui_waffle quickshell_ui_shared; do' in runner
+assert '"ui-material", "ui-waffle", "ui-shared"' in quickshell_classifier
+assert 'MEGAQML_QS_SHARED_STAGE_HIDE_ONE' in classifier_test
+assert 'shared_second_result' in quickshell_classifier
+assert 'MEGAQML_QS_SHARED_STAGE_TIMEOUT' in classifier_test
 assert 'MEGAQML_UI_KIND' in quickshell_runner
 assert 'MEGAQML_FIXTURE_CASE=missing' in quickshell_runner
 assert 'quickshell_active_present' in runner and 'quickshell_active_missing' in runner

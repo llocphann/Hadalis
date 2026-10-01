@@ -76,18 +76,19 @@ if command -v qs >/dev/null 2>&1 || command -v quickshell >/dev/null 2>&1; then
       run_test quickshell_recover_timeout bash scripts/test-megaqml-quickshell-smoke.sh recovery-timeout
       run_test quickshell_ui_material bash scripts/test-megaqml-quickshell-smoke.sh ui-material
       run_test quickshell_ui_waffle bash scripts/test-megaqml-quickshell-smoke.sh ui-waffle
+      run_test quickshell_ui_shared bash scripts/test-megaqml-quickshell-smoke.sh ui-shared
     else
-      for case_name in quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle; do
+      for case_name in quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle quickshell_ui_shared; do
         printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
       done
     fi
   else
-    for case_name in quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle; do
+    for case_name in quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle quickshell_ui_shared; do
       printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
     done
   fi
 else
-  for case_name in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle; do
+  for case_name in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle quickshell_ui_shared; do
     printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
   done
 fi
@@ -176,11 +177,11 @@ else
     printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
   done
 fi
-report="docs/evidence/megaqml/phase2k-${source_sha:0:12}-$(date -u +%Y%m%dT%H%M%SZ).md"
+report="docs/evidence/megaqml/phase2l-${source_sha:0:12}-$(date -u +%Y%m%dT%H%M%SZ).md"
 mkdir -p docs/evidence/megaqml
 {
-  printf '# MegaQML Phase 2k isolated Cloud Storage UI component evidence\n\nSource SHA: `%s`\n\n' "$source_sha"
-  printf 'Scope: source contracts, isolated Quickshell fake dispatcher and actual reviewed Material/Waffle Cloud Storage page bodies instantiated with temporary UI-dependency stubs, including navigation and consumer lease. This is NOT the full Hadalis visual render or live MEGA acceptance. No vendor or account operations.\n\n'
+  printf '# MegaQML Phase 2l shared Cloud Storage UI component evidence\n\nSource SHA: `%s`\n\n' "$source_sha"
+  printf 'Scope: Phase 2k regression plus two unchanged real Material/Waffle page bodies instantiated together against one copied shared service, with synthetic missing inventory, refresh, independent consumer release and reacquire. Quickshell and all unrelated visuals remain isolated stubs. No full Hadalis render, installed vendor execution or account operations.\n\n'
   printf 'qt_formatter_selection=%s;version_major_minor=%s\n\n' "$qt_formatter_selection" "$qt_public_version"
   printf '| Test | Result | Exit code | Source SHA |\n|---|---|---:|---|\n'
   while IFS=, read -r name state code sha; do
@@ -203,7 +204,7 @@ mkdir -p docs/evidence/megaqml
   elif grep -q '^qml_minimal,SKIP,' "$scratch/safe.csv"; then
     echo 'qml_blocker=qmlformat_unavailable'
   fi
-  for qs_case in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle; do
+  for qs_case in quickshell_baseline quickshell_service_dormant quickshell_active_present quickshell_active_missing quickshell_reject_wrong_id quickshell_reject_unsafe_secret quickshell_reject_malformed quickshell_exit_failure quickshell_deadline_reap quickshell_refresh_coalesce quickshell_refresh_stale_reacquire quickshell_recover_exit quickshell_recover_timeout quickshell_ui_material quickshell_ui_waffle quickshell_ui_shared; do
     if grep -q "^${qs_case},FAIL," "$scratch/safe.csv"; then
       # The local smoke helper prints only allowlisted diagnostics.
       grep '^quickshell_smoke_category=' "$scratch/$qs_case.raw" || true
@@ -254,7 +255,7 @@ if [[ "$(git diff --cached --name-only)" != "$report" ]] || ! git diff --cached 
   git reset --quiet -- "$report"
   echo 'PUBLICATION_SKIPPED_INDEX'; exit "$failed"
 fi
-if ! git commit --quiet -m "test(megaqml): Phase 2k isolated Material and Waffle component smoke evidence ${source_sha:0:12}" -- "$report"; then
+if ! git commit --quiet -m "test(megaqml): Phase 2l isolated shared Material and Waffle smoke evidence ${source_sha:0:12}" -- "$report"; then
   echo 'PUBLICATION_SKIPPED_COMMIT'; exit "$failed"
 fi
 evidence_sha="$(git rev-parse HEAD)"

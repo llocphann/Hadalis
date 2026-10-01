@@ -726,3 +726,66 @@ after the prior FAILED source `115ab32a9825` has yet been inspected:
 the next grouped local run must validate the current inert tests and
 the stricter real coordinate-witness matrix before any Wull
 production input change.
+
+
+## Checkpoint — 2026-10-01 coordinate-qualified top-edge pointer PASS; private candidate comparison awaiting local test
+
+- The latest verified source-pinned REAL nested Niri pointer receipt is now
+  `docs/wull-pointer-acceptance-20261001T161911Z-4d87f846-391d8e81d461.json`,
+  `source_sha=391d8e81d4617a6dbdb1199d009db4e0970ce073`,
+  **PASS**. Its forced native `wdotool --backend wlr-protocols`
+  body-disabled and enabled-exterior controls independently reported
+  `target_alignment=matched`; its enabled body hit produced NO underlay
+  click, exactly one actual bridge click and a real private native Rust
+  happy/pulse acknowledgment. Verified clean single-output nested
+  identity, namespace isolation, all owned layer/process/compositor
+  cleanup and unchanged host output count. The prior count-only
+  `FAILED` receipt is diagnostic history, NOT proof that this
+  newly coordinate-qualified run failed. The current full host
+  mask's empty internal margin did not pass through to underlay;
+  it also did not accidentally trigger a body click.
+- With that baseline PASS, the next priority is a separate source-only
+  **PRIVATE top-edge size=1 candidate mask A/B**, NEVER a premature
+  production mask edit. Commit
+  `e3da0c57264cb44f26045e285f14b22a301a06ba` adds
+  `scripts/wull-private-mask-candidate.py`, which guards and
+  substitutes precisely ONE reviewed Wull Region in a PRIVATE
+  shadowed `AbyssPerimeter.qml` outside the checkout, leaving
+  all other modules linked unchanged. Child commits
+  `11ecc21ad115fd0c683f3c7ce0c2e003e58f256d` and
+  `975482cd8a49475d9eb622d7b38c49aa601ec2bf`
+  add a same-owned-nested-compositor real full-mask control
+  followed by a separately launched private candidate.
+  The candidate must preserve correct-coordinate exterior
+  pass-through, genuine body bridge/Rust click and obtain a
+  positive correctly aligned underlay click at the formerly
+  blocked empty host margin. All controls, phase handoff,
+  cleanup and one absolute native pointer source must pass.
+- `244b6a95a485ff669506614958832e2715cb3e3c`
+  provides a separate explicit coordinator argument
+  `--acknowledge-nested-pointer-candidate` and distinct
+  `docs/wull-mask-candidate-*.json` sanitized receipt.
+  It pins the new helper/child and ten audited parent revisions,
+  leaving the existing production-pointer opt-in unchanged.
+  `b705c2b224ff432e06e4268b25fb8ba7d84626f3`
+  introduces a NEW wholly inert private-mask staging/source
+  contract, and
+  `55e191bb119be6e7f7d47150dff8876db0fb6fe8`
+  re-anchors the existing pointer inert contract.
+  The technical details and limitations are in
+  `docs/WULL_NESTED_POINTER_ACCEPTANCE_DESIGN.md` updated
+  `2700abe1f65be9b98a13e6eeeb2c15b1de6c3c77`.
+- **NEXT LOCAL GATE**, not yet executed: on one clean
+  fast-forward-only `dev` checkout and with already-installed
+  user-space `wdotool`, run the three existing inert pointer
+  contracts AND `scripts/test-wull-private-mask-candidate-contract.py`,
+  then ONLY if all PASS invoke
+  `python3 scripts/wull-manual-nested-pointer.py --acknowledge-nested-pointer-candidate`
+  in the SAME grouped terminal command. Inspect the unique
+  `docs/wull-mask-candidate-*.json` receipt; an inert PASS
+  alone is not real candidate approval. If a candidate
+  QML load fails, analyze the private scoped diagnostic without
+  guessing the input mask. Keep `stable`, production Wull,
+  default-off and complete host Region unchanged until separate
+  candidate PASS plus later four-edge, popup/hover, live visual,
+  real multioutput and canonical/global qualification.

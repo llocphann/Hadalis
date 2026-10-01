@@ -322,7 +322,20 @@ for cause in ("installed", "lease", "unavailable", "snapshot"):
     assert '"race_stale_' + cause + '"' in quickshell_classifier
     assert 'MEGAQML_QS_RACE_STAGE_STALE_' + cause.upper() in classifier_test
     assert '"STALE_' + cause.upper() + '"' in race_diagnostics
-assert 'run_test quickshell_ui_shared bash scripts/test-megaqml-quickshell-smoke.sh ui-shared' in runner
+assert 'run_test quickshell_ui_shared bash scripts/test-megaqml-f1-preflight-ui.sh' in runner
+f1_shared_wrapper = get("scripts/test-megaqml-f1-preflight-ui.sh")
+assert 'bash scripts/test-megaqml-quickshell-smoke.sh ui-shared' in f1_shared_wrapper
+assert 'bash scripts/test-megaqml-quickshell-smoke.sh ui-preflight-timeout' in f1_shared_wrapper
+assert 'MEGAQML_PREFLIGHT_TIMEOUT=1' in quickshell_runner
+assert 'MEGAQML_FIXTURE_CASE=preflight-timeout' in quickshell_runner
+assert 'ui-preflight-timeout) marker=MEGAQML_QS_UI_SHARED_TIMEOUT_OK' in quickshell_runner
+assert 'shared_preflight_timeout' in quickshell_classifier
+assert 'shared_preflight_release' in quickshell_classifier
+assert 'MEGAQML_QS_SHARED_STAGE_PREFLIGHT_TIMEOUT' in classifier_test
+assert 'MEGAQML_QS_SHARED_STAGE_PREFLIGHT_RELEASE' in classifier_test
+assert 'root.sawPreflightChildStart' in shared_ui
+assert 'MEGAQML_QS_UI_SHARED_TIMEOUT_OK' in shared_ui
+
 assert 'run_test quickshell_ui_race bash scripts/test-megaqml-quickshell-smoke.sh ui-race' in runner
 assert 'run_test megaqml_race_repeatability bash scripts/test-megaqml-race-repeat.sh' in runner
 assert 'run_test megaqml_race_repeat_contract bash scripts/test-megaqml-phase2p-contracts.sh' in runner

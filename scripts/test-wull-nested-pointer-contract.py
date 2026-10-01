@@ -84,9 +84,20 @@ parent = runpy.run_path(str(ROOT / "scripts/wull-manual-nested-pointer.py"),
 child = runpy.run_path(str(ROOT / "scripts/wull-manual-pointer-child.py"),
                        run_name="wull_pointer_inert_child")
 assert parent["REVIEWED"]["scripts/wull-manual-pointer-child.py"] == (
-    "b0eec12eb1cc1ac615f6bf585b37ffccea4e344d")
+    "d05961f299be9b9b9e1c53c2d2eb41c8cc882589")
 assert parent["REVIEWED"]["scripts/wull-fixtures/pointer-underlay/companion-relay.py"] == (
     "7e450db1db23e3c250859b0271a655d6325f0bc8")
+
+# Relative-only positioning has no independent absolute-position proof.
+# Until the actual controls pass, missed clicks MUST stay inconclusive.
+for required in (
+    'relative_disabled_pointer_control_unverified',
+    'relative_exterior_pointer_control_unverified',
+    'relative_body_pointer_target_unverified',
+    'relative_empty_margin_pointer_target_unverified',
+    'inconclusive" if actor_kind == "wlrctl" else "failed"',
+):
+    assert required in child_text, required
 
 # Both supported backends have inert, explicit command sequences. The
 # relative-only fallback resets to the candidate output origin and remains

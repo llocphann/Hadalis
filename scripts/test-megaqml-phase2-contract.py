@@ -187,4 +187,19 @@ assert 'quickshell_active_present' in runner and 'quickshell_active_missing' in 
 assert 'export PATH="$work/allowed-bin"' in quickshell_runner
 assert 'cp -- scripts/megaqml-fixtures/fake-static-dispatch.py' in quickshell_runner
 assert 'docs/evidence/megaqml/phase2k-' in runner
+focused = get("scripts/test-megaqml-ui-loader-local.sh")
+assert 'docs/evidence/megaqml/phase2k-loader-' in focused
+assert 'scripts/test-megaqml-quickshell-smoke.sh ui-material' in focused
+assert 'scripts/test-megaqml-quickshell-smoke.sh ui-waffle' in focused
+assert 'scripts/test-megaqml-quickshell-smoke.sh baseline' in focused
+assert 'scripts/test-megaqml-ui-fixture-contract.py' in focused
+assert 'scripts/test-megaqml-quickshell-classifier-contract.py' in focused
+assert 'quickshell_smoke_category=' in focused
+assert "grep '^quickshell_smoke_category='" in focused
+for gate in ('REMOTE_MISMATCH', 'SOURCE_MISMATCH', 'DIRTY_WORKTREE',
+             'PUBLICATION_SKIPPED_REMOTE_MOVED', 'git diff --cached --check'):
+    assert gate in focused
+assert 'git push --quiet origin HEAD:refs/heads/dev' in focused
+assert 'scripts/native-dispatch' not in focused
+assert 'mega-login' not in focused
 print("PASS MegaQML Phase 2k static source contract")

@@ -8,6 +8,9 @@ import "./services/deferred" as Deferred
 
 ShellRoot {
     id: root
+    readonly property bool timeoutCase:
+        String(Quickshell.env("MEGAQML_PREFLIGHT_TIMEOUT")) === "1"
+    property bool sawPreflightChildStart: false
     property var material: null
     property var waffle: null
     property var materialComponent: null
@@ -207,6 +210,48 @@ ShellRoot {
                 return
             }
             if (root.stage === 4) {
+                if (root.timeoutCase) {
+                    if (svc.preflightState === "checking") {
+                        if (!svc.preflightBusy || !root.goodMissing(svc, 3, 1)) {
+                            root.fail("PREFLIGHT_TIMEOUT")
+                            return
+                        }
+                        // A queued but not yet started process keeps stdin.
+                        // Observe that onStarted delivered input before the deadline.
+                        if (svc._preflightInput === "")
+                            root.sawPreflightChildStart = true
+                        return
+                    }
+                    if (svc.preflightBusy) return // Child must be reaped.
+                    if (!root.sawPreflightChildStart
+                            || svc.preflightSerial !== 1
+                            || svc.preflightState !== "unavailable"
+                            || svc.preflightError
+                                !== "Offline connection readiness check timed out."
+                            || svc._preflightGeneration !== -1
+                            || !root.goodMissing(svc, 3, 1)) {
+                        root.fail("PREFLIGHT_TIMEOUT")
+                        return
+                    }
+                    root.material.visible = false
+                    if (root.material.leaseHeld || root.waffle.leaseHeld
+                            || svc.consumerCount !== 0
+                            || svc.backendState !== "stale"
+                            || svc.preflightBusy
+                            || svc.preflightState !== "not_requested"
+                            || svc.preflightError !== ""
+                            || svc.connected || svc.liveAuthQualified) {
+                        root.fail("PREFLIGHT_RELEASE")
+                        return
+                    }
+                    root.material.destroy()
+                    root.waffle.destroy()
+                    root.material = null
+                    root.waffle = null
+                    console.log("MEGAQML_QS_UI_SHARED_TIMEOUT_OK")
+                    Qt.quit()
+                    return
+                }
                 if (svc.preflightState === "checking") return
                 if (svc.preflightBusy || svc.preflightSerial !== 1
                         || svc.preflightState !== "dependency_missing"

@@ -2,7 +2,7 @@
 # Manual one-shot, no vendor calls, no background service, no user config access.
 set -euo pipefail
 umask 077
-case "${1:-}" in baseline|dormant|active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang|refresh-coalesce|refresh-stale-reacquire|recovery-exit|recovery-timeout) kind="$1" ;; *) exit 64 ;; esac
+case "${1:-}" in baseline|dormant|active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang|refresh-coalesce|refresh-stale-reacquire|recovery-exit|recovery-timeout|ui-material|ui-waffle) kind="$1" ;; *) exit 64 ;; esac
 cd "$(git rev-parse --show-toplevel)"
 qs_bin=""
 if command -v qs >/dev/null 2>&1; then qs_bin="$(command -v qs)"
@@ -37,6 +37,11 @@ if [[ ! -f "$source_fixture" ]]; then
   exit 76
 fi
 cp -- "$source_fixture" "$fixture_dir/shell.qml"
+if [[ "$kind" == ui-* ]]; then
+  # Only real Cloud Storage page and service files are copied; all unrelated
+  # visual dependencies are synthetic stubs. No production dispatcher.
+  "$safe_python" scripts/test-megaqml-ui-fixture.py "${kind#ui-}" "$fixture_dir" >/dev/null
+fi
 if [[ "$kind" == dormant || "$kind" == active-* || "$kind" == refresh-* || "$kind" == recovery-* ]]; then
   cp -- services/deferred/CloudStorageService.qml "$fixture_dir/services/CloudStorageService.qml"
   cp -- services/deferred/CloudStorageStaticProtocol.js "$fixture_dir/services/CloudStorageStaticProtocol.js"
@@ -44,14 +49,17 @@ if [[ "$kind" == dormant || "$kind" == active-* || "$kind" == refresh-* || "$kin
 fi
 test ! -e "$fixture_dir/scripts/native-dispatch" || exit 75
 case "$kind" in
-  active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang|refresh-coalesce|refresh-stale-reacquire|recovery-exit|recovery-timeout)
+  active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang|refresh-coalesce|refresh-stale-reacquire|recovery-exit|recovery-timeout|ui-material|ui-waffle)
     mkdir -p "$fixture_dir/scripts" "$work/allowed-bin"
     cp -- scripts/megaqml-fixtures/fake-static-dispatch.py "$fixture_dir/scripts/native-dispatch"
     chmod 700 "$fixture_dir/scripts/native-dispatch"
     for tool in python3 bash sh; do
       ln -s -- "$(command -v "$tool")" "$work/allowed-bin/$tool"
     done
-    if [[ "$kind" == recovery-* ]]; then
+    if [[ "$kind" == ui-* ]]; then
+      export MEGAQML_FIXTURE_CASE=missing
+      export MEGAQML_UI_KIND="${kind#ui-}"
+    elif [[ "$kind" == recovery-* ]]; then
       export MEGAQML_FIXTURE_CASE="retry-${kind#recovery-}"
     else
       export MEGAQML_FIXTURE_CASE="${kind#*-}"
@@ -73,6 +81,8 @@ if "$safe_timeout" --kill-after=2s 12s "$qs_bin" --path "$fixture_dir/shell.qml"
     refresh-stale-reacquire) marker=MEGAQML_QS_REACQUIRE_OK ;;
     recovery-exit) marker=MEGAQML_QS_EXIT_RECOVERY_OK ;;
     recovery-timeout) marker=MEGAQML_QS_TIMEOUT_RECOVERY_OK ;;
+    ui-material) marker=MEGAQML_QS_UI_MATERIAL_OK ;;
+    ui-waffle) marker=MEGAQML_QS_UI_WAFFLE_OK ;;
   esac
   if "$safe_grep" -Fq "$marker" "$work/stdout" "$work/stderr"; then
     echo "PASS isolated Quickshell $kind smoke"

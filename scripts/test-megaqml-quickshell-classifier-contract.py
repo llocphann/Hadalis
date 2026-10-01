@@ -28,6 +28,10 @@ cases = (
      "recovery-exit", "unexpected_recovery_state"),
     ("MEGAQML_QS_RECOVERY_INVALID /home/private/path",
      "recovery-timeout", "unexpected_recovery_state"),
+    ("MEGAQML_QS_UI_INVALID path=/home/private/material",
+     "ui-material", "unexpected_ui_component_state"),
+    ("MEGAQML_QS_UI_INVALID password=private-marker",
+     "ui-waffle", "unexpected_ui_component_state"),
     ("", "baseline", "no_diagnostic_output"),
 )
 with tempfile.TemporaryDirectory(prefix="megaqml-classifier-") as temp:

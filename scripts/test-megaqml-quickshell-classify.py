@@ -7,11 +7,14 @@ if len(sys.argv) != 4 or sys.argv[3] not in ("baseline", "dormant", "active-pres
                                                      "active-wrong-id", "active-unsafe-secret",
                                                      "active-malformed", "active-exit-failure", "active-hang",
                                                      "refresh-coalesce", "refresh-stale-reacquire",
-                                                     "recovery-exit", "recovery-timeout"):
+                                                     "recovery-exit", "recovery-timeout",
+                                                     "ui-material", "ui-waffle"):
     raise SystemExit(64)
 raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
                 for p in sys.argv[1:3]).lower()
-if "megaqml_qs_recovery_invalid" in raw:
+if "megaqml_qs_ui_invalid" in raw:
+    kind = "unexpected_ui_component_state"
+elif "megaqml_qs_recovery_invalid" in raw:
     kind = "unexpected_recovery_state"
 elif "megaqml_qs_refresh_invalid" in raw:
     kind = "unexpected_refresh_state"
@@ -40,6 +43,8 @@ elif any(token in raw for token in ("megaqml_qs_active_present_ok",
                                   "megaqml_qs_reacquire_ok",
                                   "megaqml_qs_exit_recovery_ok",
                                   "megaqml_qs_timeout_recovery_ok",
+                                  "megaqml_qs_ui_material_ok",
+                                  "megaqml_qs_ui_waffle_ok",
                                   "megaqml_qs_dormant_ok",
                                   "megaqml_qs_baseline_ok")):
     kind = "sentinel_seen_nonzero_exit"

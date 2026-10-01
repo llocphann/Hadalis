@@ -27,6 +27,7 @@ Maintainer-authorized implementation, 2026-09-30. Target contract and audit:
 - [x] Verified active turns use lightweight server status between bounded full history audits. Receipt loss, uncertain submissions and completion/failure force exact-turn reads; status-only observations cannot authorize recovery, final consumption or stream reattachment. Healthy streams no longer reattach unnecessarily.
 - [x] Fresh-session monitor recovery uses the same atomic final-response/command guard as Resume. A later owner Pause/Stop or a pending turn rejects recovery; consumed receipts remain intact and the new step has distinct chat/message identities.
 - [x] Worker publication honors Git's separate push URL with explicit transport override and owning-profile credential compatibility. Real local Git regressions cover read/write remotes; saved execution receipts retry publication without borrowing another profile's token or re-running actions.
+- [x] Explicit worker push transport takes precedence over saved credential metadata, including removed owners. A real Git regression preserves the completed result and verifies the override wins without credential lookup or network access.
 - [ ] Future/deferred: migrate the Linux/process-sensitive Automation execution substrate to Rust only after parity and benchmark gates in [`AUTOMATION_RUST_MIGRATION.md`](AUTOMATION_RUST_MIGRATION.md).
 
 Keep uncertain existing submissions and consumed job results. Do not reset

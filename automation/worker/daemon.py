@@ -299,11 +299,12 @@ def publish(job_id: str, payload: dict[str, Any]) -> None:
             # Preserve Git's separate read/write transport configuration. The
             # fetch URL can be anonymous HTTPS while push uses the owner's SSH
             # agent; losing a removed profile's token must not ignore pushurl.
-            push_remote=os.environ.get("HADALIS_WORKER_PUSH_REMOTE") or remote_url(push=True)
+            explicit_remote=os.environ.get("HADALIS_WORKER_PUSH_REMOTE")
+            push_remote=explicit_remote or remote_url(push=True)
             if urlparse(push_remote).password:raise ValueError("credentials cannot appear in push argv")
             from automation.manager.credentials import git_options,git_env,repository,has_token
             owner=payload.get("profile_id")
-            if has_token(owner) and repository(remote):
+            if not explicit_remote and has_token(owner) and repository(remote):
                 push_remote="https://github.com/"+repository(remote)+".git"
             pushed=run(["git",*git_options(owner,push_remote),"push",push_remote,"HEAD:dev"],cwd=checkout,timeout=45,env=git_env())
             if pushed.returncode:raise RuntimeError("result publication failed; private receipt retained")

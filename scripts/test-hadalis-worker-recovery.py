@@ -36,7 +36,10 @@ def publication_destinations():
             git("remote","add","origin",str(root/"read.git"))
             git("remote","set-url","--push","origin",str(root/"write.git"))
             original_run=w.run
-            def isolated_run(argv,*,cwd=source,**options):return original_run(argv,cwd=cwd,**options)
+            def isolated_run(argv,*,cwd=source,**options):
+                if argv[0]=="git" and "push" in argv:
+                    assert argv[-2] in {str(root/"write.git"),str(root/"override.git")}, "test publication must remain local"
+                return original_run(argv,cwd=cwd,**options)
             from automation.manager import credentials
             with patch.object(w,"ROOT",source),patch.object(w,"run",side_effect=isolated_run), \
                  patch.object(credentials,"has_token",return_value=False):
@@ -51,6 +54,17 @@ def publication_destinations():
                 with patch.dict(os.environ,{"HADALIS_WORKER_PUSH_REMOTE":str(root/"override.git")}):
                     w.publish("JOB-override",{**result,"job":"JOB-override"})
                 assert git("cat-file","-e",f"dev:{w.RESULTS}/JOB-override.json",cwd=root/"override.git").returncode==0
+                # Explicit transport also wins over a saved token flag left by
+                # a removed owner. No credential lookup or action replay is
+                # necessary to publish the existing result over that transport.
+                git("fetch",str(root/"override.git"),"dev")
+                git("push",str(root/"read.git"),"FETCH_HEAD:dev")
+                repo=credentials.repository
+                with patch.dict(os.environ,{"HADALIS_WORKER_PUSH_REMOTE":str(root/"override.git")}), \
+                     patch.object(credentials,"has_token",return_value=True), \
+                     patch.object(credentials,"repository",side_effect=lambda url:"llocphann/Hadalis" if url==str(root/"read.git") else repo(url)):
+                    w.publish("JOB-saved-owner",{**result,"job":"JOB-saved-owner"})
+                assert git("cat-file","-e",f"dev:{w.RESULTS}/JOB-saved-owner.json",cwd=root/"override.git").returncode==0
                 assert not list((w.state_root()/"publish").iterdir())
 
 

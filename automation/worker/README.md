@@ -58,7 +58,8 @@ commands. Stable job IDs are execution tombstones; do not reuse an ID for a
 different job. Recovery reports an interrupted external action as
 `indeterminate`, with `recovery_required`, instead of guessing its outcome.
 Publication honors Git's configured `origin` push URL independently of its
-fetch URL, unless `HADALIS_WORKER_PUSH_REMOTE` is set. A saved owning-profile
+fetch URL. An explicit `HADALIS_WORKER_PUSH_REMOTE` takes precedence, including
+over an old owner's saved token flag. Without that override, a saved owning-profile
 token keeps its repository-scoped HTTPS authentication; publication never
 borrows another profile's token. A removed profile's completed receipt can
 still publish through the repository's configured SSH transport.

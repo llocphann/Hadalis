@@ -100,7 +100,7 @@ ShellRoot {
 
     function newPhase(): var {
         return {
-            samples: 0, active: false, stretch_witness: false,
+            samples: 0, active: true, stretch_witness: false,
             bob_witness: false, sway_witness: false,
             bbox_outside_static: false, bbox_outside_host: false,
             tip_outside_static: false, tip_outside_host: false,
@@ -119,16 +119,16 @@ ShellRoot {
             if (!current.consistent) { root.invalid = true; return }
             const sample = record[root.phase]
             sample.samples++
-            sample.active ||= body.motionEnabled === true
-            sample.stretch_witness ||= root.phase === "stretch"
-                ? current.stretch > 0.2 : current.stretch < 0.8
-            sample.bob_witness ||= Math.abs(current.bob) > 0.05
-            sample.sway_witness ||= Math.abs(current.sway) > 0.01
+            sample.active = sample.active && body.motionEnabled === true
+            sample.stretch_witness = sample.stretch_witness || (root.phase === "stretch"
+                ? current.stretch > 0.2 : current.stretch < 0.8)
+            sample.bob_witness = sample.bob_witness || Math.abs(current.bob) > 0.05
+            sample.sway_witness = sample.sway_witness || Math.abs(current.sway) > 0.01
             for (const flag of ["bbox_outside_static", "bbox_outside_host",
                                 "tip_outside_static", "tip_outside_host"])
-                sample[flag] ||= current[flag]
+                sample[flag] = sample[flag] || current[flag]
             const frozen = record.private_frozen
-            sample.bbox_beyond_frozen ||= current.left < frozen.left - 0.12
+            sample.bbox_beyond_frozen = sample.bbox_beyond_frozen || current.left < frozen.left - 0.12
                 || current.right > frozen.right + 0.12
                 || current.top < frozen.top - 0.12
                 || current.bottom > frozen.bottom + 0.12
@@ -143,7 +143,7 @@ ShellRoot {
         }
         const publicRows = root.records.map(r => ({
             edge: r.edge, requested_scale: r.requested_scale,
-            frozen: r.frozen, stretch: r.stretch, release: r.release
+            neutral_verified: r.neutral_verified, frozen: r.frozen, stretch: r.stretch, release: r.release
         }))
         console.log("WULL_OFFSCREEN_DYNAMIC_GEOMETRY " + JSON.stringify(publicRows))
         Qt.quit()
@@ -186,6 +186,7 @@ ShellRoot {
                     root.records.push({
                         edge: root.cases[i].edge,
                         requested_scale: root.cases[i].requested_scale,
+                        neutral_verified: false,
                         private_frozen: frozen,
                         frozen: {
                             bbox_outside_static: frozen.bbox_outside_static,
@@ -199,7 +200,20 @@ ShellRoot {
                 }
                 Qt.callLater(() => {
                     for (let i = 0; i < root.cases.length; ++i) {
-                        const body = root.bodyOf(hosts.itemAt(i))
+                        const host = hosts.itemAt(i)
+                        const body = root.bodyOf(host)
+                        const neutral = root.bounds(host, body, root.cases[i])
+                        if (!neutral.consistent || body.motionEnabled !== false
+                                || Math.abs(body.stateStretch) > 0.0001
+                                || neutral.bbox_outside_static
+                                || neutral.bbox_outside_host
+                                || neutral.tip_outside_static
+                                || neutral.tip_outside_host) {
+                            root.invalid = true
+                            root.emit()
+                            return
+                        }
+                        root.records[i].neutral_verified = true
                         body.motionEnabled = true
                         body.stateStretch = 1
                     }

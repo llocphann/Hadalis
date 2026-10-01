@@ -1349,8 +1349,8 @@ production input change.
   The old disabled-center matched
   underlay witness shares exactly
   the LEFT margin's REQUESTED x;
-  its requested y is exactly
-  47 px below disabled center within
+  its requested y is
+  47 px above disabled center within
   at most 1 px round-to-even ambiguity.
   Using only these relative geometry
   anchors, the helper emits coarse

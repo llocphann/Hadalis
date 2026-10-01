@@ -53,7 +53,7 @@ assert 'qml_minimal' in runner and 'qml_modern_syntax' in runner and 'qml_blocke
 assert '/usr/lib/qt6/bin/qmlformat qmlformat6 qmlformat' in runner
 assert 'qt_formatter_selection=' in runner and 'version_major_minor=' in runner
 assert 'modern_probe_pass' in runner and 'fallback_probe_unqualified' in runner
-assert 'docs/evidence/megaqml/phase2n-' in runner
+assert 'docs/evidence/megaqml/phase2o-' in runner
 quickshell_runner = get("scripts/test-megaqml-quickshell-smoke.sh")
 quickshell_base = get("scripts/megaqml-fixtures/runtime-baseline/shell.qml")
 quickshell_dormant = get("scripts/megaqml-fixtures/runtime-dormant/shell.qml")
@@ -163,6 +163,22 @@ for route in ("settings.qml", "SettingsOverlay.qml", "SettingsFocus.qml",
               "SettingsPageHost.qml", "waffleSettings.qml", "WSettingsContent.qml"):
     assert route in host_preflight
 assert 'PASS MegaQML real Settings host route source-only preflight' in host_preflight
+assert 'run_test megaqml_real_host_fixture python3 scripts/test-megaqml-host-ui-fixture-contract.py' in runner
+real_host_builder = get("scripts/test-megaqml-host-ui-fixture.py")
+real_host_test = get("scripts/test-megaqml-host-ui-fixture-contract.py")
+real_host = get("scripts/megaqml-fixtures/runtime-ui-host/shell.qml")
+for required in ("SettingsPageHost.qml", "SettingsPageLoadingState.js",
+                 "CloudStorageConfig.qml", "CloudStorageService.qml",
+                 "runpy.run_path"):
+    assert required in real_host_builder
+assert 'PASS MegaQML exact real host and page temporary fixture contract' in real_host_test
+assert 'megaqml-realhost-unit-' in real_host_test
+for required in ("SettingsPageHost.qml", "root.host.requestedIndex = 1",
+                 "root.host.loadEnabled = false", "root.cachedCloud",
+                 "MEGAQML_QS_UI_HOST_OK", '"REVISIT_CACHE"', '"HOST_RESET"',
+                 '"FINAL_RELEASE"'):
+    assert required in real_host
+assert "mega-login" not in real_host and "scripts/native-dispatch" not in real_host
 assert 'connected: false' in host_preflight
 assert 'liveAuthQualified: false' in host_preflight
 assert 'kind == "shared"' in ui_fixture_source
@@ -249,15 +265,21 @@ for safe_category in ("ui_component_load", "ui_component_create", "ui_navigation
     assert safe_category in quickshell_classifier
 assert 'MEGAQML_QS_UI_STAGE_COMPONENT' in classifier_test
 assert 'MEGAQML_QS_UI_STAGE_CONSTRUCT' in classifier_test
-for shell_case in ("ui-material", "ui-waffle", "ui-shared", "ui-race"):
+for shell_case in ("ui-material", "ui-waffle", "ui-shared", "ui-race", "ui-host"):
     assert shell_case in quickshell_runner
 assert 'scripts/test-megaqml-ui-fixture.py' in quickshell_runner
 # Both ui-shared and ui-race use their dedicated fixture paths through
 # the reviewed runtime-$kind mapping, not a hard-coded shared path.
 assert 'source_fixture="scripts/megaqml-fixtures/runtime-$kind/shell.qml"' in quickshell_runner
-assert 'if [[ "$kind" == ui-shared || "$kind" == ui-race ]]; then' in quickshell_runner
+assert 'if [[ "$kind" == ui-shared || "$kind" == ui-race || "$kind" == ui-host ]]; then' in quickshell_runner
 assert 'ui-shared) marker=MEGAQML_QS_UI_SHARED_OK' in quickshell_runner
 assert 'ui-race) marker=MEGAQML_QS_UI_RACE_OK' in quickshell_runner
+assert 'ui-host) marker=MEGAQML_QS_UI_HOST_OK' in quickshell_runner
+assert 'scripts/test-megaqml-host-ui-fixture.py' in quickshell_runner
+assert 'run_test quickshell_ui_host bash scripts/test-megaqml-quickshell-smoke.sh ui-host' in runner
+assert '"ui-host"' in quickshell_classifier
+assert 'host_revisit_cache' in quickshell_classifier
+assert 'MEGAQML_QS_HOST_STAGE_HOST_RESET' in classifier_test
 assert 'runtime-$kind/shell.qml' in quickshell_runner
 assert 'fixture_ui_kind=shared' in quickshell_runner
 assert 'MEGAQML_FIXTURE_CASE=shared-race' in quickshell_runner
@@ -265,7 +287,7 @@ assert 'race_stale_reply' in quickshell_classifier
 assert 'MEGAQML_QS_RACE_STAGE_STALE_REPLY' in classifier_test
 assert 'run_test quickshell_ui_shared bash scripts/test-megaqml-quickshell-smoke.sh ui-shared' in runner
 assert 'run_test quickshell_ui_race bash scripts/test-megaqml-quickshell-smoke.sh ui-race' in runner
-assert 'quickshell_ui_shared quickshell_ui_race; do' in runner
+assert 'quickshell_ui_shared quickshell_ui_race quickshell_ui_host; do' in runner
 race_ui = get("scripts/megaqml-fixtures/runtime-ui-race/shell.qml")
 assert 'import "./services/deferred" as Deferred' in race_ui
 assert 'property bool sawStaleInstalled: false' in race_ui
@@ -281,7 +303,7 @@ assert 'svc.generation !== beforeRelease + 1' in race_ui
 assert 'MEGAQML_QS_UI_RACE_OK' in race_ui
 assert 'mega-login' not in race_ui and 'scripts/native-dispatch' not in race_ui
 assert 'megaqml-race-unit-' in ui_fixture_contract
-assert 'quickshell_ui_waffle quickshell_ui_shared quickshell_ui_race; do' in runner
+assert 'quickshell_ui_waffle quickshell_ui_shared quickshell_ui_race quickshell_ui_host; do' in runner
 assert 'quickshell_ui_waffle quickshell_ui_shared; do' not in runner
 assert '"ui-material", "ui-waffle", "ui-shared"' in quickshell_classifier
 assert 'MEGAQML_QS_SHARED_STAGE_HIDE_ONE' in classifier_test
@@ -294,10 +316,11 @@ assert 'export PATH="$work/allowed-bin"' in quickshell_runner
 assert 'cp -- scripts/megaqml-fixtures/fake-static-dispatch.py' in quickshell_runner
 # This complete runner publishes Phase 2m evidence. The focused
 # standalone loader runner intentionally retains the historical 2k prefix.
-assert 'docs/evidence/megaqml/phase2n-' in runner
+assert 'docs/evidence/megaqml/phase2o-' in runner
 assert 'docs/evidence/megaqml/phase2k-' not in runner
 assert 'docs/evidence/megaqml/phase2l-' not in runner
 assert 'docs/evidence/megaqml/phase2m-' not in runner
+assert 'docs/evidence/megaqml/phase2n-' not in runner
 # Full requalification must tolerate only independently reviewed Wull commits
 # on shared dev and fail closed on unrelated concurrent source changes.
 assert 'wull_only_advance()' in runner
@@ -336,4 +359,4 @@ for allowlisted in ('docs/wull-*', 'scripts/wull-*', 'scripts/test-wull-*',
     assert allowlisted in focused
 assert 'scripts/native-dispatch' not in focused
 assert 'mega-login' not in focused
-print("PASS MegaQML Phase 2n static source contract")
+print("PASS MegaQML Phase 2o static source contract")

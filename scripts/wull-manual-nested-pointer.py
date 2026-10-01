@@ -35,7 +35,7 @@ SAFE_REMOTES = {
 # SHA-pinned implementation and real production interfaces. A changed
 # source dependency must be re-reviewed, never silently accepted as PASS.
 REVIEWED = {
-    CHILD: "071f4eb257a52d2a35e8d06962ab9dfe6c90f802",
+    CHILD: "c099fc6a1a62b06218d69dd3ec526df18de701db",
     "scripts/wull-private-mask-candidate.py":
         "91049b2ca2beb7b1936af624adca5133d251ea3c",
     NESTED_HELPER: "7edf8328df1f9704f1331fbe1a5e84e659cd360a",
@@ -97,7 +97,7 @@ def audit(source):
             raise RuntimeError("pointer_dependency_changed_after_review")
     revision = git("log", "--format=%H", BASE + ".." + source,
                    "--", SELF).splitlines()
-    if (len(revision) != 13
+    if (len(revision) != 14
             or git("rev-parse", revision[-1] + ":" + SELF)
             != INITIAL_SELF_BLOB
             or git("rev-parse", revision[0] + ":" + SELF)
@@ -265,6 +265,8 @@ def run_nested(niri, private, host_display, host_ipc, host_outputs, *,
                 and candidate_edge == "bottom" else
                 "candidate-mask-right" if candidate_mode
                 and candidate_edge == "right" else
+                "candidate-mask-left" if candidate_mode
+                and candidate_edge == "left" else
                 "candidate-mask" if candidate_mode else ""),
         })
         (private / "child").mkdir(mode=0o700)
@@ -360,17 +362,21 @@ def main():
             ["--acknowledge-nested-pointer"],
             ["--acknowledge-nested-pointer-candidate"],
             ["--acknowledge-nested-pointer-candidate-bottom"],
-            ["--acknowledge-nested-pointer-candidate-right"]):
+            ["--acknowledge-nested-pointer-candidate-right"],
+            ["--acknowledge-nested-pointer-candidate-left"]):
         raise RuntimeError("explicit_nested_pointer_opt_in_required")
     candidate_mode = sys.argv[1:] in (
         ["--acknowledge-nested-pointer-candidate"],
         ["--acknowledge-nested-pointer-candidate-bottom"],
-        ["--acknowledge-nested-pointer-candidate-right"])
+        ["--acknowledge-nested-pointer-candidate-right"],
+        ["--acknowledge-nested-pointer-candidate-left"])
     candidate_edge = (
         "bottom" if sys.argv[1:] ==
         ["--acknowledge-nested-pointer-candidate-bottom"] else
         "right" if sys.argv[1:] ==
-        ["--acknowledge-nested-pointer-candidate-right"] else "top")
+        ["--acknowledge-nested-pointer-candidate-right"] else
+        "left" if sys.argv[1:] ==
+        ["--acknowledge-nested-pointer-candidate-left"] else "top")
     os.umask(0o077)
     if (Path.cwd().resolve() != ROOT
             or git("symbolic-ref", "--short", "HEAD") != "dev"
@@ -461,6 +467,8 @@ def main():
             if candidate_mode and candidate_edge == "bottom" else
             "owned_single_output_nested_niri_right_candidate_mask_A_B"
             if candidate_mode and candidate_edge == "right" else
+            "owned_single_output_nested_niri_left_candidate_mask_A_B"
+            if candidate_mode and candidate_edge == "left" else
             "owned_single_output_nested_niri_top_candidate_mask_A_B"
             if candidate_mode else
                   "owned_single_output_nested_niri_real_production_pointer"),
@@ -494,6 +502,7 @@ def main():
     prefix = (
         "wull-mask-bottom-" if candidate_mode and candidate_edge == "bottom"
         else "wull-mask-right-" if candidate_mode and candidate_edge == "right"
+        else "wull-mask-left-" if candidate_mode and candidate_edge == "left"
         else "wull-mask-candidate-" if candidate_mode
         else "wull-pointer-acceptance-")
     path = Path("docs") / (prefix + identifier + "-" + source[:12] + ".json")

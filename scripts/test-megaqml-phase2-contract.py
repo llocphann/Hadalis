@@ -208,13 +208,19 @@ assert 'svc.refreshStatic()' in shared_ui
 for page_signal in ('materialButton.clicked()', 'waffleButton.buttonClicked()'):
     assert page_signal in shared_ui, page_signal
 for fixed in ('button_material', 'preflight_material',
-              'button_waffle', 'preflight_waffle'):
+              'button_waffle', 'preflight_waffle',
+              'replay_start', 'replay_reject'):
     assert 'shared_' + fixed in quickshell_classifier
     assert 'MEGAQML_QS_SHARED_STAGE_' + fixed.upper() in classifier_test
 assert 'svc.preflightState !== "not_requested"' in shared_ui
 assert 'svc.preflightState !== "dependency_missing"' in shared_ui
 assert 'svc.preflightSerial !== 1' in shared_ui
 assert 'svc.preflightSerial !== 2' in shared_ui
+assert 'svc.preflightSerial !== 3' in shared_ui
+assert 'replayButton.buttonClicked()' in shared_ui
+assert 'MEGAQML_FIXTURE_CASE=preflight-third-wrong-id' in quickshell_runner
+assert 'preflight-third-wrong-id' in get(
+    "scripts/megaqml-fixtures/fake-static-dispatch.py")
 assert "mega-login" not in shared_ui and "scripts/native-dispatch" not in shared_ui
 assert 'run_test megaqml_ui_component_fixture' in runner
 for runtime_case, marker in (("quickshell_ui_material", "MEGAQML_QS_UI_MATERIAL_OK"),

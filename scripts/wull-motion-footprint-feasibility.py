@@ -154,8 +154,9 @@ def nominal_parameter_budget():
             round(1 + ROOT_ANIMATION_SQUASH_NOMINAL[1] * .035, 6)),
         "rotation_degrees_nominal": (round(min_angle, 6),
                                      round(max_angle, 6)),
-        "bob_nominal_target_y": (-1.2 - 2.4 * BRIDGE_ENERGY[1],
-                                 .6 + 1.2 * BRIDGE_ENERGY[1]),
+        "bob_nominal_target_y": (
+            round(-1.2 - 2.4 * BRIDGE_ENERGY[1], 6),
+            round(.6 + 1.2 * BRIDGE_ENERGY[1], 6)),
         "parent_config_scale": PARENT_SCALE_CONFIG,
         "body_bbox": (BODY_WIDTH, BODY_HEIGHT),
         "source_host_top": HORIZONTAL_HOST,

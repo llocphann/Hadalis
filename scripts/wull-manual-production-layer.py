@@ -15,8 +15,9 @@ import subprocess
 import sys
 import time
 
-BASE = "a9d1cb0668bd5f685c8a6d773f5ef4880567ed71"
+BASE = "b5eaf719c5b9d161c862f8e9176b6f4dd3d93739"
 SELF = "scripts/wull-manual-production-layer.py"
+INITIAL_SELF_BLOB = "269a1ba8d0de6edd7a9913180fab34a3472286b3"
 FIXTURE = "scripts/wull-fixtures/production-layer/shell.qml"
 FIXTURE_BLOB = "e16b6dcada26a27fd71cc670e30c55135401bcef"
 NAMESPACE = "hadalis:abyss-perimeter"
@@ -67,11 +68,13 @@ def audit(target):
     if changed:
         raise RuntimeError("Reviewed production dependencies changed: "
                            + sorted(changed)[0])
+    if git("rev-parse", BASE + ":" + SELF) != INITIAL_SELF_BLOB:
+        raise RuntimeError("Reviewed production-layer baseline runner changed")
     if SELF in modified:
-        # Exactly one reviewed follow-up after the initial runner commit.
+        # Exactly one reviewed source-guard reanchor after qualified geometry.
         revisions = git("log", "--format=%H",
                         BASE + ".." + target, "--", SELF).splitlines()
-        if len(revisions) != 2 or (
+        if len(revisions) != 1 or (
             git("rev-parse", revisions[0] + ":" + SELF)
             != git("rev-parse", target + ":" + SELF)
         ):

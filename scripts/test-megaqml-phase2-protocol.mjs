@@ -83,7 +83,7 @@ assert.equal(preflight(JSON.stringify(readyPreflight()), "preflight-test")
 const unavailablePreflight = readyPreflight();
 unavailablePreflight.result.dependencies_ready = false;
 unavailablePreflight.result.reason = "dependency_missing";
-assert.equal(preflight(JSON.stringify(unavailablePreflight()), "preflight-test")
+assert.equal(preflight(JSON.stringify(unavailablePreflight), "preflight-test")
     .dependenciesReady, false);
 let preflightCases = 2;
 for (const modify of [

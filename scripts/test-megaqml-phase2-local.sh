@@ -79,7 +79,7 @@ if command -v qs >/dev/null 2>&1 || command -v quickshell >/dev/null 2>&1; then
       run_test quickshell_recover_timeout bash scripts/test-megaqml-quickshell-smoke.sh recovery-timeout
       run_test quickshell_ui_material bash scripts/test-megaqml-quickshell-smoke.sh ui-material
       run_test quickshell_ui_waffle bash scripts/test-megaqml-quickshell-smoke.sh ui-waffle
-      run_test quickshell_ui_shared bash scripts/test-megaqml-quickshell-smoke.sh ui-shared
+      run_test quickshell_ui_shared bash scripts/test-megaqml-f1-preflight-ui.sh
       run_test quickshell_ui_race bash scripts/test-megaqml-quickshell-smoke.sh ui-race
       run_test megaqml_race_repeatability bash scripts/test-megaqml-race-repeat.sh
       run_test quickshell_ui_host bash scripts/test-megaqml-quickshell-smoke.sh ui-host

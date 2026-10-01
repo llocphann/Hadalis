@@ -2,7 +2,7 @@
 
 Hadalis uses this Rust workspace as its production backend. Python implementations remain installed as an explicit rollback path, not the default selector.
 
-The workspace builds `inir-native`, `inir-inputd`, `inir-mpdd`, and `inir-theme`. Packaged/source-installed runtimes place them in `native/bin/`; a source checkout can also use `native/target/release/`.
+The workspace builds the production helpers plus the development-gated `inir-companiond` Wull backend. Packaged/source-installed production runtimes place enabled helper binaries in `native/bin/`; `inir-companiond` is intentionally not copied or packaged yet while Wull production integration remains disabled. A source checkout can also use `native/target/release/` for development validation.
 
 `scripts/native-dispatch` defaults to Rust. Explicit environment overrides have highest priority, then persisted selector state, then packaged binaries. If a Rust binary is unavailable or fails and strict mode is off, the dispatcher logs the failure and executes the retained Python implementation.
 

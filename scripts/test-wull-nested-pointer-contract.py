@@ -20,7 +20,8 @@ for source in (parent_text, child_text, relay_text):
     ast.parse(source)
 
 for marker in (
-    'sys.argv[1:] != ["--acknowledge-nested-pointer"]',
+    '"--acknowledge-nested-pointer"',
+    '"--acknowledge-nested-pointer-candidate"',
     "BASE = ",
     "REVIEWED = ",
     'shutil.which("wlrctl")',
@@ -41,6 +42,8 @@ for marker in (
     '"raw_coordinates_screenshots_logs": "private_local_only"',
     '"native_pointer_backend": (',
     'observations.get("injection_backend", "unavailable_or_unverified")',
+    '"private_candidate_mask_tested"',
+    'candidate_mode=candidate_mode',
 
 ):
     assert marker in parent_text, marker
@@ -88,7 +91,7 @@ parent = runpy.run_path(str(ROOT / "scripts/wull-manual-nested-pointer.py"),
 child = runpy.run_path(str(ROOT / "scripts/wull-manual-pointer-child.py"),
                        run_name="wull_pointer_inert_child")
 assert parent["REVIEWED"]["scripts/wull-manual-pointer-child.py"] == (
-    "b441a172c571ec434980c054389b40dac415c824")
+    "fc012c73d3d77b6332a37184e33579e3a61676fa")
 assert parent["REVIEWED"]["scripts/wull-fixtures/pointer-underlay/companion-relay.py"] == (
     "7e450db1db23e3c250859b0271a655d6325f0bc8")
 

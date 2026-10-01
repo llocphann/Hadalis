@@ -398,3 +398,12 @@ This task is complete only when all of the following are true:
 - Blocker: `JOB-WULL-CORE-014` has no result receipt yet. No Rust PASS is claimed until its exact-source actions return successfully.
 - Next: inspect only `JOB-WULL-CORE-014`. On PASS, continue with the QML stdio bridge and low-rate state interpolation while keeping production ownership disabled; on failure, diagnose only from the worker evidence before changing source.
 
+## Checkpoint — 2026-10-01 companion runtime shipping dispatched
+
+- Phase: **Phase 1/3 boundary — Rust backend is qualified for development proof and now prepared for current-source runtime shipping; production companion ownership remains disabled by default**.
+- Evidence already present on current `dev`: `JOB-WULL-CORE-017:0` exited 0 at Unix `1790832251` and `:1` exited 0 at `1790832252`, both on source `dee44282f1a489ecf7d36a0f194f30ace42f9e1f`. `JOB-WULL-BRIDGE-018:0` exited 0 at `1790832564` and `:1` at `1790832570`, both on source `fdc984e80dd8c7e4b469a9435f8888c9719b5002`; that proof required exactly one `inir-companiond` while the Wull window was alive and zero after shutdown. `JOB-WULL-VISUAL-019:0..3` all exited 0 on source `ad7c90470c97e35537145a14386c384f29e99046` at Unix `1790832794..1790832795`, including a private bounded screenshot/process/resource capture. These receipts prove execution/capture success, not maintainer visual acceptance.
+- Runtime-shipping source commit: `10489a9deed25fdc1d1f85ae7d32eca8744ee107`. It adds a Rust-only `scripts/native-dispatch companion` route that `exec`s `inir-companiond` in place, adds the daemon to current-source install/Nix/rolling-Arch packaging contracts, and lets `CompanionBridge.qml` opt into the native dispatcher without changing the development proof override.
+- Safety boundary: no Abyss production host or user-facing enable default is changed by this milestone. Wull remains off unless a later guarded production host explicitly opts into the dispatcher.
+- Validation dispatched as `JOB-WULL-RUNTIME-020`, pinned to base/source `10489a9deed25fdc1d1f85ae7d32eca8744ee107`: companion unit tests, release build, dispatcher version smoke, native-production contract, packaging contract, and static Nix contract.
+- Next: inspect only `JOB-WULL-RUNTIME-020`. On PASS, add the single shared Abyss production bridge/host behind `abyss.companion.enabled=false`, then validate one-daemon lifecycle, output/edge placement and input-mask behavior before any default enablement.
+

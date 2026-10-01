@@ -55,6 +55,7 @@ with tempfile.TemporaryDirectory(prefix="wull-private-relay-contract-") as name:
         "NIRI_SOCKET": "/tmp/wull-test-nested-ipc",
         "WULL_PRIVATE_POINTER_BINARY": str(fake),
         "WULL_PRIVATE_POINTER_TRACE": str(trace),
+        "WULL_PRIVATE_POINTER_CHECKOUT": str(ROOT),
     })
     event = b'{"v":1,"seq":1,"type":"event","event":"click"}\n'
     executed = subprocess.run(
@@ -71,6 +72,7 @@ with tempfile.TemporaryDirectory(prefix="wull-private-relay-contract-") as name:
     kinds = [entry["kind"] for entry in private]
     assert kinds.count("real_bridge_click_received") == 1, kinds
     assert kinds.count("rust_happy_pulse_ack") == 1, kinds
+    assert kinds.count("rust_present") == 1, kinds
     assert all("when_monotonic" in entry for entry in private)
     env["WULL_PRIVATE_POINTER_TRACE"] = str(folder / "rejected.jsonl")
     env["WAYLAND_DISPLAY"] = env["WULL_PARENT_WAYLAND_DISPLAY"]
@@ -80,5 +82,14 @@ with tempfile.TemporaryDirectory(prefix="wull-private-relay-contract-") as name:
     )
     assert refused.returncode != 0
     assert b"nested_wayland_or_niri_identity_unproven" in refused.stderr
+    assert not (folder / "rejected.jsonl").exists()
+    env["WAYLAND_DISPLAY"] = "wayland-nested"
+    env["WULL_PRIVATE_POINTER_CHECKOUT"] = ""
+    missing_checkout = subprocess.run(
+        [sys.executable, str(RELAY)], input=event,
+        capture_output=True, env=env, timeout=4
+    )
+    assert missing_checkout.returncode != 0
+    assert b"private_checkout_identity_unavailable" in missing_checkout.stderr
     assert not (folder / "rejected.jsonl").exists()
 print("WULL_PRIVATE_RELAY_INERT_CONTRACT_PASS")

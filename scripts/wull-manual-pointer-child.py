@@ -229,13 +229,22 @@ def wait_for(predicate, seconds):
     return False
 
 
-def phase_config(folder, fixture, name, config=None, env_add=None):
+def phase_config(folder, fixture, name, config=None, env_add=None,
+                 *, candidate_mask=False):
     shell = folder / "shell"
     shell.mkdir(parents=True)
+    if candidate_mask and fixture != PRODUCTION:
+        stop("candidate_shadow_requires_real_production_fixture")
     if fixture == PRODUCTION:
         for item in ("modules", "services", "GlobalStates.qml", "qmldir",
                      "assets", "scripts", "defaults", "translations"):
-            (shell / item).symlink_to(ROOT / item)
+            if item == "modules" and candidate_mask:
+                candidate = __import__("runpy").run_path(
+                    str(ROOT / "scripts/wull-private-mask-candidate.py"),
+                    run_name="private_nested_mask_shadow_import_only")
+                candidate["stage_candidate_modules"](ROOT, shell)
+            else:
+                (shell / item).symlink_to(ROOT / item)
     shutil.copyfile(ROOT / fixture, shell / "shell.qml")
     xdg = folder / "xdg"
     for item in ("config", "data", "cache", "state"):
@@ -323,6 +332,9 @@ def main():
     if not all((niri, qs, dbus, cargo)):
         stop("required_nested_test_dependency_unavailable")
     output, width, height = verify_isolation(niri)
+    candidate_mode = os.environ.get("WULL_PRIVATE_POINTER_MODE", "") == "candidate-mask"
+    if os.environ.get("WULL_PRIVATE_POINTER_MODE", "") not in ("", "candidate-mask"):
+        stop("unreviewed_pointer_probe_mode")
     helper = __import__("runpy").run_path(str(ROOT / "scripts/wull-pointer-targets.py"),
                                           run_name="wull_pointer_child_only")
     points = helper["top_edge_targets"](width, height)
@@ -334,7 +346,8 @@ def main():
                   "forced_wlr_protocols_wdotool" if actor_kind == "wdotool"
                   else "native_relative_wlrctl_unverified" if actor_kind == "wlrctl"
                   else "not_available"),
-              "whole_host_mask_changed": False}
+              "whole_host_mask_changed": False,
+              "private_candidate_mask_tested": False}
     final = folder / "pointer-child.private-summary.json"
     underlay_proc = disabled_proc = enabled_proc = None
     binary = folder / "cargo-target" / "release" / "inir-companiond"
@@ -344,6 +357,10 @@ def main():
     try:
         if not actor:
             report["reason"] = "native_pointer_cli_missing"
+            return
+        # An A/B mask comparison requires native absolute coordinates.
+        if candidate_mode and actor_kind != "wdotool":
+            report["reason"] = "candidate_comparison_requires_absolute_native_pointer"
             return
         check = run([actor, "--help"], timeout=3)
         help_text = (check.stdout + check.stderr).lower()
@@ -413,7 +430,8 @@ def main():
             {"enabled": False, "interactive": True, "output": output,
              "edge": "top", "along": 0.72, "size": 1,
              "soundEnabled": False})
-        def start_production(label, enabled):
+        def start_production(label, enabled, *, candidate=False,
+                             trace_path=None):
             state = folder / label
             configured = json.loads(json.dumps(config))
             configured["abyss"]["companion"]["enabled"] = enabled
@@ -426,9 +444,12 @@ def main():
                            "WULL_PARENT_NIRI_SOCKET":
                                os.environ["WULL_PARENT_NIRI_SOCKET"],
                            "WULL_PRIVATE_POINTER_BINARY": str(binary),
-                           "WULL_PRIVATE_POINTER_TRACE": str(trace),
+                           "WULL_PRIVATE_POINTER_TRACE":
+                               str(trace_path if trace_path is not None else trace),
                            "WULL_PRIVATE_POINTER_CHECKOUT": str(ROOT)}
-            shell, env = phase_config(state, PRODUCTION, label, configured, overlay)
+            shell, env = phase_config(
+                state, PRODUCTION, label, configured, overlay,
+                candidate_mask=candidate)
             proc, log = launch(state, qs, dbus, shell, env)
             def ready():
                 return (proc.poll() is None
@@ -560,7 +581,7 @@ def main():
             owned_cleanup(proc, binary, private_relay)
         if underlay_log:
             bounded(underlay_log)
-        for name in ("disabled", "enabled"):
+        for name in ("disabled", "enabled", "candidate"):
             logfile = folder / name / "quickshell.private.log"
             bounded(logfile)
         try:

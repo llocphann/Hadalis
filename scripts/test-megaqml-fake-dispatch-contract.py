@@ -10,11 +10,11 @@ fake = Path(__file__).resolve().parent / "megaqml-fixtures/fake-static-dispatch.
 source = fake.read_text(encoding="utf-8")
 assert "subprocess" not in source and "os.system" not in source
 assert '"mega", "request"' in source
-for scenario in ("present", "missing", "wrong-id", "unsafe-secret", "malformed", "exit-failure", "hang", "coalesce", "stale-reacquire", "retry-exit", "retry-timeout", "shared-race"):
+for scenario in ("present", "missing", "wrong-id", "unsafe-secret", "malformed", "exit-failure", "hang", "coalesce", "stale-reacquire", "retry-exit", "retry-timeout", "shared-race", "overlap-timeout"):
     env = dict(os.environ, MEGAQML_FIXTURE_CASE=scenario)
     request = {"protocol": 1, "request_id": "cloud-detect-1",
                "operation": "detect", "params": {}}
-    if scenario == "hang" or scenario == "retry-timeout":
+    if scenario in ("hang", "retry-timeout", "overlap-timeout"):
         try:
             subprocess.run([sys.executable, str(fake), "mega", "request"],
                            input=json.dumps(request) + "\n",
@@ -54,7 +54,7 @@ for scenario in ("present", "missing", "wrong-id", "unsafe-secret", "malformed",
         expected, expected, expected, False, expected]
     assert all(item["path"] is None for item in result["result"]["binaries"])
 # Second request differs from first; client must not replay stale inventory.
-for scenario in ("coalesce", "stale-reacquire", "retry-exit", "retry-timeout"):
+for scenario in ("coalesce", "stale-reacquire", "retry-exit", "retry-timeout", "overlap-timeout"):
     env = dict(os.environ, MEGAQML_FIXTURE_CASE=scenario)
     request = {"protocol": 1, "request_id": "cloud-detect-2",
                "operation": "detect", "params": {}}
@@ -81,7 +81,7 @@ for serial, present in ((2, True), (3, False)):
     assert result["result"]["server_available"] is present
     assert [b["executable"] for b in result["result"]["binaries"]] == [
         present, present, present, False, present]
-print("PASS MegaQML synthetic runtime dispatcher: 12 cases plus four second requests and two race requests")
+print("PASS MegaQML synthetic runtime dispatcher: 13 cases plus five second requests and two race requests")
 # F1 offline preflight uses exactly the same fake-only transport with a
 # distinct request ID prefix. These fixtures can never execute MEGAcmd.
 for scenario, ready in (("present", True), ("missing", False)):
@@ -153,3 +153,32 @@ else:
     raise AssertionError("hung preflight fake returned before deadline")
 print("PASS MegaQML inert preflight timeout fixture remains pending")
 
+# Two first independent fake children hang; retries must remain a strictly
+# inert missing-dependency response. This never invokes a vendor binary.
+env = dict(os.environ, MEGAQML_FIXTURE_CASE="overlap-timeout")
+for serial in (1, 2):
+    request = {"protocol": 1, "request_id": f"cloud-preflight-{serial}",
+               "operation": "connect_preflight", "params": {}}
+    if serial == 1:
+        try:
+            subprocess.run([sys.executable, str(fake), "mega", "request"],
+                           input=json.dumps(request) + "\n",
+                           capture_output=True, text=True, env=env,
+                           timeout=0.6)
+        except subprocess.TimeoutExpired:
+            pass
+        else:
+            raise AssertionError("overlap first preflight must hang")
+    else:
+        child = subprocess.run([sys.executable, str(fake), "mega", "request"],
+                               input=json.dumps(request) + "\n",
+                               capture_output=True, text=True, env=env,
+                               timeout=3, check=True)
+        result = json.loads(child.stdout)
+        assert child.stderr == "" and result["request_id"] == "cloud-preflight-2"
+        assert result["ok"] is True and result["error"] is None
+        assert result["result"]["dependencies_ready"] is False
+        for field in ("connected", "connection_attempted",
+                      "auth_qualified", "account_reads_enabled"):
+            assert result["result"][field] is False
+print("PASS MegaQML fake simultaneous deadline and inert retry fixture")

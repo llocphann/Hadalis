@@ -145,3 +145,47 @@ underlay click controls bracket an enabled Wull center click and that
 the relay's click marker plus a subsequent real backend reaction
 belong to that phase. The marker/reaction alone cannot establish the
 true pointer target without the independent underlay controls.
+
+
+## Staged real nested pointer runner
+
+The controlled real pointer implementation is staged in `dev`:
+`scripts/wull-manual-pointer-child.py` launches the dedicated bottom
+underlay and the unchanged actual `AbyssPerimeter` production fixture in
+separate private Quickshell/XDG/D-Bus sessions on a **parent-verified single
+nested Niri output**. Its disabled-center negative control must click the
+underlay, enabled-outside-host control must click the underlay, and enabled
+body-center must instead produce both a real production bridge click
+and a subsequent state reaction from the private exact-source Rust daemon.
+The empty whole-host margin is diagnostic only.
+
+`scripts/wull-manual-nested-pointer.py` creates the owned nested compositor
+from the live compositor's ordinary Wayland window and verifies distinct
+nested Wayland/Niri socket identity, no namespace collision, output topology,
+the private child's sanitized evidence and cleanup. It never injects pointer
+events itself. The child forces an already-installed `wdotool` to the
+`wlr-protocols` backend for `mousemove` and `click`, rechecking the
+nested Wayland socket before each input operation. It **never** falls
+back to portal permissions or host-global `/dev/uinput`. Missing `wdotool`,
+unsupported native protocol, incomplete nested identity or unavailable
+prerequisites yield **INCONCLUSIVE** without claiming input acceptance.
+No automatic package installation or live-user-session test is permitted.
+
+`scripts/test-wull-nested-pointer-contract.py` is an inert parser, isolation,
+source-provenance and private fixture test. The existing
+`scripts/test-wull-pointer-underlay-contract.py` and
+`scripts/test-wull-private-relay-contract.py` remain prerequisites.
+The coordinator source guard pins reviewed Wull production, native dependency
+continuity, prior Niri helper, underlay, real relay, target estimator, and
+the new child source blob. Their addition does **not** certify successful
+runtime execution: no `docs/wull-pointer-acceptance-*.json` receipt yet.
+
+The first coordinated manual gate must run all three inert contracts on
+one clean `dev` SHA before explicitly invoking
+`python3 scripts/wull-manual-nested-pointer.py --acknowledge-nested-pointer`.
+The opt-in runner keeps bounded raw logs/coordinates in private state outside
+the checkout and publishes only per-case classifications and exact source SHA.
+A forced SIGTERM or timeout may terminate only its owned processes; no
+real shell settings are read or written. A PASS on a single top-edge nested
+output must not be interpreted as the other three edges, visual quality,
+whole-shell resources or permission to narrow the production input mask.

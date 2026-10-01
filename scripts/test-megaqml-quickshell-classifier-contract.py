@@ -24,6 +24,10 @@ cases = (
      "refresh-coalesce", "unexpected_refresh_state"),
     ("MEGAQML_QS_REFRESH_INVALID /home/private/secret",
      "refresh-stale-reacquire", "unexpected_refresh_state"),
+    ("MEGAQML_QS_RECOVERY_INVALID token=secret",
+     "recovery-exit", "unexpected_recovery_state"),
+    ("MEGAQML_QS_RECOVERY_INVALID /home/private/path",
+     "recovery-timeout", "unexpected_recovery_state"),
     ("", "baseline", "no_diagnostic_output"),
 )
 with tempfile.TemporaryDirectory(prefix="megaqml-classifier-") as temp:

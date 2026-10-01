@@ -2,7 +2,7 @@
 # Manual one-shot, no vendor calls, no background service, no user config access.
 set -euo pipefail
 umask 077
-case "${1:-}" in baseline|dormant|active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang|refresh-coalesce|refresh-stale-reacquire) kind="$1" ;; *) exit 64 ;; esac
+case "${1:-}" in baseline|dormant|active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang|refresh-coalesce|refresh-stale-reacquire|recovery-exit|recovery-timeout) kind="$1" ;; *) exit 64 ;; esac
 cd "$(git rev-parse --show-toplevel)"
 qs_bin=""
 if command -v qs >/dev/null 2>&1; then qs_bin="$(command -v qs)"
@@ -37,21 +37,25 @@ if [[ ! -f "$source_fixture" ]]; then
   exit 76
 fi
 cp -- "$source_fixture" "$fixture_dir/shell.qml"
-if [[ "$kind" == dormant || "$kind" == active-* || "$kind" == refresh-* ]]; then
+if [[ "$kind" == dormant || "$kind" == active-* || "$kind" == refresh-* || "$kind" == recovery-* ]]; then
   cp -- services/deferred/CloudStorageService.qml "$fixture_dir/services/CloudStorageService.qml"
   cp -- services/deferred/CloudStorageStaticProtocol.js "$fixture_dir/services/CloudStorageStaticProtocol.js"
   printf 'singleton CloudStorageService 1.0 CloudStorageService.qml\n' > "$fixture_dir/services/qmldir"
 fi
 test ! -e "$fixture_dir/scripts/native-dispatch" || exit 75
 case "$kind" in
-  active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang|refresh-coalesce|refresh-stale-reacquire)
+  active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed|active-exit-failure|active-hang|refresh-coalesce|refresh-stale-reacquire|recovery-exit|recovery-timeout)
     mkdir -p "$fixture_dir/scripts" "$work/allowed-bin"
     cp -- scripts/megaqml-fixtures/fake-static-dispatch.py "$fixture_dir/scripts/native-dispatch"
     chmod 700 "$fixture_dir/scripts/native-dispatch"
     for tool in python3 bash sh; do
       ln -s -- "$(command -v "$tool")" "$work/allowed-bin/$tool"
     done
-    export MEGAQML_FIXTURE_CASE="${kind#*-}"
+    if [[ "$kind" == recovery-* ]]; then
+      export MEGAQML_FIXTURE_CASE="retry-${kind#recovery-}"
+    else
+      export MEGAQML_FIXTURE_CASE="${kind#*-}"
+    fi
     # The child cannot discover installed MEGAcmd clients through PATH.
     export PATH="$work/allowed-bin"
     ;;
@@ -67,6 +71,8 @@ if "$safe_timeout" --kill-after=2s 12s "$qs_bin" --path "$fixture_dir/shell.qml"
     active-hang) marker=MEGAQML_QS_TIMEOUT_OK ;;
     refresh-coalesce) marker=MEGAQML_QS_COALESCED_OK ;;
     refresh-stale-reacquire) marker=MEGAQML_QS_REACQUIRE_OK ;;
+    recovery-exit) marker=MEGAQML_QS_EXIT_RECOVERY_OK ;;
+    recovery-timeout) marker=MEGAQML_QS_TIMEOUT_RECOVERY_OK ;;
   esac
   if "$safe_grep" -Fq "$marker" "$work/stdout" "$work/stderr"; then
     echo "PASS isolated Quickshell $kind smoke"

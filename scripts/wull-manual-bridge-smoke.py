@@ -13,13 +13,12 @@ import sys
 import tempfile
 import time
 
-ANCHOR = "a685acce3877372bfd99926985da980c3bb3b94d"
+ANCHOR = "d7d6290bc9e27b17c18c9576fc94ff12e470cca5"
 SELF = "scripts/wull-manual-bridge-smoke.py"
 FIXTURE = "scripts/wull-fixtures/bridge-exit"
 REVIEWED = {
     "modules/abyss/AbyssPerimeter.qml",
     "modules/abyss/companion/CompanionBridge.qml",
-    FIXTURE + "/shell.qml",
     FIXTURE + "/fake-dispatch.py",
 }
 VALID_URLS = {
@@ -52,17 +51,20 @@ def audit(after):
     affected = REVIEWED & changes
     if affected:
         raise RuntimeError("Reviewed Wull bridge or fixture changed: " + sorted(affected)[0])
+    # This is the sole reviewed disabled-override fixture revision.
+    if git("rev-parse", after + ":" + FIXTURE + "/shell.qml") != "fbcdbb577b1b5314e21ba9e8b20b20bdf5ccb694":
+        raise RuntimeError("Disabled-override fixture differs from reviewed version")
     if SELF in changes:
-        introduced = git("log", "--diff-filter=A", "--format=%H",
-                         ANCHOR + ".." + after, "--", SELF).splitlines()
-        if len(introduced) != 1:
-            raise RuntimeError("Manual bridge runner revision needs review")
-        original = subprocess.run(["git", "show", introduced[0] + ":" + SELF],
+        revisions = git("log", "--format=%H",
+                        ANCHOR + ".." + after, "--", SELF).splitlines()
+        if len(revisions) != 1:
+            raise RuntimeError("Bridge runner changed beyond reviewed update")
+        reviewed = subprocess.run(["git", "show", revisions[0] + ":" + SELF],
                                   check=True, capture_output=True).stdout
         current = subprocess.run(["git", "show", after + ":" + SELF],
                                  check=True, capture_output=True).stdout
-        if original != current:
-            raise RuntimeError("Manual bridge runner changed after its introduction")
+        if reviewed != current:
+            raise RuntimeError("Bridge runner differs from reviewed update")
 
 
 def fetch():
@@ -95,7 +97,7 @@ def run_case(qs, kind, private_dir):
         "XDG_STATE_HOME": str(isolated / "state"),
         "QT_QPA_PLATFORM": "offscreen",
         "QS_NO_RELOAD_POPUP": "1",
-        "INIR_COMPANIOND": "",
+        "INIR_COMPANIOND": str(fake) if kind == "disabled-override" else "",
         "WULL_SMOKE_CASE": kind,
         "WULL_SMOKE_STATE": str(state_file),
     })
@@ -163,14 +165,14 @@ def run_case(qs, kind, private_dir):
         except OSError:
             output.write(b"quickshell_local_execution_error\n")
 
-    expected = ({"WULL_BRIDGE_DISABLED_OK"} if kind == "disabled" else
+    expected = ({"WULL_BRIDGE_DISABLED_OK"} if kind.startswith("disabled") else
                 {"WULL_BRIDGE_EXIT_GATE_OK", "WULL_BRIDGE_RESTART_OK"})
     count = int(state_file.read_text()) if state_file.exists() and (
         state_file.read_text().strip().isdigit()
     ) else 0
     successful = code == 0 and expected.issubset(seen) and not (
         {"WULL_BRIDGE_FIXTURE_INVALID", "WULL_BRIDGE_FIXTURE_TIMEOUT"} & seen
-    ) and count == (0 if kind == "disabled" else 2)
+    ) and count == (0 if kind.startswith("disabled") else 2)
     result = {
         "check": kind,
         "status": "pass" if successful else ("timeout" if code == 124 else "failed"),
@@ -216,7 +218,7 @@ def main():
         result = "inconclusive"
     else:
         cases = [run_case(qs, name, private_dir)
-                 for name in ("disabled", "exit-restart")]
+                 for name in ("disabled", "disabled-override", "exit-restart")]
         result = ("pass" if all(x["status"] == "pass" for x in cases)
                   else "failed")
     summary = {

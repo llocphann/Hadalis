@@ -11,6 +11,8 @@ ShellRoot {
 
     Companion.CompanionBridge {
         id: bridge
+        // Match the production host's guarded development binary override.
+        binaryPath: root.backendOn ? (Quickshell.env("INIR_COMPANIOND") ?? "") : ""
         useNativeDispatcher: root.backendOn
         onStateAccepted: (_sequence) => {
             if (root.stage === "initial" && bridge.visibility === "present") {
@@ -35,7 +37,7 @@ ShellRoot {
     Component.onCompleted: {
         if (root.testCase === "exit-restart")
             bridge.show()
-        else if (root.testCase !== "disabled") {
+        else if (root.testCase !== "disabled" && root.testCase !== "disabled-override") {
             console.log("WULL_BRIDGE_FIXTURE_INVALID")
             Qt.quit()
         }
@@ -44,7 +46,7 @@ ShellRoot {
     Timer {
         id: verifyDisabled
         interval: 350
-        running: root.testCase === "disabled"
+        running: root.testCase === "disabled" || root.testCase === "disabled-override"
         onTriggered: {
             if (!bridge.backendEnabled && !bridge.ready
                     && bridge.visibility === "hidden") {

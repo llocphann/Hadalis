@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 
-APPROVED_SOURCE = "9976e08d7db2537af747541afdba987515635b9b"
+APPROVED_SOURCE = "d7d6290bc9e27b17c18c9576fc94ff12e470cca5"
 SELF = "scripts/wull-manual-qualification.py"
 MAX_LOG = 1048576
 

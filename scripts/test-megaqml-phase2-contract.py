@@ -53,7 +53,7 @@ assert 'qml_minimal' in runner and 'qml_modern_syntax' in runner and 'qml_blocke
 assert '/usr/lib/qt6/bin/qmlformat qmlformat6 qmlformat' in runner
 assert 'qt_formatter_selection=' in runner and 'version_major_minor=' in runner
 assert 'modern_probe_pass' in runner and 'fallback_probe_unqualified' in runner
-assert 'docs/evidence/megaqml/phase2i-' in runner
+assert 'docs/evidence/megaqml/phase2j-' in runner
 quickshell_runner = get("scripts/test-megaqml-quickshell-smoke.sh")
 quickshell_base = get("scripts/megaqml-fixtures/runtime-baseline/shell.qml")
 quickshell_dormant = get("scripts/megaqml-fixtures/runtime-dormant/shell.qml")
@@ -63,7 +63,8 @@ assert 'fixture_kind="${kind%%-*}"' in quickshell_runner
 assert 'runtime-$fixture_kind/shell.qml' in quickshell_runner
 for case_name in ("baseline", "dormant", "active-present", "active-missing",
                   "active-wrong-id", "active-unsafe-secret", "active-malformed",
-                  "refresh-coalesce", "refresh-stale-reacquire"):
+                  "refresh-coalesce", "refresh-stale-reacquire",
+                  "recovery-exit", "recovery-timeout"):
     # The active cases use the same source fixture, not a nonexistent
     # runtime-active-present/ runtime-active-missing directory.
     fixture_kind = case_name.split("-", 1)[0]
@@ -92,7 +93,21 @@ assert 'service.unregisterConsumer()' in active_fixture
 assert 'MEGAQML_QS_ACTIVE_PRESENT_OK' in active_fixture
 assert 'MEGAQML_QS_ACTIVE_MISSING_OK' in active_fixture
 assert 'json.dumps(' in fake_dispatch and 'subprocess' not in fake_dispatch
-assert 'PASS MegaQML synthetic runtime dispatcher: 9 cases plus two second requests' in fake_contract
+assert 'PASS MegaQML synthetic runtime dispatcher: 11 cases plus four second requests' in fake_contract
+recovery_fixture = get("scripts/megaqml-fixtures/runtime-recovery/shell.qml")
+assert 'svc.refreshStatic()' in recovery_fixture
+assert 'svc.requestSerial === 2' in recovery_fixture
+assert 'MEGAQML_QS_EXIT_RECOVERY_OK' in recovery_fixture
+assert 'MEGAQML_QS_TIMEOUT_RECOVERY_OK' in recovery_fixture
+assert 'Static dependency check timed out.' in recovery_fixture
+assert 'Rust helper failed before static detection completed.' in recovery_fixture
+assert 'PRIVATE_FAKE_STDERR_CANARY' not in recovery_fixture
+for retry_case in ("retry-exit", "retry-timeout"):
+    assert retry_case in fake_dispatch and retry_case in recovery_fixture
+for runtime_case in ("quickshell_recover_exit", "quickshell_recover_timeout"):
+    assert 'run_test ' + runtime_case in runner
+for shell_case in ("recovery-exit", "recovery-timeout"):
+    assert shell_case in quickshell_runner
 refresh_fixture = get("scripts/megaqml-fixtures/runtime-refresh/shell.qml")
 assert 'service.refreshStatic()' in refresh_fixture
 assert 'service.unregisterConsumer()' in refresh_fixture
@@ -129,5 +144,5 @@ assert 'run_test megaqml_fake_dispatch_fixture' in runner
 assert 'quickshell_active_present' in runner and 'quickshell_active_missing' in runner
 assert 'export PATH="$work/allowed-bin"' in quickshell_runner
 assert 'cp -- scripts/megaqml-fixtures/fake-static-dispatch.py' in quickshell_runner
-assert 'docs/evidence/megaqml/phase2i-' in runner
-print("PASS MegaQML Phase 2i static source contract")
+assert 'docs/evidence/megaqml/phase2j-' in runner
+print("PASS MegaQML Phase 2j static source contract")

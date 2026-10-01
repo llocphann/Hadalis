@@ -32,10 +32,14 @@ assert original.count(marker) == 1
 assert source.count(marker) == 0
 assert source.count("PRIVATE_NESTED_WULL_CANDIDATE_MASK") == 1
 assert source.replace(gen["CANDIDATE"], marker) == original
-assert 'root.companionEdge === "top"' in source
+assert 'root.companionEdge === "left"' in source
+assert 'root.companionEdge === "right"' in source
+assert '["top", "bottom", "left", "right"].includes(' in source
 assert 'root.companionScale === 1' in source
-assert 'candidateActive ? 76 : 0' in source
-assert 'candidateActive ? 92 : 0' in source
+assert 'verticalCandidate ? 92 : 76' in source
+assert 'verticalCandidate ? 76 : 92' in source
+assert 'candidateActive ? bodyBBoxWidth : 0' in source
+assert 'candidateActive ? bodyBBoxHeight : 0' in source
 assert 'onActivated: companionBridge.sendEvent("click")' in source
 
 for altered in (original.replace(marker, "Region {}"), original + marker):
@@ -85,13 +89,15 @@ with tempfile.TemporaryDirectory(prefix="wull-candidate-inert-") as tmp:
     assert perimeter_path.read_text(encoding="utf-8") == original
 
 assert parent["REVIEWED"]["scripts/wull-private-mask-candidate.py"] == (
-    "ae3aa713dac21a9d7203c536f0345ca8c0499aeb")
+    "91049b2ca2beb7b1936af624adca5133d251ea3c")
 assert parent["REVIEWED"]["scripts/wull-manual-pointer-child.py"] == (
-    "fc012c73d3d77b6332a37184e33579e3a61676fa")
+    "424de561d81f027dbc73e29fb8599e99b4f1d571")
 source_parent = PARENT.read_text(encoding="utf-8")
 source_child = CHILD.read_text(encoding="utf-8")
 for marker in (
     '--acknowledge-nested-pointer-candidate',
+    '--acknowledge-nested-pointer-candidate-bottom',
+    '"wull-mask-bottom-"',
     'candidate_mode=candidate_mode',
     '"private_candidate_mask_tested"',
     '"wull-mask-candidate-"',
@@ -106,7 +112,53 @@ for marker in (
     'candidate_exterior_underlay_control',
     'baseline_to_candidate_cleanup_unproven',
     '"WULL_PRIVATE_POINTER_MODE"',
+    '"candidate-mask-bottom"',
+    'helper["all_edge_targets"]',
 ):
     assert marker in source_child or marker in source_parent, marker
+
+# Source-measured four-edge bounds are supported by the prior postchange
+# offscreen production receipt. This is INERT geometry, not physical clicks.
+targets = runpy.run_path(
+    str(ROOT / "scripts/wull-pointer-targets.py"),
+    run_name="wull_all_edge_targets_inert_only")
+assert parent["REVIEWED"]["scripts/wull-pointer-targets.py"] == (
+    "527ebecd01e2fc51d497e0de73a0f3bcd83305ac")
+all_edge = targets["all_edge_targets"]
+base = targets["top_edge_targets"]
+assert all_edge(1280, 720, "top") == base(1280, 720)
+source_boxes = {
+    "top": (112, 98, 18, 3, 76, 92),
+    "bottom": (112, 98, 18, 3, 76, 92),
+    "left": (98, 112, 3, 18, 92, 76),
+    "right": (98, 112, 3, 18, 92, 76),
+}
+for edge, (hw, hh, dx, dy, bw, bh) in source_boxes.items():
+    item = all_edge(1280, 720, edge)
+    host = item["host_bounds"]
+    mapped = item["mapped_body_bounds"]
+    assert item["edge"] == edge
+    assert (host[2], host[3]) == (hw, hh)
+    assert mapped == (host[0] + dx, host[1] + dy, bw, bh)
+    center = item["body_center"]
+    margin = item["inside_host_outside_body"]
+    outside = item["outside_host_control"]
+    for p in (center, margin, outside):
+        assert 2 <= p[0] < 1278 and 41 <= p[1] < 718
+    assert mapped[0] < center[0] < mapped[0] + bw
+    assert mapped[1] < center[1] < mapped[1] + bh
+    if edge in ("top", "bottom"):
+        assert host[0] < margin[0] < mapped[0]
+        assert outside[0] < host[0] or outside[0] > host[0] + hw
+    else:
+        assert host[1] < margin[1] < mapped[1]
+        assert outside[1] < host[1] or outside[1] > host[1] + hh
+for bad in ("auto", "TOP", "", "diagonal"):
+    try:
+        all_edge(1280, 720, bad)
+    except ValueError as error:
+        assert str(error) == "unreviewed_pointer_edge"
+    else:
+        raise AssertionError("Unreviewed physical edge accepted")
 
 print("WULL_PRIVATE_MASK_CANDIDATE_INERT_CONTRACT_PASS")

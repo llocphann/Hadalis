@@ -580,3 +580,46 @@ This task is complete only when all of the following are true:
 
 
 - Underlay inert false-positive repair: user's grouped local run stopped at the FIRST inert safety test with `AssertionError` on `assert "AbyssPerimeter" not in fixture`. Source verification found that `scripts/wull-fixtures/pointer-underlay/shell.qml` mentions `AbyssPerimeter` only in a `//` explanatory comment and does NOT instantiate/import the production QML. Commit `cf86274889fcb27108c9aa7b5421d187011cf2d5` corrects **only the inert contract** `scripts/test-wull-pointer-underlay-contract.py` to check uncommented QML statements for a real Abyss import/instantiation. The actual underlay fixture, production code, real nested pointer runner and all source guard pins remain unchanged. A GitHub-side logic check confirmed the actual fixture and comment-only case are accepted and synthetic production import/instantiation are rejected; this is NOT an exact-SHA local test PASS. The previous grouped command stopped BEFORE private relay contract or live nested pointer execution; do not claim those gates or a pointer report passed. Resume only after clean `dev` fast-forward with all three current inert contracts, then explicitly opt in to the real nested runner; inspect its unique sanitized receipt and classify `INCONCLUSIVE` rather than asserting PASS if no native backend is available.
+
+
+## Checkpoint — 2026-10-01 real pointer preflight tool missing; native-only alternative staged
+
+- The user's grouped command passed far enough to publish the real
+  `docs/wull-pointer-acceptance-20261001T155651Z-c552449b-304d6ab601b1.json`
+  receipt on exact source `304d6ab601b130c11756de2f4ac7059cdda5507b`.
+  The receipt is **INCONCLUSIVE** with
+  `native_wdotool_missing_no_input_injected`; its `observation` is
+  null. No real pointer event occurred, no Wull input-mask failure
+  or PASS is established, and nothing in production was changed.
+- The source-only alternative keeps preferred exact native
+  `wdotool --backend wlr-protocols` and accepts already-installed
+  `wlrctl` only if `wdotool` is absent. The latter speaks the
+  native virtual-pointer protocol but moves **relative**, not
+  absolute; `scripts/wull-manual-pointer-child.py` now uses a
+  candidate origin-reset plus relative target, verifies the
+  owned nested endpoints **before each command**, and treats failed
+  relative input controls as **INCONCLUSIVE** until the real
+  independent underlay / production bridge / Rust reaction matrix
+  establishes the physical hit. The only source changes are in
+  test tooling: child commits `666d6d18d206a92a5d6b28d2800eb9e0e7156898`,
+  `0f22292de807744af0220356c96e66c71010fc33`, parent
+  `5f3b777457091bab8ed8c47be31512c1f915fd97`,
+  `97c2a4e5577759fcfb731890792e6a99135fbc66`,
+  and updated inert contract
+  `0b716fa8f5011a29051aae2d4486869f2633351f`.
+  `docs/WULL_NESTED_POINTER_ACCEPTANCE_DESIGN.md` now records
+  the limitations and the original inconclusive receipt. No new
+  local evidence has been collected for this optional backend yet.
+- Next command for the user: fetch/fast-forward from clean `dev`,
+  run the three inert pointer safety contracts in order, and run
+  the explicit nested pointer coordinator only when the machine
+  already has at least one of `wdotool` or `wlrctl`. If neither
+  exists, STOP with only a short missing-tool message: do not
+  install dependencies automatically or repeat the known
+  missing-input receipt. Check the next unique sanitized pointer
+  receipt on GitHub rather than asking the user for raw logs.
+  A physical top-edge PASS, if observed, is only one nested output;
+  four-edge physical pointer behavior, mask change comparison,
+  full-shell resource behavior, live visuals, actual multi-output,
+  reload/suspend and canonical-wide acceptance remain separate.
+  Default-off Wull and `stable` stay unchanged.

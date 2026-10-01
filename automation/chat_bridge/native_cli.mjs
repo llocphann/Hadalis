@@ -1,4 +1,4 @@
-import {connectNative, nativeRead, nativeStreamStatus, nativeServerStreamStatus, nativeModelCatalog, pollNativeTurn, resolveProject, nativePreflight, nativeSubmit, nativeResume, discoverSubmission} from "./native_adapter.mjs";
+import {connectNative, nativeRead, nativeStreamStatus, nativeStreamReceipt, nativeServerStreamStatus, nativeModelCatalog, pollNativeTurn, resolveProject, nativePreflight, nativeSubmit, nativeResume, discoverSubmission} from "./native_adapter.mjs";
 import {operationErrorCode, operationErrorObservation} from "./native_errors.mjs";
 
 let browser, input;
@@ -19,6 +19,7 @@ try {
   else if (input.op === "model_catalog") result = await nativeModelCatalog(page);
   else if (input.op === "read") result = await nativeRead(page, `/conversation/${input.conversation_id}`, {}, input.project_id);
   else if (input.op === "stream_status") result = await nativeStreamStatus(page, input.pending);
+  else if (input.op === "stream_receipt") result = await nativeStreamReceipt(page, input.pending);
   else if (input.op === "server_stream_status") result = {status:await nativeServerStreamStatus(page, input.pending.conversation_id)};
   else if (input.op === "cursor") {
     const c = await nativeRead(page, `/conversation/${input.conversation_id}`, {}, input.project_id);

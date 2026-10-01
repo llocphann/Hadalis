@@ -6,7 +6,7 @@ import subprocess
 import uuid
 from unittest.mock import patch
 
-from automation_test_helpers import environment, profile, Transport, daemon, store
+from automation_test_helpers import environment, profile, Transport, daemon, store, control
 
 
 def main():
@@ -108,6 +108,35 @@ assert.equal(operationErrorCode({message:"PRIVATE_CANARY auth body"}), "DESKTOP_
             assert store.read_snapshot()[1]["profiles"][a]["transport_observation"] is None
             # The other two profiles can now submit independent next steps.
             assert t.count("submit") == 5
+    with environment():
+        a,b=profile("Stream A"),profile("Stream B");t=Transport()
+        with patch.object(daemon,"native_command",side_effect=t):daemon.tick(100)
+        identities={pid:t.pending(pid).copy() for pid in (a,b)}
+        daemon._observe_failure(a,102,daemon.NativeOperationError(
+            {"code":"DESKTOP_RATE_LIMITED","resource":"conversation","http_status":429},"poll"),pending=identities[a])
+        t.reply(a);t.reply(b)
+        control.profile_action("pause",b)
+        local_calls=[]
+        def native(op,**data):
+            if op=="stream_receipt":
+                uid=data["pending"]["user_message_id"];local_calls.append(uid)
+                return {"completed":True,"submitted":True,"history_checked":False,"response_source":"managed_stream",
+                    "conversation_id":data["pending"]["conversation_id"],"response":{
+                        "message_id":str(uuid.uuid5(uuid.NAMESPACE_URL,uid)),"text":t.replies[uid]}}
+            return t(op,**data)
+        with patch.object(daemon,"native_command",side_effect=native):
+            daemon.tick(130);s=store.read_snapshot()[1]
+            assert len(local_calls)==2 and t.count("poll")==0 and t.count("submit")==2
+            assert s["transport_rate_limit_count"]==1 and s["transport_retry_at_unix"]==102+daemon.RATE_LIMIT_SECONDS
+            assert s["profiles"][a]["iterations"]==1 and s["profiles"][b]["desired"]=="paused"
+            assert all(s["profiles"][pid]["pending"] is None for pid in (a,b))
+            for pid in (a,b):
+                receipt=json.loads((store.state_dir()/"responses"/pid/(identities[pid]["user_message_id"]+".json")).read_text())
+                assert receipt["response_source"]=="managed_stream"
+            daemon.tick(132);assert t.count("submit")==2
+            daemon.tick(102+daemon.RATE_LIMIT_SECONDS)
+            assert t.count("submit")==3 and t.pending(a)["user_message_id"]!=identities[a]["user_message_id"]
+            assert store.read_snapshot()[1]["profiles"][b]["desired"]=="paused"
     with environment():
         pid=profile("Recovered");t=Transport()
         store.change_state(lambda c,s:s["profiles"][pid].update(poll_errors=4,last_error="DESKTOP_RATE_LIMITED"))

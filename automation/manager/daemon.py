@@ -24,6 +24,7 @@ NATIVE_CLI = ROOT / "automation/chat_bridge/native_cli.mjs"
 RESULTS = "automation/results"
 POLL_SECONDS = 2
 CHAT_POLL_SECONDS = max(15, min(120, int(os.environ.get("HADALIS_CHAT_POLL_SECONDS", "30"))))
+LOCAL_RECEIPT_POLL_SECONDS = 30
 CHAT_HISTORY_POLL_SECONDS = max(60, min(300, int(os.environ.get("HADALIS_CHAT_HISTORY_POLL_SECONDS", "120"))))
 RATE_LIMIT_SECONDS = max(60, min(300, int(os.environ.get("HADALIS_RATE_LIMIT_SECONDS", "120"))))
 MAX_RATE_LIMIT_SECONDS = 1800
@@ -456,11 +457,21 @@ def _response_observation(result: dict, now: int) -> tuple[dict, str]:
             "history_checked": result.get("history_checked") if type(result.get("history_checked")) is bool else None}, detail
 
 
+def _local_receipt_at(pending: dict) -> int | None:
+    if pending.get("phase") != "acknowledged" or not pending.get("conversation_id") or not pending.get("user_message_id"):
+        return None
+    prepared = pending.get("prepared_at_unix")
+    at = pending.get("local_receipt_after_unix", prepared + LOCAL_RECEIPT_POLL_SECONDS if type(prepared) is int else None)
+    return at if type(at) is int else None
+
+
 def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
     item = state["profiles"][profile_id]
     pending = item["pending"]
     cache = state_dir() / "responses" / profile_id / f"{pending.get('user_message_id', '')}.json"
-    if now < pending.get("poll_after_unix", 0) and not cache.exists(): return
+    local_at = _local_receipt_at(pending)
+    api_at = max(pending.get("poll_after_unix", 0), state["transport_retry_at_unix"], state["transport_next_poll_at_unix"])
+    if not cache.exists() and now < api_at and (local_at is None or now < local_at): return
     try:
         if not pending.get("user_message_id"):
             _legacy_adopt(config, item, profile_id, now)
@@ -469,10 +480,21 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
             receipt = json.loads(cache.read_text())
             if receipt["user_message_id"] != pending["user_message_id"]:
                 raise ValueError("response receipt identity mismatch")
-            result = {"completed":True, "conversation_id":receipt["conversation_id"], "response":receipt["response"]}
+            result = {"completed":True, "conversation_id":receipt["conversation_id"], "response":receipt["response"],
+                      "response_source":receipt.get("response_source", "history")}
         else:
-            if not _reserve_poll(profile_id, pending, now): return
-            result = native_command("poll", pending=pending)
+            if now >= api_at and _reserve_poll(profile_id, pending, now):
+                result = native_command("poll", pending=pending)
+            elif local_at is not None and now >= local_at:
+                def checked(c,s):
+                    current=s["profiles"].get(profile_id)
+                    if _same_pending(current,pending):current["pending"]["local_receipt_after_unix"]=now+LOCAL_RECEIPT_POLL_SECONDS
+                change_state(checked)
+                result = native_command("stream_receipt", pending=pending)
+                if not result.get("completed"): return
+                if result.get("response_source") != "managed_stream" or result.get("history_checked") is not False:
+                    raise ValueError("invalid local final receipt")
+            else: return
             if result.get("history_checked") is not False and (result.get("submitted") or result.get("completed")): _poll_succeeded(now)
         if not result.get("completed"):
             if result.get("superseded"):
@@ -552,7 +574,7 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
         response = result["response"]
         path = cache
         _write(path, {"conversation_id": result.get("conversation_id"), "user_message_id":pending["user_message_id"],
-                      "response":response, "at_unix":now})
+                      "response":response, "response_source":result.get("response_source", "history"), "at_unix":now})
         protocol_error=None;protocol_code=None;directive=None;checkpoint=None
         try:
             directive = parse_loop_directive(response["text"])
@@ -692,14 +714,11 @@ def _step_session(profile_id: str, now: int) -> None:
     if profile_id not in state["profiles"] or not any(p["id"]==profile_id for p in config["profiles"]): return
     item = state["profiles"][profile_id]
     if item["remove_requested"]: return
-    if now < state["transport_retry_at_unix"]:
-        cached = item["pending"] and (state_dir()/"responses"/profile_id/(item["pending"].get("user_message_id", "")+".json")).exists()
-        if not item["job_id"] and not cached:
-            return
-        if item["pending"] and not cached:
-            return
     if item["pending"]:
+        # _poll independently gates API reads while allowing exact local final
+        # receipts to progress during cooldown. No submission occurs here.
         _poll(config,state,profile_id,now); return
+    if now < state["transport_retry_at_unix"] and not item["job_id"]: return
     if item["desired"] != "run" or not _profile(config,profile_id)["enabled"]:
         if item["run_active"]:
             review={"connector_blocked","evidence_required","session_changed","session_conflict","recovery_required"}
@@ -744,6 +763,8 @@ def tick(now: int | None = None, executor: ThreadPoolExecutor | None = None) -> 
             at=item["pending"].get("poll_after_unix",0)
             cached = (state_dir()/"responses"/p["id"]/(item["pending"].get("user_message_id", "")+".json")).exists()
             at=0 if cached else max(at,state["transport_retry_at_unix"])
+            local_at=_local_receipt_at(item["pending"])
+            if not cached and local_at is not None:at=min(at,local_at)
         elif item["job_id"]: at=item["next_job_poll_at_unix"] or 0
         elif item["run_active"] or item["desired"]=="run":
             at=item["next_run_at_unix"] or 0

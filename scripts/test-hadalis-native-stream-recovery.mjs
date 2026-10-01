@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {pollNativeTurn, nativeServerStreamStatus, nativeRead, nativeModelCatalog} from "../automation/chat_bridge/native_adapter.mjs";
+import {pollNativeTurn, nativeServerStreamStatus, nativeRead, nativeModelCatalog, nativeSubmit, nativeStreamReceipt} from "../automation/chat_bridge/native_adapter.mjs";
 import {operationErrorCode, operationErrorObservation} from "../automation/chat_bridge/native_errors.mjs";
 
 const chat="aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa";
@@ -36,6 +36,44 @@ async function observe({status="FAILURE",initial=history,latest=history,receipt=
 }
 
 try {
+  const finalId="cccccccc-cccc-4ccc-cccc-cccccccccccc";
+  const echo={type:"message",conversationId:chat,message:message(user,"user")};
+  const final={type:"message",conversationId:chat,message:message(finalId,"assistant")};
+  const reasoning={...final,message:{...final.message,channel:"analysis",content:{parts:["PRIVATE_CANARY"]}}};
+  async function streamed(events,{error=false,complete=true}={}) {
+    let reads=0;
+    globalThis.window={__hadalisReceipts:new Map(),__hadalisNative:{serverStreamStatus:true,
+      api:{safeGet:async()=>{++reads;return structuredClone(finished);}},
+      transport:{prepareCompletionStream:async()=>({}),startCompletionStream:async options=>{
+        options.onRequestStart();options.onResponse();
+        for (const event of events) options.onUpdate(structuredClone(event));
+        if (error) options.onError();
+        if (complete) options.onComplete();
+      }}}};
+    const page={evaluate:async(fn,arg)=>fn(arg)};
+    await nativeSubmit(page,{...pending,parent_message_id:"dddddddd-dddd-4ddd-dddd-dddddddddddd",prompt:"Keep the exact objective."});
+    const receipt=await nativeStreamReceipt(page,pending);
+    assert.equal(reads,0);assert.equal(JSON.stringify(window.__hadalisReceipts.get(user)).includes("PRIVATE_CANARY"),false);
+    return {receipt,read:async()=>{const result=await pollNativeTurn(page,pending);return {result,reads};}};
+  }
+  const exact=await streamed([echo,reasoning,final]);
+  assert.equal(exact.receipt.completed,true);assert.equal(exact.receipt.response_source,"managed_stream");
+  assert.equal(exact.receipt.response.message_id,finalId);
+  assert.equal((await exact.read()).reads,0);
+  for (const [events,options] of [
+    [[final],{}], // A stream close without the exact user echo proves no final ownership.
+    [[echo,reasoning],{}],
+    [[echo,{...echo,message:message("eeeeeeee-eeee-4eee-eeee-eeeeeeeeeeee","user")},final],{}],
+    [[echo,{...final,conversationId:"ffffffff-ffff-4fff-ffff-ffffffffffff"}],{}],
+    [[echo,{...final,message:{...final.message,end_turn:false}}],{}],
+    [[echo,{...final,message:{...final.message,recipient:"tool"}}],{}],
+    [[echo,{...final,message:{...final.message,content:{parts:["x".repeat(96001)]}}}],{}],
+    [[echo,final],{error:true}],
+    [[echo,final],{complete:false}],
+  ]) {
+    const missing=await streamed(events,options);assert.equal(missing.receipt.completed,false);
+    const fallback=await missing.read();assert.equal(fallback.reads,1);assert.equal(fallback.result.completed,true);
+  }
   const failed=await observe();
   assert.equal(failed.result.terminal_failed,true);
   assert.equal(failed.result.terminal_failure_source,"conversation_stream_status");

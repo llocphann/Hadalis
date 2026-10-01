@@ -62,6 +62,7 @@ class Transport:
             if reply: return {"completed":True,"conversation_id":chat,"response":{
                 "message_id":str(uuid.uuid5(uuid.NAMESPACE_URL,p["user_message_id"])),"text":reply}}
             return {"completed":False,"submitted":bool(chat),"conversation_id":chat}
+        if op=="stream_receipt":return {"completed":False,"history_checked":False}
         if op=="cursor":
             for uid, chat in reversed(list(self.messages.items())):
                 if chat==data["conversation_id"] and uid in self.replies:

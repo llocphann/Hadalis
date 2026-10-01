@@ -49,6 +49,12 @@ configurable within 60–300 seconds). Completion/failure, a missing Desktop
 receipt or an uncertain/stale schedule requires exact-turn history immediately.
 Status-only observations cannot authorize terminal recovery, final-response
 consumption or stream reattachment. Healthy streams need no reattachment.
+Managed streams retain only a bounded final response after the server echoes
+the exact submitted user identity and closes successfully. Conflicting chat/user
+identities, missing echoes, errors and incomplete streams require history.
+Acknowledged turns check these local receipts every thirty seconds even during
+an API cooldown, with no history/status request. Final receipts are fsynced before
+continuation; ordinary cursor verification still protects later human edits.
 Due profile reads reserve separate account API slots, initially ten seconds
 apart (configurable within 1–30 seconds). Generations and local jobs remain
 parallel; a read reservation never owns a profile or queues its worker.

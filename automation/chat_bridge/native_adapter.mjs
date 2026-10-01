@@ -179,10 +179,20 @@ export async function nativeStreamStatus(page, pending) {
     if (receipt.conversation_id && receipt.conversation_id !== pending.conversation_id)
       throw new Error("stream observation identity mismatch");
     const status = {found:true};
+    status.receipt_version = receipt.streamReceiptVersion === 1 ? 1 : 0;
+    status.stream_user_confirmed = receipt.streamUserConfirmed === true;
+    status.stream_identity_conflict = receipt.streamIdentityConflict === true;
+    status.stream_final_found = !!receipt.streamFinal;
     for (const key of ["dispatched", "accepted", "streamError", "streamComplete", "resumed"])
       status[key] = receipt[key] === true;
     for (const key of ["dispatched_at_ms", "completed_at_ms"])
       if (Number.isSafeInteger(receipt[key]) && receipt[key] >= 0) status[key] = receipt[key];
+    const final = receipt.streamFinal;
+    if (receipt.user_message_id === pending.user_message_id && receipt.streamUserConfirmed === true &&
+        !receipt.streamIdentityConflict && status.dispatched && status.accepted && status.streamComplete &&
+        !status.streamError && typeof final?.message_id === "string" && /^[0-9a-f-]{36}$/i.test(final.message_id) &&
+        typeof final.text === "string" && new TextEncoder().encode(final.text).length <= 96000)
+      status.response = {message_id:final.message_id, text:final.text};
     return status;
   }, pending);
 }
@@ -220,9 +230,18 @@ export async function nativeModelCatalog(page) {
       hidden:Array.isArray(m.tags) && m.tags.includes("hidden")}))};
 }
 
+export async function nativeStreamReceipt(page, pending) {
+  const local = await nativeStreamStatus(page, pending);
+  return local.response ? {completed:true, submitted:true, history_checked:false,
+    response_source:"managed_stream", conversation_id:pending.conversation_id, response:local.response}
+    : {completed:false, history_checked:false};
+}
+
 export async function pollNativeTurn(page, pending) {
   const path = `/conversation/${pending.conversation_id}`;
   const local = await nativeStreamStatus(page, pending);
+  if (local.response) return {completed:true, submitted:true, history_checked:false,
+    response_source:"managed_stream", response:local.response};
   const now = Date.now()/1000;
   const verifiedAt = pending.history_verified_at_unix, historyAfter = pending.history_poll_after_unix;
   // A recent exact-turn history permits a cheap status read between audits.
@@ -388,7 +407,7 @@ export async function nativeSubmit(page, input) {
     const prepared = await transport.prepareCompletionStream(request, {signal: AbortSignal.timeout(20000)});
     // Receipt insertion is the last local point before the possible send.
     // Python has already committed dispatch intent, so failure stays uncertain.
-    const receipt = { user_message_id: input.user_message_id, conversation_id: input.conversation_id,
+    const receipt = { user_message_id: input.user_message_id, conversation_id: input.conversation_id, streamReceiptVersion:1,
       dispatched: false, streamError: false };
     for (const [id, prior] of receipts) {
       if (receipts.size < 32) break;
@@ -399,7 +418,30 @@ export async function nativeSubmit(page, input) {
     const inspect = value => {
       if (!value || typeof value !== "object") return;
       const id = value.conversation_id ?? value.conversationId ?? value.conversation?.conversation_id;
-      if (typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)) receipt.conversation_id = id;
+      if (typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)) {
+        if (receipt.conversation_id && receipt.conversation_id !== id) receipt.streamIdentityConflict = true;
+        else receipt.conversation_id = id;
+      }
+      // Installed Desktop decodes updates as {type:"message", conversationId,
+      // message}. Capture only a final reply after the exact user echo, never
+      // reasoning/tool output. Missing echoes or conflicting users fall back
+      // to history; stream close/error alone cannot manufacture a final reply.
+      if (value.type !== "message" || id !== receipt.conversation_id) return;
+      const message = value.message;
+      if (message?.author?.role === "user") {
+        if (message.id === input.user_message_id) receipt.streamUserConfirmed = true;
+        else receipt.streamIdentityConflict = true;
+      }
+      if (receipt.streamUserConfirmed && !receipt.streamIdentityConflict &&
+          message?.author?.role === "assistant" && message.recipient === "all" &&
+          (message.channel == null || message.channel === "final") &&
+          message.status === "finished_successfully" && message.end_turn === true &&
+          typeof message.id === "string" && /^[0-9a-f-]{36}$/i.test(message.id) &&
+          Array.isArray(message.content?.parts) && message.content.parts.every(p => typeof p === "string")) {
+        const text = message.content.parts.join("\n");
+        if (new TextEncoder().encode(text).length <= 96000)
+          receipt.streamFinal = {message_id:message.id, text};
+      }
     };
     try {
       await transport.startCompletionStream({request, prepared: Promise.resolve(prepared),

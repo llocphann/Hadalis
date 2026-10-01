@@ -7,7 +7,7 @@ trace, Wayland pointer test or production input-mask acceptance.
 """
 import datetime as dt
 import json
-import math
+import resource
 import os
 from pathlib import Path
 import re
@@ -24,7 +24,7 @@ DYNAMIC_FIXTURE = "scripts/wull-fixtures/motion-envelope/shell.qml"
 FROZEN_RECEIPT = (
     "docs/wull-qt-motion-20261001T185752Z-53e5c5cc-72ac0580b12e.json")
 DYNAMIC_PINS = {
-    DYNAMIC_FIXTURE: "2b51b451203f4c49b115b0d0c470e79dfdd30246",
+    DYNAMIC_FIXTURE: "0fede26c2dc370234ae1b1702afdca3ea05e33e0",
     FROZEN_RUNNER: "0dd833ed05d54e9d1045553a1da8be8f66b6511a",
     FROZEN_RECEIPT: "dc2f36b525ef7e412869f155153dc4e48720f898",
 }
@@ -32,7 +32,8 @@ EDGES = ("top", "right", "bottom", "left")
 SCALES = (0.65, 1.0, 1.5)
 FLAGS = ("bbox_outside_static", "bbox_outside_host",
          "tip_outside_static", "tip_outside_host")
-PHASE_FLAGS = ("samples", "active", "stretch_witness", "bob_witness",
+PHASE_FLAGS = ("samples", "active", "stretch_witness",
+               "transition_witness", "target_reached_witness", "bob_witness",
                "sway_witness", *FLAGS, "bbox_beyond_frozen")
 MARKER = "WULL_OFFSCREEN_DYNAMIC_GEOMETRY "
 MAX_LOG = 524288
@@ -154,6 +155,8 @@ def model_summary(rows, frozen_flags):
                 raise ValueError("fabricated_dynamic_boolean_witness")
             if (count < 10 or not value["active"]
                     or not value["stretch_witness"]
+                    or not value["transition_witness"]
+                    or not value["target_reached_witness"]
                     or not value["bob_witness"]
                     or not value["sway_witness"]):
                 missing[scale_key].append(edge)
@@ -300,22 +303,25 @@ def run_fixture(folder):
     })
     log = private / "dynamic.private.log"
     code = -1
+    def limit_private_log():
+        resource.setrlimit(resource.RLIMIT_FSIZE, (MAX_LOG, MAX_LOG))
     with log.open("wb") as output:
         proc = subprocess.Popen(
             [dbus, "--", qs, "--path", str(shell / "shell.qml")],
             env=env, cwd=ROOT, stdout=output, stderr=subprocess.STDOUT,
-            stdin=subprocess.DEVNULL, start_new_session=True)
+            stdin=subprocess.DEVNULL, start_new_session=True,
+            preexec_fn=limit_private_log)
         try:
             code = proc.wait(timeout=23)
         except subprocess.TimeoutExpired:
             stop("bounded_offscreen_dynamic_timeout")
         finally:
-            # Only our private process group. No existing desktop ownership.
-            if proc.poll() is None or code < 0:
-                try:
-                    os.killpg(proc.pid, signal.SIGTERM)
-                except ProcessLookupError:
-                    pass
+            # Always terminate surviving children within the private process
+            # group, even when dbus-run-session exits first.
+            try:
+                os.killpg(proc.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
             if proc.poll() is None:
                 try:
                     proc.wait(timeout=3)

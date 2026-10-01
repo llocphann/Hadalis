@@ -23,7 +23,45 @@ def main():
             t.reply(pid,'HADALIS_DIAGNOSIS:{"conclusion":"Unproven cause","evidence_ids":["invented"]}\nHADALIS_LOOP:CONTINUE')
             daemon.tick(112);item=store.read_snapshot()[1]["profiles"][pid]
             assert item["status"]=="evidence_required" and item["pending"] is None and item["desired"]=="paused"
+            assert "unobserved worker evidence IDs" in item["last_error"]
+            assert item["recovery"]["code"] == "unsupported_diagnosis"
             count=t.count("submit");daemon.tick(114);assert t.count("submit")==count
+            guard={k:item[k] for k in ["status","command_seq","response_message_id"]}
+            # A racing owner Stop/Pause cannot be replaced by monitor recovery.
+            for action in ("stop","pause"):
+                control.profile_action(action,pid)
+                try:control.profile_action("resume",pid,expected_recovery=guard)
+                except ValueError as exc:assert "changed after recovery inspection" in str(exc)
+                else:raise AssertionError("stale recovery overrode owner control")
+                assert store.read_snapshot()[1]["profiles"][pid]["desired"] == ("stopped" if action=="stop" else "paused")
+            # A deliberate owner Resume uses a new user identity and carries a
+            # correction context, while the consumed response remains intact.
+            with patch.object(control,"_ensure_runtime_services"),patch.object(control,"_await_dispatch"):
+                control.profile_action("resume",pid)
+            daemon.tick(116)
+            submit=[data for op,data in t.calls if op=="submit"][-1]
+            assert "Correct the protocol" in submit["prompt"] and "do not replay the completed turn" in submit["prompt"]
+            assert "JOB-evidence:0" in submit["prompt"]
+            t.reply(pid,"Repository finding with a normal source citation.\nHADALIS_LOOP:DONE")
+            daemon.tick(118)
+            assert store.read_snapshot()[1]["profiles"][pid]["recovery"] is None
+    with environment():
+        pid=profile("Guarded recovery");t=Transport()
+        with patch.object(daemon,"native_command",side_effect=t):
+            daemon.tick(100);original=t.pending(pid).copy()
+            t.reply(pid,'HADALIS_DIAGNOSIS:{"conclusion":"Repository finding","evidence_ids":["turn1file0"]}\nHADALIS_LOOP:CONTINUE')
+            daemon.tick(102);daemon.tick(104)
+            item=store.read_snapshot()[1]["profiles"][pid]
+            guard={k:item[k] for k in ["status","command_seq","response_message_id"]}
+            control.profile_action("resume",pid,expected_recovery=guard)
+            daemon.tick(106)
+            assert t.pending(pid)["user_message_id"] != original["user_message_id"]
+            assert t.count("submit") == 2 and t.count("resume") == 0
+            receipt=store.state_dir()/"responses"/pid/(original["user_message_id"]+".json")
+            assert json.loads(receipt.read_text())["response"]["message_id"] == guard["response_message_id"]
+            t.reply(pid,"Repository finding with its GitHub citation.\nHADALIS_LOOP:DONE")
+            daemon.tick(108)
+            assert store.read_snapshot()[1]["profiles"][pid]["recovery"] is None
     with environment():
         good=profile("Good");bad=profile("Malformed");t=Transport()
         original=store.read_snapshot()[0]

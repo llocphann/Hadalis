@@ -310,6 +310,9 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
     prompt_kind = "rotation" if kind in {"rotation","recovery"} else "initial" if new_chat else "continuation"
     prompt = effective_prompt(profile, prompt_kind)
     prompt += "\nManaged profile ID: " + profile_id + "\n"
+    protocol = (item.get("recovery") or {})
+    if protocol.get("kind") == "response_protocol" or item["status"] == "evidence_required" or "unsupported diagnosis" in item["last_error"]:
+        prompt += "\nThe previous response completed and its private receipt is retained, but its protocol/evidence was rejected. Continue from the existing effects; do not replay the completed turn or repeat jobs/commands. Correct the protocol: use normal source citations for repository findings, and HADALIS_DIAGNOSIS only for local machine/runtime conclusions supported by these observed worker evidence IDs: " + json.dumps(item["job_evidence"]) + ". Collect fresh diagnostics if required.\n"
     if kind=="recovery":
         prompt += "\nThe server confirmed that the previous generation ended with failure. This is a new recovery step, not a replay. Inspect current dev, private worker receipt summaries and evidence before any mutation. Do not repeat commands/jobs whose outcome is uncertain. Reconcile existing effects and continue from the checkpoint.\n"+json.dumps(item["failed_turn"])
     if item["checkpoint"]:
@@ -505,13 +508,24 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
         path = cache
         _write(path, {"conversation_id": result.get("conversation_id"), "user_message_id":pending["user_message_id"],
                       "response":response, "at_unix":now})
-        protocol_error=None;directive=None;checkpoint=None
+        protocol_error=None;protocol_code=None;directive=None;checkpoint=None
         try:
             directive = parse_loop_directive(response["text"])
-            checkpoint = _checkpoint(response["text"])
-            reports=_reports(response["text"],item["job_evidence"])
-            if reports:_write(path.with_suffix(".diagnosis.json"),{"reports":reports,"source_message_id":response["message_id"],"at_unix":now})
-        except (ValueError,TypeError):protocol_error="Completed response has invalid directive/checkpoint or unsupported diagnosis; private receipt retained"
+        except (ValueError,TypeError):
+            protocol_code="invalid_directive"
+            protocol_error="Completed response has an invalid final directive; private receipt retained"
+        if not protocol_error:
+            try:checkpoint = _checkpoint(response["text"])
+            except (ValueError,TypeError):
+                protocol_code="invalid_checkpoint"
+                protocol_error="Completed response has an invalid checkpoint; private receipt retained"
+        if not protocol_error:
+            try:
+                reports=_reports(response["text"],item["job_evidence"])
+                if reports:_write(path.with_suffix(".diagnosis.json"),{"reports":reports,"source_message_id":response["message_id"],"at_unix":now})
+            except (ValueError,TypeError):
+                protocol_code="unsupported_diagnosis"
+                protocol_error="Completed response has an unsupported diagnosis or unobserved worker evidence IDs; private receipt retained"
     except Exception as exc:
         _observe_failure(profile_id, now, exc, pending=pending)
         return
@@ -526,8 +540,10 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
             poll_errors=0, last_error="", status_detail="", transport_observation=None, last_activity_at_unix=now,
             last_success=directive.kind.value if directive else "protocol_error", loop_state=directive.kind.value.lower() if directive else "protocol_error")
         if protocol_error:
-            current.update(desired="paused",status="evidence_required",last_error=protocol_error)
+            current.update(desired="paused",status="evidence_required",last_error=protocol_error,
+                recovery={"kind":"response_protocol","code":protocol_code,"response_message_id":response["message_id"]})
             event(s,profile_id,"response_protocol_error",protocol_error);return
+        if (current.get("recovery") or {}).get("kind") == "response_protocol":current["recovery"] = None
         if checkpoint is not None: current["checkpoint"] = checkpoint
         event(s, profile_id, "response", directive.kind.value)
         if directive.kind is DirectiveKind.WAIT_RESULT:

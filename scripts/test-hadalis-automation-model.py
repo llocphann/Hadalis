@@ -27,6 +27,13 @@ def expect_error(call, message: str) -> None:
 def main() -> None:
     initial = model.default_profile()
     assert model.effective_prompt(initial, "initial") == model.default_prompt()
+    generic=model.new_profile("Another repository")
+    generic["prompt"]="Repository: owner/other-project\nBranch: main\nAudit the current source."
+    wrapped=model.effective_prompt(generic,"initial")
+    assert "owner/other-project" in wrapped and "Branch: main" in wrapped
+    assert "GitHub is the authoritative source of truth for llocphann/Hadalis dev" not in wrapped
+    assert "specified by this profile's objective" in wrapped
+    assert "Ordinary repository research uses normal GitHub citations" in wrapped
     assert model.effective_prompt(initial, "continuation").startswith(model.GITHUB_MENTION)
     assert "Do NOT switch to Work mode" in initial["prompt"]
     custom = model.new_profile("UI research", copy=initial)

@@ -25,6 +25,13 @@ a pending turn. Older advanced native effort values remain supported in config.
 Submission intent is durable before dispatch. Lost acknowledgements reconcile the exact message ID and never resend. An unidentified legacy pending chat remains quarantined while other profiles progress. Completed responses are persisted before counters or continuation. Desktop/network downtime backs off observation, bounded to 300 seconds, without permanently disabling it. Up to three read-only stream reattachments resume existing server streams without a new message. A server-confirmed terminal generation failure archives its receipt and permits a distinct checkpoint/evidence recovery step, bounded to three automatic recoveries. Ambiguous generation/action outcomes are never replayed. Invalid final directives or unsupported diagnosis evidence retain the completed receipt and pause only that profile.
 
 Generic objectives can research, analyze, code through GitHub, dispatch pinned local tests/diagnostics, inspect results, debug, fix and continue. WAIT_RESULT has profile ownership and can use a private local worker receipt while Git publication is down. Continuation receives only allowlisted observations, error codes and provenance; raw machine data stays local. Optional HADALIS_CHECKPOINT preserves phase, summary, next step and evidence IDs. HADALIS_DIAGNOSIS conclusions must cite observed worker evidence IDs. ChatGPT remains the reasoning agent; the backend and worker make deterministic protocol transitions only.
+Custom workflows follow the repository and branch in their objective. Normal
+GitHub findings use ordinary source citations; the machine-debug envelope is
+reserved for observed local worker evidence. Rejected completed responses stay
+private with a specific directive/checkpoint/diagnosis reason. A resumed turn
+receives correction context without replaying the consumed response or jobs.
+Monitor recovery can guard the inspected status, command sequence and response
+identity atomically so a newer owner Stop/Pause wins.
 
 Conversation reads use a 30-second cadence (configurable within 15–120 seconds),
 doubling for turns older than five minutes up to 120 seconds. The scheduler's

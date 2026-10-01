@@ -163,13 +163,20 @@ def _await_dispatch(profile_id: str, command_seq: int) -> None:
     raise RuntimeError("Start saved, but no fresh scheduler acknowledgement; inspect the backend service")
 
 
-def profile_action(action: str, profile_id: str) -> dict:
+def profile_action(action: str, profile_id: str, *, expected_recovery: dict | None = None) -> dict:
     if action not in PROFILE_ACTIONS: raise ValueError("profile action not allowlisted")
     def mutate(config, state):
         profile = next((p for p in config["profiles"] if p["id"] == profile_id), None)
         if profile is None: raise ValueError("profile not found")
         item = state["profiles"][profile_id]
         if item["remove_requested"]: raise ValueError("this profile is being removed")
+        if expected_recovery is not None:
+            # A monitor may recover an inspected automatic pause once. A newer
+            # owner Stop/Pause or different response must win inside this lock.
+            if action != "resume" or not isinstance(expected_recovery, dict) or set(expected_recovery) != {"status","command_seq","response_message_id"} or expected_recovery["status"] not in {"evidence_required","connector_blocked"}:
+                raise ValueError("invalid recovery guard")
+            if item["pending"] or item["job_id"] or item["desired"] != "paused" or any(item[k] != v for k,v in expected_recovery.items()):
+                raise ValueError("profile changed after recovery inspection")
         if action in {"start", "resume", "restart"}:
             if not profile["enabled"]: raise ValueError("enable the profile first")
             if action == "resume" and item["desired"] != "paused": raise ValueError("profile is not paused")

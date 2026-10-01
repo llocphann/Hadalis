@@ -35,7 +35,9 @@ SAFE_REMOTES = {
 # SHA-pinned implementation and real production interfaces. A changed
 # source dependency must be re-reviewed, never silently accepted as PASS.
 REVIEWED = {
-    CHILD: "b441a172c571ec434980c054389b40dac415c824",
+    CHILD: "fc012c73d3d77b6332a37184e33579e3a61676fa",
+    "scripts/wull-private-mask-candidate.py":
+        "ae3aa713dac21a9d7203c536f0345ca8c0499aeb",
     NESTED_HELPER: "7edf8328df1f9704f1331fbe1a5e84e659cd360a",
     "scripts/wull-fixtures/production-layer/shell.qml":
         "e16b6dcada26a27fd71cc670e30c55135401bcef",
@@ -95,7 +97,7 @@ def audit(source):
             raise RuntimeError("pointer_dependency_changed_after_review")
     revision = git("log", "--format=%H", BASE + ".." + source,
                    "--", SELF).splitlines()
-    if (len(revision) != 9
+    if (len(revision) != 10
             or git("rev-parse", revision[-1] + ":" + SELF)
             != INITIAL_SELF_BLOB
             or git("rev-parse", revision[0] + ":" + SELF)
@@ -178,7 +180,8 @@ def stop_owned_child_group(child):
             child.wait(timeout=4)
 
 
-def run_nested(niri, private, host_display, host_ipc, host_outputs):
+def run_nested(niri, private, host_display, host_ipc, host_outputs, *,
+               candidate_mode=False):
     data = {
         "nested_started": False, "distinct_nested_endpoints": False,
         "nested_one_output": False, "nested_empty_before_test": False,
@@ -257,6 +260,7 @@ def run_nested(niri, private, host_display, host_ipc, host_outputs):
             "WULL_PRIVATE_POINTER_NESTED_SOCKET": ipc,
             "WULL_PRIVATE_POINTER_CHILD": "owned-nested",
             "WULL_PRIVATE_POINTER_ROOT": str(private / "child"),
+            "WULL_PRIVATE_POINTER_MODE": "candidate-mask" if candidate_mode else "",
         })
         (private / "child").mkdir(mode=0o700)
         with child_log.open("wb") as output:
@@ -280,7 +284,7 @@ def run_nested(niri, private, host_display, host_ipc, host_outputs):
                 for item in ("nested_verified", "underlay_unmapped",
                              "production_unmapped", "private_daemon_stopped",
                              "real_rust_binary_built", "whole_host_mask_changed",
-                             "injection_backend"):
+                             "injection_backend", "private_candidate_mask_tested"):
                     data[item] = raw.get(item)
             except (ValueError, KeyError, TypeError):
                 data["child_reason"] = "child_summary_unreadable"
@@ -347,8 +351,12 @@ def publish(report, path):
 
 
 def main():
-    if sys.argv[1:] != ["--acknowledge-nested-pointer"]:
+    if sys.argv[1:] not in (
+            ["--acknowledge-nested-pointer"],
+            ["--acknowledge-nested-pointer-candidate"]):
         raise RuntimeError("explicit_nested_pointer_opt_in_required")
+    candidate_mode = sys.argv[1:] == [
+        "--acknowledge-nested-pointer-candidate"]
     os.umask(0o077)
     if (Path.cwd().resolve() != ROOT
             or git("symbolic-ref", "--short", "HEAD") != "dev"
@@ -385,6 +393,8 @@ def main():
     elif not Path(host_ipc).is_socket() or not (
             Path(runtime) / desktop).is_socket():
         reason = "host_wayland_or_niri_socket_missing"
+    elif candidate_mode and not shutil.which("wdotool"):
+        reason = "candidate_comparison_requires_absolute_native_pointer"
     elif not (shutil.which("wdotool") or shutil.which("wlrctl")):
         reason = "native_pointer_cli_missing_no_input_injected"
     elif not all(shutil.which(x) for x in ("cargo", "dbus-run-session")) or not (
@@ -396,7 +406,8 @@ def main():
             reason = "host_niri_inventory_unavailable"
         else:
             observations = run_nested(niri, private / "nested", desktop,
-                                      host_ipc, host_outputs)
+                                      host_ipc, host_outputs,
+                                      candidate_mode=candidate_mode)
     if reason:
         status = "inconclusive"
     elif observations["child_result"] == "pass" and all((
@@ -412,7 +423,8 @@ def main():
             observations.get("production_unmapped"),
             observations.get("private_daemon_stopped"),
             observations.get("real_rust_binary_built"),
-            observations.get("whole_host_mask_changed") is False
+            observations.get("whole_host_mask_changed") is False,
+            observations.get("private_candidate_mask_tested") is candidate_mode
     )):
         status = "pass"
     elif observations["child_result"] == "failed" or not all((
@@ -424,16 +436,21 @@ def main():
     else:
         status = "inconclusive"
     receipt = {
-        "kind": "wull_manual_real_nested_pointer_acceptance",
+        "kind": ("wull_manual_nested_private_candidate_mask_comparison"
+                 if candidate_mode else
+                 "wull_manual_real_nested_pointer_acceptance"),
         "source_sha": source, "status": status,
         "preflight_reason": reason,
-        "scope": "owned_single_output_nested_niri_real_production_pointer",
+        "scope": ("owned_single_output_nested_niri_top_candidate_mask_A_B"
+                  if candidate_mode else
+                  "owned_single_output_nested_niri_real_production_pointer"),
         "observation": observations,
         "native_pointer_backend": (
             observations.get("injection_backend", "unavailable_or_unverified")
             if observations else "unavailable_or_unverified"),
         "host_user_config_changed": False,
         "production_mask_changed": False,
+        "private_source_shadow_only": candidate_mode,
         "visual_and_multioutput_acceptance": "not_run",
         "canonical_validation": "not_run",
         "raw_coordinates_screenshots_logs": "private_local_only",
@@ -454,8 +471,8 @@ def main():
     if not clean():
         raise RuntimeError("dirty_publication_checkout")
     receipt["publication_parent_sha"] = git("rev-parse", "HEAD")
-    path = Path("docs") / ("wull-pointer-acceptance-" + identifier
-                           + "-" + source[:12] + ".json")
+    prefix = "wull-mask-candidate-" if candidate_mode else "wull-pointer-acceptance-"
+    path = Path("docs") / (prefix + identifier + "-" + source[:12] + ".json")
     if path.exists():
         raise RuntimeError("refusing_to_overwrite_pointer_receipt")
     path.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
@@ -464,7 +481,9 @@ def main():
             or git("diff", "--name-only")
             or git("ls-files", "--others", "--exclude-standard")):
         raise RuntimeError("unexpected_report_publication_changes")
-    git("commit", "-m", "test(wull): publish isolated real pointer acceptance",
+    git("commit", "-m", ("test(wull): publish private candidate mask comparison"
+                         if candidate_mode else
+                         "test(wull): publish isolated real pointer acceptance"),
         "--", str(path))
     publish(receipt, path)
     print("REPORT_PUBLISHED:", path, flush=True)

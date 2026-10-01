@@ -1,0 +1,28 @@
+{
+  "id": "JOB-WULL-DIAG-015",
+  "profile_id": "profile-db22878355564252",
+  "base_sha": "e31ff6677da09f966f0d6927190d8052a68ac6b6",
+  "actions": [
+    {
+      "diagnostics": {
+        "checks": [
+          "git",
+          "resources",
+          "runtime"
+        ],
+        "lines": 40
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "json=$(mktemp); err=$(mktemp); trap 'rm -f \"$json\" \"$err\"' EXIT; cargo test --locked -p inir-companiond --message-format=json >\"$json\" 2>\"$err\"; rc=$?; [ \"$rc\" -eq 0 ] && exit 0; grep -Eqi '(lock file .* needs to be updated|Cargo.lock needs to be updated)' \"$err\" && exit 61; grep -Eqi '(failed to parse manifest|manifest is virtual|invalid manifest)' \"$err\" && exit 62; grep -Eqi '(package ID specification .* did not match|package .* not found|no matching package named)' \"$err\" && exit 63; grep -Eqi '(requires rustc|rustc .* is not supported|unsupported rust version)' \"$err\" && exit 64; python - \"$json\" \"$err\" <<'PY'\nimport json, sys\ncodes=[]\nmessages=[]\nwith open(sys.argv[1], encoding='utf-8', errors='replace') as fh:\n    for line in fh:\n        try: obj=json.loads(line)\n        except Exception: continue\n        if obj.get('reason')!='compiler-message': continue\n        msg=obj.get('message') or {}\n        if msg.get('level')!='error': continue\n        code=(msg.get('code') or {}).get('code')\n        if code: codes.append(code)\n        messages.append(msg.get('message',''))\ntext='\\n'.join(messages)\nif any(c in {'E0308'} for c in codes): raise SystemExit(71)\nif any(c in {'E0499','E0500','E0501','E0502','E0503','E0505','E0506','E0382'} for c in codes): raise SystemExit(72)\nif any(c in {'E0277','E0369'} for c in codes): raise SystemExit(73)\nif any(c in {'E0599','E0425','E0432','E0433'} for c in codes): raise SystemExit(74)\nif codes: raise SystemExit(75)\nwith open(sys.argv[2], encoding='utf-8', errors='replace') as fh: stderr=fh.read()\nif 'test result: FAILED' in stderr or 'test failed' in stderr: raise SystemExit(76)\nraise SystemExit(77)\nPY"
+        ],
+        "cwd": "native",
+        "timeout_seconds": 600
+      }
+    }
+  ]
+}

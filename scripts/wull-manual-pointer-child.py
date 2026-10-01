@@ -332,12 +332,15 @@ def main():
     if not all((niri, qs, dbus, cargo)):
         stop("required_nested_test_dependency_unavailable")
     output, width, height = verify_isolation(niri)
-    candidate_mode = os.environ.get("WULL_PRIVATE_POINTER_MODE", "") == "candidate-mask"
-    if os.environ.get("WULL_PRIVATE_POINTER_MODE", "") not in ("", "candidate-mask"):
+    selected_mode = os.environ.get("WULL_PRIVATE_POINTER_MODE", "")
+    if selected_mode not in ("", "candidate-mask", "candidate-mask-bottom"):
         stop("unreviewed_pointer_probe_mode")
-    helper = __import__("runpy").run_path(str(ROOT / "scripts/wull-pointer-targets.py"),
-                                          run_name="wull_pointer_child_only")
-    points = helper["top_edge_targets"](width, height)
+    candidate_mode = selected_mode != ""
+    selected_edge = "bottom" if selected_mode == "candidate-mask-bottom" else "top"
+    helper = __import__("runpy").run_path(
+        str(ROOT / "scripts/wull-pointer-targets.py"),
+        run_name="wull_pointer_child_only")
+    points = helper["all_edge_targets"](width, height, selected_edge)
     report = {"status": "inconclusive", "reason": None, "checks": [],
               "nested_verified": True, "underlay_unmapped": False,
               "production_unmapped": False, "private_daemon_stopped": False,
@@ -428,7 +431,7 @@ def main():
         config["enabledPanels"] = []
         config["abyss"]["companion"].update(
             {"enabled": False, "interactive": True, "output": output,
-             "edge": "top", "along": 0.72, "size": 1,
+             "edge": selected_edge, "along": 0.72, "size": 1,
              "soundEnabled": False})
         def start_production(label, enabled, *, candidate=False,
                              trace_path=None):

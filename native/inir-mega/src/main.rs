@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 mod pty;
+mod feature_gates;
 
 const PROTOCOL_VERSION: u32 = 1;
 const LIVE_AUTH_VENDOR_ENABLED: bool = false;
@@ -45,6 +46,7 @@ struct Request {
 enum Operation {
     Detect,
     ConnectPreflight,
+    FeatureGatesPreview,
     AuthBegin,
 }
 
@@ -411,6 +413,26 @@ fn handle_connect_preflight(request: Request, path_env: Option<&str>) -> Respons
     }
 }
 
+// Pure offline policy only: a preview is not installed capability evidence.
+// Reject every unexpected parameter or secret before producing a fixed deny
+// catalog. This branch contains no path inspection or vendor execution.
+fn handle_feature_gates_preview(request: Request) -> Response {
+    if request.params != json!({}) || request.secret.is_some() {
+        return auth_error(
+            request.request_id,
+            "validate", "FEATURE_GATE_INPUT_FORBIDDEN", "not_dispatched",
+            "Offline feature preview accepts no account details or credentials.",
+        );
+    }
+    Response {
+        protocol: PROTOCOL_VERSION,
+        request_id: request.request_id,
+        ok: true,
+        result: feature_gates::offline_policy_preview(),
+        error: None,
+    }
+}
+
 fn handle(request: Request) -> Response {
     if let Some(error) = validate_request(&request) {
         return Response {
@@ -456,6 +478,7 @@ fn handle(request: Request) -> Response {
         Operation::ConnectPreflight => {
             handle_connect_preflight(request, env::var("PATH").ok().as_deref())
         }
+        Operation::FeatureGatesPreview => handle_feature_gates_preview(request),
         Operation::AuthBegin => handle_auth(request),
     }
 }
@@ -652,6 +675,49 @@ mod tests {
         let error = response.error.unwrap();
         assert_eq!(error.kind, "MFA_INPUT_INVALID");
         assert_eq!(error.outcome, "not_dispatched");
+    }
+
+    #[test]
+    fn feature_gate_preview_never_authorizes_live_domains() {
+        let response = handle_feature_gates_preview(Request {
+            protocol: PROTOCOL_VERSION,
+            request_id: "gates-1".into(),
+            operation: Operation::FeatureGatesPreview,
+            params: json!({}),
+            secret: None,
+        });
+        assert!(response.ok);
+        assert!(response.error.is_none());
+        assert_eq!(response.request_id, "gates-1");
+        assert_eq!(response.result["probe_kind"], "offline_policy_preview");
+        assert_eq!(response.result["connected"], false);
+        assert_eq!(response.result["auth_qualified"], false);
+        assert_eq!(response.result["account_reads_enabled"], false);
+        assert_eq!(response.result["writes_enabled"], false);
+        assert_eq!(response.result["domains"].as_object().unwrap().len(), 10);
+    }
+
+    #[test]
+    fn feature_gate_preview_rejects_secrets_and_override_params() {
+        for (params, secret) in [
+            (json!({"enable_live": true}), None),
+            (json!({}), Some(SecretInput {
+                password: Some("PRIVATE_PREVIEW_CANARY".into()),
+                mfa_code: None,
+            })),
+        ] {
+            let response = handle_feature_gates_preview(Request {
+                protocol: PROTOCOL_VERSION,
+                request_id: "gates-reject".into(),
+                operation: Operation::FeatureGatesPreview,
+                params,
+                secret,
+            });
+            assert!(!response.ok);
+            assert_eq!(response.error.unwrap().kind, "FEATURE_GATE_INPUT_FORBIDDEN");
+            let serialized = serde_json::to_string(&response.result).unwrap();
+            assert!(!serialized.contains("PRIVATE_PREVIEW_CANARY"));
+        }
     }
 
     #[test]

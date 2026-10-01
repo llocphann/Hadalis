@@ -33,7 +33,8 @@ with tempfile.TemporaryDirectory(prefix="megaqml-realhost-unit-") as tmp:
     page = (fixture / page_path).read_text(encoding="utf-8")
     original = (repo / page_path).read_text(encoding="utf-8")
     assert original[original.index("ContentPage {"):] in page
-    for name in ("CloudStorageService.qml", "CloudStorageStaticProtocol.js"):
+    for name in ("CloudStorageService.qml", "CloudStorageStaticProtocol.js",
+                 "CloudStoragePreflightProtocol.js"):
         assert (fixture / "services/deferred" / name).read_bytes() == (
             repo / "services/deferred" / name).read_bytes()
 

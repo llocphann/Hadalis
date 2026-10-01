@@ -5,7 +5,9 @@ import sys
 from pathlib import Path
 
 kind = sys.argv[1] if len(sys.argv) > 1 else ""
-if kind not in {"qml_baseline", "qml_service", "qml_page"}:
+if kind not in {"qml_baseline", "qml_service", "qml_page",
+                "qml_waffle_baseline", "qml_waffle_page",
+                "qml_waffle_entry", "qml_waffle_content"}:
     raise SystemExit(64)
 text = Path(sys.argv[2]).read_text(encoding="utf-8", errors="replace")[:32768]
 lower = text.lower()

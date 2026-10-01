@@ -49,17 +49,36 @@ if command -v qmlformat >/dev/null 2>&1; then
     if grep -q '^qml_baseline,PASS,' "$scratch/safe.csv"; then
       run_test qml_service qmlformat services/deferred/CloudStorageService.qml
       run_test qml_page qmlformat modules/settings/CloudStorageConfig.qml
+      # Independent Waffle Settings has its own QML baseline and standalone page.
+      run_test qml_waffle_baseline qmlformat modules/waffle/settings/pages/WEffectsPage.qml
+      if grep -q '^qml_waffle_baseline,PASS,' "$scratch/safe.csv"; then
+        run_test qml_waffle_page qmlformat modules/waffle/settings/pages/WCloudStoragePage.qml
+        run_test qml_waffle_entry qmlformat waffleSettings.qml
+        run_test qml_waffle_content qmlformat modules/waffle/settings/WSettingsContent.qml
+      else
+        for case_name in qml_waffle_page qml_waffle_entry qml_waffle_content; do
+          printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
+        done
+      fi
     else
       printf 'qml_service,SKIP,127,%s\n' "$source_sha" >> "$scratch/safe.csv"
       printf 'qml_page,SKIP,127,%s\n' "$source_sha" >> "$scratch/safe.csv"
+      printf 'qml_waffle_baseline,SKIP,127,%s\n' "$source_sha" >> "$scratch/safe.csv"
+      for case_name in qml_waffle_page qml_waffle_entry qml_waffle_content; do
+        printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
+      done
     fi
   else
     printf 'qml_baseline,SKIP,127,%s\n' "$source_sha" >> "$scratch/safe.csv"
     printf 'qml_service,SKIP,127,%s\n' "$source_sha" >> "$scratch/safe.csv"
     printf 'qml_page,SKIP,127,%s\n' "$source_sha" >> "$scratch/safe.csv"
+    printf 'qml_waffle_baseline,SKIP,127,%s\n' "$source_sha" >> "$scratch/safe.csv"
+    for case_name in qml_waffle_page qml_waffle_entry qml_waffle_content; do
+      printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
+    done
   fi
 else
-  for case_name in qml_minimal qml_baseline qml_service qml_page; do
+  for case_name in qml_minimal qml_baseline qml_service qml_page qml_waffle_baseline qml_waffle_page qml_waffle_entry qml_waffle_content; do
     printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
   done
 fi
@@ -72,7 +91,7 @@ mkdir -p docs/evidence/megaqml
   while IFS=, read -r name state code sha; do
     printf '| %s | %s | %s | %s |\n' "$name" "$state" "$code" "$sha"
   done < "$scratch/safe.csv"
-  for qt_case in qml_baseline qml_service qml_page; do
+  for qt_case in qml_baseline qml_service qml_page qml_waffle_baseline qml_waffle_page qml_waffle_entry qml_waffle_content; do
     if grep -q "^${qt_case},FAIL," "$scratch/safe.csv"; then
       python3 scripts/test-megaqml-qt-diagnostic.py "$qt_case" "$scratch/$qt_case.raw"
     fi
@@ -81,6 +100,8 @@ mkdir -p docs/evidence/megaqml
     echo 'qml_blocker=tool_cannot_parse_minimal_qt'
   elif grep -q '^qml_baseline,FAIL,' "$scratch/safe.csv"; then
     echo 'qml_blocker=tool_cannot_parse_existing_repository_page'
+  elif grep -q '^qml_waffle_baseline,FAIL,' "$scratch/safe.csv"; then
+    echo 'qml_waffle_blocker=tool_cannot_parse_existing_waffle_page'
   elif grep -q '^qml_minimal,SKIP,' "$scratch/safe.csv"; then
     echo 'qml_blocker=qmlformat_unavailable'
   fi

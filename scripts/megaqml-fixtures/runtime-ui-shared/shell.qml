@@ -251,10 +251,38 @@ ShellRoot {
                     root.fail("PREFLIGHT_WAFFLE")
                     return
                 }
+                // The third Waffle click receives a forged old request ID.
+                // The real signal must drive the real shared service.
+                const replayButton = root.offlineControl(root.waffle)
+                if (!replayButton || !replayButton.enabled
+                        || typeof replayButton.buttonClicked !== "function") {
+                    root.fail("REPLAY_START")
+                    return
+                }
+                replayButton.buttonClicked()
+                if (svc.preflightSerial !== 3 || !svc.preflightBusy
+                        || svc.preflightState !== "checking"
+                        || !root.goodMissing(svc, 3, 2)) {
+                    root.fail("REPLAY_START")
+                    return
+                }
+                root.stage = 6
+                return
+            }
+            if (root.stage === 6) {
+                if (svc.preflightState === "checking") return
+                if (svc.preflightSerial !== 3 || svc.preflightBusy
+                        || svc.preflightState !== "unavailable"
+                        || svc.preflightError
+                            !== "Incompatible offline connection readiness response."
+                        || !root.goodMissing(svc, 3, 2)) {
+                    root.fail("REPLAY_REJECT")
+                    return
+                }
                 root.material.visible = false
                 if (root.material.leaseHeld || !root.waffle.leaseHeld
                         || svc.consumerCount !== 1
-                        || svc.preflightState !== "dependency_missing") {
+                        || svc.preflightState !== "unavailable") {
                     root.fail("FINAL_RELEASE")
                     return
                 }

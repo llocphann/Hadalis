@@ -35,9 +35,9 @@ SAFE_REMOTES = {
 # SHA-pinned implementation and real production interfaces. A changed
 # source dependency must be re-reviewed, never silently accepted as PASS.
 REVIEWED = {
-    CHILD: "fc012c73d3d77b6332a37184e33579e3a61676fa",
+    CHILD: "424de561d81f027dbc73e29fb8599e99b4f1d571",
     "scripts/wull-private-mask-candidate.py":
-        "ae3aa713dac21a9d7203c536f0345ca8c0499aeb",
+        "91049b2ca2beb7b1936af624adca5133d251ea3c",
     NESTED_HELPER: "7edf8328df1f9704f1331fbe1a5e84e659cd360a",
     "scripts/wull-fixtures/production-layer/shell.qml":
         "e16b6dcada26a27fd71cc670e30c55135401bcef",
@@ -46,7 +46,7 @@ REVIEWED = {
     "scripts/wull-fixtures/pointer-underlay/companion-relay.py":
         "7e450db1db23e3c250859b0271a655d6325f0bc8",
     "scripts/wull-pointer-targets.py":
-        "af3c0e1fdf090fae105d851d75aeed1954775915",
+        "527ebecd01e2fc51d497e0de73a0f3bcd83305ac",
     "modules/abyss/AbyssPerimeter.qml":
         "a3cd2a7bfbdf32dac2c7e42057a1dfaaeea214ac",
     "modules/abyss/companion/AbyssCompanion.qml":
@@ -97,7 +97,7 @@ def audit(source):
             raise RuntimeError("pointer_dependency_changed_after_review")
     revision = git("log", "--format=%H", BASE + ".." + source,
                    "--", SELF).splitlines()
-    if (len(revision) != 10
+    if (len(revision) != 11
             or git("rev-parse", revision[-1] + ":" + SELF)
             != INITIAL_SELF_BLOB
             or git("rev-parse", revision[0] + ":" + SELF)
@@ -181,7 +181,7 @@ def stop_owned_child_group(child):
 
 
 def run_nested(niri, private, host_display, host_ipc, host_outputs, *,
-               candidate_mode=False):
+               candidate_mode=False, candidate_edge="top"):
     data = {
         "nested_started": False, "distinct_nested_endpoints": False,
         "nested_one_output": False, "nested_empty_before_test": False,
@@ -260,7 +260,10 @@ def run_nested(niri, private, host_display, host_ipc, host_outputs, *,
             "WULL_PRIVATE_POINTER_NESTED_SOCKET": ipc,
             "WULL_PRIVATE_POINTER_CHILD": "owned-nested",
             "WULL_PRIVATE_POINTER_ROOT": str(private / "child"),
-            "WULL_PRIVATE_POINTER_MODE": "candidate-mask" if candidate_mode else "",
+            "WULL_PRIVATE_POINTER_MODE": (
+                "candidate-mask-bottom" if candidate_mode
+                and candidate_edge == "bottom" else
+                "candidate-mask" if candidate_mode else ""),
         })
         (private / "child").mkdir(mode=0o700)
         with child_log.open("wb") as output:
@@ -353,10 +356,15 @@ def publish(report, path):
 def main():
     if sys.argv[1:] not in (
             ["--acknowledge-nested-pointer"],
-            ["--acknowledge-nested-pointer-candidate"]):
+            ["--acknowledge-nested-pointer-candidate"],
+            ["--acknowledge-nested-pointer-candidate-bottom"]):
         raise RuntimeError("explicit_nested_pointer_opt_in_required")
-    candidate_mode = sys.argv[1:] == [
-        "--acknowledge-nested-pointer-candidate"]
+    candidate_mode = sys.argv[1:] in (
+        ["--acknowledge-nested-pointer-candidate"],
+        ["--acknowledge-nested-pointer-candidate-bottom"])
+    candidate_edge = (
+        "bottom" if sys.argv[1:] ==
+        ["--acknowledge-nested-pointer-candidate-bottom"] else "top")
     os.umask(0o077)
     if (Path.cwd().resolve() != ROOT
             or git("symbolic-ref", "--short", "HEAD") != "dev"
@@ -407,7 +415,8 @@ def main():
         else:
             observations = run_nested(niri, private / "nested", desktop,
                                       host_ipc, host_outputs,
-                                      candidate_mode=candidate_mode)
+                                      candidate_mode=candidate_mode,
+                                      candidate_edge=candidate_edge)
     if reason:
         status = "inconclusive"
     elif observations["child_result"] == "pass" and all((
@@ -441,8 +450,11 @@ def main():
                  "wull_manual_real_nested_pointer_acceptance"),
         "source_sha": source, "status": status,
         "preflight_reason": reason,
-        "scope": ("owned_single_output_nested_niri_top_candidate_mask_A_B"
-                  if candidate_mode else
+        "scope": (
+            "owned_single_output_nested_niri_bottom_candidate_mask_A_B"
+            if candidate_mode and candidate_edge == "bottom" else
+            "owned_single_output_nested_niri_top_candidate_mask_A_B"
+            if candidate_mode else
                   "owned_single_output_nested_niri_real_production_pointer"),
         "observation": observations,
         "native_pointer_backend": (
@@ -471,7 +483,10 @@ def main():
     if not clean():
         raise RuntimeError("dirty_publication_checkout")
     receipt["publication_parent_sha"] = git("rev-parse", "HEAD")
-    prefix = "wull-mask-candidate-" if candidate_mode else "wull-pointer-acceptance-"
+    prefix = (
+        "wull-mask-bottom-" if candidate_mode and candidate_edge == "bottom"
+        else "wull-mask-candidate-" if candidate_mode
+        else "wull-pointer-acceptance-")
     path = Path("docs") / (prefix + identifier + "-" + source[:12] + ".json")
     if path.exists():
         raise RuntimeError("refusing_to_overwrite_pointer_receipt")

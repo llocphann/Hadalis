@@ -95,7 +95,7 @@ def audit(source):
             raise RuntimeError("pointer_dependency_changed_after_review")
     revision = git("log", "--format=%H", BASE + ".." + source,
                    "--", SELF).splitlines()
-    if (len(revision) != 4
+    if (len(revision) != 5
             or git("rev-parse", revision[-1] + ":" + SELF)
             != INITIAL_SELF_BLOB
             or git("rev-parse", revision[0] + ":" + SELF)
@@ -152,6 +152,30 @@ def stop_private_strays(private, force=False):
         except ProcessLookupError:
             pass
 
+
+def stop_owned_child_group(child):
+    """Terminate the owned nested child AND its in-group Cargo/input children.
+
+    The Popen child is started with start_new_session=True. Never signal its
+    numeric PGID after that group leader exited: the ID might be reused.
+    Independent Quickshell sessions use their own groups and are separately
+    handled by the private-path cleanup below.
+    """
+    if child is None or child.poll() is not None:
+        return
+    try:
+        os.killpg(child.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    try:
+        child.wait(timeout=12)
+    except subprocess.TimeoutExpired:
+        if child.poll() is None:
+            try:
+                os.killpg(child.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            child.wait(timeout=4)
 
 
 def run_nested(niri, private, host_display, host_ipc, host_outputs):
@@ -244,14 +268,7 @@ def run_nested(niri, private, host_display, host_ipc, host_outputs):
                 data["child_exit_code"] = child.wait(timeout=1080)
             except subprocess.TimeoutExpired:
                 data["child_exit_code"] = 124
-                if child.poll() is None:
-                    child.terminate()
-                    try:
-                        child.wait(timeout=15)
-                    except subprocess.TimeoutExpired:
-                        if child.poll() is None:
-                            child.kill()
-                            child.wait(timeout=4)
+                stop_owned_child_group(child)
         trim_log(child_log)
         summary = private / "child" / "pointer-child.private-summary.json"
         if summary.is_file() and summary.stat().st_size <= 65536:
@@ -272,13 +289,7 @@ def run_nested(niri, private, host_display, host_ipc, host_outputs):
             data["child_reason"] = "nested_pointer_child_no_receipt"
         return data
     finally:
-        if child is not None and child.poll() is None:
-            child.terminate()
-            try:
-                child.wait(timeout=12)
-            except subprocess.TimeoutExpired:
-                child.kill()
-                child.wait(timeout=4)
+        stop_owned_child_group(child)
         stop_owned(nested)
         trim_log(nested_log)
         trim_log(child_log)

@@ -712,3 +712,17 @@ This task is complete only when all of the following are true:
   pointer and multioutput/hotplug, resource long-run and
   reload/suspend remain unqualified. Stable and production
   input mask/default-off remain unchanged.
+
+
+- Follow-up sanitized backend provenance: `6670066439c8899b42ba528e5cf81f9b71ce9ee4`
+projects the allowlisted actual child pointer backend
+(`forced_wlr_protocols_wdotool` or
+`native_relative_wlrctl_unverified`) into the main sanitized
+receipt, without host paths, and raises the reviewed coordinator
+self-revision count from eight to nine. The inert contract assertion
+was added in `1de19ca38f1738e0167b01a169c63f67d43cf1a4`.
+The technical design note records this. No new real pointer receipt
+after the prior FAILED source `115ab32a9825` has yet been inspected:
+the next grouped local run must validate the current inert tests and
+the stricter real coordinate-witness matrix before any Wull
+production input change.

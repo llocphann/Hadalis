@@ -61,7 +61,8 @@ def verify_reviewed_source(root=ROOT):
     wrapper = paths["modules/abyss/companion/AbyssCompanion.qml"].decode("utf-8")
     panel = paths["modules/abyss/AbyssPerimeter.qml"].decode("utf-8")
     for marker in (
-        'width: 76; height: 92',
+        'implicitWidth: 76',
+        'implicitHeight: 92',
         'origin.x: root.width * 0.5',
         'origin.y: root.height',
         'yScale: 1 - root.stateSquash * 0.035 + root.stateStretch * 0.06',

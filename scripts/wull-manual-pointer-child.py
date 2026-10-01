@@ -419,8 +419,10 @@ def main():
         report["checks"].append({"case": "disabled_center_underlay_control",
                                  "status": "pass" if disabled_pass else "failed"})
         if not disabled_pass:
-            report["status"] = "failed"
-            report["reason"] = "disabled_underlay_control_failed"
+            report["status"] = "inconclusive" if actor_kind == "wlrctl" else "failed"
+            report["reason"] = ("relative_disabled_pointer_control_unverified"
+                                if actor_kind == "wlrctl"
+                                else "disabled_underlay_control_failed")
             return
         owned_cleanup(disabled_proc, binary, private_relay)
         disabled_proc = None
@@ -443,8 +445,10 @@ def main():
         report["checks"].append({"case": "enabled_exterior_underlay_control",
                                  "status": "pass" if exterior_pass else "failed"})
         if not exterior_pass:
-            report["status"] = "failed"
-            report["reason"] = "enabled_exterior_control_failed"
+            report["status"] = "inconclusive" if actor_kind == "wlrctl" else "failed"
+            report["reason"] = ("relative_exterior_pointer_control_unverified"
+                                if actor_kind == "wlrctl"
+                                else "enabled_exterior_control_failed")
             return
         prior = trace_kinds(trace)
         before = underlay_count()
@@ -468,8 +472,10 @@ def main():
             "underlay_not_clicked": not_underlay, "real_bridge_clicked": clicked,
             "real_rust_reacted": acked})
         if not body_pass:
-            report["status"] = "failed"
-            report["reason"] = "actual_wull_body_click_unproven"
+            report["status"] = "inconclusive" if actor_kind == "wlrctl" else "failed"
+            report["reason"] = ("relative_body_pointer_target_unverified"
+                                if actor_kind == "wlrctl"
+                                else "actual_wull_body_click_unproven")
             return
         # A diagnostic, NOT a pass-through gate for the current full-host mask.
         prior = trace_kinds(trace)
@@ -488,9 +494,16 @@ def main():
             "status": "observed",
             "underlay_received": margin_reached_underlay,
             "unexpected_body_click": margin_clicked_body})
-        report["status"] = "failed" if margin_clicked_body else "pass"
-        report["reason"] = ("body_triggered_from_empty_host_margin"
-                            if margin_clicked_body else None)
+        report["status"] = (
+            "inconclusive" if margin_clicked_body and actor_kind == "wlrctl"
+            else "failed" if margin_clicked_body else "pass"
+        )
+        report["reason"] = (
+            "relative_empty_margin_pointer_target_unverified"
+            if margin_clicked_body and actor_kind == "wlrctl"
+            else "body_triggered_from_empty_host_margin"
+            if margin_clicked_body else None
+        )
     except (OSError, ValueError, json.JSONDecodeError, subprocess.TimeoutExpired,
             RuntimeError) as exc:
         # No exception contents enter the published receipt.

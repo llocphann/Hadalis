@@ -64,7 +64,7 @@ rust_ready() {
 
 cmd="${1:-}"
 [[ -n "$cmd" ]] || {
-    echo "usage: native-dispatch <input-lock|input-keys|niri|clipboard-store|mpd|mpd-daemon|mpd-subscribe|lyrics|theme|desktop-icons|mega|backend-info> [args...]" >&2
+    echo "usage: native-dispatch <input-lock|input-keys|niri|clipboard-store|mpd|mpd-daemon|mpd-subscribe|lyrics|theme|desktop-icons|mega|companion|backend-info> [args...]" >&2
     exit 64
 }
 shift
@@ -77,6 +77,7 @@ if [[ "$MODE" == rust && "$STRICT" == 1 ]]; then
         mpd|mpd-daemon|mpd-subscribe|lyrics) required_binary=inir-mpdd ;;
         theme) required_binary=inir-theme ;;
         mega) required_binary=inir-mega ;;
+        companion) required_binary=inir-companiond ;;
     esac
     if [[ -n "$required_binary" ]] && ! rust_ready "$required_binary"; then
         echo "[native-dispatch] missing Rust binary: $BIN_DIR/$required_binary" >&2
@@ -88,7 +89,7 @@ case "$cmd" in
     backend-info)
         printf 'mode=%s\n' "$MODE"
         printf 'bin_dir=%s\n' "$BIN_DIR"
-        for binary in inir-inputd inir-native inir-mpdd inir-theme inir-mega; do
+        for binary in inir-inputd inir-native inir-mpdd inir-theme inir-mega inir-companiond; do
             if rust_ready "$binary"; then
                 printf '%s=ready\n' "$binary"
             else
@@ -105,6 +106,17 @@ case "$cmd" in
             exec "$BIN_DIR/inir-mega" "$@"
         fi
         echo "[native-dispatch] Cloud Storage requires the dedicated Rust helper: $BIN_DIR/inir-mega" >&2
+        exit 127
+        ;;
+
+    companion)
+        # Wull is a long-lived Rust-only state/scheduling backend. The dispatcher
+        # execs it in-place so QML owns one child process without an extra shell
+        # process and without introducing any polling or per-event subprocesses.
+        if rust_ready inir-companiond; then
+            exec "$BIN_DIR/inir-companiond" "$@"
+        fi
+        echo "[native-dispatch] Wull requires the dedicated Rust helper: $BIN_DIR/inir-companiond" >&2
         exit 127
         ;;
 

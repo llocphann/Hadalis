@@ -53,6 +53,7 @@ expected_files=(
   "$stage$prefix/share/quickshell/inir/native/bin/inir-native"
   "$stage$prefix/share/quickshell/inir/native/bin/inir-theme"
   "$stage$prefix/share/quickshell/inir/native/bin/inir-mega"
+  "$stage$prefix/share/quickshell/inir/native/bin/inir-companiond"
   "$stage$systemd_user_dir/inir.service"
   "$stage$prefix/share/applications/inir.desktop"
   "$stage$prefix/share/applications/inir-settings.desktop"

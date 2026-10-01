@@ -6,7 +6,12 @@ Item {
     id: root
 
     property string binaryPath: Quickshell.env("INIR_COMPANIOND") ?? ""
-    readonly property bool backendEnabled: binaryPath.length > 0
+    property bool useNativeDispatcher: false
+    readonly property string nativeDispatchPath: Quickshell.shellPath("scripts/native-dispatch")
+    readonly property var backendCommand: binaryPath.length > 0
+        ? [binaryPath]
+        : useNativeDispatcher ? [nativeDispatchPath, "companion"] : []
+    readonly property bool backendEnabled: backendCommand.length > 0
     property bool ready: false
     property bool requestedVisible: false
     property int outboundSeq: 0
@@ -119,7 +124,7 @@ Item {
         id: backendProcess
         running: false
         stdinEnabled: true
-        command: root.backendEnabled ? [root.binaryPath] : []
+        command: root.backendCommand
 
         stdout: SplitParser {
             onRead: line => root.acceptLine(line)

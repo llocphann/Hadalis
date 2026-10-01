@@ -2,7 +2,7 @@
 
 ## Native Rust runtime
 
-All shell packages build the committed `native/Cargo.lock` workspace and ship the four qualified helpers under `share/quickshell/inir/native/bin/`. Direct Arch shell packages are architecture-specific; Nix builds the workspace with `rustPlatform.buildRustPackage`. Python remains for fallback paths and utilities that were not part of this migration.
+Current-source install/package paths build the committed `native/Cargo.lock` workspace and ship the qualified helpers under `share/quickshell/inir/native/bin/`, including `inir-mega` and the opt-in Wull backend `inir-companiond`. The rolling Arch package and Nix build current source; the pinned non-VCS Arch package gains newer helpers when its source snapshot advances. Python remains only for explicitly retained fallback paths.
 
 
 This page documents the Arch-based source install dependency model used by `./setup install`, plus the separate Arch package recipes that distribute the Hadalis/iNiR runtime itself.

@@ -244,7 +244,10 @@ assert 'MEGAQML_QS_UI_STAGE_CONSTRUCT' in classifier_test
 for shell_case in ("ui-material", "ui-waffle", "ui-shared", "ui-race"):
     assert shell_case in quickshell_runner
 assert 'scripts/test-megaqml-ui-fixture.py' in quickshell_runner
-assert 'runtime-ui-shared/shell.qml' in quickshell_runner
+# Both ui-shared and ui-race use their dedicated fixture paths through
+# the reviewed runtime-$kind mapping, not a hard-coded shared path.
+assert 'source_fixture="scripts/megaqml-fixtures/runtime-$kind/shell.qml"' in quickshell_runner
+assert 'if [[ "$kind" == ui-shared || "$kind" == ui-race ]]; then' in quickshell_runner
 assert 'ui-shared) marker=MEGAQML_QS_UI_SHARED_OK' in quickshell_runner
 assert 'ui-race) marker=MEGAQML_QS_UI_RACE_OK' in quickshell_runner
 assert 'runtime-$kind/shell.qml' in quickshell_runner
@@ -270,7 +273,8 @@ assert 'svc.generation !== beforeRelease + 1' in race_ui
 assert 'MEGAQML_QS_UI_RACE_OK' in race_ui
 assert 'mega-login' not in race_ui and 'scripts/native-dispatch' not in race_ui
 assert 'megaqml-race-unit-' in ui_fixture_contract
-assert 'quickshell_ui_waffle quickshell_ui_shared; do' in runner
+assert 'quickshell_ui_waffle quickshell_ui_shared quickshell_ui_race; do' in runner
+assert 'quickshell_ui_waffle quickshell_ui_shared; do' not in runner
 assert '"ui-material", "ui-waffle", "ui-shared"' in quickshell_classifier
 assert 'MEGAQML_QS_SHARED_STAGE_HIDE_ONE' in classifier_test
 assert 'shared_second_result' in quickshell_classifier
@@ -280,7 +284,7 @@ assert 'MEGAQML_FIXTURE_CASE=missing' in quickshell_runner
 assert 'quickshell_active_present' in runner and 'quickshell_active_missing' in runner
 assert 'export PATH="$work/allowed-bin"' in quickshell_runner
 assert 'cp -- scripts/megaqml-fixtures/fake-static-dispatch.py' in quickshell_runner
-# This complete runner publishes new Phase 2l evidence. The focused
+# This complete runner publishes Phase 2m evidence. The focused
 # standalone loader runner intentionally retains the historical 2k prefix.
 assert 'docs/evidence/megaqml/phase2m-' in runner
 assert 'docs/evidence/megaqml/phase2k-' not in runner
@@ -323,4 +327,4 @@ for allowlisted in ('docs/wull-*', 'scripts/wull-*', 'scripts/test-wull-*',
     assert allowlisted in focused
 assert 'scripts/native-dispatch' not in focused
 assert 'mega-login' not in focused
-print("PASS MegaQML Phase 2k static source contract")
+print("PASS MegaQML Phase 2m static source contract")

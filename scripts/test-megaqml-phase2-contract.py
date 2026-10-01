@@ -180,9 +180,16 @@ for marker in ("PAGE_GONE", "PAGE_HIDDEN", "LEASE_SERVICE_MISMATCH",
     assert 'MEGAQML_QS_UI_RUNTIME_' + marker in ui_shell
 assert 'MEGAQML_QS_UI_RUNTIME_LEASE_NOT_ACTIVATED' in classifier_test
 assert 'Date.now() - root.started >= 8500' in ui_shell
-for runtime_code in ("PAGE_LEASE_ABSENT", "SERVICE_CONSUMERS_ZERO", "NO_REQUEST",
-                     "SERVICE_UNAVAILABLE", "CHECKING_BUSY", "UNEXPECTED_STATE"):
+# PAGE_LEASE_ABSENT was superseded by four actionable fixed categories.
+# Keep accepting old safe categories in the classifier for historical reports,
+# but the current fixture must emit only the new split lease diagnostics.
+for runtime_code in ("PAGE_GONE", "PAGE_HIDDEN", "LEASE_SERVICE_MISMATCH",
+                     "LEASE_NOT_ACTIVATED", "SERVICE_CONSUMERS_ZERO",
+                     "NO_REQUEST", "SERVICE_UNAVAILABLE", "CHECKING_BUSY",
+                     "UNEXPECTED_STATE"):
     assert 'MEGAQML_QS_UI_RUNTIME_' + runtime_code in ui_shell
+assert 'MEGAQML_QS_UI_RUNTIME_PAGE_LEASE_ABSENT' not in ui_shell
+assert 'ui_runtime_page_lease_absent' in quickshell_classifier
 for runtime_category in ("ui_runtime_page_lease_absent",
                          "ui_runtime_service_consumers_zero", "ui_runtime_no_request",
                          "ui_runtime_service_unavailable", "ui_runtime_checking_busy"):

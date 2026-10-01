@@ -875,3 +875,101 @@ on only three edges. LEFT, popup/hover, live
 visuals, actual multioutput/hotplug/fractional
 scaling, canonical-wide and long-running lifecycle
 gates remain separate and pending.
+
+
+## REAL right private A/B PASS; independent left-side candidate staged
+
+New exact-source sanitized real pointer report:
+`docs/wull-mask-right-20261001T174248Z-cd6a3010-cdbe02bbcd61.json`,
+`source_sha=cdbe02bbcd61720f07852fd7eb62929d14004188`,
+`status=pass`, scoped ONLY to
+`owned_single_output_nested_niri_right_candidate_mask_A_B`
+with forced native absolute `wdotool --backend wlr-protocols`.
+On one newly owned verified single-output nested Niri,
+the unchanged production full-host mask passed
+disabled-center and enabled-exterior matched underlay
+controls, genuine body bridge plus private real Rust
+happy/pulse with NO body click to underlay, and
+observed blocked full-host empty margin without
+accidental Wull activation. Full-production layer
+and private Rust cleanup completed; the new distinct
+`after_baseline_unmap_exterior_underlay_control`
+passed before the private side-edge candidate was
+mapped. The private RIGHT dynamic side BBOX passed
+independently correctly aligned exterior, real
+body bridge/Rust without underlay click, and
+positive matched previously blocked empty-margin
+underlay pass-through without false body activation.
+One-output nested isolation, all owned process/
+layer/compositor cleanup, no strays and unchanged
+host outputs also passed. Shipped production, user
+configuration and `stable` were unchanged.
+
+This is real bounded private RIGHT evidence alongside
+the independently source-pinned new TOP and BOTTOM
+private A/B PASS reports; it is NOT evidence that
+the existing production mask was changed, accepted
+outside scale=1 or qualified visually. The earlier
+large two-axis first-candidate exterior off-target
+TOP observation remains a genuine unresolved
+repeatability finding, regardless of later PASSes.
+
+A separate explicit private LEFT physical gate
+is SOURCE-STAGED, NOT YET RUN. The old-reviewed
+production postchange geometry measured vertical
+host 98x112 and rotated body BBOX (3,18,92,76)
+on both side edges; the existing private shadow
+generator already branches to the centered
+92x76 side-edge Region, guarded by input policy
+and size=1. Updated child
+`scripts/wull-manual-pointer-child.py` commit
+`57d81d35e1e0f6543f61195f275eba5cd5f0a982`
+adds exactly `candidate-mask-left` as a
+separate opt-in mode, selects the existing
+left-side production config and source-pinned
+four-edge pointer target helper, and otherwise
+preserves actual production/full-host, post-unmap
+and private candidate controls. Coordinator
+`scripts/wull-manual-nested-pointer.py` commit
+`5e2ca4470c04926b7200df89b730bded154eed7b`
+pins that reviewed child blob, advances its
+self-history count 13 -> 14, and permits the
+independent explicit
+`--acknowledge-nested-pointer-candidate-left`
+argument. LEFT has its own receipt scope
+`owned_single_output_nested_niri_left_candidate_mask_A_B`
+and distinct `docs/wull-mask-left-*.json`
+prefix. Original production/top/bottom/right
+opt-ins and prefix/scope identity are retained.
+The inert source contracts were re-pinned and
+strengthened to require the new separate left
+opt-in and scope, plus independent left-side
+private vertical QML staging in commits
+`db97e763d244a98ba6a351b3568658255749b7fa`
+and `ccfbe7e947e82c3865651f6aeaf90dbbd1a07c20`.
+Source inspection confirms the new helper,
+coordinator, test pins and unchanged production
+blobs; local execution of the revised inert
+contracts and real LEFT probe are still pending.
+
+NEXT LOCAL GATE: from a clean temporary
+private `dev` clone ONLY, first run the
+four inert Wull pointer/source contracts,
+then perform a single independently
+owned nested Niri LEFT private A/B test
+using the new left-only argument. Publish
+a distinct exact-source
+`docs/wull-mask-left-*.json` receipt even
+when FAILED or INCONCLUSIVE; inspect ALL
+control target alignment, genuine bridge/
+Rust response and owned cleanup before
+any release decision. Do not auto-run
+canonical/global and do NOT promote
+the rectangular candidate into the real
+production Region based merely on four
+single-output pointer runs. The
+nonrectangular curved body silhouette,
+hover/popup interaction, visual fit,
+multioutput/fractional scale/hotplug,
+suspend/reload/long-running resources
+and canonical validation remain separate.

@@ -78,6 +78,8 @@ shared_stages = (
     ("third_result", "shared_third_result"),
     ("button_material", "shared_button_material"),
     ("button_waffle", "shared_button_waffle"),
+    ("replay_start", "shared_replay_start"),
+    ("replay_reject", "shared_replay_reject"),
     ("timeout", "shared_timeout"),
 )
 matched_shared_stage = next((category for token, category in shared_stages

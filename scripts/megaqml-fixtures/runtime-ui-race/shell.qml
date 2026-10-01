@@ -141,10 +141,27 @@ ShellRoot {
                 return
             }
             if (root.stage === 2) {
-                if (root.sawStaleInstalled || !root.material.leaseHeld
-                        || root.waffle.leaseHeld || svc.consumerCount !== 1
-                        || svc.backendState === "unavailable"
-                        || svc.dependencySnapshot !== null) {
+                // Keep fail-closed stale rejection; classify the specific
+                // observed reason without printing private Qt diagnostics.
+                if (root.sawStaleInstalled
+                        || svc.backendState === "installed_disconnected") {
+                    root.fail("STALE_INSTALLED")
+                    return
+                }
+                if (!root.material.leaseHeld || root.waffle.leaseHeld
+                        || svc.consumerCount !== 1) {
+                    root.fail("STALE_LEASE")
+                    return
+                }
+                if (svc.backendState === "unavailable") {
+                    root.fail("STALE_UNAVAILABLE")
+                    return
+                }
+                if (svc.dependencySnapshot !== null) {
+                    root.fail("STALE_SNAPSHOT")
+                    return
+                }
+                if (svc.requestSerial > 3) {
                     root.fail("STALE_REPLY")
                     return
                 }

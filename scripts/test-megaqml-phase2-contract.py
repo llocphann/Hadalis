@@ -167,10 +167,14 @@ assert 'run_test megaqml_real_host_fixture python3 scripts/test-megaqml-host-ui-
 real_host_builder = get("scripts/test-megaqml-host-ui-fixture.py")
 real_host_test = get("scripts/test-megaqml-host-ui-fixture-contract.py")
 real_host = get("scripts/megaqml-fixtures/runtime-ui-host/shell.qml")
+# Host fixture wraps the already-qualified page/service source builder.
+# Check the wrapper and its reused builder independently.
 for required in ("SettingsPageHost.qml", "SettingsPageLoadingState.js",
-                 "CloudStorageConfig.qml", "CloudStorageService.qml",
                  "runpy.run_path"):
     assert required in real_host_builder
+for required in ("CloudStorageConfig.qml", "CloudStorageService.qml"):
+    assert required in ui_fixture_source
+assert 'PASS isolated MegaQML material source-only UI fixture' in real_host_builder
 assert 'PASS MegaQML exact real host and page temporary fixture contract' in real_host_test
 assert 'megaqml-realhost-unit-' in real_host_test
 for required in ("SettingsPageHost.qml", "root.host.requestedIndex = 1",
@@ -285,6 +289,11 @@ assert 'fixture_ui_kind=shared' in quickshell_runner
 assert 'MEGAQML_FIXTURE_CASE=shared-race' in quickshell_runner
 assert 'race_stale_reply' in quickshell_classifier
 assert 'MEGAQML_QS_RACE_STAGE_STALE_REPLY' in classifier_test
+race_diagnostics = get("scripts/megaqml-fixtures/runtime-ui-race/shell.qml")
+for cause in ("installed", "lease", "unavailable", "snapshot"):
+    assert '"race_stale_' + cause + '"' in quickshell_classifier
+    assert 'MEGAQML_QS_RACE_STAGE_STALE_' + cause.upper() in classifier_test
+    assert '"STALE_' + cause.upper() + '"' in race_diagnostics
 assert 'run_test quickshell_ui_shared bash scripts/test-megaqml-quickshell-smoke.sh ui-shared' in runner
 assert 'run_test quickshell_ui_race bash scripts/test-megaqml-quickshell-smoke.sh ui-race' in runner
 assert 'quickshell_ui_shared quickshell_ui_race quickshell_ui_host; do' in runner

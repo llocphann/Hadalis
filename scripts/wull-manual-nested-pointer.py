@@ -35,7 +35,7 @@ SAFE_REMOTES = {
 # SHA-pinned implementation and real production interfaces. A changed
 # source dependency must be re-reviewed, never silently accepted as PASS.
 REVIEWED = {
-    CHILD: "c099fc6a1a62b06218d69dd3ec526df18de701db",
+    CHILD: "8dd65a0d10d5a8d1475be0939dbb78a0f977dd35",
     "scripts/wull-private-mask-candidate.py":
         "91049b2ca2beb7b1936af624adca5133d251ea3c",
     NESTED_HELPER: "7edf8328df1f9704f1331fbe1a5e84e659cd360a",
@@ -97,7 +97,7 @@ def audit(source):
             raise RuntimeError("pointer_dependency_changed_after_review")
     revision = git("log", "--format=%H", BASE + ".." + source,
                    "--", SELF).splitlines()
-    if (len(revision) != 14
+    if (len(revision) != 15
             or git("rev-parse", revision[-1] + ":" + SELF)
             != INITIAL_SELF_BLOB
             or git("rev-parse", revision[0] + ":" + SELF)

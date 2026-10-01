@@ -1729,3 +1729,155 @@ remains a distinct
 reproducibility
 blocker for broad
 conclusions.
+
+
+## One-command source-pinned inert geometry+motion evidence publication — not live
+
+The previous standalone static four-cubic
+and nominal motion/scale model scripts
+intentionally produced no Git receipt,
+so a subsequent assistant could NOT
+infer the maintainer had run them from
+the presence of source files alone.
+A new separate explicit
+`scripts/wull-motion-inert-publish.py`
+(created commit
+`d28f85553cec359aca1c66399b636eaae07813bd`)
+now provides an auditable
+manual evidence publication
+gate without touching an
+existing checkout or desktop.
+It runs ONLY the exact
+`scripts/test-wull-silhouette-band-prototype.py`
+and
+`scripts/test-wull-motion-footprint-feasibility.py`
+inert contracts, and
+the two source-model
+summary commands.
+It requires a clean
+`dev` clone under a
+current-user-owned,
+mode-0700, specifically
+named `XDG_STATE_HOME/
+hadalis/wull-motion-inert.*`
+scratch directory.
+It accepts only verified
+fetch AND exactly one
+push remote for the known
+Hadalis GitHub repository,
+checks the reviewed parent
+commit is an ancestor,
+pins Git BLOB hashes
+of both models,
+both inert contracts,
+and all four original
+Wull production source
+dependencies. It
+fails closed if any
+input test, original
+source, parser output
+or remote dependency
+changes.
+
+Only if BOTH actual
+local test processes
+exit successfully with
+their exact expected
+PASS tokens and model
+JSON is in the reviewed
+inert source-only range
+does it publish one
+sanitized, uniquely
+named
+`docs/wull-motion-inert-*.json`
+report recording the
+exact source SHA, the
+two independent local
+inert PASS assertions,
+coarse static area/band
+count, and the precise
+source-level nominal
+scale/tip risk scalars.
+It explicitly records
+that actual animated
+Rust frames, Qt transform
+order, Quickshell/Niri
+pointer and hover, and
+canonical validation
+were NOT run.
+It never reads or
+exports real screen
+coordinates, screenshots,
+actual desktop logs,
+host settings or
+private QML paths.
+It never starts Niri,
+Quickshell, Rust or
+wdotool and does not
+generate a runtime
+mask.
+
+If the remote `dev`
+advances concurrently,
+the publisher may
+rebase ONLY its own
+single unpublished
+receipt commit inside
+the temporary private
+clone, after reauditing
+the exact current
+source pins and
+fast-forward ancestry.
+It NEVER rebases,
+merges, resets or
+force-pushes the
+maintainer's original
+potentially divergent
+checkout. A separate
+`scripts/test-wull-motion-inert-publish-contract.py`
+(created commit
+`f7bf4d6eebbcd43344503f7cbaf717a4e64e9c66`)
+purely tests the
+allowlisted redacted
+result, misuse rejection,
+source pins, no backend
+input commands and
+exclusive-receipt
+publication scope.
+This contract too is
+SOURCE STAGED and NOT
+a local observed PASS
+until the maintainer's
+fresh clone executes it.
+
+NEXT SINGLE LOCAL ACTION:
+use a fresh mode-0700
+temporary `dev` clone,
+run the publisher
+inert schema contract,
+then explicitly opt in
+to the publisher's
+other two self-run
+inert tests via
+`python3 scripts/wull-motion-inert-publish.py
+--acknowledge-inert-motion-receipt`.
+Only a published exact
+new source-pinned
+`wull-motion-inert-*.json`
+with both PASS
+tokens qualifies
+actual host-local
+source arithmetic
+execution. This
+does NOT upgrade
+four-edge one-output
+static BBOX pointer
+evidence to animated
+hit-shape acceptance.
+Separate runtime
+Qt transform and
+target contract
+must precede any
+private live shape
+probe or production
+mask edit.

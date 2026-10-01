@@ -3,7 +3,9 @@
 from pathlib import Path
 import sys
 
-if len(sys.argv) != 4 or sys.argv[3] not in ("baseline", "dormant", "active-present", "active-missing"):
+if len(sys.argv) != 4 or sys.argv[3] not in ("baseline", "dormant", "active-present", "active-missing",
+                                                     "active-wrong-id", "active-unsafe-secret",
+                                                     "active-malformed"):
     raise SystemExit(64)
 raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
                 for p in sys.argv[1:3]).lower()
@@ -25,6 +27,7 @@ elif "failed to create" in raw or "could not" in raw and "platform" in raw:
     kind = "headless_platform"
 elif any(token in raw for token in ("megaqml_qs_active_present_ok",
                                   "megaqml_qs_active_missing_ok",
+                                  "megaqml_qs_rejected_ok",
                                   "megaqml_qs_dormant_ok",
                                   "megaqml_qs_baseline_ok")):
     kind = "sentinel_seen_nonzero_exit"

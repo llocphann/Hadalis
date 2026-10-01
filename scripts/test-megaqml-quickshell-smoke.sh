@@ -2,7 +2,7 @@
 # Manual one-shot, no vendor calls, no background service, no user config access.
 set -euo pipefail
 umask 077
-case "${1:-}" in baseline|dormant|active-present|active-missing) kind="$1" ;; *) exit 64 ;; esac
+case "${1:-}" in baseline|dormant|active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed) kind="$1" ;; *) exit 64 ;; esac
 cd "$(git rev-parse --show-toplevel)"
 qs_bin=""
 if command -v qs >/dev/null 2>&1; then qs_bin="$(command -v qs)"
@@ -44,18 +44,14 @@ if [[ "$kind" == dormant || "$kind" == active-* ]]; then
 fi
 test ! -e "$fixture_dir/scripts/native-dispatch" || exit 75
 case "$kind" in
-  active-present|active-missing)
+  active-present|active-missing|active-wrong-id|active-unsafe-secret|active-malformed)
     mkdir -p "$fixture_dir/scripts" "$work/allowed-bin"
     cp -- scripts/megaqml-fixtures/fake-static-dispatch.py "$fixture_dir/scripts/native-dispatch"
     chmod 700 "$fixture_dir/scripts/native-dispatch"
     for tool in python3 bash sh; do
       ln -s -- "$(command -v "$tool")" "$work/allowed-bin/$tool"
     done
-    if [[ "$kind" == active-present ]]; then
-      export MEGAQML_FIXTURE_CASE=present
-    else
-      export MEGAQML_FIXTURE_CASE=missing
-    fi
+    export MEGAQML_FIXTURE_CASE="${kind#active-}"
     # The child cannot discover installed MEGAcmd clients through PATH.
     export PATH="$work/allowed-bin"
     ;;
@@ -66,6 +62,7 @@ if "$safe_timeout" --kill-after=2s 12s "$qs_bin" --path "$fixture_dir/shell.qml"
     dormant) marker=MEGAQML_QS_DORMANT_OK ;;
     active-present) marker=MEGAQML_QS_ACTIVE_PRESENT_OK ;;
     active-missing) marker=MEGAQML_QS_ACTIVE_MISSING_OK ;;
+    active-wrong-id|active-unsafe-secret|active-malformed) marker=MEGAQML_QS_REJECTED_OK ;;
   esac
   if "$safe_grep" -Fq "$marker" "$work/stdout" "$work/stderr"; then
     echo "PASS isolated Quickshell $kind smoke"

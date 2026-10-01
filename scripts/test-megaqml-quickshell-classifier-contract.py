@@ -16,6 +16,8 @@ cases = (
      "qml_reference_or_type_error"),
     ("MEGAQML_QS_ACTIVE_INVALID password=private-marker",
      "active-present", "unexpected_active_state"),
+    ("MEGAQML_QS_ACTIVE_INVALID sensitive-account-name",
+     "active-malformed", "unexpected_active_state"),
     ("", "baseline", "no_diagnostic_output"),
 )
 with tempfile.TemporaryDirectory(prefix="megaqml-classifier-") as temp:

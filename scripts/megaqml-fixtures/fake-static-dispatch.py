@@ -7,7 +7,7 @@ import sys
 if sys.argv[1:] != ["mega", "request"]:
     raise SystemExit(64)
 scenario = os.environ.get("MEGAQML_FIXTURE_CASE")
-if scenario not in ("present", "missing", "wrong-id", "unsafe-secret", "malformed", "exit-failure", "hang", "coalesce", "stale-reacquire"):
+if scenario not in ("present", "missing", "wrong-id", "unsafe-secret", "malformed", "exit-failure", "hang", "coalesce", "stale-reacquire", "retry-exit", "retry-timeout"):
     raise SystemExit(65)
 line = sys.stdin.readline(8193)
 if len(line) > 8192:
@@ -23,6 +23,17 @@ identifier = request.get("request_id")
 if not isinstance(identifier, str) or not identifier.startswith("cloud-detect-") or (
         len(identifier) > 64) or not identifier.replace("-", "").isalnum():
     raise SystemExit(69)
+if scenario == "retry-exit" and identifier == "cloud-detect-1":
+    import time
+    time.sleep(0.8)
+    print("PRIVATE_FAKE_STDERR_CANARY", file=sys.stderr, flush=True)
+    raise SystemExit(23)
+if scenario == "retry-timeout" and identifier == "cloud-detect-1":
+    import time
+    until = time.monotonic() + 9.5
+    while time.monotonic() < until:
+        time.sleep(0.1)
+    raise SystemExit(24)
 if scenario == "exit-failure":
     print("PRIVATE_FAKE_STDERR_CANARY", file=sys.stderr, flush=True)
     raise SystemExit(23)

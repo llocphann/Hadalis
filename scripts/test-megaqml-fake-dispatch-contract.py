@@ -10,11 +10,11 @@ fake = Path(__file__).resolve().parent / "megaqml-fixtures/fake-static-dispatch.
 source = fake.read_text(encoding="utf-8")
 assert "subprocess" not in source and "os.system" not in source
 assert '"mega", "request"' in source
-for scenario in ("present", "missing", "wrong-id", "unsafe-secret", "malformed", "exit-failure", "hang", "coalesce", "stale-reacquire"):
+for scenario in ("present", "missing", "wrong-id", "unsafe-secret", "malformed", "exit-failure", "hang", "coalesce", "stale-reacquire", "retry-exit", "retry-timeout"):
     env = dict(os.environ, MEGAQML_FIXTURE_CASE=scenario)
     request = {"protocol": 1, "request_id": "cloud-detect-1",
                "operation": "detect", "params": {}}
-    if scenario == "hang":
+    if scenario == "hang" or scenario == "retry-timeout":
         try:
             subprocess.run([sys.executable, str(fake), "mega", "request"],
                            input=json.dumps(request) + "\n",
@@ -27,7 +27,7 @@ for scenario in ("present", "missing", "wrong-id", "unsafe-secret", "malformed",
     child = subprocess.run([sys.executable, str(fake), "mega", "request"],
                            input=json.dumps(request) + "\n",
                            capture_output=True, text=True, env=env, timeout=3)
-    if scenario == "exit-failure":
+    if scenario == "exit-failure" or scenario == "retry-exit":
         assert child.returncode == 23
         assert child.stdout == ""
         assert child.stderr.strip() == "PRIVATE_FAKE_STDERR_CANARY"
@@ -54,7 +54,7 @@ for scenario in ("present", "missing", "wrong-id", "unsafe-secret", "malformed",
         expected, expected, expected, False, expected]
     assert all(item["path"] is None for item in result["result"]["binaries"])
 # Second request differs from first; client must not replay stale inventory.
-for scenario in ("coalesce", "stale-reacquire"):
+for scenario in ("coalesce", "stale-reacquire", "retry-exit", "retry-timeout"):
     env = dict(os.environ, MEGAQML_FIXTURE_CASE=scenario)
     request = {"protocol": 1, "request_id": "cloud-detect-2",
                "operation": "detect", "params": {}}
@@ -67,4 +67,4 @@ for scenario in ("coalesce", "stale-reacquire"):
     assert not result["result"]["server_available"]
     assert all(not x["executable"] for x in result["result"]["binaries"])
     assert not child.stderr
-print("PASS MegaQML synthetic runtime dispatcher: 9 cases plus two second requests")
+print("PASS MegaQML synthetic runtime dispatcher: 11 cases plus four second requests")

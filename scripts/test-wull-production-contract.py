@@ -85,5 +85,12 @@ assert "root.ready = false" in exit_handler
 assert "if (!wasReady && root.requestedVisible)" in bridge
 assert 'Qt.callLater(() => root.sendEvent("show"))' in bridge
 
+# Canonical validation must keep exercising the Wull production contract
+# while excluding the branch-mutating, manually invoked diagnostic workflow.
+validator = (ROOT / "scripts/validate-maintainer-local.sh").read_text()
+assert 'scripts/test-wull-manual-perimeter.py)' in validator
+assert 'record_skip "MANUAL-DEFERRED: $test_file"' in validator
+assert 'run_check "Python regression: $test_file" python3 "$test_file"' in validator
+
 print("1..1")
 print("ok 1 - Wull production attachment remains procedural, single-backend, and default-off")

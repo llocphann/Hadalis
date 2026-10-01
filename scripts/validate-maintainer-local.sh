@@ -308,7 +308,17 @@ run_check 'tracked JavaScript syntax' tracked_js_syntax
 run_check 'tracked Fish syntax' tracked_fish_syntax
 run_check 'translation catalog structure' python3 translations/tools/l10n.py audit-all
 run_check 'translation source parity' python3 translations/tools/source-parity.py
-while IFS= read -r -d '' test_file; do run_check "Python regression: $test_file" python3 "$test_file"; done < <(git ls-files -z -- ':(glob)**/test-*.py' 'test-*.py' | sort -z -u)
+while IFS= read -r -d '' test_file; do
+    case "$test_file" in
+        # Requires an active, clean dev checkout and publishes a report.
+        # Canonical validation runs in a detached clean clone: never dispatch
+        # this manual workflow as a regression test.
+        scripts/test-wull-manual-perimeter.py)
+            record_skip "MANUAL-DEFERRED: $test_file"
+            continue ;;
+    esac
+    run_check "Python regression: $test_file" python3 "$test_file"
+done < <(git ls-files -z -- ':(glob)**/test-*.py' 'test-*.py' | sort -z -u)
 run_check 'IPC registry freshness' python3 scripts/lib/generate-ipc-registry.py --check
 run_check 'documentation contracts' bash scripts/verify-docs.sh
 run_check 'QML parser capability' probe_qml_parser

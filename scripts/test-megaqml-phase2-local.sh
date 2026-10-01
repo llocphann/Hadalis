@@ -24,7 +24,7 @@ run_test() {
     case "$name" in
       # Parser/tool baselines can fail even with correct new source.
       # Never translate those into a false MegaQML source failure.
-      qml_minimal|qml_baseline|qml_waffle_baseline) qt_unqualified=1 ;;
+      qml_minimal|qml_modern_syntax|qml_baseline|qml_waffle_baseline) qt_unqualified=1 ;;
       *) failed=1 ;;
     esac
   fi
@@ -53,6 +53,9 @@ fi
 if command -v qmlformat >/dev/null 2>&1; then
   printf 'import QtQuick\nItem {}\n' > "$scratch/qt-minimal.qml"
   run_test qml_minimal qmlformat "$scratch/qt-minimal.qml"
+  # Non-executing capability probe for the modern QML dialect used by Hadalis.
+  printf 'pragma ComponentBehavior: Bound\nimport QtQuick\nItem { function eligible(value: string): bool { return (value ?? "").length > 0 } }\n' > "$scratch/qt-modern.qml"
+  run_test qml_modern_syntax qmlformat "$scratch/qt-modern.qml"
   if grep -q '^qml_minimal,PASS,' "$scratch/safe.csv"; then
     run_test qml_baseline qmlformat modules/settings/OverviewConfig.qml
     if grep -q '^qml_baseline,PASS,' "$scratch/safe.csv"; then
@@ -87,7 +90,7 @@ if command -v qmlformat >/dev/null 2>&1; then
     done
   fi
 else
-  for case_name in qml_minimal qml_baseline qml_service qml_page qml_waffle_baseline qml_waffle_page qml_waffle_entry qml_waffle_content; do
+  for case_name in qml_minimal qml_modern_syntax qml_baseline qml_service qml_page qml_waffle_baseline qml_waffle_page qml_waffle_entry qml_waffle_content; do
     printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
   done
 fi
@@ -105,6 +108,9 @@ mkdir -p docs/evidence/megaqml
       python3 scripts/test-megaqml-qt-diagnostic.py "$qt_case" "$scratch/$qt_case.raw"
     fi
   done
+  if grep -q '^qml_modern_syntax,FAIL,' "$scratch/safe.csv"; then
+    echo 'qml_tool_feature_probe=modern_syntax_not_parsed'
+  fi
   if grep -q '^qml_minimal,FAIL,' "$scratch/safe.csv"; then
     echo 'qml_blocker=tool_cannot_parse_minimal_qt'
   elif grep -q '^qml_baseline,FAIL,' "$scratch/safe.csv"; then

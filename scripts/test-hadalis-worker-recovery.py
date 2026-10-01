@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+import subprocess
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -18,7 +19,43 @@ from automation.worker.diagnostics import collect, validate
 from automation.manager.store import _write
 
 
+def publication_destinations():
+    """Exercise the whole publisher with separate real Git read/write remotes."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root=Path(tmp);source=root/"source";source.mkdir()
+        config=root/"gitconfig";config.write_text("[user]\n name = Automation Test\n email = automation@example.invalid\n")
+        env={"XDG_STATE_HOME":str(root/"state"),"GIT_CONFIG_GLOBAL":str(config),
+             "GIT_CONFIG_NOSYSTEM":"1","HADALIS_WORKER_PUSH_REMOTE":""}
+        with patch.dict(os.environ,env):
+            def git(*args,cwd=source):
+                return subprocess.run(["git",*args],cwd=cwd,capture_output=True,text=True,timeout=10,check=True)
+            git("init","-b","dev");(source/"seed").write_text("original\n")
+            git("add","seed");git("commit","-m","seed")
+            for name in ("read.git","write.git","override.git"):
+                git("clone","--bare",str(source),str(root/name))
+            git("remote","add","origin",str(root/"read.git"))
+            git("remote","set-url","--push","origin",str(root/"write.git"))
+            original_run=w.run
+            def isolated_run(argv,*,cwd=source,**options):return original_run(argv,cwd=cwd,**options)
+            from automation.manager import credentials
+            with patch.object(w,"ROOT",source),patch.object(w,"run",side_effect=isolated_run), \
+                 patch.object(credentials,"has_token",return_value=False):
+                # Removed owner: no new profile token is borrowed. The result
+                # goes to Git's configured push URL while fetch stays separate.
+                result={"job":"JOB-pushurl","profile_id":"profile-removed","status":"passed","actions":[]}
+                w.publish("JOB-pushurl",result)
+                published=json.loads(git("show",f"dev:{w.RESULTS}/JOB-pushurl.json",cwd=root/"write.git").stdout)
+                assert published==public_result(result)
+                absent=subprocess.run(["git","cat-file","-e",f"dev:{w.RESULTS}/JOB-pushurl.json"],cwd=root/"read.git",capture_output=True)
+                assert absent.returncode!=0
+                with patch.dict(os.environ,{"HADALIS_WORKER_PUSH_REMOTE":str(root/"override.git")}):
+                    w.publish("JOB-override",{**result,"job":"JOB-override"})
+                assert git("cat-file","-e",f"dev:{w.RESULTS}/JOB-override.json",cwd=root/"override.git").returncode==0
+                assert not list((w.state_root()/"publish").iterdir())
+
+
 def main():
+    publication_destinations()
     with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"XDG_STATE_HOME":tmp}):
         base=Path(tmp);workspace=base/"source";workspace.mkdir()
         def clone(commit,job):
@@ -89,7 +126,7 @@ def main():
             try:validate(spec)
             except ValueError:pass
             else:raise AssertionError("unbounded private diagnostic allowed")
-    print("PASS: worker parallel processes, publish-only retry, crash receipts, cancellation, bounded capture, cleanup, shell-down diagnostics and privacy")
+    print("PASS: worker Git push URL/override, parallel processes, publish-only retry, crash receipts, cancellation, bounded capture, cleanup, shell-down diagnostics and privacy")
 
 
 if __name__=="__main__":main()

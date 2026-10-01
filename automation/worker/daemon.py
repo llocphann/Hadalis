@@ -73,8 +73,8 @@ def fetch_dev(profile_id=None) -> None:
         raise RuntimeError(f"git fetch failed: {result.stderr.strip()}")
 
 
-def remote_url() -> str:
-    result = git("remote", "get-url", "origin")
+def remote_url(*, push: bool = False) -> str:
+    result = git("remote", "get-url", *(["--push"] if push else []), "origin")
     if result.returncode != 0:
         raise RuntimeError(f"origin unavailable: {result.stderr.strip()}")
     return result.stdout.strip()
@@ -296,7 +296,10 @@ def publish(job_id: str, payload: dict[str, Any]) -> None:
             # Refetch immediately before the remote ref update. A race is a
             # publication retry on fresh dev, never a reset or execution retry.
             fetch_dev(payload.get("profile_id"))
-            push_remote=os.environ.get("HADALIS_WORKER_PUSH_REMOTE") or remote
+            # Preserve Git's separate read/write transport configuration. The
+            # fetch URL can be anonymous HTTPS while push uses the owner's SSH
+            # agent; losing a removed profile's token must not ignore pushurl.
+            push_remote=os.environ.get("HADALIS_WORKER_PUSH_REMOTE") or remote_url(push=True)
             if urlparse(push_remote).password:raise ValueError("credentials cannot appear in push argv")
             from automation.manager.credentials import git_options,git_env,repository,has_token
             owner=payload.get("profile_id")

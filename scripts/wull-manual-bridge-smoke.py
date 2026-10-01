@@ -13,7 +13,7 @@ import sys
 import tempfile
 import time
 
-ANCHOR = "af2565174916c12a8360b2566ba755d00c050777"
+ANCHOR = "6403d2b8e2fcdafd150e7f5274026df788359f67"
 SELF = "scripts/wull-manual-bridge-smoke.py"
 FIXTURE = "scripts/wull-fixtures/bridge-exit"
 REVIEWED = {
@@ -52,7 +52,7 @@ def audit(after):
     if affected:
         raise RuntimeError("Reviewed Wull bridge or fixture changed: " + sorted(affected)[0])
     # This is the sole reviewed disabled-override fixture revision.
-    if git("rev-parse", after + ":" + FIXTURE + "/shell.qml") != "94a791f79ea16e9cb2b6457c1cd3c8039928e1f3":
+    if git("rev-parse", after + ":" + FIXTURE + "/shell.qml") != "3d98e21ed82c29352e054b0df7c03b9a19e8f2c8":
         raise RuntimeError("Disabled-override fixture differs from reviewed version")
     if SELF in changes:
         revisions = git("log", "--format=%H",
@@ -108,6 +108,8 @@ def run_case(qs, kind, private_dir):
         "WULL_BRIDGE_EXIT_GATE_OK",
         "WULL_BRIDGE_RESTART_OK",
         "WULL_BRIDGE_CRASH_BUDGET_OK",
+        "WULL_BRIDGE_DISABLE_CANCEL_OK",
+        "WULL_BRIDGE_BUDGET_RESET_OK",
         "WULL_BRIDGE_FIXTURE_INVALID",
         "WULL_BRIDGE_FIXTURE_TIMEOUT",
     }
@@ -166,16 +168,26 @@ def run_case(qs, kind, private_dir):
         except OSError:
             output.write(b"quickshell_local_execution_error\n")
 
-    expected = ({"WULL_BRIDGE_DISABLED_OK"} if kind.startswith("disabled") else
-                {"WULL_BRIDGE_CRASH_BUDGET_OK"} if kind == "crash-budget" else
-                {"WULL_BRIDGE_EXIT_GATE_OK", "WULL_BRIDGE_RESTART_OK"})
+    expected = (
+        {"WULL_BRIDGE_DISABLED_OK"} if kind.startswith("disabled") else
+        {"WULL_BRIDGE_EXIT_GATE_OK", "WULL_BRIDGE_DISABLE_CANCEL_OK"}
+            if kind == "disable-pending" else
+        {"WULL_BRIDGE_CRASH_BUDGET_OK"} if kind == "crash-budget" else
+        {"WULL_BRIDGE_BUDGET_RESET_OK"} if kind == "budget-reset" else
+        {"WULL_BRIDGE_EXIT_GATE_OK", "WULL_BRIDGE_RESTART_OK"}
+    )
     count = int(state_file.read_text()) if state_file.exists() and (
         state_file.read_text().strip().isdigit()
     ) else 0
     successful = code == 0 and expected.issubset(seen) and not (
         {"WULL_BRIDGE_FIXTURE_INVALID", "WULL_BRIDGE_FIXTURE_TIMEOUT"} & seen
-    ) and count == (0 if kind.startswith("disabled")
-                   else 5 if kind == "crash-budget" else 2)
+    ) and count == (
+        0 if kind.startswith("disabled") else
+        1 if kind == "disable-pending" else
+        5 if kind == "crash-budget" else
+        6 if kind == "budget-reset" else
+        2
+    )
     result = {
         "check": kind,
         "status": "pass" if successful else ("timeout" if code == 124 else "failed"),
@@ -257,7 +269,8 @@ def main():
     else:
         cases = [run_case(qs, name, private_dir)
                  for name in ("disabled", "disabled-override", "exit-restart",
-                              "auto-restart", "crash-budget")]
+                              "auto-restart", "disable-pending",
+                              "crash-budget", "budget-reset")]
         result = ("pass" if all(x["status"] == "pass" for x in cases)
                   else "failed")
     summary = {

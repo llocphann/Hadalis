@@ -57,6 +57,7 @@ fi
 if [[ "$kind" == dormant || "$kind" == active-* || "$kind" == refresh-* || "$kind" == recovery-* ]]; then
   cp -- services/deferred/CloudStorageService.qml "$fixture_dir/services/CloudStorageService.qml"
   cp -- services/deferred/CloudStorageStaticProtocol.js "$fixture_dir/services/CloudStorageStaticProtocol.js"
+  cp -- services/deferred/CloudStoragePreflightProtocol.js "$fixture_dir/services/CloudStoragePreflightProtocol.js"
   printf 'singleton CloudStorageService 1.0 CloudStorageService.qml\n' > "$fixture_dir/services/qmldir"
 fi
 test ! -e "$fixture_dir/scripts/native-dispatch" || exit 75

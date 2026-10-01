@@ -8,7 +8,7 @@ if sys.argv[1:] != ["mega", "request"]:
     raise SystemExit(64)
 scenario = os.environ.get("MEGAQML_FIXTURE_CASE")
 if scenario not in ("present", "missing", "wrong-id", "unsafe-secret", "malformed", "exit-failure", "hang", "coalesce", "stale-reacquire", "retry-exit", "retry-timeout", "shared-race",
-                    "preflight-third-wrong-id"):
+                    "preflight-third-wrong-id", "preflight-timeout"):
     raise SystemExit(65)
 line = sys.stdin.readline(8193)
 if len(line) > 8192:
@@ -58,6 +58,13 @@ if scenario in ("coalesce", "stale-reacquire") and identifier == "cloud-detect-1
 present = scenario == "present" or (
     scenario in ("coalesce", "stale-reacquire") and identifier == "cloud-detect-1") or (
     scenario == "shared-race" and identifier in ("cloud-detect-1", "cloud-detect-2"))
+if operation == "connect_preflight" and scenario == "preflight-timeout":
+    # Bounded disposable fake; no vendor, network, credentials or writes.
+    import time
+    until = time.monotonic() + 9.5
+    while time.monotonic() < until:
+        time.sleep(0.1)
+    raise SystemExit(24)
 if operation == "connect_preflight":
     preflight = {
         "adapter": "inir-mega",

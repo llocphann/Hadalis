@@ -20,6 +20,7 @@ SELF = "scripts/wull-manual-footprint.py"
 CONTRACT = "scripts/test-wull-footprint-contract.py"
 FIXTURE = "scripts/wull-fixtures/footprint/shell.qml"
 FIXTURE_BLOB = "14ff7be2fbf1a9c9cd03ce957d1d5e8a695479d0"
+INITIAL_SELF_BLOB = "09b3cb9d253286439fb7a27761f82a489f2fdd3e"
 REMOTES = {
     "https://github.com/llocphann/Hadalis",
     "https://github.com/llocphann/Hadalis.git",
@@ -68,11 +69,16 @@ def audit(target):
     for path in (SELF, CONTRACT):
         revisions = git("log", "--format=%H", BASE + ".." + target,
                         "--", path).splitlines()
-        if len(revisions) != 1 or (
+        expected = 2 if path == SELF else 1
+        if len(revisions) != expected or (
             git("rev-parse", revisions[0] + ":" + path)
             != git("rev-parse", target + ":" + path)
         ):
             raise RuntimeError("Unreviewed geometry diagnostic revision")
+        if path == SELF and (
+            git("rev-parse", revisions[-1] + ":" + SELF) != INITIAL_SELF_BLOB
+        ):
+            raise RuntimeError("Original geometry diagnostic was altered")
 
 
 def truncated_log(path):
@@ -177,7 +183,15 @@ def probe(folder, qs, dbus):
                         os.killpg(proc.pid, signal.SIGTERM)
                     except ProcessLookupError:
                         pass
-                proc.wait(timeout=3)
+                try:
+                    proc.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    if proc.poll() is None:
+                        try:
+                            os.killpg(proc.pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                    proc.wait(timeout=3)
                 return result
         truncated_log(log)
         text = log.read_text(encoding="utf-8", errors="replace")

@@ -23,10 +23,11 @@ a MEGA session, or ten implemented features.
 
 The caller sends exactly:
 `{"protocol":1,"request_id":"unique-id","operation":"feature_gates_preview","params":{}}`
-with **no** `secret` field. All other params or any `secret`, including
-empty, are rejected with fixed `FEATURE_GATE_INPUT_FORBIDDEN` and
-`not_dispatched`; user input and secret canaries never enter the
-normalized response.
+with **no** `secret` field. Other params or any non-null `secret`
+object (including `{}`) are rejected with fixed
+`FEATURE_GATE_INPUT_FORBIDDEN` and `not_dispatched`; JSON `secret:null`
+contains no secret and deserializes as absent. User input and canaries
+never enter the normalized response.
 
 The successful envelope echoes only the exact request ID and an
 `offline_policy_preview` result. Flags are always:

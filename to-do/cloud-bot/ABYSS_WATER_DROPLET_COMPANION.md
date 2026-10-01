@@ -988,3 +988,92 @@ production input change.
   authorized bounded instrumented test exists.
   Current production Region, default-off and
   `stable` remain unchanged.
+
+
+## Checkpoint — 2026-10-02 verified large two-axis drift; discriminating physical pre-remap witness staged
+
+- The explicit read-only retrospective report was actually published:
+  `docs/wull-pointer-drift-20261001T170950Z-105fd7a8-1518db798d10.json`
+  on source `5164395aea401bcfcd79fa8e74622d34fe5fceb5`.
+  Its exact pinned prior-run underlay witnesses verify that
+  the same requested exterior point was hit **96+
+  pixels off-target in maximum-axis deviation** after
+  the private candidate stage mapped. Both axes
+  shifted (horizontal negative, vertical positive)
+  and the event did **not** land near the original
+  disabled-center location. This is real old-log
+  categorical evidence, NOT a new pointer run,
+  diagnosis of wdotool's internal cause, or
+  acceptance of the new dynamic four-edge BBOX.
+  Previous same-source full production controls
+  passed, then first dynamic candidate exterior
+  witness was off-target, so the new top-edge run
+  remains **INCONCLUSIVE**; no bottom receipt exists.
+- Source-only follow-up adds an independently
+  corroborated discriminating physical gate, not
+  retries/tolerance workarounds. Child source
+  `5b79c09aabb2f5b50895d0d4c0b38c86cffe4248`
+  now verifies the owned Niri single output's
+  logical geometry, scale and current mode before
+  EVERY native virtual-pointer command. After
+  qualifying the full-host real production controls
+  and fully stopping/unmapping it, but BEFORE
+  mapping a new private candidate, it requires
+  one exact-target underlay exterior click
+  `after_baseline_unmap_exterior_underlay_control`.
+  This separates pointer drift that began during
+  baseline teardown from drift observed only after
+  candidate remapping, without attributing causality
+  prematurely. If intermediate click is off-target,
+  stop **INCONCLUSIVE**, do not map candidate or
+  claim mask failure. If aligned, proceed with
+  the previous separately witnessed candidate
+  exterior/body/margin checks. Any output
+  geometry/topology change stops the test
+  inconclusively before the click.
+  No changes to native backend invocation,
+  no new dependencies, no host-global injection,
+  no silent retries and no changed tolerance.
+- Parent source-guard update
+  `3ede937c9b70284de76dcb5fc1724abe0da09500`
+  pins the revised child and advances 11 to
+  12 reviewed parent revisions. Existing inert
+  tests `scripts/test-wull-nested-pointer-contract.py`
+  (commit `7a4a935afa99a1712bbeba7e4e7d0928de0b01c4`)
+  and `scripts/test-wull-private-mask-candidate-contract.py`
+  (commit `485cc1ec307980c9cc07af1ecccc7ea5ad75462a`)
+  were updated to prove pure invalid geometry
+  rejection, strict child blob pins, and mandatory
+  intermediate witness source. Full technical
+  rationale in `docs/WULL_NESTED_POINTER_ACCEPTANCE_DESIGN.md`
+  commit `7bcadfd1b06eef39afa4d597d5c481c4b55137d9`.
+- **NEXT LOCAL GATE, not yet run:** because the
+  original dev checkout previously diverged, use
+  ONE new permission-private temporary clean dev
+  clone (never reset/rebase/merge the original).
+  Run the four standard inert pointer contracts;
+  if all PASS, run ONLY the fresh real dynamic
+  top private A/B with the pre-remap witness
+  on that independently verified owned nested
+  Niri output and read the new exact-source
+  sanitized top report on `dev`. If top
+  now fully PASSes including intermediate
+  control, a SEPARATE bottom-edge test could
+  be authorized after reviewing that top
+  evidence (avoid automatically running
+  bottom while investigating drift). If
+  off-target BEFORE candidate mapping,
+  investigate native pointer/device vs
+  baseline lifecycle with the private
+  phase-specific log, and do not modify
+  production. If only off-target AFTER
+  mapping, investigate transient input
+  device and new layer/output mapping as
+  competing hypotheses, not production
+  mask defect. The upstream-documented
+  `wdotool prime` option remains untested;
+  don't enable it without isolated evidence.
+  Existing shipped whole-host Region,
+  Rust backend, Wull default-off,
+  `stable`, and any physical four-edge/
+  full canonical acceptance remain unchanged.

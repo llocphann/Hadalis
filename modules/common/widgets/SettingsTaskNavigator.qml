@@ -16,6 +16,7 @@ ColumnLayout {
     property bool showIntro: true
     property string currentValue: ""
     property var options: []
+    property bool highContrastSelection: false
 
     signal selected(string value)
 
@@ -108,6 +109,7 @@ ColumnLayout {
         Layout.fillWidth: true
         currentValue: root.currentValue
         options: root.options
+        highContrastSelection: root.highContrastSelection
         onSelected: value => root.selected(value)
     }
 }

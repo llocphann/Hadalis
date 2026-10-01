@@ -789,3 +789,66 @@ production input change.
   default-off and complete host Region unchanged until separate
   candidate PASS plus later four-edge, popup/hover, live visual,
   real multioutput and canonical/global qualification.
+
+
+## Checkpoint — 2026-10-01 top private mask A/B PASS; bottom trial source staged
+
+- The NEW real private top-edge input-mask comparison receipt is
+  `docs/wull-mask-candidate-20261001T165308Z-a3bc585f-124f02155679.json`,
+  exact source `124f02155679949e60a810e54a9c216fbfd2fabe`:
+  **PASS** using forced native `wdotool` in one verified owned
+  nested Niri output. The unchanged production full-host mask
+  passed aligned disabled-center and exterior controls, actual
+  body bridge and private Rust response, while its empty internal
+  host margin did NOT pass through. The shadow-only narrow
+  rectangular top-size1 BBOX then passed its independently
+  aligned exterior control, genuine bridge/Rust body click and
+  **positive aligned** empty-margin underlay pass-through
+  without false body activation. Distinct nested endpoints,
+  all private process/Wayland layer cleanup and unchanged
+  host output count passed. The shipped Wull production mask
+  and default-off settings remain unchanged; `stable` untouched.
+- The next separately qualified edge is **BOTTOM**, not yet
+  accepted. Four-edge postchange offscreen geometry from
+  `docs/wull-production-geometry-20261001T151838Z-fd6d4452-fca3953264b1.json`
+  establishes source-measured clickable BBOXes ONLY. Source
+  `62c483451d91c7b0e5e1f1184fd84f8b04443c14`
+  adds conservative four-edge pointer targets without
+  modifying the old top function.
+  `5b928b852664e8369f74fa17243e78cc92a402c8`
+  changes ONLY the private candidate generator to select
+  76x92 on top/bottom and rotated 92x76 on left/right at
+  size=1, refusing unreviewed geometry/source. Child
+  `4e32eaa1f874540b5f71ceca34c5a4b697734568`
+  adds `candidate-mask-bottom` alongside the preserved
+  original top opt-in. Parent
+  `3309b00ac035ff5944283073aef8e181382339e8`
+  pins all changed source, raises the audited self-revision
+  count to 11, adds `--acknowledge-nested-pointer-candidate-bottom`,
+  and publishes its unique `docs/wull-mask-bottom-*.json`
+  in a separate bottom-specific scope.
+  Contracts `4d5080b87951885e40b920d6e603a5e064f35cb9`
+  and `6b210355f794d2490059f5de46251ece32f313ea`
+  review static four-edge bounds, preserve top equivalence,
+  re-pin the child and check bottom-only entry controls.
+  Full design/limits in
+  `docs/WULL_NESTED_POINTER_ACCEPTANCE_DESIGN.md` update
+  `dd677e30a08f4cd78fb999add13e7487d9a1c0e9`.
+- **Next one-command local gate:** from a clean fast-forward-only
+  `dev` root with already-installed user `wdotool`, run
+  the three old inert pointer contracts PLUS
+  `scripts/test-wull-private-mask-candidate-contract.py`.
+  Only if all PASS, invoke the original private top
+  A/B comparison (new dynamic generator regression) and
+  require explicit observed `WULL_REAL_POINTER_RESULT: pass`.
+  Only then invoke the separately authorized bottom A/B
+  on a new owned nested Niri compositor and check its
+  independent explicit PASS. Both publish sanitized
+  different-prefix exact-source receipts, never raw
+  coordinates or host-global input. Read new receipts on
+  `dev` before deciding how to extend to right/left.
+  Do not modify real production Region or `stable` from
+  inert or top-only success. Subsequent physical side edges,
+  popup/hover, actual multi-output/hotplug, reload/suspend,
+  whole-shell long-run resources, visuals and canonical-wide
+  validation remain outstanding.

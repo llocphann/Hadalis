@@ -3,6 +3,7 @@
 //@ pragma Env INIR_STANDALONE_WINDOW=1
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Window
 import Quickshell
 import qs.modules.abyss.looks

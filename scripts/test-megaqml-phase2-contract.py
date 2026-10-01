@@ -384,6 +384,33 @@ assert 'preflightDeadline.stop()' in s
 assert 'root._preflightGeneration = -1' in s
 assert 'root._preflightGeneration !== root.generation' in s
 assert 'preflightProc.signal(9)' in s
+# A timed-out static detect invalidates any concurrent opt-in preflight,
+# reaps both old fake children, and permits two fresh explicit retries.
+overlap_ui = get("scripts/megaqml-fixtures/runtime-ui-preflight-overlap/shell.qml")
+assert 'bash scripts/test-megaqml-quickshell-smoke.sh ui-preflight-overlap' in f1_shared_wrapper
+assert 'MEGAQML_FIXTURE_CASE=overlap-timeout' in quickshell_runner
+assert 'runtime-ui-preflight-overlap/shell.qml' in quickshell_runner
+assert 'ui-preflight-overlap) marker=MEGAQML_QS_UI_OVERLAP_OK' in quickshell_runner
+assert '"ui-preflight-overlap"' in quickshell_classifier
+for fixed in ('dormant', 'load', 'create', 'static_start',
+              'overlap_start', 'child_start', 'cancel_reap',
+              'static_retry', 'static_recover', 'preflight_retry',
+              'preflight_recover', 'final_release', 'timeout'):
+    assert 'overlap_' + fixed in quickshell_classifier, fixed
+    assert 'MEGAQML_QS_OVERLAP_STAGE_' + fixed.upper() in classifier_test, fixed
+assert 'root.bothChildrenStarted = true' in overlap_ui
+assert 'svc._preflightInput !== ""' in overlap_ui
+assert 'root.fail("CANCEL_REAP")' in overlap_ui
+assert 'svc.refreshStatic()' in overlap_ui
+assert 'svc.preflightSerial !== 2' in overlap_ui
+assert 'MEGAQML_QS_UI_OVERLAP_OK' in overlap_ui
+assert 'function invalidatePreflightOnStaticTimeout()' in s
+assert 'root.invalidatePreflightOnStaticTimeout()' in s
+assert 'Offline readiness invalidated by static dependency timeout.' in s
+assert 'root._preflightGeneration = -1' in s
+assert 'preflightDeadline.stop()' in s
+assert 'preflightProc.signal(9)' in s
+assert 'overlap-timeout' in get("scripts/megaqml-fixtures/fake-static-dispatch.py")
 
 assert 'run_test quickshell_ui_race bash scripts/test-megaqml-quickshell-smoke.sh ui-race' in runner
 assert 'run_test megaqml_race_repeatability bash scripts/test-megaqml-race-repeat.sh' in runner

@@ -87,3 +87,20 @@ with tempfile.TemporaryDirectory(prefix="megaqml-shared-unit-") as temp:
         fixture / "modules/waffle/settings/qmldir").read_text()
     assert not (fixture / "scripts/native-dispatch").exists()
     assert not (fixture / "services/Config.qml").exists()
+
+# Reuse the same temporary shared fixture builder with the independent race
+# shell; no production root or second CloudStorageService instance allowed.
+with tempfile.TemporaryDirectory(prefix="megaqml-race-unit-") as temp:
+    fixture = Path(temp)
+    (fixture / "shell.qml").write_bytes((
+        repo / "scripts/megaqml-fixtures/runtime-ui-race/shell.qml").read_bytes())
+    result = subprocess.run(
+        [sys.executable, str(generator), "shared", str(fixture)],
+        capture_output=True, text=True, timeout=3, check=True)
+    assert result.stdout.strip() == "PASS isolated MegaQML shared source-only UI fixture"
+    assert result.stderr == ""
+    assert (fixture / "modules/settings/CloudStorageConfig.qml").is_file()
+    assert (fixture / "modules/waffle/settings/pages/WCloudStoragePage.qml").is_file()
+    assert (fixture / "services/deferred/CloudStorageService.qml").read_bytes() == (
+        repo / "services/deferred/CloudStorageService.qml").read_bytes()
+    assert not (fixture / "scripts/native-dispatch").exists()

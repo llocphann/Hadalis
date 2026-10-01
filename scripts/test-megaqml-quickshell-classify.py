@@ -8,7 +8,7 @@ if len(sys.argv) != 4 or sys.argv[3] not in ("baseline", "dormant", "active-pres
                                                      "active-malformed", "active-exit-failure", "active-hang",
                                                      "refresh-coalesce", "refresh-stale-reacquire",
                                                      "recovery-exit", "recovery-timeout",
-                                                     "ui-material", "ui-waffle", "ui-shared"):
+                                                     "ui-material", "ui-waffle", "ui-shared", "ui-race"):
     raise SystemExit(64)
 raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
                 for p in sys.argv[1:3]).lower()
@@ -18,6 +18,25 @@ raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
 # Never echo Qt's original error string or local file paths.
 # Shared-page lifecycle labels are emitted only by the reviewed isolated
 # fixture. Never publish raw Qt errors, temporary paths or private data.
+race_stages = (
+    ("preflight", "race_preflight"),
+    ("load", "race_load"),
+    ("create", "race_create"),
+    ("first_start", "race_first_start"),
+    ("hide_one", "race_hide_one"),
+    ("queue", "race_queue"),
+    ("first_pending", "race_first_pending"),
+    ("second_start", "race_second_start"),
+    ("last_release", "race_last_release"),
+    ("reacquire", "race_reacquire"),
+    ("stale_reply", "race_stale_reply"),
+    ("third_start", "race_third_start"),
+    ("third_result", "race_third_result"),
+    ("final_release", "race_final_release"),
+    ("timeout", "race_timeout"),
+)
+matched_race_stage = next((category for token, category in race_stages
+                           if "megaqml_qs_race_stage_" + token in raw), None)
 shared_stages = (
     ("preflight", "shared_preflight"),
     ("load", "shared_load"),
@@ -102,7 +121,11 @@ ui_stages = (
 )
 matched_ui_stage = next((category for token, category in ui_stages
                          if "megaqml_qs_ui_stage_" + token in raw), None)
-if matched_shared_stage is not None:
+if matched_race_stage is not None:
+    kind = matched_race_stage
+elif "megaqml_qs_race_invalid" in raw:
+    kind = "unexpected_race_state"
+elif matched_shared_stage is not None:
     kind = matched_shared_stage
 elif "megaqml_qs_shared_invalid" in raw:
     kind = "unexpected_shared_state"
@@ -148,6 +171,7 @@ elif any(token in raw for token in ("megaqml_qs_active_present_ok",
                                   "megaqml_qs_ui_material_ok",
                                   "megaqml_qs_ui_waffle_ok",
                                   "megaqml_qs_ui_shared_ok",
+                                  "megaqml_qs_ui_race_ok",
                                   "megaqml_qs_dormant_ok",
                                   "megaqml_qs_baseline_ok")):
     kind = "sentinel_seen_nonzero_exit"

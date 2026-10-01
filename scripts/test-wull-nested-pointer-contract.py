@@ -23,6 +23,7 @@ for marker in (
     'sys.argv[1:] != ["--acknowledge-nested-pointer"]',
     "BASE = ",
     "REVIEWED = ",
+    'shutil.which("wlrctl")',
     'git("merge", "--ff-only", remote)',
     "if origin not in SAFE_REMOTES",
     'Path(runtime) / desktop',
@@ -53,6 +54,9 @@ for marker in (
     '"NIRI_SOCKET"',
     '"WAYLAND_DISPLAY"',
     'shutil.which("wdotool")',
+    'shutil.which("wlrctl")',
+    'native_relative_wlrctl_unverified',
+    'pointer_commands(actor, actor_kind, point)',
     '"--backend", "wlr-protocols", "mousemove"',
     '"--backend", "wlr-protocols", "click", "1"',
     '"WULL_PRIVATE_POINTER_SESSION": "isolated-nested-only"',
@@ -80,9 +84,36 @@ parent = runpy.run_path(str(ROOT / "scripts/wull-manual-nested-pointer.py"),
 child = runpy.run_path(str(ROOT / "scripts/wull-manual-pointer-child.py"),
                        run_name="wull_pointer_inert_child")
 assert parent["REVIEWED"]["scripts/wull-manual-pointer-child.py"] == (
-    "bfed36f31cd9f34fd3f180581eb90377dce7ce16")
+    "b0eec12eb1cc1ac615f6bf585b37ffccea4e344d")
 assert parent["REVIEWED"]["scripts/wull-fixtures/pointer-underlay/companion-relay.py"] == (
     "7e450db1db23e3c250859b0271a655d6325f0bc8")
+
+# Both supported backends have inert, explicit command sequences. The
+# relative-only fallback resets to the candidate output origin and remains
+# UNQUALIFIED until the actual separate underlay/body event controls pass.
+plan = child["pointer_commands"]
+assert plan("/private/wdotool", "wdotool", (250, 140)) == [
+    ["/private/wdotool", "--backend", "wlr-protocols", "mousemove", "250", "140"],
+    ["/private/wdotool", "--backend", "wlr-protocols", "click", "1"]
+]
+assert plan("/private/wlrctl", "wlrctl", (250, 140)) == [
+    ["/private/wlrctl", "pointer", "move", "-8192", "-8192"],
+    ["/private/wlrctl", "pointer", "move", "250", "140"],
+    ["/private/wlrctl", "pointer", "click", "left"]
+]
+for invalid in ((-1, 10), (8192, 50)):
+    try:
+        plan("/private/wlrctl", "wlrctl", invalid)
+    except RuntimeError as error:
+        assert str(error) == "unsafe_pointer_target"
+    else:
+        raise AssertionError("Unbounded pointer accepted")
+try:
+    plan("/private/unknown", "portal", (250, 140))
+except RuntimeError as error:
+    assert str(error) == "unreviewed_pointer_backend"
+else:
+    raise AssertionError("Unknown injection backend accepted")
 
 # Bounded early-exit cleanup never signals a potentially recycled group.
 stop_group = parent["stop_owned_child_group"]

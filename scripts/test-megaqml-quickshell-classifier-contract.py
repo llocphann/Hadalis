@@ -32,6 +32,18 @@ cases = (
      "ui-material", "unexpected_ui_component_state"),
     ("MEGAQML_QS_UI_INVALID password=private-marker",
      "ui-waffle", "unexpected_ui_component_state"),
+    ("MEGAQML_QS_UI_STAGE_COMPONENT /home/private/path password=test", 
+     "ui-material", "ui_component_load"),
+    ("MEGAQML_QS_UI_STAGE_CONSTRUCT /home/private/path", 
+     "ui-waffle", "ui_component_create"),
+    ("MEGAQML_QS_UI_STAGE_NAVIGATION sensitive-account-name", 
+     "ui-material", "ui_navigation"),
+    ("MEGAQML_QS_UI_STAGE_DETECTION password=test", 
+     "ui-waffle", "ui_detection"),
+    ("MEGAQML_QS_UI_STAGE_RELEASE /home/private/path", 
+     "ui-material", "ui_consumer_release"),
+    ("MEGAQML_QS_UI_STAGE_DEADLINE /home/private/path", 
+     "ui-waffle", "ui_detection_deadline"),
     ("", "baseline", "no_diagnostic_output"),
 )
 with tempfile.TemporaryDirectory(prefix="megaqml-classifier-") as temp:

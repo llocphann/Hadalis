@@ -157,6 +157,16 @@ for runtime_case, marker in (("quickshell_ui_material", "MEGAQML_QS_UI_MATERIAL_
     assert 'run_test ' + runtime_case in runner and marker in ui_shell
 assert 'root.page.visible = false' in ui_shell
 assert 'root.page.destroy()' in ui_shell
+for stage in ("SCENARIO", "PREFLIGHT", "COMPONENT", "CONSTRUCT",
+              "NAVIGATION", "DETECTION", "RELEASE", "DEADLINE"):
+    assert 'MEGAQML_QS_UI_STAGE_' + stage in ui_shell
+assert 'Qt.resolvedUrl(location)' in ui_shell
+assert 'Component.Loading' in ui_shell
+for safe_category in ("ui_component_load", "ui_component_create", "ui_navigation",
+                      "ui_detection", "ui_consumer_release", "ui_detection_deadline"):
+    assert safe_category in quickshell_classifier
+assert 'MEGAQML_QS_UI_STAGE_COMPONENT' in classifier_test
+assert 'MEGAQML_QS_UI_STAGE_CONSTRUCT' in classifier_test
 for shell_case in ("ui-material", "ui-waffle"):
     assert shell_case in quickshell_runner
 assert 'scripts/test-megaqml-ui-fixture.py' in quickshell_runner

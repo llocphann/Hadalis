@@ -12,7 +12,23 @@ if len(sys.argv) != 4 or sys.argv[3] not in ("baseline", "dormant", "active-pres
     raise SystemExit(64)
 raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
                 for p in sys.argv[1:3]).lower()
-if "megaqml_qs_ui_invalid" in raw:
+# Never publish the local QML engine's error text, paths or arbitrary data.
+# Fixed stage tokens are emitted by the reviewed fixture only.
+ui_stages = (
+    ("scenario", "ui_invalid_scenario"),
+    ("preflight", "ui_preflight"),
+    ("component", "ui_component_load"),
+    ("construct", "ui_component_create"),
+    ("navigation", "ui_navigation"),
+    ("detection", "ui_detection"),
+    ("release", "ui_consumer_release"),
+    ("deadline", "ui_detection_deadline"),
+)
+matched_ui_stage = next((category for token, category in ui_stages
+                         if "megaqml_qs_ui_stage_" + token in raw), None)
+if matched_ui_stage is not None:
+    kind = matched_ui_stage
+elif "megaqml_qs_ui_invalid" in raw:
     kind = "unexpected_ui_component_state"
 elif "megaqml_qs_recovery_invalid" in raw:
     kind = "unexpected_recovery_state"

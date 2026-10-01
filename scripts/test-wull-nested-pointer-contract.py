@@ -96,7 +96,7 @@ parent = runpy.run_path(str(ROOT / "scripts/wull-manual-nested-pointer.py"),
 child = runpy.run_path(str(ROOT / "scripts/wull-manual-pointer-child.py"),
                        run_name="wull_pointer_inert_child")
 assert parent["REVIEWED"]["scripts/wull-manual-pointer-child.py"] == (
-    "424de561d81f027dbc73e29fb8599e99b4f1d571")
+    "5f2f9ec54546193cd3acfdb98a5f3db621174450")
 assert parent["REVIEWED"]["scripts/wull-fixtures/pointer-underlay/companion-relay.py"] == (
     "7e450db1db23e3c250859b0271a655d6325f0bc8")
 
@@ -112,6 +112,9 @@ for required in (
     '"target_alignment": exterior_hit',
     '"underlay_target_alignment": body_underlay_hit',
     'relative_empty_margin_pointer_target_unverified',
+    'after_baseline_unmap_exterior_underlay_control',
+    'post_baseline_unmap_pointer_target_unverified',
+    'nested_output_geometry_changed_before_injection',
 ):
     assert required in child_text, required
 
@@ -169,6 +172,36 @@ with tempfile.TemporaryDirectory(prefix="wull-pointer-witness-contract-") as tem
             assert str(error) == "invalid_pointer_witness_arguments"
         else:
             raise AssertionError("Unsafe witness arguments accepted")
+
+# Pure output topology/geometry guard: fail before injection on changes.
+geometry = child["output_geometry_signature"]
+original = {
+    "private-output": {
+        "logical": {"x": 0, "y": 0, "width": 1280, "height": 720},
+        "scale": 1.0, "current_mode": {"width": 1280, "height": 720},
+    }
+}
+expected = geometry(original, "private-output")
+assert geometry(original, "private-output") == expected
+for altered in (
+    {"private-output": {**original["private-output"], "scale": 1.5}},
+    {"private-output": {**original["private-output"],
+                        "logical": {"x": 0, "y": 0, "width": 1200,
+                                    "height": 720}}},
+):
+    assert geometry(altered, "private-output") != expected
+for altered in (
+    {"private-output": original["private-output"], "unowned": {}},
+    {"different-output": original["private-output"]},
+    {"private-output": {"logical": {"x": 1, "y": 0, "width": 1280,
+                                    "height": 720}}},
+):
+    try:
+        geometry(altered, "private-output")
+    except RuntimeError as error:
+        assert str(error).startswith("nested_output_")
+    else:
+        raise AssertionError("Unreviewed output geometry accepted")
 
 # Bounded early-exit cleanup never signals a potentially recycled group.
 stop_group = parent["stop_owned_child_group"]

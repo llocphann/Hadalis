@@ -10,6 +10,8 @@ ShellRoot {
     id: root
     readonly property bool timeoutCase:
         String(Quickshell.env("MEGAQML_PREFLIGHT_TIMEOUT")) === "1"
+    readonly property bool releaseCase:
+        String(Quickshell.env("MEGAQML_PREFLIGHT_RELEASE")) === "1"
     property bool sawPreflightChildStart: false
     property var material: null
     property var waffle: null
@@ -210,6 +212,28 @@ ShellRoot {
                 return
             }
             if (root.stage === 4) {
+                if (root.releaseCase) {
+                    if (!svc.preflightBusy || svc.preflightState !== "checking"
+                            || !root.goodMissing(svc, 3, 1)) {
+                        root.fail("CANCEL_PENDING")
+                        return
+                    }
+                    // An explicit signal proves the child received its stdin.
+                    // Closing before start would exercise a different path.
+                    if (svc._preflightInput !== "") return
+                    root.material.visible = false
+                    if (root.material.leaseHeld || root.waffle.leaseHeld
+                            || svc.consumerCount !== 0 || svc.backendState !== "stale"
+                            || svc.preflightState !== "not_requested"
+                            || svc.preflightError !== ""
+                            || svc._preflightGeneration !== -1
+                            || svc.connected || svc.liveAuthQualified) {
+                        root.fail("CANCEL_RELEASE")
+                        return
+                    }
+                    root.stage = 7
+                    return
+                }
                 if (root.timeoutCase) {
                     if (svc.preflightState === "checking") {
                         if (!svc.preflightBusy || !root.goodMissing(svc, 3, 1)) {
@@ -286,6 +310,57 @@ ShellRoot {
                     return
                 }
                 root.stage = 5
+                return
+            }
+            if (root.stage === 7) {
+                // Do not count an abandoned child as released until exited()
+                // has delivered the termination and cleared preflightBusy.
+                if (svc.preflightBusy) return
+                if (svc.consumerCount !== 0 || svc.preflightSerial !== 1
+                        || svc.preflightState !== "not_requested"
+                        || svc.preflightError !== ""
+                        || svc._preflightGeneration !== -1
+                        || svc.connected || svc.liveAuthQualified
+                        || svc.backendState !== "stale") {
+                    root.fail("CANCEL_REAP")
+                    return
+                }
+                // Reopening the other copied page must initiate a fresh
+                // static detect; no abandoned preflight result can follow.
+                root.waffle.visible = true
+                if (!root.waffle.leaseHeld || root.material.leaseHeld
+                        || svc.consumerCount !== 1 || svc.requestSerial !== 4
+                        || svc.backendState !== "checking"
+                        || svc.preflightState !== "not_requested") {
+                    root.fail("CANCEL_REOPEN")
+                    return
+                }
+                root.stage = 8
+                return
+            }
+            if (root.stage === 8) {
+                if (svc.backendState === "checking") return
+                if (!root.goodMissing(svc, 4, 1)
+                        || svc.preflightBusy || svc.preflightSerial !== 1
+                        || svc.preflightState !== "not_requested"
+                        || svc.preflightError !== "") {
+                    root.fail("CANCEL_RECHECK")
+                    return
+                }
+                root.waffle.visible = false
+                if (svc.consumerCount !== 0 || root.waffle.leaseHeld
+                        || svc.preflightState !== "not_requested"
+                        || svc.backendState !== "stale"
+                        || svc.connected || svc.liveAuthQualified) {
+                    root.fail("CANCEL_FINAL")
+                    return
+                }
+                root.material.destroy()
+                root.waffle.destroy()
+                root.material = null
+                root.waffle = null
+                console.log("MEGAQML_QS_UI_SHARED_RELEASE_OK")
+                Qt.quit()
                 return
             }
             if (root.stage === 5) {

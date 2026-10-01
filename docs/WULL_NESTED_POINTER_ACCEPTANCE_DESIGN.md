@@ -115,3 +115,33 @@ on the same compositor with unchanged click/hover behavior. Keep
 physical multi-output/hotplug, long-run **whole-shell** resources,
 session reload/suspend and maintainer visual/motion approval remain
 independent outstanding gates.
+
+
+## Private click-delivery relay prepared
+
+The source-only fixture `scripts/wull-fixtures/pointer-underlay/companion-relay.py`
+was staged in `f8116f4000b40265648e8a20f0d6f29fa16b1012`. A future nested
+runner may explicitly point the real production bridge's private
+`INIR_COMPANIOND` override to this narrowly guarded executable while the
+relay itself starts the **real exact-source private Rust binary**. It
+preserves newline JSON stdio, records only bounded private
+`real_bridge_click_received` markers for v1 click events, and observes
+the associated happy/pulse reaction produced by the real Rust core.
+It refuses invocation without the private nested-session opt-in, distinct
+nested/parent display and Niri socket names, absolute executable path
+and out-of-checkout private trace. This is an observational fixture;
+it cannot fake a production click or change the production source.
+
+`scripts/test-wull-private-relay-contract.py`, committed as
+`1a3e7a7d837e7bcfc82bf2bb8f702355d5475891`, is an **inert**
+fake-backend unit smoke for relay line forwarding, private marker
+creation and refusal of equal host/nested display identity. A fake
+backend is used ONLY by that inert contract, never as evidence of a
+real production click. These source files have no exact-source local
+execution receipt yet.
+
+A real pointer PASS additionally requires that observed private
+underlay click controls bracket an enabled Wull center click and that
+the relay's click marker plus a subsequent real backend reaction
+belong to that phase. The marker/reaction alone cannot establish the
+true pointer target without the independent underlay controls.

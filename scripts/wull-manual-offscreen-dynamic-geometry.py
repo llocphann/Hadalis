@@ -17,6 +17,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 FROZEN_RUNNER = "scripts/wull-manual-offscreen-motion-geometry.py"
@@ -291,7 +292,7 @@ def run_fixture(folder):
     env = dict(os.environ)
     for name in ("QS_CONFIG_PATH", "QS_CONFIG_NAME", "QS_MANIFEST",
                  "INIR_COMPANIOND", "WAYLAND_DISPLAY", "NIRI_SOCKET",
-                 "DISPLAY"):
+                 "DISPLAY", "QML_IMPORT_PATH", "QML2_IMPORT_PATH"):
         env.pop(name, None)
     env.update({
         "QT_QPA_PLATFORM": "offscreen",
@@ -316,21 +317,37 @@ def run_fixture(folder):
         except subprocess.TimeoutExpired:
             stop("bounded_offscreen_dynamic_timeout")
         finally:
-            # Always terminate surviving children within the private process
-            # group, even when dbus-run-session exits first.
+            # dbus-run-session can exit while children still live. Always
+            # drain ONLY our newly-created private process group.
             try:
                 os.killpg(proc.pid, signal.SIGTERM)
             except ProcessLookupError:
                 pass
-            if proc.poll() is None:
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
                 try:
-                    proc.wait(timeout=3)
-                except subprocess.TimeoutExpired:
-                    try:
-                        os.killpg(proc.pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
-                    proc.wait(timeout=3)
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                proc.wait(timeout=3)
+            time.sleep(0.20)
+            try:
+                os.killpg(proc.pid, 0)
+            except ProcessLookupError:
+                pass
+            else:
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                time.sleep(0.10)
+                try:
+                    os.killpg(proc.pid, 0)
+                except ProcessLookupError:
+                    pass
+                else:
+                    stop("private_dynamic_child_cleanup_unverified")
     if not 0 < log.stat().st_size <= MAX_LOG:
         stop("private_dynamic_log_missing_or_oversized")
     raw = log.read_text(encoding="utf-8", errors="replace")

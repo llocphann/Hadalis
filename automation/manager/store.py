@@ -110,6 +110,7 @@ def profile_state() -> dict:
         "session": None, "checkpoint": None, "response_message_id": None,
         "recovery": None, "run_active": False,
         "last_transport_at_unix": 0, "job_evidence": [], "job_summary": None,
+        "transport_observation": None,
         "generation_recoveries": 0, "failed_turn": None,
     }
 

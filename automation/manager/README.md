@@ -30,6 +30,13 @@ An explicit ChatGPT rate limit persists an account-wide 120-second cooldown
 (configurable within 60–300 seconds) across service restarts. Local job results,
 fsynced response receipts and user controls continue during cooldown; only the
 shared ChatGPT API resource waits. Pending prompt identities never change.
+HTTP status and the affected resource (conversation history, stream status,
+models or projects) are projected inside Desktop before IPC can discard typed
+error fields. Fixed private observations distinguish transport throttling from
+a model generation quota; a 429 on a history read does not prove a five-hour
+model limit. Timeout details contain no raw command, body, headers or secrets.
+The read-only native `model_catalog` operation exports bounded model capability
+metadata for diagnosis and never exports account fields or descriptions.
 
 Failed execution receipts classify bounded private compiler/runtime output into
 fixed QML/import, compilation, test, missing-command and lockfile error codes for

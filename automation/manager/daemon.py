@@ -27,15 +27,37 @@ CHAT_POLL_SECONDS = max(15, min(120, int(os.environ.get("HADALIS_CHAT_POLL_SECON
 RATE_LIMIT_SECONDS = max(60, min(300, int(os.environ.get("HADALIS_RATE_LIMIT_SECONDS", "120"))))
 CONCURRENCY = max(1, min(8, int(os.environ.get("HADALIS_MANAGER_CONCURRENCY", "4"))))
 _INFLIGHT = {}
+NATIVE_ERROR_CODES = {"DESKTOP_RATE_LIMITED", "DESKTOP_OPERATION_UNAVAILABLE", "DESKTOP_OPERATION_TIMEOUT",
+    "LEGACY_IDENTITY_AMBIGUOUS", "GITHUB_PLUGIN_UNAVAILABLE", "THINKING_EFFORT_UNAVAILABLE",
+    "DESKTOP_CAPABILITY_UNAVAILABLE", "PROJECT_UNAVAILABLE_OR_AMBIGUOUS"}
+NATIVE_RESOURCES = {"conversation", "stream_status", "models", "projects", "desktop"}
+
+
+class NativeOperationError(RuntimeError):
+    """Fixed metadata only; raw Desktop errors never reach state or prompts."""
+    def __init__(self, observation: dict, operation: str):
+        code = observation.get("code")
+        code = code if isinstance(code, str) and code in NATIVE_ERROR_CODES else "DESKTOP_OPERATION_UNAVAILABLE"
+        super().__init__(code)
+        self.observation = {"code": code, "operation": operation}
+        resource, status = observation.get("resource"), observation.get("http_status")
+        if isinstance(resource, str) and resource in NATIVE_RESOURCES: self.observation["resource"] = resource
+        if type(status) is int and 100 <= status <= 599: self.observation["http_status"] = status
 
 
 def native_command(op: str, **payload) -> dict:
-    result = subprocess.run(["node", str(NATIVE_CLI)], cwd=ROOT,
-        input=json.dumps({"op": op, **payload}), capture_output=True, text=True,
-        timeout=45, check=False)
+    try:
+        result = subprocess.run(["node", str(NATIVE_CLI)], cwd=ROOT,
+            input=json.dumps({"op": op, **payload, "error_observation": True}), capture_output=True, text=True,
+            timeout=45, check=False)
+    except subprocess.TimeoutExpired:
+        raise NativeOperationError({"code":"DESKTOP_OPERATION_TIMEOUT"}, op) from None
     if result.returncode:
-        # Native adapter never returns request headers or credentials.
-        raise RuntimeError((result.stderr or "Desktop operation failed").strip()[:500])
+        raw = (result.stderr or "").strip()
+        try: observation = json.loads(raw) if len(raw) <= 2048 else {}
+        except (ValueError, TypeError): observation = {"code":raw}
+        if not isinstance(observation, dict): observation = {}
+        raise NativeOperationError(observation, op)
     if len(result.stdout) > 120000:
         raise RuntimeError("Desktop response exceeded capture bound")
     value = json.loads(result.stdout)
@@ -208,6 +230,8 @@ def _observe_failure(profile_id: str, now: int, exc: Exception, *, pending=None,
         else:
             item["next_run_at_unix"] = now + delay
         detail = str(exc)[:1000]
+        if isinstance(exc, NativeOperationError):
+            item["transport_observation"] = {**exc.observation, "at_unix":now}
         limited = not job and detail == "DESKTOP_RATE_LIMITED"
         if limited:
             # The account API is shared; jobs and local cached receipts are not.
@@ -219,6 +243,9 @@ def _observe_failure(profile_id: str, now: int, exc: Exception, *, pending=None,
         if item["last_error"] != detail or item[key] == 1:
             event(state, profile_id, "observation_retry", detail)
         item.update(last_error=detail, status="transport_rate_limited" if limited else "transport_unavailable")
+        if limited:
+            resource = exc.observation.get("resource") if isinstance(exc, NativeOperationError) else None
+            item["status_detail"] = "ChatGPT rate limited while reading the response. Retrying; original turn retained." if resource in {"conversation", "stream_status"} else "ChatGPT transport rate limited. Retrying without prompt replay."
         if not pending and not job and detail == "THINKING_EFFORT_UNAVAILABLE":
             item.update(status="thinking_unavailable",
                 status_detail="Thinking level unavailable for this chat. Choose another level.")
@@ -309,7 +336,7 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
         # This intent consumes the command durably, even if its ACK is lost.
         # A later explicit Restart has its own sequence and survives the ACK.
         current.update(pending=pending, request="continuation", status="thinking", status_detail="",
-                       poll_errors=0, last_error="", last_activity_at_unix=now)
+                       poll_errors=0, last_error="", transport_observation=None, last_activity_at_unix=now)
         if new_chat:
             current.update(session={"conversation_id":None, "project_id":project_id},
                 active_project_name=profile["project_name"], chat_started_at_unix=now, chat_iterations=0)
@@ -469,6 +496,7 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
                 current["pending"]["observation"] = observation
                 current["poll_errors"] = 0
                 current["last_error"] = ""
+                current["transport_observation"] = None
                 current["status"] = observation["status"]
                 current["status_detail"] = detail
             change_state(waiting)
@@ -495,7 +523,7 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
             current["session"] = {"conversation_id":result["conversation_id"], "project_id":pending["project_id"]}
         current.update(pending=None, response_message_id=response["message_id"],
             iterations=current["iterations"]+1, chat_iterations=current["chat_iterations"]+1,
-            poll_errors=0, last_error="", status_detail="", last_activity_at_unix=now,
+            poll_errors=0, last_error="", status_detail="", transport_observation=None, last_activity_at_unix=now,
             last_success=directive.kind.value if directive else "protocol_error", loop_state=directive.kind.value.lower() if directive else "protocol_error")
         if protocol_error:
             current.update(desired="paused",status="evidence_required",last_error=protocol_error)

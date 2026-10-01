@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import {pollNativeTurn, nativeServerStreamStatus, nativeRead} from "../automation/chat_bridge/native_adapter.mjs";
-import {operationErrorCode} from "../automation/chat_bridge/native_errors.mjs";
+import {pollNativeTurn, nativeServerStreamStatus, nativeRead, nativeModelCatalog} from "../automation/chat_bridge/native_adapter.mjs";
+import {operationErrorCode, operationErrorObservation} from "../automation/chat_bridge/native_errors.mjs";
 
 const chat="aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa";
 const user="bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb";
@@ -73,7 +73,32 @@ try {
   assert.equal((await observe({capability:false})).result.terminal_failed,false);
   assert.equal((await observe({serverError:{responseStatus:404}})).result.terminal_failed,false);
   await assert.rejects(observe({serverError:{responseStatus:429,message:"PRIVATE_CANARY"}}),
-    error=>operationErrorCode(error)==="DESKTOP_RATE_LIMITED");
+    error=>{
+      assert.deepEqual(operationErrorObservation(error),{code:"DESKTOP_RATE_LIMITED",http_status:429,resource:"stream_status"});
+      return !JSON.stringify(error).includes("PRIVATE_CANARY");
+    });
+  // Simulate the IPC boundary that strips custom fields from thrown errors.
+  // The adapter must project HTTP metadata inside Desktop before crossing it.
+  const ipcPage={evaluate:async(fn,arg)=>{
+    try{return JSON.parse(JSON.stringify(await fn(arg)));}
+    catch(error){throw new Error(error.message);}
+  }};
+  window.__hadalisNative.api.safeGet=async()=>{throw {responseStatus:429,message:"PRIVATE_CANARY",headers:{authorization:"PRIVATE_CANARY"}};};
+  await assert.rejects(nativeRead(ipcPage,`/conversation/${chat}`),error=>{
+    assert.deepEqual(operationErrorObservation(error),{code:"DESKTOP_RATE_LIMITED",http_status:429,resource:"conversation"});
+    return !JSON.stringify(error).includes("PRIVATE_CANARY");
+  });
+  window.__hadalisNative.api.safeGet=async()=>{throw {name:"AbortError",message:"PRIVATE_CANARY"};};
+  await assert.rejects(nativeRead(ipcPage,"/models"),error=>{
+    assert.deepEqual(operationErrorObservation(error),{code:"DESKTOP_OPERATION_TIMEOUT",resource:"models"});return true;
+  });
+  window.__hadalisNative.api.safeGet=async()=>({default_model_slug:"chat",account:"PRIVATE_CANARY",
+    models:[{slug:"chat",description:"PRIVATE_CANARY",thinking_efforts:[{thinking_effort:"extended"}]}],
+    categories:[{default_model:"chat",supported_models:["chat"],model_lane:"thinking",short_explainer:"PRIVATE_CANARY"}]});
+  const catalog=await nativeModelCatalog(ipcPage);
+  assert.equal(catalog.models[0].slug,"chat");assert.deepEqual(catalog.models[0].thinking_efforts,["extended"]);
+  assert.equal(catalog.categories[0].model_lane,"thinking");
+  assert.equal(JSON.stringify(catalog).includes("PRIVATE_CANARY"),false);
   await assert.rejects(nativeServerStreamStatus({evaluate:()=>assert.fail("invalid identity reached API")},"bad"),/identity/);
   window.__hadalisNative.api.safeGet=async(_path,options)=>{
     assert.equal("additionalHeaders" in options,false);

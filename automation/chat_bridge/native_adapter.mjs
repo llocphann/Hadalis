@@ -4,6 +4,7 @@
  */
 import fs from "node:fs";
 import crypto from "node:crypto";
+import {operationErrorObservation} from "./native_errors.mjs";
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -136,14 +137,37 @@ export async function connectNative() {
   return { page, browser, contract };
 }
 
-export async function nativeRead(page, path, query = {}, projectId = null) {
+async function nativeGet(page, path, parameters, projectId = null) {
   // Only projects use this header. Older/custom GPT gizmo identities keep
   // ordinary conversation reads and cannot inject arbitrary header content.
   projectId = typeof projectId === "string" && /^g-p-[0-9a-f]{32}$/i.test(projectId) ? projectId : null;
-  return page.evaluate(async ({path, query, projectId}) => window.__hadalisNative.api.safeGet(path, {
-    signal: AbortSignal.timeout(25000), parameters: { query },
-    ...(projectId ? {additionalHeaders:{"chatgpt-project-id":projectId}} : {})
-  }), { path, query, projectId });
+  const result = await page.evaluate(async ({path, parameters, projectId}) => {
+    try {
+      return {ok:true, value:await window.__hadalisNative.api.safeGet(path, {
+        signal:AbortSignal.timeout(25000), parameters,
+        ...(projectId ? {additionalHeaders:{"chatgpt-project-id":projectId}} : {})
+      })};
+    } catch (error) {
+      // Playwright otherwise drops custom HTTP status fields across IPC.
+      // Project only typed status/fixed classification before leaving Desktop;
+      // neither the error body nor request/response headers cross this boundary.
+      const status = [error?.responseStatus, error?.statusCode, error?.status]
+        .find(x => Number.isInteger(x) && x >= 100 && x <= 599);
+      const limited = status === 429 || /too many requests|(?:HTTP|status(?: code)?)\s*[:=]?\s*429\b/i.test(String(error?.message ?? ""));
+      return {ok:false, ...(status ? {http_status:status} : {}), code:limited ? "DESKTOP_RATE_LIMITED"
+        : ["TimeoutError", "AbortError"].includes(error?.name) ? "DESKTOP_OPERATION_TIMEOUT" : "DESKTOP_OPERATION_UNAVAILABLE"};
+    }
+  }, {path, parameters, projectId});
+  if (result.ok) return result.value;
+  const resource = path === "/models" ? "models" : path.endsWith("/stream_status") ? "stream_status"
+    : path.startsWith("/conversation/") ? "conversation" : path.startsWith("/gizmos/") ? "projects" : "desktop";
+  const error = new Error(result.code);
+  Object.assign(error, operationErrorObservation({...result, message:result.code, resource}));
+  throw error;
+}
+
+export async function nativeRead(page, path, query = {}, projectId = null) {
+  return nativeGet(page, path, {query}, projectId);
 }
 
 export async function nativeStreamStatus(page, pending) {
@@ -165,21 +189,34 @@ export async function nativeStreamStatus(page, pending) {
 
 export async function nativeServerStreamStatus(page, conversationId) {
   if (!UUID.test(conversationId)) throw new Error("invalid server stream identity");
-  return page.evaluate(async conversationId => {
-    const native = window.__hadalisNative;
-    if (!native.serverStreamStatus) return "UNAVAILABLE";
-    try {
-      const value = await native.api.safeGet("/conversation/{conversation_id}/stream_status", {
-        signal: AbortSignal.timeout(25000), parameters:{path:{conversation_id:conversationId}}
-      });
-      return ["IS_STREAMING", "COMPLETE", "FAILURE", "UNAVAILABLE"].includes(value?.status)
-        ? value.status : "UNAVAILABLE";
-    } catch (error) {
-      if (error?.responseStatus === 404 || error?.status === 404 || error?.statusCode === 404)
-        return "UNAVAILABLE";
-      throw error;
-    }
-  }, conversationId);
+  if (!await page.evaluate(() => window.__hadalisNative.serverStreamStatus)) return "UNAVAILABLE";
+  try {
+    const value = await nativeGet(page, "/conversation/{conversation_id}/stream_status", {path:{conversation_id:conversationId}});
+    return ["IS_STREAMING", "COMPLETE", "FAILURE", "UNAVAILABLE"].includes(value?.status) ? value.status : "UNAVAILABLE";
+  } catch (error) {
+    if (error.http_status === 404) return "UNAVAILABLE";
+    throw error;
+  }
+}
+
+export async function nativeModelCatalog(page) {
+  const data = await nativeRead(page, "/models", {iim:false, include_icons:false});
+  // Read-only troubleshooting projection. No account fields, response body,
+  // descriptions or credentials are exported by this operation.
+  const slug = value => typeof value === "string" && /^[a-zA-Z0-9._:-]{1,128}$/.test(value) ? value : null;
+  return {default_model_slug:slug(data?.default_model_slug),
+    categories:(Array.isArray(data?.categories) ? data.categories : []).slice(0,128).filter(Boolean).map(c => ({
+      keys:Object.keys(c).filter(k => /^[a-z_]{1,64}$/.test(k)).slice(0,32),
+      model_lane:["instant","thinking","pro"].includes(c.model_lane) ? c.model_lane : null,
+      default_model:slug(c.default_model), supported_models:(Array.isArray(c.supported_models) ? c.supported_models : []).slice(0,128).map(slug).filter(Boolean),
+      disabled_by_admin:c.disabled_by_admin === true})),
+    models:(Array.isArray(data?.models) ? data.models : []).slice(0,128).filter(m => slug(m?.slug)).map(m => ({
+      slug:m.slug, keys:Object.keys(m).filter(k => /^[a-z_]{1,64}$/.test(k)).slice(0,48),
+      configurable_thinking_effort:m.configurable_thinking_effort === true,
+      thinking_efforts:(Array.isArray(m.thinking_efforts) ? m.thinking_efforts : []).slice(0,16)
+        .map(e => e?.thinking_effort).filter(e => ["min","standard","extended","xhigh","max"].includes(e)),
+      disabled_by_admin:m.disabled_by_admin === true, is_work_mode_model:m.is_work_mode_model === true,
+      hidden:Array.isArray(m.tags) && m.tags.includes("hidden")}))};
 }
 
 export async function pollNativeTurn(page, pending) {

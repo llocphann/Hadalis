@@ -23,6 +23,26 @@ assert.equal(operationErrorCode({message:"unsupported Desktop transport"}), "DES
 assert.equal(operationErrorCode({message:"PRIVATE_CANARY auth body"}), "DESKTOP_OPERATION_UNAVAILABLE");
 '''], cwd=Path(__file__).resolve().parents[1], check=True, timeout=10)
 
+    # The old fixed-code CLI and the new private HTTP observation contract both
+    # work. Unknown fields, raw bodies and timeout command text never persist.
+    for stderr, expected in [
+        ('DESKTOP_RATE_LIMITED', {"code":"DESKTOP_RATE_LIMITED","operation":"poll"}),
+        (json.dumps({"code":"DESKTOP_RATE_LIMITED","http_status":429,"resource":"conversation","body":"PRIVATE_CANARY"}),
+         {"code":"DESKTOP_RATE_LIMITED","operation":"poll","http_status":429,"resource":"conversation"}),
+        ('PRIVATE_CANARY', {"code":"DESKTOP_OPERATION_UNAVAILABLE","operation":"poll"}),
+        (json.dumps({"code":[],"resource":[]}), {"code":"DESKTOP_OPERATION_UNAVAILABLE","operation":"poll"}),
+    ]:
+        with patch.object(daemon.subprocess,"run",return_value=subprocess.CompletedProcess([],1,"",stderr)):
+            try:daemon.native_command("poll",pending={})
+            except daemon.NativeOperationError as exc:
+                assert exc.observation == expected and "PRIVATE_CANARY" not in str(exc)
+            else:raise AssertionError("native failure became success")
+    with patch.object(daemon.subprocess,"run",side_effect=subprocess.TimeoutExpired("PRIVATE_CANARY",45)):
+        try:daemon.native_command("poll",pending={})
+        except daemon.NativeOperationError as exc:
+            assert exc.observation == {"code":"DESKTOP_OPERATION_TIMEOUT","operation":"poll"}
+        else:raise AssertionError("timeout became success")
+
     with environment(), patch.object(daemon, "CHAT_POLL_SECONDS", production_cadence):
         a, b = profile("Wull"), profile("Mega")
         t = Transport()
@@ -51,7 +71,8 @@ assert.equal(operationErrorCode({message:"PRIVATE_CANARY auth body"}), "DESKTOP_
         worker_pending = t.pending(worker).copy()
         t.reply(b)
         t.reply(worker, "HADALIS_LOOP:WAIT_RESULT JOB-local")
-        daemon._observe_failure(a, 102, RuntimeError("DESKTOP_RATE_LIMITED"), pending=original)
+        daemon._observe_failure(a, 102, daemon.NativeOperationError({"code":"DESKTOP_RATE_LIMITED",
+            "resource":"conversation","http_status":429,"body":"PRIVATE_CANARY"},"poll"), pending=original)
         # A crash left a fsynced reply, so no Desktop request is needed for B.
         store._write(store.state_dir()/"responses"/b/(cached["user_message_id"]+".json"), {
             "user_message_id":cached["user_message_id"], "conversation_id":cached["conversation_id"],
@@ -66,6 +87,10 @@ assert.equal(operationErrorCode({message:"PRIVATE_CANARY auth body"}), "DESKTOP_
             assert state["transport_retry_at_unix"] == until
             assert state["profiles"][a]["pending"]["user_message_id"] == original["user_message_id"]
             assert state["profiles"][a]["status"] == "transport_rate_limited"
+            assert state["profiles"][a]["transport_observation"] == {
+                "code":"DESKTOP_RATE_LIMITED","operation":"poll","resource":"conversation","http_status":429,"at_unix":102}
+            assert "reading the response" in state["profiles"][a]["status_detail"]
+            assert "PRIVATE_CANARY" not in store.state_path().read_text()
             assert state["profiles"][b]["iterations"] == 1
             assert state["profiles"][worker]["last_job_id"] == "JOB-local"
             # Normalization and subsequent scheduler ticks preserve cooldown.
@@ -78,6 +103,7 @@ assert.equal(operationErrorCode({message:"PRIVATE_CANARY auth body"}), "DESKTOP_
             assert store.read_snapshot()[1]["profiles"][a]["iterations"] == 1
             assert t.count("poll") == 1
             assert store.read_snapshot()[1]["profiles"][a]["prompts_sent"] == 1
+            assert store.read_snapshot()[1]["profiles"][a]["transport_observation"] is None
             # The other two profiles can now submit independent next steps.
             assert t.count("submit") == 5
     with environment():

@@ -1,7 +1,7 @@
-import {connectNative, nativeRead, nativeStreamStatus, nativeServerStreamStatus, pollNativeTurn, resolveProject, nativePreflight, nativeSubmit, nativeResume, discoverSubmission} from "./native_adapter.mjs";
-import {operationErrorCode} from "./native_errors.mjs";
+import {connectNative, nativeRead, nativeStreamStatus, nativeServerStreamStatus, nativeModelCatalog, pollNativeTurn, resolveProject, nativePreflight, nativeSubmit, nativeResume, discoverSubmission} from "./native_adapter.mjs";
+import {operationErrorCode, operationErrorObservation} from "./native_errors.mjs";
 
-let browser;
+let browser, input;
 // A supervisor crash must not leave an orphan CDP client indefinitely alive.
 const deadline=setTimeout(()=>process.exit(1),45000);deadline.unref();
 try {
@@ -10,12 +10,13 @@ try {
     raw += chunk;
     if (raw.length > 200000) throw new Error("request exceeds bound");
   }
-  const input = JSON.parse(raw);
+  input = JSON.parse(raw);
   const connection = await connectNative(); browser = connection.browser;
   const page = connection.page;
   let result;
   if (input.op === "project") result = {project_id: await resolveProject(page, input.name)};
   else if (input.op === "preflight") result = await nativePreflight(page, input);
+  else if (input.op === "model_catalog") result = await nativeModelCatalog(page);
   else if (input.op === "read") result = await nativeRead(page, `/conversation/${input.conversation_id}`, {}, input.project_id);
   else if (input.op === "stream_status") result = await nativeStreamStatus(page, input.pending);
   else if (input.op === "server_stream_status") result = {status:await nativeServerStreamStatus(page, input.pending.conversation_id)};
@@ -51,5 +52,6 @@ try {
   console.log(JSON.stringify(result));
 } catch (error) {
   // Never serialize a raw request/headers or an HTTP error body.
-  console.error(operationErrorCode(error)); process.exitCode = 1;
+  console.error(input?.error_observation === true ? JSON.stringify(operationErrorObservation(error)) : operationErrorCode(error));
+  process.exitCode = 1;
 } finally { clearTimeout(deadline); if (browser) await browser.close(); }

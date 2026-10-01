@@ -2193,3 +2193,10 @@ production input change.
   runner in
   ONE disposable
   private clone.
+
+
+## Checkpoint — 2026-10-02 actual-QML 24-pose first local gate blocked by stale inert assertion
+
+- The maintainer's fresh private `dev` clone at exact source `aa59e2f09c211219fef7a8153fa27abe94efd63b` stopped during `scripts/test-wull-offscreen-motion-geometry-contract.py`: `AssertionError: body.stateStretch = 1`. The guard searched for an obsolete literal even though the already source-pinned QML fixture assigns the stretch target to all actual repeated hosts via `root.bodyOf(hosts.itemAt(i)).stateStretch = 1`. This is a diagnosed inert test assertion mismatch. The actual 24-pose offscreen Quickshell runner was NOT executed; no `docs/wull-qt-motion-*.json` result was published. Do not count any Qt geometry pose as observed.
+- A test-only forward fix at commit `d38699b4385d5aeb2a284d65bdaecb5de1823c5f` replaces the obsolete assertion with the precise existing per-host stretch assignment, and additionally checks the neutral `body.stateStretch=0` initialization and fixture's `expectedStretch`/actual frozen-state witness predicate. New inert test blob `73572134c29ccbc448bb0d48290ae7b0e99637c5`. The production QML, offscreen fixture blob `11df91496a8bb9b18d79498e86d1f734d78dc574`, runner blob `0dd833ed05d54e9d1045553a1da8be8f66b6511a`, backend, existing full-host input mask, default-off configuration and `stable` are unchanged. Remote static source comparison found all 13 referenced QML conditions present, but the repaired Python inert contract has NOT yet earned local runtime PASS.
+- NEXT: ONE fresh permission-private, clean `dev` clone; recheck its HEAD and run the repaired inert contract. Only if it passes, run the existing acknowledged bounded offscreen runner and inspect one unique new `docs/wull-qt-motion-*.json` source-pinned 24-pose report on GitHub. Do not reuse the failed prior clone, hand-edit the reviewed fixture, relax SHA guards, or treat frozen poses as a live SpringAnimation/Wayland/hover/production mask qualification.

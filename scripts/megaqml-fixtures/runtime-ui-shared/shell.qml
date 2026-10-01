@@ -41,6 +41,20 @@ ShellRoot {
             && !snap.login && !snap.whoami && !snap.version
             && !svc.connected && !svc.liveAuthQualified
     }
+    // Locate the actual signal-bearing control in each copied production page,
+    // rather than invoking the service directly and bypassing the page signal.
+    function offlineControl(node) {
+        if (!node) return null
+        if (node.buttonText === "Check connection readiness (offline)")
+            return node
+        const children = node.children
+        if (!children) return null
+        for (let i = 0; i < children.length; i++) {
+            const found = root.offlineControl(children[i])
+            if (found) return found
+        }
+        return null
+    }
     Timer {
         interval: 75
         repeat: true
@@ -165,9 +179,80 @@ ShellRoot {
                     root.fail("THIRD_RESULT")
                     return
                 }
+                if (svc.preflightSerial !== 0 || svc.preflightBusy
+                        || svc.preflightState !== "not_requested") {
+                    root.fail("BUTTON_MATERIAL")
+                    return
+                }
+                const materialButton = root.offlineControl(root.material)
+                if (!materialButton || !materialButton.visible || !materialButton.enabled
+                        || typeof materialButton.clicked !== "function") {
+                    root.fail("BUTTON_MATERIAL")
+                    return
+                }
+                // Actual Material page onClicked must start one opt-in request.
+                materialButton.clicked()
+                if (svc.preflightSerial !== 1 || !svc.preflightBusy
+                        || svc.preflightState !== "checking"
+                        || !root.goodMissing(svc, 3, 1)) {
+                    root.fail("BUTTON_MATERIAL")
+                    return
+                }
+                root.stage = 4
+                return
+            }
+            if (root.stage === 4) {
+                if (svc.preflightState === "checking") return
+                if (svc.preflightBusy || svc.preflightSerial !== 1
+                        || svc.preflightState !== "dependency_missing"
+                        || svc.preflightError !== "" || !root.goodMissing(svc, 3, 1)) {
+                    root.fail("PREFLIGHT_MATERIAL")
+                    return
+                }
+                // Waffle joins the same singleton; it must not trigger
+                // another automatic static detect while Material stays open.
+                root.waffle.visible = true
+                if (!root.waffle.leaseHeld || !root.material.leaseHeld
+                        || svc.consumerCount !== 2 || svc.requestSerial !== 3) {
+                    root.fail("BUTTON_WAFFLE")
+                    return
+                }
+                const waffleButton = root.offlineControl(root.waffle)
+                if (!waffleButton || !waffleButton.visible || !waffleButton.enabled
+                        || typeof waffleButton.buttonClicked !== "function") {
+                    root.fail("BUTTON_WAFFLE")
+                    return
+                }
+                waffleButton.buttonClicked()
+                if (svc.preflightSerial !== 2 || !svc.preflightBusy
+                        || svc.preflightState !== "checking" || svc.connected
+                        || svc.liveAuthQualified || svc.requestSerial !== 3) {
+                    root.fail("BUTTON_WAFFLE")
+                    return
+                }
+                root.stage = 5
+                return
+            }
+            if (root.stage === 5) {
+                if (svc.preflightState === "checking") return
+                if (svc.preflightBusy || svc.preflightSerial !== 2
+                        || svc.preflightState !== "dependency_missing"
+                        || svc.preflightError !== "" || !root.goodMissing(svc, 3, 2)) {
+                    root.fail("PREFLIGHT_WAFFLE")
+                    return
+                }
                 root.material.visible = false
+                if (root.material.leaseHeld || !root.waffle.leaseHeld
+                        || svc.consumerCount !== 1
+                        || svc.preflightState !== "dependency_missing") {
+                    root.fail("FINAL_RELEASE")
+                    return
+                }
+                root.waffle.visible = false
                 if (svc.consumerCount !== 0 || root.material.leaseHeld
-                        || root.waffle.leaseHeld || svc.backendState !== "stale") {
+                        || root.waffle.leaseHeld || svc.backendState !== "stale"
+                        || svc.preflightState !== "not_requested"
+                        || svc.preflightBusy || svc.connected || svc.liveAuthQualified) {
                     root.fail("FINAL_RELEASE")
                     return
                 }

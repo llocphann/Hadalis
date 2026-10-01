@@ -705,6 +705,7 @@ mod tests {
                 password: Some("PRIVATE_PREVIEW_CANARY".into()),
                 mfa_code: None,
             })),
+            (json!({}), Some(SecretInput { password: None, mfa_code: None })),
         ] {
             let response = handle_feature_gates_preview(Request {
                 protocol: PROTOCOL_VERSION,

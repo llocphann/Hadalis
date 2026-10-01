@@ -25,6 +25,7 @@ INNER = "scripts/wull-manual-production-layer.py"
 INNER_BLOB = "269a1ba8d0de6edd7a9913180fab34a3472286b3"
 FIXTURE = "scripts/wull-fixtures/production-layer/shell.qml"
 FIXTURE_BLOB = "e16b6dcada26a27fd71cc670e30c55135401bcef"
+INITIAL_SELF_BLOB = "4d1a1481fcfae202f91a4569c81fada5eaea8590"
 ORIGINS = {
     "https://github.com/llocphann/Hadalis",
     "https://github.com/llocphann/Hadalis.git",
@@ -65,11 +66,16 @@ def audit(target):
     for path in (SELF, CONTRACT):
         changes = git("log", "--format=%H", BASE + ".." + target,
                       "--", path).splitlines()
-        if len(changes) != 1 or (
+        expected = 2 if path == SELF else 1
+        if len(changes) != expected or (
             git("rev-parse", changes[0] + ":" + path)
             != git("rev-parse", target + ":" + path)
         ):
-            raise RuntimeError("Nested observer changed after reviewed addition")
+            raise RuntimeError("Nested observer changed outside reviewed revisions")
+        if path == SELF and (
+            git("rev-parse", changes[-1] + ":" + SELF) != INITIAL_SELF_BLOB
+        ):
+            raise RuntimeError("Initial nested observer source changed")
 
 
 def inventory(binary, target):
@@ -120,7 +126,9 @@ def trim_log(path):
 
 
 def stop_owned(proc):
-    if proc is None:
+    if proc is None or proc.poll() is not None:
+        # Do not signal a numeric process group after its owner exited:
+        # Linux could reuse that group ID for an unrelated application.
         return
     try:
         os.killpg(proc.pid, signal.SIGTERM)

@@ -217,6 +217,11 @@ def main():
     if sys.argv[1:] != ["--nested-child"]:
         stop("explicit_parent_coordinator_only")
     os.umask(0o077)
+    # A bounded parent termination must enter our owned-process finally path.
+    # Never signal process groups whose owned leader has already exited.
+    signal.signal(signal.SIGTERM,
+                  lambda _signum, _frame: (_ for _ in ()).throw(
+                      RuntimeError("owned_child_stop_requested")))
     state_text = os.environ.get("WULL_PRIVATE_POINTER_ROOT", "")
     if not state_text or not Path(state_text).is_absolute():
         stop("private_state_root_missing")

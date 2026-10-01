@@ -73,7 +73,16 @@ for token in RoundCorner fakeScreenRounding showFakeRounding roundingSize; do
     ! grep -Fq "$token" "$screen_corners" || fail "ScreenCorners restored visual corner geometry: $token"
 done
 grep -Fq 'GlobalStates.toggleSidebarLeft' "$screen_corners" || fail 'ScreenCorners lost sidebar interaction'
-grep -Fq 'GlobalStates.openOrbit(' "$screen_corners" || fail 'ScreenCorners lost Orbit interaction'
+# Orbit is retired. Niri's compositor-owned overview hot corner must still
+# take precedence over shell corner actions, without reviving Orbit routing.
+for token in \
+    'readonly property bool niriOverviewOwnsCorner: CompositorService.isNiri' \
+    'NiriService.isOverviewHotCornerActive(outputName, cornerName)'; do
+    grep -Fq "$token" "$screen_corners" \
+        || fail "ScreenCorners lost compositor-owned overview priority: $token"
+done
+! grep -Fq 'GlobalStates.openOrbit(' "$screen_corners" \
+    || fail 'ScreenCorners restored retired Orbit interaction'
 
 grep -Fq 'ConnectedSurfaceFrame {' "$waffle" || fail 'Waffle lost shared non-iRiS frame'
 grep -Fq 'connectorVisible: false' "$waffle" || fail 'Waffle connector painter must stay disabled'

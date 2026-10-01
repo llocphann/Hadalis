@@ -1773,3 +1773,125 @@ production input change.
   feasibility or
   nominal transform
   arithmetic alone.
+
+
+## Checkpoint — 2026-10-02 private inert geometry/motion receipt staged; await real local execution
+
+- Newly added explicit
+  `scripts/wull-motion-inert-publish.py`
+  commit
+  `d28f85553cec359aca1c66399b636eaae07813bd`
+  runs both reviewed
+  STATIC four-cubic and
+  NOMINAL motion/scale
+  independent Python
+  inert tests and
+  their source-only
+  model summaries
+  ONLY in a clean
+  user-private scratch
+  clone of remote
+  `dev`. It exact
+  Git-blob pins all
+  four original
+  production
+  body/bridge/
+  wrapper/host
+  QML sources
+  and both reviewed
+  model/test programs,
+  enforces repository
+  origin, no untracked
+  paths and safe
+  single-file
+  non-force Git
+  publication. An
+  updated current
+  remote source is
+  reaudited before
+  test and publication;
+  concurrency retries
+  may rebase ONLY
+  the newly created
+  sanitized RECEIPT
+  commit inside
+  the private
+  temporary clone,
+  not the user's
+  original checkout.
+  No Niri, Quickshell,
+  Rust, pointer input,
+  real production
+  Region or host
+  config changed.
+  The new
+  `scripts/test-wull-motion-inert-publish-contract.py`
+  commit
+  `f7bf4d6eebbcd43344503f7cbaf717a4e64e9c66`
+  adds independent
+  inert pins, schema
+  negative cases,
+  redaction and
+  safe private-push
+  contract checks.
+  Full technical
+  handoff checkpoint
+  `docs/WULL_NESTED_POINTER_ACCEPTANCE_DESIGN.md`
+  commit
+  `f19bdcdeabf8ee0e2adf269a7c207ad75ba12594`.
+- **NEXT LOCAL GATE**:
+  one new mode-0700
+  fresh private dev
+  clone and SINGLE
+  opt-in
+  `python3 scripts/wull-motion-inert-publish.py
+  --acknowledge-inert-motion-receipt`
+  after the additional
+  inert publisher
+  safety contract
+  passes. It
+  internally runs
+  both standalone
+  geometry and
+  nominal motion
+  test programs
+  and emits exactly
+  one new redacted
+  `docs/wull-motion-inert-*.json`
+  receipt only if
+  BOTH succeed.
+  READ THE EXACT
+  published report
+  before declaring
+  local source
+  arithmetic PASS.
+  No actual live
+  mouse/hover, Qt
+  transform
+  composition,
+  sprite animation,
+  popup, multioutput
+  or canonical-wide
+  acceptance may be
+  claimed from this
+  pure source-based
+  result. Even if
+  both inert tests
+  pass, do not
+  select a final
+  production mask
+  before independently
+  assessing accessible
+  animated core vs
+  decorative halo,
+  real Quickshell
+  version and
+  dynamic
+  mapToItem/Region
+  pointer behavior,
+  four edges,
+  scales .65/1/1.5,
+  fractional/multioutput,
+  lifecycle and
+  rare old TOP/LEFT
+  pointer drift.

@@ -51,6 +51,12 @@ def namespaced(layers, name):
             and x.get("namespace") == name]
 
 
+def no_keyboard_focus(items):
+    return bool(items) and all(
+        str(item.get("keyboard_interactivity", "")).lower()
+        in ("none", "wlrkeyboardfocus.none") for item in items)
+
+
 def verify_isolation(niri):
     env = os.environ
     runtime = Path(env.get("XDG_RUNTIME_DIR", "")).resolve()
@@ -295,7 +301,10 @@ def main():
             return (underlay_proc.poll() is None
                     and bool(markers(underlay_log, "WULL_POINTER_UNDERLAY_QML_READY"))
                     and len(namespaced(niri_json(niri, "layers"),
-                                       "hadalis:wull-pointer-underlay")) == 1)
+                                       "hadalis:wull-pointer-underlay")) == 1
+                    and no_keyboard_focus(namespaced(
+                        niri_json(niri, "layers"),
+                        "hadalis:wull-pointer-underlay")))
         if not wait_for(underlay_ready, 15):
             report["reason"] = "underlay_layer_or_qml_unavailable"
             return
@@ -308,6 +317,8 @@ def main():
                     or os.environ.get("NIRI_SOCKET")
                     == os.environ.get("WULL_PARENT_NIRI_SOCKET")
                     or not Path(os.environ["NIRI_SOCKET"]).is_socket()
+                    or not (Path(os.environ["XDG_RUNTIME_DIR"])
+                            / os.environ["WAYLAND_DISPLAY"]).is_socket()
                     or output not in verify_live):
                 stop("nested_identity_lost_before_injection")
             env = dict(root_env)
@@ -354,6 +365,9 @@ def main():
                         and bool(markers(log, "WULL_PRODUCTION_FIXTURE_READY"))
                         and len(namespaced(niri_json(niri, "layers"),
                                            "hadalis:abyss-perimeter")) == 1
+                        and no_keyboard_focus(namespaced(
+                            niri_json(niri, "layers"),
+                            "hadalis:abyss-perimeter"))
                         and len(private_pids(binary)) == (1 if enabled else 0))
             if not wait_for(ready, 20):
                 stop(label + "_actual_production_not_ready")

@@ -32,6 +32,8 @@ private with a specific directive/checkpoint/diagnosis reason. A resumed turn
 receives correction context without replaying the consumed response or jobs.
 Monitor recovery can guard the inspected status, command sequence and response
 identity atomically so a newer owner Stop/Pause wins.
+The same guard can request a fresh session after a confirmed automatic pause,
+retaining the consumed response and refusing a second request after dispatch.
 An immutable result owned by another profile rejects WAIT_RESULT as a protocol
 conflict instead of retrying it as a transport outage. The referenced job and
 final response remain private evidence; neither its result nor evidence IDs are

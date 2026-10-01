@@ -63,6 +63,33 @@ def main():
             daemon.tick(108)
             assert store.read_snapshot()[1]["profiles"][pid]["recovery"] is None
     with environment():
+        pid=profile("Fresh connector session");t=Transport()
+        with patch.object(daemon,"native_command",side_effect=t):
+            daemon.tick(100);original=t.pending(pid).copy()
+            t.reply(pid,"HADALIS_LOOP:CONNECTOR_BLOCKED GITHUB")
+            daemon.tick(102)
+            item=store.read_snapshot()[1]["profiles"][pid]
+            guard={k:item[k] for k in ["status","command_seq","response_message_id"]}
+            receipt=store.state_dir()/"responses"/pid/(original["user_message_id"]+".json")
+            retained=receipt.read_bytes()
+            control.profile_action("restart",pid,expected_recovery=guard)
+            daemon.tick(104);new=t.pending(pid).copy()
+            assert new["conversation_id"]!=original["conversation_id"]
+            assert new["user_message_id"]!=original["user_message_id"]
+            assert t.count("submit")==2 and receipt.read_bytes()==retained
+            try:control.profile_action("restart",pid,expected_recovery=guard)
+            except ValueError as exc:assert "changed after recovery inspection" in str(exc)
+            else:raise AssertionError("recovery guard reused against pending turn")
+            daemon.tick(106);assert t.count("submit")==2
+            t.reply(pid,"HADALIS_LOOP:CONNECTOR_BLOCKED GITHUB");daemon.tick(108)
+            guard={k:store.read_snapshot()[1]["profiles"][pid][k] for k in guard}
+            for action in ("stop","pause"):
+                control.profile_action(action,pid)
+                try:control.profile_action("restart",pid,expected_recovery=guard)
+                except ValueError as exc:assert "changed after recovery inspection" in str(exc)
+                else:raise AssertionError("stale fresh-session recovery overrode owner control")
+            assert receipt.read_bytes()==retained
+    with environment():
         good=profile("Good");bad=profile("Malformed");t=Transport()
         original=store.read_snapshot()[0]
         for p in original["profiles"]:

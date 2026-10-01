@@ -173,7 +173,7 @@ def profile_action(action: str, profile_id: str, *, expected_recovery: dict | No
         if expected_recovery is not None:
             # A monitor may recover an inspected automatic pause once. A newer
             # owner Stop/Pause or different response must win inside this lock.
-            if action != "resume" or not isinstance(expected_recovery, dict) or set(expected_recovery) != {"status","command_seq","response_message_id"} or expected_recovery["status"] not in {"evidence_required","connector_blocked"}:
+            if action not in {"resume", "restart"} or not isinstance(expected_recovery, dict) or set(expected_recovery) != {"status","command_seq","response_message_id"} or expected_recovery["status"] not in {"evidence_required","connector_blocked"}:
                 raise ValueError("invalid recovery guard")
             if item["pending"] or item["job_id"] or item["desired"] != "paused" or any(item[k] != v for k,v in expected_recovery.items()):
                 raise ValueError("profile changed after recovery inspection")

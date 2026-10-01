@@ -5,4 +5,5 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 bash scripts/test-megaqml-quickshell-smoke.sh ui-shared
 bash scripts/test-megaqml-quickshell-smoke.sh ui-preflight-timeout
-echo 'PASS isolated MegaQML real shared buttons, replay rejection and preflight timeout'
+bash scripts/test-megaqml-quickshell-smoke.sh ui-preflight-release
+echo 'PASS isolated MegaQML real buttons, replay rejection, preflight timeout and release cancellation'

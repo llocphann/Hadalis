@@ -233,6 +233,32 @@ def launch(folder, qs, dbus, shell, env):
     return proc, log
 
 
+def pointer_commands(actor, kind, point):
+    """Pure command planner; the caller verifies the nested socket EACH step.
+
+    wlrctl has relative motion only. A bounded far-negative movement is a
+    candidate origin reset for a ONE-output private nested compositor,
+    not geometry proof; real underlay and Rust controls decide acceptance.
+    """
+    x, y = point
+    if (not isinstance(x, int) or not isinstance(y, int)
+            or x < 0 or y < 0 or x >= 8192 or y >= 8192):
+        stop("unsafe_pointer_target")
+    if kind == "wdotool":
+        return [
+            [actor, "--backend", "wlr-protocols", "mousemove",
+             str(x), str(y)],
+            [actor, "--backend", "wlr-protocols", "click", "1"]
+        ]
+    if kind == "wlrctl":
+        return [
+            [actor, "pointer", "move", "-8192", "-8192"],
+            [actor, "pointer", "move", str(x), str(y)],
+            [actor, "pointer", "click", "left"]
+        ]
+    stop("unreviewed_pointer_backend")
+
+
 def main():
     if sys.argv[1:] != ["--nested-child"]:
         stop("explicit_parent_coordinator_only")
@@ -252,7 +278,13 @@ def main():
     qs = shutil.which("qs") or shutil.which("quickshell")
     dbus = shutil.which("dbus-run-session")
     cargo = shutil.which("cargo")
-    actor = shutil.which("wdotool")
+    # Prefer deterministic absolute wdotool. If it is unavailable,
+    # wlrctl is a strictly native-protocol, *relative-only* candidate.
+    # Its actual target MUST be independently corroborated by controls.
+    wdotool = shutil.which("wdotool")
+    wlrctl = shutil.which("wlrctl")
+    actor = wdotool or wlrctl
+    actor_kind = "wdotool" if wdotool else "wlrctl" if wlrctl else None
     if not all((niri, qs, dbus, cargo)):
         stop("required_nested_test_dependency_unavailable")
     output, width, height = verify_isolation(niri)
@@ -263,7 +295,10 @@ def main():
               "nested_verified": True, "underlay_unmapped": False,
               "production_unmapped": False, "private_daemon_stopped": False,
               "real_rust_binary_built": False,
-              "injection_backend": "forced_wlr_protocols_if_available",
+              "injection_backend": (
+                  "forced_wlr_protocols_wdotool" if actor_kind == "wdotool"
+                  else "native_relative_wlrctl_unverified" if actor_kind == "wlrctl"
+                  else "not_available"),
               "whole_host_mask_changed": False}
     final = folder / "pointer-child.private-summary.json"
     underlay_proc = disabled_proc = enabled_proc = None
@@ -273,11 +308,14 @@ def main():
     trace = folder / "real-relay.private.jsonl"
     try:
         if not actor:
-            report["reason"] = "native_wdotool_missing"
+            report["reason"] = "native_pointer_cli_missing"
             return
         check = run([actor, "--help"], timeout=3)
-        if check.returncode or b"backend" not in (check.stdout + check.stderr).lower():
-            report["reason"] = "native_wdotool_backend_override_unverified"
+        help_text = (check.stdout + check.stderr).lower()
+        if check.returncode or (
+                actor_kind == "wdotool" and b"backend" not in help_text) or (
+                actor_kind == "wlrctl" and b"pointer" not in help_text):
+            report["reason"] = "native_pointer_cli_contract_unverified"
             return
         private_relay.write_bytes((ROOT / RELAY).read_bytes())
         private_relay.chmod(0o700)
@@ -309,30 +347,27 @@ def main():
             report["reason"] = "underlay_layer_or_qml_unavailable"
             return
 
-        # Verify identity again immediately before every native input event.
+        # NEVER inject on the inherited real host compositor. The child
+        # observes the reviewed private compositor again before EACH action.
         def inject(point):
-            verify_live = niri_json(niri, "outputs")
-            if (os.environ.get("WAYLAND_DISPLAY")
-                    == os.environ.get("WULL_PARENT_WAYLAND_DISPLAY")
-                    or os.environ.get("NIRI_SOCKET")
-                    == os.environ.get("WULL_PARENT_NIRI_SOCKET")
-                    or not Path(os.environ["NIRI_SOCKET"]).is_socket()
-                    or not (Path(os.environ["XDG_RUNTIME_DIR"])
-                            / os.environ["WAYLAND_DISPLAY"]).is_socket()
-                    or output not in verify_live):
-                stop("nested_identity_lost_before_injection")
             env = dict(root_env)
             env["XDG_CURRENT_DESKTOP"] = "niri"
-            move = run([actor, "--backend", "wlr-protocols", "mousemove",
-                        str(point[0]), str(point[1])], env, 6)
-            if move.returncode:
-                stop("native_virtual_pointer_move_unavailable")
-            time.sleep(.25)
-            click = run([actor, "--backend", "wlr-protocols", "click", "1"],
-                        env, 6)
-            if click.returncode:
-                stop("native_virtual_pointer_click_unavailable")
-            time.sleep(.65)
+            commands = pointer_commands(actor, actor_kind, point)
+            for index, command in enumerate(commands):
+                verify_live = niri_json(niri, "outputs")
+                if (os.environ.get("WAYLAND_DISPLAY")
+                        == os.environ.get("WULL_PARENT_WAYLAND_DISPLAY")
+                        or os.environ.get("NIRI_SOCKET")
+                        == os.environ.get("WULL_PARENT_NIRI_SOCKET")
+                        or not Path(os.environ["NIRI_SOCKET"]).is_socket()
+                        or not (Path(os.environ["XDG_RUNTIME_DIR"])
+                                / os.environ["WAYLAND_DISPLAY"]).is_socket()
+                        or output not in verify_live):
+                    stop("nested_identity_lost_before_injection")
+                result = run(command, env, 6)
+                if result.returncode:
+                    stop("native_virtual_pointer_command_unavailable")
+                time.sleep(.25 if index < len(commands) - 1 else .65)
 
         def underlay_count():
             return len(markers(underlay_log, "WULL_POINTER_UNDERLAY_PRESS "))

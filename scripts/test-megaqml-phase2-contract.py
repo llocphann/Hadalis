@@ -50,4 +50,7 @@ assert 'PATH:dir' in boundary and 'shell:false' in boundary
 assert 'operation:"detect"' in boundary and 'auth_begin' not in boundary
 assert 'cargo build --locked --offline --manifest-path native/Cargo.toml -p inir-mega' in runner
 assert 'qml_minimal' in runner and 'qml_modern_syntax' in runner and 'qml_blocker=' in runner
+assert '/usr/lib/qt6/bin/qmlformat qmlformat6 qmlformat' in runner
+assert 'qt_formatter_selection=' in runner and 'version_major_minor=' in runner
+assert 'modern_probe_pass' in runner and 'fallback_probe_unqualified' in runner
 print("PASS MegaQML Phase 2a static source contract")

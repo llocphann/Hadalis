@@ -50,23 +50,48 @@ fi
 # qmlformat writes to stdout by default; never pass -i/-F.
 # Only compare new QML after qmlformat parses both trivial Qt and existing repo QML.
 # Otherwise newer files are UNQUALIFIED, not mislabeled as broken.
-if command -v qmlformat >/dev/null 2>&1; then
-  printf 'import QtQuick\nItem {}\n' > "$scratch/qt-minimal.qml"
-  run_test qml_minimal qmlformat "$scratch/qt-minimal.qml"
-  # Non-executing capability probe for the modern QML dialect used by Hadalis.
-  printf 'pragma ComponentBehavior: Bound\nimport QtQuick\nItem { function eligible(value: string): bool { return (value ?? "").length > 0 } }\n' > "$scratch/qt-modern.qml"
-  run_test qml_modern_syntax qmlformat "$scratch/qt-modern.qml"
+# Prefer an available Qt formatter that actually parses the modern Hadalis
+# dialect. Some systems keep a legacy qmlformat first in PATH while Qt 6 is
+# installed in a separate executable location. No tool is run on the shell UI.
+printf 'import QtQuick\nItem {}\n' > "$scratch/qt-minimal.qml"
+printf 'pragma ComponentBehavior: Bound\nimport QtQuick\nItem { function eligible(value: string): bool { return (value ?? "").length > 0 } }\n' > "$scratch/qt-modern.qml"
+qt_formatter=""
+qt_first=""
+qt_formatter_selection="unavailable"
+for candidate in /usr/lib/qt6/bin/qmlformat qmlformat6 qmlformat; do
+  if ! command -v "$candidate" >/dev/null 2>&1; then continue; fi
+  if [[ -z "$qt_first" ]]; then qt_first="$candidate"; fi
+  if "$candidate" "$scratch/qt-minimal.qml" > "$scratch/qt-probe-minimal.raw" 2>&1 \
+      && "$candidate" "$scratch/qt-modern.qml" > "$scratch/qt-probe-modern.raw" 2>&1; then
+    qt_formatter="$candidate"
+    qt_formatter_selection="modern_probe_pass"
+    break
+  fi
+done
+if [[ -z "$qt_formatter" && -n "$qt_first" ]]; then
+  qt_formatter="$qt_first"
+  qt_formatter_selection="fallback_probe_unqualified"
+fi
+qt_public_version="unknown"
+if [[ -n "$qt_formatter" ]]; then
+  version_line="$("$qt_formatter" -v 2>&1 || true)"
+  version_line="${version_line:0:256}"
+  if [[ "$version_line" =~ ([0-9]+)\.([0-9]+)(\.[0-9]+)? ]]; then
+    qt_public_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+  fi
+  run_test qml_minimal "$qt_formatter" "$scratch/qt-minimal.qml"
+  run_test qml_modern_syntax "$qt_formatter" "$scratch/qt-modern.qml"
   if grep -q '^qml_minimal,PASS,' "$scratch/safe.csv"; then
-    run_test qml_baseline qmlformat modules/settings/OverviewConfig.qml
+    run_test qml_baseline "$qt_formatter" modules/settings/OverviewConfig.qml
     if grep -q '^qml_baseline,PASS,' "$scratch/safe.csv"; then
-      run_test qml_service qmlformat services/deferred/CloudStorageService.qml
-      run_test qml_page qmlformat modules/settings/CloudStorageConfig.qml
+      run_test qml_service "$qt_formatter" services/deferred/CloudStorageService.qml
+      run_test qml_page "$qt_formatter" modules/settings/CloudStorageConfig.qml
       # Independent Waffle Settings has its own QML baseline and standalone page.
-      run_test qml_waffle_baseline qmlformat modules/waffle/settings/pages/WEffectsPage.qml
+      run_test qml_waffle_baseline "$qt_formatter" modules/waffle/settings/pages/WEffectsPage.qml
       if grep -q '^qml_waffle_baseline,PASS,' "$scratch/safe.csv"; then
-        run_test qml_waffle_page qmlformat modules/waffle/settings/pages/WCloudStoragePage.qml
-        run_test qml_waffle_entry qmlformat waffleSettings.qml
-        run_test qml_waffle_content qmlformat modules/waffle/settings/WSettingsContent.qml
+        run_test qml_waffle_page "$qt_formatter" modules/waffle/settings/pages/WCloudStoragePage.qml
+        run_test qml_waffle_entry "$qt_formatter" waffleSettings.qml
+        run_test qml_waffle_content "$qt_formatter" modules/waffle/settings/WSettingsContent.qml
       else
         for case_name in qml_waffle_page qml_waffle_entry qml_waffle_content; do
           printf '%s,SKIP,127,%s\n' "$case_name" "$source_sha" >> "$scratch/safe.csv"
@@ -99,6 +124,7 @@ mkdir -p docs/evidence/megaqml
 {
   printf '# MegaQML Phase 2a synthetic local evidence\n\nSource SHA: `%s`\n\n' "$source_sha"
   printf 'Scope: static source contracts, synthetic parser cases and optional QML syntax parsing; no QML runtime or vendor/account execution. No vendor process, account, QML rendering or live acceptance.\n\n'
+  printf 'qt_formatter_selection=%s;version_major_minor=%s\n\n' "$qt_formatter_selection" "$qt_public_version"
   printf '| Test | Result | Exit code | Source SHA |\n|---|---|---:|---|\n'
   while IFS=, read -r name state code sha; do
     printf '| %s | %s | %s | %s |\n' "$name" "$state" "$code" "$sha"

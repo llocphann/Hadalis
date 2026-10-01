@@ -47,6 +47,9 @@ Scope {
 
     CompanionBridge {
         id: companionBridge
+        // Guard the development binary override as well as the dispatcher.
+        // An inherited INIR_COMPANIOND must not bypass default-off.
+        binaryPath: root.companionEnabled ? (Quickshell.env("INIR_COMPANIOND") ?? "") : ""
         useNativeDispatcher: root.companionEnabled
     }
     // Match the mature ScreenCorners keyboard lease: hover previews may exist on

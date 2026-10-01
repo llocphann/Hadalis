@@ -24,6 +24,10 @@ for marker in (
 perimeter = (ROOT / "modules/abyss/AbyssPerimeter.qml").read_text()
 assert perimeter.count("CompanionBridge {") == 1
 assert perimeter.count("AbyssCompanion {") == 1
+# Inherited development override must not start a disabled production Wull.
+production_bridge = perimeter.split("CompanionBridge {", 1)[1].split("}", 1)[0]
+assert 'binaryPath: root.companionEnabled ? (Quickshell.env("INIR_COMPANIOND") ?? "") : ""' in production_bridge
+assert "useNativeDispatcher: root.companionEnabled" in production_bridge
 for marker in (
     "useNativeDispatcher: root.companionEnabled",
     "root.companionTargetOutput === window.outputName",

@@ -39,6 +39,9 @@ for marker in (
     'git("rebase", "--onto", remote, parent)',
     '"production_mask_changed": False',
     '"raw_coordinates_screenshots_logs": "private_local_only"',
+    '"native_pointer_backend": (',
+    'observations.get("injection_backend", "unavailable_or_unverified")',
+
 ):
     assert marker in parent_text, marker
 for marker in (

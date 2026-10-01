@@ -23,6 +23,12 @@ assert 'root.dependencySnapshot = null' in s
 assert s.index('readDeadline.restart()') < s.index('readProc.running = true')
 assert 'root._pendingId' in s
 assert 'root._pendingGeneration === root.generation' in s
+assert 'property bool startObserved: false' in s
+assert 'readProc.startObserved = true' in s
+assert 'readProc.startObserved = false' in s
+assert 'readProc.signal(9)' in s
+assert 'root._pendingInput = ""' in s
+assert 'Never admit another request before the timed-out child is reaped.' in s
 assert 'readonly property bool connected: false' in s
 assert 'readonly property bool liveAuthQualified: false' in s
 for forbidden in ('"auth_begin"', 'password:', 'secret:', 'mega-login email', 'mutationProc'):

@@ -55,6 +55,7 @@ Singleton {
         root._pendingInput = JSON.stringify({
             protocol: 1, request_id: root._pendingId, operation: "detect", params: {}
         }) + "\n"
+        readProc.startObserved = false
         readProc.stdinEnabled = true
         // Start the deadline BEFORE spawning; missing executables must not hang the UI.
         readDeadline.restart()
@@ -90,16 +91,24 @@ Singleton {
 
     Process {
         id: readProc
+        property bool startObserved: false
         command: [Quickshell.shellPath("scripts/native-dispatch"), "mega", "request"]
         stdout: StdioCollector { id: replyCollector }
         stderr: StdioCollector {} // Never expose raw stderr.
         onStarted: {
+            readProc.startObserved = true
+            // A helper that starts after its deadline must never receive a new request.
+            if (!root.readBusy || root._pendingInput.length === 0) {
+                readProc.signal(9)
+                return
+            }
             readProc.write(root._pendingInput)
             root._pendingInput = ""
             readProc.stdinEnabled = false
         }
         onExited: (exitCode, exitStatus) => {
             readDeadline.stop()
+            readProc.startObserved = false
             root.finishRead(exitCode, replyCollector.text)
         }
     }
@@ -110,12 +119,20 @@ Singleton {
         repeat: false
         onTriggered: {
             root.generation++
-            root.readBusy = false
             root.backendState = "unavailable"
             root.dependencySnapshot = null
             root.safeError = "Static dependency check timed out."
-            // This request is static-only: stopping it cannot cancel a vendor mutation.
-            readProc.running = false
+            root._pendingInput = ""
+            if (readProc.startObserved) {
+                // Never admit another request before the timed-out child is reaped.
+                // Only the static, no-vendor Rust helper may be terminated here.
+                readProc.signal(9)
+            } else {
+                // The executable never reported startup: no exited() is guaranteed.
+                readProc.running = false
+                root.readBusy = false
+                root.refreshPending = false
+            }
         }
     }
 }

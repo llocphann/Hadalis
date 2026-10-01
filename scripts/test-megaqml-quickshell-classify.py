@@ -20,6 +20,11 @@ raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
 # Shared-page lifecycle labels are emitted only by the reviewed isolated
 # fixture. Never publish raw Qt errors, temporary paths or private data.
 host_stages = (
+    # Specific preflight stages must precede the generic PREFLIGHT prefix.
+    ("preflight_button", "host_preflight_button"),
+    ("preflight_result", "host_preflight_result"),
+    ("preflight_revisit", "host_preflight_revisit"),
+    ("preflight_reopen", "host_preflight_reopen"),
     ("preflight", "host_preflight"),
     ("host_load", "host_load"),
     ("host_create", "host_create"),

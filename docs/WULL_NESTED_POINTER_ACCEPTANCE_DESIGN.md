@@ -1141,3 +1141,131 @@ hotplug/fractional scaling,
 suspend/reload/lifecycle and
 canonical wide validation must
 remain separately unqualified.
+
+
+## Existing left margin drift classified; guarded before-body differential now staged
+
+The old single-output LEFT edge source-pinned A/B receipt remains
+`docs/wull-mask-left-20261001T175020Z-5a11aa42-5b72e0e3294c.json`
+(`5b72e0e3294c32276c306b3c6911fd9fa4e79fb1`),
+**INCONCLUSIVE** only at final empty-host-margin coordinate witness;
+the first seven real controls and complete owned cleanup passed.
+The actual old-log categorical report has NOW been independently
+published as
+`docs/wull-pointer-left-margin-drift-20261001T175020Z-5a11aa42-5b72e0e3294c.json`.
+It confirms five prior private left-button underlay witnesses
+with source-pinned geometry relationships and a final margin event
+offset `ninety_six_or_more` pixels in maximum relative axis,
+`relative_axes=both`, horizontal `positive`, vertical
+`negative`. The final point was near neither the earlier
+actual disabled-body-center underlay event nor the candidate
+exterior underlay event. This was read-only private-log analysis
+and does NOT explain the underlying input-device/compositor/QML
+cause. The old real top dynamic A/B also had a distinct transient
+off-target event; top, bottom and right have separately verified
+later private size=1 single-output real PASS trials. Do not
+interpret a single off-target underlay coordinate as a
+LEFT candidate mask defect, nor treat later successes as
+a reliability cure.
+
+**NEW source-only bounded LEFT differential gate:** child
+`scripts/wull-manual-pointer-child.py` commit
+`3e9f843906edf1654ef3b150bad9de2413e61826`
+adds exactly ONE extra left-only
+`candidate_left_margin_before_body_control`
+between the already-matched candidate exterior witness
+and the existing candidate real-body click. It injects
+the SAME pinned left empty-host-margin point as the
+original final after-body candidate margin witness.
+Both underlay coordinates must align independently
+(unchanged original 6-pixel tolerance), and no private
+body bridge or Rust response may accompany a
+margin control. Its pure
+`left_pre_body_margin_decision()`
+returns INCONCLUSIVE on ANY non-matched coordinate
+or missing/ambiguous underlay event; returns FAILED
+on a matched margin event that unexpectedly
+activates the real Wull body/Rust; accepts PASS
+only on an actual matched underlay left-button
+event with zero accidental activation. A non-PASS
+stops immediately, without a hidden retry.
+
+If this pre-body margin witness PASSes, the child then
+performs its **original unchanged adjacent**
+`candidate_body_real_bridge_and_rust` and final
+`candidate_empty_margin_pass_through` steps;
+it does NOT insert a new intervening exterior
+action or change backend, target coordinates,
+mouse sleeps, retry policy, tolerance or mask source.
+Thus, if pre-body margin aligns but the last
+direct body→margin event again misses, the
+new receipt will isolate the discrepancy to
+a later phase following actual Wull interaction,
+without asserting its root cause. If pre-body
+margin itself misses despite a matched
+candidate exterior control, the discrepancy
+is already observable in the earlier
+exterior→margin transition, before touching
+the candidate body. If ALL checks PASS,
+this is one fresh independently observed
+left-only single-output private BBOX capability
+result, not proof the two historical transient
+drifts are permanently fixed.
+
+The runner retains explicit
+`--acknowledge-nested-pointer-candidate-left`;
+all other mode behavior (original production
+and top/bottom/right) is unchanged. Parent
+`scripts/wull-manual-nested-pointer.py`
+commit `9c36779c39d08cdc95c9882fe79973c02b8622e6`
+pins the exact revised child source blob
+`8dd65a0d10d5a8d1475be0939dbb78a0f977dd35`
+and increments its strict reviewed
+self-history count from 14 to 15;
+it still publishes under a unique
+`docs/wull-mask-left-*.json` name,
+without exporting actual screen coordinates.
+The original inert pointer contract
+`scripts/test-wull-nested-pointer-contract.py`
+(commit `c1f274ecc8fe44ec663cdd7a3984dbc81db4ef85`)
+now tests the differential decision
+for aligned, missing, off-target,
+ambiguous and unexpected-activation cases,
+including invalid-input rejection.
+The original all-private mask contract
+`scripts/test-wull-private-mask-candidate-contract.py`
+(commit `ddf0f55afbd28ea3dab93986ab3a27952a11c5c5`)
+re-pins the changed child and requires
+the new LEFT-only witness source marker.
+No production QML/Rust, source-measured
+four-edge target code, body shape or
+current private rectangle generator
+changed. These tests are source-staged
+and their local PASS has not yet been
+observed at this checkpoint.
+
+**NEXT independent local gate:** use a NEW
+permission-private temporary clean
+`dev` clone, run the same four inert
+Wull pointer tests first, then execute
+ONLY one explicit left real nested
+Niri A/B trial using the same left opt-in.
+Allow the coordinator to publish the
+unique left result regardless of outcome.
+Inspect the intermediate pre-body witness,
+original final direct body→margin witness,
+real bridge/Rust, forced native wdotool
+backend, geometric isolation and full
+owned cleanup before deciding further
+work. If another off-target event occurs,
+stop with INCONCLUSIVE and investigate
+the *phase* indicated by the new witness,
+not a speculative mask defect or blind
+wdotool timing change. Do NOT automatically
+promote to production after one bounded
+four-edge private PASS. Exact curved
+shape input Region, hover/popup,
+visuals, multioutput/fractional scale,
+hotplug/suspend/reload/lifecycle,
+reproducibility and canonical-wide
+validation remain separate.

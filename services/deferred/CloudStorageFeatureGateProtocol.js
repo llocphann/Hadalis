@@ -5,7 +5,9 @@ function parseOfflineFeatureGatePreview(payload, requestId) {
     if (typeof payload !== "string" || !payload.length || payload.length > 65536
             || typeof requestId !== "string" || !requestId.length)
         throw new Error("invalid offline capability preview")
-    const envelope = JSON.parse(payload)
+    let envelope
+    try { envelope = JSON.parse(payload) }
+    catch { throw new Error("invalid offline capability preview") }
     if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)
             || envelope.protocol !== 1 || envelope.request_id !== requestId
             || envelope.ok !== true || envelope.error !== null)

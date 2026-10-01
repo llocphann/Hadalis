@@ -53,7 +53,7 @@ assert 'qml_minimal' in runner and 'qml_modern_syntax' in runner and 'qml_blocke
 assert '/usr/lib/qt6/bin/qmlformat qmlformat6 qmlformat' in runner
 assert 'qt_formatter_selection=' in runner and 'version_major_minor=' in runner
 assert 'modern_probe_pass' in runner and 'fallback_probe_unqualified' in runner
-assert 'docs/evidence/megaqml/phase2g-' in runner
+assert 'docs/evidence/megaqml/phase2h-' in runner
 quickshell_runner = get("scripts/test-megaqml-quickshell-smoke.sh")
 quickshell_base = get("scripts/megaqml-fixtures/runtime-baseline/shell.qml")
 quickshell_dormant = get("scripts/megaqml-fixtures/runtime-dormant/shell.qml")
@@ -91,7 +91,19 @@ assert 'service.unregisterConsumer()' in active_fixture
 assert 'MEGAQML_QS_ACTIVE_PRESENT_OK' in active_fixture
 assert 'MEGAQML_QS_ACTIVE_MISSING_OK' in active_fixture
 assert 'json.dumps(' in fake_dispatch and 'subprocess' not in fake_dispatch
-assert 'PASS MegaQML synthetic runtime dispatcher: 5 cases' in fake_contract
+assert 'PASS MegaQML synthetic runtime dispatcher: 7 cases' in fake_contract
+assert 'MEGAQML_QS_EXIT_FAILURE_OK' in active_fixture
+assert 'MEGAQML_QS_TIMEOUT_OK' in active_fixture
+assert 'Static dependency check timed out.' in active_fixture
+assert 'Rust helper failed before static detection completed.' in active_fixture
+assert 'PRIVATE_FAKE_STDERR_CANARY' in fake_dispatch
+assert 'time.monotonic()' in fake_dispatch
+for lifecycle_case in ("quickshell_exit_failure", "quickshell_deadline_reap"):
+    assert lifecycle_case in runner
+for lifecycle_kind in ("active-exit-failure", "active-hang"):
+    assert lifecycle_kind in quickshell_runner
+assert 'PRIVATE_FAKE_STDERR_CANARY' not in active_fixture
+assert 'export PATH="$work/allowed-bin"' in quickshell_runner
 assert 'MEGAQML_QS_REJECTED_OK' in active_fixture
 for invalid_case in ("wrong-id", "unsafe-secret", "malformed"):
     assert invalid_case in active_fixture and invalid_case in fake_dispatch
@@ -103,5 +115,5 @@ assert 'run_test megaqml_fake_dispatch_fixture' in runner
 assert 'quickshell_active_present' in runner and 'quickshell_active_missing' in runner
 assert 'export PATH="$work/allowed-bin"' in quickshell_runner
 assert 'cp -- scripts/megaqml-fixtures/fake-static-dispatch.py' in quickshell_runner
-assert 'docs/evidence/megaqml/phase2g-' in runner
-print("PASS MegaQML Phase 2g static source contract")
+assert 'docs/evidence/megaqml/phase2h-' in runner
+print("PASS MegaQML Phase 2h static source contract")

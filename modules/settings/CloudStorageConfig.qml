@@ -175,6 +175,41 @@ ContentPage {
         }
     }
     SettingsCardSection {
+        visible: root.activeSection === "overview"
+        expanded: true
+        icon: "verified_user"
+        title: Translation.tr("Connection readiness (offline)")
+        SettingsGroup {
+            SettingsNote {
+                text: Translation.tr("Manual local preflight only. No MEGAcmd server, account or network connection is started.")
+            }
+            StyledText {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: Appearance.colors.colOnSurface
+                text: CloudStorageService.preflightState === "checking"
+                    ? Translation.tr("Checking local connection prerequisites")
+                    : CloudStorageService.preflightState === "dependencies_ready"
+                    ? Translation.tr("Local executables found. Live connection remains disabled pending qualification.")
+                    : CloudStorageService.preflightState === "dependency_missing"
+                    ? Translation.tr("Local executables are missing; live connection remains disabled.")
+                    : CloudStorageService.preflightState === "unavailable"
+                    ? Translation.tr("Offline readiness could not be verified.")
+                    : Translation.tr("Run the offline check when you want to assess readiness.")
+            }
+            SettingsNote {
+                visible: CloudStorageService.preflightError.length > 0
+                warning: true
+                text: CloudStorageService.preflightError
+            }
+            RippleButton {
+                buttonText: Translation.tr("Check connection readiness (offline)")
+                enabled: root.leaseHeld && !CloudStorageService.preflightBusy
+                onClicked: CloudStorageService.requestConnectPreflight()
+            }
+        }
+    }
+    SettingsCardSection {
         visible: root.activeSection !== "overview"
         expanded: true
         icon: root.currentGroup.icon

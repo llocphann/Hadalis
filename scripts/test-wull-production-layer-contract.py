@@ -18,6 +18,7 @@ for marker in (
     'os.killpg(proc.pid, signal.SIGTERM)',
     '"native_input_passthrough_acceptance": "not_run"',
     '"canonical_validation": "not_run"',
+    "Private state directory must be outside the repo",
 ):
     assert marker in runner, marker
 assert 'AbyssPerimeter { }' in fixture

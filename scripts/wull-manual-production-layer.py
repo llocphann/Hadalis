@@ -68,10 +68,11 @@ def audit(target):
         raise RuntimeError("Reviewed production dependencies changed: "
                            + sorted(changed)[0])
     if SELF in modified:
-        additions = git("log", "--diff-filter=A", "--format=%H",
+        # Exactly one reviewed follow-up after the initial runner commit.
+        revisions = git("log", "--format=%H",
                         BASE + ".." + target, "--", SELF).splitlines()
-        if len(additions) != 1 or (
-            git("rev-parse", additions[0] + ":" + SELF)
+        if len(revisions) != 2 or (
+            git("rev-parse", revisions[0] + ":" + SELF)
             != git("rev-parse", target + ":" + SELF)
         ):
             raise RuntimeError("Unreviewed production-layer runner revision")
@@ -326,7 +327,8 @@ def main():
         raise RuntimeError("Requires a clean dev checkout")
     fetch_urls = git("remote", "get-url", "origin")
     push_urls = git("remote", "get-url", "--push", "--all", "origin").splitlines()
-    if fetch_urls not in SAFE_REMOTE or push_urls != [fetch_urls]:
+    if (fetch_urls not in SAFE_REMOTE or len(push_urls) != 1
+            or push_urls[0] not in SAFE_REMOTE):
         raise RuntimeError("Unexpected repository origin")
     remote = fetch()
     audit(remote)
@@ -339,6 +341,9 @@ def main():
     private = Path(os.environ.get("XDG_STATE_HOME",
                     str(Path.home() / ".local/state"))).resolve()
     private = private / "hadalis" / ("wull-production-layer-" + identifier)
+    root = Path(git("rev-parse", "--show-toplevel")).resolve()
+    if private == root or root in private.parents:
+        raise RuntimeError("Private state directory must be outside the repo")
     private.mkdir(mode=0o700, parents=True, exist_ok=False)
     print("EXACT_SOURCE_SHA:", source, flush=True)
     print("PRIVATE_LOG_DIRECTORY:", private, flush=True)

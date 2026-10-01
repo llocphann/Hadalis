@@ -76,7 +76,10 @@ def main() -> None:
     wkeys = re.findall(r'key: "([^"]+)"', waffle.split("property var pages: [", 1)[1].split(
         "property int currentPage:", 1
     )[0])
-    assert len(wkeys) == 19 and len(set(wkeys)) == 19, "Waffle page keys"
+    legacy_waffle_keys = ["quick","system","bar","wallpaper","themes","gowall","panels","modules","waffle-style","shortcuts","about","monitors","autostart","workspace-strip","mascot","ai","effects","shell-layout","power"]
+    assert wkeys[:19] == legacy_waffle_keys, "Waffle historical page indices must not shift"
+    assert wkeys[19:] == ["cloud-storage"], "Cloud Storage must be appended at index 19"
+    assert len(wkeys) == len(set(wkeys)), "Waffle page keys must be unique"
     wgroups = wcontent.split("readonly property var navigationGroups: [", 1)[1].split(
         "readonly property var navigationItems:", 1
     )[0]

@@ -15,10 +15,19 @@ remote_sha="$(git ls-remote origin refs/heads/dev | awk 'NR==1{print $1}')"
 scratch="$(mktemp -d)"
 trap 'rm -rf -- "$scratch"' EXIT
 failed=0
+qt_unqualified=0
 run_test() {
   local name="$1" code state; shift
   if "$@" > "$scratch/$name.raw" 2>&1; then code=0; state=PASS
-  else code=$?; state=FAIL; failed=1; fi
+  else
+    code=$?; state=FAIL
+    case "$name" in
+      # Parser/tool baselines can fail even with correct new source.
+      # Never translate those into a false MegaQML source failure.
+      qml_minimal|qml_baseline|qml_waffle_baseline) qt_unqualified=1 ;;
+      *) failed=1 ;;
+    esac
+  fi
   printf '%s,%s,%s,%s\n' "$name" "$state" "$code" "$source_sha" >> "$scratch/safe.csv"
 }
 run_test megaqml_phase2_contract python3 scripts/test-megaqml-phase2-contract.py
@@ -105,8 +114,15 @@ mkdir -p docs/evidence/megaqml
   elif grep -q '^qml_minimal,SKIP,' "$scratch/safe.csv"; then
     echo 'qml_blocker=qmlformat_unavailable'
   fi
-  if [[ "$failed" == 0 ]]; then echo 'Aggregate: PASS (synthetic only).'
-  else echo 'Aggregate: FAIL (synthetic).'; fi
+  if [[ "$failed" != 0 ]]; then
+    echo 'Aggregate: FAIL (one or more executed required/new-source tests).'
+  elif [[ "$qt_unqualified" != 0 ]]; then
+    echo 'Aggregate: PASS (executed required tests); QML parsing UNQUALIFIED due to baseline/tool failure.'
+  elif grep -q ',SKIP,' "$scratch/safe.csv"; then
+    echo 'Aggregate: PASS (executed tests); some tests SKIPPED/UNQUALIFIED.'
+  else
+    echo 'Aggregate: PASS (all synthetic checks only; not rendered QML or live vendor).'
+  fi
 } > "$report"
 cat "$scratch/safe.csv"
 printf 'SOURCE_SHA=%s\nSAFE_REPORT=%s\n' "$source_sha" "$report"

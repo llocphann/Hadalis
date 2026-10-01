@@ -1378,3 +1378,98 @@ envelopes and size/scale variants.
 Rectangle BBOX remains only the
 qualified private baseline, not an
 approved exact-curve mask.
+
+
+## Static source-pinned four-cubic silhouette band prototype — inert feasibility only
+
+Source-only research now stages the NO-INPUT, NO-QML-MASK
+pure Python `scripts/wull-silhouette-band-prototype.py`
+(commit `d9d5ab6d4b80fb1fbf22292c693a66e5464bded3`).
+It pins the exact actual `WaterDropletBody.qml` Git blob
+`fc5b1c227026786ab553685bc170daff74e82517`
+and models **only** the original authored static, 76x92
+four-cubic outer droplet outline. It samples each cubic
+at 400 subdivisions, intersects the static outline
+with each integer pixel scan row at three in-row sample
+heights, excludes an additional conservative 1.7px
+interior side margin, and coalesces consecutive
+rows with identical spans into small integer
+rectangles. Each strip is independently mapped
+to top, bottom (+180°), left (+90°) and
+right (−90°), retaining the previously reviewed
+centered 112x98 horizontal / 98x112 vertical
+Wull host footprint. Neither helper nor
+its companion inert test writes any QML,
+runs an input tool, launches a compositor,
+edits production or publishes raw cursor coordinates.
+
+An independent source-formula calculation indicates
+approximately 43 merged narrow static regions with
+3,006 conservatively interior logical pixels,
+compared with 6,992 body-BBOX logical pixels
+(roughly **43%** of that rectangle), for this exact
+pose and inset. This is a **model estimate**,
+NOT a run of the new Python contract on the
+maintainer host, an interaction-area ergonomic
+recommendation, a QML runtime budget benchmark,
+or physical compositor proof. The conservative
+interior omits tip/stroke and the animated
+pulse halo, demonstrating why replacing
+the tested BBOX with a tight static
+visual intersection could miss genuine
+visible user-target clicks. It cannot
+derive dynamic transform/halo coverage
+from a single shape frame.
+
+The new `scripts/test-wull-silhouette-band-prototype.py`
+(source commit `0ebb52dfbf724a9171f71ef26cd664b8ee7f33a8`,
+redaction assertion fix `d7465907230d047c0ff647da6b884000f121856a`)
+is STRICTLY INERT. It verifies the
+exact reviewed body source blob, pure
+cubic endpoints and closure,
+three-sample per-row geometry and
+positive inward margins, disjoint
+rectangles on ALL four rotations,
+host bounds, area preservation,
+invalid input rejection, a bounded
+per-edge region count, and an
+output summary with NO raw cursor
+positions or live approval. Local
+execution of this new contract is
+not yet observed.
+
+The official Quickshell Region API
+supports composition of nested
+rectangle/ellipse regions and
+`Region.item` geometry, but
+does not establish a portable
+arbitrary alpha/PathCubic region.
+A 43-region scanline representation
+is a FEASIBILITY PROTOTYPE only:
+possible QML Region creation and
+per-frame geometry update cost,
+actual Qt transform propagation,
+static-inset tip clicks, halo,
+motion deformation, hover across
+the curved boundary, tiny or
+fractionally scaled outputs,
+compositor-specific mask resolution
+and version compatibility are
+UNTESTED. Neither the static
+silhouette interior nor the
+previously proven static body BBOX
+can be promoted to production
+without first deciding the
+user-visible accessible target
+(including halo/squash/motion)
+and validating it across
+visual, actual nested Niri pointer,
+multioutput, scaling and lifecycle
+conditions. The tested source-shadow
+BBOX remains the existing
+single-output, scale=1 physical
+baseline. Historical transients
+remain open reliability evidence;
+the newly verified real LEFT
+differential PASS does not make
+every mouse event reliable.

@@ -14,6 +14,9 @@ import QtQuick.Layouts
 Button {
     id: root
     property bool toggled
+    // Optional outline for high-contrast selections; existing buttons stay unchanged.
+    property int selectionOutlineWidth: 0
+    property color selectionOutlineColor: "transparent"
     property string buttonText
     Accessible.name: root.buttonText.length > 0 ? root.buttonText : root.text
     property real buttonRadius: Appearance?.rounding?.small ?? 8
@@ -173,8 +176,8 @@ Button {
             id:waveLoader;anchors.fill:parent;active:root.waveFace
             sourceComponent:AbyssChoiceFace { fillColor:root.color }
         }
-        border.width: 0
-        border.color: "transparent"
+        border.width: root.selectionOutlineWidth
+        border.color: root.selectionOutlineColor
         Behavior on color {
             enabled: Appearance.animationsEnabled
             animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }

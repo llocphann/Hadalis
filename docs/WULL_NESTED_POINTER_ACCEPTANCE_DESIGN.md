@@ -189,3 +189,57 @@ A forced SIGTERM or timeout may terminate only its owned processes; no
 real shell settings are read or written. A PASS on a single top-edge nested
 output must not be interpreted as the other three edges, visual quality,
 whole-shell resources or permission to narrow the production input mask.
+
+
+## Missing wdotool: reviewed native-only wlrctl alternative
+
+The first opt-in pointer receipt
+`docs/wull-pointer-acceptance-20261001T155651Z-c552449b-304d6ab601b1.json`
+on source `304d6ab601b130c11756de2f4ac7059cdda5507b`
+is `INCONCLUSIVE` with `native_wdotool_missing_no_input_injected`.
+The parent refused to start the nested pointer trial, and its
+`observation` is null: **no physical input event was measured**.
+The previously accepted geometry, native/perimeter, and owned nested
+production host reports are unaffected.
+
+Reviewed alternative: the external `wlrctl` CLI directly uses the
+Wayland wlroots virtual-pointer protocol, without portal or uinput.
+It is **relative-motion only**, unlike `wdotool mousemove X Y`.
+The new fallback is accepted only when `wdotool` is absent and
+`wlrctl` is already available in `PATH`. On the verified private
+one-output nested socket the child issues a far-negative relative
+move as a **candidate** origin reset, then a target-relative move
+and native left click; it re-verifies the distinct nested Wayland
+and Niri endpoints before **every** command. This origin reset
+is deliberately NOT treated as proven positioning. Independent actual
+underlay controls and the real production bridge-to-Rust reaction
+must all pass to accept body hit-testing. For the relative-only
+backend, failed controls/ambiguous targets are `INCONCLUSIVE`,
+not evidence of a Wull product defect. `wdotool` remains the preferred
+absolute native-only test backend; there is NO portal, host-global
+input or automatic package-install fallback.
+
+Source-only commits:
+- `666d6d18d206a92a5d6b28d2800eb9e0e7156898`: alternative
+  child backend command planner and per-command isolation check.
+- `5f3b777457091bab8ed8c47be31512c1f915fd97`:
+  coordinator selection and first reviewed-child pin.
+- `0f22292de807744af0220356c96e66c71010fc33`:
+  cautious relative-only inconclusive classifications.
+- `97c2a4e5577759fcfb731890792e6a99135fbc66`:
+  coordinator pins that final child and its seventh self revision.
+- `0b716fa8f5011a29051aae2d4486869f2633351f`:
+  inert command-plan/identity, pin and conservative classification
+  assertions. **None of these source commits supplies new local
+  acceptance evidence.**
+
+The next user-owned local milestone is the three inert contracts
+followed by one explicitly opted-in nested test ONLY if `wdotool`
+or `wlrctl` is already installed. If neither executable exists,
+report that missing prerequisite and do not automatically install
+or rerun the pointer probe. Should the relative backend prove
+unstable despite controls, keep `INCONCLUSIVE` and consider a
+maintainer-installed, verified `wdotool` binary instead. All other
+edge input, actual popup noninterference, visual and global release
+gates remain separate; never shrink the production input Region
+on a tool-availability failure.

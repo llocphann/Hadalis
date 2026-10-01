@@ -392,6 +392,10 @@ def main():
     git("merge", "--ff-only", source)
     if not clean():
         stop("private_dynamic_clone_dirty_before_probe")
+    local_qs = frozen["version_of"](
+        "qs" if shutil.which("qs") else "quickshell", "--version")
+    if local_qs != "0.3.1":
+        stop("private_dynamic_quickshell_version_differs_from_frozen")
     proof = run_fixture(ROOT.parent)
     if not clean() or git("rev-parse", "HEAD") != source:
         stop("source_changed_while_running_private_dynamic")
@@ -404,9 +408,7 @@ def main():
     parent = git("rev-parse", "HEAD")
     data = public_report(
         proof, source, parent,
-        frozen["version_of"](
-            "qs" if shutil.which("qs") else "quickshell", "--version"),
-        frozen["version_of"]("qtpaths6", "--qt-version"))
+        local_qs, frozen["version_of"]("qtpaths6", "--qt-version"))
     name = ("wull-qt-dynamic-"
             + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             + "-" + secrets.token_hex(4) + "-" + source[:12] + ".json")

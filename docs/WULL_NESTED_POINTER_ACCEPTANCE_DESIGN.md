@@ -629,3 +629,91 @@ This makes persistent-input-session behavior a
 **hypothesis to test only after** the existing private
 log classification has been received. Do not introduce
 `prime`, host-global input or a new backend on assumption.
+
+
+## Retrospective drift verified; new pre-candidate witness and output-geometry guard
+
+New real read-only retrospective evidence was published on `dev`:
+`docs/wull-pointer-drift-20261001T170950Z-105fd7a8-1518db798d10.json`
+at publisher source `5164395aea401bcfcd79fa8e74622d34fe5fceb5`.
+The source-verified classifier consumed exactly three old, previously
+private, underlay left-button witnesses from the
+`1518db798d1012592cdbceb29115cceb72cffd9b` A/B session.
+The candidate's first exterior event, versus the earlier
+production exterior event at the **same requested location**,
+was classified `offset_bucket=ninety_six_or_more`,
+`offset_axes=both`, negative horizontal and positive vertical.
+It was NOT near the old disabled-center witness. These are
+categorical results only: maximum-axis magnitude at least 96
+logical pixels; exact x/y remain private, and no extra pointer
+injection was performed by the classifier. Thus a simple replay
+of the old disabled-center coordinate is not supported. This
+still does NOT identify whether the transient position originated
+from the virtual pointer's device lifecycle, Niri remapping,
+underlay geometry, race/order or a changed output mode. The
+candidate's input mask should not be altered on this evidence.
+
+A source-only, explicitly opted-in **differential** follow-up
+was added in `scripts/wull-manual-pointer-child.py` commit
+`5b79c09aabb2f5b50895d0d4c0b38c86cffe4248`.
+The same one-output/private Rust/Niri source-verified pointer
+runner now uses `output_geometry_signature` to require that
+the one live nested output retains its initial logical x/y,
+width/height, scale and current mode **before every native
+motion/click command**. Unknown/changing geometry stops
+the test inconclusively; it is not accepted as a valid mask
+failure. After the full production baseline controls PASS
+and its original layer and private daemon have fully
+stopped/unmapped, but BEFORE mapping the candidate, the
+child now injects ONE independent real exterior left-click
+on the unchanged full-output underlay, with the **exact same
+target** used in both other exterior controls.
+This `after_baseline_unmap_exterior_underlay_control` must
+report `target_alignment=matched`. If already off-target,
+the run is **INCONCLUSIVE** with reason
+`post_baseline_unmap_pointer_target_unverified`, assigning
+investigation to the intermediate stage rather than the
+candidate mask. If matched, only then does it map the
+temporary candidate, require a new true Rust-present signal,
+and perform its already-existing separate first candidate
+exterior coordinate check. A later candidate-only
+`off_target` narrows the investigation to the interval
+after the new private layer remap (but STILL is not
+proof that candidate QML mask itself is faulty).
+All events remain solely in owned nested Niri with
+`wdotool --backend wlr-protocols`; no host-global
+input, new dependency, auto-retry, loosened tolerance,
+raw coordinate publication or production source edit.
+The old top-size1 and both new top/bottom options
+remain explicit separate modes, with the bottom gate
+requiring a fresh independent top PASS on the CURRENT
+dynamic generator first.
+
+Coordinator commit
+`3ede937c9b70284de76dcb5fc1724abe0da09500`
+re-pins that exact reviewed child and advances its
+self-revision guard from 11 to 12.
+`7a4a935afa99a1712bbeba7e4e7d0928de0b01c4`
+adds inert pure logical-geometry drift, invalid topology
+and child source marker checks to the existing pointer
+contract; `485cc1ec307980c9cc07af1ecccc7ea5ad75462a`
+re-pins the candidate-mask contract and requires
+the intermediate control. These updated inert tests
+are SOURCE-STAGED, **not yet executed on local Niri**.
+The next grouped local execution needs all four original
+inert pointer contracts followed by **one** full
+exact-source top-edge differential probe. Only if the
+new top probe produces a complete independently verified
+PASS is a subsequent bottom-edge probe authorized.
+Neither the prior old-generator top PASS nor the
+current old-run classifier means that the new dynamic
+four-edge candidate has been physically accepted.
+
+Upstream documentation: wdotool's native
+`wlr-protocols` backend implements absolute
+`motion_absolute` in output pixel coordinates; its
+`prime` command can keep virtual devices alive between
+CLI invocations. This is a plausible *alternative
+hypothesis*, NOT independently validated as the cause,
+and is deliberately not enabled by this differential
+probe. See https://github.com/cushycush/wdotool .

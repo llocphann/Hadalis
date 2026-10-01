@@ -11,6 +11,7 @@ import qs.modules.abyss.looks
 import "looks/AbyssGeometry.js" as Geometry
 import "looks/AbyssLayout.js" as ModuleLayout
 import "looks/AbyssPresentation.js" as Presentation
+import "companion/WullHostPolicy.js" as WullHostPolicy
 
 Scope {
     id: root
@@ -145,18 +146,17 @@ Scope {
                 && (!fullscreenCovered || (Config.options?.abyss?.perimeter?.visibleInFullscreen ?? false))
             readonly property bool editorOpen: GlobalStates.abyssEditing && GlobalStates.abyssEditorTargetOutput === outputName
             // A dead/uninitialized daemon must never leave an interactive host.
-            readonly property bool companionHostActive: root.companionSessionVisible
-                && companionBridge.ready
-                && root.companionTargetOutput === window.outputName
-                && window.presented && field.ready
+            readonly property bool companionHostActive: WullHostPolicy.hostActive(
+                root.companionSessionVisible, companionBridge.ready,
+                root.companionTargetOutput, window.outputName,
+                window.presented, field.ready)
             function companionAlongPosition(): real {
                 const horizontal = Geometry.horizontal(root.companionEdge)
                 const extent = horizontal ? window.width : window.height
                 const span = horizontal ? companion.implicitWidth * root.companionScale
                     : companion.implicitHeight * root.companionScale
-                const margin = Math.max(32, span * 0.5 + 12)
-                return Math.max(margin, Math.min(extent - margin,
-                    extent * root.companionAlong))
+                return WullHostPolicy.alongPosition(extent, span,
+                    root.companionAlong)
             }
             onPresentedChanged: if (!presented && editorOpen) GlobalStates.abyssEditing = false
             screen: modelData
@@ -189,7 +189,7 @@ Scope {
             }
             readonly property Region nativeInputMask: Region {
                 Region { regions: window.presented && field.ready && bar.visible ? bar.inputRegions : [] }
-                Region { item: window.companionHostActive && companion.interactive && companion.visible ? companion : emptyInput }
+                Region { item: WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible) ? companion : emptyInput }
                 Region { regions: window.presented && field.ready && editor.visible ? editor.regions : [] }
                 Region { item: window.presented && revealTrigger.visible ? revealTrigger : emptyInput }
                 Region { item: window.presented && dockTrigger.visible ? dockTrigger : emptyInput }

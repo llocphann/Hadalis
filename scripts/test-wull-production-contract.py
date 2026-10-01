@@ -30,8 +30,8 @@ assert 'binaryPath: root.companionEnabled ? (Quickshell.env("INIR_COMPANIOND") ?
 assert "useNativeDispatcher: root.companionEnabled" in production_bridge
 for marker in (
     "useNativeDispatcher: root.companionEnabled",
-    "root.companionTargetOutput === window.outputName",
-    "window.companionHostActive && companion.interactive && companion.visible",
+    "WullHostPolicy.hostActive(",
+    "WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible)",
     "!Appearance.gameModeMinimal",
     "GameMode.hasFullscreenOnOutput(companionTargetOutput)",
     'companionBridge.sendEvent("click")',
@@ -64,9 +64,9 @@ host_gate = perimeter.split(
 )[1].split("function companionAlongPosition()", 1)[0]
 for marker in (
     "root.companionSessionVisible",
-    "&& companionBridge.ready",
-    "root.companionTargetOutput === window.outputName",
-    "window.presented && field.ready",
+    "root.companionSessionVisible, companionBridge.ready",
+    "root.companionTargetOutput, window.outputName",
+    "window.presented, field.ready",
 ):
     assert marker in host_gate, marker
 
@@ -74,7 +74,8 @@ companion_item = perimeter.split("AbyssCompanion {", 1)[1].split(
     "onActivated:", 1
 )[0]
 assert "opacity: companionBridge.ready ? 1 : 0" in companion_item
-assert "window.companionHostActive && companion.interactive && companion.visible" in perimeter
+assert "WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible)" in perimeter
+assert "WullHostPolicy.alongPosition(extent, span," in perimeter
 assert "reveal: !window.companionHostActive ? 0" in perimeter
 
 # The bridge must fail readiness closed on either process termination signal

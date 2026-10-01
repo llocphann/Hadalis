@@ -63,6 +63,16 @@ cases = (
     ("MEGAQML_QS_UI_TYPE_W_INFO_BAR password=private", "ui-waffle",
      "ui_type_w_info_bar"),
     ("MEGAQML_QS_UI_TYPE_TRANSLATION", "ui-material", "ui_type_translation"),
+    ("MEGAQML_QS_UI_RUNTIME_PAGE_LEASE_ABSENT /home/private/secret",
+     "ui-material", "ui_runtime_page_lease_absent"),
+    ("MEGAQML_QS_UI_RUNTIME_SERVICE_CONSUMERS_ZERO password=test",
+     "ui-material", "ui_runtime_service_consumers_zero"),
+    ("MEGAQML_QS_UI_RUNTIME_CHECKING_BUSY /home/private",
+     "ui-material", "ui_runtime_checking_busy"),
+    ("MEGAQML_QS_UI_RUNTIME_SERVICE_UNAVAILABLE password=private",
+     "ui-material", "ui_runtime_service_unavailable"),
+    ("MEGAQML_QS_UI_RUNTIME_NO_REQUEST", "ui-material", "ui_runtime_no_request"),
+    ("MEGAQML_QS_UI_RUNTIME_UNEXPECTED_STATE", "ui-material", "ui_runtime_unexpected_state"),
     ("", "baseline", "no_diagnostic_output"),
 )
 with tempfile.TemporaryDirectory(prefix="megaqml-classifier-") as temp:

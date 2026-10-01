@@ -47,6 +47,11 @@ for kind, relative, replacement in (
                 fixture / "modules/waffle/settings/qmldir").read_text()
             assert "WSettingsInfoBar 1.0 WSettingsInfoBar.qml" in (
                 fixture / "modules/waffle/settings/qmldir").read_text()
+            info_bar = (fixture / "modules/waffle/settings/WSettingsInfoBar.qml"
+                        ).read_text()
+            assert "enum Severity { Info, Warning, Error, Success }" in info_bar
+            assert "property int severity: 0" in info_bar
+            assert "WSettingsInfoBar.Severity.Info" not in info_bar
             assert not (fixture / "modules/common/qmldir").exists()
         assert not (fixture / "scripts/native-dispatch").exists()
         assert not (fixture / "services/Config.qml").exists()

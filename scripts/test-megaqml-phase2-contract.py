@@ -166,6 +166,17 @@ for stage in ("SCENARIO", "PREFLIGHT", "COMPONENT", "CONSTRUCT",
     assert 'MEGAQML_QS_UI_STAGE_' + stage in ui_shell
 assert 'Qt.resolvedUrl(location)' in ui_shell
 assert 'Component.Loading' in ui_shell
+assert 'root.emitDeadlineCause(svc)' in ui_shell
+assert 'Date.now() - root.started >= 8500' in ui_shell
+for runtime_code in ("PAGE_LEASE_ABSENT", "SERVICE_CONSUMERS_ZERO", "NO_REQUEST",
+                     "SERVICE_UNAVAILABLE", "CHECKING_BUSY", "UNEXPECTED_STATE"):
+    assert 'MEGAQML_QS_UI_RUNTIME_' + runtime_code in ui_shell
+for runtime_category in ("ui_runtime_page_lease_absent",
+                         "ui_runtime_service_consumers_zero", "ui_runtime_no_request",
+                         "ui_runtime_service_unavailable", "ui_runtime_checking_busy"):
+    assert runtime_category in quickshell_classifier
+assert 'MEGAQML_QS_UI_RUNTIME_SERVICE_CONSUMERS_ZERO' in classifier_test
+assert 'enum Severity { Info, Warning, Error, Success }' in ui_fixture_source
 assert 'root.component.errorString()' in ui_shell
 for typ in ("CONTENT_PAGE", "W_SETTINGS_PAGE", "SHARED_SERVICE",
             "TRANSLATION", "APPEARANCE", "W_INFO_BAR"):

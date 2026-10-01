@@ -16,6 +16,22 @@ raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
 # Fixed stage tokens are emitted by the reviewed fixture only.
 # More specific fixed cause tokens precede the broad UI component stage.
 # Never echo Qt's original error string or local file paths.
+ui_runtime = (
+    ("page_lease_absent", "ui_runtime_page_lease_absent"),
+    ("service_consumers_zero", "ui_runtime_service_consumers_zero"),
+    ("service_consumers_multiple", "ui_runtime_service_consumers_multiple"),
+    ("no_request", "ui_runtime_no_request"),
+    ("extra_request", "ui_runtime_extra_request"),
+    ("service_unavailable", "ui_runtime_service_unavailable"),
+    ("checking_busy", "ui_runtime_checking_busy"),
+    ("checking_idle", "ui_runtime_checking_idle"),
+    ("service_not_checked", "ui_runtime_service_not_checked"),
+    ("service_stale", "ui_runtime_service_stale"),
+    ("detected_but_busy", "ui_runtime_detected_but_busy"),
+    ("unexpected_state", "ui_runtime_unexpected_state"),
+)
+matched_ui_runtime = next((category for token, category in ui_runtime
+                           if "megaqml_qs_ui_runtime_" + token in raw), None)
 ui_types = (
     ("content_page", "ui_type_content_page"),
     ("task_navigator", "ui_type_task_navigator"),
@@ -63,7 +79,9 @@ ui_stages = (
 )
 matched_ui_stage = next((category for token, category in ui_stages
                          if "megaqml_qs_ui_stage_" + token in raw), None)
-if matched_ui_type is not None:
+if matched_ui_runtime is not None:
+    kind = matched_ui_runtime
+elif matched_ui_type is not None:
     kind = matched_ui_type
 elif matched_ui_cause is not None:
     kind = matched_ui_cause

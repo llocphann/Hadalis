@@ -75,9 +75,13 @@ stub = {
         " property string icon: \"\"; property string currentValue: \"\";"
         " property var options: []; signal selected(var value) }\n",
     "modules/waffle/settings/WSettingsInfoBar.qml":
-        "import QtQuick\nItem { enum Severity { Info, Warning };"
-        " property int severity: WSettingsInfoBar.Severity.Info;"
-        " property string message: \"\" }\n",
+        # Match the real file's enum declaration shape; avoid a self-type
+        # reference in the intentionally inert isolated test stub.
+        "import QtQuick\nItem {\n"
+        " enum Severity { Info, Warning, Error, Success }\n"
+        " property int severity: 0\n"
+        " property string message: \"\"\n"
+        "}\n",
     "modules/waffle/settings/WSettingsButton.qml":
         "import QtQuick\nItem { property string label: \"\";"
         " property string icon: \"\"; property string buttonText: \"\";"

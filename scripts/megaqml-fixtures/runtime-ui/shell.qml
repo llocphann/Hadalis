@@ -79,6 +79,34 @@ ShellRoot {
             console.log("MEGAQML_QS_UI_CAUSE_OTHER")
         }
     }
+    // Report only reviewed state labels; never include QML paths,
+    // process stderr, account data or raw service errors in the report.
+    function emitDeadlineCause(svc) {
+        if (root.page === null || !root.page.leaseHeld) {
+            console.log("MEGAQML_QS_UI_RUNTIME_PAGE_LEASE_ABSENT")
+        } else if (svc.consumerCount === 0) {
+            console.log("MEGAQML_QS_UI_RUNTIME_SERVICE_CONSUMERS_ZERO")
+        } else if (svc.consumerCount !== 1) {
+            console.log("MEGAQML_QS_UI_RUNTIME_SERVICE_CONSUMERS_MULTIPLE")
+        } else if (svc.requestSerial === 0) {
+            console.log("MEGAQML_QS_UI_RUNTIME_NO_REQUEST")
+        } else if (svc.requestSerial !== 1) {
+            console.log("MEGAQML_QS_UI_RUNTIME_EXTRA_REQUEST")
+        } else if (svc.backendState === "unavailable") {
+            console.log("MEGAQML_QS_UI_RUNTIME_SERVICE_UNAVAILABLE")
+        } else if (svc.backendState === "checking") {
+            console.log(svc.readBusy ? "MEGAQML_QS_UI_RUNTIME_CHECKING_BUSY"
+                                      : "MEGAQML_QS_UI_RUNTIME_CHECKING_IDLE")
+        } else if (svc.backendState === "not_checked") {
+            console.log("MEGAQML_QS_UI_RUNTIME_SERVICE_NOT_CHECKED")
+        } else if (svc.backendState === "stale") {
+            console.log("MEGAQML_QS_UI_RUNTIME_SERVICE_STALE")
+        } else if (svc.readBusy) {
+            console.log("MEGAQML_QS_UI_RUNTIME_DETECTED_BUT_BUSY")
+        } else {
+            console.log("MEGAQML_QS_UI_RUNTIME_UNEXPECTED_STATE")
+        }
+    }
     Timer {
         interval: 75
         repeat: true
@@ -170,8 +198,9 @@ ShellRoot {
                         : "MEGAQML_QS_UI_WAFFLE_OK")
                     : "MEGAQML_QS_UI_INVALID")
                 Qt.quit()
-            } else if (Date.now() - root.started >= 5250
+            } else if (Date.now() - root.started >= 8500
                     || svc.backendState === "unavailable") {
+                root.emitDeadlineCause(svc)
                 console.log("MEGAQML_QS_UI_STAGE_DEADLINE")
                 console.log("MEGAQML_QS_UI_INVALID")
                 root.page.visible = false

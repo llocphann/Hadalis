@@ -1473,3 +1473,259 @@ remain open reliability evidence;
 the newly verified real LEFT
 differential PASS does not make
 every mouse event reliable.
+
+
+## Nominal motion/scale source budget: static 76x92 cannot be certified as an animated hit mask
+
+After FOUR independent real private scale=1, single-output
+body-BBOX click PASSes, the next distinct question is whether
+a narrower mask remains inside or outside the MOVING clickable
+visual. Those earlier test receipts do not answer it.
+
+A new strictly inert,
+`scripts/wull-motion-footprint-feasibility.py`
+(created in `cf700d32453b20742b4a32882a1b7516d22d0a32`,
+corrected actual body-size source marker in
+`6a9aeeb9d4738e3fc11ebfaaf5c6a603bb45b3c7`)
+pins Git blobs for the exact
+`WaterDropletBody.qml`,
+`CompanionBridge.qml`,
+`AbyssCompanion.qml` and
+`AbyssPerimeter.qml` production
+files before analyzing source formulas;
+it never rewrites or shadows any QML, runs
+Niri/Rust/wdotool or reads private pointer logs.
+An inert contract
+`scripts/test-wull-motion-footprint-feasibility.py`
+(source commit
+`8786afdbbebb037812f37d8dd27e4fad734321ca`)
+covers source pins, negative trust tests,
+exact declared baseline values, pure
+arithmetical stress counterexample,
+all scale-edge source dimensions,
+exclusion of spring and exact Qt geometry
+claims and a cross-check against the
+existing static 4-cubic scanline study.
+Neither new Python program has yet been
+executed on the maintainer host;
+all current findings below are *source
+arithmetic*, not actual animated
+compositor events.
+
+Specifically the public bridge CLAMPS
+incoming body `squash`, `stretch`,
+`lean` and `tip` individually to
+[-1, 1] and `energy`/`pulse`
+to [0, 1]. The real body has a
+separate state-specific bottom-origin
+`Scale`: `xScale = 1 +
+stateSquash*0.05 - stateStretch*0.025`
+and `yScale = 1 -
+stateSquash*0.035 + stateStretch*0.06`.
+Under those nominal incoming
+clamps only (NOT measured
+`SpringAnimation` extrema) the
+axis-scale ranges are [0.925,
+1.075] and [0.905, 1.095].
+The explicit root tap squash
+`scale = 1 + squash*0.035`
+has scripted targets 1 and
+-0.35 (nominal [.98775,
+1.035], not a proven bound
+through OutBack overshoot).
+The root nominal angle
+`2.2*sway + 5*lean + 2.4*tip`
+could cover roughly -9.6 to
++10.59 degrees at independent
+bridge-clamped input targets
+and nominal sway endpoints,
+before the separately authored
+four-edge 0/90/180/-90 parent
+rotation. Nominal bob animation
+target values depend on energy:
+[-3.6, +1.8] logical px.
+These are isolated formula
+endpoints, not validated
+simultaneous real Rust
+states or actual Qt runtime
+bounds. `SpringAnimation`
+can overshoot, and Qt
+anchor vs animated y,
+transform composition/order
+and item geometry-to-Region
+mapping remain unqualified.
+
+There is an important
+**possible counterexample to
+a static body-BBOX input mask**:
+even setting all unrelated
+state transforms to identity
+and using the otherwise
+bridge-permitted target
+`stateSquash=0,
+stateStretch=1`, the
+explicit bottom-origin
+body yScale is 1.06.
+The authored upper outline
+point is at local y=2, and
+under ONLY that yScale it
+maps to local y=-3.4:
+`92 + (2 - 92)*1.06`.
+At the centered TOP body
+offset y=3 in the
+source-measured host,
+that nominal tip would
+lie at host y=-0.4,
+outside both the tested
+private static BBOX's
+top y=3 and the nominal
+host boundary y=0.
+This is a source-level
+admissible pose calculation,
+not evidence that the Rust
+backend actually reaches
+and sustains that exact pose,
+nor a rendered frame
+or a conclusion about
+Wayland clipping. Even this
+single admissible target
+invalidates treating a
+fixed static rectangle as
+a guaranteed animation-
+aware hit region without
+additional live evidence.
+
+Source configuration further
+allows parent scale
+[0.65, 1.5]; the default
+one-output physical A/B
+tests exercised only
+scale=1. At nominal 1.5,
+the unanimated 76x92
+body item scales to
+114x138 on horizontal
+orientations, which already
+exceeds the source-measured
+112x98 host footprint
+in both axes; its
+90-degree rotation
+produces a 138x114
+body BBOX against
+98x112 vertical host.
+These simple item-size
+comparisons do not
+establish actual Qt
+transformed hit geometry
+or screen clipping:
+they establish that
+the exact scale/mapping
+relationship MUST
+be checked before
+a runtime mask change.
+
+The static body has
+an independent visual
+pulse rectangle centered
+within the body whose
+peak local extents are
+76x90.16, and a separate
+companion ripple at the
+edge. Whether these
+decorative effects are
+included in the intended
+ACCESSIBLE hit target
+is a product/UX
+decision, not implied
+by a tight Bézier path.
+An interior-only static
+scanline proposal that
+covers ~43% of the
+76x92 item BBOX
+would exclude many
+visible border/halo
+pixels already at
+the unanimated pose.
+At maximum motion,
+even the static
+rectangle can fail
+to contain part of
+the potential moving
+outline. Consequently
+do not promote the
+43-band static
+interior or 76x92
+static BBOX into
+production. Preserve
+the existing full
+host input Region
+until a new private,
+source-guarded
+motion/hover
+acceptance candidate
+has passed its own
+physical gates.
+
+**NEXT REQUIRED DESIGN/QA PATH:**
+First run both inert
+`scripts/test-wull-silhouette-band-prototype.py`
+and
+`scripts/test-wull-motion-footprint-feasibility.py`
+on one new private clean
+`dev` clone, optionally
+printing their redacted
+arithmetic summaries
+without starting a
+desktop compositor.
+Then specify the
+desired interactive
+contract distinctly for
+the visible moving core,
+stroke/tip, soft halo
+and decorative
+edge ripple. Prefer
+an intentionally
+forgiving moving-body
+hit area over a
+tightly eroded
+visual-only scanline
+unless real hover
+and tap accessibility
+tests support it.
+Source-pin the actual
+Qt/Quickshell build;
+probe runtime
+`mapToItem`/
+`mapToGlobal`
+transforms and
+compositor Region
+updates, with scale
+0.65, 1, 1.5,
+four output edges,
+animated/rust
+state extrema and
+fractional/rotated
+output cases
+separately on
+isolated Niri.
+Require center,
+edge, tip, animated
+boundary, empty
+host margin and
+hover transition
+witnesses, real
+bridge/Rust response,
+output isolation,
+low CPU/memory,
+popup/keyboard,
+hide/reveal, daemon
+loss/recovery and
+complete process
+cleanup before
+touching production.
+The existing
+source-pinned top/left
+old-log pointer drift
+remains a distinct
+reproducibility
+blocker for broad
+conclusions.

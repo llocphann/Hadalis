@@ -2179,3 +2179,42 @@ or stable ref
 may change
 during this
 research gate.
+
+
+### Guard refinement: require observed frozen stretch pose before geometry classification
+
+The first offscreen fixture staging has an additional
+critical non-spoofable phase predicate. Revision
+`d114a768a26ec6956bfd1f83d14a2aebb6a82e54`
+updated the private original-QML fixture
+to record `pose_state_verified` per
+sample. It asserts the ACTUAL
+`WaterDropletBody` component is
+in `motionEnabled=false`,
+`bob/sway/squash/stateSquash/stateLean/
+stateTip=0`, and
+`stateStretch=0` for the neutral
+phase or `stateStretch=1` for
+the isolated stretch target. The
+exact revised fixture blob is
+`11df91496a8bb9b18d79498e86d1f734d78dc574`.
+The runner revision
+`82f6f078282dc7a73dd727f1cd003c91dea5391b`
+pins this reviewed blob and
+REJECTS ANY of the 24 actual
+QML measurements if the
+intended frozen transform
+state was not observed.
+The inert contract revision
+`17632a74eb9b472e39684f44c0eb088314c8c0c3`
+re-pins the fixture and checks
+a missing frozen-state
+observation fails closed.
+Do not rely on the
+earlier staged fixture
+SHA after these
+safety amendments.
+No live QML result
+has yet been
+published at this
+checkpoint.

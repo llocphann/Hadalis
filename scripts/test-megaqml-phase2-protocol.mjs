@@ -67,7 +67,7 @@ for(const [payload,id] of [
 const preflight = vm.runInNewContext(
     fs.readFileSync(path.join(__dirname,
         "../services/deferred/CloudStoragePreflightProtocol.js"), "utf8")
-    + "\\nparseConnectPreflightResponse", Object.create(null), {timeout: 2000});
+    + "\nparseConnectPreflightResponse", Object.create(null), {timeout: 2000});
 const readyPreflight = () => ({
     protocol: 1, request_id: "preflight-test", ok: true, error: null,
     result: {

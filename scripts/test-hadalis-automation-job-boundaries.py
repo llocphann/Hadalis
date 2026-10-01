@@ -44,7 +44,40 @@ def main():
                     daemon.tick(at+60);assert t.count("submit")==3
                 else:
                     daemon.tick(at+2);assert t.count("submit")==2 and not item["run_active"]
-    print("PASS: WAIT_RESULT preserves receipt/checkpoint/provenance then applies rotation, prompt/iteration/duration limits and interval scheduling independently")
+    for owner_action in (None,"pause","stop"):
+        with environment():
+            pid,other=profile("Recreated workflow"),profile("Original job owner");t=Transport()
+            with patch.object(daemon,"native_command",side_effect=t):
+                daemon.tick(100);original=t.pending(pid).copy()
+                t.reply(pid,'HADALIS_CHECKPOINT:{"phase":"test","next":"inspect"}\nHADALIS_LOOP:WAIT_RESULT JOB-foreign')
+                daemon.tick(102)
+                payload={"job":"JOB-foreign","profile_id":other,"status":"passed","actions":[{"evidence_id":"JOB-foreign:0"}]}
+                def received(_job):
+                    # Owner controls may arrive while the result read is in
+                    # flight; reconciliation must check them inside its lock.
+                    if owner_action:control.profile_action(owner_action,pid)
+                    return payload
+                with patch.object(daemon,"job_result",side_effect=received):daemon.tick(104)
+                state=store.read_snapshot()[1];item=state["profiles"][pid]
+                assert item["job_id"] is None and item["last_job_id"] is None
+                assert item["job_evidence"]==[] and item["job_summary"] is None
+                assert item["checkpoint"]["phase"]=="test" and item["iterations"]==1
+                assert item["recovery"]=={"kind":"response_protocol","code":"foreign_job_owner","job_id":"JOB-foreign","response_message_id":item["response_message_id"]}
+                assert (store.state_dir()/"responses"/pid/(original["user_message_id"]+".json")).exists()
+                assert state["profiles"][other]["desired"]=="run"
+                assert item["desired"]==("stopped" if owner_action=="stop" else "paused")
+                assert item["status"]==("idle" if owner_action=="stop" else "paused" if owner_action else "evidence_required")
+                daemon.tick(106);assert t.count("submit")==2
+                if owner_action is None:
+                    guard={k:item[k] for k in ("status","command_seq","response_message_id")}
+                    control.profile_action("resume",pid,expected_recovery=guard)
+                    daemon.tick(108);assert t.count("submit")==3
+                    assert t.pending(pid)["user_message_id"]!=original["user_message_id"]
+                    assert t.pending(pid)["conversation_id"]==original["conversation_id"]
+                    prompt=[v["prompt"] for op,v in t.calls if op=="submit"][-1]
+                    assert "JOB-foreign" in prompt and "do not re-execute or reuse that job" in prompt
+                    assert "Managed profile ID: "+pid in prompt
+    print("PASS: WAIT_RESULT boundaries/provenance, isolated foreign-job rejection, preserved owner controls and guarded correction without result adoption or replay")
 
 
 if __name__=="__main__":main()

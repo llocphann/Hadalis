@@ -348,6 +348,8 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
     protocol = (item.get("recovery") or {})
     if protocol.get("kind") == "response_protocol" or item["status"] == "evidence_required" or "unsupported diagnosis" in item["last_error"]:
         prompt += "\nThe previous response completed and its private receipt is retained, but its protocol/evidence was rejected. Continue from the existing effects; do not replay the completed turn or repeat jobs/commands. Correct the protocol: use normal source citations for repository findings, and HADALIS_DIAGNOSIS only for local machine/runtime conclusions supported by these observed worker evidence IDs: " + json.dumps(item["job_evidence"]) + ". Collect fresh diagnostics if required.\n"
+        if protocol.get("code") == "foreign_job_owner":
+            prompt += "\nThe previous WAIT_RESULT referenced " + protocol["job_id"] + ", owned by a different profile. Its result was not adopted. Inspect existing repository effects and the published result before deciding the next step; do not re-execute or reuse that job. Previous profiles' work can be cited as repository artifacts, but WAIT_RESULT must reference only a job authored for this managed profile ID.\n"
     if kind=="recovery":
         prompt += "\nThe server confirmed that the previous generation ended with failure. This is a new recovery step, not a replay. Inspect the objective repository's current target branch, private worker receipt summaries and evidence before any mutation. Do not repeat commands/jobs whose outcome is uncertain. Reconcile existing effects and continue from the checkpoint.\n"+json.dumps(item["failed_turn"])
     if item["checkpoint"]:
@@ -628,7 +630,23 @@ def _wait_result(config: dict, state: dict, profile_id: str, now: int) -> None:
     if now < (item["next_job_poll_at_unix"] or 0): return
     try:
         payload = job_result(item["job_id"])
-        if payload and payload.get("profile_id") not in {None, profile_id}: raise ValueError("job belongs to another profile")
+        if payload and payload.get("profile_id") is not None and payload.get("profile_id") != profile_id:
+            # This is a terminal protocol conflict, not an unavailable network.
+            # Preserve the final response and reject the foreign result; retries
+            # cannot change immutable job ownership and must not adopt/replay it.
+            def conflict(c, s):
+                current = s["profiles"].get(profile_id)
+                if not current or current["job_id"] != item["job_id"]: return
+                automatic = current["desired"] == "run"
+                current.update(job_id=None, next_job_poll_at_unix=None, job_poll_errors=0,
+                    status="evidence_required" if automatic else "paused" if current["desired"] == "paused" else "idle",
+                    desired="paused" if automatic else current["desired"],
+                    last_error="Job belongs to another profile; original response retained",
+                    status_detail="Wait only for jobs owned by this profile.",
+                    recovery={"kind":"response_protocol", "code":"foreign_job_owner",
+                        "job_id":item["job_id"], "response_message_id":current["response_message_id"]})
+                event(s, profile_id, "job_ownership_conflict", item["job_id"])
+            change_state(conflict);return
         if payload:
             from automation.worker.privacy import chat_result
             summary=chat_result(payload)

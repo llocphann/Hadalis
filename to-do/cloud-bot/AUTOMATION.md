@@ -23,6 +23,7 @@ Maintainer-authorized implementation, 2026-09-30. Target contract and audit:
 - [x] Each future turn selects the highest enabled Chat model from live account metadata, with numeric version ordering and no legacy-model pinning. Instant/Thinking lanes stay distinct; unsupported highest-model effort fails before dispatch, and pending turns are retained unchanged.
 - [x] Custom workflows follow their own objective repository/branch. GitHub research citations are distinct from verified local machine diagnostics; rejected completed responses keep precise reasons and correction context. Guarded monitor Resume cannot override a later owner Stop/Pause or replay a pending turn/job.
 - [x] Repeated account API 429s use durable bounded exponential retry rounds; a successful read between limits cannot reset the sequence. Due profile reads reserve staggered API slots without serializing generations, local jobs or cached receipts.
+- [x] WAIT_RESULT referring to a removed/different profile's immutable job result rejects ownership as a precise protocol conflict, retaining the original final receipt and correction context instead of retrying it as a network outage. Owner Pause/Stop and guarded recovery remain authoritative; no foreign result adoption or action replay.
 - [ ] Future/deferred: migrate the Linux/process-sensitive Automation execution substrate to Rust only after parity and benchmark gates in [`AUTOMATION_RUST_MIGRATION.md`](AUTOMATION_RUST_MIGRATION.md).
 
 Keep uncertain existing submissions and consumed job results. Do not reset

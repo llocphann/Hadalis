@@ -32,6 +32,11 @@ private with a specific directive/checkpoint/diagnosis reason. A resumed turn
 receives correction context without replaying the consumed response or jobs.
 Monitor recovery can guard the inspected status, command sequence and response
 identity atomically so a newer owner Stop/Pause wins.
+An immutable result owned by another profile rejects WAIT_RESULT as a protocol
+conflict instead of retrying it as a transport outage. The referenced job and
+final response remain private evidence; neither its result nor evidence IDs are
+adopted. An automatic pause can resume through the guarded correction path,
+while a newer owner Pause/Stop remains authoritative.
 
 Conversation reads use a 30-second cadence (configurable within 15–120 seconds),
 doubling for turns older than five minutes up to 120 seconds. The scheduler's

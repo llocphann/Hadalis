@@ -600,4 +600,38 @@ for fixture in (
         "scripts/megaqml-fixtures/runtime-ui-preflight-overlap/shell.qml"):
     assert 'node.buttonText === "Offline check"' in get(fixture), fixture
 
+# Phase 3 safe start: a policy preview is never installed capability proof.
+offline_gates = get("native/inir-mega/src/feature_gates.rs")
+for token in (
+        'mod feature_gates;',
+        'FeatureGatesPreview,',
+        'Operation::FeatureGatesPreview => handle_feature_gates_preview(request)',
+        'fn handle_feature_gates_preview(request: Request) -> Response',
+        'FEATURE_GATE_INPUT_FORBIDDEN',
+        'feature_gates::offline_policy_preview()',
+        'fn feature_gate_preview_never_authorizes_live_domains()',
+        'fn feature_gate_preview_rejects_secrets_and_override_params()'):
+    assert token in rust_source, token
+for token in (
+        '"probe_kind": "offline_policy_preview"',
+        '"vendor_execution": "blocked_pending_disposable_qualification"',
+        '"installed_version_qualified": false',
+        '"connection_attempted": false',
+        '"account_reads_enabled": false',
+        '"writes_enabled": false',
+        '"read": false',
+        '"write": false',
+        '"reason": "installed_version_unqualified"',
+        'all_ten_domains_explicitly_deny_unqualified_reads_and_writes()'):
+    assert token in offline_gates, token
+for key in ("overview", "drive", "transfers", "sync", "backups",
+            "sharing", "contacts", "mounts", "security", "preferences"):
+    assert '"' + key + '"' in offline_gates, key
+for token in ('operation:"feature_gates_preview"', '"FEATURE_GATE_INPUT_FORBIDDEN"',
+              '"offline_policy_preview"', 'PRIVATE_FAKE_GATE_PASSWORD',
+              'PRIVATE_FAKE_GATE_ACCOUNT', 'name + ".executed"'):
+    assert token in boundary, token
+assert 'run_test megaqml_fake_vendor_boundary' in runner
+assert 'run_test megaqml_rust_build' in runner
+
 print("PASS MegaQML Phase 2p static source contract")

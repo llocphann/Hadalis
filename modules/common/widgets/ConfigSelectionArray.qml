@@ -28,6 +28,7 @@ Flow {
         },
     ]
     property var currentValue: null
+    property bool highContrastSelection: false
     readonly property bool hovered: _hoverHandler.hovered
 
     signal selected(var newValue)
@@ -144,6 +145,7 @@ Flow {
             buttonIcon: modelData.icon || ""
             buttonPreviewKind: modelData.previewKind || ""
             buttonText: modelData.displayName
+            highContrastSelection: root.highContrastSelection
             opacity: modelData?.dimmed === true ? 0.45 : 1
             toggled: (root.currentValue != null && root.currentValue == modelData.value) ?? false
             onClicked: {

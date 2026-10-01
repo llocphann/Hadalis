@@ -116,6 +116,8 @@ assert summary["rectangles_by_edge"] == dict.fromkeys(
 assert summary["live_pointer_and_hover"] == "not_run"
 assert summary["animation_halo_scale_qualification"] == "not_run"
 assert summary["production_changes"] is False
-assert "x" not in json.dumps(summary)
-assert "y" not in json.dumps(summary)
+payload = json.dumps(summary)
+for forbidden in ('"x":', '"y":', '"raw_pointer_coordinates":',
+                  '"observed_point":', '"requested_point":'):
+    assert forbidden not in payload, forbidden
 print("WULL_SILHOUETTE_BAND_INERT_FEASIBILITY_PASS")

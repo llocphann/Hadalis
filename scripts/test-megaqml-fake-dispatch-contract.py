@@ -10,7 +10,7 @@ fake = Path(__file__).resolve().parent / "megaqml-fixtures/fake-static-dispatch.
 source = fake.read_text(encoding="utf-8")
 assert "subprocess" not in source and "os.system" not in source
 assert '"mega", "request"' in source
-for scenario in ("present", "missing", "wrong-id", "unsafe-secret", "malformed", "exit-failure", "hang"):
+for scenario in ("present", "missing", "wrong-id", "unsafe-secret", "malformed", "exit-failure", "hang", "coalesce", "stale-reacquire"):
     env = dict(os.environ, MEGAQML_FIXTURE_CASE=scenario)
     request = {"protocol": 1, "request_id": "cloud-detect-1",
                "operation": "detect", "params": {}}
@@ -49,8 +49,22 @@ for scenario in ("present", "missing", "wrong-id", "unsafe-secret", "malformed",
     assert result["result"]["secret_argv"] is (scenario == "unsafe-secret")
     assert [item["name"] for item in result["result"]["binaries"]] == [
         "mega-cmd", "mega-login", "mega-cmd-server", "mega-whoami", "mega-version"]
-    expected = scenario == "present"
+    expected = scenario == "present" or (scenario in ("coalesce", "stale-reacquire"))
     assert [item["executable"] for item in result["result"]["binaries"]] == [
         expected, expected, expected, False, expected]
     assert all(item["path"] is None for item in result["result"]["binaries"])
-print("PASS MegaQML synthetic runtime dispatcher: 7 cases")
+# Second request differs from first; client must not replay stale inventory.
+for scenario in ("coalesce", "stale-reacquire"):
+    env = dict(os.environ, MEGAQML_FIXTURE_CASE=scenario)
+    request = {"protocol": 1, "request_id": "cloud-detect-2",
+               "operation": "detect", "params": {}}
+    child = subprocess.run([sys.executable, str(fake), "mega", "request"],
+                           input=json.dumps(request) + "\n", capture_output=True,
+                           text=True, env=env, timeout=3, check=True)
+    result = json.loads(child.stdout)
+    assert result["request_id"] == "cloud-detect-2"
+    assert not result["result"]["interactive_shell_available"]
+    assert not result["result"]["server_available"]
+    assert all(not x["executable"] for x in result["result"]["binaries"])
+    assert not child.stderr
+print("PASS MegaQML synthetic runtime dispatcher: 9 cases plus two second requests")

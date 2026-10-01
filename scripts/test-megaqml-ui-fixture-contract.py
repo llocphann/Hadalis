@@ -32,7 +32,8 @@ for kind, relative, replacement in (
         body = original[original.index("// Independent Waffle"):] if kind == "waffle" \
             else original[original.index("ContentPage {"):]
         assert body in actual
-        for name in ("CloudStorageService.qml", "CloudStorageStaticProtocol.js"):
+        for name in ("CloudStorageService.qml", "CloudStorageStaticProtocol.js",
+                 "CloudStoragePreflightProtocol.js"):
             assert (fixture / "services/deferred" / name).read_bytes() == (
                 repo / "services/deferred" / name).read_bytes()
         assert (fixture / "services/Translation.qml").is_file()
@@ -78,7 +79,8 @@ with tempfile.TemporaryDirectory(prefix="megaqml-shared-unit-") as temp:
         original = (repo / relative).read_text(encoding="utf-8")
         assert required_import in actual and "import qs." not in actual
         assert original[original.index(body_anchor):] in actual
-    for name in ("CloudStorageService.qml", "CloudStorageStaticProtocol.js"):
+    for name in ("CloudStorageService.qml", "CloudStorageStaticProtocol.js",
+                 "CloudStoragePreflightProtocol.js"):
         assert (fixture / "services/deferred" / name).read_bytes() == (
             repo / "services/deferred" / name).read_bytes()
     assert "ContentPage 1.0 ContentPage.qml" in (

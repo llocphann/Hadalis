@@ -184,6 +184,11 @@ ShellRoot {
                     root.fail("BUTTON_MATERIAL")
                     return
                 }
+                if (!root.material.setSection("overview")
+                        || root.material.activeSection !== "overview") {
+                    root.fail("BUTTON_MATERIAL")
+                    return
+                }
                 const materialButton = root.offlineControl(root.material)
                 if (!materialButton || !materialButton.visible || !materialButton.enabled
                         || typeof materialButton.clicked !== "function") {
@@ -214,6 +219,11 @@ ShellRoot {
                 root.waffle.visible = true
                 if (!root.waffle.leaseHeld || !root.material.leaseHeld
                         || svc.consumerCount !== 2 || svc.requestSerial !== 3) {
+                    root.fail("BUTTON_WAFFLE")
+                    return
+                }
+                if (!root.waffle.setSection("overview")
+                        || root.waffle.activeSection !== "overview") {
                     root.fail("BUTTON_WAFFLE")
                     return
                 }

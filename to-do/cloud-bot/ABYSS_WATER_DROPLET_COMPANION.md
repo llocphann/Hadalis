@@ -1077,3 +1077,58 @@ production input change.
   Rust backend, Wull default-off,
   `stable`, and any physical four-edge/
   full canonical acceptance remain unchanged.
+
+
+## Checkpoint — 2026-10-02 dynamic top with pre-remap witness REAL PASS; bottom next
+
+- The new independently source-pinned
+  `docs/wull-mask-candidate-20261001T173129Z-ce33db3c-8efa0b7d7341.json`,
+  `source_sha=8efa0b7d73418af9fc52b117199e2a691e0158ac`,
+  is **REAL PASS** for the private dynamic candidate
+  **TOP edge, size=1, one owned nested Niri output**.
+  The unchanged old full production mask passed separate
+  disabled-body and enabled-exterior exact-coordinate
+  underlay controls, true enabled-body bridge/Rust
+  happy/pulse without underlay click, and observed
+  blocked empty margin without false body activation.
+  After fully unmapped old production and Rust,
+  the newly added `after_baseline_unmap_exterior_underlay_control`
+  independently clicked the SAME exterior target
+  with `target_alignment=matched`. The newly
+  mapped dynamic private top mask then separately
+  passed correctly aligned exterior, real
+  bridge/Rust body and **positive matched**
+  empty-host-margin pass-through without false
+  body activation. One-output nested endpoints,
+  all owned processes/layers/compositor cleanup
+  and original host output count passed.
+  No source or host config was changed by the probe.
+- Keep the previous
+  `docs/wull-mask-candidate-20261001T170950Z-105fd7a8-1518db798d10.json`
+  INCONCLUSIVE. Its real old-log diagnosis showed
+  large off-target drift in both axes at first
+  candidate exterior; latest successful trial
+  proves capability on that new source but
+  cannot claim that transient cause is fixed.
+- **NEXT LOCAL ACTION:** a SINGLE NEW physical
+  **BOTTOM** private candidate A/B test using
+  existing separately allowed coordinator flag
+  `--acknowledge-nested-pointer-candidate-bottom`
+  in an exclusively fresh permission-private dev
+  clone. Run four inert pointer safety/geometry
+  contracts first; fail closed on any test or
+  source audit failure. Publish/read distinct
+  `docs/wull-mask-bottom-*.json` and inspect
+  its child checks, real backend, output isolation,
+  genuine bridge/Rust, intermediary witness
+  and complete cleanup before moving to left/right.
+  Do NOT automatically run side edges before
+  inspecting bottom receipt. Technical analysis
+  and complete prior-run evidence in
+  `docs/WULL_NESTED_POINTER_ACCEPTANCE_DESIGN.md`
+  (latest checkpoint commit
+  `560948038d08307effee1ff9a3203ad8d1991acd`).
+  Real production mask, default-off, `stable`,
+  visuals/popup, multioutput/hotplug/scale,
+  long-run/lifecycle and canonical-wide validation
+  remain unchanged/unqualified.

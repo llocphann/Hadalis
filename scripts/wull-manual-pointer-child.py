@@ -170,6 +170,41 @@ def markers(path, prefix):
             if prefix in part]
 
 
+def underlay_target_status(path, before, requested, *, tolerance=6):
+    """Compare ONE real underlay hit with the requested nested-output point.
+
+    Full-output underlay event COUNT alone cannot prove cursor positioning.
+    Return classifications only; private x/y stay in the private QML log.
+    This parser never injects input or changes production components.
+    """
+    if (not isinstance(before, int) or isinstance(before, bool)
+            or before < 0 or not isinstance(requested, (tuple, list))
+            or len(requested) != 2
+            or not all(isinstance(x, int) and not isinstance(x, bool)
+                       for x in requested)
+            or not isinstance(tolerance, int) or not 0 <= tolerance <= 10):
+        stop("invalid_pointer_witness_arguments")
+    observed = markers(path, "WULL_POINTER_UNDERLAY_PRESS ")
+    delta = observed[before:]
+    if not delta:
+        return "no_click"
+    if len(delta) != 1:
+        return "ambiguous_multiple_clicks"
+    try:
+        entry, _ = json.JSONDecoder().raw_decode(delta[0].strip())
+    except (ValueError, TypeError):
+        return "witness_record_unparseable"
+    if (not isinstance(entry, dict) or
+            not all(isinstance(entry.get(key), int)
+                    and not isinstance(entry[key], bool)
+                    for key in ("x", "y", "button")) or
+            entry["button"] != 1):
+        return "witness_record_unparseable"
+    return ("matched" if abs(entry["x"] - requested[0]) <= tolerance
+            and abs(entry["y"] - requested[1]) <= tolerance
+            else "off_target")
+
+
 def trace_kinds(path):
     if not path.is_file():
         return []
@@ -415,14 +450,16 @@ def main():
         except RuntimeError as e:
             report["reason"] = str(e)
             return
-        disabled_pass = underlay_count() == before + 1 and not private_pids(binary)
-        report["checks"].append({"case": "disabled_center_underlay_control",
-                                 "status": "pass" if disabled_pass else "failed"})
+        disabled_hit = underlay_target_status(
+            underlay_log, before, points["body_center"])
+        disabled_pass = disabled_hit == "matched" and not private_pids(binary)
+        report["checks"].append({
+            "case": "disabled_center_underlay_control",
+            "status": "pass" if disabled_pass else "inconclusive",
+            "target_alignment": disabled_hit})
         if not disabled_pass:
-            report["status"] = "inconclusive" if actor_kind == "wlrctl" else "failed"
-            report["reason"] = ("relative_disabled_pointer_control_unverified"
-                                if actor_kind == "wlrctl"
-                                else "disabled_underlay_control_failed")
+            report["status"] = "inconclusive"
+            report["reason"] = "disabled_pointer_target_unverified"
             return
         owned_cleanup(disabled_proc, binary, private_relay)
         disabled_proc = None
@@ -441,14 +478,16 @@ def main():
         except RuntimeError as e:
             report["reason"] = str(e)
             return
-        exterior_pass = underlay_count() == before + 1
-        report["checks"].append({"case": "enabled_exterior_underlay_control",
-                                 "status": "pass" if exterior_pass else "failed"})
+        exterior_hit = underlay_target_status(
+            underlay_log, before, points["outside_host_control"])
+        exterior_pass = exterior_hit == "matched"
+        report["checks"].append({
+            "case": "enabled_exterior_underlay_control",
+            "status": "pass" if exterior_pass else "inconclusive",
+            "target_alignment": exterior_hit})
         if not exterior_pass:
-            report["status"] = "inconclusive" if actor_kind == "wlrctl" else "failed"
-            report["reason"] = ("relative_exterior_pointer_control_unverified"
-                                if actor_kind == "wlrctl"
-                                else "enabled_exterior_control_failed")
+            report["status"] = "inconclusive"
+            report["reason"] = "exterior_pointer_target_unverified"
             return
         prior = trace_kinds(trace)
         before = underlay_count()
@@ -464,18 +503,24 @@ def main():
             count("real_bridge_click_received", prior) + 1)
         acked = count("rust_happy_pulse_ack", after) == (
             count("rust_happy_pulse_ack", prior) + 1)
-        not_underlay = underlay_count() == before
+        body_underlay_hit = underlay_target_status(
+            underlay_log, before, points["body_center"])
+        not_underlay = body_underlay_hit == "no_click"
         body_pass = clicked and acked and not_underlay
+        ambiguous_target = body_underlay_hit not in ("no_click", "matched")
         report["checks"].append({
             "case": "enabled_body_actual_bridge_and_rust",
-            "status": "pass" if body_pass else "failed",
-            "underlay_not_clicked": not_underlay, "real_bridge_clicked": clicked,
+            "status": ("pass" if body_pass else
+                       "inconclusive" if ambiguous_target else "failed"),
+            "underlay_target_alignment": body_underlay_hit,
+            "underlay_not_clicked": not_underlay,
+            "real_bridge_clicked": clicked,
             "real_rust_reacted": acked})
         if not body_pass:
-            report["status"] = "inconclusive" if actor_kind == "wlrctl" else "failed"
-            report["reason"] = ("relative_body_pointer_target_unverified"
-                                if actor_kind == "wlrctl"
-                                else "actual_wull_body_click_unproven")
+            report["status"] = "inconclusive" if ambiguous_target else "failed"
+            report["reason"] = ("body_pointer_target_unverified"
+                                if ambiguous_target else
+                                "actual_wull_body_click_unproven")
             return
         # A diagnostic, NOT a pass-through gate for the current full-host mask.
         prior = trace_kinds(trace)

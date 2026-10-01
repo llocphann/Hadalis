@@ -25,6 +25,50 @@ assert.throws(() => selectThinkingModel({models:[makeModel("ambiguous-1",["max"]
 assert.throws(() => selectThinkingModel(metadata,"high"),/THINKING_EFFORT_UNAVAILABLE/);
 assert.equal(operationErrorCode(new Error("THINKING_EFFORT_UNAVAILABLE")),"THINKING_EFFORT_UNAVAILABLE");
 
+// Real account catalogs can list legacy categories before the current models.
+// A continuation with an old default must still choose the highest enabled
+// Chat model, independently of category/model ordering and Work availability.
+const available={models:[makeModel("gpt-5-5-thinking",["standard","extended"]),
+  makeModel("gpt-5-6-thinking",["standard","extended"]),
+  makeModel("gpt-5-5-instant",[],{configurable_thinking_effort:false}),
+  makeModel("gpt-5-6-instant",[],{configurable_thinking_effort:false}),
+  makeModel("gpt-6-astra-wm",["standard","extended"],{is_work_mode_model:true})],
+  categories:[
+    {model_lane:"thinking",model_version:"5.5",default_model:"gpt-5-5-thinking"},
+    {model_lane:"thinking",model_version:"5.6",default_model:"gpt-5-6-thinking"},
+    {model_lane:"instant",model_version:"5.5",default_model:"gpt-5-5-instant"},
+    {model_lane:"instant",model_version:"5.6",default_model:"gpt-5-6-instant"},
+    {model_lane:"thinking",model_version:"6",default_model:"gpt-6-astra-wm"}]};
+for (const effort of ["standard","extended","instant"])
+  for (const reversed of [false,true]) {
+    const data=structuredClone(available);
+    if (reversed) {data.models.reverse();data.categories.reverse();}
+    const lane=effort === "instant" ? "instant" : "thinking";
+    assert.equal(selectThinkingModel(data,effort,`gpt-5-5-${lane}`).model,`gpt-5-6-${lane}`);
+  }
+const future=structuredClone(available);
+future.models.push(makeModel("gpt-5-10-thinking",["standard","extended"]));
+future.categories.push({model_lane:"thinking",model_version:"5.10",default_model:"gpt-5-10-thinking"});
+assert.equal(selectThinkingModel(future,"extended").model,"gpt-5-10-thinking");
+for (const flag of ["disabled_by_admin","is_work_mode_model"]) {
+  const data=structuredClone(future);data.models.at(-1)[flag]=true;
+  assert.equal(selectThinkingModel(data,"extended").model,"gpt-5-6-thinking");
+}
+const noVersion=structuredClone(available);
+for (const c of noVersion.categories) delete c.model_version;
+assert.equal(selectThinkingModel(noVersion,"extended").model,"gpt-5-6-thinking");
+const unsupported=structuredClone(available);
+unsupported.models[1].thinking_efforts=[{thinking_effort:"standard"}];
+assert.throws(()=>selectThinkingModel(unsupported,"extended","gpt-5-5-thinking"),/THINKING_EFFORT_UNAVAILABLE/);
+const unknown=structuredClone(available);
+unknown.models.push(makeModel("unranked-chat",["extended"]));
+unknown.categories.push({model_lane:"thinking",default_model:"unranked-chat"});
+assert.throws(()=>selectThinkingModel(unknown,"extended"),/THINKING_EFFORT_UNAVAILABLE/);
+const pro=structuredClone(available);
+pro.models.push(makeModel("gpt-5-6-pro",["extended"]));
+pro.categories.push({model_lane:"pro",model_version:"5.6",default_model:"gpt-5-6-pro"});
+assert.equal(selectThinkingModel(pro,"extended").model,"gpt-5-6-pro");
+
 const previous = globalThis.window;
 try {
   let reads=0, prepared=0, sent=0;
@@ -45,6 +89,11 @@ try {
   assert.equal(JSON.stringify(selection).includes("PRIVATE_CANARY"),false);
   assert.deepEqual(await nativePreflight(page,{thinking_effort:"instant",model:"chat-thinking"}),
     {ready:true,model:"chat-auto",thinking_effort:"instant"});
+  const originalRead=window.__hadalisNative.api.safeGet;
+  window.__hadalisNative.api.safeGet=async()=>structuredClone(available);
+  assert.deepEqual(await nativePreflight(page,{thinking_effort:"extended",model:"gpt-5-5-thinking"}),
+    {ready:true,model:"gpt-5-6-thinking",thinking_effort:"extended"});
+  window.__hadalisNative.api.safeGet=originalRead;
   await assert.rejects(nativePreflight(page,{thinking_effort:"ultra"}),/THINKING_EFFORT_UNAVAILABLE/);
   assert.equal(prepared,0);assert.equal(sent,0);
   let n=0;
@@ -75,4 +124,4 @@ try {
   if (previous === undefined) delete globalThis.window;
   else globalThis.window=previous;
 }
-console.log("PASS: enabled Instant/Thinking lane changes, fail-closed capability checks, legacy Auto omission, exact wire values and identity deduplication");
+console.log("PASS: highest available Chat versions, ordering/continuation upgrades, no model downgrade, Instant/Thinking lanes, exact wire values and identity deduplication");

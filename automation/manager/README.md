@@ -6,14 +6,17 @@ The scheduler independently manages each profile's project, conversation, user-m
 
 Each profile has a discrete Chat slider (Instant / Medium / High), initially
 High. Medium maps to `standard`, High to `extended`, and Instant selects the
-enabled Instant lane's default Chat model without a thinking-effort override.
+highest enabled Instant Chat model without a thinking-effort override.
 Set default stores `default_thinking_effort` for new profiles; existing explicit
 choices and duplicated profiles keep their own level. Missing/legacy Auto
 preferences resolve to that default for future turns. Legacy pending Auto
 requests retain their exact intent and continue without an override.
 Levels are checked against the account's Chat model metadata before dispatch.
-Continuation keeps a compatible model or selects the requested lane's enabled
-default when the profile changes between Instant and Thinking.
+Every new turn, including continuation, selects the highest enabled account
+model in the requested Chat lane. Declared model versions are compared
+numerically; legacy category ordering and the old chat's default cannot pin an
+older model. Work/hidden/admin-disabled models are excluded. Unknown or tied
+rankings and unsupported effort fail before dispatch rather than downgrading.
 Unsupported choices fail before submission instead of silently falling back.
 The resolved model and effort are captured in durable dispatch intent. Editing
 the slider or default affects future turns/profiles and cannot replay or change

@@ -208,6 +208,7 @@ export async function nativeModelCatalog(page) {
     categories:(Array.isArray(data?.categories) ? data.categories : []).slice(0,128).filter(Boolean).map(c => ({
       keys:Object.keys(c).filter(k => /^[a-z_]{1,64}$/.test(k)).slice(0,32),
       model_lane:["instant","thinking","pro"].includes(c.model_lane) ? c.model_lane : null,
+      model_version:parseModelVersion(c.model_version), is_soft_deprecated:c.is_soft_deprecated === true,
       default_model:slug(c.default_model), supported_models:(Array.isArray(c.supported_models) ? c.supported_models : []).slice(0,128).map(slug).filter(Boolean),
       disabled_by_admin:c.disabled_by_admin === true})),
     models:(Array.isArray(data?.models) ? data.models : []).slice(0,128).filter(m => slug(m?.slug)).map(m => ({
@@ -270,6 +271,20 @@ function thinkingEffort(input) {
   return effort;
 }
 
+function parseModelVersion(value) {
+  const text = typeof value === "number" && Number.isFinite(value) ? String(value) : value;
+  if (typeof text !== "string") return null;
+  const match = text.match(/^(?:gpt-)?(\d+)(?:[.-](\d+))?(?:[.-](\d+))?$/i);
+  if (!match) return null;
+  const version = match.slice(1).map(x => x == null ? 0 : Number(x));
+  return version.every(x => Number.isSafeInteger(x) && x <= 1000000) ? version : null;
+}
+
+function compareModelVersion(a, b) {
+  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] - b[i];
+  return 0;
+}
+
 export function selectThinkingModel(metadata, effort, preferredModel = "auto") {
   thinkingEffort({thinking_effort:effort});
   if (effort === "auto") return {model:preferredModel};
@@ -279,19 +294,32 @@ export function selectThinkingModel(metadata, effort, preferredModel = "auto") {
     typeof m?.slug === "string" && /^[a-zA-Z0-9._:-]{1,128}$/.test(m.slug) &&
     m.is_work_mode_model !== true && m.disabled_by_admin !== true && !(Array.isArray(m.tags) && m.tags.includes("hidden")) &&
     (!categories.length || enabled.some(c => c.default_model === m.slug || (Array.isArray(c.supported_models) && c.supported_models.includes(m.slug)))));
-  const instant = enabled.filter(c => c.model_lane === "instant");
-  const models = effort === "instant"
-    ? allModels.filter(m => instant.some(c => c.default_model === m.slug))
-    : allModels.filter(m => m.configurable_thinking_effort === true && Array.isArray(m.thinking_efforts) &&
-        m.thinking_efforts.some(e => e?.thinking_effort === effort));
-  const find = slug => models.find(m => m.slug === slug);
-  // Keep a compatible established model; an explicit lane change chooses its
-  // enabled default. Instant never means Auto or an arbitrary Work model.
-  const lane = effort === "instant" ? instant : enabled.filter(c => c.model_lane === "thinking");
-  const model = find(preferredModel) ?? lane.map(c => find(c.default_model)).find(Boolean)
-    ?? (effort !== "instant" ? find(metadata?.default_model_slug) : null)
-    ?? (!categories.length && models.length === 1 ? models[0] : null);
-  if (!model) throw new Error("THINKING_EFFORT_UNAVAILABLE");
+  const lane = enabled.filter(c => effort === "instant" ? c.model_lane === "instant"
+    : ["thinking", "pro"].includes(c.model_lane));
+  let candidates = lane.flatMap(c => {
+    const model = allModels.find(m => m.slug === c.default_model);
+    if (!model) return [];
+    const fromSlug = model.slug.match(/^(gpt-\d+(?:[.-]\d+){0,2})(?=$|[-:])/i)?.[1];
+    return [{model, version:parseModelVersion(c.model_version) ?? parseModelVersion(fromSlug),
+      pro:c.model_lane === "pro", deprecated:c.is_soft_deprecated === true}];
+  });
+  // Metadata supplies the enabled lane defaults, not a performance ordering.
+  // Compare declared versions numerically; never pin an older conversation's
+  // model or interpret array order as "highest". Unknown/tied rankings fail
+  // closed, and unsupported effort cannot silently downgrade the model.
+  if (!categories.length && allModels.length === 1 && effort !== "instant")
+    candidates = [{model:allModels[0], version:null, pro:false, deprecated:false}];
+  if (candidates.some(c => !c.deprecated)) candidates = candidates.filter(c => !c.deprecated);
+  const distinct = new Set(candidates.map(c => c.model.slug));
+  if (!candidates.length || (distinct.size > 1 && candidates.some(c => !c.version)))
+    throw new Error("THINKING_EFFORT_UNAVAILABLE");
+  candidates.sort((a,b) => a.version && b.version ? compareModelVersion(b.version,a.version) || Number(b.pro)-Number(a.pro) : 0);
+  const best = candidates[0];
+  const ties = candidates.filter(c => (!best.version || !c.version || compareModelVersion(c.version,best.version) === 0) && c.pro === best.pro);
+  if (new Set(ties.map(c => c.model.slug)).size > 1) throw new Error("THINKING_EFFORT_UNAVAILABLE");
+  const model = best.model;
+  if (effort !== "instant" && (model.configurable_thinking_effort !== true || !Array.isArray(model.thinking_efforts) ||
+      !model.thinking_efforts.some(e => e?.thinking_effort === effort))) throw new Error("THINKING_EFFORT_UNAVAILABLE");
   return {model:model.slug, thinking_effort:effort};
 }
 

@@ -10,7 +10,7 @@ fake = Path(__file__).resolve().parent / "megaqml-fixtures/fake-static-dispatch.
 source = fake.read_text(encoding="utf-8")
 assert "subprocess" not in source and "os.system" not in source
 assert '"mega", "request"' in source
-for scenario in ("present", "missing"):
+for scenario in ("present", "missing", "wrong-id", "unsafe-secret", "malformed"):
     env = dict(os.environ, MEGAQML_FIXTURE_CASE=scenario)
     request = {"protocol": 1, "request_id": "cloud-detect-1",
                "operation": "detect", "params": {}}
@@ -18,14 +18,24 @@ for scenario in ("present", "missing"):
                            input=json.dumps(request) + "\n",
                            capture_output=True, text=True, env=env, timeout=3,
                            check=True)
-    result = json.loads(child.stdout)
     assert not child.stderr
+    if scenario == "malformed":
+        assert "PRIVATE_FIXTURE_SENTINEL" in child.stdout
+        try:
+            json.loads(child.stdout)
+        except json.JSONDecodeError:
+            pass
+        else:
+            raise AssertionError("malformed fixture must be invalid JSON")
+        continue
+    result = json.loads(child.stdout)
     assert result["ok"] is True and result["error"] is None
-    assert result["request_id"] == "cloud-detect-1"
+    assert result["request_id"] == ("cloud-detect-replayed" if scenario == "wrong-id" else "cloud-detect-1")
+    assert result["result"]["secret_argv"] is (scenario == "unsafe-secret")
     assert [item["name"] for item in result["result"]["binaries"]] == [
         "mega-cmd", "mega-login", "mega-cmd-server", "mega-whoami", "mega-version"]
     expected = scenario == "present"
     assert [item["executable"] for item in result["result"]["binaries"]] == [
         expected, expected, expected, False, expected]
     assert all(item["path"] is None for item in result["result"]["binaries"])
-print("PASS MegaQML synthetic runtime dispatcher: 2 cases")
+print("PASS MegaQML synthetic runtime dispatcher: 5 cases")

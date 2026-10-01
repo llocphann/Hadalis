@@ -7,7 +7,7 @@ import sys
 if sys.argv[1:] != ["mega", "request"]:
     raise SystemExit(64)
 scenario = os.environ.get("MEGAQML_FIXTURE_CASE")
-if scenario not in ("present", "missing"):
+if scenario not in ("present", "missing", "wrong-id", "unsafe-secret", "malformed"):
     raise SystemExit(65)
 line = sys.stdin.readline(8193)
 if len(line) > 8192:
@@ -38,6 +38,12 @@ result = {
     "binaries": [{"name": n, "executable": v, "path": None}
                  for n, v in zip(names, available)],
 }
-print(json.dumps({"protocol": 1, "request_id": identifier,
-                  "ok": True, "error": None, "result": result},
-                 separators=(",", ":")), flush=True)
+if scenario == "unsafe-secret":
+    result["secret_argv"] = True
+payload = {"protocol": 1,
+           "request_id": "cloud-detect-replayed" if scenario == "wrong-id" else identifier,
+           "ok": True, "error": None, "result": result}
+if scenario == "malformed":
+    print('{ "payload": "PRIVATE_FIXTURE_SENTINEL",', flush=True)
+else:
+    print(json.dumps(payload, separators=(",", ":")), flush=True)

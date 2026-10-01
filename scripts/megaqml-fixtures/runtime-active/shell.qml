@@ -16,7 +16,7 @@ ShellRoot {
         onTriggered: {
             ticks++
             const service = Deferred.CloudStorageService
-            if (root.scenario !== "present" && root.scenario !== "missing") {
+            if (!["present", "missing", "wrong-id", "unsafe-secret", "malformed"].includes(root.scenario)) {
                 console.log("MEGAQML_QS_ACTIVE_INVALID")
                 Qt.quit()
                 return
@@ -26,14 +26,35 @@ ShellRoot {
                 service.registerConsumer()
                 return
             }
-            const targetState = root.scenario === "present"
-                ? "installed_disconnected" : "dependency_missing"
+            const invalidReply = ["wrong-id", "unsafe-secret", "malformed"].includes(root.scenario)
+            const targetState = invalidReply ? "unavailable"
+                : root.scenario === "present" ? "installed_disconnected" : "dependency_missing"
             if (service.backendState !== targetState) {
                 if (ticks >= 68 || service.backendState === "unavailable") {
                     console.log("MEGAQML_QS_ACTIVE_INVALID")
                     service.unregisterConsumer()
                     Qt.quit()
                 }
+                return
+            }
+            if (invalidReply) {
+                const rejected = service.consumerCount === 1
+                    && service.requestSerial === 1
+                    && service.readBusy === false
+                    && service.dependencySnapshot === null
+                    && service.backendState === "unavailable"
+                    && service.safeError === "Incompatible or oversized Cloud Storage response."
+                    && service.connected === false
+                    && service.liveAuthQualified === false
+                    && service.refreshPending === false
+                service.unregisterConsumer()
+                if (rejected && service.consumerCount === 0
+                        && service.backendState === "unavailable") {
+                    console.log("MEGAQML_QS_REJECTED_OK")
+                } else {
+                    console.log("MEGAQML_QS_ACTIVE_INVALID")
+                }
+                Qt.quit()
                 return
             }
             const expected = root.scenario === "present"

@@ -159,6 +159,12 @@ mkdir -p docs/evidence/megaqml
   elif grep -q '^qml_minimal,SKIP,' "$scratch/safe.csv"; then
     echo 'qml_blocker=qmlformat_unavailable'
   fi
+  for qs_case in quickshell_baseline quickshell_service_dormant; do
+    if grep -q "^${qs_case},FAIL," "$scratch/safe.csv"; then
+      # The local smoke helper prints only allowlisted diagnostics.
+      grep '^quickshell_smoke_category=' "$scratch/$qs_case.raw" || true
+    fi
+  done
   if grep -q '^quickshell_baseline,FAIL,' "$scratch/safe.csv"; then
     echo 'quickshell_runtime_blocker=baseline_environment_or_tool_failure'
   elif grep -q '^quickshell_baseline,SKIP,' "$scratch/safe.csv"; then

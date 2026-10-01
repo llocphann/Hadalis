@@ -53,13 +53,20 @@ assert 'qml_minimal' in runner and 'qml_modern_syntax' in runner and 'qml_blocke
 assert '/usr/lib/qt6/bin/qmlformat qmlformat6 qmlformat' in runner
 assert 'qt_formatter_selection=' in runner and 'version_major_minor=' in runner
 assert 'modern_probe_pass' in runner and 'fallback_probe_unqualified' in runner
-assert 'docs/evidence/megaqml/phase2d-' in runner
+assert 'docs/evidence/megaqml/phase2e-' in runner
 quickshell_runner = get("scripts/test-megaqml-quickshell-smoke.sh")
 quickshell_base = get("scripts/megaqml-fixtures/runtime-baseline/shell.qml")
 quickshell_dormant = get("scripts/megaqml-fixtures/runtime-dormant/shell.qml")
 assert 'INIR_NATIVE_BIN_DIR="$work/no-native-binaries"' in quickshell_runner
 assert 'QT_QPA_PLATFORM=offscreen' in quickshell_runner
 assert 'runtime-$kind/shell.qml' in quickshell_runner
+assert 'cp -- services/deferred/CloudStorageService.qml' in quickshell_runner
+assert 'cp -- services/deferred/CloudStorageStaticProtocol.js' in quickshell_runner
+assert 'test ! -e "$fixture_dir/scripts/native-dispatch"' in quickshell_runner
+assert 'import "./services" as Deferred' in quickshell_dormant
+quickshell_classifier = get("scripts/test-megaqml-quickshell-classify.py")
+assert 'quickshell_smoke_category=' in quickshell_classifier
+assert 'print(f"quickshell_smoke_category=' in quickshell_classifier
 assert 'quickshell_baseline' in runner and 'quickshell_service_dormant' in runner
 assert 'MEGAQML_QS_BASELINE_OK' in quickshell_base
 assert 'MEGAQML_QS_DORMANT_OK' in quickshell_dormant

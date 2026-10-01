@@ -1,10 +1,10 @@
 // Never register a consumer here: load only the dormant real service.
-// Quickshell.shellPath resolves to this isolated fixture directory, not the
-// production repository root, so even an accidental process call cannot reach
-// scripts/native-dispatch or an actual vendor binary.
+// The runner copies the exact reviewed service and parser into a temporary
+// configuration root, which contains no production native dispatcher or vendor
+// executable. No other Hadalis services are loaded by this fixture.
 import QtQuick
 import Quickshell
-import "../../../services/deferred" as Deferred
+import "./services" as Deferred
 
 ShellRoot {
     id: root
@@ -13,7 +13,6 @@ ShellRoot {
         running: true
         repeat: false
         onTriggered: {
-            Quickshell.watchFiles = false
             const service = Deferred.CloudStorageService
             if (service.consumerCount === 0
                     && service.requestSerial === 0

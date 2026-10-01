@@ -101,6 +101,21 @@ try {
     assert.equal(fs.existsSync(path.join(dir, "mega-cmd.executed")), false);
     assert.equal(fs.existsSync(path.join(dir, "mega-cmd-server.executed")), false);
 
+    // Bad JSON enum values can carry secret-like strings in serde errors;
+    // the production binary must emit only a fixed, never-raw diagnostic.
+    const invalid = spawnSync(bin, ["request"], {
+        input:JSON.stringify({
+            protocol:1, request_id:"invalid-op",
+            operation:"PRIVATE_PARSE_CANARY", params:{}
+        }) + "\n",
+        encoding:"utf8", timeout:6000, maxBuffer:65536, shell:false,
+        env:{PATH:dir, LANG:"C", LC_ALL:"C"}
+    });
+    assert.equal(invalid.status, 2);
+    assert.equal(JSON.parse(invalid.stdout).error.kind, "INVALID_REQUEST");
+    assert.equal((invalid.stdout + invalid.stderr).includes("PRIVATE_PARSE_CANARY"), false);
+    cases++;
+
     console.log("PASS MegaQML fake-PATH Rust-to-QML static boundary: " + cases + " cases");
 } finally {
     fs.rmSync(dir, {recursive:true, force:true});

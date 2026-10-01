@@ -95,7 +95,7 @@ def audit(source):
             raise RuntimeError("pointer_dependency_changed_after_review")
     revision = git("log", "--format=%H", BASE + ".." + source,
                    "--", SELF).splitlines()
-    if (len(revision) != 2
+    if (len(revision) != 3
             or git("rev-parse", revision[-1] + ":" + SELF)
             != INITIAL_SELF_BLOB
             or git("rev-parse", revision[0] + ":" + SELF)
@@ -136,7 +136,7 @@ def private_strays(private):
         try:
             if entry.stat().st_uid != os.getuid():
                 continue
-            tokens = (entry / "cmdline").read_bytes().split(b"\\0")
+            tokens = (entry / "cmdline").read_bytes().split(bytes([0]))
             if any(stem in token for token in tokens):
                 found.append(int(entry.name))
         except (OSError, PermissionError):

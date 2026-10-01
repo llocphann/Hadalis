@@ -9,7 +9,7 @@ if len(sys.argv) != 4 or sys.argv[3] not in ("baseline", "dormant", "active-pres
                                                      "refresh-coalesce", "refresh-stale-reacquire",
                                                      "recovery-exit", "recovery-timeout",
                                                      "ui-material", "ui-waffle", "ui-shared", "ui-preflight-timeout",
-                                                     "ui-preflight-release", "ui-preflight-present", "ui-race", "ui-host"):
+                                                     "ui-preflight-release", "ui-preflight-present", "ui-preflight-overlap", "ui-race", "ui-host"):
     raise SystemExit(64)
 raw = "\n".join(Path(p).read_text(encoding="utf-8", errors="replace")[:16384]
                 for p in sys.argv[1:3]).lower()
@@ -117,6 +117,24 @@ present_stages = (
 )
 matched_present_stage = next((category for token, category in present_stages
                               if "megaqml_qs_present_stage_" + token in raw), None)
+# Independent simultaneous static+preflight fake deadline classifications.
+overlap_stages = (
+    ("dormant", "overlap_dormant"),
+    ("load", "overlap_load"),
+    ("create", "overlap_create"),
+    ("static_start", "overlap_static_start"),
+    ("overlap_start", "overlap_overlap_start"),
+    ("child_start", "overlap_child_start"),
+    ("cancel_reap", "overlap_cancel_reap"),
+    ("static_retry", "overlap_static_retry"),
+    ("static_recover", "overlap_static_recover"),
+    ("preflight_retry", "overlap_preflight_retry"),
+    ("preflight_recover", "overlap_preflight_recover"),
+    ("final_release", "overlap_final_release"),
+    ("timeout", "overlap_timeout"),
+)
+matched_overlap_stage = next((category for token, category in overlap_stages
+                              if "megaqml_qs_overlap_stage_" + token in raw), None)
 ui_runtime = (
     ("page_gone", "ui_runtime_page_gone"),
     ("page_hidden", "ui_runtime_page_hidden"),
@@ -200,6 +218,10 @@ elif matched_present_stage is not None:
     kind = matched_present_stage
 elif "megaqml_qs_present_invalid" in raw:
     kind = "unexpected_present_state"
+elif matched_overlap_stage is not None:
+    kind = matched_overlap_stage
+elif "megaqml_qs_overlap_invalid" in raw:
+    kind = "unexpected_overlap_state"
 elif matched_ui_runtime is not None:
     kind = matched_ui_runtime
 elif matched_ui_type is not None:

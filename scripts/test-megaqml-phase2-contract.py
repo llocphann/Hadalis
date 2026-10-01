@@ -255,7 +255,10 @@ assert 'MEGAQML_FIXTURE_CASE=missing' in quickshell_runner
 assert 'quickshell_active_present' in runner and 'quickshell_active_missing' in runner
 assert 'export PATH="$work/allowed-bin"' in quickshell_runner
 assert 'cp -- scripts/megaqml-fixtures/fake-static-dispatch.py' in quickshell_runner
-assert 'docs/evidence/megaqml/phase2k-' in runner
+# This complete runner publishes new Phase 2l evidence. The focused
+# standalone loader runner intentionally retains the historical 2k prefix.
+assert 'docs/evidence/megaqml/phase2l-' in runner
+assert 'docs/evidence/megaqml/phase2k-' not in runner
 # Full requalification must tolerate only independently reviewed Wull commits
 # on shared dev and fail closed on unrelated concurrent source changes.
 assert 'wull_only_advance()' in runner

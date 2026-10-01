@@ -17,6 +17,18 @@ GroupButton {
     bounce: false
     waveFace: Config.options?.panelFamily === "abyss"
     property string buttonIcon
+    // Opt-in high contrast for compact category tabs on dense Settings pages.
+    property bool highContrastSelection: false
+    selectionOutlineWidth: root.highContrastSelection && root.toggled ? 2 : 0
+    selectionOutlineColor: Appearance.colors.colPrimary
+    colBackgroundToggled: root.highContrastSelection
+        ? Appearance.colors.colPrimaryContainer : Appearance.colors.colPrimary
+    colBackgroundToggledHover: root.highContrastSelection
+        ? Qt.darker(Appearance.colors.colPrimaryContainer, 1.06)
+        : Appearance.colors.colPrimaryHover
+    colBackgroundToggledActive: root.highContrastSelection
+        ? Qt.darker(Appearance.colors.colPrimaryContainer, 1.12)
+        : Appearance.colors.colPrimaryActive
     property string buttonPreviewKind: ""
     property real maxTextWidth: 180
     // Opt-in only. Most segmented controls keep their centered label; callers
@@ -72,7 +84,8 @@ GroupButton {
                 text: root.buttonIcon
                 iconSize: Appearance.font.pixelSize.normal
                 color: root.toggled
-                    ? Appearance.colors.colOnPrimary
+                    ? (root.highContrastSelection ? Appearance.colors.colOnPrimaryContainer
+                        : Appearance.colors.colOnPrimary)
                     : Appearance.colors.colOnSecondaryContainer
             }
         }
@@ -110,8 +123,11 @@ GroupButton {
                 elide: Text.ElideRight
                 maximumLineCount: 1
                 color: root.toggled
-                    ? Appearance.colors.colOnPrimary
+                    ? (root.highContrastSelection ? Appearance.colors.colOnPrimaryContainer
+                        : Appearance.colors.colOnPrimary)
                     : Appearance.colors.colOnSecondaryContainer
+                font.weight: root.highContrastSelection && root.toggled
+                    ? Font.DemiBold : Font.Normal
                 text: root.buttonText
             }
         }

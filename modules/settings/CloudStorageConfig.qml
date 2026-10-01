@@ -81,6 +81,7 @@ ContentPage {
     SettingsTaskNavigator {
         visible: root.width >= 800
         showIntro: false
+        highContrastSelection: true
         currentValue: root.activeGroup
         options: root.groups.map(g => ({displayName:g.label,icon:g.icon,value:g.key}))
         onSelected: value => root.selectGroup(value)
@@ -114,14 +115,13 @@ ContentPage {
         }
     }
     SettingsNote {
-        warning: true
-        text: Translation.tr("Static detection only: opening Settings never starts the MEGAcmd server.")
+        text: Translation.tr("Static only · no server start")
     }
     SettingsCardSection {
         visible: root.activeSection === "overview"
         expanded: true
         icon: "monitor_heart"
-        title: Translation.tr("MEGAcmd dependency status")
+        title: Translation.tr("MEGAcmd status")
         SettingsGroup {
             StyledText {
                 Layout.fillWidth: true
@@ -130,12 +130,12 @@ ContentPage {
                 text: CloudStorageService.backendState === "checking"
                     ? Translation.tr("Checking executables")
                     : CloudStorageService.backendState === "installed_disconnected"
-                    ? Translation.tr("MEGAcmd detected; not connected")
+                    ? Translation.tr("Detected · disconnected")
                     : CloudStorageService.backendState === "dependency_missing"
-                    ? Translation.tr("MEGAcmd shell or server executable missing")
+                    ? Translation.tr("Required tools missing")
                     : CloudStorageService.backendState === "stale"
-                    ? Translation.tr("Last check is stale")
-                    : Translation.tr("Dependency state not verified")
+                    ? Translation.tr("Previous result stale")
+                    : Translation.tr("Not checked")
             }
             StyledText {
                 visible: CloudStorageService.dependencySnapshot !== null
@@ -168,7 +168,23 @@ ContentPage {
                 text: CloudStorageService.safeError
             }
             RippleButton {
-                buttonText: Translation.tr("Recheck dependencies")
+                id: recheckButton
+                buttonText: Translation.tr("Recheck")
+                Accessible.name: Translation.tr("Recheck MEGAcmd dependencies")
+                horizontalPadding: 10
+                verticalPadding: 6
+                contentItem: RowLayout {
+                    spacing: 6
+                    MaterialSymbol {
+                        text: "refresh"
+                        iconSize: 17
+                        color: Appearance.colors.colOnLayer0
+                    }
+                    StyledText {
+                        text: recheckButton.buttonText
+                        color: Appearance.colors.colOnLayer0
+                    }
+                }
                 enabled: root.leaseHeld && !CloudStorageService.readBusy
                 onClicked: CloudStorageService.refreshStatic()
             }
@@ -178,24 +194,24 @@ ContentPage {
         visible: root.activeSection === "overview"
         expanded: true
         icon: "verified_user"
-        title: Translation.tr("Connection readiness (offline)")
+        title: Translation.tr("Offline readiness")
         SettingsGroup {
             SettingsNote {
-                text: Translation.tr("Manual local preflight only. No MEGAcmd server, account or network connection is started.")
+                text: Translation.tr("Offline only · no server or login")
             }
             StyledText {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 color: Appearance.colors.colOnSurface
                 text: CloudStorageService.preflightState === "checking"
-                    ? Translation.tr("Checking local connection prerequisites")
+                    ? Translation.tr("Checking local tools")
                     : CloudStorageService.preflightState === "dependencies_ready"
-                    ? Translation.tr("Local executables found. Live connection remains disabled pending qualification.")
+                    ? Translation.tr("Tools ready · sign-in disabled")
                     : CloudStorageService.preflightState === "dependency_missing"
-                    ? Translation.tr("Local executables are missing; live connection remains disabled.")
+                    ? Translation.tr("Tools missing · offline only")
                     : CloudStorageService.preflightState === "unavailable"
-                    ? Translation.tr("Offline readiness could not be verified.")
-                    : Translation.tr("Run the offline check when you want to assess readiness.")
+                    ? Translation.tr("Check unavailable")
+                    : Translation.tr("Not checked")
             }
             SettingsNote {
                 visible: CloudStorageService.preflightError.length > 0
@@ -203,7 +219,23 @@ ContentPage {
                 text: CloudStorageService.preflightError
             }
             RippleButton {
-                buttonText: Translation.tr("Check connection readiness (offline)")
+                id: offlineCheckButton
+                buttonText: Translation.tr("Offline check")
+                Accessible.name: Translation.tr("Check connection readiness (offline)")
+                horizontalPadding: 10
+                verticalPadding: 6
+                contentItem: RowLayout {
+                    spacing: 6
+                    MaterialSymbol {
+                        text: "shield"
+                        iconSize: 17
+                        color: Appearance.colors.colOnLayer0
+                    }
+                    StyledText {
+                        text: offlineCheckButton.buttonText
+                        color: Appearance.colors.colOnLayer0
+                    }
+                }
                 enabled: root.leaseHeld && !CloudStorageService.preflightBusy
                 onClicked: CloudStorageService.requestConnectPreflight()
             }
@@ -217,20 +249,20 @@ ContentPage {
         SettingsGroup {
             SettingsNote {
                 warning: true
-                text: Translation.tr("Unavailable until installed-version capabilities and parsers are qualified.")
+                text: Translation.tr("Unavailable · verification pending")
             }
         }
     }
     SettingsCardSection {
         expanded: true
         icon: "verified_user"
-        title: Translation.tr("Qualification boundary")
+        title: Translation.tr("Safety")
         SettingsGroup {
             SettingsNote {
-                text: Translation.tr("Sign-in, account reads and writes remain disabled; do not enter MEGA credentials.")
+                text: Translation.tr("Sign-in and cloud access disabled")
             }
             SettingsNote {
-                text: Translation.tr("Closing Settings does not stop external MEGA Desktop or vendor sync.")
+                text: Translation.tr("Closing Settings won\u0027t stop external sync")
             }
         }
     }

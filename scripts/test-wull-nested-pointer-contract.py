@@ -106,7 +106,7 @@ parent = runpy.run_path(str(ROOT / "scripts/wull-manual-nested-pointer.py"),
 child = runpy.run_path(str(ROOT / "scripts/wull-manual-pointer-child.py"),
                        run_name="wull_pointer_inert_child")
 assert parent["REVIEWED"]["scripts/wull-manual-pointer-child.py"] == (
-    "c099fc6a1a62b06218d69dd3ec526df18de701db")
+    "8dd65a0d10d5a8d1475be0939dbb78a0f977dd35")
 assert parent["REVIEWED"]["scripts/wull-fixtures/pointer-underlay/companion-relay.py"] == (
     "7e450db1db23e3c250859b0271a655d6325f0bc8")
 
@@ -125,12 +125,34 @@ for required in (
     'after_baseline_unmap_exterior_underlay_control',
     'post_baseline_unmap_pointer_target_unverified',
     'nested_output_geometry_changed_before_injection',
+    'candidate_left_margin_before_body_control',
+    'left_pre_body_margin_pointer_unverified',
+    'left_pre_body_margin_false_body_activation',
 ):
     assert required in child_text, required
 
 # Both supported backends have inert, explicit command sequences. The
 # relative-only fallback resets to the candidate output origin and remains
 # UNQUALIFIED until the actual separate underlay/body event controls pass.
+# LEFT-only differential decision must fail closed on unaligned
+# underlay or false body/Rust activity, not misclassify misses as QML.
+left_gate = child["left_pre_body_margin_decision"]
+assert left_gate("matched", False) == ("pass", None)
+for category in ("no_click", "off_target",
+                 "ambiguous_multiple_clicks", "witness_record_unparseable"):
+    assert left_gate(category, False) == (
+        "inconclusive", "left_pre_body_margin_pointer_unverified")
+assert left_gate("matched", True) == (
+    "failed", "left_pre_body_margin_false_body_activation")
+for invalid, activated in (("unreviewed", False), ("matched", 1),
+                           (None, False)):
+    try:
+        left_gate(invalid, activated)
+    except RuntimeError as error:
+        assert str(error) == "invalid_left_pre_body_witness"
+    else:
+        raise AssertionError("Unsafe left differential event accepted")
+
 plan = child["pointer_commands"]
 assert plan("/private/wdotool", "wdotool", (250, 140)) == [
     ["/private/wdotool", "--backend", "wlr-protocols", "mousemove", "250", "140"],

@@ -10,8 +10,27 @@ cd "$(git rev-parse --show-toplevel)"
 source_sha="$(git rev-parse HEAD)"
 [[ "$source_sha" == "$expected" ]] || { echo 'SOURCE_MISMATCH'; exit 66; }
 [[ -z "$(git status --porcelain --untracked-files=all)" ]] || { echo 'DIRTY_WORKTREE'; exit 67; }
-remote_sha="$(git ls-remote origin refs/heads/dev | awk 'NR==1{print $1}')"
-[[ "$remote_sha" == "$expected" ]] || { echo 'REMOTE_MISMATCH'; exit 68; }
+# Source is SHA-pinned. Intervening changes are allowed ONLY when every
+# changed path is independently Wull-owned. Never rebase, reset or force-push.
+wull_only_advance() {
+  local older="$1" newer="$2" changed
+  git merge-base --is-ancestor "$older" "$newer" || return 1
+  while IFS= read -r -d '' changed; do
+    case "$changed" in
+      docs/wull-*|scripts/wull-*|scripts/test-wull-*|modules/abyss/*|to-do/cloud-bot/ABYSS_WATER_DROPLET_COMPANION.md) ;;
+      *) return 1 ;;
+    esac
+  done < <(git diff --name-only -z "$older" "$newer" --)
+}
+fetch_remote_dev() {
+  git fetch --quiet --no-tags origin refs/heads/dev || return 1
+  remote_sha="$(git rev-parse FETCH_HEAD)"
+}
+fetch_remote_dev || { echo 'REMOTE_FETCH_FAILED'; exit 68; }
+if [[ "$remote_sha" != "$expected" ]] && ! wull_only_advance "$expected" "$remote_sha"; then
+  echo 'REMOTE_MISMATCH_UNREVIEWED'
+  exit 68
+fi
 scratch="$(mktemp -d)"
 trap 'rm -rf -- "$scratch"' EXIT
 failed=0
@@ -210,9 +229,22 @@ printf 'SOURCE_SHA=%s\nSAFE_REPORT=%s\n' "$source_sha" "$report"
 if [[ "$(git status --porcelain --untracked-files=all)" != "?? $report" ]]; then
   echo 'PUBLICATION_SKIPPED_DIRTY_WORKTREE'; exit "$failed"
 fi
-remote_after="$(git ls-remote origin refs/heads/dev | awk 'NR==1{print $1}')"
-if [[ "$remote_after" != "$expected" ]]; then
-  echo 'PUBLICATION_SKIPPED_REMOTE_MOVED'; exit "$failed"
+# Keep report's SOURCE_SHA unchanged, even if Wull commits arrive before
+# publication. Fast-forward only the reviewed Wull-only remote ancestry.
+fetch_remote_dev || { echo 'PUBLICATION_SKIPPED_REMOTE_FETCH'; exit 69; }
+if [[ "$remote_sha" != "$(git rev-parse HEAD)" ]]; then
+  if ! wull_only_advance "$source_sha" "$remote_sha"; then
+    echo 'PUBLICATION_SKIPPED_REMOTE_MOVED_UNREVIEWED'
+    exit 69
+  fi
+  if ! git merge --ff-only FETCH_HEAD >/dev/null; then
+    echo 'PUBLICATION_SKIPPED_REMOTE_NOT_FAST_FORWARD'
+    exit 69
+  fi
+fi
+if [[ "$(git status --porcelain --untracked-files=all)" != "?? $report" ]]; then
+  echo 'PUBLICATION_SKIPPED_DIRTY_AFTER_MERGE'
+  exit 69
 fi
 if [[ -z "$(git config user.name || true)" || -z "$(git config user.email || true)" ]]; then
   echo 'PUBLICATION_SKIPPED_GIT_IDENTITY'; exit "$failed"

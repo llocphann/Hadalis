@@ -230,6 +230,19 @@ assert 'quickshell_active_present' in runner and 'quickshell_active_missing' in 
 assert 'export PATH="$work/allowed-bin"' in quickshell_runner
 assert 'cp -- scripts/megaqml-fixtures/fake-static-dispatch.py' in quickshell_runner
 assert 'docs/evidence/megaqml/phase2k-' in runner
+# Full requalification must tolerate only independently reviewed Wull commits
+# on shared dev and fail closed on unrelated concurrent source changes.
+assert 'wull_only_advance()' in runner
+assert 'git merge-base --is-ancestor "$older" "$newer"' in runner
+assert 'git diff --name-only -z "$older" "$newer" --' in runner
+assert 'git merge --ff-only FETCH_HEAD' in runner
+assert 'REMOTE_MISMATCH_UNREVIEWED' in runner
+assert 'PUBLICATION_SKIPPED_REMOTE_MOVED_UNREVIEWED' in runner
+assert 'PUBLICATION_SKIPPED_DIRTY_AFTER_MERGE' in runner
+for allowlisted in ('docs/wull-*', 'scripts/wull-*', 'scripts/test-wull-*',
+                    'modules/abyss/*',
+                    'to-do/cloud-bot/ABYSS_WATER_DROPLET_COMPANION.md'):
+    assert allowlisted in runner
 focused = get("scripts/test-megaqml-ui-loader-local.sh")
 assert 'docs/evidence/megaqml/phase2k-loader-' in focused
 assert 'scripts/test-megaqml-quickshell-smoke.sh ui-material' in focused

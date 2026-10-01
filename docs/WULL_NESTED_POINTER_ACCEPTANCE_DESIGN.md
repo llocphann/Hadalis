@@ -311,3 +311,100 @@ self-review count advances from eight to **nine** reviewed commits.
 `1de19ca38f1738e0167b01a169c63f67d43cf1a4` adds an
 inert contract assertion for the allowlisted provenance field.
 The new coordinate-verified pointer run still needs local execution.
+
+
+## Coordinate-qualified real top-edge PASS; private candidate A/B staged
+
+The new exact-source real production receipt
+`docs/wull-pointer-acceptance-20261001T161911Z-4d87f846-391d8e81d461.json`
+was published on source
+`391d8e81d4617a6dbdb1199d009db4e0970ce073` and is **PASS**.
+The separately owned one-output nested Niri had distinct verified
+Wayland and IPC sockets, zero preexisting witness/production namespaces,
+and a privately built REAL Rust `inir-companiond`. The precise
+native backend was `forced_wlr_protocols_wdotool`.
+The underlay separately confirmed *correct requested actual coordinates*
+for both the Wull-disabled body-center control and Wull-enabled exterior
+pass-through control. At Wull's enabled body center, the underlay saw
+no click and the actual production bridge emitted exactly one real
+click with the private native Rust daemon subsequently recording its
+happy/pulse reaction. All owned production/underlay layers, private
+daemon and nested compositor were cleaned; host output count was
+unchanged. The earlier count-only FAILED receipt does not override
+this newer coordinate-qualified test. This PASS applies ONLY to the
+unchanged full-host input mask, one top edge on one nested output:
+it is not proof of a narrower mask, all four edges, popup
+noninterference, live host visual quality, canonical-wide validation,
+suspend/reload/multioutput, or long-run whole-shell resources.
+
+That PASS also observed **no underlay click at an empty location
+inside the current full 112x98 Wull host**, and no accidental
+body activation there. Although this is consistent with the current
+full-host production mask, the empty-margin negative result alone
+cannot independently attest precise pointer coordinates. A follow-up
+private A/B comparison MUST show the *positive* correct-coordinate
+underlay margin click for the candidate.
+
+Source-only follow-up for the explicit separate A/B gate:
+
+- `scripts/wull-private-mask-candidate.py` (created
+  `e3da0c57264cb44f26045e285f14b22a301a06ba`) verifies
+  the EXACT real production `Region` and centered top-edge
+  76x92 `AbyssCompanion` source. It replaces precisely that
+  one input-mask Region in a PRIVATE copy of
+  `modules/abyss/AbyssPerimeter.qml`, shadowing only the Abyss
+  module directory in an isolated test shell. Every other
+  module remains an unchanged symlink to the pinned checkout.
+  The test-only candidate uses a rectangular top-edge size=1
+  centered 76x92 body footprint; this does not establish
+  a curved silhouette mask or multi-edge fitness.
+- `11ecc21ad115fd0c683f3c7ce0c2e003e58f256d`
+  and `975482cd8a49475d9eb622d7b38c49aa601ec2bf`
+  add private candidate staging and **same-owned-nested-Niri**
+  baseline/candidate sequential comparison inside the child.
+  The baseline full-host mask must qualify FIRST (disabled
+  body, enabled exterior, real bridge/Rust body), and then
+  show its expected no-underlay empty-margin observation.
+  The child stops and unmaps that actual baseline source
+  before launching a NEW private candidate fixture with
+  separate real Rust trace. Candidate must independently
+  confirm enabled exterior underlay alignment, body bridge
+  click+real Rust response with no underlay click, and
+  positive exact-coordinate underlay reception at the
+  otherwise-empty Wull host margin without an extra body
+  activation. A candidate requiring a different toolkit,
+  ambiguous pointer result or unable to unmap its baseline
+  must NOT claim PASS.
+- `244b6a95a485ff669506614958832e2715cb3e3c`
+  adds an explicit opt-in to the existing guarded parent:
+  `--acknowledge-nested-pointer-candidate`. Only this mode
+  passes the private candidate flag; the old
+  `--acknowledge-nested-pointer` path continues to use
+  the unchanged production source. The coordinator pins
+  exact candidate-generator and child blobs and has
+  ten guarded revisions; a production or dependency edit
+  cannot silently pass the old source audit. It requires
+  the native **absolute** Wayland protocol backend
+  `wdotool` for the initial A/B geometry gate.
+  Its sanitized result uses a DIFFERENT unique prefix
+  `docs/wull-mask-candidate-*.json`; all private mouse
+  coordinates and raw logs stay outside the checkout.
+- `scripts/test-wull-private-mask-candidate-contract.py`,
+  created in `b705c2b224ff432e06e4268b25fb8ba7d84626f3`,
+  exercises exact single-marker replacement, refusal
+  of changed production source, shell-private-only
+  module staging and anti-overwrite constraints with NO
+  compositor or input. `55e191bb119be6e7f7d47150dff8876db0fb6fe8`
+  re-anchors the existing nested-pointer inert source
+  contract. All four current inert pointer contracts must
+  PASS on one clean checked-out `dev` SHA before an
+  opt-in private A/B execution.
+
+**Status: new candidate gate STAGED IN SOURCE ONLY, not locally
+executed.** Do not edit the production Region based solely on
+the current top-edge full-host PASS. Next review the unique
+candidate report (including BOTH stage check sets, matched
+witnesses, real bridge/Rust and owned cleanup) before considering
+a minimal real production integration, which would still need
+four-edge, hover/popup and live-host qualification. `stable`
+and shipped default-off Wull have not been changed.

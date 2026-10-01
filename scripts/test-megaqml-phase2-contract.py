@@ -400,4 +400,43 @@ for allowlisted in ('docs/wull-*', 'scripts/wull-*', 'scripts/test-wull-*',
     assert allowlisted in focused
 assert 'scripts/native-dispatch' not in focused
 assert 'mega-login' not in focused
+# F1 additive contract: the explicit preflight is inert and cannot be mistaken
+# for vendor authorization. This supplements, rather than weakens, Phase 2p.
+preflight_parser = get("services/deferred/CloudStoragePreflightProtocol.js")
+rust_source = get("native/inir-mega/src/main.rs")
+for required in ('const LIVE_AUTH_VENDOR_ENABLED: bool = false;',
+                 'Operation::ConnectPreflight =>',
+                 '"probe_kind": "static_connect_preflight"',
+                 '"connection_attempted": false',
+                 '"connected": false',
+                 '"auth_qualified": false',
+                 '"account_reads_enabled": false',
+                 'PREFLIGHT_INPUT_FORBIDDEN'):
+    assert required in rust_source, required
+assert "static_detection(path_env)" in rust_source
+assert "requestConnectPreflight()" in s
+assert 'operation: "connect_preflight"' in s
+assert 'import "CloudStoragePreflightProtocol.js" as PreflightProtocol' in s
+assert "PreflightProtocol.parseConnectPreflightResponse(" in s
+assert "root._preflightGeneration !== root.generation" in s
+assert "preflightDeadline.restart()" in s
+assert "preflightProc.signal(9)" in s
+for required in ('result.connected !== false',
+                 'result.connection_attempted !== false',
+                 'result.auth_qualified !== false',
+                 'result.account_reads_enabled !== false',
+                 'result.vendor_execution !== "blocked_pending_disposable_qualification"'):
+    assert required in preflight_parser, required
+for path in ("modules/settings/CloudStorageConfig.qml",
+             "modules/waffle/settings/pages/WCloudStoragePage.qml"):
+    page = get(path)
+    assert "Check connection readiness (offline)" in page, path
+    assert "CloudStorageService.requestConnectPreflight()" in page, path
+    assert "root.leaseHeld && !CloudStorageService.preflightBusy" in page, path
+    assert '"auth_begin"' not in page, path
+assert "CloudStoragePreflightProtocol.js" in get("scripts/test-megaqml-ui-fixture.py")
+assert "CloudStoragePreflightProtocol.js" in get("scripts/test-megaqml-quickshell-smoke.sh")
+assert "connect_preflight" in boundary
+assert "CloudStoragePreflightProtocol.js" in module_test
+
 print("PASS MegaQML Phase 2p static source contract")

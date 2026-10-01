@@ -148,6 +148,20 @@ ContentPage {
                     .arg(CloudStorageService.dependencySnapshot?.server
                          ? Translation.tr("Found") : Translation.tr("Missing"))
             }
+            // Show the complete, allowlisted static executable inventory.
+            // No vendor paths or subprocess output is exposed.
+            StyledText {
+                visible: CloudStorageService.dependencySnapshot !== null
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: Appearance.colors.colSubtext
+                text: "mega-login: " + (CloudStorageService.dependencySnapshot?.login
+                    ? Translation.tr("Found") : Translation.tr("Missing"))
+                    + "\nmega-whoami: " + (CloudStorageService.dependencySnapshot?.whoami
+                    ? Translation.tr("Found") : Translation.tr("Missing"))
+                    + "\nmega-version: " + (CloudStorageService.dependencySnapshot?.version
+                    ? Translation.tr("Found") : Translation.tr("Missing"))
+            }
             SettingsNote {
                 visible: CloudStorageService.safeError.length > 0
                 warning: true

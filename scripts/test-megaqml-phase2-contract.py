@@ -27,6 +27,12 @@ assert 'readonly property bool connected: false' in s
 assert 'readonly property bool liveAuthQualified: false' in s
 for forbidden in ('"auth_begin"', 'password:', 'secret:', 'mega-login email', 'mutationProc'):
     assert forbidden not in p and forbidden not in s, forbidden
+parser = get("services/deferred/CloudStorageStaticProtocol.js")
+for allowed in ("login: result.binaries[1].executable", "whoami: result.binaries[3].executable",
+                "version: result.binaries[4].executable"):
+    assert allowed in parser, allowed
+for executable in ("mega-login:", "mega-whoami:", "mega-version:"):
+    assert executable in p, executable
 module_test = get("scripts/test-megaqml-phase2-protocol.mjs")
 assert 'import assert from "node:assert/strict"' in module_test
 assert 'fileURLToPath(import.meta.url)' in module_test

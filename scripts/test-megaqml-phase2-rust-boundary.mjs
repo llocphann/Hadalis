@@ -31,6 +31,8 @@ try {
     assert.equal(missing.installed, false);
     assert.equal(missing.shell, false);
     assert.equal(missing.server, false);
+    for (const key of ["login", "whoami", "version"])
+        assert.equal(missing[key], false);
     cases++;
     for (const name of ["mega-cmd", "mega-cmd-server"]) {
         const fake = path.join(dir, name);
@@ -42,6 +44,8 @@ try {
     assert.equal(present.installed, true);
     assert.equal(present.shell, true);
     assert.equal(present.server, true);
+    for (const key of ["login", "whoami", "version"])
+        assert.equal(present[key], false);
     for (const name of ["mega-cmd", "mega-cmd-server"])
         assert.equal(fs.existsSync(path.join(dir, name + ".executed")), false);
     cases++;

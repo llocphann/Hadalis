@@ -28,5 +28,12 @@ function parseDetectResponse(payload, requestId) {
         throw new Error("inconsistent static binary inventory")
     const shell = result.binaries[0].executable
     const server = result.binaries[2].executable
-    return { installed: shell && server, shell: shell, server: server }
+    return {
+        installed: shell && server,
+        shell: shell,
+        login: result.binaries[1].executable,
+        server: server,
+        whoami: result.binaries[3].executable,
+        version: result.binaries[4].executable
+    }
 }

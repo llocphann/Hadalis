@@ -133,6 +133,16 @@ WSettingsPage {
                      ? Translation.tr("Found") : Translation.tr("Missing"))
         }
         WSettingsInfoBar {
+            visible: CloudStorageService.dependencySnapshot !== null
+            severity: WSettingsInfoBar.Severity.Info
+            message: "mega-login: " + (CloudStorageService.dependencySnapshot?.login
+                ? Translation.tr("Found") : Translation.tr("Missing"))
+                + "\nmega-whoami: " + (CloudStorageService.dependencySnapshot?.whoami
+                ? Translation.tr("Found") : Translation.tr("Missing"))
+                + "\nmega-version: " + (CloudStorageService.dependencySnapshot?.version
+                ? Translation.tr("Found") : Translation.tr("Missing"))
+        }
+        WSettingsInfoBar {
             visible: CloudStorageService.safeError.length > 0
             severity: WSettingsInfoBar.Severity.Warning
             message: CloudStorageService.safeError

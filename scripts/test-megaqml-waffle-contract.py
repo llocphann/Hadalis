@@ -19,6 +19,8 @@ for section in ("overview","drive","transfers","sync","backups",
 assert 'CloudStorageService.registerConsumer()' in page
 assert 'CloudStorageService.unregisterConsumer()' in page
 assert 'CloudStorageService.refreshStatic()' in page
+for executable in ("mega-login:", "mega-whoami:", "mega-version:"):
+    assert executable in page
 assert 'readonly property bool connected: false' in service
 for forbidden in ('auth_begin', 'secret:', 'mutationProc'):
     assert forbidden not in page

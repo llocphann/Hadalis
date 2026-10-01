@@ -25,11 +25,26 @@ const good = () => ({
 let count = 0;
 let result = parse(JSON.stringify(good()), "test-id");
 assert.equal(result.installed, true);
+for (const key of ["shell", "login", "server", "whoami", "version"])
+    assert.equal(result[key], true, "fixture exposes static " + key);
 assert.equal(JSON.stringify(result).includes("/sensitive/"), false); count++;
 const partial = good();
 partial.result.server_available = false;
 partial.result.binaries[2].executable = false;
-assert.equal(parse(JSON.stringify(partial), "test-id").installed, false); count++;
+const parsedPartial = parse(JSON.stringify(partial), "test-id");
+assert.equal(parsedPartial.installed, false);
+assert.equal(parsedPartial.login, true);
+assert.equal(parsedPartial.server, false); count++;
+const secondary = good();
+secondary.result.binaries[1].executable = false;
+secondary.result.binaries[3].executable = false;
+secondary.result.binaries[4].executable = false;
+const parsedSecondary = parse(JSON.stringify(secondary), "test-id");
+assert.equal(parsedSecondary.installed, true);
+assert.equal(parsedSecondary.shell, true);
+assert.equal(parsedSecondary.server, true);
+for (const key of ["login", "whoami", "version"])
+    assert.equal(parsedSecondary[key], false); count++;
 for (const modify of [
     x=>x.protocol=2, x=>x.request_id="stale", x=>x.ok=false,
     x=>x.error={kind:"UNKNOWN"}, x=>x.result=null,

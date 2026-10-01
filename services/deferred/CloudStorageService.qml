@@ -33,6 +33,30 @@ Singleton {
     property string _preflightId: ""
     property string _preflightInput: ""
 
+    function invalidatePreflightOnStaticTimeout() {
+        // A static detection timeout invalidates the generation shared with
+        // in-flight offline preflight. Revoke it explicitly so an old child
+        // cannot leave the UI stuck in "checking" or claim dependencies ready.
+        if (root.preflightState === "not_requested" && !root.preflightBusy
+                && !preflightProc.running) return
+        root._preflightGeneration = -1
+        root._preflightInput = ""
+        preflightDeadline.stop()
+        if (root.preflightBusy || preflightProc.running) {
+            if (preflightProc.startObserved) {
+                preflightProc.signal(9)
+            } else {
+                preflightProc.running = false
+                root.preflightBusy = false
+            }
+        }
+        if (root.consumerCount > 0) {
+            root.preflightState = "unavailable"
+            root.preflightError =
+                "Offline readiness invalidated by static dependency timeout."
+        }
+    }
+
     function registerConsumer() {
         root.consumerCount++
         if (root.consumerCount === 1) {
@@ -235,6 +259,7 @@ Singleton {
         interval: 6000
         repeat: false
         onTriggered: {
+            root.invalidatePreflightOnStaticTimeout()
             root.generation++
             root.backendState = "unavailable"
             root.dependencySnapshot = null

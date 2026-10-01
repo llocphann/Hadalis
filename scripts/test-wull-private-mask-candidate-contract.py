@@ -91,12 +91,14 @@ with tempfile.TemporaryDirectory(prefix="wull-candidate-inert-") as tmp:
 assert parent["REVIEWED"]["scripts/wull-private-mask-candidate.py"] == (
     "91049b2ca2beb7b1936af624adca5133d251ea3c")
 assert parent["REVIEWED"]["scripts/wull-manual-pointer-child.py"] == (
-    "5f2f9ec54546193cd3acfdb98a5f3db621174450")
+    "071f4eb257a52d2a35e8d06962ab9dfe6c90f802")
 source_parent = PARENT.read_text(encoding="utf-8")
 source_child = CHILD.read_text(encoding="utf-8")
 for marker in (
     '--acknowledge-nested-pointer-candidate',
     '--acknowledge-nested-pointer-candidate-bottom',
+    '--acknowledge-nested-pointer-candidate-right',
+    '"wull-mask-right-"',
     '"wull-mask-bottom-"',
     'candidate_mode=candidate_mode',
     '"private_candidate_mask_tested"',
@@ -116,6 +118,7 @@ for marker in (
     'baseline_to_candidate_cleanup_unproven',
     '"WULL_PRIVATE_POINTER_MODE"',
     '"candidate-mask-bottom"',
+    '"candidate-mask-right"',
     'helper["all_edge_targets"]',
 ):
     assert marker in source_child or marker in source_parent, marker

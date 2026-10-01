@@ -200,6 +200,16 @@ for gate in ('REMOTE_MISMATCH', 'SOURCE_MISMATCH', 'DIRTY_WORKTREE',
              'PUBLICATION_SKIPPED_REMOTE_MOVED', 'git diff --cached --check'):
     assert gate in focused
 assert 'git push --quiet origin HEAD:refs/heads/dev' in focused
+assert 'wull_only_advance()' in focused
+assert 'git merge-base --is-ancestor "$older" "$newer"' in focused
+assert 'git diff --name-only -z "$older" "$newer" --' in focused
+assert 'git merge --ff-only FETCH_HEAD' in focused
+assert 'REMOTE_MISMATCH_UNREVIEWED' in focused
+assert 'PUBLICATION_SKIPPED_REMOTE_MOVED_UNREVIEWED' in focused
+for allowlisted in ('docs/wull-*', 'scripts/wull-*', 'scripts/test-wull-*',
+                    'modules/abyss/*',
+                    'to-do/cloud-bot/ABYSS_WATER_DROPLET_COMPANION.md'):
+    assert allowlisted in focused
 assert 'scripts/native-dispatch' not in focused
 assert 'mega-login' not in focused
 print("PASS MegaQML Phase 2k static source contract")

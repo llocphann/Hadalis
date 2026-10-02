@@ -97,8 +97,11 @@ def exercise():
                 with patch.object(m.time, "time", return_value=1000):
                     with contextlib.redirect_stdout(report):
                         assert m.run() == 2
-        assert "WULL_RUNNING=FAIL" in report.getvalue()
-        assert "RESULT=NEEDS_ATTENTION" in report.getvalue()
+        if suspicious == "parked_unresolved":
+            assert "ENABLE_GUARD=BLOCKED" in report.getvalue()
+        else:
+            assert "WULL_RUNNING=FAIL" in report.getvalue()
+            assert "RESULT=NEEDS_ATTENTION" in report.getvalue()
 
     # A pause/stop or user-owned limit must not be silently overridden.
     for change, value in (("desired", "paused"), ("stop_on_done", True),

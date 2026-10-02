@@ -1,0 +1,30 @@
+{
+  "actions": [
+    {
+      "cancelled": false,
+      "command_sha256": "eb142cb0f3f68756ac65271110a7a8b914624aededc7f019cfa604fd5a1df287",
+      "evidence_id": "JOB-WULL-MATRIX-INSPECT-P1E0042-20261002-04:0",
+      "exit_code": 1,
+      "index": 0,
+      "kind": "exec",
+      "observed_at_unix": 1790959165,
+      "source_sha": "ac699871dd92450bed03af2c8b6e5d78cb06a7a8",
+      "stderr_bytes": 610,
+      "stderr_sha256": "2362add1d7c9a16bfc1defeb942363be2e4c639f83629e8b5ab5593d7c2d444b",
+      "stderr_truncated": false,
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "075f7315ff2594a31448856ac6e52d786e0dea39",
+  "evidence_location": "Private local evidence; raw output is not published",
+  "finished_at_unix": 1790959165,
+  "input_sha256": "55a4cec5a761315e15ee9891810518cf13955c5da0cb9899a4c962dc539e2147",
+  "job": "JOB-WULL-MATRIX-INSPECT-P1E0042-20261002-04",
+  "job_commit": "ac699871dd92450bed03af2c8b6e5d78cb06a7a8",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "started_at_unix": 1790959164,
+  "status": "failed"
+}

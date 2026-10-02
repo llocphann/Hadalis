@@ -54,8 +54,35 @@ def classify_private(text):
     return 37
 
 
+def detail_private(text):
+    """Encodes exact old positive-test line plus safe exception category.
+
+    For OLD lines 61..68 only:
+    exit = 100 + (test_line - 61) * 10 + exception_class.
+    exception_class: 1 AssertionError, 2 ValueError, 3 TypeError,
+    4 IndexError, 5 KeyError, 6 NameError, 7 RuntimeError, 9 OTHER.
+    No traceback text or exception message is ever emitted.
+    """
+    if classify_private(text) != 33:
+        return 39
+    lines = re.findall(
+        r'test-wull-existing-matrix-evidence\.py", line (\d{1,3})',
+        text)
+    if not lines:
+        return 39
+    line = int(lines[-1])
+    if line not in range(61, 69):
+        return 39
+    end = text.strip().splitlines()[-1].strip()
+    klass = end.split(":", 1)[0].strip()
+    enum = {"AssertionError": 1, "ValueError": 2, "TypeError": 3,
+            "IndexError": 4, "KeyError": 5, "NameError": 6,
+            "RuntimeError": 7}.get(klass, 9)
+    return 100 + (line - 61) * 10 + enum
+
+
 def main():
-    if sys.argv[1:] != ["--prior-action-only"]:
+    if sys.argv[1:] not in (["--prior-action-only"], ["--detail-only"]):
         return 39
     state = Path(os.environ.get(
         "XDG_STATE_HOME", str(Path.home() / ".local/state")))
@@ -77,6 +104,8 @@ def main():
             or result.get("exit_code") != 1
             or result.get("timed_out") is not False):
         return 39
+    if sys.argv[1:] == ["--detail-only"]:
+        return detail_private(result.get("stderr", ""))
     return classify_private(result.get("stderr", ""))
 
 
@@ -88,4 +117,4 @@ if __name__ == "__main__":
     # Deliberately publish category VIA EXIT CODE ONLY: the Git worker
     # metadata allowlist already exposes it. Zero stdout/stderr and no raw
     # diagnostic trace cross the boundary.
-    sys.exit(stage if stage in CLASS else 39)
+    sys.exit(stage if stage in CLASS or 100 <= stage <= 179 else 39)

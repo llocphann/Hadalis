@@ -9,8 +9,11 @@ from __future__ import annotations
 
 import argparse
 import subprocess
+import sys
 import time
+from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from automation.manager import control, store
 
 TARGETS = ("MegaQML", "Wull Companion")
@@ -98,8 +101,12 @@ def run(enable=False):
         attempts = item.get("protocol_repair_attempts", 0)
         is_running = item.get("desired") == "run" and item.get("status") not in BLOCKED
         auto = profile.get("auto_protocol_recovery") is True
+        unlimited = (not profile.get("stop_on_done", False) and
+                     profile.get("iteration_limit", 0) == 0 and
+                     profile.get("prompt_limit", 0) == 0)
         next_time = pending.get("poll_after_unix") if pending else item.get("next_run_at_unix")
         print(key + "_RUNNING=" + ("PASS" if is_running else "FAIL"))
+        print(key + "_UNBOUNDED_CONTINUOUS=" + ("PASS" if unlimited else "REVIEW_LIMITS"))
         print(key + "_AUTO_PROTOCOL_REPAIR=" + ("ON" if auto else "OFF"))
         print(key + "_STATUS=" + (item["status"] if item.get("status") in (
             "thinking", "continuing", "recovering_protocol", "transport_rate_limited",
@@ -113,7 +120,7 @@ def run(enable=False):
             str(max(0, next_time-now)) if type(next_time) is int else "SCHEDULER_CONTROLLED"))
         if attempts == 2:
             print(key + "_REPAIR_BUDGET=EXHAUSTION_RISK")
-        profiles_ok &= is_running and auto and type(attempts) is int and 0 <= attempts <= 2
+        profiles_ok &= is_running and auto and unlimited and type(attempts) is int and 0 <= attempts <= 2
     isolated = len(identities) == len(set(identities))
     print("CONVERSATION_ISOLATION=" + ("PASS" if isolated else "FAIL"))
     print("KEEP_AWAKE=" + "CONFIGURE_OS_POWER_SETTINGS")

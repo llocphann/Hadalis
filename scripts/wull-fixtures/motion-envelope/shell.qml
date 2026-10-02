@@ -11,6 +11,14 @@ ShellRoot {
     property var records: []
     // PRIVATE per-phase snapshots; never serialize or publish coordinates.
     property var privateLastBounds: []
+    property bool stretchSampleStageEmitted: false
+    property bool releaseSampleStageEmitted: false
+
+    // Public stage names only; no private coordinates or screen metadata.
+    function stage(name): void {
+        console.log("WULL_OFFSCREEN_DYNAMIC_STAGE=" + name)
+    }
+    Component.onCompleted: root.stage("BOOT")
     readonly property var cases: {
         const rows = []
         for (const edge of ["top", "right", "bottom", "left"])
@@ -157,6 +165,13 @@ ShellRoot {
                 || current.top < frozen.top - 0.12
                 || current.bottom > frozen.bottom + 0.12
         }
+        if (root.phase === "stretch" && !root.stretchSampleStageEmitted) {
+            root.stretchSampleStageEmitted = true
+            root.stage("STRETCH_SAMPLE")
+        } else if (root.phase === "release" && !root.releaseSampleStageEmitted) {
+            root.releaseSampleStageEmitted = true
+            root.stage("RELEASE_SAMPLE")
+        }
     }
 
     function emit(): void {
@@ -178,6 +193,7 @@ ShellRoot {
         running: true
         repeat: false
         onTriggered: {
+            root.stage("SETUP_START")
             for (let i = 0; i < root.cases.length; ++i) {
                 const host = hosts.itemAt(i)
                 const body = host ? root.bodyOf(host) : null
@@ -222,6 +238,7 @@ ShellRoot {
                     })
                     body.stateStretch = 0
                 }
+                root.stage("FROZEN_VERIFIED")
                 Qt.callLater(() => {
                     for (let i = 0; i < root.cases.length; ++i) {
                         const host = hosts.itemAt(i)
@@ -241,6 +258,7 @@ ShellRoot {
                         body.motionEnabled = true
                         body.stateStretch = 1
                     }
+                    root.stage("NEUTRAL_VERIFIED")
                     root.privateLastBounds = []
                     root.phase = "stretch"
                     samples.start()
@@ -262,6 +280,7 @@ ShellRoot {
         running: false
         repeat: false
         onTriggered: {
+            root.stage("RELEASE_START")
             for (let i = 0; i < root.cases.length; ++i)
                 root.bodyOf(hosts.itemAt(i)).stateStretch = 0
             root.privateLastBounds = []
@@ -276,6 +295,7 @@ ShellRoot {
         repeat: false
         onTriggered: {
             samples.stop()
+            root.stage("SAMPLING_DONE")
             root.emit()
         }
     }

@@ -1,5 +1,14 @@
 # MegaQML Phase 3b — approved disposable read-only Sync observation
 
+## Owner recovery: protected remote nonempty and bounded ls-l inspection (2026-10-02)
+
+Owner's prior SHA-pinned recovery inspection at `75b734f1dd8ad3817d55900bf6c264e5e961b020` returned `inspection_complete`, matched the disposable server and account, validated journal stage `sync_detached`, blank Sync listing, exactly one fixture in account root, `REMOTE_STATUS=nonempty`, empty owned local directory, and `RECOVERY_PLAN=no_action`. The nonempty remote listing is a **stop condition**, not deletion permission; private object names and vendor output have not been published. The pinned upstream `ls -l` formatter uses a FLAGS/ VERS/ SIZE/ DATE/ NAME header with one-letter node-type flags, but installed-version formatting is still unqualified.
+
+Owner separately approved one additional private **read-only** `ls -l` on that exact journal-bound remote folder, and had approved starting only the dedicated disposable server if absent. Source-staged `scripts/megaqml-phase3b-fixture-remote-ls-classify.py` requires a 0600 prior journal, its existing lock, the verified package and private libs, exactly one matching dedicated server, an explicit TTY start acknowledgment, then separate no-echo disposable-account confirmation. It permits only a fresh whoami identity recheck, the fixed blank Sync query, an exact account-root listing, and at most **one** `ls -l` at the original remote path with independent identity checks. At most one direct isolated server launch is allowed, only if the verified server was absent; startup can resume existing account Sync behavior, so it needs a separate explicit terminal acknowledgment. All client output is capped and kept in RAM; the strict parser returns finite type/count buckets or `listing_format_unqualified`, never names, dates, paths or raw logs. A header-only observation does **not** prove deletion safety in light of the earlier nonempty result. Script and independent fake-only contract are source-staged, not yet owner-Linux tested.
+
+**Hard stop:** no `--cleanup-only`, `rm`, `rmdir`, journal edit, new fixture, live auth or cloud-domain unlock based on this observation. Any unknown/unrecognized output or account/server change is unqualified; evaluate owner-only finite summary before deciding on further action.
+
+
 ## Scope and permission boundary (2026-10-02)
 
 The owner authorized a **separate disposable authenticated** read-only

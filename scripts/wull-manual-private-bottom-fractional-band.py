@@ -242,7 +242,14 @@ def publish_safe_report(source, result):
         return None
 
 
+def stop_signal(_signum, _frame):
+    # Raise into private_run wait so its finally kills/reaps the Qt group.
+    raise Stop("FRACTIONAL_INTERRUPTED")
+
+
 def main():
+    signal.signal(signal.SIGTERM, stop_signal)
+    signal.signal(signal.SIGINT, stop_signal)
     require(sys.argv[1:] in (
         ["--acknowledge-private-bottom-fractional-band"],
         ["--acknowledge-private-bottom-fractional-band",
@@ -287,6 +294,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         safe = {
+            "FRACTIONAL_INTERRUPTED",
             "FRACTIONAL_EXPLICIT_OPT_IN_REQUIRED",
             "FRACTIONAL_SOURCE_PIN_INVALID",
             "PRIVATE_QT_PREREQUISITE_MISSING",

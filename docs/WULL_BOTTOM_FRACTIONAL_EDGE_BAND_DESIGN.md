@@ -38,9 +38,9 @@ New files pinned independently:
 - `scripts/wull-private-bottom-fractional-band-model.py`,
   blob `f1c91fc2742b21a1cee9cb2911be7c614e8aeee5`.
 - `scripts/wull-manual-private-bottom-fractional-band.py`,
-  blob `96d8843cdabe20a0e7f37c98ed66da91821d88e8`.
+  blob `9c8e30eeef28d791966748bdc664e7ff204ccf67`.
 - `scripts/test-wull-private-bottom-fractional-band-contract.py`,
-  blob `efdf3f7c29c60e4bc1c243bddc832bac0bd84947`.
+  blob `d3f4a7c1dd1e5a230c012ab33fa8dbb79b9a67ce`.
 
 An existing qualified strict source guard and the prior unchanged bounded
 RGBA8 parser are re-used recursively. The fixture contains ONE original

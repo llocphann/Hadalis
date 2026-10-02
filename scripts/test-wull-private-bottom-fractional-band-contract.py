@@ -29,7 +29,7 @@ def blob(path):
 
 assert blob(FIXTURE) == "9203e9bf935c0a0ab995380dadf6a6ff27cc004d"
 assert blob(MODEL) == "f1c91fc2742b21a1cee9cb2911be7c614e8aeee5"
-assert blob(RUNNER) == "96d8843cdabe20a0e7f37c98ed66da91821d88e8"
+assert blob(RUNNER) == "9c8e30eeef28d791966748bdc664e7ff204ccf67"
 assert blob(BASE) == "75f923b104c8409b3532a809c3ba62cfd5998e03"
 assert blob(ALPHA) == "fa9e7c2af87ee830336988fa7060e2720e816ed0"
 assert blob(ORIGINAL) == "b5b01835a282458eba0d0268396ae2c350d919d2"
@@ -77,6 +77,7 @@ for token in (
     '"real_panel_visual": "untested"',
     '"production_mask_changed": False',
     'call("push", "origin", "HEAD:refs/heads/dev")',
+    'signal.signal(signal.SIGTERM, stop_signal)',
     '"https://github.com/llocphann/Hadalis.git"',
     'call("diff", "--cached", "--name-only") == relative',
     '"WULL_FRACTIONAL_BAND_DIR"',

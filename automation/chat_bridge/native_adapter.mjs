@@ -392,6 +392,46 @@ export async function nativeRead(page, path, query = {}, projectId = null) {
   return nativeGet(page, path, {query}, projectId);
 }
 
+// Finite exact-branch classifier: only stable status labels may cross the
+// Desktop boundary. In particular, a selected tab or visual navigation is NOT
+// evidence that a managed conversation has been superseded.
+export function classifyManagedBranch(conversation, expected) {
+  const mapping=conversation?.mapping, cursor=conversation?.current_node;
+  if (!mapping || typeof mapping!=="object" || typeof cursor!=="string" ||
+      typeof expected!=="string" || !expected) return "HISTORY_UNAVAILABLE";
+  const found = new Set(), seen=new Set();
+  let nodeId=cursor, laterUser=false;
+  for (let steps=0; nodeId && steps<10000; steps++) {
+    if (seen.has(nodeId)) return "HISTORY_UNAVAILABLE";
+    seen.add(nodeId);
+    const node=mapping[nodeId];
+    if (!node || typeof node!=="object") break;
+    const message=node.message, messageId=message?.id;
+    if (nodeId===expected || messageId===expected)
+      return seen.size===1 ? "EXACT_CURRENT_NODE" :
+        laterUser ? "LATER_USER_TURN" : "NON_USER_DESCENDANT";
+    if (message?.author?.role==="user") laterUser=true;
+    nodeId=node.parent;
+  }
+  // Truncated/cyclic branches must never be mistaken for genuine external
+  // edits. The historical mapping can contain a pruned original response.
+  if (nodeId && seen.size>=10000) return "HISTORY_BOUND_EXCEEDED";
+  const entries=Object.entries(mapping);
+  if (entries.length>10000) return "HISTORY_BOUND_EXCEEDED";
+  if (entries.some(([id,node])=>id===expected || node?.message?.id===expected))
+    return "DIFFERENT_BRANCH";
+  return "EXPECTED_RESPONSE_NOT_IN_HISTORY";
+}
+
+export async function nativeManagedBranch(page, conversationId, projectId, expected) {
+  if (!UUID.test(conversationId) || !UUID.test(expected))
+    throw new Error("invalid managed branch identity");
+  const conversation=await nativeRead(page, `/conversation/${conversationId}`, {}, projectId);
+  if (conversation?.conversation_id && conversation.conversation_id!==conversationId)
+    throw new Error("conversation identity mismatch");
+  return {relation:classifyManagedBranch(conversation, expected)};
+}
+
 export async function nativeStreamStatus(page, pending) {
   if (!UUID.test(pending.user_message_id) || !UUID.test(pending.conversation_id))
     throw new Error("invalid stream observation identity");

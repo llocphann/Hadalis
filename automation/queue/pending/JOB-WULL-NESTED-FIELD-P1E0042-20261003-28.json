@@ -1,0 +1,42 @@
+{
+  "id": "JOB-WULL-NESTED-FIELD-P1E0042-20261003-28",
+  "base_sha": "ced4a9bc2d33ea2330fb7a04a5e17a70e1ae48e9",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "resources": [
+    "shell:inir"
+  ],
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-nested-field-capture-fake-only.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 45
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-manual-nested-field-capture.py",
+          "--static-preflight"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 25
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-manual-nested-field-capture.py",
+          "--capture-gl"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 110
+      }
+    }
+  ]
+}

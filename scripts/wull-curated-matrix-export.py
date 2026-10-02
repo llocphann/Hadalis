@@ -139,7 +139,7 @@ def publish_curated(curated, proof):
                       push_remote, "HEAD:refs/heads/dev"], 35)
     if pushed.returncode:
         category = pushed.stderr.lower()
-        if "non-fast-forward" in category or "[rejected]" in category or "fetch first" in category:
+        if "non-fast-forward" in category or "fetch first" in category:
             raise Unsafe("PUSH_REF_MOVED")
         if ("authentication failed" in category or "permission denied" in category
                 or "could not read username" in category):

@@ -96,4 +96,22 @@ assert commands[0] == [Path("/usr/bin/true")]
 assert commands[1][:5] == [
     Path("/usr/bin/python3"), "-I", "-S", "-c", m["INNER"]]
 assert commands[1][-1] == "/usr/bin/mega-version"
+# Publisher never sends raw sandbox stdout, stderr or log bytes to GitHub.
+publisher = (root / "scripts/megaqml-phase3b-offline-startup-owner-local.sh"
+             ).read_text("utf-8")
+for required in (
+        "--acknowledge-isolated-offline-startup-diagnostic",
+        "--publish-public-diagnostic-category",
+        "test-megaqml-phase3b-offline-startup-diagnostic.py",
+        "megaqml-phase3b-offline-startup-diagnostic.py --self-test",
+        "sandbox_log_present", "sandbox_client_timed_out",
+        "server_version_qualified", "live_capabilities_unlocked",
+        "test-megaqml-phase2p-history-guard.py",
+        "git diff --cached --name-only",
+        "git push --quiet origin HEAD:refs/heads/dev"):
+    assert required in publisher, required
+for forbidden in ("git push --force", "git reset", "git stash",
+                  "mega-version -l", "mega-login", "mega-whoami"):
+    assert forbidden not in publisher, forbidden
+
 print("PASS MegaQML Phase3b isolated server-log diagnostic fake-only gate")

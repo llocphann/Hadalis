@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "purpose": "ORIGINAL immutable user Wull visual reference boards; compare procedural runtime Wull with actual images, never use these images at runtime.",
+  "files": [
+    {
+      "file": "01_wull_blueprint.png",
+      "sha256": "53315a8b1455fa0186a29ffae1effad914a9c74dad4a5c77316c7916a64598c2",
+      "bytes": 3098160
+    },
+    {
+      "file": "02_wull_expressions.png",
+      "sha256": "deae2a2ea2490ead7c0736b5193c3dee3af6af24fb4032354f4ee86cd4ee0779",
+      "bytes": 3197593
+    },
+    {
+      "file": "03_wull_animation.png",
+      "sha256": "33eaa7b328605568556fa86d8f10b1d1c604e44ff4ab629f4d1befa6eb8653ba",
+      "bytes": 2737406
+    },
+    {
+      "file": "04_wull_animation_plus.png",
+      "sha256": "c735e9c8ed423ac68be4df43a3275d0b94a829fbc5874566fa216fd32da8784c",
+      "bytes": 2725045
+    }
+  ],
+  "acceptance": "100% is an owner-directed target, NOT an automated numeric verdict. Require actual rendered comparison and maintainer approval."
+}

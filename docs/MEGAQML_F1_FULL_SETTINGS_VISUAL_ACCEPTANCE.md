@@ -217,3 +217,21 @@ format/content only**; the operator must also verify that the runner actually
 executed successfully in the trusted clean checkout. It does not prove
 the installed/running source, actual desktop behavior, MEGAcmd or account
 capabilities, and it grants no new permission for Phase 3b.
+
+
+### Integrated private runner qualification
+
+The opt-in `--local-only` runner now calls the same bounded classifier
+automatically **after** generating the private report. It prints
+`F1_MATRIX=QUALIFIED_SYNTHETIC_REPORT` and exits zero only when the
+executed required tests did not fail **and** the report satisfies exactly
+40 canonical PASS rows and 8/8 race evidence. Missing Quickshell/Qt tests,
+skips, or a malformed report yield `F1_MATRIX=UNQUALIFIED` and exit 21;
+an executed required test failure remains a failure.
+
+The standalone classifier invocation above remains available to re-check
+an existing private report without running the tests again. This new runner
+outcome qualifies the **synthetic matrix only**, never the actual deployed
+or running desktop payload, Rust binary, physical pointer observations or
+installed MEGAcmd behavior. All local output stays on the owner's
+separate clean checkout; do not publish private logs or run vendor commands.

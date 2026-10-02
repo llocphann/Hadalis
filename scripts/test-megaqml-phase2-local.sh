@@ -242,10 +242,22 @@ mkdir -p docs/evidence/megaqml
 cat "$scratch/safe.csv"
 printf 'SOURCE_SHA=%s\nSAFE_REPORT=%s\n' "$source_sha" "$report"
 if [[ "$mode" == "--local-only" ]]; then
-  # Preserve the report inside this clone for private owner review. No git add,
-  # commit, push or publication retry in this explicit owner-local mode.
+  # Private owner report only: no git add, commit, push or publication retry.
+  # Never classify an executed test failure as a report-only PASS.
   echo 'PUBLICATION=LOCAL_ONLY_NO_GIT_WRITE'
-  exit "$failed"
+  if [[ "$failed" != 0 ]]; then
+    echo 'F1_MATRIX=UNQUALIFIED_EXECUTED_FAILURE'
+    exit "$failed"
+  fi
+  # A zero exit from the 40-case runner by itself permits optional SKIPs.
+  # The private classifier independently requires exactly 40 PASS and 8/8.
+  if python3 -B scripts/megaqml-f1-local-matrix-classify.py \
+      --report "$report" --expect-sha "$source_sha"; then
+    echo 'F1_MATRIX=QUALIFIED_SYNTHETIC_REPORT'
+    exit 0
+  fi
+  echo 'F1_MATRIX=UNQUALIFIED'
+  exit 21
 fi
 if [[ "$(git status --porcelain --untracked-files=all)" != "?? $report" ]]; then
   echo 'PUBLICATION_SKIPPED_DIRTY_WORKTREE'; exit "$failed"

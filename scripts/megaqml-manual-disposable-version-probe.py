@@ -7,7 +7,6 @@ new network/PID namespaces and PID-1 lifetime, scrubbed environment.
 Raw vendor output stays in bounded process memory and is never printed.
 This does not qualify sign-in, account reads, help parsers or writes.
 """
-import argparse
 import json
 import os
 from pathlib import Path
@@ -60,7 +59,9 @@ def allowed_binary(name):
     raw = Path(candidate)
     try:
         resolved = raw.resolve(strict=True)
-        allowed = any(resolved.is_relative_to(root) for root in HOST_ROOTS)
+        allowed = raw.is_absolute() and any(
+            raw.is_relative_to(root) and resolved.is_relative_to(root)
+            for root in HOST_ROOTS)
         if not allowed or not resolved.is_file() or not os.access(raw, os.X_OK):
             return None
     except (OSError, RuntimeError):
@@ -105,7 +106,7 @@ def bwrap_command(bwrap, payload, vendor_parent):
     ]))
     return [
         str(bwrap), "--die-with-parent", "--new-session",
-        "--unshare-all", "--as-pid-1", "--clearenv",
+        "--unshare-all", "--unshare-net", "--as-pid-1", "--clearenv",
         *mount_prefixes(),
         "--setenv", "HOME", "/home/disposable",
         "--setenv", "XDG_CONFIG_HOME", "/home/disposable/.config",
@@ -183,7 +184,7 @@ def self_test():
     assert sanitized_version("PRIVATE_ACCOUNT\n") is None
     # Shape-only namespace/identity checks, no installed-vendor execution.
     probe = bwrap_command("/usr/bin/bwrap", ["/usr/bin/true"], Path("/usr/bin"))
-    for required in ("--unshare-all", "--as-pid-1", "--clearenv",
+    for required in ("--unshare-all", "--unshare-net", "--as-pid-1", "--clearenv",
                      "--tmpfs", "--die-with-parent", "--new-session"):
         assert required in probe, required
     assert not any(x in probe for x in ("--bind", "--share-net"))
@@ -192,15 +193,13 @@ def self_test():
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    modes = parser.add_mutually_exclusive_group(required=True)
-    modes.add_argument("--self-test", action="store_true")
-    modes.add_argument("--acknowledge-disposable-offline-probe",
-                       action="store_true")
-    args = parser.parse_args()
-    if args.self_test:
+    # Exact argv only; argparse would echo unexpected secret-like arguments.
+    if sys.argv[1:] == ["--self-test"]:
         self_test()
         return 0
+    if sys.argv[1:] != ["--acknowledge-disposable-offline-probe"]:
+        safe_summary("BLOCKED", reason="explicit_acknowledgment_required")
+        return 20
     if os.geteuid() == 0:
         safe_summary("BLOCKED", reason="do_not_run_as_root")
         return 20

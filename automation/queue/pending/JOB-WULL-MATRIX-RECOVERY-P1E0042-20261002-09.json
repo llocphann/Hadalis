@@ -1,0 +1,28 @@
+{
+  "id": "JOB-WULL-MATRIX-RECOVERY-P1E0042-20261002-09",
+  "base_sha": "e827e8f023873f68d3e4eb9d04df41d9c91a8d46",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-existing-matrix-evidence.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 90
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-existing-matrix-evidence.py",
+          "--retained-read-only"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 100
+      }
+    }
+  ]
+}

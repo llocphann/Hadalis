@@ -269,6 +269,29 @@ def public_report(proof, source, parent, qs_version, qt_version):
     }
 
 
+def categorize_private_qml_failure(raw, code, marker_count):
+    """Return ONLY controlled diagnostic labels, never private QML log text."""
+    if "WULL_OFFSCREEN_DYNAMIC_INVALID" in raw:
+        return "FIXTURE_INVALID"
+    if "WULL_OFFSCREEN_DYNAMIC_TIMEOUT" in raw:
+        return "FIXTURE_TIMEOUT"
+    if re.search(r'(?im)\b(?:module [^\n]* is not installed|module [^\n]* not found)\b', raw):
+        return "QML_IMPORT_FAILURE"
+    if re.search(r'(?i)\b(?:ReferenceError|TypeError|SyntaxError)\s*:', raw):
+        return "QML_SCRIPT_ERROR"
+    if re.search(r'(?i)\b(?:Cannot assign|Unable to assign|Failed to load component|is not a type)\b', raw):
+        return "QML_COMPONENT_ERROR"
+    if "Could not load the Qt platform plugin" in raw:
+        return "QT_PLATFORM_FAILURE"
+    if code != 0:
+        return "PRIVATE_QS_NONZERO_EXIT"
+    if marker_count == 0:
+        return "MISSING_GEOMETRY_MARKER"
+    if marker_count > 1:
+        return "DUPLICATE_GEOMETRY_MARKERS"
+    return "UNKNOWN_PRIVATE_MARKER_FAILURE"
+
+
 def run_fixture(folder):
     qs = shutil.which("qs") or shutil.which("quickshell")
     dbus = shutil.which("dbus-run-session")
@@ -357,6 +380,9 @@ def run_fixture(folder):
              if MARKER in line]
     if (code != 0 or "WULL_OFFSCREEN_DYNAMIC_INVALID" in raw
             or "WULL_OFFSCREEN_DYNAMIC_TIMEOUT" in raw or len(lines) != 1):
+        print("PRIVATE_QML_FAILURE_CATEGORY="
+              + categorize_private_qml_failure(raw, code, len(lines)),
+              file=sys.stderr)
         stop("private_dynamic_qml_marker_inconclusive")
     try:
         return model_summary(json.loads(lines[0]), known_frozen())

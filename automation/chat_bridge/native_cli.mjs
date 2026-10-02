@@ -1,4 +1,4 @@
-import {nativeManagedBranch, diagnoseNativeRenderer, connectNative, nativeRead, nativeStreamStatus, nativeStreamReceipt, nativeServerStreamStatus, nativeModelCatalog, pollNativeTurn, resolveProject, nativePreflight, nativeSubmit, nativeResume, discoverSubmission} from "./native_adapter.mjs";
+import {nativeManagedBranch, nativeCursor, diagnoseNativeRenderer, connectNative, nativeRead, nativeStreamStatus, nativeStreamReceipt, nativeServerStreamStatus, nativeModelCatalog, pollNativeTurn, resolveProject, nativePreflight, nativeSubmit, nativeResume, discoverSubmission} from "./native_adapter.mjs";
 import {operationErrorCode, operationErrorObservation} from "./native_errors.mjs";
 
 let browser, input;
@@ -29,10 +29,7 @@ try {
   else if (input.op === "stream_status") result = await nativeStreamStatus(page, input.pending);
   else if (input.op === "stream_receipt") result = await nativeStreamReceipt(page, input.pending);
   else if (input.op === "server_stream_status") result = {status:await nativeServerStreamStatus(page, input.pending.conversation_id)};
-  else if (input.op === "cursor") {
-    const c = await nativeRead(page, `/conversation/${input.conversation_id}`, {}, input.project_id);
-    result = {conversation_id: c.conversation_id, current_node: c.current_node, model: c.default_model_slug};
-  }
+  else if (input.op === "cursor") result = await nativeCursor(page, input.conversation_id, input.project_id);
   else if (input.op === "submit") result = await nativeSubmit(page, input);
   else if (input.op === "resume") result = await nativeResume(page, input.pending);
   else if (input.op === "poll") {

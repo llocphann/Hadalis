@@ -1,0 +1,74 @@
+# Wull original BOTTOM fractional virtual panel-band diagnostic
+
+**Status:** Source staged on `dev`; fake-only and owner-local actual Qt are NOT yet verified.
+
+## What the real owner-local checkpoint establishes
+
+The owner reported original frozen full-scene BOTTOM×1.5 at source SHA
+`74c016de533da681bfbf10b9c38a154a4aa7359a`: margin0 has exterior
+paint and a virtual boundary-contact band, while margin1 eliminates the
+thresholded exterior AND loses that specific synthetic two-row band.
+Margins2/3 also lack the band. These are locally reported original Qt
+samples, not a GitHub-published report or actual panel screenshot.
+The earlier independent 32-frame margin0/margin1 spring A/B does not
+prove virtual band continuity under animation.
+
+## Source geometry and falsifiable candidates
+
+Original `AbyssCompanion.qml` blob
+`b5b01835a282458eba0d0268396ae2c350d919d2` contains two original
+host children: a centered rotated procedural body and the separately
+bottom-anchored rounded 58×10 cradle. In the original private source-pinned
+320×300, BOTTOM×1.5 host, the logical host bottom maps to raster y=222.5;
+original cradle bottom with *private-only* bottomMargin `m` maps to
+`222.5 − 1.5m`. Values 0,.25,.5,.75,1 map to 222.5, 222.125, 221.75,
+221.375, 221.0. At threshold24, original inside edge raster row221
+and support row220, a fractional candidate may show **both** absence of
+exterior alpha and retention of at least three contiguous central-x
+pixels in BOTH rows. This is a hypothesis: actual Qt rasterization may
+yield no such margin. The method cannot determine real panel pixels or
+perceived connection.
+
+## Private probe contracts
+
+New files pinned independently:
+
+- `scripts/wull-fixtures/paint-bottom-fractional-band/shell.qml`,
+  blob `9203e9bf935c0a0ab995380dadf6a6ff27cc004d`.
+- `scripts/wull-private-bottom-fractional-band-model.py`,
+  blob `f1c91fc2742b21a1cee9cb2911be7c614e8aeee5`.
+- `scripts/wull-manual-private-bottom-fractional-band.py`,
+  blob `96d8843cdabe20a0e7f37c98ed66da91821d88e8`.
+- `scripts/test-wull-private-bottom-fractional-band-contract.py`,
+  blob `efdf3f7c29c60e4bc1c243bddc832bac0bd84947`.
+
+An existing qualified strict source guard and the prior unchanged bounded
+RGBA8 parser are re-used recursively. The fixture contains ONE original
+full companion at a frozen invariant original body pose in ONE offscreen
+Qt process. Only the temporary cradle anchors.bottomMargin varies; each
+capture is strictly staged, uniquely owned and private. The runner
+requires current clean trusted `dev`, source-pin and original positive
+controls; the fake-only test checks synthetic variants and fail-closed
+negative states. Any real image/log remains outside the source checkout.
+No default-on Wull, production QML, Region, native Rust, or stable change.
+
+With the additional **explicit** publication flag, *after* classification
+and the source/working-tree integrity checks, the runner may commit a
+single whitelisted JSON report containing only source SHA, fixed sample
+labels and booleans, missing-gate descriptors, and owner-local provenance.
+It verifies current remote `dev` equals source SHA before one
+non-force push. It never retries or rebases on concurrent dev advances;
+if publication fails, only short fixed categories can be relayed by owner.
+
+## Inference limits and future gates
+
+Even if a fractional inset has no thresholded exterior and has the
+two-row virtual band in this sampled pose, real visual panel attachment
+may differ. Separate gates: real original spring motion in both phases,
+additional sampled alpha/extrema, real Wayland panel and screen-edge
+visual inspection, pointer hover/click/popup transfer, all remaining
+edges/scales including fractional monitor scales, system events and
+canonical maintainer validation. If none of the three fractions passes
+both private signals, design a separate strictly host-contained
+connector or host/panel-edge layout experiment; do not silently choose
+margin1 or weaken the production input mask.

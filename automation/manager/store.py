@@ -113,6 +113,7 @@ def profile_state() -> dict:
         "transport_observation": None,
         "generation_recoveries": 0, "failed_turn": None,
         "protocol_repair_attempts": 0,
+        "cursor_timeout_streak": 0,
     }
 
 

@@ -123,3 +123,34 @@ the same explicit `/dev/tty` stream as the confirmation prompt.
 These changes add only better diagnostics and fake-only tests; they do
 not modify vendor argv, enable any cloud feature, or turn malformed
 email into an account-existence probe.
+
+## Owner-only TTY transport diagnosis after a second fail-closed stop
+
+The owner completed the original `sudo -u` attempt and then a
+`machinectl shell` one-shot attempt. Both returned the finite
+`tty_confirmation_unavailable` state **before any account or
+Sync data command**. The second attempt positively identified the
+already-running isolated OS-owned server; the terminal transport
+remains unqualified. Do not guess that credentials or the server
+are faulty, relax the private-input requirement, or turn on
+automatic login.
+
+`scripts/megaqml-phase3b-tty-only-diagnostic.py` is a
+**standalone, no-input, no-vendor** Linux terminal capability
+observation. It does not import the MEGA adapter, read input,
+print account or terminal paths, or start a process. With the
+explicit `--diagnose` argument it prints only finite booleans
+indicating whether this launch mode can open its controlling
+`/dev/tty`, query terminal attributes there, or instead has a
+terminal-backed inherited stdin and stderr. No-echo credential
+input must **not** be attempted on a pipe or non-controllable
+terminal, even if an email is not a password.
+
+The owner should run this diagnostic in the **exact same
+`machinectl shell` one-shot launch mode** and return only its
+finite summary, never raw terminal text. The result dictates
+whether to switch to a true interactive dedicated-user shell,
+or to explicitly implement and unit-test a separate
+privacy-preserving inherited-terminal transport. It is not
+an installed vendor qualification and does not change the
+live read-only probe or the ten-deny policy.

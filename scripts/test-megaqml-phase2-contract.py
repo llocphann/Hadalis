@@ -435,7 +435,11 @@ assert "bash -n scripts/test-megaqml-race-repeat.sh" in combined
 # Shell line continuations are formatting, not a changed invocation.
 # Preserve both source/remote argument checks while accepting readable wrapping;
 # actual ancestry behavior is covered by the black-box local-only integration.
-logical_runner = re.sub(r"\\\r?\n[ \t]*", " ", runner)
+# Bash removes the backslash-newline, including indentation but not the
+# space before the backslash. Injecting another space causes false negatives.
+assert re.sub(r"\\\r?\n[ \t]*", "", "guard.py " + chr(92) +
+              "\n  " + '"$expected"') == 'guard.py "$expected"'
+logical_runner = re.sub(r"\\\r?\n[ \t]*", "", runner)
 assert 'test-megaqml-phase2p-history-guard.py "$expected" "$remote_sha"' in logical_runner
 assert 'test-megaqml-phase2p-history-guard.py "$source_sha" "$remote_sha"' in logical_runner
 actual = re.findall(r'^\s*run_test ([a-z0-9_]+) ', runner, re.MULTILINE)

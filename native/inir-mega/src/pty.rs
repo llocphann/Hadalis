@@ -284,10 +284,12 @@ pub(crate) fn run_auth_dialog(
         }
     }
 
-    let status = child.wait().context("wait auth vendor")?;
-    if !status.success() {
-        bail!("auth vendor exited unsuccessfully");
-    }
+    // A vendor can close every PTY slave descriptor yet keep its parent
+    // process alive (for example, after redirecting all stdio). Waiting for
+    // natural exit here would bypass the auth deadline. EOF is always an
+    // unsuccessful dialog without a recognized terminal prompt: terminate
+    // the entire private process group before reaping the launcher.
+    stop_child(&mut child);
     Ok(AuthDialogResult {
         outcome: AuthDialogOutcome::Unexpected,
     })
@@ -490,6 +492,27 @@ test "$LANG" = "en_US.UTF-8" || exit 49
         std::thread::sleep(Duration::from_millis(1250));
         assert!(!survived.exists(), "orphaned fake vendor child survived cleanup");
         let _ = fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn pty_closed_slave_does_not_bypass_deadline_by_waiting_for_parent() {
+        // Fake vendor disconnects all PTY streams but remains alive. The
+        // former blocking child.wait() could outlive the caller's deadline.
+        let vendor = fake_vendor(
+            "#!/bin/sh\nIFS= read -r command\nexec </dev/null >/dev/null 2>&1\nsleep 30\n",
+        );
+        let started = Instant::now();
+        let result = run_auth_dialog(
+            &vendor,
+            "fixture@example.invalid",
+            "FAKE_SECRET_NEVER_EXPOSE",
+            None,
+            Duration::from_millis(700),
+            4096,
+        );
+        assert!(started.elapsed() < Duration::from_secs(3));
+        assert_eq!(result.unwrap().outcome, AuthDialogOutcome::Unexpected);
+        let _ = fs::remove_dir_all(vendor.parent().unwrap());
     }
 
     #[test]

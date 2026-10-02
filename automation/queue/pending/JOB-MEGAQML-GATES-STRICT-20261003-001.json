@@ -1,0 +1,27 @@
+{
+  "id": "JOB-MEGAQML-GATES-STRICT-20261003-001",
+  "base_sha": "15071813b1f5b770a2e48e9dddc6d8a16840573d",
+  "profile_id": "profile-a25585b748dd4220",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "scripts/test-megaqml-phase2-protocol.mjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-megaqml-phase2-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    }
+  ]
+}

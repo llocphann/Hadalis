@@ -322,6 +322,16 @@ def private_exit_class(code):
     return "ZERO"
 
 
+def limit_private_process_files():
+    # RLIMIT_FSIZE is inherited by dbus-run-session AND Quickshell: it
+    # limits *all* QS private regular-file writes (including internal
+    # qslogs), not just captured stdout. The maintainer observed
+    # SIGXFSZ with 512 KiB and an actual minimal QML PASS at 8 MiB.
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+    resource.setrlimit(resource.RLIMIT_FSIZE,
+                       (QS_CHILD_FILE_LIMIT, QS_CHILD_FILE_LIMIT))
+
+
 def run_fixture(folder):
     qs = shutil.which("qs") or shutil.which("quickshell")
     dbus = shutil.which("dbus-run-session")
@@ -359,14 +369,6 @@ def run_fixture(folder):
     })
     log = private / "dynamic.private.log"
     code = -1
-    def limit_private_process_files():
-        # RLIMIT_FSIZE is inherited by dbus-run-session AND Quickshell: it
-        # limits *all* QS private regular-file writes (including internal
-        # qslogs), not just captured stdout. The maintainer observed
-        # SIGXFSZ with 512 KiB and an actual minimal QML PASS at 8 MiB.
-        resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-        resource.setrlimit(resource.RLIMIT_FSIZE,
-                           (QS_CHILD_FILE_LIMIT, QS_CHILD_FILE_LIMIT))
     with log.open("wb") as output:
         proc = subprocess.Popen(
             [dbus, "--", qs, "--path", str(shell / "shell.qml")],

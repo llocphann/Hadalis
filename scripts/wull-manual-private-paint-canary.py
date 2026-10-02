@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = "scripts/wull-fixtures/paint-alpha-canary/shell.qml"
 MODEL = "scripts/wull-private-painted-alpha-model.py"
 PINS = {
-    FIXTURE: "d2f3d654440f1ca4b3fc3e173cbf332b4add777b",
+    FIXTURE: "4ed1c92b81870197927b449cfe60cd2c57859b30",
     MODEL: "fa9e7c2af87ee830336988fa7060e2720e816ed0",
     "modules/abyss/companion/AbyssCompanion.qml":
         "b5b01835a282458eba0d0268396ae2c350d919d2",

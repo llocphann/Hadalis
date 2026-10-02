@@ -37,6 +37,11 @@ with tempfile.TemporaryDirectory(prefix="megaqml-f1-local-only-fake-") as raw:
     assert run("git", "remote", "add", "origin", str(remote),
                cwd=checkout).returncode == 0
     assert run("git", "push", "-q", "origin", "dev", cwd=checkout).returncode == 0
+    # The worker's upstream-tracking ref is independently maintained by
+    # the daemon: model it explicitly, not merely the local dev branch.
+    assert run("git", "fetch", "-q", "origin",
+               "refs/heads/dev:refs/remotes/origin/dev",
+               cwd=checkout).returncode == 0
     pin = run("git", "rev-parse", "HEAD", cwd=checkout).stdout.decode().strip()
     # Emulate the worker's deliberate exact-SHA detached checkout. It has
     # its own private clone and never changes the fixture's dev branch.
@@ -120,6 +125,14 @@ with tempfile.TemporaryDirectory(prefix="megaqml-f1-local-only-fake-") as raw:
     assert run("git", "-c", "user.name=Fixture", "-c",
                "user.email=fixture@example.invalid", "commit", "-qm",
                "fake-only queue", cwd=checkout).returncode == 0
+    queued_sha = run("git", "rev-parse", "HEAD",
+                     cwd=checkout).stdout.decode().strip()
+    assert run("git", "update-ref", "refs/remotes/origin/dev", queued_sha,
+               cwd=checkout).returncode == 0
+    # In the worker clone, local dev remains stale even when root's
+    # origin/dev tracks the later SHA containing a fake queue addition.
+    assert run("git", "rev-parse", "refs/heads/dev",
+               cwd=detached).stdout.decode().strip() == pin
     reports = list((detached / "docs/evidence/megaqml").glob("phase2p-*.md"))
     assert len(reports) == 1
     reports[0].unlink()  # Only the disposable private fixture report.
@@ -127,6 +140,8 @@ with tempfile.TemporaryDirectory(prefix="megaqml-f1-local-only-fake-") as raw:
                    pin, "--local-only", cwd=detached, env=env)
     assert advanced.returncode == 21, (advanced.returncode, "unexpected advancement")
     assert "F1_MATRIX=UNQUALIFIED\n" in advanced.stdout.decode()
+    assert run("git", "rev-parse", "FETCH_HEAD",
+               cwd=detached).stdout.decode().strip() == queued_sha
 
     # Even a legitimate descendant becomes unreviewed when it edits source.
     changed = checkout / "services/deferred/CloudStorageService.qml"
@@ -137,6 +152,10 @@ with tempfile.TemporaryDirectory(prefix="megaqml-f1-local-only-fake-") as raw:
     assert run("git", "-c", "user.name=Fixture", "-c",
                "user.email=fixture@example.invalid", "commit", "-qm",
                "unreviewed fake source", cwd=checkout).returncode == 0
+    changed_sha = run("git", "rev-parse", "HEAD",
+                      cwd=checkout).stdout.decode().strip()
+    assert run("git", "update-ref", "refs/remotes/origin/dev", changed_sha,
+               cwd=checkout).returncode == 0
     reports = list((detached / "docs/evidence/megaqml").glob("phase2p-*.md"))
     assert len(reports) == 1
     reports[0].unlink()
@@ -144,5 +163,7 @@ with tempfile.TemporaryDirectory(prefix="megaqml-f1-local-only-fake-") as raw:
                    pin, "--local-only", cwd=detached, env=env)
     assert rejected.returncode == 68
     assert rejected.stdout == b"REMOTE_MISMATCH_UNREVIEWED\n"
+    assert run("git", "rev-parse", "FETCH_HEAD",
+               cwd=detached).stdout.decode().strip() == changed_sha
 
 print("PASS local-only branch/descendant rejects unqualified and unreviewed inputs")

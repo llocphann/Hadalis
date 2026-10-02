@@ -37,7 +37,14 @@ wull_only_advance() {
   done < <(git diff --name-only -z "$older" "$newer" --)
 }
 fetch_remote_dev() {
-  git fetch --quiet --no-tags origin refs/heads/dev || return 1
+  # A pinned worker clone's local dev branch is a stale local mirror.
+  # Only detached private runs use the worker-root origin/dev tracking ref.
+  # Normal maintainer dev runs retain the original remote branch check.
+  if [[ -z "$current_branch" && "$mode" == "--local-only" ]]; then
+    git fetch --quiet --no-tags origin refs/remotes/origin/dev || return 1
+  else
+    git fetch --quiet --no-tags origin refs/heads/dev || return 1
+  fi
   remote_sha="$(git rev-parse FETCH_HEAD)"
 }
 fetch_remote_dev || { echo 'REMOTE_FETCH_FAILED'; exit 68; }

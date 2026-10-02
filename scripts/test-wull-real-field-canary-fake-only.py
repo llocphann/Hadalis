@@ -15,7 +15,7 @@ assert "readonly property bool shaderReady: realField.ready" in fixture
 assert "records: []" in fixture and "waveTexture: null" in fixture
 assert 'Quickshell.env("WULL_FIELD_CANARY_PRIVATE_PNG")' in fixture
 assert "sheet.grabToImage" in fixture
-assert "REAL_SHADER_NOT_READY" in fixture
+assert "if (!cell.shaderReady)" in fixture
 for category in ("FIELD_FRAME_NOT_PRESENTED", "FIELD_GRAPHICS_API_UNSUPPORTED",
                  "FIELD_EFFECT_UNQUALIFIED"):
     assert category in fixture and category in runner_text

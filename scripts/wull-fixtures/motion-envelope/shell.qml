@@ -9,6 +9,8 @@ ShellRoot {
     property string phase: "setup"
     property bool invalid: false
     property var records: []
+    // PRIVATE per-phase snapshots; never serialize or publish coordinates.
+    property var privateLastBounds: []
     readonly property var cases: {
         const rows = []
         for (const edge of ["top", "right", "bottom", "left"])
@@ -103,6 +105,7 @@ ShellRoot {
             samples: 0, active: true, stretch_witness: false,
             transition_witness: false, target_reached_witness: false,
             bob_witness: false, sway_witness: false,
+            mapped_frame_change_witness: false,
             bbox_outside_static: false, bbox_outside_host: false,
             tip_outside_static: false, tip_outside_host: false,
             bbox_beyond_frozen: false
@@ -120,6 +123,20 @@ ShellRoot {
             if (!current.consistent) { root.invalid = true; return }
             const sample = record[root.phase]
             sample.samples++
+            const previous = root.privateLastBounds[i]
+            if (previous) {
+                const delta = Math.max(
+                    Math.abs(current.left - previous.left),
+                    Math.abs(current.right - previous.right),
+                    Math.abs(current.top - previous.top),
+                    Math.abs(current.bottom - previous.bottom))
+                sample.mapped_frame_change_witness =
+                    sample.mapped_frame_change_witness || delta > 0.12
+            }
+            root.privateLastBounds[i] = {
+                left: current.left, right: current.right,
+                top: current.top, bottom: current.bottom
+            }
             sample.active = sample.active && body.motionEnabled === true
             sample.stretch_witness = sample.stretch_witness || (root.phase === "stretch"
                 ? current.stretch > 0.2 : current.stretch < 0.8)
@@ -224,6 +241,7 @@ ShellRoot {
                         body.motionEnabled = true
                         body.stateStretch = 1
                     }
+                    root.privateLastBounds = []
                     root.phase = "stretch"
                     samples.start()
                     releasePhase.start()
@@ -246,6 +264,7 @@ ShellRoot {
         onTriggered: {
             for (let i = 0; i < root.cases.length; ++i)
                 root.bodyOf(hosts.itemAt(i)).stateStretch = 0
+            root.privateLastBounds = []
             root.phase = "release"
             finishPhase.start()
         }

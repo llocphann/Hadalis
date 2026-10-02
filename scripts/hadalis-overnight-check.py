@@ -20,7 +20,13 @@ TARGETS = ("MegaQML", "Wull Companion")
 BLOCKED = {
     "session_changed", "session_conflict", "evidence_required",
     "connector_blocked", "recovery_required", "invalid_configuration",
-    "thinking_unavailable", "scheduler_unavailable",
+    "thinking_unavailable", "scheduler_unavailable", "parked_unresolved",
+}
+ACTIVE_STATES = {
+    "thinking", "continuing", "recovering_protocol", "transport_rate_limited",
+    "transport_unavailable", "waiting_result", "rotating", "starting",
+    "scheduled", "recovering_generation", "response_unavailable",
+    "stream_failed", "submission_uncertain", "recovering_pending",
 }
 UNITS = ("hadalis-chat-bridge.service", "hadalis-worker.service",
          "hadalis-chatgpt.service")
@@ -102,7 +108,7 @@ def run(enable=False):
             identities.append(session["conversation_id"])
         pending = item.get("pending") or {}
         attempts = item.get("protocol_repair_attempts", 0)
-        is_running = item.get("desired") == "run" and item.get("status") not in BLOCKED
+        is_running = item.get("desired") == "run" and item.get("status") in ACTIVE_STATES
         auto = profile.get("auto_protocol_recovery") is True
         unlimited = (not profile.get("stop_on_done", False) and
                      profile.get("iteration_limit", 0) == 0 and
@@ -111,12 +117,8 @@ def run(enable=False):
         print(key + "_RUNNING=" + ("PASS" if is_running else "FAIL"))
         print(key + "_UNBOUNDED_CONTINUOUS=" + ("PASS" if unlimited else "REVIEW_LIMITS"))
         print(key + "_AUTO_PROTOCOL_REPAIR=" + ("ON" if auto else "OFF"))
-        print(key + "_STATUS=" + (item["status"] if item.get("status") in (
-            "thinking", "continuing", "recovering_protocol", "transport_rate_limited",
-            "transport_unavailable", "waiting_result", "rotating", "starting",
-            "scheduled", "recovering_generation", "response_unavailable",
-            "stream_failed", "submission_uncertain", "recovering_pending",
-            "parked_unresolved") else "REVIEW"))
+        print(key + "_STATUS=" + (item["status"] if item.get("status") in (ACTIVE_STATES | BLOCKED)
+            else "REVIEW"))
         rotation = profile.get("rotate_after_iterations", 0)
         chat_iterations = item.get("chat_iterations")
         print(key + "_ROTATE_AFTER_ITERATIONS=" + (

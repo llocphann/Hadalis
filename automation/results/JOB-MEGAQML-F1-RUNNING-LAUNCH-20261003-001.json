@@ -1,0 +1,30 @@
+{
+  "actions": [
+    {
+      "cancelled": false,
+      "command_sha256": "86953e4978aeae884eafa3ccf9f3c429a019a10bff1d4aa5f3b9ce4f3bfaa9ca",
+      "evidence_id": "JOB-MEGAQML-F1-RUNNING-LAUNCH-20261003-001:0",
+      "exit_code": 1,
+      "index": 0,
+      "kind": "exec",
+      "observed_at_unix": 1790979777,
+      "source_sha": "78a7aab973ca1ea887c3d713f16f4609185e39d9",
+      "stderr_bytes": 635,
+      "stderr_sha256": "f1d5f1994ef2cb02b202d053e5a2577ada8734a21c27f6f09359086bba543c38",
+      "stderr_truncated": false,
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "4422363d9de409d2378a6765f6c7ec5a59a4f0f0",
+  "evidence_location": "Private local evidence; raw output is not published",
+  "finished_at_unix": 1790979777,
+  "input_sha256": "2eead6d324b1f5073e7d28b99ccea6f9132554aa4eb66649eb6b7aa2ff36af9f",
+  "job": "JOB-MEGAQML-F1-RUNNING-LAUNCH-20261003-001",
+  "job_commit": "78a7aab973ca1ea887c3d713f16f4609185e39d9",
+  "profile_id": "profile-a25585b748dd4220",
+  "started_at_unix": 1790979777,
+  "status": "failed"
+}

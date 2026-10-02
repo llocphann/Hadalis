@@ -1,0 +1,28 @@
+{
+  "id": "JOB-WULL-REAL-BAR-CURATE-P1E0042-20261003-42",
+  "base_sha": "03f194bcf2274243e9cafbb8a0fa93541ef0b43c",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-curated-real-bar-fake-only.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 105
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-curated-real-bar-export.py",
+          "--prepare-safe-only"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 90
+      }
+    }
+  ]
+}

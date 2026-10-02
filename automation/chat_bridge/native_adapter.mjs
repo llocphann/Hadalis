@@ -165,8 +165,10 @@ export async function connectNative() {
   if (!page) { await Promise.race([browser.close().catch(() => {}),
     new Promise(resolve => setTimeout(resolve, 1500))]);
     throw new Error("Desktop main renderer unavailable"); }
+  let rendererTimer;
   try {
-    await page.evaluate(async contract => {
+    await Promise.race([
+      page.evaluate(async contract => {
     const shared = await import(`./assets/${contract.shared}`), initial = await import(`./assets/${contract.initial}`);
     const candidates = Object.values(shared).filter(value =>
       typeof value?.safeGet === "function" && typeof value?.streamPost === "function");
@@ -203,14 +205,22 @@ export async function connectNative() {
     window.__hadalisNative = { api, transport, fingerprint: contract.fingerprint,
       serverStreamStatus: contract.serverStreamStatus };
     window.__hadalisReceipts ??= new Map();
-    }, contract, {timeout:12000});
+      }, contract),
+      new Promise((_, reject) => {
+        rendererTimer = setTimeout(() =>
+          reject(new Error("DESKTOP_OPERATION_TIMEOUT")), 12000);
+      })
+    ]);
     return { page, browser, contract };
   } catch (error) {
     // A failed renderer contract must not leave an allocated CDP client.
     await Promise.race([browser.close().catch(() => {}),
       new Promise(resolve => setTimeout(resolve, 1500))]);
-    throw new Error(/Timeout/i.test(String(error?.name ?? "")) ?
+    throw new Error(/Timeout/i.test(String(error?.name ?? "")) ||
+      error?.message === "DESKTOP_OPERATION_TIMEOUT" ?
       "DESKTOP_OPERATION_TIMEOUT" : "Desktop capabilities unavailable");
+  } finally {
+    clearTimeout(rendererTimer);
   }
 }
 

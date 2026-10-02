@@ -1,0 +1,28 @@
+{
+  "id": "JOB-WULL-MATRIX-INSPECT-P1E0042-20261002-04",
+  "base_sha": "075f7315ff2594a31448856ac6e52d786e0dea39",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-existing-matrix-evidence.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 70
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-existing-matrix-evidence.py",
+          "--retained-read-only"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 70
+      }
+    }
+  ]
+}

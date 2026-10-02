@@ -35,7 +35,7 @@ def blob(path):
         b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
 
 
-assert blob(RUNNER) == "12ade72c22912c44aa3e66a2b5aef62c9e8b58f3"
+assert blob(RUNNER) == "c152a1fec7a5a1514407d7850549f987923621c2"
 for name, digest in model["DYNAMIC_PINS"].items():
     assert blob(ROOT / name) == digest, name
 assert model["frozen"]["PINNED"][
@@ -248,5 +248,24 @@ for source_sha, qs in (("invalid", "0.3.1"),
         pass
     else:
         raise AssertionError("Unsafe source or private version accepted")
+
+# A failed QML marker must expose only a fixed categorical diagnostic, never
+# user-private paths, coordinates or the captured original log message.
+classify = model["categorize_private_qml_failure"]
+cases = (
+    ("WULL_OFFSCREEN_DYNAMIC_INVALID", 0, 0, "FIXTURE_INVALID"),
+    ("WULL_OFFSCREEN_DYNAMIC_TIMEOUT", 0, 0, "FIXTURE_TIMEOUT"),
+    ('module "QtQuick.Shapes" is not installed', 1, 0, "QML_IMPORT_FAILURE"),
+    ("TypeError: Cannot read private/path data", 1, 0, "QML_SCRIPT_ERROR"),
+    ("Cannot assign to read-only property", 1, 0, "QML_COMPONENT_ERROR"),
+    ("Could not load the Qt platform plugin", 1, 0, "QT_PLATFORM_FAILURE"),
+    ("private /home/user/docs/secret", 1, 0, "PRIVATE_QS_NONZERO_EXIT"),
+    ("private /home/user/docs/secret", 0, 0, "MISSING_GEOMETRY_MARKER"),
+    ("private /home/user/docs/secret", 0, 2, "DUPLICATE_GEOMETRY_MARKERS"),
+)
+for raw, code, markers, expected_category in cases:
+    got = classify(raw, code, markers)
+    assert got == expected_category, (got, expected_category)
+    assert "/" not in got and "private" not in got.lower()
 
 print("WULL_OFFSCREEN_DYNAMIC_INERT_CONTRACT_PASS")

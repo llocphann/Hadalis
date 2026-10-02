@@ -101,6 +101,18 @@ try {
   assert.equal(cli.status,1);
   assert.equal(JSON.parse(cli.stderr.trim()).code,"DESKTOP_CAPABILITY_UNAVAILABLE");
   assert.ok(Date.now()-start < 6000);
+  const diagnostic = spawnSync(process.execPath, [
+    fileURLToPath(new URL("../automation/chat_bridge/native_cli.mjs", import.meta.url))
+  ], {
+    input:JSON.stringify({op:"diagnose",error_observation:true}),
+    encoding:"utf8", timeout:6000,
+    env:{...process.env,HADALIS_DESKTOP_ASAR:archive,
+      HADALIS_CHATGPT_CDP_URL:"http://127.0.0.1:1",
+      HADALIS_PLAYWRIGHT_MODULE:"file:///nonexistent/playwright.mjs"}
+  });
+  assert.equal(diagnostic.error,undefined);
+  assert.equal(diagnostic.status,1);
+  assert.equal(JSON.parse(diagnostic.stderr.trim()).code,"DESKTOP_CAPABILITY_UNAVAILABLE");
 } finally {
   fs.rmSync(temp,{recursive:true,force:true});
 }

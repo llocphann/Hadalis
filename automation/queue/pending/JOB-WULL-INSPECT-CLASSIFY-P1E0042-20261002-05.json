@@ -1,0 +1,28 @@
+{
+  "id": "JOB-WULL-INSPECT-CLASSIFY-P1E0042-20261002-05",
+  "base_sha": "8ce19cc17035fb9b91408a6ea7883ec8689070e5",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-classify-inspection-receipt.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 30
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-classify-inspection-receipt.py",
+          "--prior-action-only"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 30
+      }
+    }
+  ]
+}

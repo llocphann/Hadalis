@@ -1,0 +1,30 @@
+{
+  "actions": [
+    {
+      "cancelled": false,
+      "command_sha256": "b891325b9e3cfeafd7f53efae2247bfc58f5009a861115637945483d1ba93bdd",
+      "evidence_id": "JOB-MEGAQML-PTY-SLAVE-DIAG-20261003-001:0",
+      "exit_code": 22,
+      "index": 0,
+      "kind": "exec",
+      "observed_at_unix": 1790971317,
+      "source_sha": "f7fb0bd9db8bddd1afd8f3f6d19c0f92af34b3af",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_truncated": false,
+      "stdout_bytes": 24,
+      "stdout_sha256": "457cc220e982c2e9db38d0c1bb2508d9b21f21d6a710f41b23e126d802995264",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "36c45e13c8fe0cb6eb4a7ef89a46bb74e65c2c77",
+  "evidence_location": "Private local evidence; raw output is not published",
+  "finished_at_unix": 1790971317,
+  "input_sha256": "3572e4bce90ec93e9886a50a144fc838ced8bbe6fc5d93347ffc2ce8749625dc",
+  "job": "JOB-MEGAQML-PTY-SLAVE-DIAG-20261003-001",
+  "job_commit": "f7fb0bd9db8bddd1afd8f3f6d19c0f92af34b3af",
+  "profile_id": "profile-a25585b748dd4220",
+  "started_at_unix": 1790971302,
+  "status": "failed"
+}

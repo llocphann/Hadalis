@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# One-shot vendor-free static installed-package triage and sanitized GitHub note.
+# One-shot vendor-free static triage. Owner explicitly opts to publish only
+# normalized numeric package-version metadata to the PUBLIC Hadalis dev repo.
 # Run ONLY from a clean disposable dev clone, never the shared Wull worktree.
 set -euo pipefail
 umask 077
-[[ $# == 1 && "$1" == "--acknowledge-vendor-free-static-triage" ]] || {
+[[ $# == 2 && "$1" == "--acknowledge-vendor-free-static-triage" &&
+   "$2" == "--publish-public-package-version" ]] || {
   echo STOP=EXPLICIT_ACK_REQUIRED; exit 64;
 }
 cd "$(git rev-parse --show-toplevel)"

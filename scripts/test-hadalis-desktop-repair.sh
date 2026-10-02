@@ -27,6 +27,7 @@ python3 scripts/test-hadalis-automation-profile-lifecycle.py
 python3 scripts/test-hadalis-automation-workflows.py
 python3 scripts/test-hadalis-automation-overnight.py
 python3 scripts/test-hadalis-cursor-timeout.py
+python3 scripts/test-hadalis-rotation-10.py
 python3 scripts/test-hadalis-overnight-check.py
 
 echo "=== INSTALLED DESKTOP CONTRACT (BOOLEAN FLAGS ONLY) ==="

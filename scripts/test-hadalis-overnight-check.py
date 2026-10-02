@@ -23,7 +23,8 @@ def fixtures():
     config = {"profiles": [
         {"id": f"private-{n}", "name": n, "enabled": True,
          "mode": "continuous", "auto_protocol_recovery": False,
-         "stop_on_done": False, "iteration_limit": 0, "prompt_limit": 0}
+         "stop_on_done": False, "iteration_limit": 0, "prompt_limit": 0,
+         "rotate_after_iterations": 10}
         for n in names
     ]}
     state = {"manager_heartbeat_at_unix": 994, "transport_retry_at_unix": 1100,
@@ -31,7 +32,7 @@ def fixtures():
                  p["id"]: {"desired": "run", "status": "transport_rate_limited",
                            "session": {"conversation_id": f"private-chat-{i}"},
                            "pending": None, "next_run_at_unix": 1100,
-                           "protocol_repair_attempts": 0}
+                           "protocol_repair_attempts": 0, "chat_iterations": 7}
                  for i, p in enumerate(config["profiles"])
              }}
     return config, state
@@ -66,6 +67,22 @@ def exercise():
     assert all(field == "auto_protocol_recovery" and val == "true"
                for _, field, val in set_calls)
     assert "RESULT=READY_WITH_EXTERNAL_DEPENDENCIES" in out.getvalue()
+    assert "MEGAQML_ROTATE_AFTER_ITERATIONS=10" in out.getvalue()
+    assert "WULL_ROTATE_AFTER_ITERATIONS=10" in out.getvalue()
+    assert "MEGAQML_CHAT_ITERATIONS=7" in out.getvalue()
+    assert "WULL_ROTATION_REMAINING=3" in out.getvalue()
+    assert "private-chat" not in out.getvalue()
+    state["profiles"][cfg["profiles"][1]["id"]]["status"]="recovering_pending"
+    state["profiles"][cfg["profiles"][1]["id"]]["pending"]={"poll_after_unix":1100}
+    out=io.StringIO()
+    with patch.object(m.store, "read_snapshot", return_value=(cfg, state, [])):
+        with patch.object(m, "unit_check", return_value=True):
+            with patch.object(m.time, "time", return_value=1000):
+                with contextlib.redirect_stdout(out):
+                    assert m.run() == 0
+    assert "WULL_STATUS=recovering_pending" in out.getvalue()
+    assert "RESULT=READY_WITH_EXTERNAL_DEPENDENCIES" in out.getvalue()
+
     assert "private-" not in out.getvalue()
 
     # A pause/stop or user-owned limit must not be silently overridden.

@@ -246,4 +246,4 @@ with tempfile.TemporaryDirectory(prefix="wull-dynamic-fake-") as root:
     denied(runner["Stop"], "DYNAMIC_PAINT_ALPHA_INCONCLUSIVE",
            runner["private_classify"], folder)
 
-print("WULL_PRIVATE_DYNAMIC_OBSERVED_INERT_PASS")
+print("WULL_PRIVATE_DYNAMIC_CORE_INERT_PASS")

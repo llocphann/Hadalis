@@ -25,6 +25,7 @@ python3 scripts/test-hadalis-desktop-host.py
 python3 scripts/test-hadalis-managed-chat-diagnose.py
 python3 scripts/test-hadalis-automation-profile-lifecycle.py
 python3 scripts/test-hadalis-automation-workflows.py
+python3 scripts/test-hadalis-automation-overnight.py
 
 echo "=== INSTALLED DESKTOP CONTRACT (BOOLEAN FLAGS ONLY) ==="
 node --input-type=module <<'JS'

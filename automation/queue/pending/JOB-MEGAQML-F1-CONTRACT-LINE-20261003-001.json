@@ -1,0 +1,18 @@
+{
+  "id": "JOB-MEGAQML-F1-CONTRACT-LINE-20261003-001",
+  "base_sha": "3c8c344bfd494569086a4ddcb05f80d18232699f",
+  "profile_id": "profile-a25585b748dd4220",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-c",
+          "import re,subprocess,sys\nfrom pathlib import Path\np=\"scripts/test-megaqml-phase2-contract.py\"\nsize=len(Path(p).read_text(encoding=\"utf-8\").splitlines())\ntry:\n    done=subprocess.run([sys.executable,\"-B\",p],capture_output=True,timeout=25,check=False)\nexcept (OSError,subprocess.TimeoutExpired):\n    sys.exit(90)\n# Never print the child's raw stdout or traceback. Report only a bounded,\n# validated static assertion source-line number through stdout metadata.\nif done.returncode != 1 or done.stdout or b\"AssertionError\" not in done.stderr:\n    sys.exit(91)\nhits=re.findall(rb'File \"[^\"\\r\\n]*/?scripts/test-megaqml-phase2-contract\\.py\", line ([0-9]{1,4}), in <module>',done.stderr)\nif not hits:\n    sys.exit(92)\nline=int(hits[-1])\nif not 1<=line<=size or size>1000:\n    sys.exit(93)\nsys.stdout.write(\"L\"*(100+line))\n"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 45
+      }
+    }
+  ]
+}

@@ -20,7 +20,11 @@ node --check automation/chat_bridge/native_cli.mjs
 node --check scripts/test-hadalis-native-contract.mjs
 node scripts/test-hadalis-native-contract.mjs
 node scripts/test-hadalis-native-session.mjs
+node scripts/test-hadalis-native-branch.mjs
 python3 scripts/test-hadalis-desktop-host.py
+python3 scripts/test-hadalis-managed-chat-diagnose.py
+python3 scripts/test-hadalis-automation-profile-lifecycle.py
+python3 scripts/test-hadalis-automation-workflows.py
 
 echo "=== INSTALLED DESKTOP CONTRACT (BOOLEAN FLAGS ONLY) ==="
 node --input-type=module <<'JS'

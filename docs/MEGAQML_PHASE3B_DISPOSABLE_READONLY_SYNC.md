@@ -482,3 +482,79 @@ Only if the observed nonempty row meets these gates
 should subsequent source-only work design independently
 correlated identity and refresh epochs; no automatic
 feature-gate promotion.
+
+## Owner local fixture creation stopped; cleanup still pending (2026-10-02)
+
+The owner ran the source-pinned one-fixture script on the
+existing local dedicated throwaway Linux/MEGA account. The
+finite owner-local summary was:
+
+```text
+REASON=cleanup_incomplete
+SERVER_MATCH=true
+ACCOUNT_MATCH=true
+EMPTY_BASELINE=true
+FIXTURE_ATTEMPTED=false
+NONEMPTY_ROW=false
+SAME_ID_REOBSERVED=false
+SYNC_DETACHED=true
+REMOTE_REMOVED=false
+LOCAL_REMOVED=false
+PRIVATE_RECOVERY_PENDING=true
+PHASE3B=UNQUALIFIED
+```
+
+This **does not** show a Sync-creation command was attempted.
+The previous fixture script marked its cleanup journal
+`sync_detached` after confirming an empty Sync listing but
+*before* proving the status/existence of the remote folder.
+That stage is therefore insufficient to infer whether
+`mkdir` succeeded, failed or later became visible.
+There is no evidence qualifying a nonempty vendor row.
+Do not re-run `--execute-fixture`, blindly run
+`--cleanup-only`, or manually remove a local/remote
+directory or the owner-private recovery journal.
+
+The next step is **read-only recovery inspection only**,
+implemented as
+`scripts/megaqml-phase3b-fixture-recovery-inspect.py` and
+`scripts/test-megaqml-phase3b-fixture-recovery-inspect-contract.py`.
+It requires the *existing* private fixture lock and
+0600 validated journal, dedicated UID/private HOME/runtime,
+trusted package + the same pre-running dedicated server,
+and local interactive acknowledgement
+`DIAGNOSE_DISPOSABLE_FIXTURE` with no-echo expected
+throwaway email validated by a fresh `whoami`.
+It issues only the bounded allowlisted vendor commands
+`sync --output-cols=ID,LOCALPATH --col-separator=|`,
+`ls /` and `ls <exact journal remote folder>`, with
+independent identity/server rechecks before and after
+each observation. It checks the exact nonce-derived
+local directory via `lstat` and at most one bounded
+directory-emptiness check. There is **no** vendor or
+local mutation, journal edit or private output publication.
+
+Only a fixed public stage, finite classification and
+**non-authorizing** recovery-plan candidate are returned:
+`SYNC_STATUS=blank|one_owned|other|unknown`,
+`ROOT_STATUS=blank|only_fixture|other|unknown`,
+`REMOTE_STATUS=empty|nonempty|unknown` and
+`LOCAL_STATUS=empty_owned|nonempty_owned|absent|other|unknown`.
+`remote_cleanup_candidate` requires blank Sync,
+exactly one root object matching the random journal
+name, the exact remote folder readable as empty,
+and an empty/absent owned local folder;
+`remote_absence_candidate` means root appears blank
+and remote lookup is unavailable but **is not proof of
+absence and does not authorize journal cleanup**.
+Any other result is `no_action`. The probe never
+deletes anything in any case.
+
+After the owner returns the *finite summary only*,
+review the actual stage and independent remote listing
+evidence before proposing a narrowly safe cleanup-only
+fix. The current approved scope includes cleaning
+**only the original throwaway fixture** once proved;
+no new fixture creation while recovery is pending.
+Production vendor auth and all ten cloud domains
+remain disabled; Phase 3b stays UNQUALIFIED.

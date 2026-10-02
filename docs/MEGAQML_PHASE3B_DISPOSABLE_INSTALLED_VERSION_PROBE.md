@@ -35,6 +35,64 @@ paths to GitHub. If the new classifier still returns unknown, stop
 at the fixed boundary rather than repeatedly changing sandbox
 permissions or starting the host vendor.
 
+## Second owner result: isolated socket handshake still unqualified
+
+The second, explicitly approved offline sandbox run was published as
+`docs/evidence/megaqml/phase3b-7c9e01dcd3db-20261002T034719Z.md`
+at exact source `7c9e01dcd3db964a837b12755b088dd2594c9b6d`.
+The independent fake-only contract and self-test **PASS**, the
+nonvendor smoke sandbox completed, but `mega-version -l` exited
+nonzero. Only `sandbox_server_handshake_failed` was safely
+classified; `vendor_version=null`, Phase 3b remains **UNQUALIFIED**.
+This fixed error covers an IPC timeout/connect failure, not the root
+cause of failed startup. The upstream POSIX MEGAcmd client can
+`fork()`, `setsid()` and `execvp("mega-cmd-server", ...)` when it
+cannot find a Unix socket. Its Linux socket path normally follows
+`HOME/.megaCmd`, and the version command may attempt a remote
+latest-release check. The permitted bubblewrap smoke only proves a
+simple nonvendor binary runs in the sandbox; it does not prove that a
+networkless, ephemeral MEGAcmd server can fully initialize. Do not
+attribute the failure to the parser, loosen the network namespace,
+bind the current account's runtime socket, add login or keep
+repeating the same vendor command.
+
+### Vendor-free installed package metadata triage (next safe step)
+
+`scripts/megaqml-phase3b-static-package.py` does **not** run
+`mega-version`, start MEGAcmd, invoke a package manager, inspect
+`$HOME`, connect to a socket, or access the network. It verifies
+that the detected `mega-version` and `mega-cmd-server` resolve to
+the same supported system binary directory and checks **local
+package metadata only**: pacman's `/var/lib/pacman/local` package
+description/files, dpkg's installed status plus package file list,
+or a matching Nix store derivation label. It never publishes the
+installed file paths, arbitrary package names, package-manager raw
+output or the owner's environment. It emits only a strictly parsed
+numeric **package** version if both executables can be attributed
+to the same package; otherwise `UNVERIFIED`.
+
+Both outcomes explicitly declare `vendor_executed=false`,
+`network_used=false`, `account_used=false`,
+`server_version_qualified=false` and
+`live_capabilities_unlocked=false`. The independent
+`scripts/test-megaqml-phase3b-static-package.py` uses fake Arch,
+Debian and Nix metadata to test path ownership, normalization,
+redaction and inability to launch a vendor subprocess.
+The one-command `scripts/megaqml-phase3b-static-owner-local.sh`
+accepts only `--acknowledge-vendor-free-static-triage`, checks
+clean temporary `dev` ancestry, validates the strict safe result
+and publishes only that summary as
+`docs/evidence/megaqml/phase3b-static-*.md`. The script has
+**not** yet been qualified on the owner's local package database.
+
+A version observed here proves only static package metadata, **not**
+that a compatible MEGA server can start with networking disabled,
+that an already running server has the same version, or that any
+cloud read is safe. If the static triage is unverified or the
+prior handshake remains blocked, stop and choose a new isolated
+diagnostic design with explicit consent rather than switching to
+a real account or relaxing containment.
+
 ## Why a strict sandbox is necessary
 
 Normal MEGAcmd scriptable commands, even `mega-version -l`, may launch

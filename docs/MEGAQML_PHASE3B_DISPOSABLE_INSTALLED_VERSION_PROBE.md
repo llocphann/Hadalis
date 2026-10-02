@@ -1,5 +1,7 @@
 # MegaQML Phase 3b — owner-approved isolated installed-version probe
 
+> Update (2026-10-02): the subsequent one-shot offline startup diagnostic now has an exact-source owner Linux result: `phase3b-startup-c9227926a26c-20261002T043826Z.md`, exit 21, fixed `sandbox_server_log_library_missing`. It remains a loader-error indicator, not an identified missing dependency. Vendor-free static inspection of declared package-private `/opt/megacmd/lib` libraries is the next gate; do not repeat vendor or widen the sandbox until separately approved. See `MEGAQML_PHASE3B_OFFLINE_STARTUP_DIAGNOSTIC.md`.
+
 **Status:** owner-local static pacman package metadata observed at version **2.6.0**; isolated offline MEGAcmd server handshake **UNQUALIFIED**. A one-shot private-sandbox startup log classifier is source-staged; its separate owner-local test is pending. See [the narrow diagnostic and stop conditions](MEGAQML_PHASE3B_OFFLINE_STARTUP_DIAGNOSTIC.md).
 Owner approved **preparing an isolated installed-version and compatibility
 procedure without using the current account**. That consent does not

@@ -1,12 +1,25 @@
 # MegaQML Phase 3b — one-shot isolated server-startup diagnosis
 
-**Status: implementation/source-only STAGED; owner-local execution pending.**
+**Status: owner Linux one-shot diagnosis completed; loader-error category observed; Phase 3b remains UNQUALIFIED.**
 This is an explanation-only, *not* a new server capability or general
 license to run vendor commands. The owner earlier approved only
 isolated/disposable version and compatibility checks, not existing
 account access, authentication, writes or a host-session connection.
 
-## Evidence to date
+## Owner Linux result: isolated loader indicator (2026-10-02)
+
+The owner published `docs/evidence/megaqml/phase3b-startup-c9227926a26c-20261002T043826Z.md` at tested source `c9227926a26cf3c22a25217cec0eca632f063756`:
+- Fake-only diagnostic gate PASS and inert self-test PASS.
+- Single offline bubblewrap diagnosis exit 21, `state=UNQUALIFIED`, `reason=sandbox_server_log_library_missing`, `sandbox_log_present=true`, `sandbox_client_timed_out=false`.
+- No network, account, qualified server version or unlocked capabilities; report publication added only the evidence file above on top of its tested source.
+
+The category proves that a **fresh disposable sandbox server log contained a recognized shared-library loader-error indicator**, but **does not identify the missing library, demonstrate a broken host installation, or prove the root cause**. Do not publish or request the original server log or assume the earlier IPC symptom is a separate defect.
+
+**Source-grounded hypothesis, not confirmed host diagnosis:** pinned upstream MEGAcmd `CMakeLists.txt` configures `CMAKE_INSTALL_LIBDIR=opt/megacmd/lib` and normally sets RPATH to `/opt/megacmd/lib`; the Hadalis bubblewrap mount list permits system roots such as `/usr`, `/etc` and `/nix/store`, but it **does not mount host `/opt`**. If the installed pacman-owned MEGAcmd package actually relies on its own `/opt/megacmd/lib` libraries, the approved sandbox would hide those files. The installed package layout has **not** been verified. Source: https://github.com/meganz/MEGAcmd/blob/6505327a5a7a0e94f26f611f83b024aeeb63582c/CMakeLists.txt#L130-L150.
+
+**Next narrow gate:** inspect only matched local pacman package metadata and existence of declared `/opt/megacmd/lib` library files with the separate **vendor-free, read-only** `scripts/megaqml-phase3b-static-library-layout.py`. It prints fixed categories only, not filenames or private paths, and does not auto-publish to public GitHub. Its fake-only self-test and contract must pass before any owner-local inspection. This is **not** a second vendor probe. If matching private libraries are corroborated, propose a strictly scoped sandbox-only read-only mount *for separate explicit maintainer approval* before any further vendor invocation; otherwise stop and reassess static loader evidence. Never automatically bind all `/opt`, relax network isolation, access existing MEGA state, or assume that a missing-library category permits retry.
+
+## Earlier evidence
 
 1. `docs/evidence/megaqml/phase2p-ad79725acda0-20261002T031538Z.md`:
    prior synthetic F1/Phase 3a 40/40 and 8/8 PASS **at its exact

@@ -175,3 +175,24 @@ config, establish installed Rust helper identity, replace exact-source local
 qualification or count as a real mouse/visual observation. Never publish
 private installed paths or interpret a static match as full Gate 0 PASS.
 `scripts/test-megaqml-f1-deployed-source-identity.py` is fake-only.
+
+## Private local 40-case requalification without public publication
+
+The existing full `scripts/test-megaqml-phase2-local.sh` matrix now supports
+an explicit second argument, `--local-only`. Run this ONLY from a separate
+clean `dev` checkout on the owner's Linux desktop (not the shared Wull
+working tree), after independently pinning the source SHA:
+
+```bash
+bash scripts/test-megaqml-phase2-local.sh "$QUALIFIED_CANDIDATE_SHA" --local-only
+```
+
+This mode still checks clean source and remote ancestry and runs the existing
+no-vendor synthetic matrix. Its allowlisted report stays **untracked inside
+that checkout**; it does not `git add`, commit or push. Keep the checkout until
+the report has been reviewed privately. A zero exit is NOT a 40/40 result if
+Quickshell or Qt tests were skipped: require all 40 explicit PASS rows and
+8/8 race repeats at the exact printed source SHA. Do not upload a report or
+publish local environment metadata by default. This matrix is still not real
+desktop pointer acceptance, actual deployed/running identity or installed
+MEGAcmd proof.

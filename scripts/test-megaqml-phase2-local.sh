@@ -4,6 +4,11 @@ set -euo pipefail
 umask 077
 export LC_ALL=C
 expected="${1:-}"
+mode="${2:-publish}"
+if [[ "$#" -gt 2 || ( "$#" -eq 2 && "$mode" != "--local-only" ) ]]; then
+  echo 'INVALID_PUBLICATION_MODE'
+  exit 64
+fi
 if [[ ! "$expected" =~ ^[0-9a-f]{40}$ ]]; then echo 'INVALID_SOURCE_SHA'; exit 64; fi
 cd "$(git rev-parse --show-toplevel)"
 [[ "$(git branch --show-current)" == dev ]] || { echo 'WRONG_BRANCH'; exit 65; }
@@ -236,6 +241,12 @@ mkdir -p docs/evidence/megaqml
 } > "$report"
 cat "$scratch/safe.csv"
 printf 'SOURCE_SHA=%s\nSAFE_REPORT=%s\n' "$source_sha" "$report"
+if [[ "$mode" == "--local-only" ]]; then
+  # Preserve the report inside this clone for private owner review. No git add,
+  # commit, push or publication retry in this explicit owner-local mode.
+  echo 'PUBLICATION=LOCAL_ONLY_NO_GIT_WRITE'
+  exit "$failed"
+fi
 if [[ "$(git status --porcelain --untracked-files=all)" != "?? $report" ]]; then
   echo 'PUBLICATION_SKIPPED_DIRTY_WORKTREE'; exit "$failed"
 fi

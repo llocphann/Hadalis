@@ -106,3 +106,119 @@ scale1.5 m025 acceptance.
 
 No source production margin/input-mask/default-off adjustment,
 daemon changes, live host input or `stable` changes are justified.
+
+
+## 2026-10-02 continuation — source-staged REAL isolated Niri visual capture gate
+
+The maintainer supplied exact local preflight at
+\`SOURCE_SHA=e3ba26c9a372ed35f02e6aabdb3b1f7a757a2d0b\`:
+\`SOURCE_PINS=PASS\`,
+\`WULL_PRIVATE_NESTED_VISUAL_SHADOW_INERT_PASS\`,
+all five tool prerequisites Niri/Quickshell/D-Bus/Cargo/Grim YES,
+host Wayland+Niri sockets YES, and
+\`GATE=VISUAL_PREFLIGHT_SOURCE_ONLY_COMPLETE\`.
+\`NESTED_COMPOSITOR_STARTED=NO\`,
+\`SCREENSHOT_ATTEMPTED=NO\`,
+\`LIVE_PANEL_VISUAL_ACCEPTANCE=NOT_TESTED\`.
+This verifies host capability availability only, not real nested screenshot
+protocol support or any visual quality.
+
+Before staging the real runner, source review found the first private
+shadow generator symlinked the real \`AbyssPerimeter.qml\`. A symlink could
+resolve its relative companion import from the production repository
+instead of the owner-private companion shadow and produce an invalid
+control/candidate comparison. The new source-pinned generator therefore
+COPIES the exact UNMODIFIED production
+\`AbyssPerimeter.qml\` into both identical private import trees while
+still limiting the private candidate **change** to precisely one
+bottom cradle \`anchors.bottomMargin: root.edge === "bottom" ? 0.25 : 0\`
+line. The production perimeter, body renderer, native Region, defaults
+and all other sources stay untouched. The generator now also pins
+the full real perimeter source blob.
+
+### New exact blobs (source review only; local owner has NOT run these yet)
+
+- \`scripts/wull-private-panel-quarter-shadow.py\`:
+  \`dd62b2b834e86d41856730547bca8ea4d73aaca8\`.
+- \`scripts/test-wull-private-panel-quarter-shadow.py\`:
+  \`6d7f16d243ab2cc944d9b2436263c4d1bfd91629\`.
+- \`scripts/wull-manual-private-nested-quarter-visual.py\`:
+  \`b719f2b0a6c6e0121f9f2c0467f8d4e7a28cfa9f\`.
+- \`scripts/test-wull-private-nested-quarter-visual.py\`:
+  \`4993b2dff09cc40d9069e56ff58bef6f239f7148\`.
+- Existing **unchanged, owner-PASS** capability script
+  \`scripts/wull-private-nested-visual-prerequisites.py\`:
+  \`83367598877fa61804cdb84ef500fce744fbbb99\`.
+- Still unchanged original QML \`b5b01835a282458eba0d0268396ae2c350d919d2\`,
+  perimeter \`a3cd2a7bfbdf32dac2c7e42057a1dfaaeea214ac\`,
+  production-layer fixture \`e16b6dcada26a27fd71cc670e30c55135401bcef\`,
+  existing Niri helper \`7edf8328df1f9704f1331fbe1a5e84e659cd360a\`,
+  default config \`e10d98c0f26d3e47c51cb8452bcd0d2cea735501\`,
+  earlier private relay \`7e450db1db23e3c250859b0271a655d6325f0bc8\`
+  (pinned but not used for injection in this visual phase).
+
+### Dedicated opt-in owned-Niri compositor capture behavior
+
+Runner only accepts
+\`--acknowledge-owned-nested-quarter-visual\` in exact clean owner0700
+\`wull-paint-canary.*/repo\` disposable current-\`dev\` clone, all reviewed
+source blobs and exact HTTPS origin. It checks the host sockets/output
+inventory and private tool prerequisites; builds ONE real exact checked-out
+\`inir-companiond\` Rust release binary inside a random owner0700 directory
+external to the checkout, then starts one owned Niri-in-Niri on the host as
+a disposable normal window with isolated config/XDG. Reuses source-pinned
+Niri startup parser and independently verifies a distinct guest Wayland
+socket, Niri IPC in the expected runtime dir, ONE guest output and
+a fixed explicit guest scale 1.0 (rather than guessing capture pixel
+geometry), and absence of an already owned guest production layer.
+
+It runs the real, source-pinned full
+\`scripts/wull-fixtures/production-layer/shell.qml\` importing an
+unchanged-byte PRIVATE COPY of actual
+\`AbyssPerimeter.qml\`/AbyssBar and the original Wull baseline then
+a separate private m025 copy. In BOTH sessions it uses the same
+isolated bottom bar, scale1.5 Wull, output target, theme config, 0700
+private XDG, no active input, and full original production Region.
+Require actual original QML ready marker, exactly one correct actual
+perimeter layer, no focus takeover, one exact privately built daemon,
+and source review checks BEFORE any screen-copy attempt.
+
+The ONLY screenshot call is
+\`grim -o <ONE_SOURCE_VERIFIED_NESTED_OUTPUT> -t png <PRIVATE_PATH>\`
+with the guest \`WAYLAND_DISPLAY\`, guest \`NIRI_SOCKET\`, verified runtime
+and explicit removal of inherited \`WAYLAND_SOCKET\`. Recheck all
+guest sockets, identity, output geometry and namespace immediately
+before EACH capture. There is NO host screenshot fallback or pointer
+injection. Each PNG must be private 0600, structurally PNG CRC/IHDR/IDAT/
+IEND valid, expected exact bounded guest output dimensions, and under
+24 MiB. The old original and private-quarter visual frames are captured
+**sequentially**, not simultaneous poses or quantitative pixel pairs.
+
+After each Qt phase, kill/reap only owned private groups and exact
+random-path processes, require the perimeter layer to unmap, and after
+both phases reap the guest Niri, verify its IPC no longer alive and
+confirm unchanged host output *topology*, ignoring volatile focused
+output state. On successful owned cleanup remove the enormous private
+Cargo build directory; leave only owner-local private images and bounded
+diagnostic logs inside the random 0700 directory. No Git publication,
+credentials, screenshot uploads, main-desktop capture, raw log exposure,
+native pointer tests or production writes.
+
+A successful local run returns
+\`GATE=NESTED_PRIVATE_VISUAL_CAPTURES_READY\`, two "CAPTURED" markers and
+\`REAL_PANEL_VISUAL_CONNECTION=OWNER_REVIEW_REQUIRED\`. This means
+**only that the guest captured two source/ownership-qualified real-panel
+screenshots**. It does not assert that the actual droplet is visibly
+painted, that the panel seam is seamless, or that extreme spring poses
+are safe. The owner MUST privately inspect both retained images before
+any acceptance claim. An unavailable nested compositor, required
+fractional output setup, unsupported Grim guest screen-copy protocol,
+Rust build/daemon, wrong mapped layer, unsafe PNG or incomplete process
+cleanup must produce a short fixed failure gate. Do not repeat prior
+sampled fractional alpha Qt experiments or make production changes
+based only on these images.
+
+Two new fake-only contracts (revised shadow and runner) must run on owner
+local pinned source before any actual nested compositor starts.
+GitHub source/static audit does not constitute execution of the two
+new fake-only tests nor owner Niri visual testing.

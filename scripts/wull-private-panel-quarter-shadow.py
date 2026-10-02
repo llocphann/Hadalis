@@ -11,6 +11,8 @@ import stat
 
 ORIGINAL = "modules/abyss/companion/AbyssCompanion.qml"
 ORIGINAL_BLOB = "b5b01835a282458eba0d0268396ae2c350d919d2"
+PERIMETER = "modules/abyss/AbyssPerimeter.qml"
+PERIMETER_BLOB = "a3cd2a7bfbdf32dac2c7e42057a1dfaaeea214ac"
 MARKER = (
     "        anchors.horizontalCenter: parent.horizontalCenter\n"
     "        anchors.bottom: parent.bottom\n"
@@ -88,7 +90,9 @@ def audit_layout(repo, shell):
             not (repo / "modules").is_symlink(),
             "PRIVATE_SHADOW_OVERLAPS_CHECKOUT")
     require((repo / ORIGINAL).is_file() and
-            not (repo / ORIGINAL).is_symlink(),
+            not (repo / ORIGINAL).is_symlink()
+            and (repo / PERIMETER).is_file()
+            and not (repo / PERIMETER).is_symlink(),
             "ORIGINAL_QML_SOURCE_MISSING")
     require(not (shell / "modules").exists() and
             not (shell / "modules").is_symlink(),
@@ -100,6 +104,9 @@ def stage(repo, shell, mode):
     require(mode in MODES, "UNREVIEWED_PRIVATE_MARGIN_MODE")
     root, output = audit_layout(repo, shell)
     original = (root / ORIGINAL).read_bytes()
+    perimeter = (root / PERIMETER).read_bytes()
+    require(blob(perimeter) == PERIMETER_BLOB,
+            "PRODUCTION_PERIMETER_SOURCE_MISMATCH")
     # Check BOTH cases against the exact original source before ANY write.
     candidate = generate(original)
     modules = root / "modules"
@@ -117,8 +124,16 @@ def stage(repo, shell, mode):
     abyss_shadow = shadow / "abyss"
     abyss_shadow.mkdir(mode=0o700)
     for child in abyss.iterdir():
-        if child.name != "companion":
+        if child.name not in ("companion", "AbyssPerimeter.qml"):
             (abyss_shadow / child.name).symlink_to(child)
+    # Copy exact production perimeter bytes into private import tree rather
+    # than symlink: its relative companion module must resolve the SHADOW
+    # and not be silently resolved from its original repository directory.
+    private_perimeter = abyss_shadow / "AbyssPerimeter.qml"
+    private_perimeter.write_bytes(perimeter)
+    private_perimeter.chmod(0o600)
+    require(private_perimeter.read_bytes() == perimeter,
+            "PRIVATE_PERIMETER_COPY_UNVERIFIED")
     companion_shadow = abyss_shadow / "companion"
     companion_shadow.mkdir(mode=0o700)
     for child in companion.iterdir():

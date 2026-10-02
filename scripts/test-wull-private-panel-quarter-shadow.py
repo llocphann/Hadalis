@@ -14,9 +14,11 @@ os.umask(0o077)
 ROOT = Path(__file__).resolve().parents[1]
 HELPER = ROOT / "scripts/wull-private-panel-quarter-shadow.py"
 ORIGINAL = ROOT / "modules/abyss/companion/AbyssCompanion.qml"
+PERIMETER = ROOT / "modules/abyss/AbyssPerimeter.qml"
+PERIMETER_SHA = "a3cd2a7bfbdf32dac2c7e42057a1dfaaeea214ac"
 PREFLIGHT = ROOT / "scripts/wull-private-nested-visual-prerequisites.py"
 EXPECTED_PREFLIGHT_BLOB = "83367598877fa61804cdb84ef500fce744fbbb99"
-EXPECTED_HELPER_BLOB = "90383bc2ad12016d115ce5c61c2d9a4b55551602"
+EXPECTED_HELPER_BLOB = "dd62b2b834e86d41856730547bca8ea4d73aaca8"
 EXPECTED_QML_BLOB = "b5b01835a282458eba0d0268396ae2c350d919d2"
 
 
@@ -38,10 +40,13 @@ def denied(category, func, *args):
 assert blob(HELPER.read_bytes()) == EXPECTED_HELPER_BLOB
 assert blob(PREFLIGHT.read_bytes()) == EXPECTED_PREFLIGHT_BLOB
 original = ORIGINAL.read_bytes()
+perimeter = PERIMETER.read_bytes()
 assert blob(original) == EXPECTED_QML_BLOB
+assert blob(perimeter) == PERIMETER_SHA
 source = runpy.run_path(str(HELPER), run_name="inert_private_shadow_source_only")
 assert source["MODES"] == ("original_m0", "private_bottom_m025")
 assert source["ORIGINAL_BLOB"] == EXPECTED_QML_BLOB
+assert source["PERIMETER_BLOB"] == PERIMETER_SHA
 marker, insert = source["MARKER"], source["INSERT"]
 assert marker in original.decode("utf-8")
 assert original.decode("utf-8").count(marker) == 1
@@ -64,6 +69,7 @@ with tempfile.TemporaryDirectory(prefix="wull-paint-canary.") as tmp:
     (clone / "modules" / "common").mkdir(mode=0o700)
     (clone / "modules" / "common" / "Other.qml").write_text("Item {}\n")
     (clone / "modules" / "abyss" / "Other.qml").write_text("Item {}\n")
+    (clone / source["PERIMETER"]).write_bytes(perimeter)
     (original_path.parent / "qmldir").write_text("module qs.modules.abyss.companion\n")
 
     def fixture(name):
@@ -81,6 +87,13 @@ with tempfile.TemporaryDirectory(prefix="wull-paint-canary.") as tmp:
     assert stat.S_IMODE(candidate.stat().st_mode) == 0o600
     assert candidate.read_bytes() == updated
     assert original_path.read_bytes() == before
+    baseline_perimeter = baseline_shell / "modules" / "abyss" / "AbyssPerimeter.qml"
+    candidate_perimeter = candidate_shell / "modules" / "abyss" / "AbyssPerimeter.qml"
+    for staged in (baseline_perimeter, candidate_perimeter):
+        assert staged.is_file() and not staged.is_symlink()
+        assert staged.read_bytes() == perimeter
+        assert stat.S_IMODE(staged.stat().st_mode) == 0o600
+    assert (clone / source["PERIMETER"]).read_bytes() == perimeter
     assert not (clone / "private").exists()
     assert (candidate_shell / "modules" / "abyss" /
             "Other.qml").is_symlink()

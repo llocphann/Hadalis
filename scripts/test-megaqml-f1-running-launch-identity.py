@@ -70,6 +70,15 @@ with tempfile.TemporaryDirectory() as temp:
     argv("qs", "-n", "-p", root / "settings.qml")
     (root / "settings.qml").unlink()
     check("deployed_entry_unavailable")
+    # Never classify an absent or outside-root deployed entry as a /proc error.
+    outside = base / "outside.qml"
+    outside.write_text("fake external file")
+    (root / "settings.qml").symlink_to(outside)
+    check("deployed_entry_unavailable")
+    (root / "settings.qml").unlink()
+    (root / "settings.qml").write_text("fake restored")
+    proc.rename(proc.with_name("stopped"))
+    check("process_unavailable")
     with contextlib.redirect_stdout(io.StringIO()) as output:
         m.emit("standalone_launch_path_observed")
     report = output.getvalue()

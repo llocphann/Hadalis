@@ -53,11 +53,16 @@ def assess_running(root, family, pid, proc_root=Path("/proc"), uid=None):
     if family not in ENTRY or type(pid) is not int or pid <= 0:
         return "invalid_selection"
     uid = os.getuid() if uid is None else uid
+    # Distinguish a missing/escaped deployed entry from unreadable /proc.
+    # Both fail closed, but a false process diagnosis would mislead Gate 0.
     try:
         root = Path(root).resolve(strict=True)
         entry = (root / ENTRY[family]).resolve(strict=True)
         if not root.is_dir() or not entry.is_file() or not entry.is_relative_to(root):
             return "deployed_entry_unavailable"
+    except (OSError, ValueError, RuntimeError):
+        return "deployed_entry_unavailable"
+    try:
         proc = proc_root / str(pid)
         before = snapshot(proc)
         middle = snapshot(proc)

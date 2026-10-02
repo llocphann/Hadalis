@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from automation.manager.store import read_snapshot
-from automation.manager.daemon import native_command
+from automation.manager.daemon import NativeOperationError, native_command
 
 
 def branch_relation(conversation: dict, expected: str) -> str:
@@ -90,19 +90,38 @@ def main() -> int:
         if not conversation_id or not expected:
             print(label + "BRANCH=NO_COMPLETED_MANAGED_TURN")
             continue
+        # The old "read" command returned the *entire* conversation over
+        # stdout; long managed chats could exceed the 120 KB manager cap.
+        # This dedicated operation returns only a finite branch relation.
         try:
-            cursor = native_command(
-                "cursor", conversation_id=conversation_id,
-                project_id=session.get("project_id"))
-            if cursor.get("current_node") == expected:
-                print(label + "BRANCH=EXACT_CURRENT_NODE")
-                continue
-            history = native_command(
-                "read", conversation_id=conversation_id,
-                project_id=session.get("project_id"))
-            print(label + "BRANCH=" + branch_relation(history, expected))
-        except Exception:
+            summary = native_command(
+                "branch", conversation_id=conversation_id,
+                project_id=session.get("project_id"),
+                expected_response_message_id=expected)
+            relation = summary.get("relation")
+            allowed = {
+                "EXACT_CURRENT_NODE", "NON_USER_DESCENDANT",
+                "LATER_USER_TURN", "DIFFERENT_BRANCH",
+                "EXPECTED_RESPONSE_NOT_IN_HISTORY",
+                "HISTORY_UNAVAILABLE", "HISTORY_BOUND_EXCEEDED",
+            }
+            print(label + "BRANCH=" +
+                  (relation if relation in allowed else "UNQUALIFIED"))
+        except NativeOperationError as exc:
+            observation = exc.observation
             print(label + "BRANCH=READ_UNAVAILABLE")
+            print(label + "BRANCH_ERROR_CODE=" + observation["code"])
+            print(label + "BRANCH_ERROR_RESOURCE=" +
+                  observation.get("resource", "NONE").upper())
+            print(label + "BRANCH_HTTP_STATUS=" +
+                  str(observation.get("http_status", "NONE")))
+        except (OSError, RuntimeError, ValueError) as exc:
+            # Never print exception messages or raw Desktop responses.
+            reason = ("CAPTURE_BOUND" if str(exc) ==
+                      "Desktop response exceeded capture bound" else
+                      "UNCLASSIFIED")
+            print(label + "BRANCH=READ_UNAVAILABLE")
+            print(label + "BRANCH_ERROR_CODE=" + reason)
     print("RESULT=READ_ONLY_IDENTITY_DIAGNOSIS")
     return 0
 

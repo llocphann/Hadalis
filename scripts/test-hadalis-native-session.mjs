@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {projectTurn, installedContract, nativeStreamStatus} from "../automation/chat_bridge/native_adapter.mjs";
+import {projectTurn, installedContract, nativeStreamStatus, nativeCursor} from "../automation/chat_bridge/native_adapter.mjs";
 const message = (id, role, status, end, text, recipient = "all", channel = null) =>
   ({id, author:{role}, status, end_turn:end, recipient, channel, content:{parts:[text]}});
 const c = {conversation_id:"chat-A",current_node:"a",mapping:{
@@ -48,6 +48,42 @@ try {
 } finally {
   if (previousWindow===undefined) delete globalThis.window;
   else globalThis.window=previousWindow;
+}
+// Cursor fetches the *live* conversation but projects only bounded metadata
+// inside the Desktop renderer. Never authorize a foreign/malformed branch.
+{
+  const conversationId="aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa";
+  const nodeId="dddddddd-dddd-4ddd-dddd-dddddddddddd";
+  const prior=globalThis.window;
+  let reads=0;
+  try {
+    const history={conversation_id:conversationId,current_node:nodeId,
+      default_model_slug:"model-lane",mapping:{sensitive:{message:{content:"PRIVATE_CANARY"}}}};
+    globalThis.window={__hadalisNative:{api:{safeGet:async (path) => {
+      assert.equal(path,`/conversation/${conversationId}`);
+      reads++;
+      return history;
+    }}}};
+    const page={evaluate:async (fn,arg)=>fn(arg)};
+    const cursor=await nativeCursor(page,conversationId,null);
+    assert.deepEqual(cursor,{conversation_id:conversationId,current_node:nodeId,model:"model-lane"});
+    assert.equal(reads,1);
+    assert.equal(JSON.stringify(cursor).includes("PRIVATE_CANARY"),false);
+    await assert.rejects(nativeCursor(page,"foreign"),/identity/);
+    history.conversation_id="cccccccc-cccc-4ccc-cccc-cccccccccccc";
+    await assert.rejects(nativeCursor(page,conversationId),/identity/);
+    history.conversation_id=conversationId;
+    history.current_node="invalid";
+    await assert.rejects(nativeCursor(page,conversationId),/identity/);
+    globalThis.window.__hadalisNative.api.safeGet=async()=> {
+      throw Object.assign(new Error("Too many requests"),{status:429});
+    };
+    await assert.rejects(nativeCursor(page,conversationId),error =>
+      error.message==="DESKTOP_RATE_LIMITED" && error.resource==="conversation" && error.http_status===429);
+  } finally {
+    if(prior===undefined) delete globalThis.window;
+    else globalThis.window=prior;
+  }
 }
 if (process.env.HADALIS_TEST_INSTALLED_DESKTOP === "1") assert.ok(installedContract().api);
 console.log("PASS: conversation identity, final message receipt, no cross-turn completion and bounded private stream status");

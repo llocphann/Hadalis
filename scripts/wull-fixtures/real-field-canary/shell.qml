@@ -20,11 +20,15 @@ ShellRoot {
     function capture(): void {
         if (finished || captureAttempted) return
         captureAttempted = true
-        if (!privateWindow.backingWindowVisible ||
-                Math.abs(sheet.width - 512) > .1 ||
-                Math.abs(sheet.height - 512) > .1 ||
-                cells.length !== 4) {
-            fail("PRIVATE_CANVAS_INVALID"); return
+        if (!privateWindow.backingWindowVisible) {
+            fail("WINDOW_NOT_BACKING"); return
+        }
+        if (Math.abs(sheet.width - 512) > .1 ||
+                Math.abs(sheet.height - 512) > .1) {
+            fail("SHEET_DIMENSIONS_INVALID"); return
+        }
+        if (cells.length !== 4 || cells.some(cell => !cell)) {
+            fail("FOUR_CELLS_UNAVAILABLE"); return
         }
         for (const cell of cells) {
             if (!cell.shaderReady) {

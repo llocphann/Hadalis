@@ -1,0 +1,30 @@
+{
+  "actions": [
+    {
+      "cancelled": false,
+      "command_sha256": "cf2fecffd2196b9b3664b93b3161beacdec3e9c1aa571c7fa38d4bd1f82f2c19",
+      "evidence_id": "JOB-MEGAQML-F1-FULL-MATRIX-20261003-001:0",
+      "exit_code": 65,
+      "index": 0,
+      "kind": "exec",
+      "observed_at_unix": 1790976181,
+      "source_sha": "5a6e13b3507fd66ae993d8a6de4e7b7d78475a92",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_truncated": false,
+      "stdout_bytes": 13,
+      "stdout_sha256": "c652b95657215155cfa893f08197e5dfc775436ac94ebb06b2e2a0230b1663a9",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "2942ea850f6efc4aeeccfcb6430e820b2b004ba0",
+  "evidence_location": "Private local evidence; raw output is not published",
+  "finished_at_unix": 1790976181,
+  "input_sha256": "30d90b8b4175e89efc7c2c6352df64fce7d267237b4a6f168a58bf1b9ddeb223",
+  "job": "JOB-MEGAQML-F1-FULL-MATRIX-20261003-001",
+  "job_commit": "5a6e13b3507fd66ae993d8a6de4e7b7d78475a92",
+  "profile_id": "profile-a25585b748dd4220",
+  "started_at_unix": 1790976181,
+  "status": "failed"
+}

@@ -43,7 +43,8 @@ EXPECTED_STAGES = (
     "BOOT", "SETUP_START", "FROZEN_VERIFIED", "NEUTRAL_VERIFIED",
     "STRETCH_SAMPLE", "RELEASE_START", "RELEASE_SAMPLE", "SAMPLING_DONE",
 )
-MAX_LOG = 524288
+MAX_LOG = 524288  # Dedicated stdout/stderr evidence bound, NOT an inherited QS file cap.
+QS_CHILD_FILE_LIMIT = 8 * 1024 * 1024  # Exact isolated SIGXFSZ control succeeded at this cap.
 frozen = runpy.run_path(str(ROOT / FROZEN_RUNNER),
                         run_name="wull_dynamic_borrow_reviewed_safety")
 git = frozen["git"]
@@ -358,14 +359,20 @@ def run_fixture(folder):
     })
     log = private / "dynamic.private.log"
     code = -1
-    def limit_private_log():
-        resource.setrlimit(resource.RLIMIT_FSIZE, (MAX_LOG, MAX_LOG))
+    def limit_private_process_files():
+        # RLIMIT_FSIZE is inherited by dbus-run-session AND Quickshell: it
+        # limits *all* QS private regular-file writes (including internal
+        # qslogs), not just captured stdout. The maintainer observed
+        # SIGXFSZ with 512 KiB and an actual minimal QML PASS at 8 MiB.
+        resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+        resource.setrlimit(resource.RLIMIT_FSIZE,
+                           (QS_CHILD_FILE_LIMIT, QS_CHILD_FILE_LIMIT))
     with log.open("wb") as output:
         proc = subprocess.Popen(
             [dbus, "--", qs, "--path", str(shell / "shell.qml")],
             env=env, cwd=ROOT, stdout=output, stderr=subprocess.STDOUT,
             stdin=subprocess.DEVNULL, start_new_session=True,
-            preexec_fn=limit_private_log)
+            preexec_fn=limit_private_process_files)
         try:
             code = proc.wait(timeout=23)
         except subprocess.TimeoutExpired:

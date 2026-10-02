@@ -1,0 +1,37 @@
+{
+  "id": "JOB-WULL-SURFACE-P1E0042-20261002-01",
+  "base_sha": "e5969e2f6cd3dc92d3e437c682905d8a3254c43c",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "scripts/test-wull-production-surface-slot.cjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 90
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-production-surface-integration.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 90
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-production-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 90
+      }
+    }
+  ]
+}

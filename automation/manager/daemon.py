@@ -320,18 +320,27 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
         raise RuntimeError("Previous session identity needs reconciliation; no new prompt was sent")
     project_id = session.get("project_id") if session else native_command("project", name=profile["project_name"])["project_id"]
     parent = str(uuid.uuid4())
+    verified_descendant = False
     if session:
         cursor = native_command("cursor", conversation_id=session["conversation_id"], project_id=project_id)
-        if cursor["current_node"] != item["response_message_id"]:
-            def changed(c, s):
-                current = s["profiles"].get(profile_id)
-                if current:
-                    current.update(desired="paused", status="session_changed",
-                        last_error="Managed chat changed outside Automation; checkpoint retained")
-                    event(s, profile_id, "session_changed")
-            change_state(changed)
-            return
         parent = cursor["current_node"]
+        if parent != item["response_message_id"]:
+            # The Desktop's current node can be a non-user descendant of the
+            # exact finished assistant response. Validate that lineage rather
+            # than interpreting every non-identical cursor as a human edit.
+            branch = native_command("branch", conversation_id=session["conversation_id"],
+                project_id=project_id, expected_response_message_id=item["response_message_id"])
+            if branch.get("relation") in {"EXACT_CURRENT_NODE", "NON_USER_DESCENDANT"} and branch.get("current_node") == parent:
+                verified_descendant = True
+            else:
+                def changed(c, s):
+                    current = s["profiles"].get(profile_id)
+                    if current:
+                        current.update(desired="paused", status="session_changed",
+                            last_error="Managed chat branch changed; checkpoint retained")
+                        event(s, profile_id, "session_changed")
+                change_state(changed)
+                return
     effort = profile["thinking_effort"]
     selection = {}
     if profile["requires_github"] or effort != "auto":
@@ -360,6 +369,20 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
         prompt += f"\n\nLocal result: {RESULTS}/{item['last_job_id']}.json ({item['last_result']}). Inspect the evidence before the next decision.\n"
     if item["job_summary"]:
         prompt += "\nPrivate worker result projection (raw evidence remains local):\n"+json.dumps(item["job_summary"],ensure_ascii=False)
+    if verified_descendant:
+        # Revalidate immediately before recording dispatch intent. A changed
+        # branch, a later user turn or a missing parent must fail closed.
+        latest = native_command("branch", conversation_id=session["conversation_id"],
+            project_id=project_id, expected_response_message_id=item["response_message_id"])
+        if latest.get("relation") not in {"EXACT_CURRENT_NODE", "NON_USER_DESCENDANT"} or latest.get("current_node") != parent:
+            def changed(c, s):
+                current = s["profiles"].get(profile_id)
+                if current:
+                    current.update(desired="paused", status="session_changed",
+                        last_error="Managed chat branch changed before dispatch; checkpoint retained")
+                    event(s, profile_id, "session_changed")
+            change_state(changed)
+            return
     pending = {"user_message_id": str(uuid.uuid4()), "parent_message_id": parent,
         "conversation_id": session.get("conversation_id") if session else None,
         "project_id": project_id, "kind": prompt_kind, "prepared_at_unix": now,
@@ -385,6 +408,8 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
             if kind == "restart":
                 current.update(started_at_unix=now, run_start_iterations=current["iterations"], run_start_prompts=current["prompts_sent"])
         event(s, profile_id, "prompt_prepared", pending["user_message_id"])
+        if verified_descendant:
+            event(s, profile_id, "managed_branch_descendant_verified")
         return True
     if not change_state(prepare): return
     try:

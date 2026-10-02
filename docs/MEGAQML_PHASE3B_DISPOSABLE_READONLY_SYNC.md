@@ -185,3 +185,32 @@ vendor reads until this no-vendor test returns conclusive stage
 evidence. A text/flush/read failure is not evidence of a wrong
 MEGA credential or faulty server. No runtime/auth gate is
 unlocked by a terminal transport observation.
+
+## Owner observation: raw terminal opens; Python text open fails
+
+The owner successfully ran the separate fake-only diagnostic under
+the same dedicated `machinectl shell`. Its finite outcome was
+`TEXT_TTY_OPEN=false`, and all input stages were
+`not_attempted`. A previous same-mode no-vendor capability
+diagnostic had reported `CONTROLLING_TTY_OPEN=true` using
+`os.open("/dev/tty", O_RDWR | O_NOCTTY)` with valid `termios`.
+This **localizes, but does not yet prove the underlying OS cause**
+of the discrepancy to the terminal-opening path. No credentials
+were prompted for, and no MEGA vendor access occurred.
+
+The fake-only interactive script now uses this previously observed
+low-level open operation and `os.fdopen(..., "r+", encoding="utf-8",
+buffering=1)`. It prints separate finite booleans for the
+low-level open and text stream creation, then attempts only the
+fixed public `TTY_TEST_ONLY` and `FAKE_PIN_ONLY` tokens.
+The fake-only unit tests mock low-level open/fdopen failures,
+descriptor cleanup, write/flush/read, getpass fallback failure,
+and happy path. A failure never prints exceptions or typed tokens.
+
+**Do not change the main disposable vendor probe** until the
+owner confirms both `TTY_ACK_READ=passed` and
+`TTY_NOECHO_READ=passed` with an exact-source Linux
+`machinectl shell` fake-only run. Even then, separately update
+and test the private-email transport before any real whoami/sync
+observation. Phase 3b remains unqualified and all ten cloud
+domains denied.

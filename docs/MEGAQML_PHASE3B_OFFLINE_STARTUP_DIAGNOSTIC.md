@@ -27,6 +27,39 @@ Owner separately approved one new isolated **offline**, **account-free**, **loca
 
 The observed result, whether a new fixed error or no log, remains Phase 3b `UNQUALIFIED`. No capability, auth or read/write domain may be enabled. Stop if the result is still unexplained; another mount or a networked experiment requires a different permission.
 
+## Approved one-shot client-signal follow-up (2026-10-02)
+
+The follow-up has a **separate explicit CLI flag**
+`--acknowledge-isolated-offline-client-signals`. It reuses the already
+authorized, strictly ownership-gated read-only `/opt/megacmd/lib` sandbox
+and does NOT add mounts, expose account state, enable networking, alter
+the MEGAcmd command, extend time limits, or automatically publish evidence.
+The previous two diagnostic flags keep their **unchanged public JSON
+summary shape**; only the new flag emits the additional local signals.
+
+The private supervisor records the actual scriptable client exit code
+as an integer only when it is in the fixed range 0–255, otherwise null,
+with `client_exit_class` in
+`zero | nonzero | signal_terminated | timed_out | unobserved`.
+It separately reports `client_version_line` as
+`recognized | not_recognized | indeterminate`: **recognized** only
+means a bounded stdout line matches the anchored MEGAcmd version
+format. Timeout or output truncation yields **indeterminate**.
+A syntactically recognized line does not prove that a particular server
+version has been independently verified. Existing bounded,
+fresh-sandbox-only log classification is unchanged, and raw stdout,
+stderr, version digits, log text and machine paths stay private.
+The outer summary remains `UNQUALIFIED`; all ten live gates remain denied.
+The outer diagnostic script returns 21 for a completed classification
+regardless of the actual bounded client exit code.
+
+The owner has separately authorized **one** local-only, no-account,
+offline test at the new exact source SHA. Run independent fake-only
+gates and the inner Python self-test **before** the single sandboxed
+MEGAcmd call; if a gate fails, stop before launching vendor.
+No automatic retry and no public diagnostic publication are authorized.
+Stop and reassess once the fixed local client signals are available.
+
 ## Earlier evidence
 
 1. `docs/evidence/megaqml/phase2p-ad79725acda0-20261002T031538Z.md`:

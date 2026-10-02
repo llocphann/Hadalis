@@ -19,7 +19,7 @@ PRIVATE = runpy.run_path(str(Path(__file__).with_name(
 # Executed as /usr/bin/python3 -I -S -c ... *inside* bwrap PID namespace.
 # No host files other than readonly system binaries are mounted.
 INNER = r'''
-import json, os, selectors, signal, subprocess, sys, time
+import json, os, re, selectors, signal, subprocess, sys, time
 
 CATEGORIES = {
  "sandbox_server_log_absent",
@@ -82,6 +82,37 @@ def select_category(chunks, captured, output_limited):
         return "sandbox_client_output_limited"
     return classify_client(b"\n".join(captured.values()))
 
+def client_exit_signal(returncode, timed_out):
+    """Bounded numeric exit, or a fixed signal/timeout/unobserved class."""
+    if timed_out:
+        return "timed_out", None
+    if type(returncode) is not int:
+        return "unobserved", None
+    if returncode < 0:
+        return "signal_terminated", None
+    if returncode > 255:
+        return "unobserved", None
+    return ("zero" if returncode == 0 else "nonzero"), returncode
+
+VERSION_LINE = re.compile(
+    r"MEGAcmd(?: (?:server|client))? version\s*:?\s*v?"
+    r"\d{1,3}(?:\.\d{1,3}){1,3}"
+    r"(?:\s*:\s*code\s+\d{1,10})?"
+    r"(?:\s+\(64 bits\))?\s*",
+    re.IGNORECASE,
+)
+
+def client_version_signal(stdout, incomplete):
+    # A syntactically matching stdout line is only a parsing observation:
+    # not an authenticated server-version or capability qualification.
+    if incomplete:
+        return "indeterminate"
+    for line in stdout.splitlines():
+        if len(line) <= 128 and VERSION_LINE.fullmatch(
+                line.decode("utf-8", "replace").strip()):
+            return "recognized"
+    return "not_recognized"
+
 def diagnostic(version):
     p = subprocess.Popen([version, "-l"], stdin=subprocess.DEVNULL,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -134,9 +165,13 @@ def diagnostic(version):
         except (FileNotFoundError, PermissionError, OSError):
             pass
     category = select_category(chunks, captured, output_limited)
-    # No raw vendor client output or ephemeral server log may escape.
+    # Keep raw bytes, version digits, file paths and logs in this namespace.
+    exit_class, exit_code = client_exit_signal(p.returncode, timeout)
+    version_line = client_version_signal(
+        captured["stdout"], timeout or output_limited)
     return {"category": category, "client_timed_out": timeout,
-            "server_log_present": found}
+            "server_log_present": found, "client_exit_class": exit_class,
+            "client_exit_code": exit_code, "client_version_line": version_line}
 
 def main():
     try:
@@ -155,9 +190,33 @@ def main():
             assert select_category([b"", b"", b"network is unreachable"], fake_client, False) == "sandbox_server_log_network_event"
             assert select_category([b"", b""], fake_client, False) == "sandbox_client_server_handshake_failed"
             assert select_category([b"", b""], fake_client, True) == "sandbox_client_output_limited"
+            assert client_exit_signal(0, False) == ("zero", 0)
+            assert client_exit_signal(21, False) == ("nonzero", 21)
+            assert client_exit_signal(-9, False) == ("signal_terminated", None)
+            assert client_exit_signal(None, False) == ("unobserved", None)
+            assert client_exit_signal(300, False) == ("unobserved", None)
+            assert client_exit_signal(-9, True) == ("timed_out", None)
+            assert client_version_signal(
+                b"MEGAcmd version: 2.6.0.0: code 2060000\n", False
+            ) == "recognized"
+            assert client_version_signal(
+                b"MEGAcmd server version v2.6.0\n", False
+            ) == "recognized"
+            assert client_version_signal(
+                b"MEGA SDK version: 2.6.0\n", False
+            ) == "not_recognized"
+            assert client_version_signal(
+                b"MEGAcmd version: 2.6.0\nPRIVATE_FAKE", False
+            ) == "recognized"
+            assert client_version_signal(
+                b"MEGAcmd version: 2.6.0\n", True
+            ) == "indeterminate"
             print(json.dumps({"category": "sandbox_server_log_other",
                               "client_timed_out": False,
-                              "server_log_present": False}))
+                              "server_log_present": False,
+                              "client_exit_class": "zero",
+                              "client_exit_code": 0,
+                              "client_version_line": "recognized"}))
             return
         if len(sys.argv) != 2 or sys.argv[1] != "/usr/bin/mega-version":
             # Caller supplies only a previously verified, readonly system
@@ -173,7 +232,10 @@ def main():
         # Deliberately never emit a Python traceback, paths, diagnostics.
         print(json.dumps({"category": "sandbox_supervisor_error",
                           "client_timed_out": False,
-                          "server_log_present": False}))
+                          "server_log_present": False,
+                          "client_exit_class": "unobserved",
+                          "client_exit_code": None,
+                          "client_version_line": "indeterminate"}))
 main()
 '''
 
@@ -213,20 +275,77 @@ def safe_summary(reason, has_log=False, client_timed_out=False):
     }, sort_keys=True)
 
 
-def accept_inner(raw):
+EXIT_CLASSES = frozenset({
+    "zero", "nonzero", "signal_terminated", "timed_out", "unobserved",
+})
+VERSION_SIGNALS = frozenset({
+    "recognized", "not_recognized", "indeterminate",
+})
+
+
+def accept_inner(raw, require_signals=False):
+    """Validate the complete internal protocol; no raw byte forwarding."""
     try:
-        # Strip nothing but protocol whitespace; fail closed on extra lines.
         value = json.loads(raw.decode("utf-8"))
+        baseline = {"category", "client_timed_out", "server_log_present"}
+        extended = baseline | {
+            "client_exit_class", "client_exit_code", "client_version_line",
+        }
         if (type(value) is not dict
-                or set(value) != {"category", "client_timed_out",
-                                  "server_log_present"}
-                or value["category"] not in CATEGORIES
-                or type(value["client_timed_out"]) is not bool
-                or type(value["server_log_present"]) is not bool):
+                or value.get("category") not in CATEGORIES
+                or type(value.get("client_timed_out")) is not bool
+                or type(value.get("server_log_present")) is not bool):
+            return None
+        # Legacy inert fixtures are valid only on the old diagnostic route;
+        # the newly approved signal route MUST have all bounded signals.
+        if set(value) == baseline and not require_signals:
+            return value
+        if set(value) != extended:
+            return None
+        exit_class = value["client_exit_class"]
+        exit_code = value["client_exit_code"]
+        if (exit_class not in EXIT_CLASSES
+                or value["client_version_line"] not in VERSION_SIGNALS):
+            return None
+        if exit_class == "zero":
+            if type(exit_code) is not int or exit_code != 0:
+                return None
+        elif exit_class == "nonzero":
+            if type(exit_code) is not int or not 1 <= exit_code <= 255:
+                return None
+        elif exit_code is not None:
+            return None
+        if value["client_timed_out"] != (exit_class == "timed_out"):
+            return None
+        if (value["client_timed_out"]
+                and value["client_version_line"] != "indeterminate"):
             return None
         return value
     except (UnicodeDecodeError, ValueError, TypeError):
         return None
+
+
+def safe_signal_summary(reason, has_log=False, client_timed_out=False,
+                        exit_class="unobserved", exit_code=None,
+                        version_line="indeterminate"):
+    """Local-only fixed summary. Never publish numeric version or raw logs."""
+    assert exit_class in EXIT_CLASSES and version_line in VERSION_SIGNALS
+    assert accept_inner(json.dumps({
+        "category": reason,
+        "client_timed_out": client_timed_out,
+        "server_log_present": has_log,
+        "client_exit_class": exit_class,
+        "client_exit_code": exit_code,
+        "client_version_line": version_line,
+    }).encode("utf-8"), require_signals=True) is not None or (
+        reason not in CATEGORIES and exit_class == "unobserved"
+        and exit_code is None and version_line == "indeterminate"
+        and client_timed_out is False and has_log is False)
+    output = json.loads(safe_summary(reason, has_log, client_timed_out))
+    output["client_exit_class"] = exit_class
+    output["client_exit_code"] = exit_code
+    output["client_version_line"] = version_line
+    return json.dumps(output, sort_keys=True)
 
 
 def self_test():
@@ -235,9 +354,12 @@ def self_test():
     x = subprocess.run([sys.executable, "-I", "-S", "-c", INNER, "--self-test"],
                        stdin=subprocess.DEVNULL, capture_output=True,
                        timeout=4, check=True)
-    assert accept_inner(x.stdout) == {
+    assert accept_inner(x.stdout, require_signals=True) == {
         "category": "sandbox_server_log_other",
-        "client_timed_out": False, "server_log_present": False}
+        "client_timed_out": False, "server_log_present": False,
+        "client_exit_class": "zero",
+        "client_exit_code": 0,
+        "client_version_line": "recognized"}
     assert accept_inner(b'{"category":"sandbox_server_log_other","server_log_present":true,"client_timed_out":false,"secret":"private"}') is None
     assert accept_inner(b"PRIVATE_ACCOUNT_CANARY") is None
     summary = safe_summary("sandbox_server_log_absent")
@@ -249,23 +371,31 @@ def main():
     if sys.argv[1:] == ["--self-test"]:
         self_test()
         return 0
-    private_libraries = sys.argv[1:] == ["--acknowledge-isolated-offline-private-libs-test"]
+    client_signals = sys.argv[1:] == ["--acknowledge-isolated-offline-client-signals"]
+    private_libraries = (client_signals or
+        sys.argv[1:] == ["--acknowledge-isolated-offline-private-libs-test"])
     if not private_libraries and sys.argv[1:] != ["--acknowledge-isolated-offline-startup-diagnostic"]:
         print(safe_summary("missing_host_dependency"))
         return 20
+
+    def emit(reason, has_log=False, timed_out=False):
+        if client_signals:
+            print(safe_signal_summary(reason, has_log, timed_out))
+        else:
+            print(safe_summary(reason, has_log, timed_out))
     if __import__("os").geteuid() == 0:
-        print(safe_summary("do_not_run_as_root"))
+        emit("do_not_run_as_root")
         return 20
     allow = BOUNDARY["allowed_binary"]
     ver, server, python, bwrap, true = (
         allow("mega-version"), allow("mega-cmd-server"), allow("python3"),
         allow("bwrap"), allow("true"))
     if not all((ver, server, python, bwrap, true)):
-        print(safe_summary("missing_host_dependency"))
+        emit("missing_host_dependency")
         return 20
     if (ver[0].parent != server[0].parent
             or ver[1].parent != server[1].parent):
-        print(safe_summary("mixed_vendor_bin_directories"))
+        emit("mixed_vendor_bin_directories")
         return 20
     # The original flag uses the unchanged sandbox. The new, separately
     # authorized flag alone can opt into the verified private read-only mount.
@@ -276,7 +406,7 @@ def main():
         except (OSError, ValueError, RuntimeError):
             approved = False
         if not approved:
-            print(safe_summary("private_lib_mount_validation_failed"))
+            emit("private_lib_mount_validation_failed")
             return 20
     sandbox = BOUNDARY["bwrap_command"]
     bounded = BOUNDARY["bounded_process"]
@@ -289,25 +419,31 @@ def main():
         rc, _, _, blocked = bounded(
             command([true[0]]))
         if blocked or rc != 0:
-            print(safe_summary("sandbox_setup_unavailable"))
+            emit("sandbox_setup_unavailable")
             return 20
         rc, output, _, blocked = bounded(
             command([python[0], "-I", "-S", "-c", INNER, str(ver[0])]))
     except (OSError, ValueError, __import__("subprocess").TimeoutExpired):
-        print(safe_summary("sandbox_process_unavailable"))
+        emit("sandbox_process_unavailable")
         return 20
     if blocked:
-        print(safe_summary(blocked))
+        emit(blocked)
         return 21
     if rc != 0:
-        print(safe_summary("sandbox_supervisor_error"))
+        emit("sandbox_supervisor_error")
         return 21
-    event = accept_inner(output)
+    event = accept_inner(output, require_signals=client_signals)
     if event is None:
-        print(safe_summary("sandbox_supervisor_output_invalid"))
+        emit("sandbox_supervisor_output_invalid")
         return 21
-    print(safe_summary(event["category"], event["server_log_present"],
-                       event["client_timed_out"]))
+    if client_signals:
+        print(safe_signal_summary(
+            event["category"], event["server_log_present"],
+            event["client_timed_out"], event["client_exit_class"],
+            event["client_exit_code"], event["client_version_line"]))
+    else:
+        print(safe_summary(event["category"], event["server_log_present"],
+                           event["client_timed_out"]))
     # This is an explanation-only diagnostic, NEVER qualification.
     return 21
 

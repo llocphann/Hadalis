@@ -1,5 +1,8 @@
 # Cloud Storage — MEGAcmd ↔ Rust ↔ QML implementation
 
+> **Phase 3b client-signal offline discriminator STAGED (2026-10-02):** Added an **opt-in-only**, **one-shot**, **local-only** companion to the previous isolated private-library sandbox probe. The new `--acknowledge-isolated-offline-client-signals` shares the same matched-pacman/root-owned/symlink-verified read-only private-library mount and no-network/no-account/PID/HOME isolation. It reports bounded `client_exit_code` (0–255 or null), fixed `client_exit_class` and `client_version_line` pattern status without raw output, private paths or version digits. Existing flags retain their old public summary shape; the client status never qualifies an installed server or unlocks any of the ten domains. Source-only pending exact-SHA fake-only Linux tests and **one** owner-approved local offline run; no report publisher, retries or additional mounts. Previous private result is owner-local and is intentionally not published. **STOP** after fixed local results; further vendor/networked attempts need a separate decision. Do not modify `stable` or Wull.
+
+
 > **Phase 3b separately owner-approved narrow private-library retest STAGED (2026-10-02):** Owner locally ran the vendor-free layout check at `b0f5ef07955876e1963d69d070a157ac3966930a`: two fake-only/self-test PASS lines, `STATIC_EXIT=0`, fixed `package_opt_libraries_present`; this was NOT published. Following separate explicit approval, staged `scripts/megaqml-phase3b-private-lib-mount.py` with synthetic ownership/symlink/metadata gate and an isolated **new-only** `--acknowledge-isolated-offline-private-libs-test` flag. The old sandbox route is unchanged. Only after validation, add a sandbox-internal **read-only** bind of `/opt/megacmd/lib` (never all `/opt`); retain network/PID/HOME isolation and time/output bounds, no account and no public upload. New source requires independent fake-only and one owner Linux test at exact SHA; if mount validation fails, the vendor must not execute. No vendor retry has yet run using this new flag. Keep Phase 3b UNQUALIFIED, all ten domains denied and `LIVE_AUTH_VENDOR_ENABLED=false`; no stable/Wull edits.
 
 
@@ -277,12 +280,12 @@ The autonomous Local Bot must not contact a real MEGA account, initiate a sync o
 
 ### Round-7 final research freeze
 - [x] Re-check current upstream MEGAcmd/SDK/Desktop source heads; no newer upstream source commit supersedes the pinned research snapshots.
-- [x] Re-check current MEGAcmd release behavior: transfers always HTTPS; \`https\` is deprecated; remove any planned HTTPS toggle.
-- [x] Account for MEGAcmd 2.6.0 lower-case \`http_proxy\`/\`https_proxy\` support without exposing proxy credentials in diagnostics.
-- [x] Add capability-gated WebDAV streaming-cache controls for \`file_service_reclaim_*\`; document that threshold is not a hard cap.
-- [x] Prove \`--col-separator\` emits raw unescaped values; freeze command-specific minimal-column parsers and fail-closed arbitrary path handling.
-- [x] Freeze bounded-snapshot semantics; vendor \`--limit\` without offset is not pagination.
-- [x] Freeze dedicated one-shot Rust \`inir-mega\`; no Python mutation fallback and no permanent Hadalis daemon for v1.
+- [x] Re-check current MEGAcmd release behavior: transfers always HTTPS; `https` is deprecated; remove any planned HTTPS toggle.
+- [x] Account for MEGAcmd 2.6.0 lower-case `http_proxy`/`https_proxy` support without exposing proxy credentials in diagnostics.
+- [x] Add capability-gated WebDAV streaming-cache controls for `file_service_reclaim_*`; document that threshold is not a hard cap.
+- [x] Prove `--col-separator` emits raw unescaped values; freeze command-specific minimal-column parsers and fail-closed arbitrary path handling.
+- [x] Freeze bounded-snapshot semantics; vendor `--limit` without offset is not pagination.
+- [x] Freeze dedicated one-shot Rust `inir-mega`; no Python mutation fallback and no permanent Hadalis daemon for v1.
 - [x] Re-audit current Hadalis Settings/native packaging paths and define exact implementation files/tests.
 - [x] Freeze Tier A (read/ID-based), Tier B (installed/disposable-fixture gated), Tier C (withheld) scope.
 - [x] Freeze fake vendor harness as first implementation milestone.

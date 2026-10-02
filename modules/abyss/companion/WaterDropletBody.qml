@@ -60,10 +60,10 @@ Item {
                 GradientStop { position: 1; color: AbyssStyle.surfaceDeep }
             }
             startX: root.width * 0.5; startY: 2
-            PathCubic { x: root.width * 0.12; y: root.height * 0.58; control1X: root.width * 0.44; control1Y: root.height * 0.18; control2X: root.width * 0.12; control2Y: root.height * 0.36 }
-            PathCubic { x: root.width * 0.5; y: root.height - 3; control1X: root.width * 0.08; control1Y: root.height * 0.83; control2X: root.width * 0.28; control2Y: root.height - 3 }
-            PathCubic { x: root.width * 0.88; y: root.height * 0.58; control1X: root.width * 0.72; control1Y: root.height - 3; control2X: root.width * 0.92; control2Y: root.height * 0.83 }
-            PathCubic { x: root.width * 0.5; y: 2; control1X: root.width * 0.88; control1Y: root.height * 0.36; control2X: root.width * 0.56; control2Y: root.height * 0.18 }
+            PathCubic { x: root.width * 0.07; y: root.height * 0.59; control1X: root.width * 0.43; control1Y: root.height * 0.16; control2X: root.width * 0.07; control2Y: root.height * 0.36 }
+            PathCubic { x: root.width * 0.5; y: root.height - 3; control1X: root.width * 0.02; control1Y: root.height * 0.84; control2X: root.width * 0.25; control2Y: root.height - 3 }
+            PathCubic { x: root.width * 0.93; y: root.height * 0.59; control1X: root.width * 0.75; control1Y: root.height - 3; control2X: root.width * 0.98; control2Y: root.height * 0.84 }
+            PathCubic { x: root.width * 0.5; y: 2; control1X: root.width * 0.93; control1Y: root.height * 0.36; control2X: root.width * 0.57; control2Y: root.height * 0.16 }
         }
     }
 
@@ -74,14 +74,15 @@ Item {
         color: Qt.alpha(AbyssStyle.specular, 0.42)
     }
 
+    // Larger paired eyes and layered moving catchlights stay procedural.
     Row {
-        spacing: 17
+        spacing: 15
         anchors.horizontalCenter: parent.horizontalCenter
-        y: 48
+        y: 46
         Repeater {
             model: 2
             Item {
-                width: 12; height: 16
+                width: 14; height: 18
                 Rectangle {
                     width: parent.width
                     height: Math.max(1, parent.height * root.eyeOpen)
@@ -90,19 +91,41 @@ Item {
                     color: AbyssStyle.textColor
 
                     Rectangle {
-                        width: 5; height: Math.min(6, parent.height)
+                        width: 6; height: Math.min(7, parent.height)
                         radius: width / 2
                         x: Math.max(1, Math.min(parent.width - width - 1, 3 + root.gazeX * 2))
                         y: Math.max(0, Math.min(parent.height - height, (parent.height - height) * 0.5 + root.gazeY * 2))
                         color: AbyssStyle.surfaceDeep
                     }
                     Rectangle {
-                        width: 2.5; height: Math.min(2.5, parent.height)
+                        width: 3; height: Math.min(3, parent.height)
                         radius: 2
                         x: 2; y: Math.min(2, Math.max(0, parent.height - height))
                         color: AbyssStyle.specular
                     }
+                    Rectangle {
+                        width: 1.5; height: Math.min(1.5, parent.height)
+                        radius: 1
+                        x: 10; y: Math.min(9, Math.max(0, parent.height - height))
+                        color: Qt.alpha(AbyssStyle.specular, 0.8)
+                    }
                 }
+            }
+        }
+    }
+
+    // Two small warm cheek glints; body, pupil and specular colors still
+    // track the desktop theme and no reference artwork enters runtime.
+    Row {
+        spacing: 37
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: 63
+        Repeater {
+            model: 2
+            Rectangle {
+                width: 9; height: 5; radius: 2.5
+                color: Qt.rgba(1.0, 0.42, 0.58, 0.42)
+                opacity: 0.54 + root.pulse * 0.23
             }
         }
     }

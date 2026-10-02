@@ -4,12 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import {spawnSync} from "node:child_process";
 import {fileURLToPath} from "node:url";
-import {inspectContractAssets, installedContract} from "../automation/chat_bridge/native_adapter.mjs";
+import {inspectContractAssets, installedContract, exactSharedImport, publicExportExists} from "../automation/chat_bridge/native_adapter.mjs";
 import {operationErrorCode} from "../automation/chat_bridge/native_errors.mjs";
 
 const quote = String.fromCharCode(96);
 const initial = [
-  "import{Client as client}from './shared.js';",
+  "import{apiClient as client}from './app-shared-def.js';",
   "var other=1,scoped=wrap($,({scope:e})=>new Carrier(e));",
   "client.streamPost(" + quote + "/f/conversation" + quote + ");",
   "class Carrier {async startCompletionStream() {}}",
@@ -23,15 +23,35 @@ const fake = (initialText=initial, sharedText=shared) => ({
 
 const result=inspectContractAssets(fake());
 assert.ok(result.contract);
-assert.deepEqual(Object.values(result.checks), [true,true,true,true,true,true,true,true,false]);
+assert.equal(result.checks.api_exact_binding,true);
+assert.equal(result.checks.api_exact_export,true);
+assert.equal(result.checks.api_runtime_link,true);
+assert.equal(result.checks.api_import,true);
+// The shared module exports "apiClient", not its internal local "Client".
+assert.equal(result.checks.api_export,false);
 assert.equal(result.contract.api,"apiClient");
 assert.equal(result.contract.stream,"exportedScope");
+const direct = initial.replace("import{apiClient as client}", "import{apiClient}")
+  .replace("client.streamPost", "apiClient.streamPost");
+assert.equal(inspectContractAssets(fake(direct)).contract.api,"apiClient");
+assert.equal(exactSharedImport(initial,"app-shared-def.js","client"),"apiClient");
+assert.equal(exactSharedImport(initial,"app-shared-def.js","unused"),null);
+assert.equal(publicExportExists(shared,"apiClient"),true);
+assert.equal(publicExportExists(shared,"Client"),false);
+// A symbol imported from the right module but not exported by it is NOT
+// treated as a verified native client.
+const missingExport = initial.replace("apiClient as client","missingApi as client");
+const missing = inspectContractAssets(fake(missingExport));
+assert.equal(missing.checks.api_exact_binding,true);
+assert.equal(missing.checks.api_exact_export,false);
+assert.equal(missing.contract.api_resolution,"unique_runtime_export");
+
 
 // A changed upstream import alias may prevent a static export lookup.
 // The fallback is allowed only when the exact shared asset is referenced;
 // runtime must still find exactly one API object with both capabilities.
 const alteredImport = initial.replace(
-  "import{Client as client}from './shared.js';",
+  "import{apiClient as client}from './app-shared-def.js';",
   "import{Unknown as unused}from './app-shared-def.js';"
 );
 const fallback = inspectContractAssets(fake(alteredImport));

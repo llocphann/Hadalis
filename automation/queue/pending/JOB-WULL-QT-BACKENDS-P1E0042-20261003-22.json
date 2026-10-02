@@ -1,0 +1,28 @@
+{
+  "id": "JOB-WULL-QT-BACKENDS-P1E0042-20261003-22",
+  "base_sha": "de06ae5e7028b950576f71154b496fb9df9074a5",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-qt-backend-matrix-fake-only.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 40
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-qt-offscreen-backend-matrix.py",
+          "--private-offscreen-probe"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 90
+      }
+    }
+  ]
+}

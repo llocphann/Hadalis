@@ -1,0 +1,21 @@
+{
+  "id": "JOB-WULL-REAL-BAR-PUBLISH-P1E0042-20261003-43",
+  "base_sha": "3ae27b9f596991091be96d8f6ff725892a2634d7",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "resources": [
+    "git:dev-wull-curated-artifact"
+  ],
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-curated-real-bar-export.py",
+          "--publish-safe-only"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 170
+      }
+    }
+  ]
+}

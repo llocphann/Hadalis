@@ -31,12 +31,16 @@ REASONS = {
     "account_identity_unverified", "sync_changed_or_unavailable",
     "root_changed_or_unavailable", "local_changed_or_unavailable",
     "listing_unavailable", "listing_format_unqualified",
+    "prefix_pair_consistent_unqualified", "prefix_direct_consistent_unqualified",
+    "prefix_pair_mismatch_unqualified", "prefix_pair_unavailable",
     "listing_header_only_unqualified", "listing_observed_unqualified",
     "supervisor_unavailable", "selftest_pass",
 }
 KINDS = {"unknown", "none_observed", "files_only", "folders_only",
          "mixed", "other_node_type"}
 COUNTS = {"unknown", "zero", "one", "two", "three_plus"}
+PAIR_RESULTS = {"not_tested", "prefix_header_only_candidate",
+                "direct_header_only_candidate", "mismatch", "unavailable"}
 
 
 HEADERS = {"not_observed", "exact", "whitespace_variant",
@@ -107,8 +111,10 @@ def format_fingerprint(raw):
     return outcome
 
 
-def emit(reason, kind="unknown", count="unknown", started=False, shape=None):
+def emit(reason, kind="unknown", count="unknown", started=False,
+         shape=None, pair="not_tested"):
     assert reason in REASONS and kind in KINDS and count in COUNTS
+    assert pair in PAIR_RESULTS
     shape = shape or ("not_observed",) * 5
     assert len(shape) == 5
     assert shape[0] in HEADERS and shape[1] in ROW_PREFIXES
@@ -119,6 +125,7 @@ def emit(reason, kind="unknown", count="unknown", started=False, shape=None):
     print("NODE_KIND=" + kind)
     print("NODE_COUNT_BUCKET=" + count)
     print("SERVER_START_ATTEMPTED=" + str(started).lower())
+    print("EXACT_PATH_LISTING_PAIR=" + pair)
     print("FORMAT_HEADER=" + shape[0])
     print("FORMAT_ROW_PREFIXES=" + shape[1])
     print("FORMAT_LINE_ENDINGS=" + shape[2])
@@ -160,6 +167,65 @@ def classify(raw):
         kind = "other_node_type"
     count = {1: "one", 2: "two"}.get(len(rows), "three_plus")
     return kind, count
+
+def classify_exact_pair(plain, detailed, remote):
+    """Source-shaped corroboration, never a deletion authorization.
+
+    PCRE QuoteMeta may classify a literal hyphenated fixture path as
+    pattern-like. In that vendor path, ls prints "<exact-path>: " before
+    children, while ls -l adds a summary HEADER after that prefix.
+    Check EXACT private journal-derived bytes without disclosing any bytes.
+    """
+    if (type(remote) is not str or
+            not re.fullmatch(r"/MEGAQML-Phase3b-Fixture-[0-9a-f]{32}",
+                             remote) or
+            type(plain) is not bytes or type(detailed) is not bytes):
+        return "mismatch"
+    if (len(plain) > 16384 or len(detailed) > 16384):
+        return "mismatch"
+    prefix = remote.encode("ascii") + b": \n"
+    header = rb"FLAGS[ \t]+VERS[ \t]+SIZE[ \t]+DATE[ \t]+NAME\n"
+    if plain == prefix and detailed.startswith(prefix):
+        remainder = detailed[len(prefix):]
+        if re.fullmatch(header, remainder):
+            return "prefix_header_only_candidate"
+    # Distinct non-PCRE source branch, only if both raw observations agree.
+    if plain in (b"", b"\n") and re.fullmatch(header, detailed):
+        return "direct_header_only_candidate"
+    return "mismatch"
+
+def observe_prefix_pair(runner, identity, journal, uid):
+    """One plain and one detailed EXACT old fixture listing, both read-only."""
+    if not identity():
+        return "account_identity_unverified", "unavailable"
+    if F["strict_read"](runner, *F["TWO"]) != F["BLANK"]:
+        return "sync_changed_or_unavailable", "unavailable"
+    if not identity():
+        return "account_identity_unverified", "unavailable"
+    root = F["strict_read"](runner, "ls", "/")
+    exact_root = journal["remote"][1:].encode("ascii") + b"\n"
+    if root != exact_root:
+        return "root_changed_or_unavailable", "unavailable"
+    if I["local_class"](Path(journal["local"]), uid) != "empty_owned":
+        return "local_changed_or_unavailable", "unavailable"
+    if not identity():
+        return "account_identity_unverified", "unavailable"
+    plain = F["strict_read"](runner, "ls", journal["remote"])
+    if not identity():
+        return "account_identity_unverified", "unavailable"
+    if plain is None:
+        return "prefix_pair_unavailable", "unavailable"
+    detailed = F["strict_read"](runner, "ls", "-l", journal["remote"])
+    if not identity():
+        return "account_identity_unverified", "unavailable"
+    if detailed is None:
+        return "prefix_pair_unavailable", "unavailable"
+    pair = classify_exact_pair(plain, detailed, journal["remote"])
+    if pair == "prefix_header_only_candidate":
+        return "prefix_pair_consistent_unqualified", pair
+    if pair == "direct_header_only_candidate":
+        return "prefix_direct_consistent_unqualified", pair
+    return "prefix_pair_mismatch_unqualified", "mismatch"
 
 def observe(runner, identity, journal, uid):
     """Only permitted data read is one sync list, root ls, exact ls -l."""
@@ -237,10 +303,10 @@ def tty_start_confirmation():
             out.write(
                 "Only the disposable server may start if absent. Its cached "
                 "Sync state could resume. No creation or deletion.\n"
-                "Type START_DISPOSABLE_FORMAT_ONLY: "
+                "Type START_DISPOSABLE_PREFIX_ONLY: "
             )
             out.flush()
-            return inp.readline(64).strip() == "START_DISPOSABLE_FORMAT_ONLY"
+            return inp.readline(64).strip() == "START_DISPOSABLE_PREFIX_ONLY"
     except (OSError, UnicodeError, ValueError):
         return False
 
@@ -329,20 +395,18 @@ def main():
                     assert tuple(argv) == F["TWO"]
                 if argv[0] == "ls":
                     assert tuple(argv) in {
-                        ("ls", "/"), ("ls", "-l", journal["remote"])}
+                        ("ls", "/"), ("ls", journal["remote"]),
+                        ("ls", "-l", journal["remote"])}
                 return B["bounded_read"]([str(executor), *argv], env)
             def identity():
                 return (named_server_guard(uid, server) and
                         F["verify_identity"](runner, expected, pinned, server, uid))
             if not identity():
                 emit("account_identity_unverified", started=started); return 21
-            reason, classified = observe(runner, identity, journal, uid)
-            shape = classified if reason == "listing_format_unqualified" else None
-            kind, count = (classified if classified and not shape
-                           else ("unknown", "unknown"))
-            emit(reason, kind, count, started, shape)
-            return 0 if reason in {"listing_observed_unqualified",
-                                   "listing_header_only_unqualified"} else 21
+            reason, pair = observe_prefix_pair(runner, identity, journal, uid)
+            emit(reason, started=started, pair=pair)
+            return 0 if reason in {"prefix_pair_consistent_unqualified",
+                                   "prefix_direct_consistent_unqualified"} else 21
     except (OSError, ValueError, TypeError, KeyError, UnicodeError,
             RuntimeError, AssertionError):
         emit("supervisor_unavailable", started=started); return 21
@@ -356,12 +420,18 @@ def selftest():
     assert classify(b"FLAGS VERS SIZE DATE NAME\nNAME_ONLY\n") is None
     assert format_fingerprint(b"FLAGS VERS SIZE DATE NAME\nNAME_ONLY\n") == (
         "exact", "no_four_flag_candidate", "lf", "absent", "one")
+    demo = "/MEGAQML-Phase3b-Fixture-" + "a" * 32
+    prefix = demo.encode("ascii") + b": \n"
+    assert classify_exact_pair(prefix, prefix + b"FLAGS VERS SIZE DATE NAME\n", demo) == (
+        "prefix_header_only_candidate")
+    assert classify_exact_pair(prefix, prefix + b"FLAGS VERS SIZE DATE NAME\n"
+                               + b"d--- - - 2026 PRIVATE\n", demo) == "mismatch"
     print("PASS MegaQML private ls classifier pure selftest")
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["--self-test"]:
         selftest()
-    elif sys.argv[1:] == ["--approved-additional-one-ls-format-probe"]:
+    elif sys.argv[1:] == ["--approved-journal-exact-prefix-pair-only"]:
         sys.exit(main())
     else:
         emit("start_confirmation_rejected")

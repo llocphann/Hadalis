@@ -100,12 +100,74 @@ assert fingerprint(header) == (
 assert parse(header + b"PRIVATE\x00\n") is None
 assert parse(header + b"---- 1 5 Jan 02 2026 PRIVATE_\xc3\xa9\n") is None
 
+# The new exact-path grammar is independent from the old generic ls-l
+# parser; it does not accept a header-plus-row or an arbitrary path.
+remote = "/MEGAQML-Phase3b-Fixture-" + "b" * 32
+prefix = remote.encode("ascii") + b": \n"
+header_only = b"FLAGS VERS SIZE DATE NAME\n"
+pair = D["classify_exact_pair"]
+assert pair(prefix, prefix + header_only, remote) == (
+    "prefix_header_only_candidate")
+assert pair(b"\n", header_only, remote) == (
+    "direct_header_only_candidate")
+for plain, detailed, path in (
+    (prefix, prefix + header_only + folder, remote),
+    (prefix, prefix + b"BAD\n", remote),
+    (prefix + b"PRIVATE\n", prefix + header_only, remote),
+    (prefix, prefix + header_only, remote + "OTHER"),
+    (prefix, prefix + header_only, "/NOT_DISPOSABLE"),
+):
+    assert pair(plain, detailed, path) == "mismatch"
+
+with tempfile.TemporaryDirectory() as td:
+    root = Path(td)
+    local = root / "local"
+    local.mkdir(mode=0o700)
+    journal = {"remote": remote, "local": str(local),
+               "stage": "sync_detached"}
+    uid = D["os"].getuid()
+    calls = []
+    checks = [0]
+    def identity():
+        checks[0] += 1
+        return True
+    def runner(argv):
+        v = tuple(argv)
+        calls.append(v)
+        if v == D["F"]["TWO"]:
+            return 0, b"\n", b"", None
+        if v == ("ls", "/"):
+            return 0, remote[1:].encode("ascii") + b"\n", b"", None
+        if v == ("ls", remote):
+            return 0, prefix, b"", None
+        if v == ("ls", "-l", remote):
+            return 0, prefix + header_only, b"", None
+        raise AssertionError("UNAUTHORIZED_VENDOR_COMMAND")
+    assert D["observe_prefix_pair"](runner, identity, journal, uid) == (
+        "prefix_pair_consistent_unqualified",
+        "prefix_header_only_candidate")
+    assert calls == [D["F"]["TWO"], ("ls", "/"),
+                     ("ls", remote), ("ls", "-l", remote)]
+    assert checks[0] == 5
+    calls.clear()
+    checks[0] = 0
+    def with_child(argv):
+        v = tuple(argv)
+        if v == ("ls", "-l", remote):
+            return 0, prefix + header_only + folder, b"", None
+        return runner(argv)
+    assert D["observe_prefix_pair"](with_child, identity, journal, uid) == (
+        "prefix_pair_mismatch_unqualified", "mismatch")
+    journal["stage"] = "sync_detached"
+    assert len(list(root.iterdir())) == 1
+
 source = Path(D["__file__"]).read_text() if "__file__" in D else (
     Path(__file__).with_name("megaqml-phase3b-fixture-remote-ls-classify.py")
     .read_text())
 assert '--approved-one-server-start-and-ls' not in source
-assert '--approved-additional-one-ls-format-probe' in source
-assert 'START_DISPOSABLE_FORMAT_ONLY' in source
+assert '--approved-additional-one-ls-format-probe' not in source
+assert '--approved-journal-exact-prefix-pair-only' in source
+assert 'START_DISPOSABLE_PREFIX_ONLY' in source
 assert "REMOTE_CLEANUP_AUTHORIZED=NO" in source
 
 out = io.StringIO()
@@ -116,6 +178,15 @@ for secret in ("PRIVATE_FOLDER", "PRIVATE_FILE", "PRIVATE_REMOTE",
                "PRIVATE_DIAGNOSTIC"):
     assert secret not in report
 assert "FORMAT_HEADER=exact" in report
+assert "EXACT_PATH_LISTING_PAIR=not_tested" in report
+out2 = io.StringIO()
+with contextlib.redirect_stdout(out2):
+    D["emit"]("prefix_pair_consistent_unqualified",
+              pair="prefix_header_only_candidate")
+report2 = out2.getvalue()
+assert "EXACT_PATH_LISTING_PAIR=prefix_header_only_candidate" in report2
+assert "REMOTE_CLEANUP_AUTHORIZED=NO" in report2
+assert "PRIVATE_FOLDER" not in report2
 assert "FORMAT_ROW_PREFIXES=all_four_flag_candidate" in report
 assert "REMOTE_CLEANUP_AUTHORIZED=NO" in report
 assert "JOURNAL_CHANGED=NO" in report

@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -uo pipefail
+# Validator diagnostics can contain local paths and command output. Keep
+# newly created log files private even when the caller's umask is permissive.
+umask 077
 
 repo_url="${HADALIS_VALIDATION_REPO_URL:-https://github.com/llocphann/Hadalis.git}"
 branch="${HADALIS_VALIDATION_BRANCH:-dev}"

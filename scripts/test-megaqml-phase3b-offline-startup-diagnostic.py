@@ -104,6 +104,8 @@ for code in ("sandbox_client_library_missing", "sandbox_client_socket_failure",
     assert code in (root / "scripts/megaqml-phase3b-offline-startup-owner-local.sh").read_text("utf-8")
     assert code in m["CATEGORIES"]
 assert "def classify_client(raw):" in m["INNER"]
+assert "def select_category(chunks, captured, output_limited):" in m["INNER"]
+assert 'for suffix in (".err", ".out", ""):' in m["INNER"]
 assert "output_limited = True" in m["INNER"]
 assert json.loads(output)["reason"] == "sandbox_server_log_socket_failure"
 assert len(commands) == 2

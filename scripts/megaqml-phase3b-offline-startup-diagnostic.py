@@ -69,6 +69,16 @@ def classify_client(raw):
         return "sandbox_client_server_handshake_failed"
     return "sandbox_server_log_absent"
 
+def select_category(chunks, captured, output_limited):
+    # The vendor can create empty stdout/stderr redirects before logging.
+    # Prefer bounded nonempty sandbox-owned logs, including the main log.
+    server_text = b"\n".join(part for part in chunks if part.strip())
+    if server_text:
+        return classify(server_text)
+    if output_limited:
+        return "sandbox_client_output_limited"
+    return classify_client(b"\n".join(captured.values()))
+
 def diagnostic(version):
     p = subprocess.Popen([version, "-l"], stdin=subprocess.DEVNULL,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -112,7 +122,7 @@ def diagnostic(version):
     # namespace tears down all remaining sandbox processes.
     chunks = []
     found = False
-    for suffix in (".err", ".out"):
+    for suffix in (".err", ".out", ""):
         log = "/home/disposable/.megaCmd/megacmdserver.log" + suffix
         try:
             with open(log, "rb") as handle:
@@ -120,11 +130,7 @@ def diagnostic(version):
                 found = True
         except (FileNotFoundError, PermissionError, OSError):
             pass
-    if not found:
-        category = ("sandbox_client_output_limited" if output_limited else
-                    classify_client(b"\n".join(captured.values())))
-    else:
-        category = classify(b"\n".join(chunks))
+    category = select_category(chunks, captured, output_limited)
     # No raw vendor client output or ephemeral server log may escape.
     return {"category": category, "client_timed_out": timeout,
             "server_log_present": found}
@@ -142,6 +148,10 @@ def main():
             assert classify_client(b"Couln't initiate MEGAcmd server") == "sandbox_client_server_launch_failed"
             assert classify_client(b"Unable to connect to service: fake") == "sandbox_client_server_handshake_failed"
             assert classify_client(b"PRIVATE_FAKE_CANARY") == "sandbox_server_log_absent"
+            fake_client = {"stdout": bytearray(), "stderr": bytearray(b"Unable to connect to service")}
+            assert select_category([b"", b"", b"network is unreachable"], fake_client, False) == "sandbox_server_log_network_event"
+            assert select_category([b"", b""], fake_client, False) == "sandbox_client_server_handshake_failed"
+            assert select_category([b"", b""], fake_client, True) == "sandbox_client_output_limited"
             print(json.dumps({"category": "sandbox_server_log_other",
                               "client_timed_out": False,
                               "server_log_present": False}))

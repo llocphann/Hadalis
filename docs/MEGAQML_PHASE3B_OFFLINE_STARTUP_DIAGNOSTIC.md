@@ -32,14 +32,16 @@ binaries, parser version syntax or a broken package.
 existing **unchanged** offline isolation boundary and makes a **single**
 explicit `mega-version -l` call, but supervises it using Python
 running **inside** the disposable bubblewrap PID namespace.
-The isolated supervisor reads only its own newly created
-`/home/disposable/.megaCmd/megacmdserver.log.err` and
-`.out` after a bounded client attempt. It reads at most 4096 bytes
+The isolated supervisor reads only its own freshly created
+`/home/disposable/.megaCmd/megacmdserver.log`, `.log.err` and
+`.log.out` after a bounded client attempt. It reads at most 4096 bytes
 from each file and uses fixed-string classification for loader,
 private socket, permission and network-error **indicators**, not
-proof of root cause. If no private server log exists, the inner
-supervisor now attempts **fixed-category classification of only its
-bounded, private client stdout/stderr**. It distinguishes an apparent
+proof of root cause. If no nonempty private server log exists (including when startup created
+empty `.err`/`.out` redirects), the inner supervisor attempts
+**fixed-category classification of only its bounded, private client
+stdout/stderr**. `sandbox_log_present` reports file existence even
+when only empty redirects were created. It distinguishes an apparent
 client-side missing library/socket/server launch/IPC error, or an
 output-cap event, from the generic absence of a server log.
 Unrecognized text stays `sandbox_server_log_absent`. In particular,

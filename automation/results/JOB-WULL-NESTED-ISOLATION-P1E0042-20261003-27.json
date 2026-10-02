@@ -1,0 +1,47 @@
+{
+  "actions": [
+    {
+      "cancelled": false,
+      "command_sha256": "9625701aa6c18da075ec6adb85ffdd57f0a7d5d283240ea92def526a65631708",
+      "evidence_id": "JOB-WULL-NESTED-ISOLATION-P1E0042-20261003-27:0",
+      "exit_code": 0,
+      "index": 0,
+      "kind": "exec",
+      "observed_at_unix": 1790964888,
+      "source_sha": "cc710646b29b47ea639d79e36f58432b4e3f1b65",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_truncated": false,
+      "stdout_bytes": 43,
+      "stdout_sha256": "edb15f5445ea97f2b6b19c6ca74d88d3f4ddf2584662b95d39a8d8a85dae0ee4",
+      "stdout_truncated": false,
+      "timed_out": false
+    },
+    {
+      "cancelled": false,
+      "command_sha256": "492731ac3cbca86d05a82f83fc7f348bf2ed7c97a674aa72ceae4567283a87c7",
+      "evidence_id": "JOB-WULL-NESTED-ISOLATION-P1E0042-20261003-27:1",
+      "exit_code": 0,
+      "index": 1,
+      "kind": "exec",
+      "observed_at_unix": 1790964888,
+      "source_sha": "cc710646b29b47ea639d79e36f58432b4e3f1b65",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_truncated": false,
+      "stdout_bytes": 49,
+      "stdout_sha256": "3d519df354369fe4c6eac9c00a955e21362c8cdabe42f26ccf13dc4f9e7eda78",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "350775e3655e5493a044268cf68ae6c7fb4595c7",
+  "evidence_location": "Private local evidence; raw output is not published",
+  "finished_at_unix": 1790964888,
+  "input_sha256": "b1f993986c4f65df23db72bef902b6af322be6401d43e3e4b06600767f2b9868",
+  "job": "JOB-WULL-NESTED-ISOLATION-P1E0042-20261003-27",
+  "job_commit": "cc710646b29b47ea639d79e36f58432b4e3f1b65",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "started_at_unix": 1790964888,
+  "status": "passed"
+}

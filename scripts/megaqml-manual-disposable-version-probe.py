@@ -40,6 +40,24 @@ def sanitized_version(raw):
     return None
 
 
+def distinct_observed_version(raw):
+    """Emit only one normalized local version; mismatched version lines fail."""
+    if type(raw) is not str or len(raw) > OUTPUT_CAP:
+        return None, "vendor_version_format_unrecognized"
+    versions = set()
+    for line in raw.splitlines():
+        if len(line) > 128:
+            continue
+        matched = VERSION_LINE.fullmatch(line.strip())
+        if matched:
+            versions.add(matched.group(1))
+    if not versions:
+        return None, "vendor_version_format_unrecognized"
+    if len(versions) != 1:
+        return None, "ambiguous_megacmd_version_lines"
+    return next(iter(versions)), None
+
+
 def classify_vendor_failure(stdout, stderr):
     """Return fixed diagnostic category only. Never expose vendor text."""
     combined = (stdout + b"\n" + stderr).decode("utf-8", "replace").lower()
@@ -207,6 +225,16 @@ def self_test():
     assert sanitized_version("MEGAcmd server version v3.4.5\n") == "3.4.5"
     assert sanitized_version("MEGAcmd version: 2.6.0.0: code 2060000") == "2.6.0.0"
     assert sanitized_version("MEGAcmd version: 2.6.0.0: code 2060000 (64 bits)") == "2.6.0.0"
+    assert distinct_observed_version(
+        "MEGAcmd version: 2.6.0.0: code 2060000\n"
+        "MEGA SDK version: 4.0.0\n")[0] == "2.6.0.0"
+    assert distinct_observed_version(
+        "MEGAcmd version: 2.6.0\n"
+        "MEGAcmd server version: 2.7.0\n") == (
+            None, "ambiguous_megacmd_version_lines")
+    assert distinct_observed_version(
+        "Latest version: 9.9.9\n") == (
+            None, "vendor_version_format_unrecognized")
     assert classify_vendor_failure(b"", b"Unable to connect to service: error=111") == "sandbox_server_handshake_failed"
     assert classify_vendor_failure(b"", b"error while loading shared libraries: libx.so") == "sandbox_runtime_library_missing"
     assert classify_vendor_failure(b"MEGAcmd version: 2.6.0.0: code 2060000", b"") == "vendor_nonzero_version_line_seen"
@@ -233,7 +261,9 @@ def main():
     if sys.argv[1:] == ["--self-test"]:
         self_test()
         return 0
-    if sys.argv[1:] != ["--acknowledge-disposable-offline-probe"]:
+    private_version = sys.argv[1:] == [
+        "--acknowledge-disposable-offline-private-libs-version"]
+    if not private_version and sys.argv[1:] != ["--acknowledge-disposable-offline-probe"]:
         safe_summary("BLOCKED", reason="explicit_acknowledgment_required")
         return 20
     if os.geteuid() == 0:
@@ -253,8 +283,27 @@ def main():
     if not wrap or not control:
         safe_summary("BLOCKED", reason="bubblewrap_or_smoke_tool_missing")
         return 20
+    if private_version:
+        # The old flag still uses its original unmounted sandbox. No
+        # additional host path is inspected unless this exact new opt-in.
+        import runpy
+        gate = runpy.run_path(str(Path(__file__).with_name(
+            "megaqml-phase3b-private-lib-mount.py")), run_name="version_mount_import")
+        try:
+            approved = gate["verify_private_lib_mount"]([
+                (version[0], version[1]), (server[0], server[1])])
+        except (OSError, ValueError, RuntimeError):
+            approved = False
+        if not approved:
+            safe_summary("BLOCKED", reason="private_lib_mount_validation_failed")
+            return 20
+    def command(payload):
+        if private_version:
+            return bwrap_command(wrap[0], payload, version[0].parent,
+                                 private_megacmd_lib=True)
+        return bwrap_command(wrap[0], payload, version[0].parent)
     try:
-        smoke = bwrap_command(wrap[0], [control[0]], version[0].parent)
+        smoke = command([control[0]])
         code, _, _, blocked = bounded_process(smoke)
     except (OSError, ValueError, subprocess.TimeoutExpired):
         safe_summary("BLOCKED", reason="sandbox_setup_unavailable")
@@ -263,8 +312,8 @@ def main():
         safe_summary("BLOCKED", reason="sandbox_setup_unavailable")
         return 20
     try:
-        command = bwrap_command(wrap[0], [version[0], "-l"], version[0].parent)
-        status, data, diagnostic, blocked = bounded_process(command)
+        vendor_command = command([version[0], "-l"])
+        status, data, diagnostic, blocked = bounded_process(vendor_command)
     except (OSError, ValueError, subprocess.TimeoutExpired):
         safe_summary("BLOCKED", reason="sandbox_process_unavailable")
         return 20
@@ -274,9 +323,13 @@ def main():
     if status != 0:
         safe_summary("UNQUALIFIED", reason=classify_vendor_failure(data, diagnostic))
         return 21
-    parsed = sanitized_version(data.decode("utf-8", "replace"))
+    if private_version:
+        parsed, error = distinct_observed_version(data.decode("utf-8", "replace"))
+    else:
+        parsed = sanitized_version(data.decode("utf-8", "replace"))
+        error = None if parsed else "vendor_version_format_unrecognized"
     if not parsed:
-        safe_summary("UNQUALIFIED", reason="vendor_version_format_unrecognized")
+        safe_summary("UNQUALIFIED", reason=error)
         return 21
     safe_summary("VERSION_OBSERVED_OFFLINE", version=parsed,
                  reason="still_requires_installed_help_and_disposable_fixture_qualification")

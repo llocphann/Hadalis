@@ -101,6 +101,34 @@ prior handshake remains blocked, stop and choose a new isolated
 diagnostic design with explicit consent rather than switching to
 a real account or relaxing containment.
 
+## Separate source-staged numeric offline observation (no owner run yet)
+
+A narrowly scoped, **new opt-in-only** flag on the existing
+`megaqml-manual-disposable-version-probe.py`,
+`--acknowledge-disposable-offline-private-libs-version`, reuses the
+already staged read-only `/opt/megacmd/lib` gate and unchanged disposable,
+networkless, account-free bubblewrap environment. The prior
+`--acknowledge-disposable-offline-probe` route remains independent and
+does **not** gain a mount. No auto-publisher is wired to the new flag.
+
+The new route emits a strictly normalized numeric version ONLY if
+`mega-version -l` itself exits 0 inside the isolated sandbox and all
+bounded, anchored `MEGAcmd ... version` lines (if multiple are present)
+agree. A mismatch results in fixed
+`ambiguous_megacmd_version_lines`; unrecognized output fails closed.
+The number describes **isolated MEGAcmd version text**, not proof
+of a matching host server build, session ownership, supported feature
+flags or any account capability. The packaged metadata version remains
+a different observation; do not silently substitute one for the other.
+
+This source-only preparation does **not** authorize another vendor run.
+Any next local Linux run needs distinct explicit maintainer approval,
+the existing fake-only tests plus the new independent contract, an exact
+source SHA, and one command in a disposable clone. Output is local only;
+do not publish it on public Hadalis without another explicit permission.
+No new network access, mount, permission, account use, mutation, repeated
+vendor execution, or capability unlock is authorized.
+
 ## Why a strict sandbox is necessary
 
 Normal MEGAcmd scriptable commands, even `mega-version -l`, may launch

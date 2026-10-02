@@ -25,7 +25,7 @@ def blob(path):
 
 
 assert blob(FIXTURE) == "d2f3d654440f1ca4b3fc3e173cbf332b4add777b"
-assert blob(RUNNER) == "b580d07204e1f38f6e47b58bbc0c07628e1316f5"
+assert blob(RUNNER) == "7d13855416aa3d591dce2a2cceee64210a6da5a2"
 assert blob(MODEL) == "fa9e7c2af87ee830336988fa7060e2720e816ed0"
 source = RUNNER.read_text(encoding="utf-8")
 qml = FIXTURE.read_text(encoding="utf-8")
@@ -40,6 +40,10 @@ assert program["PINS"]["modules/abyss/companion/WaterDropletBody.qml"] == (
     "fc5b1c227026786ab553685bc170daff74e82517")
 assert program["PINS"]["modules/abyss/AbyssPerimeter.qml"] == (
     "a3cd2a7bfbdf32dac2c7e42057a1dfaaeea214ac")
+assert program["PINS"]["modules/common/Config.qml"] == (
+    "2bdf7d37f183b976d928fa15b0eb2ec57c646b60")
+assert program["PINS"]["scripts/wull-manual-offscreen-motion-geometry.py"] == (
+    "0dd833ed05d54e9d1045553a1da8be8f66b6511a")
 assert program["FILE_LIMIT"] == 8 * 1024 * 1024
 assert program["MAX_LOG"] <= 256 * 1024
 

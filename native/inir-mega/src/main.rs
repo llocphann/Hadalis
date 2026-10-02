@@ -15,6 +15,8 @@ mod column_fixtures;
 mod snapshot_lifecycle;
 
 const PROTOCOL_VERSION: u32 = 1;
+// Upper bound for one typed stdin envelope, including escaped credential bytes.
+const MAX_REQUEST_BYTES: usize = 16 * 1024;
 const LIVE_AUTH_VENDOR_ENABLED: bool = false;
 const AUTH_VENDOR_TIMEOUT_SECS: u64 = 30;
 const AUTH_VENDOR_OUTPUT_CAP: usize = 32 * 1024;
@@ -198,6 +200,12 @@ fn advance_auth(state: &mut AuthState, prompt: AuthPrompt) -> AuthStep {
     }
 }
 
+fn is_safe_request_id(id: &str) -> bool {
+    !id.is_empty() && id.len() <= 128
+        && id.bytes().all(|byte| byte.is_ascii_alphanumeric()
+            || matches!(byte, b'.' | b'_' | b'-'))
+}
+
 fn validate_request(request: &Request) -> Option<SafeError> {
     if request.protocol != PROTOCOL_VERSION {
         return Some(SafeError {
@@ -207,7 +215,7 @@ fn validate_request(request: &Request) -> Option<SafeError> {
             user_message: "Cloud Storage backend protocol mismatch.",
         });
     }
-    if request.request_id.is_empty() || request.request_id.len() > 128 {
+    if !is_safe_request_id(&request.request_id) {
         return Some(SafeError {
             stage: "validate",
             kind: "INVALID_REQUEST_ID",
@@ -440,9 +448,15 @@ fn handle_feature_gates_preview(request: Request) -> Response {
 
 fn handle(request: Request) -> Response {
     if let Some(error) = validate_request(&request) {
+        // Never reflect an invalid caller-controlled ID back into responses.
+        let safe_id = if is_safe_request_id(&request.request_id) {
+            request.request_id
+        } else {
+            String::new()
+        };
         return Response {
             protocol: PROTOCOL_VERSION,
-            request_id: request.request_id,
+            request_id: safe_id,
             ok: false,
             result: json!({}),
             error: Some(error),
@@ -488,14 +502,24 @@ fn handle(request: Request) -> Response {
     }
 }
 
+fn read_bounded_request<R: Read>(reader: R) -> Result<Request> {
+    // take(MAX+1) enforces a finite allocation even for an untrusted
+    // stdin producer that never closes its stream. Reject before JSON parsing.
+    let mut limited = reader.take((MAX_REQUEST_BYTES + 1) as u64);
+    let mut raw = Vec::new();
+    limited.read_to_end(&mut raw).context("read bounded request")?;
+    if raw.len() > MAX_REQUEST_BYTES {
+        anyhow::bail!("request exceeds fixed byte limit");
+    }
+    serde_json::from_slice(&raw).context("parse bounded request JSON")
+}
+
 fn run() -> Result<()> {
     let args = Args::parse();
     match args.command {
         Command::Request => {
             disable_core_dumps()?;
-            let mut input = String::new();
-            io::stdin().read_to_string(&mut input).context("read request stdin")?;
-            let request: Request = serde_json::from_str(&input).context("parse request JSON")?;
+            let request = read_bounded_request(io::stdin().lock())?;
             println!("{}", serde_json::to_string(&handle(request))?);
         }
     }
@@ -525,6 +549,48 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bounded_request_accepts_valid_envelope_and_full_allowed_password() {
+        let payload = serde_json::to_vec(&json!({
+            "protocol": PROTOCOL_VERSION,
+            "request_id": "cloud-auth-123",
+            "operation": "auth_begin",
+            "params": {"email": "fixture@example.invalid"},
+            "secret": {"password": "x".repeat(4096), "mfa_code": "123456"}
+        })).unwrap();
+        assert!(payload.len() < MAX_REQUEST_BYTES);
+        let decoded = read_bounded_request(std::io::Cursor::new(payload)).unwrap();
+        assert!(matches!(decoded.operation, Operation::AuthBegin));
+        assert_eq!(decoded.request_id, "cloud-auth-123");
+    }
+
+    #[test]
+    fn oversized_or_invalid_request_never_echoes_secret_or_untrusted_id() {
+        let canary = "private-test-password-do-not-echo";
+        let huge = serde_json::to_vec(&json!({
+            "protocol": PROTOCOL_VERSION,
+            "request_id": "cloud-auth-123",
+            "operation": "auth_begin",
+            "params": {},
+            "secret": {"password": canary.repeat(MAX_REQUEST_BYTES)}
+        })).unwrap();
+        assert!(huge.len() > MAX_REQUEST_BYTES);
+        let error = read_bounded_request(std::io::Cursor::new(huge)).unwrap_err();
+        assert!(!format!("{error:?}").contains(canary));
+
+        let bad = read_bounded_request(std::io::Cursor::new(
+            serde_json::to_vec(&json!({
+                "protocol": PROTOCOL_VERSION, "operation": "detect",
+                "request_id": "private\\npassword:123", "params": {}
+            })).unwrap(),
+        )).unwrap();
+        let encoded = serde_json::to_string(&handle(bad)).unwrap();
+        assert!(encoded.contains("INVALID_REQUEST_ID"));
+        assert!(encoded.contains("\\"request_id\\":\\"\\""));
+        assert!(!encoded.contains("private"));
+        assert!(!encoded.contains("password:123"));
+    }
 
     #[test]
     fn static_detection_does_not_execute_vendor_binary() {

@@ -163,6 +163,9 @@ def run_owned():
 
 
 def main():
+    # This runner imports, but does not execute, the older capture main().
+    # Set a strict owner-only umask BEFORE creating private Qt logs and PNG.
+    os.umask(0o077)
     need(sys.argv[1:] in (["--static-preflight"], ["--capture"]),
          "EXPLICIT_MODE_REQUIRED")
     borrowed = runpy.run_path(str(BORROW), run_name="wull_field_source_audit")

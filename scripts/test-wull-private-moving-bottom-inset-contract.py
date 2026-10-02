@@ -28,7 +28,7 @@ def blob(path):
 
 assert blob(MODEL) == "834dc0e861bf2b06821a3f4399833201841e7d0e"
 assert blob(FIXTURE) == "26133a295433f7f61ce64f94a2ece3d14015a57b"
-assert blob(RUNNER) == "d7bd55f61c125e1962d452c75902d03351786c41"
+assert blob(RUNNER) == "d58e8c4720573de94e0992f35d3a2b6e4dd65a7e"
 assert blob(ORIGINAL_ALPHA) == "fa9e7c2af87ee830336988fa7060e2720e816ed0"
 assert blob(GUARD) == "1fbc0e8e0c8c361a706ff31af1b0a138ec9b841c"
 
@@ -106,6 +106,7 @@ for word in (
     "os.killpg(proc.pid, signal.SIGKILL)",
     "found == stages()", "private_classify(directory)",
     "MARGIN0_POSITIVE_BOTH_PHASES=YES",
+    "MOVING_BASELINE_NOT_REPRODUCED",
     "SAME_INSTANT_PIXEL_COMPARISON=NOT_TESTED",
     "PRIVATE_MOVING_INSET_CANDIDATE_CLASSIFIED",
 ):

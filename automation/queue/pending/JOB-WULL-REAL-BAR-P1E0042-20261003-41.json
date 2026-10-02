@@ -1,0 +1,42 @@
+{
+  "id": "JOB-WULL-REAL-BAR-P1E0042-20261003-41",
+  "base_sha": "f979c3bf22471051b4d1542345f9c874e774a24d",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "resources": [
+    "shell:inir"
+  ],
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-nested-production-bar-fake-only.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 70
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-manual-nested-production-bar.py",
+          "--static-preflight"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 35
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-manual-nested-production-bar.py",
+          "--capture-gl"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 155
+      }
+    }
+  ]
+}

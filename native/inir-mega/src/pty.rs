@@ -90,8 +90,6 @@ pub(crate) enum AuthDialogOutcome {
 #[derive(Debug)]
 pub(crate) struct AuthDialogResult {
     pub(crate) outcome: AuthDialogOutcome,
-    #[allow(dead_code)]
-    pub(crate) transcript: String,
 }
 
 #[cfg(unix)]
@@ -182,7 +180,9 @@ pub(crate) fn run_auth_dialog(
     }
 
     let mut state = AuthState::AwaitPassword;
-    let mut transcript = String::new();
+    // Do not retain a vendor transcript: the vendor may deliberately echo
+    // secrets even when kernel PTY ECHO is disabled.
+    let mut consumed_output_bytes = 0usize;
     let mut pending = Vec::new();
     let deadline = Instant::now() + timeout;
 
@@ -212,22 +212,21 @@ pub(crate) fn run_auth_dialog(
             Ok(0) => break,
             Ok(_) => {
                 pending.push(byte[0]);
-                if transcript.len().saturating_add(pending.len()) > output_cap {
+                if consumed_output_bytes.saturating_add(pending.len()) > output_cap {
                     stop_child(&mut child);
                     bail!("auth vendor output cap exceeded");
                 }
                 if byte[0] != b'\n' && byte[0] != b':' {
                     continue;
                 }
-                let text = match String::from_utf8(pending.clone()) {
+                let text = match String::from_utf8(std::mem::take(&mut pending)) {
                     Ok(text) => text,
                     Err(error) => {
                         stop_child(&mut child);
                         return Err(error).context("auth prompt UTF-8");
                     }
                 };
-                transcript.push_str(&text);
-                pending.clear();
+                consumed_output_bytes += text.len();
                 match advance_auth(&mut state, classify_auth_prompt(&text)) {
                     AuthStep::Write(SecretWrite::Password) => {
                         if let Err(error) = write_private_line(&mut writer, password) {
@@ -240,7 +239,6 @@ pub(crate) fn run_auth_dialog(
                             stop_child(&mut child);
                             return Ok(AuthDialogResult {
                                 outcome: AuthDialogOutcome::MfaRequired,
-                                transcript,
                             });
                         };
                         if let Err(error) = write_private_line(&mut writer, code) {
@@ -252,21 +250,18 @@ pub(crate) fn run_auth_dialog(
                         stop_child(&mut child);
                         return Ok(AuthDialogResult {
                             outcome: AuthDialogOutcome::Authenticated,
-                            transcript,
                         });
                     }
                     AuthStep::Failed => {
                         stop_child(&mut child);
                         return Ok(AuthDialogResult {
                             outcome: AuthDialogOutcome::Failed,
-                            transcript,
                         });
                     }
                     AuthStep::RejectUnexpected => {
                         stop_child(&mut child);
                         return Ok(AuthDialogResult {
                             outcome: AuthDialogOutcome::Unexpected,
-                            transcript,
                         });
                     }
                 }
@@ -285,7 +280,6 @@ pub(crate) fn run_auth_dialog(
     }
     Ok(AuthDialogResult {
         outcome: AuthDialogOutcome::Unexpected,
-        transcript,
     })
 }
 
@@ -361,9 +355,10 @@ test "$LANG" = "en_US.UTF-8" || exit 49
         )
         .unwrap();
         assert_eq!(result.outcome, AuthDialogOutcome::Authenticated);
-        assert!(!result.transcript.contains("fixture@example.invalid"));
-        assert!(!result.transcript.contains("fixture-password-never-log"));
-        assert!(!result.transcript.contains("123456"));
+        let debug = format!("{result:?}");
+        assert!(!debug.contains("fixture@example.invalid"));
+        assert!(!debug.contains("fixture-password-never-log"));
+        assert!(!debug.contains("123456"));
         let _ = fs::remove_dir_all(vendor.parent().unwrap());
     }
 
@@ -380,7 +375,7 @@ test "$LANG" = "en_US.UTF-8" || exit 49
         )
         .unwrap();
         assert_eq!(result.outcome, AuthDialogOutcome::MfaRequired);
-        assert!(!result.transcript.contains("fixture-password-never-log"));
+        assert!(!format!("{result:?}").contains("fixture-password-never-log"));
         let _ = fs::remove_dir_all(vendor.parent().unwrap());
     }
 
@@ -401,8 +396,32 @@ test "$LANG" = "en_US.UTF-8" || exit 49
         .unwrap();
         assert_eq!(result.outcome, AuthDialogOutcome::Unexpected);
         assert!(started.elapsed() < Duration::from_secs(5));
-        assert!(!result.transcript.contains("fixture-password-never-log"));
-        assert!(!result.transcript.contains("123456"));
+        let debug = format!("{result:?}");
+        assert!(!debug.contains("fixture-password-never-log"));
+        assert!(!debug.contains("123456"));
+        let _ = fs::remove_dir_all(vendor.parent().unwrap());
+    }
+
+    #[test]
+    fn pty_deliberately_echoed_password_never_enters_result() {
+        // PTY ECHO=off cannot prevent the vendor itself from echoing
+        // secrets. Do not retain the raw vendor transcript in metadata.
+        let vendor = fake_vendor(
+            "#!/bin/sh\nIFS= read -r command\nprintf 'Password:'\nIFS= read -r secret\nprintf '%s\\n' \"$secret\"\n",
+        );
+        let result = run_auth_dialog(
+            &vendor,
+            "fixture@example.invalid",
+            "private-echo-canary-never-expose",
+            None,
+            Duration::from_secs(2),
+            4096,
+        )
+        .unwrap();
+        assert_eq!(result.outcome, AuthDialogOutcome::Unexpected);
+        let public_result = format!("{result:?}");
+        assert!(!public_result.contains("private-echo-canary-never-expose"));
+        assert!(!public_result.contains("fixture@example.invalid"));
         let _ = fs::remove_dir_all(vendor.parent().unwrap());
     }
 

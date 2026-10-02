@@ -1,0 +1,46 @@
+{
+  "id": "JOB-HADALIS-OVERNIGHT-TEST-20261003-01",
+  "base_sha": "3ce7484d21565810e806a79638e47ce9973dc93e",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-hadalis-automation-overnight.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-hadalis-automation-workflows.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-hadalis-automation-profile-lifecycle.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-hadalis-chat-bridge.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    }
+  ]
+}

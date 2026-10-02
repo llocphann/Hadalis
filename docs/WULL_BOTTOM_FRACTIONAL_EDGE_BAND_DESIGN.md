@@ -120,3 +120,25 @@ Updated fake-only static/source pin test blob
 `8c5243aeb513aec855e84d90721724b16deac4b8`
 has NOT yet been owner executed. This does not change prior real Qt
 requirements or authorize a production fix.
+
+
+## Owner-local static fractional result (source 0d7cdc5; no report push)
+
+Maintainer supplied actual short local output showing five original full frozen
+BOTTOM×1.5 Qt images captured on ONE original source-pinned component at
+source SHA `0d7cdc50092a8269aa3fed34035dee71366324ef` and inert contract PASS.
+M0 has exterior paint and virtual boundary band; M0.25 and M0.5 both have
+**no thresholded exterior** and **positive abstract two-row edge band**;
+M0.75 and M1 have no exterior but no band. The runner returned
+`REPORT_PUBLISHED=NO`, so this is OWNER-SUPPLIED evidence, not a GitHub
+report or independent replay. Its `JOINT_FRACTIONAL_CANDIDATE=YES` is only
+same-frozen-pose raster evidence; no actual panel-edge visual connection,
+spring motion in this trial, live compositor, input or popup qualification.
+
+NEXT: a separate source-pinned original FULL two-case .25-vs-original0
+**moving** private Qt run should measure painted exterior AND abstract band
+from the SAME captures in BOTH active original spring phases with strict
+independent state/mapped-motion witnesses. Require original positive
+controls for interpretation. If .25 fails, consider .5 separately, not an
+unjustified production margin change. All original production source/masks
+remain unchanged.

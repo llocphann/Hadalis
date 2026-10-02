@@ -16,6 +16,9 @@ assert "records: []" in fixture and "waveTexture: null" in fixture
 assert 'Quickshell.env("WULL_FIELD_CANARY_PRIVATE_PNG")' in fixture
 assert "sheet.grabToImage" in fixture
 assert "REAL_SHADER_NOT_READY" in fixture
+assert '"--capture-default-backend"' in runner_text
+assert 'env.pop("QSG_RHI_BACKEND", None)' in runner_text
+assert 'env.pop("QT_QUICK_BACKEND", None)' in runner_text
 for category in ("WINDOW_NOT_BACKING", "SHEET_DIMENSIONS_INVALID",
                  "FOUR_CELLS_UNAVAILABLE"):
     assert category in fixture and category in runner_text

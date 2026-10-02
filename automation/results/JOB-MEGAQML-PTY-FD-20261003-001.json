@@ -1,0 +1,47 @@
+{
+  "actions": [
+    {
+      "cancelled": false,
+      "command_sha256": "1b9679a90a2c4892fbcef4538bf0d5253f79420f2429d6eb1d3f29b03cd4bc9f",
+      "evidence_id": "JOB-MEGAQML-PTY-FD-20261003-001:0",
+      "exit_code": 0,
+      "index": 0,
+      "kind": "exec",
+      "observed_at_unix": 1790965306,
+      "source_sha": "ada553cf14816fb8ed72eb44da4c698d82b75f41",
+      "stderr_bytes": 1191,
+      "stderr_sha256": "1d9caa4bb2b767bad42443dae9606080395c9b20b7dae277561431280146a525",
+      "stderr_truncated": false,
+      "stdout_bytes": 4864,
+      "stdout_sha256": "b9c8ce83dec7c2e2ae753c8bd49ca08ede1c9cfe57f0cb490a1b909a9ef959df",
+      "stdout_truncated": false,
+      "timed_out": false
+    },
+    {
+      "cancelled": false,
+      "command_sha256": "098fa58a8d42171ec94581372bec87f46406341042838344271297afaa353445",
+      "evidence_id": "JOB-MEGAQML-PTY-FD-20261003-001:1",
+      "exit_code": 0,
+      "index": 1,
+      "kind": "exec",
+      "observed_at_unix": 1790965313,
+      "source_sha": "ada553cf14816fb8ed72eb44da4c698d82b75f41",
+      "stderr_bytes": 888,
+      "stderr_sha256": "b7e08bb08f24dd8032a34d03248604f3493142ff1769281b4fc1e17c28248833",
+      "stderr_truncated": false,
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "ced4a9bc2d33ea2330fb7a04a5e17a70e1ae48e9",
+  "evidence_location": "Private local evidence; raw output is not published",
+  "finished_at_unix": 1790965313,
+  "input_sha256": "ab122b491585ccbe5d48f676fc385bb82f6f6b1246faa3c5dfa4f9e6c31480b4",
+  "job": "JOB-MEGAQML-PTY-FD-20261003-001",
+  "job_commit": "ada553cf14816fb8ed72eb44da4c698d82b75f41",
+  "profile_id": "profile-a25585b748dd4220",
+  "started_at_unix": 1790965288,
+  "status": "passed"
+}

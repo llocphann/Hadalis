@@ -42,16 +42,21 @@ bottom_marker = (
     "        anchors.bottom: parent.bottom\n"
     "        scale: 1 + root.ripple * 0.16"
 )
-new_marker = (
-    "        anchors.bottom: parent.bottom\n"
-    "        // Pilot-proven .25px original-cradle inset on BOTTOM only; other\n"
-    "        // sides keep the source-original pose until individual visual review.\n"
-    '        anchors.bottomMargin: root.edge === "bottom" ? 0.25 : 0\n'
-    "        scale: 1 + root.ripple * 0.16"
-)
+# Historical pre-integration body stays SHA-pinned; current production is
+# intentionally evolving beyond the old one-line private cradle experiment.
 assert original_body.count(bottom_marker) == 1
-assert body.count(new_marker) == 1
-assert body.replace(new_marker, bottom_marker, 1) == original_body
+for marker in (
+    'orientationAngle: root.edge === "left" ? 90',
+    'anchors.bottom: root.verticalEdge ? undefined : parent.bottom',
+    'anchors.bottomMargin: root.edge === "bottom" ? 0.25 : 0',
+    'anchors.horizontalCenter: root.verticalEdge ? undefined : parent.horizontalCenter',
+    'anchors.verticalCenter: root.verticalEdge ? parent.verticalCenter : undefined',
+    'anchors.left: root.edge === "left" ? parent.left : undefined',
+    'anchors.right: root.edge === "right" ? parent.right : undefined',
+):
+    assert body.count(marker) == 1, marker
+assert 'rotation: root.edge === "left" ? 90' not in body
+assert body.count("WaterDropletBody {") == 1
 assert "anchors.centerIn: parent" in body
 assert "transformOrigin: Item.Center" in body
 assert "color: Qt.alpha(AbyssStyle.accent," in body

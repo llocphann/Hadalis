@@ -1,0 +1,47 @@
+{
+  "actions": [
+    {
+      "cancelled": false,
+      "command_sha256": "18a5f2b4cbdca0ef4c0e67a76d32eedf2c1e24fa55f677f40539697ba9190229",
+      "evidence_id": "JOB-WULL-CRADLE-CURATE-P1E0042-20261003-34:0",
+      "exit_code": 0,
+      "index": 0,
+      "kind": "exec",
+      "observed_at_unix": 1790966059,
+      "source_sha": "7fd3d79d3b4ca081a5216270d69eeb8a7365767d",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_truncated": false,
+      "stdout_bytes": 41,
+      "stdout_sha256": "f591b7f2a5a2ce2667382e4010cb3cd2b3f0deb235981fd4d9f586ad8723df31",
+      "stdout_truncated": false,
+      "timed_out": false
+    },
+    {
+      "cancelled": false,
+      "command_sha256": "66df00dd1aae57865a94b16fc2eda8688d25c3992692d648e301163de472d9af",
+      "evidence_id": "JOB-WULL-CRADLE-CURATE-P1E0042-20261003-34:1",
+      "exit_code": 0,
+      "index": 1,
+      "kind": "exec",
+      "observed_at_unix": 1790966061,
+      "source_sha": "7fd3d79d3b4ca081a5216270d69eeb8a7365767d",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_truncated": false,
+      "stdout_bytes": 43,
+      "stdout_sha256": "bc600e4f7123f79e7a1dcac3a3069e0c4b21f6c33c7f6fc9e8e801873745f7a0",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "698e782546d0931eb9a43f8e216f105fdd3d0a31",
+  "evidence_location": "Private local evidence; raw output is not published",
+  "finished_at_unix": 1790966061,
+  "input_sha256": "7babfe74e49b3c96b5e4bd4367e82b165c7a17ad3f2e54cf6bb1e29b56cab1ee",
+  "job": "JOB-WULL-CRADLE-CURATE-P1E0042-20261003-34",
+  "job_commit": "7fd3d79d3b4ca081a5216270d69eeb8a7365767d",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "started_at_unix": 1790966058,
+  "status": "passed"
+}

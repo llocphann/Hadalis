@@ -108,8 +108,84 @@ def verify_pause_and_existing_limits():
         assert state(b)["request"] is None
 
 
+def verify_edited_threshold_during_shared_cooldown():
+    """Reproduce MegaQML: chat=10, request=continuation, rate cooldown active."""
+    with environment():
+        a,b=profile("Mega edited threshold"),profile("Wull not due")
+        for pid in (a,b):
+            control.set_profile(pid,"mode",'"continuous"')
+        set_profile_context(a,10,checkpoint=False)
+        set_profile_context(b,7,checkpoint=False)
+        store.change_state(lambda c,s:s.update(transport_retry_at_unix=1100))
+        # Both rotate-after values are changed AFTER their latest final turns.
+        for pid in (a,b):
+            control.set_profile(pid,"rotate_after_iterations","10")
+        old=state(a)["session"]["conversation_id"]
+        old_reply=state(a)["response_message_id"]
+        assert state(a)["request"]=="continuation"
+        t=Transport()
+        with patch.object(daemon,"native_command",side_effect=t):
+            daemon.tick(500)
+            a1,b1=state(a),state(b)
+            assert a1["status"]=="rotating" and a1["request"]=="rotation"
+            assert a1["chat_iterations"]==10 and a1["pending"] is None
+            assert b1["chat_iterations"]==7 and b1["request"]=="continuation"
+            assert t.count("submit")==0 and t.count("cursor")==0
+            assert store.read_snapshot()[1]["transport_retry_at_unix"]==1100
+            # A scheduler reboot / next tick must not duplicate rotate intent.
+            daemon.tick(501)
+            events=[e["kind"] for e in store.read_snapshot()[1]["events"]]
+            assert events.count("rotation_threshold_reconciled")==1
+            # Keep B from dispatching in this synthetic scenario; it is
+            # independent and should not be used as a cursor test here.
+            store.change_state(lambda c,s:s["profiles"][b].update(next_run_at_unix=1400))
+            daemon.tick(1100)
+        item=state(a)
+        assert item["pending"] is not None and item["pending"]["kind"]=="rotation"
+        assert item["chat_iterations"]==0 and item["session"]["conversation_id"]!=old
+        assert item["pending"]["parent_message_id"]!=old_reply
+        assert t.count("cursor")==0 and t.count("submit")==1
+        text=next(d["prompt"] for op,d in t.calls if op=="submit")
+        assert "No durable profile checkpoint was supplied" in text
+        assert "Reconstruct verified progress" in text
+        assert "JOB-previous" in text
+        assert "Profile objective" in text
+        assert state(b)["chat_iterations"]==7 and state(b)["pending"] is None
+
+
+def verify_reconciliation_fail_closed():
+    with environment():
+        a=profile("Busy at threshold")
+        control.set_profile(a,"mode",'"continuous"')
+        set_profile_context(a,10)
+        control.set_profile(a,"rotate_after_iterations","10")
+        store.change_state(lambda c,s:s.update(transport_retry_at_unix=1100))
+        t=Transport()
+        # Unfinished job is a hard gate even when threshold is reached.
+        store.change_state(lambda c,s:s["profiles"][a].update(job_id="JOB-busy"))
+        with patch.object(daemon,"native_command",side_effect=t):
+            daemon.tick(500)
+        assert state(a)["request"]=="continuation"
+        assert state(a)["job_id"]=="JOB-busy"
+        # Missing verified final response must never be treated as a turn boundary.
+        store.change_state(lambda c,s:s["profiles"][a].update(job_id=None,response_message_id=None))
+        with patch.object(daemon,"native_command",side_effect=t):
+            daemon.tick(501)
+        assert state(a)["request"]=="continuation"
+        # Owner Pause takes precedence over an edited threshold.
+        control.profile_action("pause",a)
+        with patch.object(daemon,"native_command",side_effect=t):
+            daemon.tick(502)
+        assert state(a)["desired"]=="paused" and state(a)["request"]!="rotation"
+        assert t.count("submit")==0
+
+
+
+
 if __name__=="__main__":
     verify_normal_threshold()
     verify_wait_result_and_timeout_rotation()
     verify_pause_and_existing_limits()
+    verify_edited_threshold_during_shared_cooldown()
+    verify_reconciliation_fail_closed()
     print("PASS: 10-turn scoped rotation, checkpoint and job preservation, pause precedence, no old-chat replay")

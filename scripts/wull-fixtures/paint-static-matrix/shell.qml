@@ -1,6 +1,6 @@
 // PRIVATE SOURCE-PINNED STATIC 12-CASE PAIR MATRIX ONLY.
 // ONE unmodified original AbyssCompanion; each case captures full composite
-// before hiding only its four NON-core WaterDropletBody visual siblings.
+// before hiding its external cradle AND four NON-core body visual siblings.
 // Same instance/pose per pair, but sequential frames NOT simultaneous.
 // No screen, Niri, native backend, pointer, dynamic or production edits.
 import QtQuick
@@ -15,6 +15,7 @@ ShellRoot {
     property var privatePose: []
     property var privateVisuals: []
     property var privateCore: null
+    property var privateCradle: null
     readonly property var cases: {
         const out = []
         for (const edge of ["top", "right", "bottom", "left"])
@@ -36,6 +37,12 @@ ShellRoot {
         const matches = host.children.filter(child =>
             child.width === 76 && child.height === 92)
         return matches.length === 1 ? matches[0] : null
+    }
+    function cradle(): var {
+        const b = root.body()
+        if (!b || host.children.length !== 2) return null
+        const others = host.children.filter(child => child !== b)
+        return others.length === 1 ? others[0] : null
     }
     function hostGeometryConsistent(): bool {
         const c = root.cases[root.caseIndex]
@@ -103,7 +110,10 @@ ShellRoot {
         }
         const visuals = root.privateVisuals
         const core = root.privateCore
-        if (visuals.length !== 5 || !core || !core.visible) {
+        const cradle = root.privateCradle
+        if (visuals.length !== 5 || !core || !core.visible
+                || !cradle || !cradle.visible
+                || root.cradle() !== cradle) {
             root.abort("CORE_IDENTITY_CHANGED")
             return
         }
@@ -111,13 +121,16 @@ ShellRoot {
             if (child !== core)
                 child.visible = false
         }
-        if (!core.visible || visuals.filter(child => child.visible).length !== 1) {
+        cradle.visible = false
+        if (!core.visible || cradle.visible
+                || visuals.filter(child => child.visible).length !== 1) {
             root.abort("CORE_ISOLATION_FAILED")
             return
         }
         Qt.callLater(() => {
             if (root.finished) return
-            if (!root.samePose() || !core.visible
+            if (!root.samePose() || !core.visible || cradle.visible
+                    || root.cradle() !== cradle
                     || visuals.filter(child => child.visible).length !== 1) {
                 root.abort("CORE_FRAME_POSE_DRIFT")
                 return
@@ -135,6 +148,11 @@ ShellRoot {
                 root.stage("CASE_" + root.caseIndex + "_CORE_SAVED")
                 for (const child of visuals)
                     child.visible = true
+                cradle.visible = true
+                if (!cradle.visible) {
+                    root.abort("CRADLE_RESTORE_FAILED")
+                    return
+                }
                 root.caseIndex++
                 // Never use a new process for subsequent edge/scale cases.
                 Qt.callLater(() => root.startCase())
@@ -184,6 +202,7 @@ ShellRoot {
             b.pulse = 0
             b.ripple = 0
             const visuals = b.children
+            const externalCradle = root.cradle()
             const core = visuals.filter(child =>
                 child.width === 76 && child.height === 92
                 && Math.abs(child.x) < 0.1 && Math.abs(child.y) < 0.1)
@@ -191,6 +210,7 @@ ShellRoot {
                 "top": 0, "right": -90, "bottom": 180, "left": 90
             }[c.edge]
             if (visuals.length !== 5 || core.length !== 1
+                    || !externalCradle || !externalCradle.visible
                     || visuals.some(child => !child.visible)
                     || b.motionEnabled || Math.abs(b.bob) > 0.0001
                     || Math.abs(b.sway) > 0.0001
@@ -202,6 +222,7 @@ ShellRoot {
             }
             root.privateVisuals = visuals
             root.privateCore = core[0]
+            root.privateCradle = externalCradle
             root.privatePose = root.mappedPose()
             if (root.privatePose.length !== 24 || !root.samePose()) {
                 root.abort("CASE_MAPPED_GEOMETRY_INVALID")
@@ -209,6 +230,10 @@ ShellRoot {
             }
             const output = root.path("full")
             if (!output) { root.abort("PRIVATE_OUTPUT_INVALID"); return }
+            if (!externalCradle.visible || !root.samePose()) {
+                root.abort("PRE_FULL_CRADLE_OR_POSE_INVALID")
+                return
+            }
             root.stage("CASE_" + root.caseIndex + "_FULL_REQUESTED")
             const begun = captureStage.grabToImage(function(result) {
                 if (root.finished) return

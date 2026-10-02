@@ -21,7 +21,7 @@ assert 'visible: true' in fixture
 assert "WULL_BACKEND_PROBE=" in fixture
 assert "backingWindowVisible" in fixture
 for forbidden in ("grabToImage", "saveToFile", "grim ",
-                  "WlrLayershell", "Niri", "git push"):
+                  "WlrLayershell", "import Quickshell.Wayland", "git push"):
     assert forbidden not in fixture
 for forbidden in ("shell=True", "git push", "grim ", "WAYLAND_DISPLAY="):
     assert forbidden not in text

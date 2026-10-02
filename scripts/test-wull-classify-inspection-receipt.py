@@ -34,4 +34,12 @@ assert detail(example(65).replace("AssertionError:", "ValueError:")) == 142
 assert detail(example(76)) == 39  # outside the independently proven stage
 assert detail("untrusted private diagnostic path") == 39
 
+reason = m["fixed_reason_private"]
+assert reason(example(62).replace("AssertionError: [REDACTED]",
+                                  "wull_rgba_private_inspection.InvalidCapture: PNG_DECOMPRESSED_SIZE_INVALID")) == 139
+assert reason(example(62).replace("AssertionError: [REDACTED]",
+                                  "wull_fake_only_inspection.Unqualified: RGBA_UNQUALIFIED")) == 142
+assert reason(example(62).replace("AssertionError: [REDACTED]",
+                                  "untrusted.module.Exception: FREEFORM_SECRET")) == 199
+assert reason(example(76)) == 199
 print("WULL_OLD_FAKE_FAILURE_CLASSIFIER_INERT_PASS")

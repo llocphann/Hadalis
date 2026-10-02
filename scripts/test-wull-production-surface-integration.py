@@ -47,12 +47,13 @@ bottom_marker = (
 assert original_body.count(bottom_marker) == 1
 for marker in (
     'orientationAngle: root.edge === "left" ? 90',
-    'anchors.bottom: root.verticalEdge ? undefined : parent.bottom',
-    'anchors.bottomMargin: root.edge === "bottom" ? 0.25 : 0',
+    'anchors.bottom: root.edge === "top" ? parent.bottom : undefined',
+    'anchors.top: root.edge === "bottom" ? parent.top : undefined',
+
     'anchors.horizontalCenter: root.verticalEdge ? undefined : parent.horizontalCenter',
     'anchors.verticalCenter: root.verticalEdge ? parent.verticalCenter : undefined',
-    'anchors.left: root.edge === "left" ? parent.left : undefined',
-    'anchors.right: root.edge === "right" ? parent.right : undefined',
+    'anchors.left: root.edge === "right" ? parent.left : undefined',
+    'anchors.right: root.edge === "left" ? parent.right : undefined',
 ):
     assert body.count(marker) == 1, marker
 assert 'rotation: root.edge === "left" ? 90' not in body

@@ -62,16 +62,16 @@ Item {
         width: root.verticalEdge ? 10 : 58
         height: root.verticalEdge ? 58 : 10
         radius: 6
-        // Side-edge attachment follows the inward field side, instead of
-        // placing a disconnected vertical bar BELOW a rotated body.
+        // Real nested AbyssField capture showed the previous strip sitting
+        // on the OUTER tip side of rotated Wull. The soft base always points
+        // INWARD to the field: bottom for top, top for bottom, right for
+        // left and left for right. Keep this shadow behind the actual body.
         anchors.horizontalCenter: root.verticalEdge ? undefined : parent.horizontalCenter
         anchors.verticalCenter: root.verticalEdge ? parent.verticalCenter : undefined
-        anchors.left: root.edge === "left" ? parent.left : undefined
-        anchors.right: root.edge === "right" ? parent.right : undefined
-        anchors.bottom: root.verticalEdge ? undefined : parent.bottom
-        // Pilot-proven .25px original-cradle inset on BOTTOM only; other
-        // sides keep the source-original pose until individual visual review.
-        anchors.bottomMargin: root.edge === "bottom" ? 0.25 : 0
+        anchors.left: root.edge === "right" ? parent.left : undefined
+        anchors.right: root.edge === "left" ? parent.right : undefined
+        anchors.top: root.edge === "bottom" ? parent.top : undefined
+        anchors.bottom: root.edge === "top" ? parent.bottom : undefined
         scale: 1 + root.ripple * 0.16
         opacity: 0.72 + root.ripple * 0.28
         color: Qt.alpha(AbyssStyle.accent, 0.16 + root.pulse * 0.10)

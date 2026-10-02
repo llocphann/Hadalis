@@ -1,0 +1,52 @@
+{
+  "id": "JOB-MEGAQML-PTY-CLOEXEC-20261003-001",
+  "base_sha": "59c991cf8e7cc5584df03191807245997626cdfd",
+  "profile_id": "profile-a25585b748dd4220",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "-p",
+          "inir-mega",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "pty_closed_slave_does_not_bypass_deadline_by_waiting_for_parent",
+          "--",
+          "--test-threads=1"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "-p",
+          "inir-mega",
+          "--manifest-path",
+          "native/Cargo.toml"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 900
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "check",
+          "-p",
+          "inir-mega",
+          "--manifest-path",
+          "native/Cargo.toml"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    }
+  ]
+}

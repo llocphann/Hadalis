@@ -22,7 +22,7 @@ assert model["EDGES"] == ("top", "right", "bottom", "left")
 assert model["SCALES"] == (0.65, 1.0, 1.5)
 assert model["DYNAMIC_FIXTURE"] == "scripts/wull-fixtures/motion-envelope/shell.qml"
 assert model["DYNAMIC_PINS"][model["DYNAMIC_FIXTURE"]] == (
-    "0fede26c2dc370234ae1b1702afdca3ea05e33e0")
+    "221c07d0a451ba918e3e2074aeafe389e588f594")
 assert model["DYNAMIC_PINS"][model["FROZEN_RUNNER"]] == (
     "0dd833ed05d54e9d1045553a1da8be8f66b6511a")
 assert model["DYNAMIC_PINS"][model["FROZEN_RECEIPT"]] == (
@@ -35,7 +35,7 @@ def blob(path):
         b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
 
 
-assert blob(RUNNER) == "8270d405809bff86599e570399dd05a390e22601"
+assert blob(RUNNER) == "12ade72c22912c44aa3e66a2b5aef62c9e8b58f3"
 for name, digest in model["DYNAMIC_PINS"].items():
     assert blob(ROOT / name) == digest, name
 assert model["frozen"]["PINNED"][
@@ -61,6 +61,8 @@ for literal in (
     "sample.active = sample.active && body.motionEnabled === true",
     "sample.transition_witness",
     "sample.target_reached_witness",
+    "sample.mapped_frame_change_witness",
+    "root.privateLastBounds[i] = {",
     "sample.bob_witness",
     "sample.sway_witness",
     "samples.stop()",
@@ -85,6 +87,7 @@ for literal in (
     "resource.setrlimit(resource.RLIMIT_FSIZE, (MAX_LOG, MAX_LOG))",
     '"QML_IMPORT_PATH", "QML2_IMPORT_PATH"',
     "private_dynamic_child_cleanup_unverified",
+    '"mapped_frame_change_witness", "bob_witness"',
     "os.killpg(proc.pid, 0)",
     "os.killpg(proc.pid, signal.SIGTERM)",
     "private_dynamic_receipt_push_refused",
@@ -116,6 +119,7 @@ def phase(record, finished=True):
         "stretch_witness": True,
         "transition_witness": True,
         "target_reached_witness": True,
+        "mapped_frame_change_witness": True,
         "bob_witness": True,
         "sway_witness": True,
         "bbox_outside_static": record["bbox_outside_static"],
@@ -201,6 +205,7 @@ for mutation in (
     lambda data: data[0]["stretch"].update(stretch_witness=False),
     lambda data: data[0]["stretch"].update(transition_witness=False),
     lambda data: data[0]["stretch"].update(target_reached_witness=False),
+    lambda data: data[0]["release"].update(mapped_frame_change_witness=False),
     lambda data: data[0]["stretch"].update(bob_witness=False),
     lambda data: data[0]["stretch"].update(sway_witness=False),
     lambda data: data[0].update(neutral_verified=False),

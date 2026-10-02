@@ -222,9 +222,177 @@ pub fn parse_sync_pair(
     }).collect()
 }
 
+
+/// Strict *candidate* argv allowlist. These fixed constants are NOT executable
+/// dispatch rights, a vetted executable path, session proof or authorization.
+/// No user-controlled path, column expression, delimiter or mutation operand.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SyncReadProfile { RunState, Status }
+
+impl SyncReadProfile {
+    pub fn args(self) -> [&'static str; 3] {
+        match self {
+            Self::RunState =>
+                ["sync", "--output-cols=ID,RUN_STATE", "--col-separator=|"],
+            Self::Status =>
+                ["sync", "--output-cols=ID,STATUS", "--col-separator=|"],
+        }
+    }
+
+    fn paired_column(self) -> PairedSyncColumn {
+        match self {
+            Self::RunState => PairedSyncColumn::RunState,
+            Self::Status => PairedSyncColumn::Status,
+        }
+    }
+}
+
+/// Candidate capture metadata supplied by a future separately qualified
+/// fixed-argv vendor runner. A caller can forge this struct; these fields
+/// alone cannot authenticate the executor or an MEGA account/session.
+pub struct CandidateCapture<'a> {
+    pub stdout: &'a [u8],
+    pub stderr: &'a [u8],
+    pub exit_code: Option<i32>,
+    pub timed_out: bool,
+    pub output_capped: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CaptureError {
+    TimedOut,
+    OutputCapped,
+    AbnormalExit,
+    StandardErrorPresent,
+    InvalidTable(Error),
+}
+
+/// Reject *all* failed/uncertain captures before interpreting even a valid
+/// prefix. Upstream may emit diagnostic text after output; even an exit-zero
+/// result with stderr is intentionally withheld until disposable fixtures
+/// establish an allowlisted warning policy.
+pub fn parse_sync_capture(
+    profile: SyncReadProfile,
+    capture: &CandidateCapture<'_>,
+) -> Result<Vec<SyncPair>, CaptureError> {
+    if capture.timed_out { return Err(CaptureError::TimedOut); }
+    if capture.output_capped { return Err(CaptureError::OutputCapped); }
+    if capture.exit_code != Some(0) { return Err(CaptureError::AbnormalExit); }
+    if !capture.stderr.is_empty() { return Err(CaptureError::StandardErrorPresent); }
+    parse_sync_pair(profile.paired_column(), capture.stdout, true)
+        .map_err(CaptureError::InvalidTable)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fixed_profile_argv_never_accepts_mutation_or_variable_columns() {
+        assert_eq!(
+            SyncReadProfile::RunState.args(),
+            ["sync", "--output-cols=ID,RUN_STATE", "--col-separator=|"]
+        );
+        assert_eq!(
+            SyncReadProfile::Status.args(),
+            ["sync", "--output-cols=ID,STATUS", "--col-separator=|"]
+        );
+        for profile in [SyncReadProfile::RunState, SyncReadProfile::Status] {
+            let args = profile.args();
+            assert_eq!(args.len(), 3);
+            assert_eq!(args[0], "sync");
+            assert!(!args.iter().any(|arg| {
+                arg.starts_with('-') && !arg.starts_with("--output-cols=")
+                    && !arg.starts_with("--col-separator=")
+            }));
+            assert!(!args.iter().any(|arg| {
+                arg.contains(' ') || arg.contains('\n') || arg.contains('\\')
+            }));
+        }
+    }
+
+    #[test]
+    fn paired_capture_requires_clean_zero_exit_and_complete_exact_table() {
+        let clean = CandidateCapture {
+            stdout: b"ID|RUN_STATE\nAbcDef12_-x|Running\n",
+            stderr: b"",
+            exit_code: Some(0),
+            timed_out: false,
+            output_capped: false,
+        };
+        assert_eq!(
+            parse_sync_capture(SyncReadProfile::RunState, &clean),
+            Ok(vec![SyncPair {
+                id: "AbcDef12_-x".into(),
+                state: PairedSyncState::RunState(RunState::Running),
+            }])
+        );
+        assert_eq!(
+            parse_sync_capture(SyncReadProfile::Status, &CandidateCapture {
+                stdout: b"ID|STATUS\nAbcDef12_-x|Synced\n",
+                ..clean
+            }),
+            Ok(vec![SyncPair {
+                id: "AbcDef12_-x".into(),
+                state: PairedSyncState::Status(Status::Synced),
+            }])
+        );
+        assert_eq!(
+            parse_sync_capture(SyncReadProfile::RunState, &CandidateCapture {
+                timed_out: true, ..clean
+            }),
+            Err(CaptureError::TimedOut)
+        );
+        assert_eq!(
+            parse_sync_capture(SyncReadProfile::RunState, &CandidateCapture {
+                output_capped: true, ..clean
+            }),
+            Err(CaptureError::OutputCapped)
+        );
+        for code in [None, Some(1), Some(-9)] {
+            assert_eq!(
+                parse_sync_capture(SyncReadProfile::RunState, &CandidateCapture {
+                    exit_code: code, ..clean
+                }),
+                Err(CaptureError::AbnormalExit)
+            );
+        }
+        assert_eq!(
+            parse_sync_capture(SyncReadProfile::RunState, &CandidateCapture {
+                stderr: b"PRIVATE_FAKE_DIAGNOSTIC",
+                ..clean
+            }),
+            Err(CaptureError::StandardErrorPresent)
+        );
+        assert_eq!(
+            parse_sync_capture(SyncReadProfile::RunState, &CandidateCapture {
+                stdout: b"ID|RUN_STATE\nAbcDef12_-x|Running",
+                ..clean
+            }),
+            Err(CaptureError::InvalidTable(Error::Incomplete))
+        );
+        assert_eq!(
+            parse_sync_capture(SyncReadProfile::RunState, &CandidateCapture {
+                stdout: b"ID|RUN_STATE\nAbcDef12_-x|Running\nAbcDef12_-x|Loading\n",
+                ..clean
+            }),
+            Err(CaptureError::InvalidTable(Error::DuplicateIdentifier))
+        );
+        assert_eq!(
+            parse_sync_capture(SyncReadProfile::RunState, &CandidateCapture {
+                stdout: b"ID|RUN_STATE\nPRIVATE/SECRET|Running\n",
+                ..clean
+            }),
+            Err(CaptureError::InvalidTable(Error::InvalidRow))
+        );
+        assert_eq!(
+            parse_sync_capture(SyncReadProfile::RunState, &CandidateCapture {
+                stdout: b"ID|RUN_STATE\n",
+                ..clean
+            }),
+            Err(CaptureError::InvalidTable(Error::EmptyRows))
+        );
+    }
 
     #[test]
     fn accepts_same_capture_paired_sync_scalars_only() {

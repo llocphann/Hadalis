@@ -1,5 +1,9 @@
 # Cloud Storage — MEGAcmd ↔ Rust ↔ QML implementation
 
+> **Phase 3b fixed offline argv / capture fail-closed candidate SOURCE-STAGED (2026-10-02):** Added pure `SyncReadProfile` with two exact read-only synthetic argument sets for same-capture sync ID + RUN_STATE/STATUS. A separate unwired `CandidateCapture` gate rejects timeout, output cap, missing/nonzero exit and any stderr before using the paired parser. No real vendor command, executable/session attestation, login, account reads, new QML feature or live gate. Additional owner exact-SHA offline Rust tests pending; existing source-only test results and private installed vendor information are never auto-published. Preserve Wull/stable. See `docs/MEGAQML_PHASE3B_SYNC_PAIRED_CANDIDATES.md`.
+
+
+
 > **Phase 3b same-response sync pair parser SOURCE-STAGED (2026-10-02):** As a separate unqualified synthetic-parser follow-up, added an **unwired**, pure Rust candidate parser for exactly one complete same-response `ID|RUN_STATE` or `ID|STATUS` table. It reuses the strict ID uniqueness and finite scalar validators and rejects extra delimiters, path-like text, unknown states, truncated/malformed/empty/oversized captures. Pinned upstream supports `--output-cols` ordering and selected `--col-separator` formatting, but installed behavior and even a one-invocation *atomic* state snapshot remain **unqualified**. Absolutely no correlation by independent-call row index, general free-text parser, live vendor, account/network, ability unlock, or private owner results on GitHub. Exact-source owner offline Rust tests are pending. See `docs/MEGAQML_PHASE3B_SYNC_PAIRED_CANDIDATES.md`. Preserve stable and Wull.
 
 

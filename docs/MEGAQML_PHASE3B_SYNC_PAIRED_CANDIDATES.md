@@ -61,3 +61,24 @@ Run `cargo test -p inir-mega column_fixtures` offline
 for purely synthetic tests. No additional vendor command, account
 data, network access, `stable` or parallel Wull work
 was affected.
+
+## Source-only fixed argv and capture trust boundary
+
+A further **unwired** `SyncReadProfile` constructor defines exactly
+two immutable argument sets, `sync --output-cols=ID,RUN_STATE --col-separator=|`
+and `sync --output-cols=ID,STATUS --col-separator=|`.
+Only a future separately vetted runner could execute these;
+there is no user-controlled command, column, separator or
+target in the candidate interface.
+
+`CandidateCapture` models a future bounded subprocess result.
+`parse_sync_capture` rejects timeouts, output caps, absent/nonzero
+exit codes and all stderr **before** parsing the complete, exact
+paired table. An accepted synthetic capture does not authenticate
+the binary, session, snapshot or request provenance, and a forged
+but syntactically valid row remains undetectable here.
+Even a harmless installed diagnostic on stderr fails closed
+until separate disposable fixtures explicitly justify it.
+Added Rust fake-only tests for these invariants.
+No vendor call or live operation has been authorized.
+

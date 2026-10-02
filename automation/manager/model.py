@@ -116,7 +116,7 @@ def validate_profile(raw: object, *, defaults: dict | None = None) -> dict:
     profile["project_name"] = _string(profile["project_name"], "project_name")
     if len(profile["project_name"]) > 80 or any(ch not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ._-" for ch in profile["project_name"]):
         raise ValueError("project name must use letters, numbers, spaces, dots, hyphens or underscores")
-    for key in ("enabled", "requires_github", "stop_on_done", "auto_protocol_recovery", "archive_completed", "delete_completed"):
+    for key in ("enabled", "requires_github", "stop_on_done", "auto_protocol_recovery", "rotate_on_cursor_timeout", "archive_completed", "delete_completed"):
         if type(profile[key]) is not bool:
             raise ValueError(f"invalid {key}")
     for key in ("prompt", "continuation_prompt", "rotation_prompt"):

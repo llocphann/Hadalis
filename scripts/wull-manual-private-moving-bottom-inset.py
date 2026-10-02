@@ -166,7 +166,13 @@ def private_classify(directory):
     }
     try:
         return model["summarize"](rows, witness)
-    except (ValueError, TypeError, KeyError):
+    except ValueError as exc:
+        # Preserve the reviewed baseline failure as a fixed category.
+        # Never publish private per-frame PNGs, paths or raw trace data.
+        if str(exc) == "ORIGINAL_DYNAMIC_BASELINE_NOT_REPRODUCED":
+            raise Stop("MOVING_BASELINE_NOT_REPRODUCED")
+        raise Stop("DYNAMIC_PAINT_SUMMARY_INCONCLUSIVE")
+    except (TypeError, KeyError):
         raise Stop("DYNAMIC_PAINT_SUMMARY_INCONCLUSIVE")
 
 
@@ -310,6 +316,7 @@ if __name__ == "__main__":
             "DYNAMIC_PNG_UNSAFE", "DYNAMIC_PNG_SET_INCOMPLETE",
             "DYNAMIC_PAINT_ALPHA_INCONCLUSIVE",
             "DYNAMIC_PAINT_SUMMARY_INCONCLUSIVE",
+            "MOVING_BASELINE_NOT_REPRODUCED",
             "LOCAL_QT_DEPENDENCY_MISSING", "QUICKSHELL_VERSION_MISMATCH",
             "PRIVATE_DEPENDENCIES_UNAVAILABLE",
             "PRIVATE_QT_CHILD_GROUP_STILL_PRESENT",

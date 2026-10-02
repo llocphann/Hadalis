@@ -222,3 +222,95 @@ Two new fake-only contracts (revised shadow and runner) must run on owner
 local pinned source before any actual nested compositor starts.
 GitHub source/static audit does not constitute execution of the two
 new fake-only tests nor owner Niri visual testing.
+
+## 2026-10-02 — owner-qualified REAL nested captures; local visual judgment pending
+
+Owner reported the ACTUAL read-only output from exact source
+`75b734f1dd8ad3817d55900bf6c264e5e961b020`:
+`SOURCE_PINS=PASS`,
+`WULL_PRIVATE_NESTED_VISUAL_SHADOW_INERT_PASS`, and
+`WULL_PRIVATE_NESTED_QUARTER_VISUAL_INERT_PASS`.
+The approved guest-only coordinator returned
+`NESTED_ONE_OUTPUT=YES`,
+`NESTED_DISTINCT_IPC_AND_WAYLAND=YES`,
+`ORIGINAL_REAL_ABYSSBAR_AND_WULL=SOURCE_PINNED`,
+`PRIVATE_M025_CHANGE=ORIGINAL_CRADLE_ONLY`,
+`ORIGINAL_M0_NESTED_FULL_IMAGE=CAPTURED`,
+`PRIVATE_BOTTOM_M025_NESTED_FULL_IMAGE=CAPTURED`,
+`TWO_SEQUENTIAL_NESTED_CAPTURES=YES`,
+`PRODUCTION_MASK_CHANGED=NO`, and
+`GATE=NESTED_PRIVATE_VISUAL_CAPTURES_READY`.
+This is owner-supplied, source-pinned guest compositor evidence.
+No screenshot, raw Qt log or private filesystem path was published to this
+repository or provided to the assistant; do not claim image analysis was
+performed or infer that Wull was perceptually visible merely because the
+full nested output PNG exists. The owner's private captures are intentionally
+retained LOCALLY, with fixed basenames
+`original_m0.nested.private.png` and
+`private_bottom_m025.nested.private.png`.
+
+**Two captures ready is not real visual acceptance.** The actual runner
+explicitly reported `SAME_INSTANT_PIXEL_COMPARISON=NOT_TESTED`,
+`REAL_PANEL_VISUAL_CONNECTION=OWNER_REVIEW_REQUIRED`, and
+`COMPOSITOR_POINTER_AND_POPUP=NOT_TESTED`. Original and candidate scenes
+were animated/sequential and cannot justify same-pose pixel subtraction.
+Do not repeat successful original static fractional, dynamic dual-signal
+or nested two-capture tests just to publish a report.
+
+### Local visual acceptance — only unresolved input for this gate
+
+The maintainer alone should inspect both retained original and private
+images in a LOCAL viewer. Record independent categories for EACH frame:
+
+- Original full Wull actually visible and recognizable (YES/NO/UNCLEAR).
+- Private M025 Wull actually visible and recognizable (YES/NO/UNCLEAR).
+- Physical BOTTOM panel-to-Wull contact/seam in EACH frame:
+  CONNECTED / GAP / OVERLAP / UNCLEAR (no synthetic raster proxy).
+- Physical output BOTTOM cropping in EACH frame:
+  NONE / CROPPED / UNCLEAR.
+- Whether these two sequential poses are meaningfully comparable:
+  YES / NO / UNCLEAR. Different poses do not invalidate individual
+  presence/contact judgments but prohibit inferring a causal margin
+  improvement from stills alone.
+
+Treat any NO/GAP/CROPPED/UNCLEAR as a diagnostic requiring inspection or
+a separately designed owner-accepted visual study; do not silently
+substitute m0.5 or change production. A visible but still-frame contact
+is not proof of an 8-hour render, full spring extrema, animated edge
+attachment, multi-output behavior or native pointer/popup transfer.
+
+### Source-reviewed NEXT independent pointer gate — not yet authorized
+
+Existing `scripts/wull-pointer-targets.py` blob
+`527ebecd01e2fc51d497e0de73a0f3bcd83305ac` hard-codes
+scale-1 original horizontal host `112×98` and mapped body
+`(18,3,76,92)`; its conservative static BOTTOM targets cannot serve
+scale-1.5 or partially moved body. Likewise
+`scripts/wull-private-mask-candidate.py` blob
+`91049b2ca2beb7b1936af624adca5133d251ea3c` gates its
+separate private rectangular input-mask candidate with
+`root.companionScale === 1`. Replaying this test would silently
+exercise the wrong geometry or a disabled candidate. DO NOT promote
+prior scale-1 nested pointer PASS to BOTTOM×1.5 m025.
+
+Only after separate maintainer visual acceptance, design/review
+a DISTINCT explicitly opted-in Niri-in-Niri BOTTOM×1.5 pointer study
+using the source-pinned original/full production input Region, real
+actual output scale/physical coordinates and the private-only m025
+cradle. Derive and validate scale1.5 mapped input/cursor target
+coordinates against actual guest Qt/Niri geometry rather than
+multiply historic scale-1 rounded target numbers. Preserve exact
+private nested Wayland and Niri endpoint revalidation before EVERY
+native event, first prove an aligned underlay event while Wull is
+disabled, then source-qualified outside-host underlay control,
+inside-host/outside-body observation, actual Wull body click with
+Rust bridge receipt and NO off-target activation. Verify screen-edge
+hover release and bar/popup transfer in a SEPARATE subsequent study:
+the existing pointer child contains no popup ownership probe.
+Keep original full production input Region during this discovery;
+any proposed mask narrowing requires its own private trial and
+compositor PASS before a possible production source decision.
+Don't run any of these until owner classifies the retained images.
+
+No production, Wull default-off, `stable`, or concurrent MegaQML
+changes have been made in this checkpoint.

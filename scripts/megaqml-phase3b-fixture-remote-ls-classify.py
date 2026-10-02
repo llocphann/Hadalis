@@ -38,13 +38,92 @@ KINDS = {"unknown", "none_observed", "files_only", "folders_only",
          "mixed", "other_node_type"}
 COUNTS = {"unknown", "zero", "one", "two", "three_plus"}
 
-def emit(reason, kind="unknown", count="unknown", started=False):
+
+HEADERS = {"not_observed", "exact", "whitespace_variant",
+           "flags_prefix_other", "headerless_row_candidate", "unrecognized"}
+ROW_PREFIXES = {"not_observed", "none", "all_four_flag_candidate",
+                "mixed_four_flag_candidate", "no_four_flag_candidate", "unknown"}
+ENDINGS = {"not_observed", "lf", "carriage_return", "incomplete", "unknown"}
+NONASCII = {"not_observed", "present", "absent"}
+BUCKETS = {"not_observed", "zero", "one", "two", "three_plus", "unknown"}
+
+def format_fingerprint(raw):
+    """Extra bounded source-format diagnostics only; NEVER proof of emptiness.
+
+    No names, paths, dates, handles, raw bytes or exact output length returned.
+    Even a fully recognized header cannot authorize cleanup after earlier
+    independently observed nonempty ls.
+    """
+    if type(raw) is not bytes or not raw or len(raw) > 16384:
+        return ("unrecognized", "unknown", "unknown", "not_observed",
+                "unknown")
+    if b"\r" in raw:
+        ending = "carriage_return"
+    elif raw.endswith(b"\n"):
+        ending = "lf"
+    else:
+        ending = "incomplete"
+    nonascii = ("present" if any(byte > 127 or
+                (byte < 32 and byte not in (9, 10, 13)) for byte in raw)
+                else "absent")
+    lines = raw.split(b"\n")
+    if raw.endswith(b"\n"):
+        lines.pop()
+    first = lines[0] if lines else b""
+    first = first[:-1] if first.endswith(b"\r") else first
+    exact = re.fullmatch(rb"FLAGS +VERS +SIZE +DATE +NAME", first)
+    variant = re.fullmatch(
+        rb"FLAGS[ \t]+VERS[ \t]+SIZE[ \t]+DATE[ \t]+"
+        rb"(?:HANDLE[ \t]+)?NAME[ \t]*", first)
+    fourflag = rb"[d\-ribx][et-][tp-][si-][ \t]"
+    if exact:
+        header = "exact"
+    elif variant:
+        header = "whitespace_variant"
+    elif first.startswith(b"FLAGS"):
+        header = "flags_prefix_other"
+    elif re.match(fourflag, first):
+        header = "headerless_row_candidate"
+    else:
+        header = "unrecognized"
+    rows = lines if header == "headerless_row_candidate" else lines[1:]
+    if ending == "incomplete":
+        bucket = "unknown"
+        prefix = "unknown"
+    else:
+        bucket = ({0: "zero", 1: "one", 2: "two"}.get(
+            len(rows), "three_plus"))
+        if not rows:
+            prefix = "none"
+        else:
+            found = [bool(re.match(fourflag, line)) for line in rows[:33]]
+            prefix = ("all_four_flag_candidate" if all(found)
+                      else "mixed_four_flag_candidate" if any(found)
+                      else "no_four_flag_candidate")
+    outcome = (header, prefix, ending, nonascii, bucket)
+    assert outcome[0] in HEADERS and outcome[1] in ROW_PREFIXES
+    assert outcome[2] in ENDINGS and outcome[3] in NONASCII
+    assert outcome[4] in BUCKETS
+    return outcome
+
+
+def emit(reason, kind="unknown", count="unknown", started=False, shape=None):
     assert reason in REASONS and kind in KINDS and count in COUNTS
+    shape = shape or ("not_observed",) * 5
+    assert len(shape) == 5
+    assert shape[0] in HEADERS and shape[1] in ROW_PREFIXES
+    assert shape[2] in ENDINGS and shape[3] in NONASCII
+    assert shape[4] in BUCKETS
     print("MEGAQML_FIXTURE_REMOTE_LS_CLASSIFICATION")
     print("REASON=" + reason)
     print("NODE_KIND=" + kind)
     print("NODE_COUNT_BUCKET=" + count)
     print("SERVER_START_ATTEMPTED=" + str(started).lower())
+    print("FORMAT_HEADER=" + shape[0])
+    print("FORMAT_ROW_PREFIXES=" + shape[1])
+    print("FORMAT_LINE_ENDINGS=" + shape[2])
+    print("FORMAT_NONASCII_OR_CONTROL=" + shape[3])
+    print("FORMAT_ROW_BUCKET=" + shape[4])
     print("REMOTE_CLEANUP_AUTHORIZED=NO")
     print("JOURNAL_CHANGED=NO")
     print("RAW_PRIVATE_OUTPUT_PUBLISHED=NO")
@@ -105,7 +184,7 @@ def observe(runner, identity, journal, uid):
         return "listing_unavailable", None
     result = classify(listing)
     if result is None:
-        return "listing_format_unqualified", None
+        return "listing_format_unqualified", format_fingerprint(listing)
     if result == ("none_observed", "zero"):
         return "listing_header_only_unqualified", result
     return "listing_observed_unqualified", result
@@ -158,10 +237,10 @@ def tty_start_confirmation():
             out.write(
                 "Only the disposable server may start if absent. Its cached "
                 "Sync state could resume. No creation or deletion.\n"
-                "Type START_DISPOSABLE_LS_ONLY: "
+                "Type START_DISPOSABLE_FORMAT_ONLY: "
             )
             out.flush()
-            return inp.readline(64).strip() == "START_DISPOSABLE_LS_ONLY"
+            return inp.readline(64).strip() == "START_DISPOSABLE_FORMAT_ONLY"
     except (OSError, UnicodeError, ValueError):
         return False
 
@@ -258,8 +337,10 @@ def main():
             if not identity():
                 emit("account_identity_unverified", started=started); return 21
             reason, classified = observe(runner, identity, journal, uid)
-            kind, count = classified if classified else ("unknown", "unknown")
-            emit(reason, kind, count, started)
+            shape = classified if reason == "listing_format_unqualified" else None
+            kind, count = (classified if classified and not shape
+                           else ("unknown", "unknown"))
+            emit(reason, kind, count, started, shape)
             return 0 if reason in {"listing_observed_unqualified",
                                    "listing_header_only_unqualified"} else 21
     except (OSError, ValueError, TypeError, KeyError, UnicodeError,
@@ -273,12 +354,14 @@ def selftest():
     assert classify(b"FLAGS VERS SIZE DATE NAME\n"
                     b"---- 1 24 2026-10-02 12:00 FILE\n") == ("files_only", "one")
     assert classify(b"FLAGS VERS SIZE DATE NAME\nNAME_ONLY\n") is None
+    assert format_fingerprint(b"FLAGS VERS SIZE DATE NAME\nNAME_ONLY\n") == (
+        "exact", "no_four_flag_candidate", "lf", "absent", "one")
     print("PASS MegaQML private ls classifier pure selftest")
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["--self-test"]:
         selftest()
-    elif sys.argv[1:] == ["--approved-one-server-start-and-ls"]:
+    elif sys.argv[1:] == ["--approved-additional-one-ls-format-probe"]:
         sys.exit(main())
     else:
         emit("start_confirmation_rejected")

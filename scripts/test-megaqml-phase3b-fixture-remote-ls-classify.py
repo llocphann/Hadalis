@@ -70,16 +70,51 @@ with tempfile.TemporaryDirectory() as td:
         if v == ("ls", "-l", journal["remote"]):
             return 0, b"PRIVATE_DIAGNOSTIC", b"", None
         raise AssertionError("UNAUTHORIZED_COMMAND")
-    assert D["observe"](malformed, identity, journal, uid)[0] == (
-        "listing_format_unqualified")
+    bad_reason, bad_shape = D["observe"](malformed, identity, journal, uid)
+    assert bad_reason == "listing_format_unqualified"
+    assert bad_shape == (
+        "unrecognized", "unknown", "incomplete", "absent", "unknown")
+
+
+# Source-format fingerprint is diagnostics ONLY: no relaxed acceptance.
+fingerprint = D["format_fingerprint"]
+assert fingerprint(header + folder) == (
+    "exact", "all_four_flag_candidate", "lf", "absent", "one")
+assert fingerprint(header + folder + file) == (
+    "exact", "all_four_flag_candidate", "lf", "absent", "two")
+assert fingerprint(b"FLAGS VERS SIZE DATE HANDLE NAME\n" + folder) == (
+    "flags_prefix_other", "all_four_flag_candidate", "lf", "absent", "one")
+assert fingerprint(b"FLAGS VERS SIZE DATE NAME\r\n" + folder) == (
+    "exact", "all_four_flag_candidate", "carriage_return", "absent", "one")
+assert fingerprint(header + b"---- 1 5 Jan 02 2026 PRIVATE_\xc3\xa9\n") == (
+    "exact", "all_four_flag_candidate", "lf", "present", "one")
+assert fingerprint(b"---- 1 5 JAN 02 2026 PRIVATE\n") == (
+    "headerless_row_candidate", "all_four_flag_candidate",
+    "lf", "absent", "one")
+assert fingerprint(header + b"\x00\n") == (
+    "exact", "no_four_flag_candidate", "lf", "present", "one")
+assert fingerprint(header) == (
+    "exact", "none", "lf", "absent", "zero")
+assert parse(header + b"PRIVATE\x00\n") is None
+assert parse(header + b"---- 1 5 Jan 02 2026 PRIVATE_\xc3\xa9\n") is None
+
+source = Path(D["__file__"]).read_text() if "__file__" in D else (
+    Path(__file__).with_name("megaqml-phase3b-fixture-remote-ls-classify.py")
+    .read_text())
+assert '--approved-one-server-start-and-ls' not in source
+assert '--approved-additional-one-ls-format-probe' in source
+assert 'START_DISPOSABLE_FORMAT_ONLY' in source
+assert "REMOTE_CLEANUP_AUTHORIZED=NO" in source
 
 out = io.StringIO()
 with contextlib.redirect_stdout(out):
-    D["emit"]("listing_observed_unqualified", "folders_only", "one")
+    D["emit"]("listing_format_unqualified", shape=fingerprint(header + folder))
 report = out.getvalue()
 for secret in ("PRIVATE_FOLDER", "PRIVATE_FILE", "PRIVATE_REMOTE",
                "PRIVATE_DIAGNOSTIC"):
     assert secret not in report
+assert "FORMAT_HEADER=exact" in report
+assert "FORMAT_ROW_PREFIXES=all_four_flag_candidate" in report
 assert "REMOTE_CLEANUP_AUTHORIZED=NO" in report
 assert "JOURNAL_CHANGED=NO" in report
 assert "PHASE3B=UNQUALIFIED" in report

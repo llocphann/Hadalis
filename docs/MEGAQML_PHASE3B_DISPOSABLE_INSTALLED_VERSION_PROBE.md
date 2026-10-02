@@ -56,6 +56,29 @@ installed paths, environment, credentials and screenshots stay out of
 GitHub and chat. Do not request or publish raw output if the regex does
 not recognize the installed build.
 
+## One-command maintainer evidence path
+
+After reviewing the script, run it only from a **fresh temporary clone**
+of `dev` (never modify or clean the parallel Wull checkout):
+`bash scripts/megaqml-phase3b-owner-local.sh --acknowledge-disposable-offline-probe`.
+The owner-local wrapper checks clean `dev`, approved GitHub remote,
+Git identity and remote ancestry, then runs the independent fake-only
+contract and nonvendor self-test **before** any sandboxed vendor probe.
+It validates the entire resulting JSON envelope against fixed allowed
+keys, states, version digits and reason codes before reporting or
+publishing anything. The wrapper writes only this sanitized summary,
+source SHA and static PASS flags to a new private `dev` report
+`docs/evidence/megaqml/phase3b-<source-prefix>-<utc>.md`. A missing
+bubblewrap or unsupported environment may produce a safely published
+BLOCKED report rather than an invented version observation. It
+fast-forwards or merges only approved concurrent Wull/previous tested
+evidence changes, never force-pushes, stashes or resets Wull work.
+If publication fails, only the fixed local summary appears in the
+terminal; this is **not** a published/accepted Phase 3b result.
+This explicit wrapper invocation consents to publishing only the
+sanitized numeric installed version (if detected) and fixed status,
+not raw output or any account information.
+
 **Passing the version-only probe is not full Phase 3b qualification.**
 It only establishes a sanitized, isolated first observed version.
 Next, review the version result and author a version-specific

@@ -314,3 +314,134 @@ Don't run any of these until owner classifies the retained images.
 
 No production, Wull default-off, `stable`, or concurrent MegaQML
 changes have been made in this checkpoint.
+
+
+## Owner visual correction: attach Wull to the INNER Abyss Screen Edge / Panel / Bar surface, not the physical output border
+
+On 2026-10-02 the owner uploaded the *two actual retained original-m0
+and private-m025 nested output screenshots*. Both clearly show a painted
+original Wull near the BOTTOM output boundary and a separately painted
+AbyssBar with real tray/modules. Wull's downward-facing point projects
+toward the physical display boundary and its body overlaps bar-module
+content. The two captures are visually similar, as expected for the
+tiny 0.25px private cradle adjustment. The owner explicitly REJECTED the
+**attachment target**: Wull is meant to appear to emerge from / sit
+ON THE INNER VISIBLE SURFACE of the matching Screen Edge, Bar or connected
+Panel, **NOT** the physical outer display edge. The earlier
+\`GATE=NESTED_PRIVATE_VISUAL_CAPTURES_READY\` remains historically valid
+as an owned guest capture gate but is NOT visual acceptance of the
+old fixed-coordinate Wull design. No private image or home path is
+stored in the repository.
+
+### Verified source root cause
+
+Current unchanged production \`modules/abyss/AbyssPerimeter.qml\` blob
+\`a3cd2a7bfbdf32dac2c7e42057a1dfaaeea214ac\` places
+the BOTTOM Wull with
+\`y = window.height - AbyssStyle.perimeterThickness - implicitHeight + 5\`.
+This is the same scalar physical-edge offset even when the *actual*
+field's resting inner BOTTOM contour moves far inward to make room for
+the Bar. The same production window already supplies
+\`window.nativeInsets\`, calculated from actual per-output
+\`AbyssBar.placements\` and source-pinned
+\`AbyssLayout.edgeInsetsForModules\`; its
+\`window.bodyInsets(edge,along,span)\` additionally uses locally expanded
+\`bar.deformations\`. These data are consumed by
+\`AbyssSurfaceController\` and the single shared
+\`AbyssField\` ShaderEffect, which paints the real union of the Screen
+Edges, Bar and attached panels. \`AbyssBar.qml\` itself is only the
+foreground module host; treating its position or
+\`perimeterThickness\` as the actual painted surface boundary is wrong
+for variable thickness and local expansions. The actual shader field
+can additionally crest via \`AbyssWaveController\`; the initial
+resting-inset prototype described below does NOT sample those wave
+crests.
+
+### Source-staged, private-only resting-inner-rim pilot
+
+Both differential cases use exact original full BOTTOM×1.5 Wull,
+original full input Region and *the same* private cradle
+\`bottomMargin=0.25\`, same isolated real AbyssBar configuration,
+same 0.72 along-value and same theme. No new production file is edited.
+The only differing QML is an owner-private mirrored BYTE-EXACT COPY
+of \`AbyssPerimeter.qml\`:
+
+- \`screen_boundary_m025\`: previous fixed
+  \`window.height - AbyssStyle.perimeterThickness - implicitHeight + 5\`.
+- \`inner_field_rim_m025\`: source-scoped
+  \`window.height - window.companionFieldDepth() - implicitHeight + 5\`.
+  The new private \`companionFieldDepth()\` derives Wull's actual
+  *scaled footprint*, its source-pinned \`companionAlongPosition()\`,
+  then evaluates existing
+  \`window.bodyInsets(root.companionEdge,along,footprint)\` at that
+  specific footprint, with finite fallback to field minimum. It
+  therefore tracks local Bar thickness and local module deformation
+  in the SAME shader-field geometry source, instead of a guessed
+  distance from a hardware display edge. This only shifts one
+  BOTTOM coordinate; TOP/LEFT/RIGHT binding is a later gate.
+  A 16px old scalar vs a sample 48px or 64px actual field depth
+  means an inward 32px or 48px host move, respectively, before
+  further source-pinned Qt scale transforms. These are synthetic
+  geometry examples, NOT actual measured screenshot depths.
+
+NEW inert \`scripts/wull-private-field-rim-attachment.py\` exact blob
+\`b7c2ac861ab11073540d113df86a1339c7f43e6e\` is an adapter
+over the ALREADY OWNER-QUALIFIED, unchanged prior private-quarter
+generator blob \`dd62b2b834e86d41856730547bca8ea4d73aaca8\`.
+The adapter stages the IDENTICAL old m025 Wull body in each private
+shadow and modifies ONLY one source-reviewed BOTTOM host expression
+plus one pure QML field-depth function in the private candidate
+Perimeter copy; it verifies reversibility and pins the exact
+original source, \`AbyssLayout.js\`, \`AbyssField.qml\`, both
+\`AbyssField.frag\` AND compiled \`.qsb\`,
+\`AbyssBar.qml\`, \`AbyssSurfaceController.qml\` and
+\`AbyssStyle.qml\`. It does NO Qt, Niri, file publication or live input.
+Its NEW fake-only synthetic source/perms/depth comparison is
+\`scripts/test-wull-private-field-rim-attachment.py\` blob
+\`4ee39c31309869d6b96826b4a6fda070dd0c7992\`.
+
+NEW opt-in \`scripts/wull-manual-private-field-rim-visual.py\` blob
+\`61e1da5c6811bfb70c1d442efaad4ef11962eb34\`
+is strictly the PREVIOUS owner-local screenshot coordinator
+\`b719f2b0a6c6e0121f9f2c0467f8d4e7a28cfa9f\`
+with source/renderer pins added and only the explicit opt-in, two
+private case names and categorical output changed. Every original
+owned nested endpoint, actual source-pinned real bar/daemon, verified
+guest-only Grim/PNG and termination requirement is preserved. Its
+NEW fake-only **complete reversible source-diff** contract is
+\`scripts/test-wull-private-field-rim-visual.py\` blob
+\`9dd040df3037d37e1fc7d77dba548bea7d254778\`.
+The owner has NOT YET run either new fake test or this new guest
+visual comparison. Source staging and GitHub textual review are
+NOT executable tests.
+
+### Acceptance and later integration
+
+Inspect the next two owner-local guest captures side by side:
+Wull body present and recognizably the same theme; its *actual point/
+contact neck* should end INSIDE the paint of the real Bar/Screen Edge
+at the INNER workspace-side contour, not go below to the physical
+display border; no gap, double border, wrong coloration, tray icon or
+clock overlap, or cropped extrema. The images are from sequential
+independent springs, so do not claim same-instant pixel differences
+or superiority based on momentary pose. A screenshot confirms only
+ONE resting/composited sample. If contact is still wrong, investigate
+the scale-transform origin, actual dynamic shader field depth and
+body/cradle paint separately, do not adjust production on sight.
+
+The above source stage corrects placement geometry ONLY. True
+organic attachment still requires a separately qualified SINGLE
+Abyss shader-field neck/union or an equivalently validated seamless
+material connection (without extra full-screen renderer/FBO),
+theme-token inheritance, matching highlight/alpha at the seam,
+bounded wave-crest response from the EXISTING simulator (no second
+solver/polling), and animated spring-extrema/edge-capacity evidence.
+Wull's current along=.72 also visibly overlaps Bar module content
+in the uploaded frames: reserve or discover an ACTUAL free Bar/
+Screen-Edge segment using \`bar.layoutRecords\` and popup/corner
+clearance before any final integration. Cover TOP/RIGHT/BOTTOM/LEFT,
+small/fractional outputs, local vs whole expansion, auto-hide,
+near-corners and popup overlays in later independent gates.
+Do NOT begin previous scale1 pointer/mask tests at the wrong
+scale, do NOT alter the production Region or default-off and
+NEVER touch \`stable\`. Continue other unrelated \`dev\` work.

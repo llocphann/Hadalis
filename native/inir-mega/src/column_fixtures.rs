@@ -184,7 +184,9 @@ mod tests {
             (Column::TransferTag, b"TAG\n-1\n", Error::InvalidRow),
             (Column::TransferTag, b"TAG\n2147483648\n", Error::InvalidRow),
             (Column::TransferTag, b"TAG\n7\n7\n", Error::DuplicateIdentifier),
-            (Column::SyncId, b"ID\nAbcDef12_-x\nPRIVATE_SECRET\n", Error::InvalidRow),
+            // This slash cannot occur in the current candidate ID grammar.
+            // A lexical parser cannot identify "secret" words as secrets.
+            (Column::SyncId, b"ID\nAbcDef12_-x\nPRIVATE/SECRET\n", Error::InvalidRow),
             (Column::SyncId, b"ID\nAbcDef12_-x\x1b[2J\n", Error::InvalidRow),
             (Column::SyncId, b"ID\nAbcDef12_-x\rOops\n", Error::InvalidRow),
             (Column::SyncId, b"ID\n\xff\n", Error::InvalidEncoding),
@@ -198,6 +200,17 @@ mod tests {
         assert_eq!(
             parse(Column::SyncId, b"ID\nAbcDef12_-x\n", false),
             Err(Error::Incomplete)
+        );
+    }
+
+    #[test]
+    fn lexical_id_match_is_not_identity_or_privacy_proof() {
+        // Deliberately valid-looking fake text is accepted *syntactically*.
+        // The caller MUST verify it came from a complete, permitted
+        // single-column vendor result. Never infer identity or safe sharing.
+        assert_eq!(
+            parse(Column::SyncId, b"ID\nPRIVATE_SECRET\n", true),
+            Ok(vec![Value::SyncId("PRIVATE_SECRET".into())])
         );
     }
 

@@ -29,6 +29,13 @@ oversized rows, partial output and header-only output
 are denied. The limited ID character grammar is a
 **hypothesis** requiring exact installed-version fixtures.
 
+**A syntactically valid ID is not evidence of identity or privacy.**
+For example, a fake marker made solely of permitted characters
+can pass the candidate grammar. The parser must only be fed an
+independently verified, complete single-column vendor response;
+it cannot detect whether arbitrary caller-supplied text is
+secret, authentic or associated with any server object.
+
 **Do not correlate rows from independent calls by
 position.** A sync-ID request and a sync-state request
 can observe different snapshots. Separate parsed

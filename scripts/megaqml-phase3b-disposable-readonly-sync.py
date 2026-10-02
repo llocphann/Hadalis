@@ -55,7 +55,8 @@ def summary(reason, *, server=False, identity=False, rows=False):
         "account_identity_mismatch", "sync_timeout", "sync_output_capped",
         "sync_failed_or_diagnostic", "sync_header_or_row_invalid",
         "sync_header_only_not_qualified", "sync_no_snapshot_unqualified",
-        "sync_shape_observed_unqualified",
+        "sync_source_blank_line_candidate_unqualified",
+        "sync_unexpected_header_unqualified", "sync_shape_observed_unqualified",
         "supervisor_error", "selftest_pass",
     }
     assert reason in allowed
@@ -183,8 +184,13 @@ def bounded_read(argv, env):
             proc.wait(timeout=2)
 
 def parse_snapshot(raw):
-    # Source-only candidate grammar: does NOT attest snapshot coherence or ID
-    # provenance. Header-only means NOT QUALIFIED, not an empty account.
+    # This is source-shaped syntax only: it never proves data provenance,
+    # an empty account or release parity with an installed MEGAcmd binary.
+    # Upstream MEGAcmd printSyncList() omits the header if syncList.size()==0;
+    # ColumnDisplayer's selected-column branch then emits one blank newline.
+    # This exact byte shape is a *candidate*, not an empty-state acceptance.
+    if raw == b"\n":
+        return "source_blank_line_candidate"
     if len(raw) > MAX_STDOUT or not raw.endswith(b"\n"):
         return "invalid"
     try:
@@ -285,6 +291,9 @@ def self_test():
     assert parse_snapshot(
         b"ID|RUN_STATE|STATUS\nAbcDef12_-x|Running|Synced\n"
     ) == "nonempty_shape"
+    assert parse_snapshot(b"\n") == "source_blank_line_candidate"
+    assert parse_snapshot(b"\n\n") == "invalid"
+    assert parse_snapshot(b"UNEXPECTED\n") == "invalid"
     for value in [
         b"ID|RUN_STATE|STATUS\n",
         b"ID|RUN_STATE|STATUS\nAbcDef12_-x|UNKNOWN|Synced\n",
@@ -431,9 +440,19 @@ def main():
             print(summary("sync_header_only_not_qualified", server=True,
                           identity=True))
             return 21
+        if result == "source_blank_line_candidate":
+            print(summary("sync_source_blank_line_candidate_unqualified",
+                          server=True, identity=True))
+            return 21
+        # Distinguish a bounded, complete but unknown header from malformed
+        # rows without ever reporting or logging its actual contents.
         if result != "nonempty_shape":
-            print(summary("sync_header_or_row_invalid", server=True,
-                          identity=True))
+            expected_header = (b"ID|RUN_STATE|STATUS\n",
+                               b"ID|RUN_STATE|STATUS\r\n")
+            reason = ("sync_header_or_row_invalid"
+                      if out.startswith(expected_header)
+                      else "sync_unexpected_header_unqualified")
+            print(summary(reason, server=True, identity=True))
             return 21
         print(summary("sync_shape_observed_unqualified", server=True,
                       identity=True, rows=True))

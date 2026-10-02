@@ -284,3 +284,56 @@ The account is owner-described as empty; `sync` returning only
 a header or zero stdout remains insufficient to qualify row
 shape or the Phase 3b runtime. Do not fabricate Sync fixtures
 or create a Sync job under the current read-only approval.
+
+## Owner local whoami qualified; candidate blank-line Sync shape
+
+On the owner-provided exact-source local run, the probe reported
+`ISOLATED_SERVER_MATCH=true`, `DISPOSABLE_ACCOUNT_MATCH=true`,
+`NONEMPTY_SYNC_SCALARS=false` and
+`REASON=sync_header_or_row_invalid`. Since this precise reason
+comes after an error-free, return-code-zero fixed-argv sync
+invocation and unchanged dedicated server, the owner-local
+evidence **establishes a matched disposable whoami and a
+completed Sync command attempt**, but neither the actual
+installed-vendor empty-state output nor any nonempty row shape.
+No private stdout/stderr was published.
+
+Direct inspection of upstream `meganz/MEGAcmd` source (the
+master branch as retrieved for this research, not an assertion
+about the owner's installed package version) identified a narrow
+explanation for the original invalid result:
+- `src/sync_command.cpp`, `printSyncList()`, does **not**
+  register any column headers if `syncList.size()==0`.
+- `src/megacmdexecuter.cpp` constructs `ColumnDisplayer`,
+  asks `printSyncList()` to populate it, and writes `cd.str()`.
+- `src/megacmdcommonutils.cpp`, `ColumnDisplayer::print()`,
+  with nonempty `--col-separator`, emits `std::endl` even
+  when its selected field-name collection is empty; on the
+  Linux host this is potentially one exact byte `b"\n"`.
+
+References:
+https://github.com/meganz/MEGAcmd/blob/master/src/sync_command.cpp
+https://github.com/meganz/MEGAcmd/blob/master/src/megacmdexecuter.cpp
+https://github.com/meganz/MEGAcmd/blob/master/src/megacmdcommonutils.cpp
+
+The disposable probe now recognizes **only exact single-newline
+stdout** with clean exit, empty stderr, matching `whoami`
+and unchanged dedicated server as
+`sync_source_blank_line_candidate_unqualified`; it remains
+`PHASE3B=UNQUALIFIED` and does **not** infer an authenticated
+empty Sync state or permit cloud reads in production. Zero
+stdout is a different condition; an unexpected header returns
+the fixed `sync_unexpected_header_unqualified` code without
+publishing actual bytes. All other unknown/malformed outputs
+still fail closed. Pure fake-only regression covers the source-
+blank candidate, multi-newline, CRLF until observed, header-only,
+unexpected untrusted header, malformed row, a mismatched account,
+and the previously qualified synthetic row shape. An installed-
+vendor repeat using the exact pinned source is pending.
+
+The owner described the separate account as having no data; no
+Sync must be created or uploaded to observe this branch.
+Even if the candidate shape appears in the local run, further
+separately authorized, controlled **nonempty** Sync evidence and
+snapshot identity checks are required before Phase 3b can
+qualify any real Sync row lifecycle.

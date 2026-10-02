@@ -26,6 +26,12 @@ assert 'stream=tty_out' in source
 assert 'os.open("/dev/tty", os.O_RDWR | os.O_NOCTTY)' in source
 assert 'os.fdopen(child, mode, encoding="utf-8",' in source
 assert '"sync_no_snapshot_unqualified"' in source
+assert '"sync_source_blank_line_candidate_unqualified"' in source
+assert '"sync_unexpected_header_unqualified"' in source
+assert probe["parse_snapshot"](b"\n") == "source_blank_line_candidate"
+assert probe["parse_snapshot"](b"\n\n") == "invalid"
+assert probe["parse_snapshot"](b"\r\n") == "invalid"
+assert probe["parse_snapshot"](b"ID|RUN_STATE|STATUS\n") == "header_only"
 assert 'warnings.simplefilter("error", getpass.GetPassWarning)' in source
 assert '["--read-disposable-session-only"]' in source
 assert '"--output-cols=ID,RUN_STATE,STATUS"' in source
@@ -275,6 +281,39 @@ with mock.patch.object(g["subprocess"], "Popen",
                                             assert "sync_no_snapshot_unqualified" in output
                                             assert "DISPOSABLE_ACCOUNT_MATCH=true" in output
                                             assert "NONEMPTY_SYNC_SCALARS=false" in output
+                                            assert len(simulated_calls) == 2
+
+                                        simulated_calls.clear()
+                                        def blank_sync(argv, env):
+                                            simulated_calls.append(tuple(argv))
+                                            if argv[1] == "whoami":
+                                                return 0, b"Account: fixture@example.invalid\n", b"", None
+                                            return 0, b"\n", b"", None
+                                        with mock.patch.dict(
+                                                g, {"bounded_read": blank_sync}):
+                                            code, output = run_main(
+                                                ["--read-disposable-session-only"])
+                                            assert code == 21
+                                            assert "sync_source_blank_line_candidate_unqualified" in output
+                                            assert "DISPOSABLE_ACCOUNT_MATCH=true" in output
+                                            assert "NONEMPTY_SYNC_SCALARS=false" in output
+                                            assert "fixture@example.invalid" not in output
+                                            assert len(simulated_calls) == 2
+
+                                        simulated_calls.clear()
+                                        def unknown_header_sync(argv, env):
+                                            simulated_calls.append(tuple(argv))
+                                            if argv[1] == "whoami":
+                                                return 0, b"Account: fixture@example.invalid\n", b"", None
+                                            return 0, b"PRIVATE_FAKE_CANARY\n", b"", None
+                                        with mock.patch.dict(
+                                                g, {"bounded_read": unknown_header_sync}):
+                                            code, output = run_main(
+                                                ["--read-disposable-session-only"])
+                                            assert code == 21
+                                            assert "sync_unexpected_header_unqualified" in output
+                                            assert "PRIVATE_FAKE_CANARY" not in output
+                                            assert "DISPOSABLE_ACCOUNT_MATCH=true" in output
                                             assert len(simulated_calls) == 2
 
 print("PASS MegaQML disposable read-only probe fake-only contract")

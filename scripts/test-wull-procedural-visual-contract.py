@@ -72,7 +72,8 @@ assert "anchors.bottomMargin" not in host
 assert "width: root.verticalEdge ? 10 : 28" in host
 assert "height: root.verticalEdge ? 28 : 10" in host
 assert "color: AbyssStyle.surface" in host
-assert "border.color: Qt.alpha(AbyssStyle.specular, 0.08" in host
+assert "border.width: 0" in host
+assert "border.color: Qt.alpha(AbyssStyle.specular" not in host
 assert perimeter.count("AbyssCompanion {") == 1
 assert perimeter.count("CompanionBridge {") == 1
 assert 'WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible)' in perimeter

@@ -1,0 +1,29 @@
+{
+  "id": "JOB-MEGAQML-F1-IDENTITY-20261003-001",
+  "base_sha": "0b344976fa5586e8a80822b5689cfdbba9e344ed",
+  "profile_id": "profile-a25585b748dd4220",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "scripts/test-megaqml-f1-deployed-source-identity.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "scripts/test-megaqml-phase3b-fixture-remote-ls-classify.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    }
+  ]
+}

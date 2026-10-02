@@ -48,7 +48,9 @@ def summary(reason, *, server=False, identity=False, rows=False):
         "disposable_server_not_running", "ambiguous_private_server",
         "server_changed_during_probe", "tty_required",
         "operator_confirmation_mismatch", "disposable_email_format_invalid",
-        "tty_confirmation_unavailable", "whoami_timeout",
+        "disposable_email_empty", "disposable_email_surrounding_whitespace",
+        "disposable_email_non_ascii", "tty_confirmation_unavailable",
+        "whoami_timeout",
         "whoami_output_capped", "whoami_failed_or_ambiguous",
         "account_identity_mismatch", "sync_timeout", "sync_output_capped",
         "sync_failed_or_diagnostic", "sync_header_or_row_invalid",
@@ -211,6 +213,19 @@ def parse_snapshot(raw):
         ids.add(ident)
     return "nonempty_shape"
 
+def classify_disposable_email(value):
+    # Fixed finite diagnostics only: never print input/length or normalize
+    # into a *different* expected account identity.
+    if not value:
+        return "disposable_email_empty"
+    if value != value.strip():
+        return "disposable_email_surrounding_whitespace"
+    if not value.isascii():
+        return "disposable_email_non_ascii"
+    if len(value) > 254 or not IDENTITY.fullmatch(value.encode("ascii")):
+        return "disposable_email_format_invalid"
+    return None
+
 def tty_confirmation():
     # This is deliberately distinct from the previous failed r+ text open:
     # low-level O_NOCTTY already succeeded on the owner's dedicated local
@@ -258,9 +273,9 @@ def tty_confirmation():
                     "Disposable MEGA email (not logged): ",
                     stream=tty_out,
                 )
-            if (len(expected) > 254 or not expected.isascii()
-                    or not IDENTITY.fullmatch(expected.encode("ascii"))):
-                return "disposable_email_format_invalid", None
+            reason = classify_disposable_email(expected)
+            if reason is not None:
+                return reason, None
             return None, expected.encode("ascii")
     except (OSError, EOFError, UnicodeError, ValueError,
             getpass.GetPassWarning):

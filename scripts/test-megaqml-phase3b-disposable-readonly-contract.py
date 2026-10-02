@@ -17,6 +17,10 @@ source = (HERE / "megaqml-phase3b-disposable-readonly-sync.py").read_text()
 assert 'EXPECTED_USER = "megaqml-disposable"' in source
 assert '"operator_confirmation_mismatch"' in source
 assert '"disposable_email_format_invalid"' in source
+assert '"disposable_email_empty"' in source
+assert '"disposable_email_surrounding_whitespace"' in source
+assert '"disposable_email_non_ascii"' in source
+assert 'def classify_disposable_email(' in source
 assert '"tty_confirmation_unavailable"' in source
 assert 'stream=tty_out' in source
 assert 'os.open("/dev/tty", os.O_RDWR | os.O_NOCTTY)' in source
@@ -141,6 +145,25 @@ with mock.patch.object(g["subprocess"], "Popen",
     reason, private = fake_tty_case("READ_DISPOSABLE_ONLY\n",
                                     email="INVALID FAKE EMAIL")
     assert reason == "disposable_email_format_invalid" and private is None
+    reason, private = fake_tty_case("READ_DISPOSABLE_ONLY\n",
+                                    email="")
+    assert reason == "disposable_email_empty" and private is None
+    reason, private = fake_tty_case("READ_DISPOSABLE_ONLY\n",
+                                    email=" fixture@example.invalid")
+    assert reason == "disposable_email_surrounding_whitespace" and private is None
+    reason, private = fake_tty_case("READ_DISPOSABLE_ONLY\n",
+                                    email="fixture@example.invalid ")
+    assert reason == "disposable_email_surrounding_whitespace" and private is None
+    reason, private = fake_tty_case("READ_DISPOSABLE_ONLY\n",
+                                    email="té@example.invalid")
+    assert reason == "disposable_email_non_ascii" and private is None
+    assert g["classify_disposable_email"]("fixture+alias@example.invalid") is None
+    assert g["classify_disposable_email"]("bad@@example.invalid") == "disposable_email_format_invalid"
+    for reason in ("disposable_email_empty",
+                   "disposable_email_surrounding_whitespace",
+                   "disposable_email_non_ascii",
+                   "disposable_email_format_invalid"):
+        assert "fixture@example.invalid" not in g["summary"](reason)
     reason, private = fake_tty_case("READ_DISPOSABLE_ONLY\n",
                                     failure="getpass")
     assert reason == "tty_confirmation_unavailable" and private is None

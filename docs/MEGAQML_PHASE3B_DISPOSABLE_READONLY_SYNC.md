@@ -253,3 +253,34 @@ disposable fixture must be separately authorized and observed to
 consider any Phase 3b row-shape qualification. Never create
 Sync jobs, upload files, turn on writes or unlock the ten cloud
 domains as part of this read-only observation.
+
+## Owner local prompt accepted; disposable email gate diagnostic refinement
+
+The owner ran the SHA-pinned real local installed MEGAcmd read-only
+probe with a separate OS user/account. The no-vendor fake-only contract
+passed, the existing server matched, and the actual opt-in prompt
+`READ_DISPOSABLE_ONLY` was visibly accepted. The private no-echo
+email prompt was displayed, but the probe reported the broad
+`disposable_email_format_invalid` reason. There was **no
+`whoami` or `sync` invocation**: this result does not attest
+a bad login, account identity or actual Sync output.
+
+The probe now classifies only finite, non-sensitive format outcomes:
+`disposable_email_empty` (no string returned),
+`disposable_email_surrounding_whitespace` (input needs local
+manual correction), `disposable_email_non_ascii`
+(the current ASCII identity grammar cannot represent the
+input) and `disposable_email_format_invalid` (all remaining
+length/grammar failures). It does not print the received email,
+its length, terminal error detail, or normalize a different
+identity silently. Added fake-only tests of each class plus a
+nominal plus-address case. This refinement changes **neither**
+the read-only vendor argument sequence nor independent
+UID/server/package guards. In a subsequent local run, if the
+input passes validation, only fixed bounded `whoami` then
+`sync` are allowed.
+
+The account is owner-described as empty; `sync` returning only
+a header or zero stdout remains insufficient to qualify row
+shape or the Phase 3b runtime. Do not fabricate Sync fixtures
+or create a Sync job under the current read-only approval.

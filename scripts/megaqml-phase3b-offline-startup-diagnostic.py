@@ -25,6 +25,11 @@ CATEGORIES = {
  "sandbox_server_log_permission_failure",
  "sandbox_server_log_network_event",
  "sandbox_server_log_other",
+ "sandbox_client_library_missing",
+ "sandbox_client_socket_failure",
+ "sandbox_client_server_launch_failed",
+ "sandbox_client_server_handshake_failed",
+ "sandbox_client_output_limited",
  "sandbox_supervisor_error",
 }
 def classify(raw):
@@ -45,6 +50,25 @@ def classify(raw):
         return "sandbox_server_log_network_event"
     return "sandbox_server_log_other"
 
+def classify_client(raw):
+    """Fixed fallback only when the private sandbox server log is absent."""
+    s = raw.decode("utf-8", "replace").lower()
+    if ("error while loading shared libraries" in s
+            or "cannot open shared object file" in s):
+        return "sandbox_client_library_missing"
+    if ("error creating runtime directory for socket file" in s
+            or "could not get runtime folder for socket path" in s):
+        return "sandbox_client_socket_failure"
+    if ("couln't initiate megacmd server" in s
+            or "couldn't initiate megacmd server" in s
+            or "megacmd server exit with code" in s):
+        return "sandbox_client_server_launch_failed"
+    if ("unable to connect to service" in s
+            or "please ensure mega-cmd-server is running" in s
+            or "megacmd server is not responding" in s):
+        return "sandbox_client_server_handshake_failed"
+    return "sandbox_server_log_absent"
+
 def diagnostic(version):
     p = subprocess.Popen([version, "-l"], stdin=subprocess.DEVNULL,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -56,6 +80,7 @@ def diagnostic(version):
     captured = {"stdout": bytearray(), "stderr": bytearray()}
     until = time.monotonic() + 8.5
     timeout = False
+    output_limited = False
     try:
         while stream.get_map() or p.poll() is None:
             if time.monotonic() >= until:
@@ -68,9 +93,9 @@ def diagnostic(version):
                 else:
                     captured[ready.data].extend(part)
                     if sum(map(len, captured.values())) > 8192:
-                        timeout = True
+                        output_limited = True
                         break
-            if timeout:
+            if timeout or output_limited:
                 break
     finally:
         if p.poll() is None:
@@ -96,7 +121,8 @@ def diagnostic(version):
         except (FileNotFoundError, PermissionError, OSError):
             pass
     if not found:
-        category = "sandbox_server_log_absent"
+        category = ("sandbox_client_output_limited" if output_limited else
+                    classify_client(b"\n".join(captured.values())))
     else:
         category = classify(b"\n".join(chunks))
     # No raw vendor client output or ephemeral server log may escape.
@@ -111,6 +137,11 @@ def main():
             assert classify(b"permission denied") == "sandbox_server_log_permission_failure"
             assert classify(b"network is unreachable") == "sandbox_server_log_network_event"
             assert classify(b"PRIVATE_FAKE_CANARY") == "sandbox_server_log_other"
+            assert classify_client(b"error while loading shared libraries: FAKE") == "sandbox_client_library_missing"
+            assert classify_client(b"error creating runtime directory for socket file") == "sandbox_client_socket_failure"
+            assert classify_client(b"Couln't initiate MEGAcmd server") == "sandbox_client_server_launch_failed"
+            assert classify_client(b"Unable to connect to service: fake") == "sandbox_client_server_handshake_failed"
+            assert classify_client(b"PRIVATE_FAKE_CANARY") == "sandbox_server_log_absent"
             print(json.dumps({"category": "sandbox_server_log_other",
                               "client_timed_out": False,
                               "server_log_present": False}))
@@ -140,6 +171,11 @@ CATEGORIES = frozenset({
     "sandbox_server_log_permission_failure",
     "sandbox_server_log_network_event",
     "sandbox_server_log_other",
+    "sandbox_client_library_missing",
+    "sandbox_client_socket_failure",
+    "sandbox_client_server_launch_failed",
+    "sandbox_client_server_handshake_failed",
+    "sandbox_client_output_limited",
     "sandbox_supervisor_error",
 })
 

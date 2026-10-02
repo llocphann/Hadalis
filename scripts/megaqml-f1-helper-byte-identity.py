@@ -53,18 +53,35 @@ def source_gate(source, expect_sha, executing_path=None):
 
 
 def digest_helper(path):
+    """Hash stable ELF bytes from the actual opened descriptor, fail closed."""
     try:
-        info = path.stat()
-        if (not stat.S_ISREG(info.st_mode) or
-                not info.st_mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH) or
-                info.st_size < 4 or info.st_size > MAX_HELPER_BYTES):
+        target = path.resolve(strict=True)
+        initial = path.stat()
+        fingerprint = lambda x: (x.st_dev, x.st_ino, x.st_mode, x.st_size,
+                                 x.st_mtime_ns, x.st_ctime_ns)
+        if (not stat.S_ISREG(initial.st_mode) or
+                not initial.st_mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH) or
+                initial.st_size < 4 or initial.st_size > MAX_HELPER_BYTES):
+            return None
+
+        def path_unchanged():
+            return (path.resolve(strict=True) == target and
+                    fingerprint(path.stat()) == fingerprint(initial))
+
+        if not path_unchanged():
             return None
         h = hashlib.sha256()
         consumed = 0
-        with path.open("rb") as stream:
-            if stream.read(4) != b"\x7fELF":
+        with target.open("rb") as stream:
+            opened = os.fstat(stream.fileno())
+            # A path stat before/after read does not identify the descriptor
+            # if the file was replaced during open or an alias was retargeted.
+            if fingerprint(opened) != fingerprint(initial):
                 return None
-            h.update(b"\x7fELF")
+            prefix = stream.read(4)
+            if prefix != b"\\x7fELF":
+                return None
+            h.update(prefix)
             consumed = 4
             while True:
                 data = stream.read(65536)
@@ -74,10 +91,11 @@ def digest_helper(path):
                 if consumed > MAX_HELPER_BYTES:
                     return None
                 h.update(data)
-        after = path.stat()
-        fingerprint = lambda x: (x.st_dev, x.st_ino, x.st_mode, x.st_size,
-                                 x.st_mtime_ns, x.st_ctime_ns)
-        if consumed != info.st_size or fingerprint(info) != fingerprint(after):
+            # Detect in-place writes while hashing the already-open inode.
+            if (consumed != opened.st_size or
+                    fingerprint(os.fstat(stream.fileno())) != fingerprint(opened)):
+                return None
+        if not path_unchanged():
             return None
         return h.digest()
     except (OSError, ValueError, RuntimeError):

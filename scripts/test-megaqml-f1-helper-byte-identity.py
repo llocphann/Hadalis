@@ -73,6 +73,22 @@ with tempfile.TemporaryDirectory() as d:
     m.MAX_HELPER_BYTES = 8
     check("reference_unqualified")
     m.MAX_HELPER_BYTES = 128 * 1024 * 1024
+
+    # Simulate path/open descriptor substitution with matching fake bytes:
+    # a path-only pre/post stat could falsely accept this unrelated inode.
+    from unittest import mock
+    alternate = base / "alternate-helper"
+    alternate.write_bytes(fake_elf)
+    alternate.chmod(0o755)
+    real_open = Path.open
+    def swapped_descriptor(path, *args, **kwargs):
+        if path == ref:
+            return real_open(alternate, *args, **kwargs)
+        return real_open(path, *args, **kwargs)
+    with mock.patch.object(Path, "open", swapped_descriptor):
+        assert m.digest_helper(ref) is None
+        check("reference_unqualified")
+    check("binary_bytes_match_only")
     assert m.source_gate(src, "not a commit", executing_path=helper) == "invalid_pin"
 
     (src / m.SCRIPT).parent.mkdir(parents=True)

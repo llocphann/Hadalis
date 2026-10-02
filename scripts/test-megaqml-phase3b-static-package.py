@@ -109,4 +109,19 @@ assert published["state"] == "UNVERIFIED"
 assert published["package_version"] is None
 assert published["server_version_qualified"] is False
 assert "PRIVATE_ACCOUNT_CANARY" not in output.getvalue()
+# Review evidence publisher source without executing git, bubblewrap or vendor.
+publisher = (root / "scripts/megaqml-phase3b-static-owner-local.sh").read_text("utf-8")
+for token in (
+        "--acknowledge-vendor-free-static-triage",
+        "test-megaqml-phase3b-static-package.py",
+        "megaqml-phase3b-static-package.py",
+        "server_version_qualified", "vendor_executed", "package_version",
+        "test-megaqml-phase2p-history-guard.py",
+        "git diff --cached --name-only",
+        "git push --quiet origin HEAD:refs/heads/dev"):
+    assert token in publisher, token
+for unsafe in ("--force", "git reset", "git stash",
+               "mega-version -l", "mega-login", "mega-whoami"):
+    assert unsafe not in publisher, unsafe
+
 print("PASS MegaQML Phase 3b vendor-free package metadata fake fixtures")

@@ -17,6 +17,7 @@ import sys
 import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 INSPECTOR = ROOT / "scripts/wull-existing-matrix-evidence.py"
 SOURCE = "8325d22cd7f37d92d36239e015902a52ed6ee986"
 OLD_JOB = "JOB-WULL-VM-P1E0042-20261002-03"
@@ -24,6 +25,8 @@ RELATIVE = Path("docs/wull-visual/runs/20261002T160958Z-8325d22")
 PNG = RELATIVE / "curated-four-pose.png"
 PROVENANCE = RELATIVE / "curated-provenance.json"
 REMOTE = "https://github.com/llocphann/Hadalis.git"
+SSH_REMOTE = "git@github.com:llocphann/Hadalis.git"
+PROFILE = "profile-1e0042aca8e24db2"
 MAX_SAFE = 512 * 1024
 
 class Unsafe(Exception):
@@ -91,7 +94,8 @@ def old_output_provenance(raw):
          "OLD_CAPTURE_DIGEST_MISMATCH")
 
 def command(argv, timeout=25):
-    env = os.environ.copy()
+    from automation.manager.credentials import git_env
+    env = git_env()
     env.update({"GIT_TERMINAL_PROMPT": "0",
                 "GCM_INTERACTIVE": "never", "GIT_ASKPASS": "/bin/false",
                 "SSH_ASKPASS": "/bin/false"})
@@ -127,8 +131,20 @@ def publish_curated(curated, proof):
     need(authored.returncode == 0, "PUBLIC_COMMIT_UNQUALIFIED")
     # Never blindly retry an uncertain push. GitHub effects must be inspected
     # before any distinct publication/recovery turn.
-    pushed = command(["git", "push", REMOTE, "HEAD:refs/heads/dev"], 35)
-    need(pushed.returncode == 0, "PUSH_RESULT_NEEDS_GITHUB_RECONCILIATION")
+    # Match the canonical worker: only this profile’s saved helper, or
+    # configured system SSH credentials when this profile has no token.
+    from automation.manager.credentials import git_options, has_token
+    push_remote = REMOTE if has_token(PROFILE) else SSH_REMOTE
+    pushed = command(["git", *git_options(PROFILE, push_remote), "push",
+                      push_remote, "HEAD:refs/heads/dev"], 35)
+    if pushed.returncode:
+        category = pushed.stderr.lower()
+        if "non-fast-forward" in category or "[rejected]" in category or "fetch first" in category:
+            raise Unsafe("PUSH_REF_MOVED")
+        if ("authentication failed" in category or "permission denied" in category
+                or "could not read username" in category):
+            raise Unsafe("PUSH_AUTH_UNAVAILABLE")
+        raise Unsafe("PUSH_RESULT_NEEDS_GITHUB_RECONCILIATION")
 
 def main():
     need(sys.argv[1:] in (["--prepare-safe-only"],
@@ -182,6 +198,7 @@ if __name__ == "__main__":
                 "ALREADY_PUBLISHED_OR_CONFLICT", "PUBLIC_STAGE_UNQUALIFIED",
                 "PUBLIC_COMMIT_UNQUALIFIED",
                 "PUSH_RESULT_NEEDS_GITHUB_RECONCILIATION",
+                "PUSH_REF_MOVED", "PUSH_AUTH_UNAVAILABLE",
                 "INSPECTOR_GATE_UNQUALIFIED", "CURATED_PNG_GATE_UNQUALIFIED"}
         label = str(exc)
         print("GATE=" + (label if label in safe

@@ -171,9 +171,11 @@ pub(crate) fn run_auth_dialog(
     output_cap: usize,
 ) -> Result<AuthDialogResult> {
     let PtyPair { master, slave } = open_private_pty()?;
+    // Own the master BEFORE fallible setup or spawn. Dropping reader closes
+    // this private PTY even if executable startup fails.
+    let mut reader = unsafe { File::from_raw_fd(master) };
     let mut command = configure_child(program, slave)?;
     let mut child = command.spawn().context("spawn MEGAcmd interactive shell")?;
-    let mut reader = unsafe { File::from_raw_fd(master) };
     let mut writer = match reader.try_clone() {
         Ok(writer) => writer,
         Err(error) => {
@@ -348,6 +350,32 @@ test "$LANG" = "en_US.UTF-8" || exit 49
             .env("LANG", "en_US.UTF-8");
         sanitize_vendor_environment(&mut command);
         assert!(command.status().unwrap().success());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn pty_failed_fake_vendor_spawn_does_not_leak_master_descriptors() {
+        // Never contacts MEGA: remove an inert fake executable before spawn.
+        let vendor = fake_vendor("#!/bin/sh\nexit 50\n");
+        fs::remove_file(&vendor).unwrap();
+        let count_fds = || fs::read_dir("/proc/self/fd").unwrap().count();
+        let baseline = count_fds();
+        for _ in 0..24 {
+            let result = run_auth_dialog(
+                &vendor,
+                "fixture@example.invalid",
+                "FAKE_PRIVATE_CANARY",
+                None,
+                Duration::from_millis(500),
+                512,
+            );
+            let err = result.expect_err("missing inert fake vendor must fail");
+            assert!(!format!("{err:?}").contains("FAKE_PRIVATE_CANARY"));
+        }
+        // Parallel unit tests may briefly own descriptors. A repeated 24-FD
+        // master leak exceeds this bounded concurrent-FD allowance.
+        assert!(count_fds() <= baseline + 4, "failed launches leaked PTY descriptors");
+        let _ = fs::remove_dir_all(vendor.parent().unwrap());
     }
 
     #[test]

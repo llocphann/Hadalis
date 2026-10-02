@@ -18,7 +18,8 @@ m = runpy.run_path(str(source), run_name="client_signal_inert_test")
 m["self_test"]()  # Exercises inner pure signal parser without MEGAcmd.
 assert '"--acknowledge-isolated-offline-client-signals"' in text
 assert "private_megacmd_lib=True" in text
-assert "client_exit_signal(p.returncode, timeout)" in m["INNER"]
+assert "client_exit_signal(" in m["INNER"]
+assert "p.returncode, timeout, output_limited)" in m["INNER"]
 assert 'captured["stdout"]' in m["INNER"]
 assert '"client_version_line": version_line' in m["INNER"]
 assert '"client_exit_code": exit_code' in m["INNER"]

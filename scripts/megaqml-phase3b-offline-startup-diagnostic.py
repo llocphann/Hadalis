@@ -82,8 +82,10 @@ def select_category(chunks, captured, output_limited):
         return "sandbox_client_output_limited"
     return classify_client(b"\n".join(captured.values()))
 
-def client_exit_signal(returncode, timed_out):
-    """Bounded numeric exit, or a fixed signal/timeout/unobserved class."""
+def client_exit_signal(returncode, timed_out, output_limited=False):
+    """Bounded exit; never report a code from our own output-cap kill."""
+    if output_limited:
+        return "unobserved", None
     if timed_out:
         return "timed_out", None
     if type(returncode) is not int:
@@ -166,7 +168,8 @@ def diagnostic(version):
             pass
     category = select_category(chunks, captured, output_limited)
     # Keep raw bytes, version digits, file paths and logs in this namespace.
-    exit_class, exit_code = client_exit_signal(p.returncode, timeout)
+    exit_class, exit_code = client_exit_signal(
+        p.returncode, timeout, output_limited)
     version_line = client_version_signal(
         captured["stdout"], timeout or output_limited)
     return {"category": category, "client_timed_out": timeout,
@@ -196,6 +199,7 @@ def main():
             assert client_exit_signal(None, False) == ("unobserved", None)
             assert client_exit_signal(300, False) == ("unobserved", None)
             assert client_exit_signal(-9, True) == ("timed_out", None)
+            assert client_exit_signal(-9, False, True) == ("unobserved", None)
             assert client_version_signal(
                 b"MEGAcmd version: 2.6.0.0: code 2060000\n", False
             ) == "recognized"

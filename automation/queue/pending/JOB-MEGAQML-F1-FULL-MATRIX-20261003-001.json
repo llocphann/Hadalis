@@ -1,0 +1,18 @@
+{
+  "id": "JOB-MEGAQML-F1-FULL-MATRIX-20261003-001",
+  "profile_id": "profile-a25585b748dd4220",
+  "base_sha": "2942ea850f6efc4aeeccfcb6430e820b2b004ba0",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-c",
+          "pin=\"$(git rev-parse --verify HEAD)\" || exit 66; exec bash scripts/test-megaqml-phase2-local.sh \"$pin\" --local-only"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1800
+      }
+    }
+  ]
+}

@@ -79,7 +79,7 @@ ShellRoot {
             bottom: edgeName === "bottom" ? innerDepth : 14
         })
         readonly property bool shaderReady: realField.ready
-        readonly property alias host: actualCompanion
+        property alias host: actualCompanion
         AbyssField {
             id: realField
             anchors.fill: parent

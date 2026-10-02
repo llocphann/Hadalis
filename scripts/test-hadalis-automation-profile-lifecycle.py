@@ -47,13 +47,64 @@ def main():
         with patch.object(daemon,'native_command',side_effect=t):
             daemon.tick(100);t.reply(a);t.reply(b);daemon.tick(102)
             def external(op,**kw):
-                if op=='cursor' and kw['conversation_id']==store.read_snapshot()[1]['profiles'][a]['session']['conversation_id']:
-                    return {'current_node':'human-edited-turn'}
+                if kw.get('conversation_id')==store.read_snapshot()[1]['profiles'][a]['session']['conversation_id']:
+                    if op=='cursor': return {'current_node':'human-edited-turn'}
+                    if op=='branch': return {'relation':'LATER_USER_TURN'}
                 return t(op,**kw)
             with patch.object(daemon,'native_command',side_effect=external):daemon.tick(104)
             state=store.read_snapshot()[1]
             assert state['profiles'][a]['status']=='session_changed'
             assert state['profiles'][b]['pending']
+
+    # An internal, non-user node after the exact assistant final is safe to
+    # continue only if two fresh branch observations agree on that parent.
+    with environment():
+        import uuid
+        a,b=profile('Descendant'),profile('Independent');t=Transport()
+        with patch.object(daemon,'native_command',side_effect=t):
+            daemon.tick(100);t.reply(a);t.reply(b);daemon.tick(102)
+            chat=store.read_snapshot()[1]['profiles'][a]['session']['conversation_id']
+            descendant=str(uuid.uuid5(uuid.NAMESPACE_URL,'safe-managed-descendant'))
+            def benign(op,**kw):
+                if kw.get('conversation_id')==chat:
+                    if op=='cursor':return {'current_node':descendant,'model':'auto'}
+                    if op=='branch':return {'relation':'NON_USER_DESCENDANT','current_node':descendant}
+                return t(op,**kw)
+            with patch.object(daemon,'native_command',side_effect=benign):
+                daemon.tick(104)
+            state=store.read_snapshot()[1]
+            assert state['profiles'][a]['desired']=='run'
+            assert state['profiles'][a]['pending']['parent_message_id']==descendant
+            assert state['profiles'][b]['pending']
+            assert sum(e['kind']=='managed_branch_descendant_verified' and
+                e['profile_id']==a for e in state['events'])==1
+            assert t.count('submit')==4
+    # A changed branch between first verification and dispatch-intent
+    # revalidation must never cause a submission, even if both profiles run.
+    with environment():
+        import uuid
+        a,b=profile('Raced'),profile('Independent');t=Transport()
+        with patch.object(daemon,'native_command',side_effect=t):
+            daemon.tick(100);t.reply(a);t.reply(b);daemon.tick(102)
+            chat=store.read_snapshot()[1]['profiles'][a]['session']['conversation_id']
+            descendant=str(uuid.uuid5(uuid.NAMESPACE_URL,'raced-managed-descendant'))
+            observed=[0]
+            def raced(op,**kw):
+                if kw.get('conversation_id')==chat:
+                    if op=='cursor':return {'current_node':descendant,'model':'auto'}
+                    if op=='branch':
+                        observed[0]+=1
+                        return {'relation':'NON_USER_DESCENDANT','current_node':descendant} if observed[0]==1 else {'relation':'LATER_USER_TURN'}
+                return t(op,**kw)
+            with patch.object(daemon,'native_command',side_effect=raced):
+                daemon.tick(104)
+            state=store.read_snapshot()[1]
+            assert observed[0]==2
+            assert state['profiles'][a]['status']=='session_changed'
+            assert state['profiles'][a]['desired']=='paused'
+            assert state['profiles'][a]['pending'] is None
+            assert state['profiles'][b]['pending']
+            assert t.count('submit')==3
     print('PASS: staged project identity, pending Stop/Restart, private removal archive, independent human-edit guard')
 
 if __name__=='__main__':main()

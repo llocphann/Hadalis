@@ -80,7 +80,7 @@ with tempfile.TemporaryDirectory(prefix="wull-signal-child-inert-") as directory
         (5, ("NONZERO", "NONE"), 1),
     )
     for returncode, expected, exitcode in cases:
-        with patch.dict(os.environ, {"QT_QPA_PLATFORM": "offscreen"}), \\
+        with patch.dict(os.environ, {"QT_QPA_PLATFORM": "offscreen"}), \
                 patch.object(m["subprocess"], "run",
                              return_value=SimpleNamespace(returncode=returncode)) as fake:
             try:

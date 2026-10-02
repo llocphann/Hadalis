@@ -35,6 +35,9 @@ const parsedPartial = parse(JSON.stringify(partial), "test-id");
 assert.equal(parsedPartial.installed, false);
 assert.equal(parsedPartial.login, true);
 assert.equal(parsedPartial.server, false); count++;
+const noCanonicalPath = good();
+noCanonicalPath.result.binaries[0].path = null;
+assert.equal(parse(JSON.stringify(noCanonicalPath), "test-id").installed, true); count++;
 const secondary = good();
 secondary.result.binaries[1].executable = false;
 secondary.result.binaries[3].executable = false;
@@ -53,7 +56,16 @@ for (const modify of [
     x=>x.result.secret_argv=true, x=>x.result.python_mutation_fallback=true,
     x=>x.result.binaries[1].name="mega-cmd",
     x=>x.result.binaries[0].executable="true",
-    x=>x.result.server_available=false, x=>x.result.binaries=[]
+    x=>x.result.server_available=false, x=>x.result.binaries=[],
+    // Unknown fields and non-string paths are rejected, never surfaced to UI.
+    x=>x.private_token="FAKE_PRIVATE_CANARY",
+    x=>delete x.error,
+    x=>x.result.account_email="FAKE_PRIVATE_CANARY",
+    x=>delete x.result.auth_transport,
+    x=>x.result.binaries[0].private_session="FAKE_PRIVATE_CANARY",
+    x=>delete x.result.binaries[0].path,
+    x=>x.result.binaries[0].path={secret:"FAKE_PRIVATE_CANARY"},
+    x=>x.result.binaries[0].path=42
 ]) {
     const x = good(); modify(x);
     assert.throws(() => parse(JSON.stringify(x), "test-id")); count++;

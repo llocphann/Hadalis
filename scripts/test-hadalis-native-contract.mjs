@@ -23,9 +23,31 @@ const fake = (initialText=initial, sharedText=shared) => ({
 
 const result=inspectContractAssets(fake());
 assert.ok(result.contract);
-assert.deepEqual(Object.values(result.checks), Array(8).fill(true));
+assert.deepEqual(Object.values(result.checks), [true,true,true,true,true,true,true,true,false]);
 assert.equal(result.contract.api,"apiClient");
 assert.equal(result.contract.stream,"exportedScope");
+
+// A changed upstream import alias may prevent a static export lookup.
+// The fallback is allowed only when the exact shared asset is referenced;
+// runtime must still find exactly one API object with both capabilities.
+const alteredImport = initial.replace(
+  "import{Client as client}from './shared.js';",
+  "import{Unknown as unused}from './app-shared-def.js';"
+);
+const fallback = inspectContractAssets(fake(alteredImport));
+assert.ok(fallback.contract);
+assert.equal(fallback.checks.api_import, false);
+assert.equal(fallback.checks.api_export, false);
+assert.equal(fallback.checks.api_runtime_link, true);
+assert.equal(fallback.contract.api, null);
+assert.equal(fallback.contract.api_resolution, "unique_runtime_export");
+const unlinked = inspectContractAssets(fake(
+  alteredImport.replace("app-shared-def.js", "unrelated.js")
+));
+assert.equal(unlinked.contract, null);
+assert.equal(unlinked.checks.api_runtime_link, false);
+assert.equal(result.contract.api_resolution, "static_export");
+
 
 // Neighboring minifier symbols must not determine compatibility.
 const renamed = inspectContractAssets(fake(initial.replace("other=1","other=1,unrelated=3")));

@@ -147,7 +147,10 @@ def rgba_verified(raw):
             a = row[j - 4] if j >= 4 else 0
             b = prior[j]
             c = prior[j - 4] if j >= 4 else 0
-            if f == 1:
+            # PNG filter type 0 is the identity transform, not a failure.
+            if f == 0:
+                continue
+            elif f == 1:
                 row[j] = (row[j] + a) & 255
             elif f == 2:
                 row[j] = (row[j] + b) & 255

@@ -30,6 +30,10 @@ PINS = {
         "4cc05dbaf547a3eff366647cb388abe8c31af5d5",
     "modules/abyss/AbyssPerimeter.qml":
         "a3cd2a7bfbdf32dac2c7e42057a1dfaaeea214ac",
+    "modules/common/Config.qml":
+        "2bdf7d37f183b976d928fa15b0eb2ec57c646b60",
+    "scripts/wull-manual-offscreen-motion-geometry.py":
+        "0dd833ed05d54e9d1045553a1da8be8f66b6511a",
     "defaults/config.json": "e10d98c0f26d3e47c51cb8452bcd0d2cea735501",
 }
 ORIGINS = {

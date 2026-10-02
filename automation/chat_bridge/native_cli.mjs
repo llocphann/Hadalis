@@ -1,4 +1,4 @@
-import {diagnoseNativeRenderer, connectNative, nativeRead, nativeStreamStatus, nativeStreamReceipt, nativeServerStreamStatus, nativeModelCatalog, pollNativeTurn, resolveProject, nativePreflight, nativeSubmit, nativeResume, discoverSubmission} from "./native_adapter.mjs";
+import {nativeManagedBranch, diagnoseNativeRenderer, connectNative, nativeRead, nativeStreamStatus, nativeStreamReceipt, nativeServerStreamStatus, nativeModelCatalog, pollNativeTurn, resolveProject, nativePreflight, nativeSubmit, nativeResume, discoverSubmission} from "./native_adapter.mjs";
 import {operationErrorCode, operationErrorObservation} from "./native_errors.mjs";
 
 let browser, input;
@@ -21,7 +21,8 @@ try {
   const connection = await connectNative(); browser = connection.browser;
   const page = connection.page;
   let result;
-  if (input.op === "project") result = {project_id: await resolveProject(page, input.name)};
+  if (input.op === "branch") result = await nativeManagedBranch(page, input.conversation_id, input.project_id, input.expected_response_message_id);
+  else if (input.op === "project") result = {project_id: await resolveProject(page, input.name)};
   else if (input.op === "preflight") result = await nativePreflight(page, input);
   else if (input.op === "model_catalog") result = await nativeModelCatalog(page);
   else if (input.op === "read") result = await nativeRead(page, `/conversation/${input.conversation_id}`, {}, input.project_id);

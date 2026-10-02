@@ -1,4 +1,9 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import {spawnSync} from "node:child_process";
+import {fileURLToPath} from "node:url";
 import {inspectContractAssets, installedContract} from "../automation/chat_bridge/native_adapter.mjs";
 import {operationErrorCode} from "../automation/chat_bridge/native_errors.mjs";
 
@@ -41,4 +46,41 @@ assert.equal(ambiguous.checks.stream_scope,false);
 assert.equal(inspectContractAssets({files:[],read(){throw Error("unexpected read")}}).checks.initial_asset,false);
 assert.equal(operationErrorCode(new Error("unsupported Desktop stream contract [stream_scope]")),"DESKTOP_CAPABILITY_UNAVAILABLE");
 assert.equal(typeof installedContract,"function");
-console.log("PASS: native contract structural/ambiguity/fail-closed diagnostics");
+
+// The CLI must classify an incompatible installed bundle before CDP import,
+// without connecting to a real Desktop, hanging, or leaking archive source.
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), "hadalis-contract-test-"));
+try {
+  const badInitial = Buffer.from(initial.replace("startCompletionStream", "missingMethod"));
+  const sharedBytes = Buffer.from(shared);
+  const entries = {
+    "app-initial-test.js":{size:badInitial.length,offset:"0"},
+    "app-shared-test.js":{size:sharedBytes.length,offset:String(badInitial.length)}
+  };
+  const manifest = Buffer.from(JSON.stringify({
+    files:{webview:{files:{assets:{files:entries}}}}
+  }));
+  const header = Buffer.alloc(16);
+  header.writeUInt32LE(manifest.length + 8, 4);
+  header.writeUInt32LE(manifest.length, 12);
+  const archive = path.join(temp, "fake.asar");
+  fs.writeFileSync(archive, Buffer.concat([header,manifest,badInitial,sharedBytes]), {mode:0o600});
+  const start = Date.now();
+  const cli = spawnSync(process.execPath, [
+    fileURLToPath(new URL("../automation/chat_bridge/native_cli.mjs", import.meta.url))
+  ], {
+    input:JSON.stringify({op:"probe",error_observation:true}),
+    encoding:"utf8", timeout:6000,
+    env:{...process.env,HADALIS_DESKTOP_ASAR:archive,
+      HADALIS_CHATGPT_CDP_URL:"http://127.0.0.1:1",
+      HADALIS_PLAYWRIGHT_MODULE:"file:///nonexistent/playwright.mjs"}
+  });
+  assert.equal(cli.error,undefined);
+  assert.equal(cli.status,1);
+  assert.equal(JSON.parse(cli.stderr.trim()).code,"DESKTOP_CAPABILITY_UNAVAILABLE");
+  assert.ok(Date.now()-start < 6000);
+} finally {
+  fs.rmSync(temp,{recursive:true,force:true});
+}
+
+console.log("PASS: native contract structural/ambiguity/fail-closed diagnostics and early CLI rejection");

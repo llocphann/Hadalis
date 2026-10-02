@@ -26,4 +26,12 @@ assert func(example(62) * 500) == 37
 assert func(example(35).replace("test-wull-existing-matrix-evidence.py",
                                 "different-fake-test.py")) == 37
 assert func(example(72).replace("/opaque/hidden/scripts/", "")) == 35
+# Distinct bounded exact-line diagnostic without disclosing stack or message.
+detail = m["detail_private"]
+assert detail(example(62)) == 111  # positive test line62 / AssertionError
+assert detail(example(63).replace("AssertionError:", "TypeError:")) == 123
+assert detail(example(65).replace("AssertionError:", "ValueError:")) == 142
+assert detail(example(76)) == 39  # outside the independently proven stage
+assert detail("untrusted private diagnostic path") == 39
+
 print("WULL_OLD_FAKE_FAILURE_CLASSIFIER_INERT_PASS")

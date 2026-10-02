@@ -1,0 +1,37 @@
+{
+  "id": "JOB-WULL-ACTUAL-LAYOUT-P1E0042-20261003-39",
+  "base_sha": "c1f21b3ecd9bb689d2be14a137c9546964d691b3",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "scripts/test-wull-actual-panel-layout.cjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 45
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-production-surface-integration.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 55
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-procedural-visual-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 45
+      }
+    }
+  ]
+}

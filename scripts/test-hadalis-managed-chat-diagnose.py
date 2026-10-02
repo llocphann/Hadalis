@@ -77,6 +77,20 @@ def run():
     assert "PROFILE_1_BRANCH=NON_USER_DESCENDANT" in public
     assert "private-" not in public
 
+    # A protocol pause must expose only a fixed code, not private evidence.
+    protocol_state = {"profiles": {"p1": {**state["profiles"]["p1"],
+        "status":"evidence_required",
+        "recovery":{"kind":"response_protocol","code":"unsupported_diagnosis"}}}}
+    out = io.StringIO()
+    with patch.object(module,"read_snapshot",
+                      return_value=(config,protocol_state,[])):
+        with patch.object(module,"native_command",return_value={
+            "relation":"NON_USER_DESCENDANT"}):
+            with contextlib.redirect_stdout(out):
+                assert module.main()==0
+    assert "PROFILE_1_PROTOCOL_CODE=UNSUPPORTED_DIAGNOSIS" in out.getvalue()
+    assert "private-" not in out.getvalue()
+
     error = module.NativeOperationError({
         "code":"DESKTOP_RATE_LIMITED","resource":"conversation","http_status":429
     },"branch")

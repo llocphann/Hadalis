@@ -50,6 +50,48 @@ def run():
     assert relation(alternate, "not_present") == "EXPECTED_RESPONSE_NOT_IN_HISTORY"
     assert relation({"current_node": "missing", "mapping": {}}, "expected") ==         "EXPECTED_RESPONSE_NOT_IN_HISTORY"
     assert relation({}, "expected") == "HISTORY_UNAVAILABLE"
+    # The real diagnostic must use a compact read-only native operation, not
+    # the old full-history "read" operation (which exceeded the capture cap).
+    import contextlib
+    import io
+    from unittest.mock import patch
+
+    module = load()
+    config = {"profiles": [{"id":"p1","enabled":True}]}
+    state = {"profiles": {"p1": {
+        "status":"session_changed", "pending":None, "recovery":None,
+        "last_error":"Managed chat changed outside Automation; checkpoint retained",
+        "session":{"conversation_id":"private-chat","project_id":"private-project"},
+        "response_message_id":"private-response"
+    }}}
+    out = io.StringIO()
+    with patch.object(module,"read_snapshot",return_value=(config,state,[])):
+        with patch.object(module,"native_command",return_value={
+            "relation":"NON_USER_DESCENDANT"}) as query:
+            with contextlib.redirect_stdout(out):
+                assert module.main()==0
+            assert query.call_count==1
+            assert query.call_args.args==("branch",)
+            assert query.call_args.kwargs["expected_response_message_id"]=="private-response"
+    public = out.getvalue()
+    assert "PROFILE_1_BRANCH=NON_USER_DESCENDANT" in public
+    assert "private-" not in public
+
+    error = module.NativeOperationError({
+        "code":"DESKTOP_RATE_LIMITED","resource":"conversation","http_status":429
+    },"branch")
+    out = io.StringIO()
+    with patch.object(module,"read_snapshot",return_value=(config,state,[])):
+        with patch.object(module,"native_command",side_effect=error):
+            with contextlib.redirect_stdout(out):
+                assert module.main()==0
+    public = out.getvalue()
+    assert "PROFILE_1_BRANCH=READ_UNAVAILABLE" in public
+    assert "PROFILE_1_BRANCH_ERROR_CODE=DESKTOP_RATE_LIMITED" in public
+    assert "PROFILE_1_BRANCH_ERROR_RESOURCE=CONVERSATION" in public
+    assert "PROFILE_1_BRANCH_HTTP_STATUS=429" in public
+    assert "private-" not in public
+
     print("PASS: managed-chat identity diagnostic classification is deterministic")
 
 

@@ -10,6 +10,7 @@ import hashlib
 import json
 from pathlib import Path
 import runpy
+from unittest.mock import call, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNNER = ROOT / "scripts/wull-manual-offscreen-dynamic-geometry.py"
@@ -35,7 +36,26 @@ def blob(path):
         b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
 
 
-assert blob(RUNNER) == "9978fa6da0fd2e05b7d52a801fc9cce4a4e5131d"
+assert blob(RUNNER) == "fe1c828e7c2f0e4fdc4bb7340242062085db3118"
+
+# The former 512 KiB RLIMIT_FSIZE applied to *all* Quickshell private files,
+# not just captured stdout. Actual owner-local controls observed SIGXFSZ at
+# 512 KiB and one successful synthetic QML load at 8 MiB. Assert the process
+# limit by mocking setrlimit; do not call it on the local test process.
+assert model["MAX_LOG"] == 524288
+assert model["QS_CHILD_FILE_LIMIT"] == 8 * 1024 * 1024
+assert model["MAX_LOG"] < model["QS_CHILD_FILE_LIMIT"]
+resource_module = model["resource"]
+with patch.object(resource_module, "setrlimit") as set_limit:
+    model["limit_private_process_files"]()
+set_limit.assert_has_calls([
+    call(resource_module.RLIMIT_CORE, (0, 0)),
+    call(resource_module.RLIMIT_FSIZE,
+         (model["QS_CHILD_FILE_LIMIT"], model["QS_CHILD_FILE_LIMIT"])),
+])
+assert set_limit.call_count == 2
+
+
 for name, digest in model["DYNAMIC_PINS"].items():
     assert blob(ROOT / name) == digest, name
 assert model["frozen"]["PINNED"][
@@ -92,7 +112,8 @@ for literal in (
     "offscreen_dynamic_source_changed_after_review",
     "QT_QPA_PLATFORM\": \"offscreen\"",
     "\"WAYLAND_DISPLAY\", \"NIRI_SOCKET\"",
-    "resource.setrlimit(resource.RLIMIT_FSIZE, (MAX_LOG, MAX_LOG))",
+    "preexec_fn=limit_private_process_files",
+    "if not 0 < log.stat().st_size <= MAX_LOG:",
     '"QML_IMPORT_PATH", "QML2_IMPORT_PATH"',
     "private_dynamic_child_cleanup_unverified",
     "PRIVATE_QS_EXIT_CLASS=",

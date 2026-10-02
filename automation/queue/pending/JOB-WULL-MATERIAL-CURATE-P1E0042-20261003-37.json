@@ -1,0 +1,28 @@
+{
+  "id": "JOB-WULL-MATERIAL-CURATE-P1E0042-20261003-37",
+  "base_sha": "ac146f1afb8bb57242a60bc2d21718e62000b57e",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-curated-nested-field-export-v3-fake-only.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 100
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-curated-nested-field-export-v3.py",
+          "--prepare-safe-only"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 95
+      }
+    }
+  ]
+}

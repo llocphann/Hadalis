@@ -23,8 +23,10 @@ ShellRoot {
 
     FloatingWindow {
         id: privateWindow
-        visible: true
+        // Create with a transparent format BEFORE making the private window visible.
+        visible: false
         color: "transparent"
+        Component.onCompleted: visible = true
         implicitWidth: 320
         implicitHeight: 300
         title: "Private Wull paint capture canary"

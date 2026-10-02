@@ -359,16 +359,23 @@ export async function connectNative() {
   }
 }
 
-async function nativeGet(page, path, parameters, projectId = null) {
+async function nativeGet(page, path, parameters, projectId = null, projection = null) {
   // Only projects use this header. Older/custom GPT gizmo identities keep
   // ordinary conversation reads and cannot inject arbitrary header content.
   projectId = typeof projectId === "string" && /^g-p-[0-9a-f]{32}$/i.test(projectId) ? projectId : null;
   const result = await page.evaluate(async ({path, parameters, projectId}) => {
     try {
-      return {ok:true, value:await window.__hadalisNative.api.safeGet(path, {
+      const value = await window.__hadalisNative.api.safeGet(path, {
         signal:AbortSignal.timeout(25000), parameters,
         ...(projectId ? {additionalHeaders:{"chatgpt-project-id":projectId}} : {})
-      })};
+      });
+      // Cursor needs three scalar fields, not an unbounded mapping over CDP.
+      // The server still validates the live conversation on every call.
+      return {ok:true, value:projection === "cursor" ? {
+        conversation_id:value?.conversation_id,
+        current_node:value?.current_node,
+        default_model_slug:value?.default_model_slug
+      } : value};
     } catch (error) {
       // Playwright otherwise drops custom HTTP status fields across IPC.
       // Project only typed status/fixed classification before leaving Desktop;
@@ -379,13 +386,23 @@ async function nativeGet(page, path, parameters, projectId = null) {
       return {ok:false, ...(status ? {http_status:status} : {}), code:limited ? "DESKTOP_RATE_LIMITED"
         : ["TimeoutError", "AbortError"].includes(error?.name) ? "DESKTOP_OPERATION_TIMEOUT" : "DESKTOP_OPERATION_UNAVAILABLE"};
     }
-  }, {path, parameters, projectId});
+  }, {path, parameters, projectId, projection});
   if (result.ok) return result.value;
   const resource = path === "/models" ? "models" : path.endsWith("/stream_status") ? "stream_status"
     : path.startsWith("/conversation/") ? "conversation" : path.startsWith("/gizmos/") ? "projects" : "desktop";
   const error = new Error(result.code);
   Object.assign(error, operationErrorObservation({...result, message:result.code, resource}));
   throw error;
+}
+
+export async function nativeCursor(page, conversationId, projectId = null) {
+  if (!UUID.test(conversationId)) throw new Error("invalid managed cursor identity");
+  const cursor = await nativeGet(page, `/conversation/${conversationId}`, {}, projectId, "cursor");
+  // Missing or foreign identity is never enough to authorize the next send.
+  if (cursor?.conversation_id !== conversationId || !UUID.test(cursor?.current_node))
+    throw new Error("managed cursor identity unavailable");
+  return {conversation_id:cursor.conversation_id, current_node:cursor.current_node,
+    model:typeof cursor.default_model_slug === "string" ? cursor.default_model_slug : null};
 }
 
 export async function nativeRead(page, path, query = {}, projectId = null) {

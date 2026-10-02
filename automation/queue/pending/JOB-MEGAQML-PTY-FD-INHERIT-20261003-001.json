@@ -1,0 +1,18 @@
+{
+  "id": "JOB-MEGAQML-PTY-FD-INHERIT-20261003-001",
+  "base_sha": "e2c5857d63b6239d98467e29e9686a06fa3582f6",
+  "profile_id": "profile-a25585b748dd4220",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-c",
+          "import errno,fcntl,os,select,signal,subprocess,sys,tempfile,termios,time\ndef trial(script,inherit):\n m,s=os.openpty();p=None\n try:\n  tty=termios.tcgetattr(s);tty[3]&=~(termios.ECHO|termios.ECHONL);termios.tcsetattr(s,termios.TCSANOW,tty)\n  slave_name=os.ttyname(s)\n  i=os.dup(s);o=os.dup(s)\n  for fd in (s,i,o):os.set_inheritable(fd,inherit)\n  def init():\n   os.setsid()\n   fcntl.ioctl(0,termios.TIOCSCTTY,0)\n  p=subprocess.Popen([script],stdin=i,stdout=o,stderr=s,preexec_fn=init,close_fds=False)\n  for fd in (i,o,s):os.close(fd)\n  s=-1\n  os.write(m,b'login fixture@example.invalid\\n')\n  deadline=time.monotonic()+1.2;ready=False\n  while time.monotonic()<deadline:\n   if p.poll() is not None:return 'child_exited'\n   try: std=[os.readlink('/proc/'+str(p.pid)+'/fd/'+fd) for fd in ('0','1','2')]\n   except OSError:time.sleep(.025);continue\n   if std==['/dev/null']*3:ready=True;break\n   time.sleep(.025)\n  if not ready:return 'redirection_absent'\n  try: fds=[os.readlink('/proc/'+str(p.pid)+'/fd/'+fd) for fd in os.listdir('/proc/'+str(p.pid)+'/fd')]\n  except OSError:return 'fd_state_unknown'\n  slave_held=(slave_name in fds)\n  poller=select.poll();poller.register(m,select.POLLIN);events=poller.poll(450)\n  if p.poll() is not None:return 'child_exited'\n  eof=False\n  if events:\n   try: eof=(os.read(m,1)==b'')\n   except OSError as e:eof=(e.errno==errno.EIO)\n  return ('slave_open' if slave_held else 'slave_closed')+'_'+('eof' if eof else 'no_eof')\n finally:\n  if p is not None:\n   try:os.killpg(p.pid,signal.SIGKILL)\n   except ProcessLookupError:pass\n   try:p.kill()\n   except ProcessLookupError:pass\n   try:p.wait(timeout=2)\n   except subprocess.TimeoutExpired:pass\n  for fd in (m,s):\n   if fd>=0:\n    try:os.close(fd)\n    except OSError:pass\nwith tempfile.TemporaryDirectory(prefix='mega-fd-inherit-fake-') as tmp:\n script=os.path.join(tmp,'fake-vendor')\n with open(script,'w') as f:f.write('#!/bin/sh\\nIFS= read -r command\\nexec </dev/null >/dev/null 2>&1\\nsleep 4\\n')\n os.chmod(script,0o700)\n a=trial(script,True);b=trial(script,False)\n if a=='slave_open_no_eof' and b=='slave_closed_eof':\n  print('PTY_INHERIT=inherited_fds_prevent_eof_cloexec_restores');sys.exit(40)\n if a in ('child_exited','redirection_absent','fd_state_unknown') or b in ('child_exited','redirection_absent','fd_state_unknown'):\n  print('PTY_INHERIT=fixture_unqualified');sys.exit(42)\n if a=='slave_closed_eof' and b=='slave_closed_eof':\n  print('PTY_INHERIT=both_eof');sys.exit(41)\n print('PTY_INHERIT=other_relation');sys.exit(43)"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 20
+      }
+    }
+  ]
+}

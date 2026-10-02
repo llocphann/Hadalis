@@ -16,6 +16,10 @@ assert "records: []" in fixture and "waveTexture: null" in fixture
 assert 'Quickshell.env("WULL_FIELD_CANARY_PRIVATE_PNG")' in fixture
 assert "sheet.grabToImage" in fixture
 assert "REAL_SHADER_NOT_READY" in fixture
+for category in ("WINDOW_NOT_BACKING", "SHEET_DIMENSIONS_INVALID",
+                 "FOUR_CELLS_UNAVAILABLE"):
+    assert category in fixture and category in runner_text
+
 assert "AbyssField.frag.qsb" in actual_field
 assert "orientationAngle: root.edge" in actual_host
 for marker in (

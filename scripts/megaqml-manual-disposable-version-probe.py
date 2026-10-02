@@ -23,7 +23,8 @@ DEADLINE = 12
 VERSION_LINE = re.compile(
     r"MEGAcmd(?: (?:server|client))? version\s*:?\s*v?"
     r"(\d{1,3}(?:\.\d{1,3}){1,3})"
-    r"(?:\s+\([^()\r\n]{1,32}\))?\s*",
+    r"(?:\s*:\s*code\s+\d{1,10})?"
+    r"(?:\s+\(64 bits\))?\s*",
     re.IGNORECASE,
 )
 HOST_ROOTS = (Path("/usr"), Path("/nix/store"))
@@ -37,6 +38,30 @@ def sanitized_version(raw):
             if matched:
                 return matched.group(1)
     return None
+
+
+def classify_vendor_failure(stdout, stderr):
+    """Return fixed diagnostic category only. Never expose vendor text."""
+    combined = (stdout + b"\n" + stderr).decode("utf-8", "replace").lower()
+    if ("error while loading shared libraries" in combined
+            or "cannot open shared object file" in combined):
+        return "sandbox_runtime_library_missing"
+    if "error creating runtime directory for socket file" in combined:
+        return "sandbox_socket_directory_unavailable"
+    if ("couln't initiate megacmd server" in combined
+            or "couldn't initiate megacmd server" in combined):
+        return "sandbox_server_executable_unavailable"
+    if any(mark in combined for mark in (
+            "unable to connect to service",
+            "please ensure mega-cmd-server is running",
+            "megacmd server is not responding",
+            "failed to create socket for registering for state changes")):
+        return "sandbox_server_handshake_failed"
+    if "permission denied" in combined or "operation not permitted" in combined:
+        return "sandbox_vendor_permission_rejected"
+    if sanitized_version(stdout.decode("utf-8", "replace")):
+        return "vendor_nonzero_version_line_seen"
+    return "vendor_exit_nonzero_unclassified"
 
 
 def safe_summary(state, version=None, reason=None):
@@ -157,9 +182,9 @@ def bounded_process(argv):
             except ProcessLookupError:
                 pass
             process.wait(timeout=3)
-            return None, None, stop_reason
+            return None, None, None, stop_reason
         code = process.wait(timeout=2)
-        return code, bytes(chunks["stdout"]), None
+        return code, bytes(chunks["stdout"]), bytes(chunks["stderr"]), None
     finally:
         streams.close()
         process.stdout.close()
@@ -175,6 +200,12 @@ def bounded_process(argv):
 def self_test():
     assert sanitized_version("MEGAcmd version: 2.6.0\n") == "2.6.0"
     assert sanitized_version("MEGAcmd server version v3.4.5\n") == "3.4.5"
+    assert sanitized_version("MEGAcmd version: 2.6.0.0: code 2060000") == "2.6.0.0"
+    assert sanitized_version("MEGAcmd version: 2.6.0.0: code 2060000 (64 bits)") == "2.6.0.0"
+    assert classify_vendor_failure(b"", b"Unable to connect to service: error=111") == "sandbox_server_handshake_failed"
+    assert classify_vendor_failure(b"", b"error while loading shared libraries: libx.so") == "sandbox_runtime_library_missing"
+    assert classify_vendor_failure(b"MEGAcmd version: 2.6.0.0: code 2060000", b"") == "vendor_nonzero_version_line_seen"
+    assert classify_vendor_failure(b"", b"PRIVATE_FAKE_DIAGNOSTIC_CANARY") == "vendor_exit_nonzero_unclassified"
     for fake in ("MEGA SDK version: 2.6.0", "Latest version: 9.9.9",
                  "MEGAcmd version: 2.6.0\nPRIVATE_ACCOUNT",
                  "MEGAcmd version: /private/secret", ""):
@@ -219,7 +250,7 @@ def main():
         return 20
     try:
         smoke = bwrap_command(wrap[0], [control[0]], version[0].parent)
-        code, _, blocked = bounded_process(smoke)
+        code, _, _, blocked = bounded_process(smoke)
     except (OSError, ValueError, subprocess.TimeoutExpired):
         safe_summary("BLOCKED", reason="sandbox_setup_unavailable")
         return 20
@@ -228,7 +259,7 @@ def main():
         return 20
     try:
         command = bwrap_command(wrap[0], [version[0], "-l"], version[0].parent)
-        status, data, blocked = bounded_process(command)
+        status, data, diagnostic, blocked = bounded_process(command)
     except (OSError, ValueError, subprocess.TimeoutExpired):
         safe_summary("BLOCKED", reason="sandbox_process_unavailable")
         return 20
@@ -236,7 +267,7 @@ def main():
         safe_summary("UNQUALIFIED", reason=blocked)
         return 21
     if status != 0:
-        safe_summary("UNQUALIFIED", reason="vendor_exit_nonzero")
+        safe_summary("UNQUALIFIED", reason=classify_vendor_failure(data, diagnostic))
         return 21
     parsed = sanitized_version(data.decode("utf-8", "replace"))
     if not parsed:

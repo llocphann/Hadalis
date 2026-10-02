@@ -117,7 +117,10 @@ def model_summary(rows, frozen_flags):
         if (type(f) is not dict or set(f) != set(FLAGS)
                 or any(type(f[k]) is not bool for k in FLAGS)):
             raise ValueError("unreviewed_frozen_flags")
-        reference = frozen_flags.get(str(scale))
+        # JS JSON.stringify(1.0) emits 1; use the validated canonical scale
+        # for frozen-reference and summary keys, never the JSON number spelling.
+        scale_key = str(next(s for s in SCALES if s == scale))
+        reference = frozen_flags.get(scale_key)
         if type(reference) is not dict:
             raise ValueError("missing_scale_frozen_reference")
         expected_frozen = {
@@ -143,7 +146,6 @@ def model_summary(rows, frozen_flags):
                 reference["stretched_tip_outside_host_edges"]):
             raise ValueError("invalid_frozen_edge_reference")
 
-        scale_key = str(scale)
         if row["neutral_verified"] is False:
             missing[scale_key].append(edge)
         if f != expected_frozen:

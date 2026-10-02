@@ -1,5 +1,9 @@
 # Cloud Storage — MEGAcmd ↔ Rust ↔ QML implementation
 
+> **Phase 3b cross-module offline evidence barrier SOURCE-STAGED (2026-10-02):** Added a Rust test against the **actual** offline feature-gate policy which deliberately feeds a positive and a truncated synthetic three-field sync capture: neither parser success nor failure can authorize any of ten cloud read/write domains or mark account, vendor, server or connection qualified. No new production dispatch, vendor/account/network use, owner-local output, Wull or stable changes. This test does NOT qualify installed vendor output or replace later disposable authenticated fixtures. Owner exact-source offline Rust test remains pending. See `docs/MEGAQML_PHASE3B_EVIDENCE_BOUNDARY.md`.
+
+
+
 > **Phase 3b same-result 3-field Sync parser candidate SOURCE-STAGED (2026-10-02):** Added an unwired fixed Rust read-only argv candidate for `sync --output-cols=ID,RUN_STATE,STATUS --col-separator=|` plus strict `ID|RUN_STATE|STATUS` same-capture fixtures. It reuses finite scalar validators and the shared fail-closed metadata gate; new unit tests cover invalid headers, extra delimiters/columns, duplicate IDs, unknown state/status, incomplete stream at every cut, cap and stderr/nonzero/timeout. **One result does not prove an atomic vendor snapshot** or authenticate IDs; no real vendor/account/network runtime, public owner diagnostics, feature-gate unlock or stable/Wull edits. Owner exact-source Rust validation pending. See `docs/MEGAQML_PHASE3B_SYNC_PAIRED_CANDIDATES.md`.
 
 

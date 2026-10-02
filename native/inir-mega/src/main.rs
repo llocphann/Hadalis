@@ -34,7 +34,11 @@ enum Command {
     Request,
 }
 
+// Reject unknown protocol keys instead of silently discarding unsupported
+// credentials or capability overrides. Invalid JSON receives a fixed public
+// error envelope; untrusted field names/values are never reflected.
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Request {
     protocol: u32,
     request_id: String,
@@ -55,6 +59,7 @@ enum Operation {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct SecretInput {
     #[serde(default)]
     password: Option<String>,
@@ -284,6 +289,16 @@ fn auth_error(
 }
 
 fn handle_auth(request: Request) -> Response {
+    // Do not let unrelated or future-looking auth parameters pass unnoticed.
+    // The only supported auth parameter is one string-valued email.
+    if !matches!(&request.params, Value::Object(fields)
+        if fields.len() == 1 && fields.get("email").is_some_and(Value::is_string)) {
+        return auth_error(
+            request.request_id,
+            "validate", "AUTH_PARAMS_INVALID", "not_dispatched",
+            "Invalid Cloud Storage sign-in request.",
+        );
+    }
     let Request {
         request_id,
         params,
@@ -465,6 +480,14 @@ fn handle(request: Request) -> Response {
 
     match request.operation {
         Operation::Detect => {
+            // Static detection never needs parameters or secret material.
+            if request.params != json!({}) || request.secret.is_some() {
+                return auth_error(
+                    request.request_id,
+                    "validate", "DETECT_INPUT_FORBIDDEN", "not_dispatched",
+                    "Static dependency detection accepts no account details or credentials.",
+                );
+            }
             let binaries = static_detection(env::var("PATH").ok().as_deref());
             let interactive_shell_available = binaries
                 .iter()
@@ -592,6 +615,72 @@ mod tests {
         assert_eq!(response["request_id"], "");
         assert!(!encoded.contains("private"));
         assert!(!encoded.contains("password:123"));
+    }
+
+    #[test]
+    fn typed_envelope_rejects_unknown_root_and_secret_keys_before_dispatch() {
+        let base = json!({
+            "protocol": PROTOCOL_VERSION,
+            "request_id": "schema-1",
+            "operation": "auth_begin",
+            "params": {"email": "fixture@example.invalid"},
+            "secret": {"password": "TEST_ONLY_PASSWORD"}
+        });
+        let mut unknown_root = base.clone();
+        unknown_root["unsupported_override"] = json!("TEST_ONLY_CANARY");
+        let mut unknown_secret = base;
+        unknown_secret["secret"]["session_token"] = json!("TEST_ONLY_CANARY");
+        for invalid in [unknown_root, unknown_secret] {
+            let encoded = serde_json::to_vec(&invalid).unwrap();
+            let result = read_bounded_request(std::io::Cursor::new(encoded));
+            assert!(result.is_err(), "unsupported field must fail before dispatch");
+            assert!(!format!("{:?}", result.err()).contains("TEST_ONLY_CANARY"));
+        }
+    }
+
+    #[test]
+    fn detect_rejects_unexpected_params_or_secret_without_reflecting_them() {
+        for (params, secret) in [
+            (json!({"email": "TEST_ONLY_CANARY"}), None),
+            (json!({}), Some(SecretInput {
+                password: Some("TEST_ONLY_CANARY".into()), mfa_code: None,
+            })),
+        ] {
+            let response = handle(Request {
+                protocol: PROTOCOL_VERSION,
+                request_id: "detect-negative".into(),
+                operation: Operation::Detect,
+                params, secret,
+            });
+            assert!(!response.ok);
+            assert_eq!(response.error.as_ref().unwrap().kind, "DETECT_INPUT_FORBIDDEN");
+            assert_eq!(response.error.as_ref().unwrap().outcome, "not_dispatched");
+            assert!(!serde_json::to_string(&response).unwrap().contains("TEST_ONLY_CANARY"));
+        }
+    }
+
+    #[test]
+    fn auth_rejects_extra_or_non_string_params_before_vendor_dispatch() {
+        for params in [
+            json!({"email": "fixture@example.invalid", "force_login": true}),
+            json!({"email": 123}),
+            json!({"other": "fixture@example.invalid"}),
+            json!(null),
+        ] {
+            let response = handle(Request {
+                protocol: PROTOCOL_VERSION,
+                request_id: "auth-params-negative".into(),
+                operation: Operation::AuthBegin,
+                params,
+                secret: Some(SecretInput {
+                    password: Some("TEST_ONLY_PASSWORD".into()), mfa_code: None,
+                }),
+            });
+            assert!(!response.ok);
+            assert_eq!(response.error.as_ref().unwrap().kind, "AUTH_PARAMS_INVALID");
+            assert_eq!(response.error.as_ref().unwrap().outcome, "not_dispatched");
+            assert!(!serde_json::to_string(&response).unwrap().contains("TEST_ONLY_PASSWORD"));
+        }
     }
 
     #[test]

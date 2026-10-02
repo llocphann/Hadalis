@@ -79,11 +79,17 @@ Both outcomes explicitly declare `vendor_executed=false`,
 Debian and Nix metadata to test path ownership, normalization,
 redaction and inability to launch a vendor subprocess.
 The one-command `scripts/megaqml-phase3b-static-owner-local.sh`
-accepts only `--acknowledge-vendor-free-static-triage`, checks
-clean temporary `dev` ancestry, validates the strict safe result
+requires BOTH `--acknowledge-vendor-free-static-triage` and the
+separate `--publish-public-package-version` flag. The Hadalis GitHub
+repository is **public**: this explicit flag consents to publishing
+the normalized numeric package version if observed. The tool checks
+clean temporary `dev` ancestry, validates the strict safe result,
 and publishes only that summary as
-`docs/evidence/megaqml/phase3b-static-*.md`. The script has
-**not** yet been qualified on the owner's local package database.
+`docs/evidence/megaqml/phase3b-static-*.md`. The script has **not** yet been qualified on the owner's local
+package database. For users who do not want to publish even this
+minimal package-version number, run only
+`python3 scripts/megaqml-phase3b-static-package.py --acknowledge-vendor-free-static-triage`
+locally, without the publisher, and do not upload its result.
 
 A version observed here proves only static package metadata, **not**
 that a compatible MEGA server can start with networking disabled,
@@ -154,7 +160,7 @@ contract and nonvendor self-test **before** any sandboxed vendor probe.
 It validates the entire resulting JSON envelope against fixed allowed
 keys, states, version digits and reason codes before reporting or
 publishing anything. The wrapper writes only this sanitized summary,
-source SHA and static PASS flags to a new private `dev` report
+source SHA and static PASS flags to a new `dev` report on the publicly visible Hadalis repository
 `docs/evidence/megaqml/phase3b-<source-prefix>-<utc>.md`. A missing
 bubblewrap or unsupported environment may produce a safely published
 BLOCKED report rather than an invented version observation. It

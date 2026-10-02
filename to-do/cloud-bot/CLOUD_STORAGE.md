@@ -1,5 +1,8 @@
 # Cloud Storage — MEGAcmd ↔ Rust ↔ QML implementation
 
+> **Phase 3b synthetic Sync refresh/reap lifecycle SOURCE-STAGED (2026-10-02):** Added an **unwired** deterministic Rust `SnapshotRefresh` candidate with monotonic generation/request tokens, stale reply rejection, refresh coalescing, last-consumer release, timeout obsolescence, mandatory old-child reap before restart, permanently fail-closed counter overflow and strict reuse of the existing complete triple-column capture parser. New purely synthetic tests cover these boundary conditions; exact-source owner Linux validation pending. Neither simulated parsing nor lifecycle can qualify the real installed server, authenticate an account, prove an OS child was reaped or enable any of ten cloud domains. No vendor/network/data request, no QML wiring, no local owner output published, no Wull or stable edits. See `docs/MEGAQML_PHASE3B_SYNC_REFRESH_LIFECYCLE.md`.
+
+
 > **Phase 3b cross-module offline evidence barrier SOURCE-STAGED (2026-10-02):** Added a Rust test against the **actual** offline feature-gate policy which deliberately feeds a positive and a truncated synthetic three-field sync capture: neither parser success nor failure can authorize any of ten cloud read/write domains or mark account, vendor, server or connection qualified. No new production dispatch, vendor/account/network use, owner-local output, Wull or stable changes. This test does NOT qualify installed vendor output or replace later disposable authenticated fixtures. Owner exact-source offline Rust test remains pending. See `docs/MEGAQML_PHASE3B_EVIDENCE_BOUNDARY.md`.
 
 

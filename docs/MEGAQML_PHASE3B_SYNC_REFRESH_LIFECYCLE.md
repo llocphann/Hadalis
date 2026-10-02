@@ -1,0 +1,56 @@
+# MegaQML Phase 3b — synthetic refresh ordering and child-reap barrier
+
+This design and its unit tests are **source-only**. They simulate
+candidate Sync table captures using in-memory fixture bytes.
+Nothing in this change opens a vendor process, authenticates a
+MEGA account, or changes the QML runtime or its feature gates.
+
+## Why this is separate from valid table syntax
+
+Even exact `ID|RUN_STATE|STATUS` table parsing cannot tell
+whether its result belongs to the latest visible consumer. Refresh
+bursts, page close and reopen, deadlines and out-of-order child
+exit callbacks can make old, valid-looking results stale.
+
+The private `native/inir-mega/src/snapshot_lifecycle.rs`
+module provides a purely deterministic *candidate* state machine:
+- Each visible activation obtains a new monotonic generation;
+  request tokens carry a monotonic serial and that generation.
+- A new request always hides an older snapshot rather than
+  silently presenting it as the latest state.
+- At most one token is in flight. Refresh bursts coalesce
+  into one pending refresh; a superseded response is discarded
+  without parsing, then a new candidate may start.
+- Closing the consumer hides its snapshot but retains a
+  still-unreaped in-flight token. Reopening cannot start
+  another candidate until the earlier child's matching
+  `finish` (external **post-reap** signal) arrives.
+- `expire` marks a request obsolete and hides results;
+  timeout itself is **not** proof that a process exited.
+- Unknown/old tokens cannot clear or replace the current
+  in-flight token. Monotonic counter overflow permanently
+  fails closed instead of wrapping tokens.
+- Only an active, unexpired, current token with a clean
+  exit and complete, strictly parsed table is considered
+  `ready` in this synthetic model.
+
+Unit tests exercise valid then truncated data, bursts and
+out-of-order completions, last-consumer close/reopen, timeout
+versus actual reap, false token completions and generation/
+serial overflow.
+
+**This model is not a proof of actual subprocess reaping.**
+A future separately approved runner MUST ensure that `finish`
+is invoked only after its exact child has been reaped and that
+the executable, environment, session and capture provenance
+have been independently qualified. No account data, cloud
+operation, authenticated snapshot or row mutation may be
+inferred from these fixtures.
+
+`native/inir-mega/src/main.rs` only declares the otherwise
+unused synthetic module. The existing actual production
+`CloudStorageService.qml` detection/preflight lifecycle and
+all ten denied capability domains are unmodified. Run
+`cargo test -p inir-mega` offline for exact-source validation;
+that does not qualify the installed vendor, real QML races
+or actual cloud features.

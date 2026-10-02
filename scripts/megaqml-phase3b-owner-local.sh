@@ -54,6 +54,10 @@ try:
         "sandbox_setup_unavailable", "sandbox_process_unavailable",
         "bounded_timeout", "bounded_output_cap", "vendor_exit_nonzero",
         "vendor_version_format_unrecognized",
+        "sandbox_runtime_library_missing", "sandbox_socket_directory_unavailable",
+        "sandbox_server_executable_unavailable", "sandbox_server_handshake_failed",
+        "sandbox_vendor_permission_rejected", "vendor_nonzero_version_line_seen",
+        "vendor_exit_nonzero_unclassified",
         "still_requires_installed_help_and_disposable_fixture_qualification",
     }
     if rc == 0:

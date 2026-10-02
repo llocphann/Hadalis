@@ -178,4 +178,13 @@ with tempfile.TemporaryDirectory(prefix="megaqml-inert-test-") as temp:
     res = mod["cleanup"](already_removed, lambda: True, doc, jp, home)
     assert all(res.values()) and not jp.exists() and not folder.exists()
 
+    # Crash after rmdir and before unlink: journal-only recovery is safe.
+    mod["JOURNAL_NONCE"] = "a" * 32
+    folder, doc, jp = make_fixture()
+    doc["stage"] = "remote_removed"
+    mod["save_journal"](jp, doc)
+    folder.rmdir()
+    res = mod["cleanup"](already_removed, lambda: True, doc, jp, home)
+    assert all(res.values()) and not jp.exists()
+
 print("PASS MegaQML disposable single-fixture fake-only contract")

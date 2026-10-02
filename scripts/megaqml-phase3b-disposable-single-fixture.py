@@ -272,7 +272,9 @@ def cleanup(runner, check_identity, journal, path, home):
         listing = strict_read(runner, "ls", remote)
         if listing not in (b"", BLANK):
             return flags
-        if not check_identity():
+        if (not check_identity()
+                or strict_read(runner, *TWO) != BLANK
+                or not check_identity()):
             return flags
         if strict_read(runner, "rm", "-r", "-f", remote) is None:
             return flags
@@ -292,7 +294,9 @@ def cleanup(runner, check_identity, journal, path, home):
             return flags
         folder.rmdir()  # strictly empty: cannot erase user data.
     except FileNotFoundError:
-        if stage != "prepared":
+        # PREPARED might predate local mkdir; REMOTE_REMOVED might have
+        # already rmdir'ed local just before the last journal unlink.
+        if stage not in ("prepared", "remote_removed"):
             return flags
     except OSError:
         return flags
@@ -387,6 +391,10 @@ def real_main(cleanup_only=False):
         if strict_read(runner, "ls", "/") not in (b"", BLANK):
             result("root_not_proven_empty",
                    SERVER_MATCH=True, ACCOUNT_MATCH=True)
+            return 21
+        if not identity():
+            result("whoami_not_matched", SERVER_MATCH=True,
+                   ACCOUNT_MATCH=False)
             return 21
         nonce = secrets.token_hex(16)
         journal = {"nonce": nonce, "stage": "prepared",

@@ -1,5 +1,5 @@
-// PRIVATE two-case actual-QML real spring dynamic FULL-composite painted pilot.
-// TOP 1.0 and BOTTOM 1.5 only; no core isolation, no pixel causality claims.
+// PRIVATE actual-QML real spring pilot isolating ORIGINAL Bézier and stroke.
+// TOP 1.0 and BOTTOM 1.5; private instances have noncore visuals and cradle hidden.
 // Independent 40ms private mapped-geometry + spring-state observer,
 // while retaining the original 8 sequential real PNG grabs per phase/case.
 // Fail closed if original state progresses but sampled motion is absent.
@@ -275,8 +275,17 @@ ShellRoot {
             droplet.ripple = 0
             droplet.pulse = 0
         }
+        if (!root.isolate(0) || !root.isolate(1)) {
+            root.abort("CORE_ISOLATION_INVALID")
+            return
+        }
+        root.stage("CORE_ISOLATION_VERIFIED")
         Qt.callLater(() => {
             if (root.finished) return
+            if (!root.isCoreAlone(0) || !root.isCoreAlone(1)) {
+                root.abort("CORE_ISOLATION_DRIFT")
+                return
+            }
             if (a.motionEnabled || b.motionEnabled ||
                     Math.abs(a.stateStretch) > 0.001 ||
                     Math.abs(b.stateStretch) > 0.001) {
@@ -313,7 +322,7 @@ ShellRoot {
         Component.onCompleted: visible = true
         implicitWidth: 320
         implicitHeight: 300
-        title: "Private Wull active TOP sample"
+        title: "Private original Wull core-only TOP sample"
         Item {
             id: topStage
             anchors.fill: parent
@@ -339,7 +348,7 @@ ShellRoot {
         Component.onCompleted: visible = true
         implicitWidth: 320
         implicitHeight: 300
-        title: "Private Wull active BOTTOM sample"
+        title: "Private original Wull core-only BOTTOM sample"
         Item {
             id: bottomStage
             anchors.fill: parent

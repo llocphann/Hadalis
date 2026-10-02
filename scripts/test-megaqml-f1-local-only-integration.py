@@ -26,6 +26,8 @@ with tempfile.TemporaryDirectory(prefix="megaqml-f1-local-only-fake-") as raw:
     scripts.mkdir()
     shutil.copyfile(RUNNER, scripts / RUNNER.name)
     shutil.copyfile(CLASSIFIER, scripts / CLASSIFIER.name)
+    shutil.copyfile(HERE / "megaqml-f1-worker-descendant-guard.py",
+                    scripts / "megaqml-f1-worker-descendant-guard.py")
     assert run("git", "init", "-q", "-b", "dev", str(checkout)).returncode == 0
     assert run("git", "init", "--bare", "-q", str(remote)).returncode == 0
     assert run("git", "add", ".", cwd=checkout).returncode == 0
@@ -51,7 +53,8 @@ with tempfile.TemporaryDirectory(prefix="megaqml-f1-local-only-fake-") as raw:
     (fake / "python3").write_text(
         "#!/bin/sh\n"
         'if [ "$1" = "-B" ] && '
-        '[ "$2" = "scripts/megaqml-f1-local-matrix-classify.py" ]; then\n'
+        '( [ "$2" = "scripts/megaqml-f1-local-matrix-classify.py" ] || '
+        '  [ "$2" = "scripts/megaqml-f1-worker-descendant-guard.py" ] ); then\n'
         '  exec "' + sys.executable + '" "$@"\n'
         "fi\nexit 0\n"
     )
@@ -105,4 +108,41 @@ with tempfile.TemporaryDirectory(prefix="megaqml-f1-local-only-fake-") as raw:
                 pin, "--local-only", cwd=detached, env=env)
     assert named.returncode == 65 and named.stdout == b"WRONG_BRANCH\n"
 
-print("PASS local-only dev/detached branch gates reject unqualified fake matrix without git writes")
+    # A new queue/receipt after the SHA-pinned clone is allowed by the
+    # actual descendant guard, without allowing false 40/40 acceptance.
+    assert run("git", "switch", "-q", "--detach", pin,
+               cwd=detached).returncode == 0
+    queued = checkout / "automation/queue/pending/JOB-MEGAQML-FAKE-001.json"
+    queued.parent.mkdir(parents=True, exist_ok=True)
+    queued.write_text("{}")
+    assert run("git", "add", "--", str(queued.relative_to(checkout)),
+               cwd=checkout).returncode == 0
+    assert run("git", "-c", "user.name=Fixture", "-c",
+               "user.email=fixture@example.invalid", "commit", "-qm",
+               "fake-only queue", cwd=checkout).returncode == 0
+    reports = list((detached / "docs/evidence/megaqml").glob("phase2p-*.md"))
+    assert len(reports) == 1
+    reports[0].unlink()  # Only the disposable private fixture report.
+    advanced = run("/bin/bash", "scripts/test-megaqml-phase2-local.sh",
+                   pin, "--local-only", cwd=detached, env=env)
+    assert advanced.returncode == 21, (advanced.returncode, "unexpected advancement")
+    assert "F1_MATRIX=UNQUALIFIED\n" in advanced.stdout.decode()
+
+    # Even a legitimate descendant becomes unreviewed when it edits source.
+    changed = checkout / "services/deferred/CloudStorageService.qml"
+    changed.parent.mkdir(parents=True, exist_ok=True)
+    changed.write_text("FAKE-ONLY source changed")
+    assert run("git", "add", "--", str(changed.relative_to(checkout)),
+               cwd=checkout).returncode == 0
+    assert run("git", "-c", "user.name=Fixture", "-c",
+               "user.email=fixture@example.invalid", "commit", "-qm",
+               "unreviewed fake source", cwd=checkout).returncode == 0
+    reports = list((detached / "docs/evidence/megaqml").glob("phase2p-*.md"))
+    assert len(reports) == 1
+    reports[0].unlink()
+    rejected = run("/bin/bash", "scripts/test-megaqml-phase2-local.sh",
+                   pin, "--local-only", cwd=detached, env=env)
+    assert rejected.returncode == 68
+    assert rejected.stdout == b"REMOTE_MISMATCH_UNREVIEWED\n"
+
+print("PASS local-only branch/descendant rejects unqualified and unreviewed inputs")

@@ -41,9 +41,22 @@ fetch_remote_dev() {
   remote_sha="$(git rev-parse FETCH_HEAD)"
 }
 fetch_remote_dev || { echo 'REMOTE_FETCH_FAILED'; exit 68; }
-if [[ "$remote_sha" != "$expected" ]] && ! wull_only_advance "$expected" "$remote_sha" && ! python3 scripts/test-megaqml-phase2p-history-guard.py "$expected" "$remote_sha" >/dev/null; then
-  echo 'REMOTE_MISMATCH_UNREVIEWED'
-  exit 68
+if [[ "$remote_sha" != "$expected" ]]; then
+  # An isolated worker's detached, private-only job may have acquired new
+  # queue receipts/documentation after its pinned source was checked out.
+  # Use a separate strict descendant guard; public/dev mode stays unchanged.
+  if [[ -z "$current_branch" && "$mode" == "--local-only" ]]; then
+    python3 -B scripts/megaqml-f1-worker-descendant-guard.py \
+      "$expected" "$remote_sha" >/dev/null || {
+      echo 'REMOTE_MISMATCH_UNREVIEWED'
+      exit 68
+    }
+  elif ! wull_only_advance "$expected" "$remote_sha" && \
+       ! python3 scripts/test-megaqml-phase2p-history-guard.py \
+         "$expected" "$remote_sha" >/dev/null; then
+    echo 'REMOTE_MISMATCH_UNREVIEWED'
+    exit 68
+  fi
 fi
 scratch="$(mktemp -d)"
 trap 'rm -rf -- "$scratch"' EXIT

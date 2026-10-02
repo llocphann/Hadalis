@@ -32,7 +32,13 @@ ShellRoot {
         }
         for (const cell of cells) {
             if (!cell.shaderReady) {
-                fail("REAL_SHADER_NOT_READY"); return
+                if (!cell.shaderFramePresented) {
+                    fail("FIELD_FRAME_NOT_PRESENTED"); return
+                }
+                if (!cell.graphicsBackendUsable) {
+                    fail("FIELD_GRAPHICS_API_UNSUPPORTED"); return
+                }
+                fail("FIELD_EFFECT_UNQUALIFIED"); return
             }
             if (!cell.host.valid || cell.host.edge !== cell.edgeName ||
                     cell.host.reveal !== 1 || cell.host.scale !== 1) {
@@ -83,6 +89,10 @@ ShellRoot {
             bottom: edgeName === "bottom" ? innerDepth : 14
         })
         readonly property bool shaderReady: realField.ready
+        readonly property bool shaderFramePresented: realField.framePresented
+        readonly property bool graphicsBackendUsable:
+            GraphicsInfo.api !== GraphicsInfo.Software
+            && GraphicsInfo.api !== GraphicsInfo.Null
         property alias host: actualCompanion
         AbyssField {
             id: realField

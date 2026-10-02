@@ -61,6 +61,7 @@ assert body.count("WaterDropletBody {") == 1
 assert "anchors.centerIn: parent" in body
 assert "transformOrigin: Item.Center" in body
 assert "color: AbyssStyle.surface" in body
+assert "border.width: 0" in body
 assert "width: root.verticalEdge ? 10 : 28" in body
 assert "height: root.verticalEdge ? 28 : 10" in body
 

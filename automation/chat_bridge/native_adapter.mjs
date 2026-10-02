@@ -81,6 +81,51 @@ function exported(source, name) {
   return unique(hits);
 }
 
+// Resolve the receiver of the /f/conversation call through an import from
+// this *exact* shared asset. Merely finding an object with safeGet/streamPost
+// is insufficient: a bundle may expose several independent API clients.
+export function exactSharedImport(source, asset, local) {
+  if (!/^[\w$]+$/.test(local) || !/^app-shared-[\w-]+\.js$/.test(asset))
+    return null;
+  const escapedAsset = asset.replace(/\./g, "\\.");
+  const links = [];
+  const named = new RegExp("\\bimport\\s*\\{([^}]{1,200000})\\}\\s*from\\s*([\"'])(?:\\./(?:assets/)?)?" +
+    escapedAsset + "\\2", "g");
+  for (const match of source.matchAll(named)) {
+    for (const spec of match[1].split(",")) {
+      const tokens = spec.trim().split(/\s+as\s+/);
+      if (tokens.length >= 1 && tokens.length <= 2 &&
+          tokens.every(token => /^[\w$]+$/.test(token)) &&
+          (tokens[1] ?? tokens[0]) === local)
+        links.push(tokens[0]);
+    }
+  }
+  const defaultImport = new RegExp("\\bimport\\s+([\\w$]+)\\s+from\\s*([\"'])(?:\\./(?:assets/)?)?" +
+    escapedAsset + "\\2", "g");
+  for (const match of source.matchAll(defaultImport))
+    if (match[1] === local) links.push("default");
+  return unique(links);
+}
+
+export function publicExportExists(source, name) {
+  if (!name || !/^[\w$]+$/.test(name)) return false;
+  const found = [];
+  for (const clause of source.matchAll(/\bexport\s*\{([^}]{1,200000})\}/g)) {
+    for (const spec of clause[1].split(",")) {
+      const tokens = spec.trim().split(/\s+as\s+/);
+      if (tokens.length >= 1 && tokens.length <= 2 &&
+          tokens.every(token => /^[\w$]+$/.test(token)))
+        found.push(tokens.at(-1));
+    }
+  }
+  if (name !== "default") {
+    const direct = new RegExp("\\bexport\\s+(?:(?:const|let|var|class|function)\\s+)" +
+      name.replace(/\$/g, "\\$") + "\\b");
+    if (direct.test(source)) found.push(name);
+  } else if (/\bexport\s+default\b/.test(source)) found.push("default");
+  return found.includes(name);
+}
+
 function unique(items) {
   const values = [...new Set(items.filter(Boolean))];
   return values.length === 1 ? values[0] : null;
@@ -92,7 +137,8 @@ export function inspectContractAssets(archive) {
   const checks = {
     initial_asset:false, shared_asset:false, conversation_stream_hook:false,
     api_import:false, stream_scope:false, stream_method:false,
-    api_export:false, stream_export:false
+    api_export:false, stream_export:false,
+    api_exact_binding:false, api_exact_export:false
   };
   const initialNames = archive.files.filter(n => /^app-initial-.*\.js$/.test(n));
   const sharedNames = archive.files.filter(n => /^app-shared-.*\.js$/.test(n));
@@ -119,6 +165,9 @@ export function inspectContractAssets(archive) {
   const api = exported(shared, apiImport), stream = exported(initial, atom);
   checks.api_export = Boolean(api);
   checks.stream_export = Boolean(stream);
+  const exactBinding = exactSharedImport(initial, sharedNames[0], apiLocal);
+  checks.api_exact_binding = Boolean(exactBinding);
+  checks.api_exact_export = publicExportExists(shared, exactBinding);
   // An upstream Desktop build can retain the identical API object while
   // changing only its import alias. Never infer the exported name from a
   // substring or choose the first match: defer that case to a unique
@@ -127,10 +176,10 @@ export function inspectContractAssets(archive) {
   const structural = ["initial_asset", "shared_asset", "conversation_stream_hook",
     "stream_scope", "stream_method", "stream_export"];
   if (structural.some(key => !checks[key])) return {checks, contract:null};
-  const staticApi = checks.api_import && checks.api_export;
+  const staticApi = checks.api_exact_binding && checks.api_exact_export;
   if (!staticApi && !checks.api_runtime_link) return {checks, contract:null};
   return {checks, contract:{
-    shared:sharedNames[0], initial:initialNames[0], api:staticApi ? api : null,
+    shared:sharedNames[0], initial:initialNames[0], api:staticApi ? exactBinding : null,
     api_resolution:staticApi ? "static_export" : "unique_runtime_export", stream,
     serverStreamStatus:initial.includes("/conversation/{conversation_id}/stream_status"),
     fingerprint:crypto.createHash("sha256").update(initial).update(shared).digest("hex")

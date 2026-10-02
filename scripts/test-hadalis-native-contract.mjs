@@ -31,10 +31,11 @@ assert.equal(noMethod.checks.stream_method,false);
 const noHook = inspectContractAssets(fake(initial.replace("streamPost","someOtherCall")));
 assert.equal(noHook.contract,null);
 assert.equal(noHook.checks.conversation_stream_hook,false);
-const ambiguous=inspectContractAssets(fake(initial.replace(
-  "export{scoped as exportedScope}",
-  "var extra=wrap($,({scope:e})=>new Else(e));export{scoped as exportedScope,extra as exportedOther}"
-)));
+const ambiguous=inspectContractAssets(fake(initial
+  .replace("other=1,scoped=", "other=1,extra=wrap($,({scope:e})=>new Else(e)),scoped=")
+  .replace("export{scoped as exportedScope}",
+    "export{scoped as exportedScope,extra as exportedOther}")
+));
 assert.equal(ambiguous.contract,null);
 assert.equal(ambiguous.checks.stream_scope,false);
 assert.equal(inspectContractAssets({files:[],read(){throw Error("unexpected read")}}).checks.initial_asset,false);

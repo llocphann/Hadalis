@@ -1,0 +1,39 @@
+{
+  "id": "JOB-WULL-REAL-FIELD-P1E0042-20261003-18",
+  "base_sha": "83181b183f6aca79ab69367dfae65aac58ef45cc",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-real-field-canary-fake-only.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 40
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-manual-real-field-canary.py",
+          "--static-preflight"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 35
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-manual-real-field-canary.py",
+          "--capture"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 75
+      }
+    }
+  ]
+}

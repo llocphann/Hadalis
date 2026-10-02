@@ -26,8 +26,8 @@ def blob(path):
         b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
 
 
-assert blob(RUNNER) == "2c7d37dc9cff9450c26bea7444f310767705244c"
-assert blob(FIXTURE) == "064a4b59d686be74295b655dc8d4f4043efe4cc9"
+assert blob(RUNNER) == "fee5944e8fe9fb40a38da24edd104ef78ef32496"
+assert blob(FIXTURE) == "4860f504cff167e806afe8217d73201012b7d278"
 assert blob(MODEL) == "b8870420db8d1e6cc08f1f5b0f792c4ab186be61"
 assert blob(ALPHA) == "fa9e7c2af87ee830336988fa7060e2720e816ed0"
 assert blob(BASE) == "c30279f99fbb05ff6e67d30c690b091851dfc4e5"
@@ -43,6 +43,9 @@ assert runner["MODEL_BLOB"] == blob(MODEL)
 assert runner["MAX_LOG"] <= 256 * 1024
 assert runner["FILE_LIMIT"] == 8 * 1024 * 1024
 assert runner["CAPTURE_TIMEOUT"] <= 75
+assert runner["FAILURES"] >= {
+    "CRADLE_RESTORE_FAILED", "PRE_FULL_CRADLE_OR_POSE_INVALID",
+}
 assert runner["EDGES"] == model["EDGES"]
 assert runner["SCALES"] == model["SCALES"]
 assert runner["expected_stages"]()[0] == "BOOT"
@@ -57,6 +60,9 @@ for mandatory in (
     "host.mapToItem(captureStage", "b.mapToItem(captureStage",
     "visuals.length !== 5", "core.length !== 1",
     "child.visible = false", "child.visible = true",
+    "host.children.length !== 2", "const externalCradle = root.cradle()",
+    "cradle.visible = false", "cradle.visible = true",
+    "root.privateCradle = externalCradle",
     "root.caseIndex++", "Qt.callLater", "root.stage(\"DONE\")",
     'Quickshell.env("WULL_MATRIX_CAPTURE_DIR")',
     "captureStage.grabToImage", "result.saveToFile(output)",

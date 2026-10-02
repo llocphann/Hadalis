@@ -65,7 +65,7 @@ def painted_cells(alpha, width=512, height=512):
     return True
 
 
-def run_owned():
+def run_owned(force_opengl=True):
     borrowed = runpy.run_path(str(BORROW), run_name="wull_field_borrow_safety")
     sha = borrowed["source_sha"]()
     binaries = borrowed["preflight"]()
@@ -97,6 +97,12 @@ def run_owned():
             "QT_QUICK_BACKEND": "rhi",
             "WULL_FIELD_CANARY_PRIVATE_PNG": str(output),
         })
+        # The independent no-artwork matrix qualified Qt-default backing
+        # but not forced OpenGL backing. Probe actual shader without forcing
+        # either inherited backend or QT Quick backend on the new mode.
+        if not force_opengl:
+            env.pop("QSG_RHI_BACKEND", None)
+            env.pop("QT_QUICK_BACKEND", None)
         timed_out = False
         with log.open("xb") as stream:
             proc = subprocess.Popen(
@@ -167,7 +173,8 @@ def main():
     # This runner imports, but does not execute, the older capture main().
     # Set a strict owner-only umask BEFORE creating private Qt logs and PNG.
     os.umask(0o077)
-    need(sys.argv[1:] in (["--static-preflight"], ["--capture"]),
+    need(sys.argv[1:] in (["--static-preflight"], ["--capture"],
+                             ["--capture-default-backend"]),
          "EXPLICIT_MODE_REQUIRED")
     borrowed = runpy.run_path(str(BORROW), run_name="wull_field_source_audit")
     borrowed["preflight"]()
@@ -176,7 +183,7 @@ def main():
     if sys.argv[1:] == ["--static-preflight"]:
         print("GATE=REAL_FIELD_CANARY_STATIC_PREFLIGHT_PASS")
         return
-    run_owned()
+    run_owned(force_opengl=sys.argv[1:] == ["--capture"])
 
 
 if __name__ == "__main__":

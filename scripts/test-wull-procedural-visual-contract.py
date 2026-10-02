@@ -54,7 +54,7 @@ assert "rotation: orientationAngle + sway" in body
 assert body.count("id: faceOverlay") == 1
 assert "rotation: -root.orientationAngle" in body
 assert 'orientationAngle: root.edge === "left" ? 90' in host
-assert not re.search(r'^\\s*rotation: root\\.edge', host, re.M)
+assert 'rotation: root.edge' not in host
 assert 'anchors.verticalCenter: root.verticalEdge ? parent.verticalCenter : undefined' in host
 assert 'anchors.left: root.edge === "left" ? parent.left : undefined' in host
 assert 'anchors.right: root.edge === "right" ? parent.right : undefined' in host

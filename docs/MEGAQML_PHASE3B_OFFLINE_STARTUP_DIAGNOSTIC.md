@@ -37,7 +37,15 @@ The isolated supervisor reads only its own newly created
 `.out` after a bounded client attempt. It reads at most 4096 bytes
 from each file and uses fixed-string classification for loader,
 private socket, permission and network-error **indicators**, not
-proof of root cause.
+proof of root cause. If no private server log exists, the inner
+supervisor now attempts **fixed-category classification of only its
+bounded, private client stdout/stderr**. It distinguishes an apparent
+client-side missing library/socket/server launch/IPC error, or an
+output-cap event, from the generic absence of a server log.
+Unrecognized text stays `sandbox_server_log_absent`. In particular,
+`sandbox_client_server_handshake_failed` is a symptom, **not**
+evidence of why an isolated server failed to launch. Raw client
+stdout/stderr remain inside the sandbox and are never published.
 
 Crucial safety properties:
 - User must opt in with an exact CLI acknowledgment; no automatic

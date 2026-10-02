@@ -81,8 +81,31 @@ def detail_private(text):
     return 100 + (line - 61) * 10 + enum
 
 
+def fixed_reason_private(text):
+    """Pre-reviewed reason labels only; never output freeform stderr."""
+    if classify_private(text) != 33:
+        return 199
+    if not isinstance(text, str) or len(text) > 8192:
+        return 199
+    tail = text.strip().splitlines()[-1].strip()
+    reasons = (
+        "PNG_BYTES_UNREVIEWED", "PNG_SIGNATURE_INVALID", "PNG_CHUNK_INVALID",
+        "PNG_RGBA_FORMAT_REQUIRED", "PNG_METADATA_ORDER_INVALID",
+        "PNG_IDAT_ORDER_INVALID", "PNG_END_INVALID", "PNG_INCOMPLETE",
+        "PNG_DECOMPRESSED_SIZE_INVALID", "PNG_ZLIB_INVALID",
+        "PNG_FILTER_INVALID", "RGBA_UNQUALIFIED", "PNG_HEADER_INVALID",
+        "PNG_CRC_INVALID", "PNG_UNSUPPORTED_CHUNK", "PNG_TRUNCATED",
+        "PNG_IDAT_TOO_LARGE", "PNG_ZLIB_INVALID",
+    )
+    for index, token in enumerate(reasons):
+        if tail.endswith(": " + token):
+            return 131 + index
+    return 199
+
+
 def main():
-    if sys.argv[1:] not in (["--prior-action-only"], ["--detail-only"]):
+    if sys.argv[1:] not in (["--prior-action-only"], ["--detail-only"],
+                            ["--fixed-reason-only"]):
         return 39
     state = Path(os.environ.get(
         "XDG_STATE_HOME", str(Path.home() / ".local/state")))
@@ -104,6 +127,8 @@ def main():
             or result.get("exit_code") != 1
             or result.get("timed_out") is not False):
         return 39
+    if sys.argv[1:] == ["--fixed-reason-only"]:
+        return fixed_reason_private(result.get("stderr", ""))
     if sys.argv[1:] == ["--detail-only"]:
         return detail_private(result.get("stderr", ""))
     return classify_private(result.get("stderr", ""))
@@ -117,4 +142,5 @@ if __name__ == "__main__":
     # Deliberately publish category VIA EXIT CODE ONLY: the Git worker
     # metadata allowlist already exposes it. Zero stdout/stderr and no raw
     # diagnostic trace cross the boundary.
-    sys.exit(stage if stage in CLASS or 100 <= stage <= 179 else 39)
+    sys.exit(stage if stage in CLASS or 100 <= stage <= 179
+             or 131 <= stage <= 148 or stage == 199 else 39)

@@ -863,34 +863,31 @@ def _step(profile_id: str, now: int) -> None:
         _step_session(profile_id,now)
 
 
-def _reconcile_configured_rotation(profile_id: str, now: int) -> bool:
-    """Honor a threshold edited AFTER the last consumed response.
+def _reconcile_configured_rotation(config: dict, state: dict, profile_id: str, now: int) -> bool:
+    """Honor a threshold edited after the final turn, even during cooldown.
 
-    Only an existing, verified turn boundary may rotate. Persist the change
-    before the shared 429 cooldown expires so the next allowed request starts
-    a fresh conversation instead of fetching the overlong old cursor.
+    Run under tick's state transaction, not from a network task. An in-flight
+    operation, pending/uncertain prompt, active job or owner command wins.
     """
-    def reconcile(config, state):
-        item = state["profiles"].get(profile_id)
-        profile = next((p for p in config["profiles"] if p["id"] == profile_id), None)
-        if not item or not profile or not profile["enabled"]:
-            return False
-        if (item["desired"] != "run" or not item["run_active"]
-                or item["remove_requested"] or item["pending"] or item["job_id"]
-                or item["request"] != "continuation" or profile["mode"] != "continuous"):
-            return False
-        # Never override an owner stop, a separate recovery, or other limits.
-        if limit_decision(profile, item, now) != "rotate":
-            return False
-        session = item.get("session") or {}
-        if not (session.get("conversation_id") and item.get("response_message_id")):
-            return False
-        item.update(request="rotation", status="rotating",
-                    status_detail="Configured rotation threshold reached at a completed turn boundary")
-        event(state, profile_id, "rotation_threshold_reconciled",
-              "Configured rotation threshold now due; retained original final response and receipts")
-        return True
-    return change_state(reconcile)
+    item = state["profiles"].get(profile_id)
+    profile = next((p for p in config["profiles"] if p["id"] == profile_id), None)
+    if not item or not profile or not profile["enabled"]:
+        return False
+    if (item["desired"] != "run" or not item["run_active"]
+            or item["remove_requested"] or item["pending"] or item["job_id"]
+            or item["request"] != "continuation" or profile["mode"] != "continuous"):
+        return False
+    # Existing explicit stop limits take priority over an edited rotate limit.
+    if limit_decision(profile, item, now) != "rotate":
+        return False
+    session = item.get("session") or {}
+    if not (session.get("conversation_id") and item.get("response_message_id")):
+        return False
+    item.update(request="rotation", status="rotating",
+                status_detail="Configured rotation threshold reached at a completed turn boundary")
+    event(state, profile_id, "rotation_threshold_reconciled",
+          "Threshold due; prior final response and worker receipts retained")
+    return True
 
 
 def _step_session(profile_id: str, now: int) -> None:
@@ -902,9 +899,6 @@ def _step_session(profile_id: str, now: int) -> None:
         # _poll independently gates API reads while allowing exact local final
         # receipts to progress during cooldown. No submission occurs here.
         _poll(config,state,profile_id,now); return
-    # Local-only reconciliation is safe during account cooldown; network
-    # submission still waits for the shared transport limiter below.
-    _reconcile_configured_rotation(profile_id, now)
     if now < state["transport_retry_at_unix"] and not item["job_id"]: return
     if item["desired"] != "run" or not _profile(config,profile_id)["enabled"]:
         if item["run_active"]:
@@ -932,7 +926,12 @@ def tick(now: int | None = None, executor: ThreadPoolExecutor | None = None) -> 
         migrate_runtime(c,s)
         _recover_dispatched_restart(s)
         _heartbeat(s,now)
-        for p in c["profiles"]: _claim(c,s,now,p["id"])
+        for p in c["profiles"]:
+            _claim(c,s,now,p["id"])
+            # This state-only check runs even when next_run is in the future
+            # due to a shared 429 cooldown. Do not change an in-flight call.
+            if p["id"] not in _INFLIGHT:
+                _reconcile_configured_rotation(c,s,p["id"],now)
     change_state(prepare)
     for pid,future in list(_INFLIGHT.items()):
         if future.done():

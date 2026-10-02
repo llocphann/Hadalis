@@ -169,7 +169,10 @@ python3 scripts/megaqml-f1-deployed-source-identity.py \
 
 These three variables must be established independently by the owner in a
 private terminal; the helper emits only fixed categories and counts, not
-paths or file content. An exit-zero `static_bytes_match` confirms only the
+paths or file content. Self-comparison with the source checkout, a source-nested deployed tree, or
+source/deployed files sharing an inode (for example, hard links) yields
+`deployment_not_independent` instead of a false independent Gate 0 result.
+An exit-zero `static_bytes_match` confirms only the
 compared bytes. It **cannot** verify the actual running process loaded that
 config, establish installed Rust helper identity, replace exact-source local
 qualification or count as a real mouse/visual observation. Never publish

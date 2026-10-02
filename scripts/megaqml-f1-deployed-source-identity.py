@@ -71,6 +71,10 @@ def assess(source, deployed, expected):
         deployed = deployed.resolve(strict=True)
         if not source.is_dir() or not deployed.is_dir():
             return "directory_unavailable", 0, 0
+        # A source checkout is not independent evidence of a deployment.
+        # Reject aliases and source-nested mirrors even when all bytes match.
+        if source == deployed or deployed.is_relative_to(source):
+            return "deployment_not_independent", 0, 0
         # Reject running a different/stale copy of this validation script.
         if Path(__file__).resolve() != (source / SCRIPT).resolve(strict=True):
             return "script_source_mismatch", 0, 0
@@ -94,7 +98,15 @@ def assess(source, deployed, expected):
         if original is None or target is None:
             unavailable += 1
         elif original == target:
-            matched += 1
+            # Separate directory names can still reference identical inodes
+            # (hard links). Such a self-comparison cannot qualify Gate 0.
+            try:
+                if os.path.samefile(source / rel, deployed / rel):
+                    return "deployment_not_independent", 0, 0
+            except OSError:
+                unavailable += 1
+            else:
+                matched += 1
     if unavailable:
         return "file_unavailable", matched, unavailable
     if matched != len(FILES):

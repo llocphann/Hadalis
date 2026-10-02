@@ -44,9 +44,10 @@ with tempfile.TemporaryDirectory() as d:
                "user.email=fixture@example.invalid", "commit",
                "-qm", "fixture", cwd=source).returncode == 0
     pin = run("git", "rev-parse", "HEAD", cwd=source).stdout.decode().strip()
-    def check(expected, expected_code, override=None):
+    def check(expected, expected_code, override=None, deployed_root=None):
         p = run(sys.executable, str(source / m.SCRIPT), "--source-root",
-                str(source), "--deployed-config-root", str(deployed),
+                str(source), "--deployed-config-root",
+                str(deployed if deployed_root is None else deployed_root),
                 "--expect-sha", pin if override is None else override)
         report = p.stdout.decode()
         assert p.returncode == expected_code, (expected, p.returncode)
@@ -55,6 +56,18 @@ with tempfile.TemporaryDirectory() as d:
         assert "VENDOR_OR_ACCOUNT_USED=NO" in report
         assert str(base) not in report
     check("static_bytes_match", 0)
+    # A false independent comparison must fail closed, even for byte-identical
+    # aliases and hard links; never infer actual running Quickshell identity.
+    check("deployment_not_independent", 21, deployed_root=source)
+    nested = source / "nested-deployment"
+    nested.mkdir()
+    check("deployment_not_independent", 21, deployed_root=nested)
+    nested.rmdir()
+    (deployed / m.FILES[0]).unlink()
+    os.link(source / m.FILES[0], deployed / m.FILES[0])
+    check("deployment_not_independent", 21)
+    (deployed / m.FILES[0]).unlink()
+    shutil.copyfile(source / m.FILES[0], deployed / m.FILES[0])
     check("source_head_mismatch", 21, "0" * 40)
     (deployed / m.FILES[0]).write_bytes(b"mismatched")
     check("deployed_mismatch", 21)

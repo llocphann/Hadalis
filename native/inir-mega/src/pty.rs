@@ -41,6 +41,18 @@ struct PtyPair {
 }
 
 #[cfg(unix)]
+fn set_close_on_exec(fd: RawFd) -> std::io::Result<()> {
+    let flags = unsafe { libc::fcntl(fd, libc::F_GETFD) };
+    if flags < 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    if unsafe { libc::fcntl(fd, libc::F_SETFD, flags | libc::FD_CLOEXEC) } < 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
 fn open_private_pty() -> Result<PtyPair> {
     let mut master = -1;
     let mut slave = -1;
@@ -55,6 +67,15 @@ fn open_private_pty() -> Result<PtyPair> {
     };
     if rc != 0 {
         return Err(std::io::Error::last_os_error()).context("open auth PTY");
+    }
+    // The raw PTY master and slave must not leak across vendor exec, even if
+    // the caller opens this dialog from a multi-threaded shell process.
+    if let Err(error) = set_close_on_exec(master).and_then(|_| set_close_on_exec(slave)) {
+        unsafe {
+            libc::close(master);
+            libc::close(slave);
+        }
+        return Err(error).context("protect auth PTY descriptors against exec inheritance");
     }
 
     let mut termios = unsafe { std::mem::zeroed::<libc::termios>() };
@@ -131,6 +152,18 @@ fn configure_child(program: &Path, slave: RawFd) -> Result<Command> {
             libc::close(slave);
         }
         return Err(std::io::Error::last_os_error()).context("duplicate PTY slave");
+    }
+    // dup() clears FD_CLOEXEC. Keep source handles private while Command
+    // duplicates them onto the child's actual stdin/stdout/stderr.
+    if let Err(error) =
+        set_close_on_exec(stdin_fd).and_then(|_| set_close_on_exec(stdout_fd))
+    {
+        unsafe {
+            libc::close(stdin_fd);
+            libc::close(stdout_fd);
+            libc::close(slave);
+        }
+        return Err(error).context("protect auth PTY stdio sources against exec inheritance");
     }
 
     let mut command = Command::new(program);
@@ -321,6 +354,17 @@ mod tests {
         permissions.set_mode(0o700);
         fs::set_permissions(&path, permissions).unwrap();
         path
+    }
+
+    #[test]
+    fn pty_master_and_slave_are_close_on_exec() {
+        let PtyPair { master, slave } = open_private_pty().unwrap();
+        for fd in [master, slave] {
+            let flags = unsafe { libc::fcntl(fd, libc::F_GETFD) };
+            assert!(flags >= 0);
+            assert_ne!(flags & libc::FD_CLOEXEC, 0);
+            unsafe { libc::close(fd) };
+        }
     }
 
     fn qualified_script() -> &'static str {

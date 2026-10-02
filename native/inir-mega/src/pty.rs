@@ -94,9 +94,17 @@ pub(crate) struct AuthDialogResult {
 
 #[cfg(unix)]
 fn stop_child(child: &mut Child) {
-    if child.try_wait().ok().flatten().is_none() {
-        let _ = child.kill();
+    // configure_child makes the vendor a new session/process-group leader.
+    // Kill its entire private group, not just the launcher: an interactive
+    // vendor may spawn children that retain session state or inherited PTYs.
+    // Signal BEFORE wait/try_wait: until the direct child is reaped, its PID
+    // cannot be reused for an unrelated process group.
+    if let Ok(pid) = libc::pid_t::try_from(child.id()) {
+        let _ = unsafe { libc::kill(-pid, libc::SIGKILL) };
     }
+    // If setsid or the group signal did not take effect, also kill the
+    // direct child. Reap only after both signals have been attempted.
+    let _ = child.kill();
     let _ = child.wait();
 }
 
@@ -423,6 +431,37 @@ test "$LANG" = "en_US.UTF-8" || exit 49
         assert!(!public_result.contains("private-echo-canary-never-expose"));
         assert!(!public_result.contains("fixture@example.invalid"));
         let _ = fs::remove_dir_all(vendor.parent().unwrap());
+    }
+
+    #[test]
+    fn pty_unknown_prompt_kills_child_process_group_not_just_launcher() {
+        // This is a pure fake vendor; a live MEGA session is never started.
+        // Its background child would write a marker after the launcher exits
+        // if stop_child killed only the shell instead of its private group.
+        let vendor = fake_vendor("#!/bin/sh\nexit 50\n");
+        let base = vendor.parent().unwrap();
+        let ready = base.join("background-ready");
+        let survived = base.join("background-survived");
+        let script = format!(
+            "#!/bin/sh\\n(sleep 1; printf SURVIVED > '{}') &\\nprintf READY > '{}'\\nprintf 'Enter account recovery key:'\\nwait\\n",
+            survived.display(), ready.display(),
+        );
+        fs::write(&vendor, script).unwrap();
+        let started = Instant::now();
+        let result = run_auth_dialog(
+            &vendor,
+            "fixture@example.invalid",
+            "fixture-password-never-log",
+            None,
+            Duration::from_secs(5),
+            4096,
+        ).unwrap();
+        assert_eq!(result.outcome, AuthDialogOutcome::Unexpected);
+        assert!(ready.is_file(), "fake vendor did not start its background child");
+        assert!(started.elapsed() < Duration::from_secs(3));
+        std::thread::sleep(Duration::from_millis(1250));
+        assert!(!survived.exists(), "orphaned fake vendor child survived cleanup");
+        let _ = fs::remove_dir_all(base);
     }
 
     #[test]

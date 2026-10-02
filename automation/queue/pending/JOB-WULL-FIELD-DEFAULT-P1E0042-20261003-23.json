@@ -1,0 +1,28 @@
+{
+  "id": "JOB-WULL-FIELD-DEFAULT-P1E0042-20261003-23",
+  "base_sha": "6fa46205876a6e997ad01773b4e47ea8c99cace5",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-real-field-canary-fake-only.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 45
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-manual-real-field-canary.py",
+          "--capture-default-backend"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 90
+      }
+    }
+  ]
+}

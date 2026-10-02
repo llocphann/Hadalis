@@ -1,6 +1,6 @@
 # MegaQML Phase 3b — one-shot isolated server-startup diagnosis
 
-**Status: owner Linux one-shot diagnosis completed; loader-error category observed; Phase 3b remains UNQUALIFIED.**
+**Status: owner Linux loader indicator and vendor-free private library layout observed; Phase 3b UNQUALIFIED. Narrow opt-in mount code staged, owner sandbox retest PENDING.**
 This is an explanation-only, *not* a new server capability or general
 license to run vendor commands. The owner earlier approved only
 isolated/disposable version and compatibility checks, not existing
@@ -18,6 +18,14 @@ The category proves that a **fresh disposable sandbox server log contained a rec
 **Source-grounded hypothesis, not confirmed host diagnosis:** pinned upstream MEGAcmd `CMakeLists.txt` configures `CMAKE_INSTALL_LIBDIR=opt/megacmd/lib` and normally sets RPATH to `/opt/megacmd/lib`; the Hadalis bubblewrap mount list permits system roots such as `/usr`, `/etc` and `/nix/store`, but it **does not mount host `/opt`**. If the installed pacman-owned MEGAcmd package actually relies on its own `/opt/megacmd/lib` libraries, the approved sandbox would hide those files. The installed package layout has **not** been verified. Source: https://github.com/meganz/MEGAcmd/blob/6505327a5a7a0e94f26f611f83b024aeeb63582c/CMakeLists.txt#L130-L150.
 
 **Next narrow gate:** inspect only matched local pacman package metadata and existence of declared `/opt/megacmd/lib` library files with the separate **vendor-free, read-only** `scripts/megaqml-phase3b-static-library-layout.py`. It prints fixed categories only, not filenames or private paths, and does not auto-publish to public GitHub. Its fake-only self-test and contract must pass before any owner-local inspection. This is **not** a second vendor probe. If matching private libraries are corroborated, propose a strictly scoped sandbox-only read-only mount *for separate explicit maintainer approval* before any further vendor invocation; otherwise stop and reassess static loader evidence. Never automatically bind all `/opt`, relax network isolation, access existing MEGA state, or assume that a missing-library category permits retry.
+
+## Authorized private-library sandbox retest (2026-10-02)
+
+Owner's separate, local-only static run at exact source `b0f5ef07955876e1963d69d070a157ac3966930a` reported the vendor-free fake contract and inert self-test PASS, `STATIC_EXIT=0`, and `SAFE_CATEGORY=package_opt_libraries_present`. This is **owner-reported local evidence**, not a published GitHub acceptance report. The result supports package-owned private libraries at the expected location but does not identify the missing runtime dependency.
+
+Owner separately approved one new isolated **offline**, **account-free**, **local-output-only** retest with a narrowly scoped read-only library mount. New `--acknowledge-isolated-offline-private-libs-test` is the sole route for this retest; the prior diagnostic flag retains its original mount behavior. Before any vendor execution the new helper requires a matched pacman package record; all declared private libraries present; root-owned and non-group/world-writable `/opt`, `/opt/megacmd`, `/opt/megacmd/lib` and regular library files; and package-listed, private-directory-only relative symlinks. Unlisted files, unusual nested directories, symlinks outside this directory, mismatched binary ownership or unsupported layouts **fail closed without vendor invocation**. The sandbox gains only three mount arguments to create its private `/opt` and `/opt/megacmd` directories and `--ro-bind /opt/megacmd/lib /opt/megacmd/lib`. It does NOT bind host `/opt`; network/PID isolation, ephemeral HOME, scrubbed environment, time/output caps and namespace teardown are unchanged. Run fake-only tests first, then exactly one sandboxed vendor invocation if all safety gates pass. No publisher is connected to the new flag; print fixed local summary only, with no raw logs or account details. Source-staged until new exact-SHA owner Linux report.
+
+The observed result, whether a new fixed error or no log, remains Phase 3b `UNQUALIFIED`. No capability, auth or read/write domain may be enabled. Stop if the result is still unexplained; another mount or a networked experiment requires a different permission.
 
 ## Earlier evidence
 

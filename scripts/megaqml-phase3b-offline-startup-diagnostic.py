@@ -12,6 +12,9 @@ import sys
 
 BASE = Path(__file__).with_name("megaqml-manual-disposable-version-probe.py")
 BOUNDARY = runpy.run_path(str(BASE), run_name="megaqml_boundary_import")
+# No host inspection unless the separately authorized new CLI flag is used.
+PRIVATE = runpy.run_path(str(Path(__file__).with_name(
+    "megaqml-phase3b-private-lib-mount.py")), run_name="private_lib_import")
 
 # Executed as /usr/bin/python3 -I -S -c ... *inside* bwrap PID namespace.
 # No host files other than readonly system binaries are mounted.
@@ -195,7 +198,7 @@ def safe_summary(reason, has_log=False, client_timed_out=False):
         "sandbox_setup_unavailable", "sandbox_process_unavailable",
         "bounded_timeout", "bounded_output_cap", "missing_host_dependency",
         "mixed_vendor_bin_directories", "sandbox_supervisor_output_invalid",
-        "do_not_run_as_root",
+        "do_not_run_as_root", "private_lib_mount_validation_failed",
     }
     return json.dumps({
         "phase": "megaqml_phase3b_offline_startup_diagnostic",
@@ -246,7 +249,8 @@ def main():
     if sys.argv[1:] == ["--self-test"]:
         self_test()
         return 0
-    if sys.argv[1:] != ["--acknowledge-isolated-offline-startup-diagnostic"]:
+    private_libraries = sys.argv[1:] == ["--acknowledge-isolated-offline-private-libs-test"]
+    if not private_libraries and sys.argv[1:] != ["--acknowledge-isolated-offline-startup-diagnostic"]:
         print(safe_summary("missing_host_dependency"))
         return 20
     if __import__("os").geteuid() == 0:
@@ -263,17 +267,32 @@ def main():
             or ver[1].parent != server[1].parent):
         print(safe_summary("mixed_vendor_bin_directories"))
         return 20
+    # The original flag uses the unchanged sandbox. The new, separately
+    # authorized flag alone can opt into the verified private read-only mount.
+    if private_libraries:
+        try:
+            pair = [(ver[0], ver[1]), (server[0], server[1])]
+            approved = PRIVATE["verify_private_lib_mount"](pair)
+        except (OSError, ValueError, RuntimeError):
+            approved = False
+        if not approved:
+            print(safe_summary("private_lib_mount_validation_failed"))
+            return 20
     sandbox = BOUNDARY["bwrap_command"]
     bounded = BOUNDARY["bounded_process"]
+    def command(payload):
+        if private_libraries:
+            return sandbox(bwrap[0], payload, ver[0].parent,
+                           private_megacmd_lib=True)
+        return sandbox(bwrap[0], payload, ver[0].parent)
     try:
         rc, _, _, blocked = bounded(
-            sandbox(bwrap[0], [true[0]], ver[0].parent))
+            command([true[0]]))
         if blocked or rc != 0:
             print(safe_summary("sandbox_setup_unavailable"))
             return 20
         rc, output, _, blocked = bounded(
-            sandbox(bwrap[0], [python[0], "-I", "-S", "-c", INNER,
-                                   str(ver[0])], ver[0].parent))
+            command([python[0], "-I", "-S", "-c", INNER, str(ver[0])]))
     except (OSError, ValueError, __import__("subprocess").TimeoutExpired):
         print(safe_summary("sandbox_process_unavailable"))
         return 20

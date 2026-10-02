@@ -94,7 +94,7 @@ def allowed_binary(name):
     return raw, resolved
 
 
-def mount_prefixes():
+def mount_prefixes(private_megacmd_lib=False):
     # Never bind the host root, user home, runtime sockets, /tmp or /run.
     args = ["--tmpfs", "/", "--ro-bind", "/usr", "/usr"]
     for directory in ("/bin", "/sbin", "/lib", "/lib64"):
@@ -113,6 +113,11 @@ def mount_prefixes():
     args += ["--ro-bind", "/etc", "/etc"]
     if Path("/nix/store").is_dir():
         args += ["--ro-bind", "/nix/store", "/nix/store"]
+    # This new mount is opt-in ONLY from an explicitly authorized isolated
+    # diagnostic after package/ownership/symlink validation. Do not bind /opt.
+    if private_megacmd_lib:
+        args += ["--dir", "/opt", "--dir", "/opt/megacmd",
+                 "--ro-bind", "/opt/megacmd/lib", "/opt/megacmd/lib"]
     # No bind from the host's /run, /tmp, /home or MEGAcmd state.
     args += ["--dev", "/dev", "--proc", "/proc",
              "--dir", "/tmp", "--dir", "/run",
@@ -125,14 +130,14 @@ def mount_prefixes():
     return args
 
 
-def bwrap_command(bwrap, payload, vendor_parent):
+def bwrap_command(bwrap, payload, vendor_parent, private_megacmd_lib=False):
     path = ":".join(dict.fromkeys([
         str(vendor_parent), "/usr/bin", "/bin", "/nix/store/default/bin"
     ]))
     return [
         str(bwrap), "--die-with-parent", "--new-session",
         "--unshare-all", "--unshare-net", "--as-pid-1", "--clearenv",
-        *mount_prefixes(),
+        *mount_prefixes(private_megacmd_lib=private_megacmd_lib),
         "--setenv", "HOME", "/home/disposable",
         "--setenv", "XDG_CONFIG_HOME", "/home/disposable/.config",
         "--setenv", "XDG_CACHE_HOME", "/home/disposable/.cache",

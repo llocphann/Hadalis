@@ -64,5 +64,7 @@ try {
     browser.close().catch(() => {}),
     new Promise(resolve => setTimeout(resolve, 1500))
   ]);
-  clearTimeout(deadline);
+  // Keep the unref'd watchdog armed: a Playwright handle may remain open
+  // after browser.close() times out. It cannot delay a clean process exit,
+  // but guarantees a bounded exit for an unresponsive CDP client.
 }

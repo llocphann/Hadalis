@@ -52,15 +52,17 @@ for marker in (
 
     'anchors.horizontalCenter: root.verticalEdge ? undefined : parent.horizontalCenter',
     'anchors.verticalCenter: root.verticalEdge ? parent.verticalCenter : undefined',
-    'anchors.left: root.edge === "right" ? parent.left : undefined',
-    'anchors.right: root.edge === "left" ? parent.right : undefined',
+    'anchors.left: root.edge === "left" ? parent.left : undefined',
+    'anchors.right: root.edge === "right" ? parent.right : undefined',
 ):
     assert body.count(marker) == 1, marker
 assert 'rotation: root.edge === "left" ? 90' not in body
 assert body.count("WaterDropletBody {") == 1
 assert "anchors.centerIn: parent" in body
 assert "transformOrigin: Item.Center" in body
-assert "color: Qt.alpha(AbyssStyle.accent," in body
+assert "color: AbyssStyle.surface" in body
+assert "width: root.verticalEdge ? 10 : 28" in body
+assert "height: root.verticalEdge ? 28 : 10" in body
 
 original = OLD_PERIMETER.read_text()
 source = PERIMETER.read_text()

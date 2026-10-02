@@ -74,14 +74,9 @@ def main():
     os.umask(0o077)
     runner = runpy.run_path(
         str(ROOT / PINNED_RUNNER), run_name="private_wull_failure_diagnostic")
-    git = runner["audit"]
     # This verifies the fresh owned mode0700 clone, original QML,
     # trusted remote and reviewed old runner fixture through source pins.
-    git()
-    source_sha = runner["ROOT"] and runner["BORROW"]  # no private data
-    borrowed = runpy.run_path(
-        str(ROOT / "scripts/wull-manual-private-paint-core.py"),
-        run_name="private_wull_failure_git_audit")
+    borrowed, audited_source = runner["audit"]()
     require(borrowed["git"]("rev-parse", "HEAD:" + PINNED_RUNNER)
             == PINNED_BLOB, "PINNED_PILOT_RUNNER_CHANGED")
     folder = ROOT.parent / "dynamic-paint-pilot"
@@ -103,9 +98,7 @@ def main():
         raw, runner["stages"](), runner["FAILURES"])
     require(borrowed["git"]("status", "--porcelain=v1",
                             "--untracked-files=all") == "" and
-            borrowed["git"]("rev-parse", "HEAD") ==
-            borrowed["git"]("ls-remote", "origin",
-                             "refs/heads/dev").split()[0],
+            borrowed["git"]("rev-parse", "HEAD") == audited_source,
             "PRIVATE_SOURCE_CHANGED")
     print("DIAGNOSTIC_SCOPE=FAILED_PRIVATE_QT_LOG_ONLY")
     print("OBSERVED_STAGE_COUNT=" + str(count))
@@ -122,8 +115,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (Unqualified, OSError, RuntimeError, ValueError,
-            KeyError, TypeError) as ex:
+    except Exception as ex:  # Never let arbitrary Qt/Git details escape stderr.
         safe = {
             "DIAGNOSTIC_INPUT_INVALID", "DIAGNOSTIC_MARKER_AMBIGUOUS",
             "DIAGNOSTIC_STAGE_SEQUENCE_INVALID",

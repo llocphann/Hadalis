@@ -576,7 +576,8 @@ mod tests {
             "secret": {"password": canary.repeat(MAX_REQUEST_BYTES)}
         })).unwrap();
         assert!(huge.len() > MAX_REQUEST_BYTES);
-        let error = read_bounded_request(std::io::Cursor::new(huge)).unwrap_err();
+        let error = read_bounded_request(std::io::Cursor::new(huge))
+            .err().expect("oversized request must be rejected");
         assert!(!format!("{error:?}").contains(canary));
 
         let bad = read_bounded_request(std::io::Cursor::new(
@@ -587,7 +588,8 @@ mod tests {
         )).unwrap();
         let encoded = serde_json::to_string(&handle(bad)).unwrap();
         assert!(encoded.contains("INVALID_REQUEST_ID"));
-        assert!(encoded.contains("\\"request_id\\":\\"\\""));
+        let response: Value = serde_json::from_str(&encoded).unwrap();
+        assert_eq!(response["request_id"], "");
         assert!(!encoded.contains("private"));
         assert!(!encoded.contains("password:123"));
     }

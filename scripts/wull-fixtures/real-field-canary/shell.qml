@@ -142,7 +142,13 @@ ShellRoot {
         title: "Private synthetic real AbyssField shader canary"
         Item {
             id: sheet
-            anchors.fill: parent
+            // The compositor owns FloatingWindow sizing in nested Wayland.
+            // The test-owned synthetic matrix must retain fixed logical
+            // geometry so grabToImage cannot silently change its ROIs.
+            width: 512
+            height: 512
+            x: 0
+            y: 0
             FieldCase { id: top; x: 8; y: 8; edgeName: "top" }
             FieldCase { id: right; x: 280; y: 8; edgeName: "right" }
             FieldCase { id: bottom; x: 8; y: 280; edgeName: "bottom" }

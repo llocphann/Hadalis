@@ -363,7 +363,7 @@ async function nativeGet(page, path, parameters, projectId = null, projection = 
   // Only projects use this header. Older/custom GPT gizmo identities keep
   // ordinary conversation reads and cannot inject arbitrary header content.
   projectId = typeof projectId === "string" && /^g-p-[0-9a-f]{32}$/i.test(projectId) ? projectId : null;
-  const result = await page.evaluate(async ({path, parameters, projectId}) => {
+  const result = await page.evaluate(async ({path, parameters, projectId, projection}) => {
     try {
       const value = await window.__hadalisNative.api.safeGet(path, {
         signal:AbortSignal.timeout(25000), parameters,

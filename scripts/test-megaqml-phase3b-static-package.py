@@ -113,6 +113,7 @@ assert "PRIVATE_ACCOUNT_CANARY" not in output.getvalue()
 publisher = (root / "scripts/megaqml-phase3b-static-owner-local.sh").read_text("utf-8")
 for token in (
         "--acknowledge-vendor-free-static-triage",
+        "--publish-public-package-version",
         "test-megaqml-phase3b-static-package.py",
         "megaqml-phase3b-static-package.py",
         "server_version_qualified", "vendor_executed", "package_version",

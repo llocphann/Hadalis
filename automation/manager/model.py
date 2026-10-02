@@ -39,6 +39,7 @@ PROFILE_DEFAULTS = {
     "requires_github": True,
     "stop_on_done": False,  # Preserve v1 continuous-loop semantics on import.
     "auto_protocol_recovery": False,  # Per-profile opt-in; never replay consumed turns.
+    "rotate_on_cursor_timeout": False,  # Opt-in: abandon slow history only at a verified turn boundary.
     "mode": "manual",
     "interval_seconds": 3600,
     "duration_seconds": 3600,

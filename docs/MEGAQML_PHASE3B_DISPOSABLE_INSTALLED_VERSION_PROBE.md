@@ -1,6 +1,6 @@
 # MegaQML Phase 3b — owner-approved isolated installed-version probe
 
-**Status: source STAGED; owner-local isolation/runtime evidence PENDING.**
+**Status:** owner-local static pacman package metadata observed at version **2.6.0**; isolated offline MEGAcmd server handshake **UNQUALIFIED**. A one-shot private-sandbox startup log classifier is source-staged; its separate owner-local test is pending. See [the narrow diagnostic and stop conditions](MEGAQML_PHASE3B_OFFLINE_STARTUP_DIAGNOSTIC.md).
 Owner approved **preparing an isolated installed-version and compatibility
 procedure without using the current account**. That consent does not
 authorize login, current-account reads, mutations, sharing, file scanning,

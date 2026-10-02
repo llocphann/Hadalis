@@ -59,23 +59,26 @@ Item {
 
     Rectangle {
         z: -1
-        width: root.verticalEdge ? 10 : 58
-        height: root.verticalEdge ? 58 : 10
-        radius: 6
-        // Real nested AbyssField capture showed the previous strip sitting
-        // on the OUTER tip side of rotated Wull. The soft base always points
-        // INWARD to the field: bottom for top, top for bottom, right for
-        // left and left for right. Keep this shadow behind the actual body.
+        width: root.verticalEdge ? 10 : 28
+        height: root.verticalEdge ? 28 : 10
+        radius: 5
+        // Two real nested shader captures showed the bright full-width
+        // strip stays detached; swapping side anchors moved it AWAY from
+        // the observed field rim. Use compact, theme-matched base necks:
+        // side anchors remain rim-facing while the bottom neck meets
+        // the upright rounded base. Keep these behind the live body.
         anchors.horizontalCenter: root.verticalEdge ? undefined : parent.horizontalCenter
         anchors.verticalCenter: root.verticalEdge ? parent.verticalCenter : undefined
-        anchors.left: root.edge === "right" ? parent.left : undefined
-        anchors.right: root.edge === "left" ? parent.right : undefined
+        anchors.left: root.edge === "left" ? parent.left : undefined
+        anchors.right: root.edge === "right" ? parent.right : undefined
         anchors.top: root.edge === "bottom" ? parent.top : undefined
         anchors.bottom: root.edge === "top" ? parent.bottom : undefined
         scale: 1 + root.ripple * 0.16
-        opacity: 0.72 + root.ripple * 0.28
-        color: Qt.alpha(AbyssStyle.accent, 0.16 + root.pulse * 0.10)
-        border.color: Qt.alpha(AbyssStyle.specular, 0.2 + root.pulse * 0.16)
+        opacity: 0.88 + root.ripple * 0.12
+        // Same source material as real AbyssField.surface (theme-linked).
+        // Reduce only the separate neck highlight, never the live body.
+        color: AbyssStyle.surface
+        border.color: Qt.alpha(AbyssStyle.specular, 0.08 + root.pulse * 0.04)
 
         Behavior on scale {
             enabled: AbyssStyle.motionEnabled

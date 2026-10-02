@@ -11,6 +11,7 @@ use serde_json::{Value, json};
 
 mod pty;
 mod feature_gates;
+mod column_fixtures;
 
 const PROTOCOL_VERSION: u32 = 1;
 const LIVE_AUTH_VENDOR_ENABLED: bool = false;

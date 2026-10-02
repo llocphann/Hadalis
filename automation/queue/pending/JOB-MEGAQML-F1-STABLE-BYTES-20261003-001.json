@@ -1,0 +1,51 @@
+{
+  "id": "JOB-MEGAQML-F1-STABLE-BYTES-20261003-001",
+  "profile_id": "profile-a25585b748dd4220",
+  "base_sha": "d2fba030ce7ec650b1bf951189d266e2dc4b3736",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "scripts/test-megaqml-f1-deployed-source-identity.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "scripts/test-megaqml-f1-running-launch-identity.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "scripts/test-megaqml-phase2-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-c",
+          "bash scripts/test-megaqml-phase2-local.sh \"$(git rev-parse HEAD)\" --local-only"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1800
+      }
+    }
+  ]
+}

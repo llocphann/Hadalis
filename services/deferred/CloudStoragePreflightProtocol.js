@@ -5,7 +5,11 @@ function parseConnectPreflightResponse(payload, requestId) {
             || typeof requestId !== "string" || !requestId.length)
         throw new Error("invalid preflight response")
     const envelope = JSON.parse(payload)
+    // Keep the outer envelope as strict as the result schema: a preflight
+    // reply may never smuggle additional account or session metadata.
+    const envelopeKeys = ["protocol", "request_id", "ok", "result", "error"].sort()
     if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)
+            || JSON.stringify(Object.keys(envelope).sort()) !== JSON.stringify(envelopeKeys)
             || envelope.protocol !== 1 || envelope.request_id !== requestId
             || envelope.ok !== true || envelope.error !== null)
         throw new Error("incompatible preflight envelope")

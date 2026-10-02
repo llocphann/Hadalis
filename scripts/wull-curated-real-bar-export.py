@@ -35,8 +35,8 @@ MAX_SAFE=512*1024
 # Split left/right bands into exactly four strictly source-owned sub-rectangles
 # for the reviewed alpha-safe encoder. Nothing from the actual clock module's
 # source-seeded upper screen position is allowed into the composite.
-ROIS=((0,245,160,361),(0,361,160,477),
-      (352,245,512,361),(352,361,512,477))
+ROIS=((0,300,160,389),(0,389,160,477),
+      (352,300,512,389),(352,389,512,477))
 STAGES=("BOOT","BAR_LAYOUT_FIELD_AND_WULL_READY","PNG_SAVED")
 
 
@@ -178,7 +178,7 @@ def compose(a,b):
     out=bytearray(len(a))
     # Keep only the lower edge regions, independent from where the clock
     # actually decides to draw (the full upper region is always blank).
-    for y in range(245,477):
+    for y in range(300,477):
         for x in range(160):
             p=(y*512+x)*4
             out[p:p+4]=a[p:p+4]

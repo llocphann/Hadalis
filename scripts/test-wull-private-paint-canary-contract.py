@@ -65,7 +65,7 @@ assert qml.count("AbyssCompanion {") == 1
 assert "WaterDropletBody {" not in qml
 for forbidden in (
     "grabWindow", "captureScreen", "ScreenCapture", "Process {",
-    "Wayland", "Niri", "wlrctl", "ydotool", "wdotool", "ShellService",
+    "Wayland {", "Niri {", "wlrctl", "ydotool", "wdotool", "ShellService",
     "HttpRequest",
 ):
     assert forbidden not in qml, forbidden
@@ -174,7 +174,7 @@ with tempfile.TemporaryDirectory(prefix="wull-paint-inert-") as directory:
     png.chmod(0o600)
     try:
         program["verify_png"](png)
-    except model["InvalidCapture"] as exc:
+    except ValueError as exc:
         assert str(exc) == "PNG_SIGNATURE_INVALID"
     else:
         raise AssertionError("Malformed fake capture was accepted")

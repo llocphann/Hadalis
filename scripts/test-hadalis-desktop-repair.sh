@@ -86,6 +86,35 @@ def run(label, operation):
     return False
 
 if not run("NATIVE_PROBE", {"op":"probe"}):
+    print("=== READ-ONLY RENDERER STAGE DIAGNOSIS ===")
+    allowed = {
+        "renderer_found", "modules_loaded", "static_api_valid",
+        "safe_get_exports", "stream_post_exports", "combined_api_exports",
+        "stream_definition_valid", "react_root_found", "scope_found",
+        "transport_valid",
+    }
+    try:
+        diagnostic = subprocess.run(
+            ["node", "automation/chat_bridge/native_cli.mjs"],
+            input=json.dumps({"op":"diagnose", "error_observation":True}),
+            text=True, capture_output=True, timeout=43, check=False
+        )
+        if diagnostic.returncode == 0:
+            payload = json.loads(diagnostic.stdout)
+            if not isinstance(payload, dict):
+                raise ValueError("not a diagnostic object")
+            for key in sorted(allowed):
+                value = payload.get(key)
+                if type(value) is bool:
+                    print("RENDERER_" + key.upper() + "=" + ("PASS" if value else "FAIL"))
+                elif key.endswith("_exports") and value in {"zero", "one", "multiple"}:
+                    print("RENDERER_" + key.upper() + "=" + value.upper())
+                else:
+                    print("RENDERER_" + key.upper() + "=UNAVAILABLE")
+        else:
+            print("RENDERER_DIAGNOSIS=UNAVAILABLE")
+    except (subprocess.TimeoutExpired, ValueError, TypeError):
+        print("RENDERER_DIAGNOSIS=UNAVAILABLE")
     print("RESULT=CONTRACT_OR_TRANSPORT_BLOCKED_NO_PROMPTS_SENT")
     sys.exit(2)
 

@@ -337,3 +337,67 @@ Even if the candidate shape appears in the local run, further
 separately authorized, controlled **nonempty** Sync evidence and
 snapshot identity checks are required before Phase 3b can
 qualify any real Sync row lifecycle.
+
+## Owner-local installed-vendor blank-line branch observed (2026-10-02)
+
+The owner ran the exact-source Phase 3b disposable read-only probe
+from commit `f5c689cea67d8e8db036b6c364274b7a78d7f69a`
+on the **actual local Linux host**, with the existing dedicated
+`megaqml-disposable` OS user/session and independently
+authenticated **throwaway MEGA account**. The fake-only
+contract passed. Its public finite local summary was:
+
+```text
+REASON=sync_source_blank_line_candidate_unqualified
+ISOLATED_SERVER_MATCH=true
+DISPOSABLE_ACCOUNT_MATCH=true
+NONEMPTY_SYNC_SCALARS=false
+VENDOR_PROBE_SCOPE=WHOAMI_THEN_SYNC_READ_ONLY
+RAW_PRIVATE_OUTPUT_PUBLISHED=NO
+PHASE3B=UNQUALIFIED
+```
+
+These markers are the complete shareable evidence, not the
+private raw vendor output. Since this code reports the
+`sync_source_blank_line_candidate_unqualified` branch only
+after a bounded fixed-argv `whoami` matching the locally
+entered account, a completed successful fixed-argv `sync`
+with empty stderr, an unchanged dedicated server and exactly
+one newline on stdout, this **confirms the owner's installed
+MEGAcmd returned the upstream source-consistent blank-line
+shape in this separately configured test environment**.
+The owner reported that the throwaway account has no data;
+neither that report nor the blank line alone establishes
+authenticated Sync-list emptiness in arbitrary environments.
+Do not interpret `NONEMPTY_SYNC_SCALARS=false` as a parser
+failure or an observed nonempty row.
+
+**Owner-private evidence status:**
+- Dedicated executable/server and local disposable account
+  identity: observed matching under the probe's existing
+  source-described local checks.
+- Fixed selected-column read-only Sync command: ran with
+  successful exit and exact source-consistent blank-line
+  stdout in the owner's local dedicated account.
+- Nonempty Sync `ID|RUN_STATE|STATUS` vendor row, stable
+  per-ID identity across refresh, row provenance, snapshot
+  coherence, lifecycle transitions and vendor error-path
+  behavior: **unobserved**.
+- Production live-auth gate and all ten cloud domains:
+  **remain disabled**. No data, credentials, raw stdout,
+  stderr, local paths, Sync IDs or vendor version were
+  collected for the repository.
+
+**Decision:** the empty-output local experiment is
+complete; do not request another blank-line repeat or
+misclassify this as Phase 3b qualification. The next
+material empirical step requires separate explicit owner
+approval and a controlled, nonempty **throwaway-only**
+Sync fixture (with local/remote folders created only after
+approval), followed by bounded private read-only observation
+and independently correlated row identity/snapshot epochs.
+The current permission is **read-only**, so no Sync
+creation, login automation, file upload or mutation command
+is authorized. If no such approval is given, remain at
+this evidence boundary and continue only source-only
+research; do not unlock any runtime read path.

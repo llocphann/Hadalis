@@ -1,0 +1,35 @@
+{
+  "id": "JOB-MEGAQML-ENVELOPE-20261002-001",
+  "base_sha": "2dd18348323fa2bdfe913588044d7f2a56f493cc",
+  "profile_id": "profile-a25585b748dd4220",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "-p",
+          "inir-mega",
+          "--manifest-path",
+          "native/Cargo.toml"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 900
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "check",
+          "-p",
+          "inir-mega",
+          "--manifest-path",
+          "native/Cargo.toml"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    }
+  ]
+}

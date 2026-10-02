@@ -125,14 +125,12 @@ def private_classify(directory):
                            run_name="wull_dynamic_paint_bounded_png_decoder")
     rows = []
     for phase, i, case in model["expected"]():
-        name = phase + "-" + case + "-" + str(i) + ".private.png"
-        raw = secure_png(directory / name)
-        key = "top_100" if case == "top_100" else "bottom_150"
-        stem = "top" if key == "top_100" else "bottom"
+        stem = {"top_100": "top", "bottom_150": "bottom"}.get(case)
+        require(stem is not None, "DYNAMIC_PAINT_ALPHA_INCONCLUSIVE")
         name = phase + "-" + stem + "-" + str(i) + ".private.png"
         raw = secure_png(directory / name)
         try:
-            rows.append(model["classify"](key, phase, i, raw, alpha))
+            rows.append(model["classify"](case, phase, i, raw, alpha))
         except (ValueError, TypeError, KeyError):
             raise Stop("DYNAMIC_PAINT_ALPHA_INCONCLUSIVE")
     witness = {

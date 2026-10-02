@@ -196,3 +196,24 @@ Quickshell or Qt tests were skipped: require all 40 explicit PASS rows and
 publish local environment metadata by default. This matrix is still not real
 desktop pointer acceptance, actual deployed/running identity or installed
 MEGAcmd proof.
+
+
+### Private offline classification of the generated matrix
+
+After the `--local-only` matrix finishes in the separate clean clone,
+classify its exact `SAFE_REPORT` from that run without copying its content:
+
+```bash
+python3 scripts/megaqml-f1-local-matrix-classify.py \
+  --report "$SAFE_REPORT" --expect-sha "$QUALIFIED_CANDIDATE_SHA"
+```
+
+The helper requires all 40 canonical ordered PASS rows with exit 0 and the
+same source SHA, one PASS aggregate, and 8/8 race evidence. It accepts only
+a bounded report in that checkout's `docs/evidence/megaqml/`, rejects
+external symlinks and emits fixed reason codes, never report data, paths or
+environment metadata. `REPORT_CONTRACT_PASS=TRUE` checks the **report
+format/content only**; the operator must also verify that the runner actually
+executed successfully in the trusted clean checkout. It does not prove
+the installed/running source, actual desktop behavior, MEGAcmd or account
+capabilities, and it grants no new permission for Phase 3b.

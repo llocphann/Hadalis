@@ -9,6 +9,7 @@ python3 scripts/test-megaqml-race-repeat-contract.py
 node scripts/test-megaqml-race-stage-guard.mjs
 python3 scripts/test-megaqml-phase2p-history-guard-contract.py
 python3 scripts/test-megaqml-evidence-push-retry-contract.py
+python3 -B scripts/test-megaqml-f1-local-matrix-classify.py
 # CLI validation is side-effect free: reject unknown publish modes before Git IO.
 invalid_mode="$(bash scripts/test-megaqml-phase2-local.sh "$(printf '0%.0s' {1..40})" --invalid 2>&1)" && {
   echo 'FAIL local-mode unknown-argument accepted'

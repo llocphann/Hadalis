@@ -98,3 +98,28 @@ disposable fixtures and independent per-row object identity/
 snapshot-epoch reconciliation are still necessary. Only then
 consider a gated read-only Sync runner and its QML request contract.
 No writes or Transfer TAG qualification are implied by this probe.
+
+## Private terminal-confirmation diagnostic refinement
+
+The first real-owner attempt stopped **before any vendor read** at its
+interactive confirmation gate. The operator-confirmation path formerly
+collapsed a missing/unavailable terminal, a mismatched exact opt-in
+phrase, and an invalid disposable email into one public reason.
+The refined probe distinguishes:
+
+- `operator_confirmation_mismatch`: exact opt-in phrase was not entered;
+- `disposable_email_format_invalid`: the entered throwaway email did not
+  pass the deliberately strict, private input grammar;
+- `tty_confirmation_unavailable`: the terminal or no-echo prompt could
+  not be read.
+
+Once the pre-existing, dedicated OS-owned server has already passed its
+local identity gate, the diagnostic reports
+`ISOLATED_SERVER_MATCH=true` even if the user declines the subsequent
+prompt. This is **not** evidence that an MEGA account was checked:
+`DISPOSABLE_ACCOUNT_MATCH=false` until a real, successful `whoami`.
+The private email is never logged or printed. The no-echo prompt uses
+the same explicit `/dev/tty` stream as the confirmation prompt.
+These changes add only better diagnostics and fake-only tests; they do
+not modify vendor argv, enable any cloud feature, or turn malformed
+email into an account-existence probe.

@@ -15,6 +15,10 @@ g = probe["main"].__globals__
 source = (HERE / "megaqml-phase3b-disposable-readonly-sync.py").read_text()
 
 assert 'EXPECTED_USER = "megaqml-disposable"' in source
+assert '"operator_confirmation_mismatch"' in source
+assert '"disposable_email_format_invalid"' in source
+assert '"tty_confirmation_unavailable"' in source
+assert 'stream=tty' in source
 assert '["--read-disposable-session-only"]' in source
 assert '"--output-cols=ID,RUN_STATE,STATUS"' in source
 assert '"--col-separator=|"' in source
@@ -54,6 +58,52 @@ with mock.patch.object(g["subprocess"], "Popen",
         assert code == 20
         assert "dedicated_os_user_required" in output
 
+    # No-vendor local TTY path: never publish confirmation input or email.
+    class FakeTty:
+        def __init__(self, answer):
+            self.answer = answer
+            self.messages = []
+        def __enter__(self):
+            return self
+        def __exit__(self, *_):
+            return False
+        def write(self, message):
+            self.messages.append(message)
+        def flush(self):
+            pass
+        def readline(self, limit):
+            assert limit <= 64
+            return self.answer[:limit]
+
+    bad_tty = FakeTty("not-the-confirmation\n")
+    with mock.patch("builtins.open", return_value=bad_tty):
+        with mock.patch.object(g["getpass"], "getpass",
+                               side_effect=AssertionError("must not read email")):
+            reason, private = g["tty_confirmation"]()
+            assert reason == "operator_confirmation_mismatch" and private is None
+            assert "not-the-confirmation" not in "".join(bad_tty.messages)
+
+    malformed_tty = FakeTty("READ_DISPOSABLE_ONLY\n")
+    with mock.patch("builtins.open", return_value=malformed_tty):
+        with mock.patch.object(g["getpass"], "getpass",
+                               return_value="INVALID FAKE EMAIL") as private_read:
+            reason, private = g["tty_confirmation"]()
+            assert reason == "disposable_email_format_invalid" and private is None
+            assert private_read.call_args.kwargs["stream"] is malformed_tty
+            assert "INVALID FAKE EMAIL" not in "".join(malformed_tty.messages)
+
+    good_tty = FakeTty("READ_DISPOSABLE_ONLY\n")
+    with mock.patch("builtins.open", return_value=good_tty):
+        with mock.patch.object(g["getpass"], "getpass",
+                               return_value="fixture@example.invalid"):
+            reason, private = g["tty_confirmation"]()
+            assert reason is None and private == b"fixture@example.invalid"
+            assert "fixture@example.invalid" not in "".join(good_tty.messages)
+
+    with mock.patch("builtins.open", side_effect=OSError("PRIVATE_CANARY")):
+        assert g["tty_confirmation"]() == ("tty_confirmation_unavailable", None)
+    assert "PRIVATE_CANARY" not in g["summary"]("tty_confirmation_unavailable")
+
     # Deterministic end-to-end supervisor with *all* potentially real
     # commands and account values mocked. No host paths or MEGA processes.
     simulated_calls = []
@@ -80,7 +130,7 @@ with mock.patch.object(g["subprocess"], "Popen",
         "private_dir": lambda *args, **kwargs: True,
         "trusted_program": lambda *args, **kwargs: True,
         "existing_server": lambda *args, **kwargs: [4242],
-        "tty_confirmation": lambda: b"fixture@example.invalid",
+        "tty_confirmation": lambda: (None, b"fixture@example.invalid"),
         "bounded_read": fake_read,
     }
     with mock.patch.dict(g, overrides):

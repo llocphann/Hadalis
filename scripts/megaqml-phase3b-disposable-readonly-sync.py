@@ -44,7 +44,8 @@ def summary(reason, *, server=False, identity=False, rows=False):
         "private_library_gate_failed", "executor_package_mismatch",
         "disposable_server_not_running", "ambiguous_private_server",
         "server_changed_during_probe", "tty_required",
-        "operator_declined_or_invalid", "whoami_timeout",
+        "operator_confirmation_mismatch", "disposable_email_format_invalid",
+        "tty_confirmation_unavailable", "whoami_timeout",
         "whoami_output_capped", "whoami_failed_or_ambiguous",
         "account_identity_mismatch", "sync_timeout", "sync_output_capped",
         "sync_failed_or_diagnostic", "sync_header_or_row_invalid",
@@ -207,6 +208,8 @@ def parse_snapshot(raw):
     return "nonempty_shape"
 
 def tty_confirmation():
+    # Return a finite reason and a private account identity. The private
+    # value must NEVER enter summary(), stdout, stderr, argv or environment.
     try:
         with open("/dev/tty", "r+", encoding="utf-8") as tty:
             tty.write(
@@ -217,15 +220,20 @@ def tty_confirmation():
                 "Type READ_DISPOSABLE_ONLY to proceed: "
             )
             tty.flush()
-            if tty.readline().strip() != "READ_DISPOSABLE_ONLY":
-                return None
-        expected = getpass.getpass("Disposable MEGA email (not logged): ", stream=None)
-        if (len(expected) > 254 or not expected.isascii()
-                or not IDENTITY.fullmatch(expected.encode("ascii"))):
-            return None
-        return expected.encode("ascii")
-    except (OSError, EOFError, UnicodeError):
-        return None
+            # Read at most one bounded token from this terminal, failing
+            # before any vendor execution if confirmation differs.
+            answer = tty.readline(64)
+            if answer.strip() != "READ_DISPOSABLE_ONLY":
+                return "operator_confirmation_mismatch", None
+            expected = getpass.getpass(
+                "Disposable MEGA email (not logged): ", stream=tty
+            )
+            if (len(expected) > 254 or not expected.isascii()
+                    or not IDENTITY.fullmatch(expected.encode("ascii"))):
+                return "disposable_email_format_invalid", None
+            return None, expected.encode("ascii")
+    except (OSError, EOFError, UnicodeError, ValueError):
+        return "tty_confirmation_unavailable", None
 
 def self_test():
     assert parse_snapshot(
@@ -309,11 +317,11 @@ def main():
             with open("/dev/tty", "rb"):
                 pass
         except OSError:
-            print(summary("tty_required"))
+            print(summary("tty_required", server=True))
             return 20
-        expected = tty_confirmation()
-        if expected is None:
-            print(summary("operator_declined_or_invalid"))
+        reason, expected = tty_confirmation()
+        if reason is not None:
+            print(summary(reason, server=True))
             return 20
 
         # No inherited host session overrides, proxy credentials, debug

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""FAKE ONLY original moving BOTTOM×1.5 cradle0 versus private cradle1 A/B.
+"""FAKE ONLY original moving BOTTOM×1.5 cradle0 versus private cradle0.25 A/B.
 
 No Qt, desktop/Wayland, network, screenshots, live private files or publication.
 The alpha PNGs are synthetic in-memory or 0600 temporary fake files.
@@ -15,7 +15,7 @@ import zlib
 ROOT = Path(__file__).resolve().parents[1]
 MODEL = ROOT / "scripts/wull-private-dynamic-bottom-quarter-band-model.py"
 FIXTURE = ROOT / "scripts/wull-fixtures/paint-moving-bottom-quarter/shell.qml"
-RUNNER = ROOT / "scripts/wull-manual-private-moving-bottom-quarter.py"
+RUNNER = ROOT / "scripts/wull-manual-private-moving-bottom-quarter-band.py"
 ORIGINAL_ALPHA = ROOT / "scripts/wull-private-painted-alpha-model.py"
 GUARD = ROOT / "scripts/wull-manual-private-paint-core.py"
 
@@ -26,6 +26,8 @@ def blob(path):
         b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
 
 
+assert RUNNER.is_file(), "REVIEWED_QUARTER_RUNNER_PATH_MISSING"
+assert RUNNER.name == "wull-manual-private-moving-bottom-quarter-band.py"
 assert blob(MODEL) == "e76cc7b5fbb7cbf9bc6b7998873cf340f45e8571"
 assert blob(FIXTURE) == "24d376b8831afd7423a7eb7c5d6513d12595b592"
 assert blob(RUNNER) == "540e268248630db8e2900bd39c38670fd5e4122e"

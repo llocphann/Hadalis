@@ -82,3 +82,27 @@ margin change. Continue all remaining edge/scale/fractional monitor,
 dynamic extrema, popup/input, long-run and canonical exact-source acceptance
 gates. Original Wull remains default OFF, full host Region unchanged,
 `stable` untouched.
+
+
+## Owner-local first quarter-moving inert failure and source correction
+
+At exact source SHA `5b889b2b7314cf7eed4852c8873b8a6fe1eaa7d7`,
+owner provided `SOURCE_PINS=PASS` and
+`GATE=QUARTER_BAND_INERT_FAILED`. No new owner-real moving Qt
+classification exists. GitHub source inspection independently identified
+an unavoidable pre-Qt typo in the staged fake-only test: its `RUNNER`
+path omitted `-band`, referring to a nonexistent filename. It never
+reached the new 32-synthetic-frame cases if it attempted to load this
+filename as written. Owner's broad failure gate did not expose exact
+traceback, so do not infer other subsequent assertions necessarily pass.
+
+New corrected synthetic contract blob
+`62eb2d37b9259a4f7933888b81cba4d6a7943688`
+uses the exact actual runner filename and checks existence and reviewed
+basename before hash/runpy use. The original source-pinned Qt fixture,
+model, real runner, original QML and security guards remain unchanged.
+Static Github source inspection shows all 43 fixture-text and 26 runner
+text tokens requested by the fake test are present. This is NOT a run of
+the corrected Python fake contract; a new owner-local fake run must
+pass before any new real 32-frame Qt. No historical real tests are
+invalidated or rerun; source SHA provenance preserved.

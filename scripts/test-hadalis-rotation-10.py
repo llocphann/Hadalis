@@ -153,6 +153,34 @@ def verify_edited_threshold_during_shared_cooldown():
         assert state(b)["chat_iterations"]==7 and state(b)["pending"] is None
 
 
+def verify_pre_rotation_checkpoint_reminder():
+    """At 7/10 Wull's next continuation requests grounded checkpoint once."""
+    with environment():
+        a=profile("Wull approaching limit")
+        control.set_profile(a,"mode",'"continuous"')
+        control.set_profile(a,"rotate_after_iterations","10")
+        set_profile_context(a,7,checkpoint=False)
+        last=state(a)["response_message_id"]
+        t=Transport()
+        def native(op,**data):
+            if op=="cursor":
+                return {"current_node":last,"model":"chat-thinking"}
+            return t(op,**data)
+        cfg,runtime,issues=store.read_snapshot()
+        assert not issues
+        with patch.object(daemon,"native_command",side_effect=native):
+            daemon._submit(cfg,runtime,a,104)
+        item=state(a)
+        assert item["pending"]["kind"]=="continuation"
+        assert t.count("submit")==1
+        prompt=next(data["prompt"] for op,data in t.calls if op=="submit")
+        assert "Scheduled conversation rotation is approaching" in prompt
+        assert "HADALIS_CHECKPOINT" in prompt
+        assert "observed worker evidence IDs" in prompt
+        assert "as the FINAL line" in prompt
+
+
+
 def verify_reconciliation_fail_closed():
     with environment():
         a=profile("Busy at threshold")
@@ -187,5 +215,6 @@ if __name__=="__main__":
     verify_wait_result_and_timeout_rotation()
     verify_pause_and_existing_limits()
     verify_edited_threshold_during_shared_cooldown()
+    verify_pre_rotation_checkpoint_reminder()
     verify_reconciliation_fail_closed()
     print("PASS: 10-turn scoped rotation, checkpoint and job preservation, pause precedence, no old-chat replay")

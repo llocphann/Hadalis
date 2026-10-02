@@ -200,11 +200,23 @@ def private_run(previous, core):
 def publish_safe_report(source, result):
     """Whitelist categories only. No raw images, coordinates, device data."""
     try:
-        git = ["git", "-c", "core.hooksPath=/dev/null"]
+        git = ["git", "-c", "core.hooksPath=/dev/null",
+               "-c", "credential.interactive=never"]
+        # Never block awaiting an owner GitHub username/PAT. Existing
+        # non-interactive credential helpers may still authenticate.
+        no_prompt = dict(os.environ)
+        no_prompt.update({
+            "GIT_TERMINAL_PROMPT": "0",
+            "GCM_INTERACTIVE": "never",
+            "GIT_ASKPASS": "/bin/false",
+            "SSH_ASKPASS": "/bin/false",
+        })
         def call(*args):
             return subprocess.run(git + list(args), cwd=ROOT,
+                                  stdin=subprocess.DEVNULL,
                                   stdout=subprocess.PIPE,
                                   stderr=subprocess.DEVNULL,
+                                  env=no_prompt,
                                   text=True, timeout=15, check=True).stdout.strip()
         require(call("rev-parse", "HEAD") == source and
                 call("symbolic-ref", "--short", "HEAD") == "dev" and

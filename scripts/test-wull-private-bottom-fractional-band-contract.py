@@ -29,7 +29,7 @@ def blob(path):
 
 assert blob(FIXTURE) == "9203e9bf935c0a0ab995380dadf6a6ff27cc004d"
 assert blob(MODEL) == "f1c91fc2742b21a1cee9cb2911be7c614e8aeee5"
-assert blob(RUNNER) == "27620b5659ce7d0f3d4e0941dbc0633e053a8107"
+assert blob(RUNNER) == "da49d48850374c6f6da0db7ef11883959baebce1"
 assert blob(BASE) == "75f923b104c8409b3532a809c3ba62cfd5998e03"
 assert blob(ALPHA) == "fa9e7c2af87ee830336988fa7060e2720e816ed0"
 assert blob(ORIGINAL) == "b5b01835a282458eba0d0268396ae2c350d919d2"
@@ -83,6 +83,13 @@ for token in (
     '"https://github.com/llocphann/Hadalis.git"',
     'call("diff", "--cached", "--name-only") == relative',
     '"WULL_FRACTIONAL_BAND_DIR"',
+    '"GIT_TERMINAL_PROMPT": "0"',
+    '"GCM_INTERACTIVE": "never"',
+    '"GIT_ASKPASS": "/bin/false"',
+    '"SSH_ASKPASS": "/bin/false"',
+    '"-c", "credential.interactive=never"',
+    'stdin=subprocess.DEVNULL',
+    'env=no_prompt',
 ):
     assert token in source, token
 assert "force=True" not in source and "git push --force" not in source

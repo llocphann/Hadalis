@@ -97,3 +97,26 @@ valid layout and wrong parent/repository/current-directory/permission
 rejection. Its new cases and real Qt still require a fresh owner-local
 run. The manual command must use `wull-paint-canary.*/repo`; no
 original QML, default-off Wull, production Region or stable change.
+
+
+## Optional Git HTTPS report publication: non-interactive correction
+
+Owner reported the last corrected local command stalled at a GitHub username
+prompt, but provided no later fixed categories or resulting report. Source
+review found that optional `git push` inherited an interactive terminal,
+possibly triggering credential prompting. That is a plausible explanation,
+not proof of actual Qt PASS or the particular subprocess that prompted.
+
+Staged fractional runner blob
+`da49d48850374c6f6da0db7ef11883959baebce1`
+sets `GIT_TERMINAL_PROMPT=0`, `GCM_INTERACTIVE=never`,
+`GIT_ASKPASS=/bin/false`, `SSH_ASKPASS=/bin/false`, disables
+Git credential interactivity and sets child stdin DEVNULL on
+its entire OPTIONAL git-report subprocess sequence. If preconfigured
+noninteractive Git authentication is absent, optional report publication
+returns `REPORT_PUBLISHED=NO` without retrying or leaking credentials;
+the existing short safe categorical output is enough for owner to relay.
+Updated fake-only static/source pin test blob
+`8c5243aeb513aec855e84d90721724b16deac4b8`
+has NOT yet been owner executed. This does not change prior real Qt
+requirements or authorize a production fix.

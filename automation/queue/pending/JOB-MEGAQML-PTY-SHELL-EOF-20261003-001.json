@@ -1,0 +1,18 @@
+{
+  "id": "JOB-MEGAQML-PTY-SHELL-EOF-20261003-001",
+  "base_sha": "3f34f69c257eebd60075560d7f48ad20d9353f90",
+  "profile_id": "profile-a25585b748dd4220",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-c",
+          "import errno,fcntl,os,select,signal,subprocess,sys,tempfile,termios,time\nm,s=os.openpty();slave_name=os.ttyname(s);p=None\ntty=termios.tcgetattr(s);tty[3]&=~(termios.ECHO|termios.ECHONL);termios.tcsetattr(s,termios.TCSANOW,tty)\ndef init():\n os.setsid()\n fcntl.ioctl(0,termios.TIOCSCTTY,0)\ntry:\n with tempfile.TemporaryDirectory(prefix='mega-pty-shell-fake-') as tmp:\n  script=os.path.join(tmp,'fake-vendor')\n  with open(script,'w') as fp: fp.write('#!/bin/sh\\nIFS= read -r command\\nexec </dev/null >/dev/null 2>&1\\nsleep 5\\n')\n  os.chmod(script,0o700)\n  p=subprocess.Popen([script],stdin=s,stdout=s,stderr=s,preexec_fn=init)\n  os.close(s);s=-1\n  os.write(m,b'login fixture@example.invalid\\n')\n  deadline=time.monotonic()+1.5;ready=False\n  while time.monotonic()<deadline:\n   if p.poll() is not None:\n    print('PTY_SHELL=child_exited');sys.exit(43)\n   try:\n    links=[os.readlink('/proc/'+str(p.pid)+'/fd/'+fd) for fd in ('0','1','2')]\n   except OSError:\n    time.sleep(.03);continue\n   if links==['/dev/null']*3:\n    ready=True;break\n   time.sleep(.03)\n  if not ready:\n   print('PTY_SHELL=redirection_not_observed');sys.exit(42)\n  try:\n   links=[os.readlink('/proc/'+str(p.pid)+'/fd/'+fd) for fd in os.listdir('/proc/'+str(p.pid)+'/fd')]\n  except OSError:\n   print('PTY_SHELL=fd_state_unknown');sys.exit(44)\n  if slave_name in links:\n   print('PTY_SHELL=child_retains_slave_fd');sys.exit(45)\n  poller=select.poll();poller.register(m,select.POLLIN)\n  events=poller.poll(850)\n  if p.poll() is not None:\n   print('PTY_SHELL=child_exited_during_poll');sys.exit(46)\n  if not events:\n   print('PTY_SHELL=no_pollin_event');sys.exit(41)\n  try:\n   eof=(os.read(m,1)==b'')\n  except OSError as e:\n   eof=(e.errno==errno.EIO)\n  print('PTY_SHELL='+('eof_live_child' if eof else 'non_eof_data'))\n  sys.exit(40 if eof else 47)\nfinally:\n if p is not None:\n  try: os.killpg(p.pid,signal.SIGKILL)\n  except ProcessLookupError: pass\n  try: p.kill()\n  except ProcessLookupError: pass\n  try: p.wait(timeout=2)\n  except subprocess.TimeoutExpired: pass\n for fd in (m,s):\n  if fd>=0:\n   try: os.close(fd)\n   except OSError: pass"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 20
+      }
+    }
+  ]
+}

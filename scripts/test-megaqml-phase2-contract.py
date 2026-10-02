@@ -432,8 +432,12 @@ assert "PRIVATE_PATH_AND_PASSWORD_CANARY" in repeat_unit
 assert "phase2p-" in guard and "unreviewed changed path" in guard
 assert "tampered evidence" in guard_unit
 assert "bash -n scripts/test-megaqml-race-repeat.sh" in combined
-assert 'test-megaqml-phase2p-history-guard.py "$expected" "$remote_sha"' in runner
-assert 'test-megaqml-phase2p-history-guard.py "$source_sha" "$remote_sha"' in runner
+# Shell line continuations are formatting, not a changed invocation.
+# Preserve both source/remote argument checks while accepting readable wrapping;
+# actual ancestry behavior is covered by the black-box local-only integration.
+logical_runner = re.sub(r"\\\r?\n[ \t]*", " ", runner)
+assert 'test-megaqml-phase2p-history-guard.py "$expected" "$remote_sha"' in logical_runner
+assert 'test-megaqml-phase2p-history-guard.py "$source_sha" "$remote_sha"' in logical_runner
 actual = re.findall(r'^\s*run_test ([a-z0-9_]+) ', runner, re.MULTILINE)
 expected = re.search(r'EXPECTED_TESTS = """([\s\S]*?)"""\.split\(\)', guard)
 assert expected is not None and len(actual) == 40

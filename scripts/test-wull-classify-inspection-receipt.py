@@ -42,4 +42,17 @@ assert reason(example(62).replace("AssertionError: [REDACTED]",
 assert reason(example(62).replace("AssertionError: [REDACTED]",
                                   "untrusted.module.Exception: FREEFORM_SECRET")) == 199
 assert reason(example(76)) == 199
+inner = m["inner_line_private"]
+exact = (example(62)
+         .replace("AssertionError: [REDACTED]", (
+             '  File "/private/opaque/scripts/wull-existing-matrix-evidence.py", '
+             'line 139, in rgba_verified\n'
+             '    [REDACTED]\n'
+             '  File "/private/opaque/scripts/wull-existing-matrix-evidence.py", '
+             'line 43, in need\n'
+             '    [REDACTED]\n'
+             'wull_fake_only_inspection.Unqualified: RGBA_UNQUALIFIED')))
+assert inner(exact) == 139
+assert inner(example(62)) == 199
+assert inner(exact.replace("line 139", "line 999")) == 199
 print("WULL_OLD_FAKE_FAILURE_CLASSIFIER_INERT_PASS")

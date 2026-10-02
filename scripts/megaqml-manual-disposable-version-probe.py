@@ -210,7 +210,8 @@ def main():
     if not version or not server:
         safe_summary("BLOCKED", reason="vendor_dependencies_missing_or_outside_allowed_roots")
         return 20
-    if version[0].parent != server[0].parent:
+    if (version[0].parent != server[0].parent
+            or version[1].parent != server[1].parent):
         safe_summary("BLOCKED", reason="mixed_vendor_bin_directories")
         return 20
     if not wrap or not control:

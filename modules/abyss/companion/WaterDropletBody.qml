@@ -64,12 +64,12 @@ Item {
             startX: root.width * 0.5; startY: 2
             // Six round Bézier lobes: a gently flattened soft tip and fuller
             // shoulders, instead of the previous sharp triangular outline.
-            PathCubic { x: root.width * 0.21; y: root.height * 0.21; control1X: root.width * 0.37; control1Y: 2; control2X: root.width * 0.25; control2Y: root.height * 0.10 }
-            PathCubic { x: root.width * 0.035; y: root.height * 0.57; control1X: root.width * 0.10; control1Y: root.height * 0.29; control2X: root.width * 0.035; control2Y: root.height * 0.40 }
+            PathCubic { x: root.width * 0.16; y: root.height * 0.33; control1X: root.width * 0.42; control1Y: 2; control2X: root.width * 0.23; control2Y: root.height * 0.15 }
+            PathCubic { x: root.width * 0.035; y: root.height * 0.57; control1X: root.width * 0.08; control1Y: root.height * 0.41; control2X: root.width * 0.035; control2Y: root.height * 0.47 }
             PathCubic { x: root.width * 0.5; y: root.height - 3; control1X: root.width * 0.008; control1Y: root.height * 0.83; control2X: root.width * 0.25; control2Y: root.height - 3 }
             PathCubic { x: root.width * 0.965; y: root.height * 0.57; control1X: root.width * 0.75; control1Y: root.height - 3; control2X: root.width * 0.992; control2Y: root.height * 0.83 }
-            PathCubic { x: root.width * 0.79; y: root.height * 0.21; control1X: root.width * 0.965; control1Y: root.height * 0.40; control2X: root.width * 0.90; control2Y: root.height * 0.29 }
-            PathCubic { x: root.width * 0.5; y: 2; control1X: root.width * 0.75; control1Y: root.height * 0.10; control2X: root.width * 0.63; control2Y: 2 }
+            PathCubic { x: root.width * 0.84; y: root.height * 0.33; control1X: root.width * 0.965; control1Y: root.height * 0.47; control2X: root.width * 0.92; control2Y: root.height * 0.41 }
+            PathCubic { x: root.width * 0.5; y: 2; control1X: root.width * 0.77; control1Y: root.height * 0.15; control2X: root.width * 0.58; control2Y: 2 }
         }
     }
 

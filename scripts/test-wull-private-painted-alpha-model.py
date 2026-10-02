@@ -118,7 +118,7 @@ rejected("PAINT_REACHES_CAPTURE_CANVAS_EDGE",
 rejected("PNG_SIGNATURE_INVALID",
          m["png_alpha"], b"not-a-png")
 rejected("PNG_BYTES_UNREVIEWED",
-         m["png_alpha"], inside_png * 5000)
+         m["png_alpha"], inside_png * 30000)
 rejected("PNG_CRC_INVALID",
          m["png_alpha"], inside_png[:-7] + b"broken!")
 rejected("PNG_TRUNCATED",

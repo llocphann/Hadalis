@@ -443,7 +443,7 @@ test "$LANG" = "en_US.UTF-8" || exit 49
         let ready = base.join("background-ready");
         let survived = base.join("background-survived");
         let script = format!(
-            "#!/bin/sh\\n(sleep 1; printf SURVIVED > '{}') &\\nprintf READY > '{}'\\nprintf 'Enter account recovery key:'\\nwait\\n",
+            "#!/bin/sh\n(sleep 1; printf SURVIVED > '{}') &\nprintf READY > '{}'\nprintf 'Enter account recovery key:'\nwait\n",
             survived.display(), ready.display(),
         );
         fs::write(&vendor, script).unwrap();

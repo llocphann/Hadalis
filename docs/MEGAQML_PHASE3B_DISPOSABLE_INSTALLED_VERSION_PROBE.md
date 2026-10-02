@@ -6,6 +6,35 @@ procedure without using the current account**. That consent does not
 authorize login, current-account reads, mutations, sharing, file scanning,
 sync creation or non-sandboxed vendor commands.
 
+## First owner-local result and bounded follow-up
+
+The first owner-approved `dev` run published
+`docs/evidence/megaqml/phase3b-c1ab9cdbbb5a-20261002T033428Z.md`
+at exact source `c1ab9cdbbb5a23f8dd83c0b8926f2110ad6d1948`:
+fake-only safety contract **PASS**, nonvendor self-test **PASS**,
+but the sandboxed `mega-version -l` returned a **nonzero exit (21)**.
+Its sanitized result was `UNQUALIFIED`, `vendor_version=null`
+and `vendor_exit_nonzero`. Neither startup, installation compatibility
+nor a version was established. This **does not** authorize a direct
+host command, internet access, a real account, or weakening isolation.
+
+The next source revision retains exactly the same offline sandbox and
+vendor command. It adds a bounded **fixed-category classifier** for
+common loader, private socket directory, vendor-server resolution,
+IPC readiness and permission failures; **unknown errors stay
+unclassified**. Only a fixed reason code is published; even a
+vendor-printed version line with nonzero exit remains UNQUALIFIED,
+with `vendor_version=null`. The strict parser now accepts the
+pinned upstream MEGAcmd source's four-part output shape
+`MEGAcmd version: major.minor.micro.build: code N`, in addition to
+shorter already tested shapes, without accepting SDK/latest-online
+version lines. This format correction **does not explain** the
+original nonzero exit; the next local run is needed to classify it.
+Do not upload stdout/stderr, shell traces, crash dumps or local
+paths to GitHub. If the new classifier still returns unknown, stop
+at the fixed boundary rather than repeatedly changing sandbox
+permissions or starting the host vendor.
+
 ## Why a strict sandbox is necessary
 
 Normal MEGAcmd scriptable commands, even `mega-version -l`, may launch

@@ -66,4 +66,29 @@ for forbidden in ("PRIVATE_FAKE_SECRET_CANARY", "/home/", ".megaCmd",
                   "vendor_stdout", "raw_error"):
     assert forbidden not in out
 assert '"live_capabilities_unlocked": false' in out
+# Publication is opt-in and may include ONLY the validated, non-account
+# JSON summary. Do not run real probes from a fake-only contract.
+publisher = (root / "scripts/megaqml-phase3b-owner-local.sh").read_text(
+    encoding="utf-8")
+for needle in (
+        "set -euo pipefail",
+        '"$(git branch --show-current)" == dev',
+        'git status --porcelain --untracked-files=all',
+        "test-megaqml-phase2p-history-guard.py",
+        "test-megaqml-phase3b-probe-contract.py",
+        "--acknowledge-disposable-offline-probe",
+        "network_available", "account_used", "live_capabilities_unlocked",
+        "vendor_version", "json.dumps(v, sort_keys=True",
+        'git diff --cached --name-only',
+        "git push --quiet origin HEAD:refs/heads/dev",
+        "phase3b-$short_sha-",
+        "PUSHED_SAFE_SUMMARY"):
+    assert needle in publisher, needle
+assert "git push --force" not in publisher
+assert "git reset" not in publisher
+assert "git stash" not in publisher
+assert "mega-version -l" not in publisher  # Only Python launches inside bwrap.
+assert "git merge --ff-only" in publisher
+assert "git merge --no-ff" in publisher
+
 print("PASS MegaQML Phase 3b fake-only probe contract: no vendor executed")

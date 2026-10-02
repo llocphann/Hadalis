@@ -17,7 +17,12 @@ for required in (
     '"GIT_TERMINAL_PROMPT": "0"',
     '"GCM_INTERACTIVE": "never"',
     '"GIT_ASKPASS": "/bin/false"',
-    '"push", REMOTE, "HEAD:refs/heads/dev"',
+    '"push",',
+    '"HEAD:refs/heads/dev"',
+    'git_options(PROFILE, push_remote)',
+    'has_token(PROFILE)',
+    'PUSH_REF_MOVED',
+    'PUSH_AUTH_UNAVAILABLE',
 ):
     assert required in SOURCE, required
 assert '"--publish-safe-only"' in SOURCE

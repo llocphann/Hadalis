@@ -456,6 +456,22 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
             prompt += "\nThe previous WAIT_RESULT referenced " + protocol["job_id"] + ", owned by a different profile. Its result was not adopted. Inspect existing repository effects and the published result before deciding the next step; do not re-execute or reuse that job. Previous profiles' work can be cited as repository artifacts, but WAIT_RESULT must reference only a job authored for this managed profile ID.\n"
     if kind=="recovery":
         prompt += "\nThe server confirmed that the previous generation ended with failure. This is a new recovery step, not a replay. Inspect the objective repository's current target branch, private worker receipt summaries and evidence before any mutation. Do not repeat commands/jobs whose outcome is uncertain. Reconcile existing effects and continue from the checkpoint.\n"+json.dumps(item["failed_turn"])
+    # Capture verified progress BEFORE scheduled rotation, while the current
+    # conversation and its evidence are still available. This is a prompt
+    # reminder, never a locally fabricated checkpoint or an extra API call.
+    rotate_limit = profile.get("rotate_after_iterations", 0)
+    if (kind == "continuation" and type(rotate_limit) is int and rotate_limit > 0
+            and not item.get("checkpoint")
+            and 0 < rotate_limit - item.get("chat_iterations", 0) <= 3):
+        prompt += ("\n\nScheduled conversation rotation is approaching. "
+            "Include exactly ONE valid HADALIS_CHECKPOINT JSON line in your "
+            "next completed response, using only verified current repository "
+            "progress and observed worker evidence IDs. Summarize the current "
+            "phase, completed work, remaining work and next safe action. Do not "
+            "invent facts or cite an unobserved job. If no verified checkpoint "
+            "can be produced, omit it and the next chat must re-audit the "
+            "repository. End with exactly one ordinary HADALIS_LOOP directive "
+            "as the FINAL line after any checkpoint.\n")
     if item["checkpoint"]:
         prompt += "\n\nDurable profile checkpoint:\n" + json.dumps(item["checkpoint"], ensure_ascii=False)
     elif prompt_kind == "rotation":

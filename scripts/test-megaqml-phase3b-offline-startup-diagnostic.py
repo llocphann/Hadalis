@@ -22,6 +22,10 @@ for token in (
         '"sandbox_server_log_socket_failure"',
         '"sandbox_server_log_permission_failure"',
         '"sandbox_server_log_network_event"', '"sandbox_server_log_other"',
+        '"sandbox_client_library_missing"', '"sandbox_client_socket_failure"',
+        '"sandbox_client_server_launch_failed"',
+        '"sandbox_client_server_handshake_failed"',
+        '"sandbox_client_output_limited"',
         '"sandbox_supervisor_error"', "read(4096)", "time.monotonic() + 8.5",
         "start_new_session=True", "os.killpg(p.pid, signal.SIGKILL)",
         'sandbox(bwrap[0], [true[0]]',
@@ -90,6 +94,17 @@ with patch.object(os, "geteuid", return_value=1000), \
         assert m["main"]() == 21
     output = capture.getvalue()
 assert "PRIVATE_FAKE_STDERR_CANARY" not in output
+# A private client failure can be published only as a fixed safe code;
+# no raw path, account, server stderr or arbitrary category can escape.
+for code in ("sandbox_client_library_missing", "sandbox_client_socket_failure",
+             "sandbox_client_server_launch_failed",
+             "sandbox_client_server_handshake_failed",
+             "sandbox_client_output_limited"):
+    assert code in text
+    assert code in (root / "scripts/megaqml-phase3b-offline-startup-owner-local.sh").read_text("utf-8")
+    assert code in m["CATEGORIES"]
+assert "def classify_client(raw):" in m["INNER"]
+assert "output_limited = True" in m["INNER"]
 assert json.loads(output)["reason"] == "sandbox_server_log_socket_failure"
 assert len(commands) == 2
 assert commands[0] == [Path("/usr/bin/true")]

@@ -160,7 +160,12 @@ assert.equal(gates.reason, "installed_version_unqualified");
 let gateCases = 1;
 for (const mutate of [
     x=>x.protocol=2, x=>x.request_id="stale", x=>x.ok=false,
-    x=>x.error={kind:"VENDOR"}, x=>x.result.probe_kind="connected",
+    x=>x.error={kind:"VENDOR"},
+    x=>x.session_token="FAKE_PRIVATE_CANARY",
+    x=>x.account_email="FAKE_PRIVATE_CANARY",
+    x=>delete x.error,
+    x=>delete x.result,
+    x=>x.result.probe_kind="connected",
     x=>x.result.vendor_execution="vendor_executed",
     x=>x.result.connected=true, x=>x.result.auth_qualified=true,
     x=>x.result.account_reads_enabled=true, x=>x.result.writes_enabled=true,

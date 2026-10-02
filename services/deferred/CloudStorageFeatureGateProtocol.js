@@ -8,7 +8,9 @@ function parseOfflineFeatureGatePreview(payload, requestId) {
     let envelope
     try { envelope = JSON.parse(payload) }
     catch { throw new Error("invalid offline capability preview") }
+    const envelopeKeys = ["protocol", "request_id", "ok", "result", "error"].sort()
     if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)
+            || JSON.stringify(Object.keys(envelope).sort()) !== JSON.stringify(envelopeKeys)
             || envelope.protocol !== 1 || envelope.request_id !== requestId
             || envelope.ok !== true || envelope.error !== null)
         throw new Error("incompatible offline capability preview")

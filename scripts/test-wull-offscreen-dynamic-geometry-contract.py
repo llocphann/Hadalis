@@ -36,7 +36,7 @@ def blob(path):
         b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
 
 
-assert blob(RUNNER) == "fe1c828e7c2f0e4fdc4bb7340242062085db3118"
+assert blob(RUNNER) == "9cab00fca46212c819ac7308cfc0d6923d1139d3"
 
 # The former 512 KiB RLIMIT_FSIZE applied to *all* Quickshell private files,
 # not just captured stdout. Actual owner-local controls observed SIGXFSZ at
@@ -185,6 +185,26 @@ for edge in model["EDGES"]:
 
 good = model["model_summary"](rows, reference)
 assert good["status"] == "pass"
+
+# JS JSON.stringify emits numeric 1 for source scale 1.0, unlike Python's
+# json.dumps(1.0). Simulate the *actual* QML serialized numeric spellings.
+js_rows = copy.deepcopy(rows)
+for case in js_rows:
+    if case["requested_scale"] == 1.0:
+        case["requested_scale"] = 1
+js_rows = json.loads(json.dumps(js_rows))
+assert sum(type(case["requested_scale"]) is int for case in js_rows) == 4
+js_good = model["model_summary"](js_rows, reference)
+assert js_good == good
+# Missing canonical frozen key must still fail closed, not silently substitute.
+incomplete = copy.deepcopy(reference)
+incomplete.pop("1.0")
+try:
+    model["model_summary"](js_rows, incomplete)
+except ValueError as exc:
+    assert str(exc) == "missing_scale_frozen_reference"
+else:
+    raise AssertionError("Missing canonical frozen scale was silently accepted")
 assert good["all_dynamic_state_witnesses"] is True
 assert good["observed_host_cases"] == 12
 assert good["sample_count_range_per_case_phase"] == [72, 72]
@@ -213,6 +233,8 @@ for alteration in (
     lambda data: data[0].update(edge=data[1]["edge"],
                                requested_scale=data[1]["requested_scale"]),
     lambda data: data[0].update(requested_scale=2),
+    lambda data: data[0].update(requested_scale=True),
+    lambda data: data[0].update(requested_scale="1.0"),
     lambda data: data[0]["stretch"].update(samples="72"),
     lambda data: data[0]["stretch"].update(active="true"),
     lambda data: data[0]["stretch"].update(transition_witness="true"),

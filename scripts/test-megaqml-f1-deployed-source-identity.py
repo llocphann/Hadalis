@@ -56,6 +56,44 @@ with tempfile.TemporaryDirectory() as d:
         assert "VENDOR_OR_ACCOUNT_USED=NO" in report
         assert str(base) not in report
     check("static_bytes_match", 0)
+    # Deterministic fake race: a byte-identical file can change after the
+    # first read while a check is underway; never return a stale digest.
+    original_open = Path.open
+    class MutatingReader:
+        def __init__(self, stream, mutate):
+            self.stream, self.mutate, self.called = stream, mutate, False
+        def __enter__(self):
+            self.stream.__enter__()
+            return self
+        def __exit__(self, *args):
+            return self.stream.__exit__(*args)
+        def fileno(self):
+            return self.stream.fileno()
+        def read(self, size=-1):
+            data = self.stream.read(size)
+            if data and not self.called:
+                self.called = True
+                self.mutate()
+            return data
+
+    target = deployed / m.FILES[0]
+    def raced_digest(mutate):
+        from unittest.mock import patch
+        def injected_open(path, *args, **kwargs):
+            stream = original_open(path, *args, **kwargs)
+            if path == target and args and args[0] == "rb":
+                return MutatingReader(stream, mutate)
+            return stream
+        with patch.object(Path, "open", injected_open):
+            return m.digest(deployed, m.FILES[0])
+
+    assert raced_digest(lambda: target.write_bytes(b"changed during hashing")) is None
+    shutil.copyfile(source / m.FILES[0], target)
+    replacement = deployed / "replacement"
+    replacement.write_bytes(target.read_bytes())
+    assert raced_digest(lambda: os.replace(replacement, target)) is None
+    shutil.copyfile(source / m.FILES[0], target)
+    check("static_bytes_match", 0)
     # A false independent comparison must fail closed, even for byte-identical
     # aliases and hard links; never infer actual running Quickshell identity.
     check("deployment_not_independent", 21, deployed_root=source)

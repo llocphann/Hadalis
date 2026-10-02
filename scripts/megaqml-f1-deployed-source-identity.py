@@ -10,6 +10,7 @@ import hashlib
 import os
 from pathlib import Path
 import re
+import stat
 import subprocess
 
 FILES = (
@@ -29,27 +30,54 @@ MAX_FILE_BYTES = 4 * 1024 * 1024
 
 
 def digest(root, rel):
-    """Resolve only descendants of the selected root; never publish bytes."""
+    """Hash one stable regular file inside root, failing closed on races."""
     try:
-        target = (root / rel).resolve(strict=True)
-        if not target.is_relative_to(root) or not target.is_file():
+        candidate = root / rel
+        target = candidate.resolve(strict=True)
+        if not target.is_relative_to(root):
             return None
-        if target.stat().st_size > MAX_FILE_BYTES:
+
+        def fingerprint(info):
+            return (info.st_dev, info.st_ino, info.st_mode, info.st_size,
+                    info.st_mtime_ns, info.st_ctime_ns)
+
+        initial = target.stat()
+        if (not stat.S_ISREG(initial.st_mode) or
+                initial.st_size > MAX_FILE_BYTES):
+            return None
+
+        def path_unchanged():
+            return (candidate.resolve(strict=True) == target and
+                    fingerprint(target.stat()) == fingerprint(initial))
+
+        if not path_unchanged():
             return None
         h = hashlib.sha256()
         size = 0
-        with target.open("rb") as source:
+        with target.open("rb") as stream:
+            opened = os.fstat(stream.fileno())
+            if fingerprint(opened) != fingerprint(initial):
+                return None
             while True:
-                chunk = source.read(65536)
+                chunk = stream.read(65536)
                 if not chunk:
-                    return h.digest()
+                    break
                 size += len(chunk)
                 if size > MAX_FILE_BYTES:
                     return None
                 h.update(chunk)
+            # A stable path alone is insufficient if bytes changed through
+            # the already-open descriptor while hashing.
+            if (size != opened.st_size or
+                    fingerprint(os.fstat(stream.fileno())) != fingerprint(opened)):
+                return None
+        # Catch atomic replacements and in-root symlink retargeting, even if
+        # the original open descriptor itself remained unchanged.
+        if not path_unchanged():
+            return None
+        return h.digest()
     except (OSError, ValueError, RuntimeError):
         return None
-
 
 def git(root, *args):
     try:

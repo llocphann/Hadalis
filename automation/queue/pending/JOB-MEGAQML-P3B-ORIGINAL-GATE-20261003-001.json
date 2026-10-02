@@ -1,0 +1,41 @@
+{
+  "id": "JOB-MEGAQML-P3B-ORIGINAL-GATE-20261003-001",
+  "base_sha": "bf7fad90d97586bf10559cbd57106a3f6e68f1ab",
+  "profile_id": "profile-a25585b748dd4220",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "scripts/test-megaqml-phase3b-fixture-remote-ls-classify.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "scripts/megaqml-phase3b-fixture-remote-ls-classify.py",
+          "--self-test"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 60
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "scripts/test-megaqml-phase3b-fixture-recovery-inspect-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    }
+  ]
+}

@@ -25,7 +25,7 @@ DYNAMIC_FIXTURE = "scripts/wull-fixtures/motion-envelope/shell.qml"
 FROZEN_RECEIPT = (
     "docs/wull-qt-motion-20261001T185752Z-53e5c5cc-72ac0580b12e.json")
 DYNAMIC_PINS = {
-    DYNAMIC_FIXTURE: "0fede26c2dc370234ae1b1702afdca3ea05e33e0",
+    DYNAMIC_FIXTURE: "221c07d0a451ba918e3e2074aeafe389e588f594",
     FROZEN_RUNNER: "0dd833ed05d54e9d1045553a1da8be8f66b6511a",
     FROZEN_RECEIPT: "dc2f36b525ef7e412869f155153dc4e48720f898",
 }
@@ -34,7 +34,8 @@ SCALES = (0.65, 1.0, 1.5)
 FLAGS = ("bbox_outside_static", "bbox_outside_host",
          "tip_outside_static", "tip_outside_host")
 PHASE_FLAGS = ("samples", "active", "stretch_witness",
-               "transition_witness", "target_reached_witness", "bob_witness",
+               "transition_witness", "target_reached_witness",
+               "mapped_frame_change_witness", "bob_witness",
                "sway_witness", *FLAGS, "bbox_beyond_frozen")
 MARKER = "WULL_OFFSCREEN_DYNAMIC_GEOMETRY "
 MAX_LOG = 524288
@@ -158,6 +159,7 @@ def model_summary(rows, frozen_flags):
                     or not value["stretch_witness"]
                     or not value["transition_witness"]
                     or not value["target_reached_witness"]
+                    or not value["mapped_frame_change_witness"]
                     or not value["bob_witness"]
                     or not value["sway_witness"]):
                 missing[scale_key].append(edge)

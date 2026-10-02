@@ -72,3 +72,28 @@ canonical maintainer validation. If none of the three fractions passes
 both private signals, design a separate strictly host-contained
 connector or host/panel-edge layout experiment; do not silently choose
 margin1 or weaken the production input mask.
+
+
+## 2026-10-02 correction after first owner-local attempt
+
+First owner-local revised source SHA `f5c689cea67d8e8db036b6c364274b7a78d7f69a`
+returned `SOURCE_PINS=PASS`, `WULL_PRIVATE_FRACTIONAL_BAND_INERT_PASS`
+and `GATE=PRIVATE_FRACTIONAL_BAND_UNAVAILABLE`. The test wrapper, not
+the original source or user environment, had selected the wrong clone
+layout: `wull-fractional.*/Hadalis`. The recursively inherited exact
+original source audit in `scripts/wull-manual-private-paint-core.py`
+requires `wull-paint-canary.*/repo`, owner-private directory modes,
+and current working directory equal to the repo root. Therefore this
+attempt fails a known pre-Qt guard. The generic gate does not establish
+whether additional faults exist; no new real Qt evidence can be claimed.
+
+The staged revised runner blob
+`27620b5659ce7d0f3d4e0941dbc0633e053a8107` introduces a
+same-policy explicit preflight with fixed
+`GATE=FRACTIONAL_CLONE_LAYOUT_INVALID` before inherited audits, to
+prevent a similarly opaque failure. The revised fake test blob
+`ed9edeb3b1c7eeb92b3850a45ec116546092ee30` adds synthetic
+valid layout and wrong parent/repository/current-directory/permission
+rejection. Its new cases and real Qt still require a fresh owner-local
+run. The manual command must use `wull-paint-canary.*/repo`; no
+original QML, default-off Wull, production Region or stable change.

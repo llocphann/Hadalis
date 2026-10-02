@@ -47,10 +47,31 @@ def require(ok, reason):
         raise Stop(reason)
 
 
+def checked_clone_layout(root=ROOT, current=None):
+    """Mirror the immutable inherited audited-clone layout BEFORE Qt."""
+    scratch = root.parent
+    current = Path.cwd() if current is None else current
+    require(root.name == "repo" and
+            scratch.name.startswith("wull-paint-canary.") and
+            current.resolve() == root.resolve() and
+            not root.is_symlink() and not scratch.is_symlink(),
+            "FRACTIONAL_CLONE_LAYOUT_INVALID")
+    for path in (scratch, root):
+        info = path.lstat()
+        require(stat.S_ISDIR(info.st_mode) and
+                info.st_uid == os.getuid() and
+                not stat.S_IMODE(info.st_mode) & 0o077,
+                "FRACTIONAL_CLONE_LAYOUT_INVALID")
+
+
 def checked_sources():
+    checked_clone_layout()
     previous = runpy.run_path(str(ROOT / BASE),
                               run_name="fractional_borrow_original_guard")
-    core, source = previous["checked_sources"]()
+    try:
+        core, source = previous["checked_sources"]()
+    except previous["Stop"]:
+        raise Stop("FRACTIONAL_INHERITED_SOURCE_AUDIT_REJECTED")
     git = core["git"]
     for path, sha in ((BASE, BASE_BLOB), (FIXTURE, FIXTURE_BLOB),
                       (MODEL, MODEL_BLOB), (ALPHA, ALPHA_BLOB)):
@@ -294,6 +315,8 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         safe = {
+            "FRACTIONAL_CLONE_LAYOUT_INVALID",
+            "FRACTIONAL_INHERITED_SOURCE_AUDIT_REJECTED",
             "FRACTIONAL_INTERRUPTED",
             "FRACTIONAL_EXPLICIT_OPT_IN_REQUIRED",
             "FRACTIONAL_SOURCE_PIN_INVALID",

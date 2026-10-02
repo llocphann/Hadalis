@@ -29,7 +29,7 @@ def blob(path):
 
 assert blob(FIXTURE) == "9203e9bf935c0a0ab995380dadf6a6ff27cc004d"
 assert blob(MODEL) == "f1c91fc2742b21a1cee9cb2911be7c614e8aeee5"
-assert blob(RUNNER) == "9c8e30eeef28d791966748bdc664e7ff204ccf67"
+assert blob(RUNNER) == "27620b5659ce7d0f3d4e0941dbc0633e053a8107"
 assert blob(BASE) == "75f923b104c8409b3532a809c3ba62cfd5998e03"
 assert blob(ALPHA) == "fa9e7c2af87ee830336988fa7060e2720e816ed0"
 assert blob(ORIGINAL) == "b5b01835a282458eba0d0268396ae2c350d919d2"
@@ -78,6 +78,8 @@ for token in (
     '"production_mask_changed": False',
     'call("push", "origin", "HEAD:refs/heads/dev")',
     'signal.signal(signal.SIGTERM, stop_signal)',
+    'checked_clone_layout()',
+    '"FRACTIONAL_INHERITED_SOURCE_AUDIT_REJECTED"',
     '"https://github.com/llocphann/Hadalis.git"',
     'call("diff", "--cached", "--name-only") == relative',
     '"WULL_FRACTIONAL_BAND_DIR"',
@@ -205,5 +207,32 @@ with tempfile.TemporaryDirectory(prefix="wull-fractional-FAKE-") as tmp:
     victim.write_bytes(b"invalid")
     denied(runner["Stop"], "FRACTIONAL_ALPHA_UNQUALIFIED",
            runner["private_classify"], directory, previous)
+
+# Mirror the inherited immutable audit's clone layout before any real Qt.
+with tempfile.TemporaryDirectory(prefix="wull-paint-canary.") as tmp:
+    scratch = Path(tmp)
+    clone = scratch / "repo"
+    clone.mkdir(mode=0o700)
+    runner["checked_clone_layout"](clone, clone)
+    denied(runner["Stop"], "FRACTIONAL_CLONE_LAYOUT_INVALID",
+           runner["checked_clone_layout"], clone, scratch)
+    wrong_name = scratch / "Hadalis"
+    wrong_name.mkdir(mode=0o700)
+    denied(runner["Stop"], "FRACTIONAL_CLONE_LAYOUT_INVALID",
+           runner["checked_clone_layout"], wrong_name, wrong_name)
+    clone.chmod(0o755)
+    denied(runner["Stop"], "FRACTIONAL_CLONE_LAYOUT_INVALID",
+           runner["checked_clone_layout"], clone, clone)
+    clone.chmod(0o700)
+    scratch.chmod(0o755)
+    denied(runner["Stop"], "FRACTIONAL_CLONE_LAYOUT_INVALID",
+           runner["checked_clone_layout"], clone, clone)
+    scratch.chmod(0o700)
+
+with tempfile.TemporaryDirectory(prefix="wull-fractional-wrong-parent.") as tmp:
+    wrong_parent = Path(tmp) / "repo"
+    wrong_parent.mkdir(mode=0o700)
+    denied(runner["Stop"], "FRACTIONAL_CLONE_LAYOUT_INVALID",
+           runner["checked_clone_layout"], wrong_parent, wrong_parent)
 
 print("WULL_PRIVATE_FRACTIONAL_BAND_INERT_PASS")

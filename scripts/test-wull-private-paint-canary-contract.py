@@ -24,8 +24,8 @@ def blob(path):
         b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
 
 
-assert blob(FIXTURE) == "d2f3d654440f1ca4b3fc3e173cbf332b4add777b"
-assert blob(RUNNER) == "7d13855416aa3d591dce2a2cceee64210a6da5a2"
+assert blob(FIXTURE) == "4ed1c92b81870197927b449cfe60cd2c57859b30"
+assert blob(RUNNER) == "5ce5155303913b9eda49590ba017c074b8e176fc"
 assert blob(MODEL) == "fa9e7c2af87ee830336988fa7060e2720e816ed0"
 source = RUNNER.read_text(encoding="utf-8")
 qml = FIXTURE.read_text(encoding="utf-8")

@@ -115,7 +115,20 @@ def run(enable=False):
             "thinking", "continuing", "recovering_protocol", "transport_rate_limited",
             "transport_unavailable", "waiting_result", "rotating", "starting",
             "scheduled", "recovering_generation", "response_unavailable",
-            "stream_failed") else "REVIEW"))
+            "stream_failed", "submission_uncertain", "recovering_pending",
+            "parked_unresolved") else "REVIEW"))
+        rotation = profile.get("rotate_after_iterations", 0)
+        chat_iterations = item.get("chat_iterations")
+        print(key + "_ROTATE_AFTER_ITERATIONS=" + (
+            str(rotation) if type(rotation) is int and rotation >= 0 else "UNQUALIFIED"))
+        print(key + "_CHAT_ITERATIONS=" + (
+            str(chat_iterations) if type(chat_iterations) is int and chat_iterations >= 0
+            else "UNQUALIFIED"))
+        print(key + "_ROTATION_REMAINING=" + (
+            str(max(0, rotation - chat_iterations))
+            if type(rotation) is int and rotation > 0
+            and type(chat_iterations) is int and chat_iterations >= 0
+            else "DISABLED_OR_UNKNOWN"))
         print(key + "_PENDING=" + ("YES" if pending else "NO"))
         print(key + "_REPAIR_ATTEMPTS=" + (
             str(attempts) if type(attempts) is int and 0 <= attempts <= 2 else "UNQUALIFIED"))

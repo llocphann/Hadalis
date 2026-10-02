@@ -234,6 +234,23 @@ def _reserve_poll(profile_id: str, pending: dict, now: int) -> bool:
     return change_state(reserve)
 
 
+def _reserve_submit(profile_id: str, now: int) -> bool:
+    """Share the account-wide transport slot with polling before any submit preflight."""
+    def reserve(config, state):
+        item = state["profiles"].get(profile_id)
+        if (not item or item["remove_requested"] or item["desired"] != "run"
+                or not _profile(config, profile_id)["enabled"] or item["pending"]
+                or item["job_id"]):
+            return False
+        at = max(state["transport_retry_at_unix"], state["transport_next_poll_at_unix"])
+        if now < at:
+            item["next_run_at_unix"] = max(item.get("next_run_at_unix") or 0, at)
+            return False
+        state["transport_next_poll_at_unix"] = now + TRANSPORT_POLL_SPACING_SECONDS
+        return True
+    return change_state(reserve)
+
+
 def _poll_succeeded(now: int) -> None:
     def record(config, state):
         # One successful read between repeated 429s is not quota recovery.
@@ -825,6 +842,7 @@ def _step_session(profile_id: str, now: int) -> None:
     if item["job_id"]:
         _wait_result(config,state,profile_id,now); return
     if now < (item["next_run_at_unix"] or 0): return
+    if not _reserve_submit(profile_id, now): return
     try: _submit(config,state,profile_id,now)
     except Exception as exc: _observe_failure(profile_id,now,exc)
 
@@ -865,7 +883,7 @@ def tick(now: int | None = None, executor: ThreadPoolExecutor | None = None) -> 
         elif item["job_id"]: at=item["next_job_poll_at_unix"] or 0
         elif item["run_active"] or item["desired"]=="run":
             at=item["next_run_at_unix"] or 0
-            if item["desired"]=="run":at=max(at,state["transport_retry_at_unix"])
+            if item["desired"]=="run":at=max(at,state["transport_retry_at_unix"],state["transport_next_poll_at_unix"])
         else: continue
         if at<=now: due.append(p["id"])
     due.sort(key=lambda pid:state["profiles"][pid]["last_transport_at_unix"])

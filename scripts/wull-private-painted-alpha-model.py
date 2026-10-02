@@ -9,7 +9,7 @@ import math
 import struct
 import zlib
 
-PNG_SIGNATURE = b"\\x89PNG\\r\\n\\x1a\\n"
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 MAX_PNG_BYTES = 1024 * 1024
 MAX_DIMENSION = 512
 MIN_INTERIOR_PIXELS = 8

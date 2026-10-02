@@ -29,3 +29,8 @@ The manifest `docs/wull-visual/reference/manifest.json` exists (blob `ae8411dfec
 3. Correct the reference manifest only after identifying the exact original assets and verifying hashes. Then OPEN actual blueprint/expression/animation boards, compare the relevant Wull renderer pixels/frame sequences against those exact references, and choose one evidence-led next visual change. Preserve existing valid A/B baselines and the default-off and native input safety invariants. Maintain visual-first order; no VISUAL PASS without direct reference comparison and owner acceptance.
 
 No new local execution is pending from this checkpoint: `...50` and `...51` both have terminal receipts. No production-geometry or animation edit was made in this turn.
+
+
+## 2026-10-03 rotation carry-forward
+
+The detailed, current visual-first rotation handoff is `../20261003-visual-rotation-checkpoint.md`. This earlier reference-identity audit remains immutable historical evidence: all four actual `assets/` images exist, but manifest SHA-256/size identity is **not** verified; do not interpret its legacy relative filenames as missing source assets. Read the newer document for visual runs, receipt reconciliation and NEXT_CHAT_BOOTSTRAP.

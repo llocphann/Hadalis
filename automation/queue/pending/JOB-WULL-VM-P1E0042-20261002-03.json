@@ -1,0 +1,39 @@
+{
+  "id": "JOB-WULL-VM-P1E0042-20261002-03",
+  "base_sha": "df94307c63eb2ff459a6247970d7fa4b25f2b79d",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-visual-matrix-fake-only.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 65
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-manual-visual-matrix.py",
+          "--preflight"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 25
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-manual-visual-matrix.py",
+          "--capture"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 80
+      }
+    }
+  ]
+}

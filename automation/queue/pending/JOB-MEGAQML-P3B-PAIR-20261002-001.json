@@ -1,0 +1,28 @@
+{
+  "id": "JOB-MEGAQML-P3B-PAIR-20261002-001",
+  "base_sha": "5052ac38a40660567a737586ecdc5fc45b9ef40e",
+  "profile_id": "profile-a25585b748dd4220",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-megaqml-phase3b-fixture-remote-ls-classify.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/megaqml-phase3b-fixture-remote-ls-classify.py",
+          "--self-test"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 60
+      }
+    }
+  ]
+}

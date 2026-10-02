@@ -1,0 +1,28 @@
+{
+  "id": "JOB-WULL-FIELD-CANVAS-P1E0042-20261003-20",
+  "base_sha": "6d48e19b70b67b6417c378c5388ebd11d83ad4e4",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-real-field-canary-fake-only.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 40
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-manual-real-field-canary.py",
+          "--capture"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 75
+      }
+    }
+  ]
+}

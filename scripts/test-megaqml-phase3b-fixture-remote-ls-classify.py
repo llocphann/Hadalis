@@ -83,6 +83,8 @@ assert fingerprint(header + folder) == (
 assert fingerprint(header + folder + file) == (
     "exact", "all_four_flag_candidate", "lf", "absent", "two")
 assert fingerprint(b"FLAGS VERS SIZE DATE HANDLE NAME\n" + folder) == (
+    "whitespace_variant", "all_four_flag_candidate", "lf", "absent", "one")
+assert fingerprint(b"FLAGS VERS SIZE DATE EXTRA NAME\n" + folder) == (
     "flags_prefix_other", "all_four_flag_candidate", "lf", "absent", "one")
 assert fingerprint(b"FLAGS VERS SIZE DATE NAME\r\n" + folder) == (
     "exact", "all_four_flag_candidate", "carriage_return", "absent", "one")

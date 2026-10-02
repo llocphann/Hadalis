@@ -66,7 +66,33 @@ assert '"WAYLAND_DISPLAY", "NIRI_SOCKET", "DISPLAY"' in source
 assert '"QT_QPA_PLATFORM": "offscreen"' in source
 assert '"QT_DEBUG_PLUGINS": "1"' in source
 assert '[qs, "--verbose", "--path", shell]' in source
-assert '"QS_SIGNAL=" + sig' in source
+# Exercise the actual child -> sidecar contract rather than grepping Python's
+# string-literal spelling (the field follows an escaped newline).
+from types import SimpleNamespace
+from unittest.mock import patch
+import os
+with tempfile.TemporaryDirectory(prefix="wull-signal-child-inert-") as directory:
+    sidecar = Path(directory) / "qs.private.txt"
+    cases = (
+        (-signal.SIGXFSZ, ("SIGNAL", "SIGXFSZ"), 1),
+        (-signal.SIGABRT, ("SIGNAL", "SIGABRT"), 1),
+        (0, ("ZERO", "NONE"), 0),
+        (5, ("NONZERO", "NONE"), 1),
+    )
+    for returncode, expected, exitcode in cases:
+        with patch.dict(os.environ, {"QT_QPA_PLATFORM": "offscreen"}), \\
+                patch.object(m["subprocess"], "run",
+                             return_value=SimpleNamespace(returncode=returncode)) as fake:
+            try:
+                m["child_main"](["/inert/qs", "/inert/shell.qml", str(sidecar)])
+            except SystemExit as ex:
+                assert ex.code == exitcode
+            else:
+                raise AssertionError("child_main did not terminate")
+            fake.assert_called_once()
+            assert fake.call_args.args[0] == [
+                "/inert/qs", "--verbose", "--path", "/inert/shell.qml"]
+            assert read(sidecar) == expected
 assert 'cleanup(proc.pid)' in source
 assert 'borrowed["clean"]()' in source
 assert "git push" not in source and "xdotool" not in source

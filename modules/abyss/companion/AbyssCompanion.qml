@@ -48,7 +48,7 @@ Item {
         pulse: root.pulse
         enabled: root.interactive
         opacity: root.reveal
-        rotation: root.edge === "left" ? 90 : root.edge === "right" ? -90 : root.edge === "bottom" ? 180 : 0
+        orientationAngle: root.edge === "left" ? 90 : root.edge === "right" ? -90 : root.edge === "bottom" ? 180 : 0
         // Centered bounds contain the rotated clickable body for all four
         // output edges. Verified in the offscreen four-edge prototype; keep
         // compositor input-mask changes as a separate qualification gate.
@@ -62,8 +62,13 @@ Item {
         width: root.verticalEdge ? 10 : 58
         height: root.verticalEdge ? 58 : 10
         radius: 6
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
+        // Side-edge attachment follows the inward field side, instead of
+        // placing a disconnected vertical bar BELOW a rotated body.
+        anchors.horizontalCenter: root.verticalEdge ? undefined : parent.horizontalCenter
+        anchors.verticalCenter: root.verticalEdge ? parent.verticalCenter : undefined
+        anchors.left: root.edge === "left" ? parent.left : undefined
+        anchors.right: root.edge === "right" ? parent.right : undefined
+        anchors.bottom: root.verticalEdge ? undefined : parent.bottom
         // Pilot-proven .25px original-cradle inset on BOTTOM only; other
         // sides keep the source-original pose until individual visual review.
         anchors.bottomMargin: root.edge === "bottom" ? 0.25 : 0

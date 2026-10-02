@@ -1,0 +1,39 @@
+{
+  "id": "JOB-MEGAQML-F1-TRACKING-RETEST-20261003-001",
+  "base_sha": "e5ee733509e8d42ec5f62719a12d03056f84915f",
+  "profile_id": "profile-a25585b748dd4220",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "scripts/test-megaqml-f1-local-only-integration.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "scripts/test-megaqml-phase2p-contracts.sh"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-c",
+          "pin=\"$(git rev-parse --verify HEAD)\" || exit 66; exec bash scripts/test-megaqml-phase2-local.sh \"$pin\" --local-only"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1800
+      }
+    }
+  ]
+}

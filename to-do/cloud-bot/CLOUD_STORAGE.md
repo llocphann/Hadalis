@@ -1,5 +1,9 @@
 # Cloud Storage — MEGAcmd ↔ Rust ↔ QML implementation
 
+> **Phase 3b same-response sync pair parser SOURCE-STAGED (2026-10-02):** As a separate unqualified synthetic-parser follow-up, added an **unwired**, pure Rust candidate parser for exactly one complete same-response `ID|RUN_STATE` or `ID|STATUS` table. It reuses the strict ID uniqueness and finite scalar validators and rejects extra delimiters, path-like text, unknown states, truncated/malformed/empty/oversized captures. Pinned upstream supports `--output-cols` ordering and selected `--col-separator` formatting, but installed behavior and even a one-invocation *atomic* state snapshot remain **unqualified**. Absolutely no correlation by independent-call row index, general free-text parser, live vendor, account/network, ability unlock, or private owner results on GitHub. Exact-source owner offline Rust tests are pending. See `docs/MEGAQML_PHASE3B_SYNC_PAIRED_CANDIDATES.md`. Preserve stable and Wull.
+
+
+
 > **Phase 3b synthetic single-column Rust candidate parser SOURCE-STAGED (2026-10-02):** On the basis of pinned upstream `ColumnDisplayer` output (no escaping of path/name/free text), added pure `native/inir-mega/src/column_fixtures.rs` and unit tests for **independent** `ID`, `RUN_STATE`, `STATUS`, and transfer `TAG` columns only. Exact header/complete stream/terminal newline/size/row limits, finite enums, conservative ID grammar and canonical numeric tags fail closed on ambiguous input; header-only rows are NOT evidence for empty account. **Never join independent columns by row index.** Linked at compile time only; no new typed operation, vendor invocation, real account, network, parser qualification, public owner-local result or enabled feature. Next: owner exact-SHA synthetic Rust tests; real disposable row-identity/account fixtures require a separate authorized scope later. Keep `stable` and Wull unchanged. See `docs/MEGAQML_PHASE3B_SINGLE_COLUMN_CANDIDATES.md`.
 
 

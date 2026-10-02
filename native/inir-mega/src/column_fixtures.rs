@@ -127,9 +127,181 @@ pub fn parse(column: Column, raw: &[u8], complete: bool) -> Result<Vec<Value>, E
     Ok(values)
 }
 
+
+/// Strict, **synthetic** one-invocation sync pair candidate.
+/// Never combine independently requested ID/state columns by row index.
+/// Not authorized to dispatch commands or enable any sync feature.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PairedSyncColumn { RunState, Status }
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum PairedSyncState { RunState(RunState), Status(Status) }
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct SyncPair {
+    pub id: String,
+    pub state: PairedSyncState,
+}
+
+/// Parse only ID|RUN_STATE or ID|STATUS from ONE already bounded response.
+///
+/// The "|" delimiter is excluded from BOTH scalar grammars, making these
+/// two finite columns unambiguous for candidate fixtures. The installed
+/// package has not yet been qualified for exact column behavior. A complete
+/// flag is caller-provided and MUST be false after timeout/output truncation.
+pub fn parse_sync_pair(
+    column: PairedSyncColumn,
+    raw: &[u8],
+    complete: bool,
+) -> Result<Vec<SyncPair>, Error> {
+    if !complete { return Err(Error::Incomplete); }
+    if raw.len() > MAX_BYTES { return Err(Error::Oversized); }
+    let text = std::str::from_utf8(raw).map_err(|_| Error::InvalidEncoding)?;
+    if text.is_empty() || !text.ends_with('\n') { return Err(Error::Incomplete); }
+    if !text.is_ascii() || text.bytes().any(|b| {
+        b == 0 || (b < 0x20 && b != b'\n' && b != b'\r') || b == 0x7f
+    }) {
+        return Err(Error::InvalidRow);
+    }
+
+    let (state_header, state_col) = match column {
+        PairedSyncColumn::RunState => ("RUN_STATE", Column::SyncRunState),
+        PairedSyncColumn::Status => ("STATUS", Column::SyncStatus),
+    };
+    let expected_header = format!("ID|{state_header}");
+    let mut lines = text.split_terminator('\n')
+        .map(|line| line.strip_suffix('\r').unwrap_or(line));
+    if lines.next() != Some(expected_header.as_str()) {
+        return Err(Error::InvalidHeader);
+    }
+
+    // Split one immutable captured output, then reuse the SAME strict
+    // single-column validators for ID uniqueness and finite enum syntax.
+    let mut ids = String::from("ID\n");
+    let mut states = format!("{state_header}\n");
+    let mut count = 0usize;
+    for row in lines {
+        if count >= MAX_ROWS { return Err(Error::Oversized); }
+        if row.is_empty() || row != row.trim() || row.contains('\r') {
+            return Err(Error::InvalidRow);
+        }
+        let Some((id, state)) = row.split_once('|') else {
+            return Err(Error::InvalidRow);
+        };
+        if id.is_empty() || state.is_empty() || state.contains('|') {
+            return Err(Error::InvalidRow);
+        }
+        ids.push_str(id);
+        ids.push('\n');
+        states.push_str(state);
+        states.push('\n');
+        count += 1;
+    }
+    if count == 0 { return Err(Error::EmptyRows); }
+
+    let parsed_ids = parse(Column::SyncId, ids.as_bytes(), true)?;
+    let parsed_states = parse(state_col, states.as_bytes(), true)?;
+    if parsed_ids.len() != count || parsed_states.len() != count {
+        return Err(Error::InvalidRow);
+    }
+
+    parsed_ids.into_iter().zip(parsed_states).map(|(id, state)| {
+        let Value::SyncId(id) = id else {
+            return Err(Error::InvalidRow);
+        };
+        let state = match state {
+            Value::RunState(s) if column == PairedSyncColumn::RunState => {
+                PairedSyncState::RunState(s)
+            }
+            Value::Status(s) if column == PairedSyncColumn::Status => {
+                PairedSyncState::Status(s)
+            }
+            _ => return Err(Error::InvalidRow),
+        };
+        Ok(SyncPair { id, state })
+    }).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn accepts_same_capture_paired_sync_scalars_only() {
+        assert_eq!(
+            parse_sync_pair(
+                PairedSyncColumn::RunState,
+                b"ID|RUN_STATE\nAbcDef12_-x|Running\nZyxWvu98_-p|Suspended\n",
+                true,
+            ),
+            Ok(vec![
+                SyncPair {
+                    id: "AbcDef12_-x".into(),
+                    state: PairedSyncState::RunState(RunState::Running),
+                },
+                SyncPair {
+                    id: "ZyxWvu98_-p".into(),
+                    state: PairedSyncState::RunState(RunState::Suspended),
+                },
+            ])
+        );
+        assert_eq!(
+            parse_sync_pair(
+                PairedSyncColumn::Status,
+                b"ID|STATUS\r\nAbcDef12_-x|Synced\r\n", true,
+            ),
+            Ok(vec![SyncPair {
+                id: "AbcDef12_-x".into(),
+                state: PairedSyncState::Status(Status::Synced),
+            }])
+        );
+    }
+
+    #[test]
+    fn paired_sync_requires_one_exact_bounded_unambiguous_table() {
+        let invalid: &[(PairedSyncColumn, &[u8], Error)] = &[
+            (PairedSyncColumn::RunState, b"", Error::Incomplete),
+            (PairedSyncColumn::RunState, b"ID|RUN_STATE\n", Error::EmptyRows),
+            (PairedSyncColumn::RunState, b"RUN_STATE|ID\nRunning|AbcDef12_-x\n", Error::InvalidHeader),
+            (PairedSyncColumn::RunState, b"ID,RUN_STATE\nAbcDef12_-x,Running\n", Error::InvalidHeader),
+            (PairedSyncColumn::RunState, b"ID|STATUS\nAbcDef12_-x|Synced\n", Error::InvalidHeader),
+            (PairedSyncColumn::RunState, b"ID|RUN_STATE\nAbcDef12_-x|Running", Error::Incomplete),
+            (PairedSyncColumn::RunState, b"ID|RUN_STATE\nAbcDef12_-x|Running|EXTRA\n", Error::InvalidRow),
+            (PairedSyncColumn::RunState, b"ID|RUN_STATE\nAbcDef12_-x|UNKNOWN\n", Error::InvalidRow),
+            (PairedSyncColumn::RunState, b"ID|RUN_STATE\nAbcDef12_-x|Running\nAbcDef12_-x|Loading\n", Error::DuplicateIdentifier),
+            (PairedSyncColumn::RunState, b"ID|RUN_STATE\nPRIVATE/SECRET|Running\n", Error::InvalidRow),
+            (PairedSyncColumn::RunState, b"ID|RUN_STATE\nAbcDef12_-x|Running\nID|RUN_STATE\n", Error::InvalidRow),
+            (PairedSyncColumn::RunState, b"ID|RUN_STATE\nAbcDef12_-x|Running\n\n", Error::InvalidRow),
+            (PairedSyncColumn::RunState, b"ID\nAbcDef12_-x\nRUN_STATE\nRunning\n", Error::InvalidHeader),
+            (PairedSyncColumn::Status, b"ID|STATUS\nAbcDef12_-x|Processing\nAbcDef12_-x|Synced\n", Error::DuplicateIdentifier),
+            (PairedSyncColumn::Status, b"ID|STATUS\nAbcDef12_-x|invalid\n", Error::InvalidRow),
+            (PairedSyncColumn::Status, b"ID|STATUS\nAbcDef12_-x|Synced\x1b[2J\n", Error::InvalidRow),
+            (PairedSyncColumn::Status, b"ID|STATUS\n\xff|Synced\n", Error::InvalidEncoding),
+        ];
+        for (column, raw, error) in invalid {
+            assert_eq!(
+                parse_sync_pair(*column, raw, true), Err(*error),
+                "unexpected paired-grammar acceptance for {column:?}"
+            );
+        }
+        assert_eq!(
+            parse_sync_pair(
+                PairedSyncColumn::RunState,
+                b"ID|RUN_STATE\nAbcDef12_-x|Running\n", false,
+            ),
+            Err(Error::Incomplete)
+        );
+        assert_eq!(
+            parse_sync_pair(
+                PairedSyncColumn::RunState,
+                &vec![b'x'; MAX_BYTES + 1], true,
+            ),
+            Err(Error::Oversized)
+        );
+        // Strictly valid-looking injected rows cannot be identified as
+        // forgeries by lexical grammar alone: provenance stays external.
+    }
+
     #[test]
     fn accepts_only_bounded_synthetic_scalars() {
         assert_eq!(

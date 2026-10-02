@@ -75,10 +75,11 @@ Item {
         anchors.bottom: root.edge === "top" ? parent.bottom : undefined
         scale: 1 + root.ripple * 0.16
         opacity: 0.88 + root.ripple * 0.12
-        // Same source material as real AbyssField.surface (theme-linked).
-        // Reduce only the separate neck highlight, never the live body.
+        // Real-Bar side images still expose a thin rectangular neck outline.
+        // Match the real field surface and disable only that border in this
+        // visual A/B; do not mutate the procedural body or production mask.
         color: AbyssStyle.surface
-        border.color: Qt.alpha(AbyssStyle.specular, 0.08 + root.pulse * 0.04)
+        border.width: 0
 
         Behavior on scale {
             enabled: AbyssStyle.motionEnabled

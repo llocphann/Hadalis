@@ -106,3 +106,72 @@ text tokens requested by the fake test are present. This is NOT a run of
 the corrected Python fake contract; a new owner-local fake run must
 pass before any new real 32-frame Qt. No historical real tests are
 invalidated or rerun; source SHA provenance preserved.
+
+
+## 2026-10-02 result: actual original moving quarter sample gate owner-PASS
+
+On exact source SHA `b62011815095fd69451da0d15b2a9d2bcc2ddfd7`,
+owner ran the corrected fake and actual private 32-frame two-original-Wull
+BOTTOM×1.5 moving margin0 vs private margin0.25 proof. The complete
+sanitized category output was **supplied in chat**, not independently
+re-executed or stored as a GitHub raw-image/Qt report:
+
+- `WULL_PRIVATE_MOVING_QUARTER_BAND_INERT_PASS`, strict source pins PASS,
+  32 real owned Qt original FULL frames, independent 40ms spring/mapped
+  witnesses for BOTH cohorts and BOTH phases.
+- Original M0 positive controls: stretch and release exterior YES; abstract
+  virtual edge-band ANY=YES and ALL=YES in both phases.
+- Private M025: stretch and release exterior NO; original full same-frame
+  abstract band ANY=YES and ALL=YES for all sampled frames in both phases.
+  `M025_BOTH_PHASES_ALL_SAMPLED_JOINT=YES`.
+- `MAXIMUM_SPRING_EXTREMA=NOT_PROVEN`;
+  `SAME_INSTANT_PIXEL_COMPARISON=NOT_TESTED`;
+  `COMPOSITOR_AND_POINTER=UNTESTED`;
+  `VIRTUAL_BAND_NOT_REAL_PANEL=YES`;
+  `PRODUCTION_MASK_CHANGED=NO`.
+
+This is **accepted private sampled BOTTOM×1.5 dynamic feasibility**. The
+alternative static-qualified M0.5 is held, not redundantly rerun.
+No production margin adjustment, Region narrowing, default-on toggle or
+`stable` modification is authorized.
+
+## Separate next gate: real nested screen-edge/panel visual contact
+
+Source inspection at unchanged `modules/abyss/AbyssPerimeter.qml` blob
+`a3cd2a7bfbdf32dac2c7e42057a1dfaaeea214ac` shows actual Wull is
+a child of the real per-output `PanelWindow` with
+`scale: root.companionScale` and BOTTOM placement
+`y: window.height - AbyssStyle.perimeterThickness - implicitHeight + 5`.
+The original child cradle `AbyssCompanion.qml` blob
+`b5b01835a282458eba0d0268396ae2c350d919d2`
+is a separate bottom-anchored 58×10 painted element, unlike the centered
+rotated procedural body. A contact flag at the privately fabricated
+320×300 host boundary cannot prove the real actual bar/edge join:
+production panel thickness, field deformation, waves, true Wayland
+compositor alpha/blending, scale transforms and anchor placement differ.
+
+Required next code gate (NOT YET IMPLEMENTED or owner-executed):
+a disposable **Niri-in-Niri** real original production
+`AbyssPerimeter`/bar scene with two *sequential* source-pinned cases,
+actual original margin0 baseline and private-only original cradle
+bottomMargin0.25. Use the existing reviewed isolated-nested-Niri owner
+socket/inventory/cleanup pattern, but re-review exact current sources and
+create a new strict private shadow of ONLY the reviewed `AbyssCompanion`
+anchor (do not edit production QML). Explicit separate opt-in; one
+private output, fixed expected output/scale, no host desktop capture or
+input injection, isolated XDG, unchanged original full input Region for
+visual phase, tightly bounded child lifetimes/log and private assets,
+verified cleanup. A missing capture facility or isolation fails closed.
+Use visual A/B inspected LOCALLY for an actual seam/contact and unwanted
+physical screen-edge cropping with matching theme/bar pose, even if only
+the maintainer can provide honest categorical visual acceptance. Do NOT
+publish nested screenshots or convert a synthetic band proxy into
+claimed desktop-level acceptance.
+
+After visual evidence, separately qualify native real hover/click,
+out-of-host pass-through and bar/popup handoff for the candidate under
+explicit pointer opt-in: existing scale1/nested pointer results cannot
+automatically qualify scale1.5 and margin0.25. Repeat all required edges,
+scales, themes/material colors, hotplug/fractional-monitor/fullscreen
+states, sampled+unsampled motion extremes and canonical validation
+before any production source/mask edit. Keep Wull disabled by default.

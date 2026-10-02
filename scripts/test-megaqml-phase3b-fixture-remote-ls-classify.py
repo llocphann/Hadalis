@@ -191,4 +191,32 @@ assert "FORMAT_ROW_PREFIXES=all_four_flag_candidate" in report
 assert "REMOTE_CLEANUP_AUTHORIZED=NO" in report
 assert "JOURNAL_CHANGED=NO" in report
 assert "PHASE3B=UNQUALIFIED" in report
+
+# The original-account gate uses only synthetic PTYs and an exact token.
+# An assertion is not cryptographic proof of historical account identity.
+import os
+import pty
+import tty
+import inspect
+
+def private_ack(line):
+    master, slave = pty.openpty()
+    try:
+        tty.setraw(slave)
+        os.write(master, line.encode("ascii") + b"\n")
+        return D["tty_original_account_attestation"](
+            open_tty=lambda path, flags: os.dup(slave))
+    finally:
+        os.close(master)
+        os.close(slave)
+
+assert private_ack("VERIFIED_SAME_ORIGINAL_ACCOUNT") is True
+assert private_ack("VERIFIED_SAME_ORIGINAL_ACCOUNT_EXTRA") is False
+assert private_ack(" VERIFIED_SAME_ORIGINAL_ACCOUNT") is False
+assert private_ack("START_DISPOSABLE_PREFIX_ONLY") is False
+assert D["tty_original_account_attestation"](
+    open_tty=lambda path, flags: (_ for _ in ()).throw(OSError())) is False
+main_source = inspect.getsource(D["main"])
+assert main_source.index("if not tty_original_account_attestation():") < main_source.index("subprocess.Popen(")
+
 print("PASS MegaQML fixture ls-l fake-only contract")

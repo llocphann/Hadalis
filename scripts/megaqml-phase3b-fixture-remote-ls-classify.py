@@ -26,6 +26,7 @@ REASONS = {
     "dedicated_environment_rejected", "journal_untrusted",
     "another_fixture_active", "journal_stage_unexpected",
     "trusted_package_rejected", "server_identity_ambiguous",
+    "original_account_attestation_missing",
     "start_confirmation_rejected", "server_start_unconfirmed",
     "server_changed", "operator_confirmation_unavailable",
     "account_identity_unverified", "sync_changed_or_unavailable",
@@ -284,9 +285,10 @@ def named_server_guard(uid, executable):
     except OSError:
         return False
 
-def tty_start_confirmation():
+def tty_confirm_exact(message, token, open_tty=None):
+    """Private exact-token approval; never collect credentials or identity."""
     try:
-        fd = os.open("/dev/tty", os.O_RDWR | os.O_NOCTTY)
+        fd = (open_tty or os.open)("/dev/tty", os.O_RDWR | os.O_NOCTTY)
         with contextlib.ExitStack() as stack:
             stack.callback(os.close, fd)
             if not os.isatty(fd):
@@ -300,15 +302,32 @@ def tty_start_confirmation():
                     raise
                 return stack.enter_context(f)
             inp, out = wrap("r"), wrap("w")
-            out.write(
-                "Only the disposable server may start if absent. Its cached "
-                "Sync state could resume. No creation or deletion.\n"
-                "Type START_DISPOSABLE_PREFIX_ONLY: "
-            )
+            out.write(message)
             out.flush()
-            return inp.readline(64).strip() == "START_DISPOSABLE_PREFIX_ONLY"
+            # Do not accept partial tokens or whitespace variations.
+            return inp.readline(80).rstrip("\r\n") == token
     except (OSError, UnicodeError, ValueError):
         return False
+
+
+def tty_original_account_attestation(open_tty=None):
+    """Operator assertion only; historical identity needs separate proof."""
+    return tty_confirm_exact(
+        "STOP unless you INDEPENDENTLY verified that this is the SAME "
+        "ORIGINAL disposable MEGA account tied to the protected journal. "
+        "A current whoami result alone is NOT historical identity proof. "
+        "If unknown or substituted, stop. No server startup or vendor "
+        "data command will occur before this gate.\n"
+        "Type VERIFIED_SAME_ORIGINAL_ACCOUNT: ",
+        "VERIFIED_SAME_ORIGINAL_ACCOUNT", open_tty)
+
+
+def tty_start_confirmation():
+    return tty_confirm_exact(
+        "Only the disposable server may start if absent. Its cached "
+        "Sync state could resume. No creation or deletion.\n"
+        "Type START_DISPOSABLE_PREFIX_ONLY: ",
+        "START_DISPOSABLE_PREFIX_ONLY")
 
 def main():
     started = False
@@ -341,6 +360,11 @@ def main():
                 emit("journal_untrusted"); return 21
             if journal["stage"] != "sync_detached":
                 emit("journal_stage_unexpected"); return 21
+            # The journal lacks a historical fingerprint. Operator must
+            # independently prove same ORIGINAL account outside this script.
+            # Require explicit assertion before ANY potential server startup.
+            if not tty_original_account_attestation():
+                emit("original_account_attestation_missing"); return 20
             allowed = B["BOUNDARY"]["allowed_binary"]
             p = [allowed(n) for n in
                  ("mega-version", "mega-cmd-server", "mega-exec")]

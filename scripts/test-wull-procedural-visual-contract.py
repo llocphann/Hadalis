@@ -29,7 +29,7 @@ assert "root.width * 0.07" in outline and "root.width * 0.93" in outline, (
 for token in ("AbyssStyle.accent", "AbyssStyle.surfaceRaised",
               "AbyssStyle.surfaceDeep", "AbyssStyle.specular",
               "AbyssStyle.textColor"):
-    assert token in body and token in style, token
+    assert token in body and ("property color " + token.split(".")[-1]) in style, token
 
 # Paired expressive eyes each get multiple light catches; blush is subtle.
 eye = body.split("// Larger paired eyes and layered moving catchlights", 1)[1].split(

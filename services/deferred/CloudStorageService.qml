@@ -239,7 +239,12 @@ Singleton {
         onStarted: {
             readProc.startObserved = true
             // A helper that starts after its deadline must never receive a new request.
-            if (!root.readBusy || root._pendingInput.length === 0) {
+            // The page may have lost its last lease before Process.onStarted.
+            // Never send even a static request from a hidden or older lease.
+            if (!root.readBusy || root.consumerCount === 0
+                    || root._pendingGeneration !== root.generation
+                    || root._pendingInput.length === 0) {
+                root._pendingInput = ""
                 readProc.signal(9)
                 return
             }

@@ -7,6 +7,7 @@ bash -n scripts/test-megaqml-phase2-local.sh
 bash -n scripts/test-megaqml-f1-preflight-ui.sh
 python3 scripts/test-megaqml-race-repeat-contract.py
 node scripts/test-megaqml-race-stage-guard.mjs
+node scripts/test-megaqml-f1-static-start-guard.mjs
 python3 scripts/test-megaqml-phase2p-history-guard-contract.py
 python3 scripts/test-megaqml-evidence-push-retry-contract.py
 python3 -B scripts/test-megaqml-f1-local-matrix-classify.py

@@ -74,3 +74,31 @@ blocked. The model never launches a process; only a separately
 qualified runner could attest actual process reap, session identity
 and capture provenance. These local tests must not be presented as
 installed MEGAcmd qualification or a live QML race acceptance.
+
+## Local non-vendor OS child/reap harness (Linux/Unix only)
+
+The follow-up `#[cfg(unix)]` tests exercise the lifecycle model with
+**real local process IDs, but entirely inert, fake-only children**.
+They spawn a fixed `/bin/sh` with an empty inherited environment and
+an entirely literal shell built-in `read`/`printf` program; no
+`mega-*` program, account, network call or writable vendor fixture
+is used. All output is synthetic `ID|RUN_STATE|STATUS` rows or
+synthetic diagnostic text.
+
+The test harness verifies three external lifecycle sequences:
+1. The blocked local child cannot make a snapshot visible. After
+   supplying its inert stdin trigger, the parent waits for actual OS
+   process exit/reap, captures stdout/stderr/exit status and only
+   then calls `SnapshotRefresh::finish` with a complete fake capture.
+2. A timed-out blocked child is killed and fully reaped while the
+   next candidate is still queued. Only the matching post-reap
+   callback may return a new request token; the second fake child
+   is spawned **after** the first child's wait completes.
+3. Even a syntactically valid fake table from a child with stderr
+   or a nonzero exit is rejected, without exposing a snapshot.
+
+These are more realistic tests of the **test harness's** order of
+operations, not evidence that the unwired production code supervises
+or reaps a real MEGAcmd child. No real runner has been enabled.
+The existing QML static/preflight race tests and all ten denied
+feature gates remain unchanged.

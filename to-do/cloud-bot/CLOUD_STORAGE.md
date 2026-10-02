@@ -1,5 +1,8 @@
 # Cloud Storage — MEGAcmd ↔ Rust ↔ QML implementation
 
+> **Phase 3b inert OS-child wait/reap regression SOURCE-STAGED (2026-10-02):** Added three **Unix-only**, fake-only Rust tests to the unwired `snapshot_lifecycle` module. A fixed `/bin/sh` child with **empty environment** runs only literal builtin `read`/`printf` and emits fabricated Sync rows or fabricated diagnostics: one test blocks then waits/reaps before applying; one expires then kills/waits old process before a coalesced restart; one rejects synthetic valid-looking rows from stderr/nonzero exit. These exercises use a **real local inert OS process**, unlike prior in-memory fixtures, but never invoke vendor, network, account, installed version or QML. The tests prove the harness order, NOT the correctness or presence of any real MEGAcmd runner; all cloud feature gates remain locked, owner exact-SHA test pending. See `docs/MEGAQML_PHASE3B_SYNC_REFRESH_LIFECYCLE.md`.
+
+
 > **Phase 3b bounded synthetic refresh sequencing SOURCE-STAGED (2026-10-02):** Added 32,768 deterministic five-step fake-only event traces across activate/close/request/timeout/valid or truncated post-reap completion/stale callbacks, enforcing no overlapping fake child, no stale visible snapshot and exact current-token handling. Focused tests cover expiration without queued requests and reopen without a new request. A cross-module unit test also verifies an apparently ready fake snapshot cannot unlock **any** real offline-policy read/write domain. No production runtime path, subprocess, vendor account/network, QML integration or gate change; owner exact-SHA offline Rust tests pending. Details: `docs/MEGAQML_PHASE3B_SYNC_REFRESH_LIFECYCLE.md`.
 
 

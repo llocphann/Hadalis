@@ -430,6 +430,142 @@ mod tests {
         }
     }
 
+    // Real OS process behavior but still 100% fake, account-free data.
+    // Only /bin/sh POSIX builtins are used; clear the inherited environment
+    // so the child cannot inherit any MEGA credentials or vendor PATH.
+    #[cfg(unix)]
+    fn inert_local_child() -> std::process::Child {
+        use std::process::{Command, Stdio};
+        Command::new("/bin/sh")
+            .env_clear()
+            .arg("-c")
+            .arg("IFS= read -r _ || exit 77\nprintf '%s\\n' 'ID|RUN_STATE|STATUS' 'AbcDef12_-x|Running|Synced'")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("inert local POSIX shell available")
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn inert_os_child_is_reaped_before_fixture_capture_is_applied() {
+        use std::io::Write;
+
+        let mut state = SnapshotRefresh::default();
+        assert!(state.activate());
+        let current = token(state.request());
+        let mut child = inert_local_child();
+        // A deliberately open stdin pipe ensures the inert shell is
+        // blocked on read until its owner explicitly releases it.
+        assert!(child.try_wait().unwrap().is_none());
+        assert!(state.ready().is_none());
+        let mut input = child.stdin.take().expect("fake shell stdin");
+        input.write_all(b"go\n").unwrap();
+        drop(input);
+
+        // wait_with_output returns only after actual OS child wait/reap.
+        // This is a test harness convention, not a production type proof.
+        let result = child.wait_with_output().expect("fake shell reap");
+        assert!(result.status.success());
+        let capture = CandidateCapture {
+            stdout: &result.stdout,
+            stderr: &result.stderr,
+            exit_code: result.status.code(),
+            timed_out: false,
+            output_capped: false,
+        };
+        assert_eq!(state.finish(current, &capture), Finish::Applied(1));
+        assert_eq!(state.ready().unwrap().len(), 1);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn inert_os_timeout_kill_and_wait_precede_any_queued_restart() {
+        use std::io::Write;
+
+        let mut state = SnapshotRefresh::default();
+        assert!(state.activate());
+        let old = token(state.request());
+        let mut old_child = inert_local_child();
+        assert!(old_child.try_wait().unwrap().is_none());
+
+        assert!(state.expire(old));
+        assert_eq!(state.request(), Start::Queued);
+        assert!(state.ready().is_none());
+        // Do not call finish() yet: timeout/kill alone is not a reap.
+        old_child.kill().expect("kill inert blocked shell");
+        assert_eq!(state.request(), Start::Queued);
+        let old_output = old_child.wait_with_output().expect("reap inert shell");
+        let old_capture = CandidateCapture {
+            stdout: &old_output.stdout,
+            stderr: &old_output.stderr,
+            exit_code: old_output.status.code(),
+            timed_out: true,
+            output_capped: false,
+        };
+        let Finish::Restart(fresh) = state.finish(old, &old_capture) else {
+            panic!("only matching post-reap callback may start new fake work");
+        };
+        assert_ne!(fresh, old);
+        assert_eq!(state.finish(old, &old_capture), Finish::Ignored);
+        assert!(state.ready().is_none());
+
+        // Start the second (also inert) child strictly AFTER first wait.
+        let mut fresh_child = inert_local_child();
+        let mut input = fresh_child.stdin.take().expect("fresh fake shell stdin");
+        input.write_all(b"go\n").unwrap();
+        drop(input);
+        let output = fresh_child.wait_with_output().expect("reap fresh shell");
+        assert!(output.status.success());
+        let capture = CandidateCapture {
+            stdout: &output.stdout,
+            stderr: &output.stderr,
+            exit_code: output.status.code(),
+            timed_out: false,
+            output_capped: false,
+        };
+        assert_eq!(state.finish(fresh, &capture), Finish::Applied(1));
+        assert!(state.ready().is_some());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn inert_os_diagnostic_or_abnormal_exit_denies_valid_looking_table() {
+        use std::process::Command;
+
+        for (script, error) in [
+            (
+                "printf '%s\\n' 'ID|RUN_STATE|STATUS' 'AbcDef12_-x|Running|Synced'; printf '%s\\n' 'INERT_FAKE_DIAGNOSTIC' >&2",
+                CaptureError::StandardErrorPresent,
+            ),
+            (
+                "printf '%s\\n' 'ID|RUN_STATE|STATUS' 'AbcDef12_-x|Running|Synced'; exit 17",
+                CaptureError::AbnormalExit,
+            ),
+        ] {
+            let mut state = SnapshotRefresh::default();
+            assert!(state.activate());
+            let current = token(state.request());
+            let output = Command::new("/bin/sh")
+                .env_clear()
+                .arg("-c")
+                .arg(script)
+                .output()
+                .expect("reap inert local shell");
+            assert!(output.stdout.starts_with(b"ID|RUN_STATE|STATUS\n"));
+            let capture = CandidateCapture {
+                stdout: &output.stdout,
+                stderr: &output.stderr,
+                exit_code: output.status.code(),
+                timed_out: false,
+                output_capped: false,
+            };
+            assert_eq!(state.finish(current, &capture), Finish::Rejected(error));
+            assert!(state.ready().is_none());
+        }
+    }
+
     #[test]
     fn monotonic_overflow_permanently_fails_closed() {
         let mut state = SnapshotRefresh::default();

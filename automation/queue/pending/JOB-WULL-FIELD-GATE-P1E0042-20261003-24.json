@@ -1,0 +1,28 @@
+{
+  "id": "JOB-WULL-FIELD-GATE-P1E0042-20261003-24",
+  "base_sha": "815ee55c39654435a7933f3afd36a7c2b4b546cb",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-wull-real-field-canary-fake-only.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 40
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-manual-real-field-canary.py",
+          "--capture-default-backend"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 75
+      }
+    }
+  ]
+}

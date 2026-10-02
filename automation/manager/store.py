@@ -112,6 +112,7 @@ def profile_state() -> dict:
         "last_transport_at_unix": 0, "job_evidence": [], "job_summary": None,
         "transport_observation": None,
         "generation_recoveries": 0, "failed_turn": None,
+        "protocol_repair_attempts": 0,
     }
 
 
@@ -122,6 +123,8 @@ def default_state(config: dict) -> dict:
         if profile["enabled"] and profile["mode"] == "continuous":
             item["desired"] = "run"
             item["status"] = "scheduled"
+        count = item.get("protocol_repair_attempts", 0)
+        item["protocol_repair_attempts"] = count if type(count) is int and 0 <= count <= 2 else 2
         profiles[profile["id"]] = item
     # A stopped legacy bridge can have a connector-blocked terminal state. Do
     # not silently restart that profile during migration.

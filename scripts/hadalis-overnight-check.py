@@ -53,6 +53,9 @@ def run(enable=False):
     for profile in profiles:
         item = state["profiles"][profile["id"]]
         if (not profile["enabled"] or profile["mode"] != "continuous" or
+                profile.get("stop_on_done", False) or
+                profile.get("iteration_limit", 0) != 0 or
+                profile.get("prompt_limit", 0) != 0 or
                 item["desired"] != "run" or item["status"] in BLOCKED):
             print("ENABLE_GUARD=BLOCKED")
             return 2

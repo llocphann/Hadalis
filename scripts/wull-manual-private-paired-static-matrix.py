@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = "scripts/wull-manual-private-paint-paired.py"
 BASE_BLOB = "c30279f99fbb05ff6e67d30c690b091851dfc4e5"
 FIXTURE = "scripts/wull-fixtures/paint-static-matrix/shell.qml"
-FIXTURE_BLOB = "064a4b59d686be74295b655dc8d4f4043efe4cc9"
+FIXTURE_BLOB = "4860f504cff167e806afe8217d73201012b7d278"
 MODEL = "scripts/wull-private-static-paired-matrix-model.py"
 MODEL_BLOB = "b8870420db8d1e6cc08f1f5b0f792c4ab186be61"
 ALPHA = "scripts/wull-private-painted-alpha-model.py"
@@ -37,6 +37,7 @@ FAILURES = frozenset((
     "CASE_HOST_OR_BODY_INVALID", "CASE_SOURCE_POSE_OR_VISUALS_INVALID",
     "CASE_MAPPED_GEOMETRY_INVALID", "FULL_GRAB_OR_SAVE_FAILED",
     "FULL_GRAB_UNAVAILABLE", "MATRIX_TIMEOUT",
+    "CRADLE_RESTORE_FAILED", "PRE_FULL_CRADLE_OR_POSE_INVALID",
 ))
 EDGES = ("top", "right", "bottom", "left")
 SCALES = (0.65, 1.0, 1.5)

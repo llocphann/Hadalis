@@ -108,16 +108,20 @@ def stages():
 
 def private_stages(raw):
     observed, failure = [], []
-    safe = set(stages())
+    ordered = stages()
     for line in raw.splitlines():
         if "WULL_MOVING_INSET_STAGE=" in line:
             token = line.split("WULL_MOVING_INSET_STAGE=", 1)[1].strip()
-            require(token in safe and token not in observed,
+            # Require the EXACT ordered prefix on every source marker.
+            # A forged release-only marker, skipped frame, or stage after
+            # an actual QML failure must never be accepted.
+            require(not failure and len(observed) < len(ordered)
+                    and token == ordered[len(observed)],
                     "DYNAMIC_STAGE_INVALID")
             observed.append(token)
         if "WULL_MOVING_INSET_FAILURE=" in line:
             token = line.split("WULL_MOVING_INSET_FAILURE=", 1)[1].strip()
-            require(token in FAILURES and token not in failure,
+            require(token in FAILURES and not failure,
                     "DYNAMIC_FAILURE_UNRECOGNIZED")
             failure.append(token)
     return observed, failure

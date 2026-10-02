@@ -11,7 +11,16 @@ if [[ "$#" -gt 2 || ( "$#" -eq 2 && "$mode" != "--local-only" ) ]]; then
 fi
 if [[ ! "$expected" =~ ^[0-9a-f]{40}$ ]]; then echo 'INVALID_SOURCE_SHA'; exit 64; fi
 cd "$(git rev-parse --show-toplevel)"
-[[ "$(git branch --show-current)" == dev ]] || { echo 'WRONG_BRANCH'; exit 65; }
+current_branch="$(git branch --show-current)"
+# Worker clones are deliberately SHA-pinned and detached. Permit detached
+# HEAD only for non-publishing local-only tests; reject every named branch
+# except dev, and keep the exact SHA, clean-tree and remote-history guards.
+if [[ "$current_branch" != dev ]]; then
+  [[ "$mode" == "--local-only" && -z "$current_branch" ]] || {
+    echo 'WRONG_BRANCH'
+    exit 65
+  }
+fi
 source_sha="$(git rev-parse HEAD)"
 [[ "$source_sha" == "$expected" ]] || { echo 'SOURCE_MISMATCH'; exit 66; }
 [[ -z "$(git status --porcelain --untracked-files=all)" ]] || { echo 'DIRTY_WORKTREE'; exit 67; }

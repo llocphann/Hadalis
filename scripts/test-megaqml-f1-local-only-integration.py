@@ -36,6 +36,14 @@ with tempfile.TemporaryDirectory(prefix="megaqml-f1-local-only-fake-") as raw:
                cwd=checkout).returncode == 0
     assert run("git", "push", "-q", "origin", "dev", cwd=checkout).returncode == 0
     pin = run("git", "rev-parse", "HEAD", cwd=checkout).stdout.decode().strip()
+    # Emulate the worker's deliberate exact-SHA detached checkout. It has
+    # its own private clone and never changes the fixture's dev branch.
+    detached = root / "detached"
+    assert run("git", "clone", "-q", str(checkout), str(detached)).returncode == 0
+    assert run("git", "checkout", "-q", "--detach", pin,
+               cwd=detached).returncode == 0
+    assert run("git", "branch", "--show-current",
+               cwd=detached).stdout == b""
 
     # Mock all test commands but run the REAL final local report classifier.
     # In this minimal checkout, optional Qt/Quickshell tests are SKIPPED or
@@ -68,4 +76,33 @@ with tempfile.TemporaryDirectory(prefix="megaqml-f1-local-only-fake-") as raw:
         line.startswith("?? docs/evidence/megaqml/phase2p-")
         for line in changed.splitlines()
     ), "private report must be the only new untracked file"
-print("PASS local-only rejects synthetic skipped/missing-race matrix without git writes")
+    # Detached workers may run a pinned private matrix but MUST NOT use the
+    # public publication path or report a skipped matrix as qualified.
+    public = run("/bin/bash", "scripts/test-megaqml-phase2-local.sh",
+                 pin, cwd=detached, env=env)
+    assert public.returncode == 65 and public.stdout == b"WRONG_BRANCH\n"
+    private = run("/bin/bash", "scripts/test-megaqml-phase2-local.sh",
+                  pin, "--local-only", cwd=detached, env=env)
+    private_output = private.stdout.decode("ascii", "replace")
+    assert private.returncode == 21, (private.returncode, "detached false PASS")
+    assert "PUBLICATION=LOCAL_ONLY_NO_GIT_WRITE\n" in private_output
+    assert "REPORT_CONTRACT_PASS=FALSE\n" in private_output
+    assert "F1_MATRIX=UNQUALIFIED\n" in private_output
+    assert "F1_MATRIX=QUALIFIED_SYNTHETIC_REPORT" not in private_output
+    assert run("git", "rev-parse", "HEAD",
+               cwd=detached).stdout.decode().strip() == pin
+    detached_status = run("git", "status", "--porcelain",
+                          "--untracked-files=all", cwd=detached).stdout.decode()
+    assert detached_status.splitlines() and all(
+        line.startswith("?? docs/evidence/megaqml/phase2p-")
+        for line in detached_status.splitlines()
+    ), "detached private report must not be published"
+
+    # A non-dev NAMED branch remains prohibited, even in local-only mode.
+    assert run("git", "switch", "-q", "-c", "fixture-other",
+               cwd=detached).returncode == 0
+    named = run("/bin/bash", "scripts/test-megaqml-phase2-local.sh",
+                pin, "--local-only", cwd=detached, env=env)
+    assert named.returncode == 65 and named.stdout == b"WRONG_BRANCH\n"
+
+print("PASS local-only dev/detached branch gates reject unqualified fake matrix without git writes")

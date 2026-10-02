@@ -429,7 +429,11 @@ export async function nativeManagedBranch(page, conversationId, projectId, expec
   const conversation=await nativeRead(page, `/conversation/${conversationId}`, {}, projectId);
   if (conversation?.conversation_id && conversation.conversation_id!==conversationId)
     throw new Error("conversation identity mismatch");
-  return {relation:classifyManagedBranch(conversation, expected)};
+  const relation=classifyManagedBranch(conversation, expected);
+  // Only a verified current branch can supply a new request's parent.
+  // Never expose or authorize a cursor from a superseded/foreign branch.
+  return {relation,...(["EXACT_CURRENT_NODE","NON_USER_DESCENDANT"].includes(relation) &&
+    UUID.test(conversation.current_node) ? {current_node:conversation.current_node} : {})};
 }
 
 export async function nativeStreamStatus(page, pending) {

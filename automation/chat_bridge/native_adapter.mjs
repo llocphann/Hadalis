@@ -119,9 +119,19 @@ export function inspectContractAssets(archive) {
   const api = exported(shared, apiImport), stream = exported(initial, atom);
   checks.api_export = Boolean(api);
   checks.stream_export = Boolean(stream);
-  if (Object.values(checks).some(ok => !ok)) return {checks, contract:null};
+  // An upstream Desktop build can retain the identical API object while
+  // changing only its import alias. Never infer the exported name from a
+  // substring or choose the first match: defer that case to a unique
+  // capability-checked export of this *exact* shared module in the renderer.
+  checks.api_runtime_link = initial.includes(sharedNames[0]);
+  const structural = ["initial_asset", "shared_asset", "conversation_stream_hook",
+    "stream_scope", "stream_method", "stream_export"];
+  if (structural.some(key => !checks[key])) return {checks, contract:null};
+  const staticApi = checks.api_import && checks.api_export;
+  if (!staticApi && !checks.api_runtime_link) return {checks, contract:null};
   return {checks, contract:{
-    shared:sharedNames[0], initial:initialNames[0], api, stream,
+    shared:sharedNames[0], initial:initialNames[0], api:staticApi ? api : null,
+    api_resolution:staticApi ? "static_export" : "unique_runtime_export", stream,
     serverStreamStatus:initial.includes("/conversation/{conversation_id}/stream_status"),
     fingerprint:crypto.createHash("sha256").update(initial).update(shared).digest("hex")
   }};
@@ -155,10 +165,21 @@ export async function connectNative() {
   if (!page) { await Promise.race([browser.close().catch(() => {}),
     new Promise(resolve => setTimeout(resolve, 1500))]);
     throw new Error("Desktop main renderer unavailable"); }
-  await page.evaluate(async contract => {
+  try {
+    await page.evaluate(async contract => {
     const shared = await import(`./assets/${contract.shared}`), initial = await import(`./assets/${contract.initial}`);
-    const api = shared[contract.api], definition = initial[contract.stream];
-    if (typeof api?.safeGet !== "function" || typeof definition?.resolve !== "function")
+    const candidates = Object.values(shared).filter(value =>
+      typeof value?.safeGet === "function" && typeof value?.streamPost === "function");
+    const uniqueCandidates = [...new Set(candidates)];
+    // A statically verified import remains the preferred identity. A changed
+    // import alias is acceptable ONLY if the exact shared module has precisely
+    // one exported client exposing both methods used by the Desktop.
+    const api = contract.api_resolution === "static_export"
+      ? shared[contract.api] : uniqueCandidates.length === 1 ? uniqueCandidates[0] : null;
+    const definition = initial[contract.stream];
+    if (typeof api?.safeGet !== "function" ||
+        typeof api?.streamPost !== "function" ||
+        typeof definition?.resolve !== "function")
       throw new Error("Desktop capabilities unavailable");
     // Read the app-wide scope, never the selected chat/composer. This is
     // bounded and capability checked; navigation does not change identities.
@@ -182,8 +203,15 @@ export async function connectNative() {
     window.__hadalisNative = { api, transport, fingerprint: contract.fingerprint,
       serverStreamStatus: contract.serverStreamStatus };
     window.__hadalisReceipts ??= new Map();
-  }, contract);
-  return { page, browser, contract };
+    }, contract, {timeout:12000});
+    return { page, browser, contract };
+  } catch (error) {
+    // A failed renderer contract must not leave an allocated CDP client.
+    await Promise.race([browser.close().catch(() => {}),
+      new Promise(resolve => setTimeout(resolve, 1500))]);
+    throw new Error(/Timeout/i.test(String(error?.name ?? "")) ?
+      "DESKTOP_OPERATION_TIMEOUT" : "Desktop capabilities unavailable");
+  }
 }
 
 async function nativeGet(page, path, parameters, projectId = null) {

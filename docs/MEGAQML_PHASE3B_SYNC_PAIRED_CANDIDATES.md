@@ -82,3 +82,36 @@ until separate disposable fixtures explicitly justify it.
 Added Rust fake-only tests for these invariants.
 No vendor call or live operation has been authorized.
 
+
+## Source-only three-field candidate from one captured result
+
+A further unwired Rust fixture profile requests only the exact
+`sync --output-cols=ID,RUN_STATE,STATUS --col-separator=|`
+form. The parser accepts exclusively an
+`ID|RUN_STATE|STATUS` header and three finite,
+delimiter-disjoint scalar values per row. It reuses the established
+single-column validators to check the backup-ID candidate grammar,
+duplicate IDs and two independently documented finite state enums.
+All fields are extracted from the *same row of the same byte stream*:
+the UI must never join separate calls by row index.
+
+`SyncSnapshotProfile` defines a **fixed candidate argv**
+list, not executable dispatch rights.
+`parse_sync_snapshot_capture` shares the earlier
+fail-closed process-result gate, rejecting timeout, output truncation,
+unknown/nonzero exits and any stderr before it considers parsing.
+Synthetic tests additionally cut every possible prefix of a valid
+table and ensure `complete=false` always rejects it.
+Unknown columns, injected separators, invalid header/rows, duplicate
+IDs, unknown enums, overlong data and empty tables are rejected.
+
+The upstream pinned MEGAcmd source contains all three columns in its
+same-command sync formatting path, but **neither upstream source nor
+fake Rust fixtures establishes the installed executable's precise
+column behavior or an atomic account snapshot**. A lexical parser
+cannot prove whether text or a purported backup ID is authentic.
+Do not execute this read profile, unlock Sync, attach a real account
+or expose it in QML until distinct approved installed/disposable
+fixtures and lifecycle checks exist. Previous one- and two-column
+candidate functions remain synthetic and unchanged apart from the
+shared process-result guard.

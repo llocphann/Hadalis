@@ -267,25 +267,269 @@ pub enum CaptureError {
     InvalidTable(Error),
 }
 
-/// Reject *all* failed/uncertain captures before interpreting even a valid
-/// prefix. Upstream may emit diagnostic text after output; even an exit-zero
-/// result with stderr is intentionally withheld until disposable fixtures
-/// establish an allowlisted warning policy.
-pub fn parse_sync_capture(
-    profile: SyncReadProfile,
-    capture: &CandidateCapture<'_>,
-) -> Result<Vec<SyncPair>, CaptureError> {
+/// Shared fail-closed process-result gate for candidate parser fixtures.
+/// Metadata is NOT executable, session, provenance or endpoint attestation.
+fn check_clean_capture(capture: &CandidateCapture<'_>) -> Result<(), CaptureError> {
     if capture.timed_out { return Err(CaptureError::TimedOut); }
     if capture.output_capped { return Err(CaptureError::OutputCapped); }
     if capture.exit_code != Some(0) { return Err(CaptureError::AbnormalExit); }
     if !capture.stderr.is_empty() { return Err(CaptureError::StandardErrorPresent); }
+    Ok(())
+}
+
+/// Reject failed/uncertain captures before interpreting even a valid prefix.
+pub fn parse_sync_capture(
+    profile: SyncReadProfile,
+    capture: &CandidateCapture<'_>,
+) -> Result<Vec<SyncPair>, CaptureError> {
+    check_clean_capture(capture)?;
     parse_sync_pair(profile.paired_column(), capture.stdout, true)
         .map_err(CaptureError::InvalidTable)
+}
+
+/// A narrowly scoped synthetic three-column row from one bounded capture.
+/// Still not an authenticated sync or an atomic vendor snapshot.
+#[derive(Debug, Eq, PartialEq)]
+pub struct SyncSnapshotRow {
+    pub id: String,
+    pub run_state: RunState,
+    pub status: Status,
+}
+
+/// Fixed profile only; a future separately qualified runner must attest
+/// its own executable, environment, server, session and capture lifecycle.
+pub struct SyncSnapshotProfile;
+
+impl SyncSnapshotProfile {
+    pub fn args() -> [&'static str; 3] {
+        ["sync", "--output-cols=ID,RUN_STATE,STATUS", "--col-separator=|"]
+    }
+}
+
+/// Parse exactly ID|RUN_STATE|STATUS rows from ONE complete byte stream.
+/// No path, filename, error or other arbitrary text column is supported.
+pub fn parse_sync_snapshot(
+    raw: &[u8],
+    complete: bool,
+) -> Result<Vec<SyncSnapshotRow>, Error> {
+    if !complete { return Err(Error::Incomplete); }
+    if raw.len() > MAX_BYTES { return Err(Error::Oversized); }
+    let text = std::str::from_utf8(raw).map_err(|_| Error::InvalidEncoding)?;
+    if text.is_empty() || !text.ends_with('\n') { return Err(Error::Incomplete); }
+    if !text.is_ascii() || text.bytes().any(|b| {
+        b == 0 || (b < 0x20 && b != b'\n' && b != b'\r') || b == 0x7f
+    }) {
+        return Err(Error::InvalidRow);
+    }
+
+    let mut lines = text.split_terminator('\n')
+        .map(|line| line.strip_suffix('\r').unwrap_or(line));
+    if lines.next() != Some("ID|RUN_STATE|STATUS") {
+        return Err(Error::InvalidHeader);
+    }
+
+    // Validate all three columns via the same strict scalar parsers.
+    // Derive all columns from the SAME captured row, not separate calls.
+    let mut ids = String::from("ID\n");
+    let mut runs = String::from("RUN_STATE\n");
+    let mut statuses = String::from("STATUS\n");
+    let mut count = 0usize;
+    for row in lines {
+        if count >= MAX_ROWS { return Err(Error::Oversized); }
+        if row.is_empty() || row != row.trim() || row.contains('\r') {
+            return Err(Error::InvalidRow);
+        }
+        let mut fields = row.split('|');
+        let (Some(id), Some(run), Some(status), None) =
+            (fields.next(), fields.next(), fields.next(), fields.next()) else {
+                return Err(Error::InvalidRow);
+            };
+        if id.is_empty() || run.is_empty() || status.is_empty() {
+            return Err(Error::InvalidRow);
+        }
+        ids.push_str(id);
+        ids.push('\n');
+        runs.push_str(run);
+        runs.push('\n');
+        statuses.push_str(status);
+        statuses.push('\n');
+        count += 1;
+    }
+    if count == 0 { return Err(Error::EmptyRows); }
+
+    let parsed_ids = parse(Column::SyncId, ids.as_bytes(), true)?;
+    let parsed_runs = parse(Column::SyncRunState, runs.as_bytes(), true)?;
+    let parsed_statuses = parse(Column::SyncStatus, statuses.as_bytes(), true)?;
+    if parsed_ids.len() != count || parsed_runs.len() != count
+        || parsed_statuses.len() != count {
+        return Err(Error::InvalidRow);
+    }
+    parsed_ids.into_iter().zip(parsed_runs).zip(parsed_statuses)
+        .map(|((id, run), status)| {
+            let (Value::SyncId(id), Value::RunState(run),
+                 Value::Status(status)) = (id, run, status) else {
+                return Err(Error::InvalidRow);
+            };
+            Ok(SyncSnapshotRow { id, run_state: run, status })
+        }).collect()
+}
+
+/// A valid-looking string still requires independently proven provenance.
+pub fn parse_sync_snapshot_capture(
+    capture: &CandidateCapture<'_>,
+) -> Result<Vec<SyncSnapshotRow>, CaptureError> {
+    check_clean_capture(capture)?;
+    parse_sync_snapshot(capture.stdout, true).map_err(CaptureError::InvalidTable)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn triple_sync_snapshot_profile_and_finite_row_examples() {
+        assert_eq!(
+            SyncSnapshotProfile::args(),
+            ["sync", "--output-cols=ID,RUN_STATE,STATUS", "--col-separator=|"]
+        );
+        let raw = b"ID|RUN_STATE|STATUS\nAbcDef12_-x|Running|Synced\nZyxWvu98_-p|Suspended|Pending\n";
+        assert_eq!(
+            parse_sync_snapshot(raw, true),
+            Ok(vec![
+                SyncSnapshotRow {
+                    id: "AbcDef12_-x".into(),
+                    run_state: RunState::Running,
+                    status: Status::Synced,
+                },
+                SyncSnapshotRow {
+                    id: "ZyxWvu98_-p".into(),
+                    run_state: RunState::Suspended,
+                    status: Status::Pending,
+                },
+            ])
+        );
+        assert_eq!(
+            parse_sync_snapshot(
+                b"ID|RUN_STATE|STATUS\r\nAbcDef12_-x|Loading|Processing\r\n",
+                true
+            ),
+            Ok(vec![SyncSnapshotRow {
+                id: "AbcDef12_-x".into(),
+                run_state: RunState::Loading,
+                status: Status::Processing,
+            }])
+        );
+    }
+
+    #[test]
+    fn triple_sync_snapshot_rejects_ambiguous_or_truncated_data() {
+        let cases: &[(&[u8], Error)] = &[
+            (b"", Error::Incomplete),
+            (b"ID|RUN_STATE|STATUS\n", Error::EmptyRows),
+            (b"ID|RUN_STATE\nAbcDef12_-x|Running\n", Error::InvalidHeader),
+            (b"STATUS|RUN_STATE|ID\nSynced|Running|AbcDef12_-x\n", Error::InvalidHeader),
+            (b"ID|RUN_STATE|STATUS\nAbcDef12_-x|Running|Synced", Error::Incomplete),
+            (b"ID|RUN_STATE|STATUS\nAbcDef12_-x|Running\n", Error::InvalidRow),
+            (b"ID|RUN_STATE|STATUS\nAbcDef12_-x|Running|Synced|extra\n", Error::InvalidRow),
+            (b"ID|RUN_STATE|STATUS\nAbcDef12_-x|Running|UNKNOWN\n", Error::InvalidRow),
+            (b"ID|RUN_STATE|STATUS\nAbcDef12_-x|UNKNOWN|Synced\n", Error::InvalidRow),
+            (b"ID|RUN_STATE|STATUS\nPRIVATE/SECRET|Running|Synced\n", Error::InvalidRow),
+            (b"ID|RUN_STATE|STATUS\nAbcDef12_-x|Running|Synced\nAbcDef12_-x|Loading|Pending\n", Error::DuplicateIdentifier),
+            (b"ID|RUN_STATE|STATUS\nAbcDef12_-x|Running|Synced\n\n", Error::InvalidRow),
+            (b"ID|RUN_STATE|STATUS\nAbcDef12_-x|Running|Synced\rEXTRA\n", Error::InvalidRow),
+            (b"ID|RUN_STATE|STATUS\nAbcDef12_-x|Running|Synced\x1b[2J\n", Error::InvalidRow),
+            (b"ID|RUN_STATE|STATUS\n\xff|Running|Synced\n", Error::InvalidEncoding),
+        ];
+        for (raw, expected) in cases {
+            assert_eq!(
+                parse_sync_snapshot(raw, true), Err(*expected),
+                "invalid triple fixture should fail closed"
+            );
+        }
+        let valid = b"ID|RUN_STATE|STATUS\nAbcDef12_-x|Running|Synced\nZyxWvu98_-p|Suspended|Pending\n";
+        // Every sliced prefix fails when the future capture supervisor
+        // reports incomplete, including prefixes ending at row boundaries.
+        for cut in 0..=valid.len() {
+            assert_eq!(
+                parse_sync_snapshot(&valid[..cut], false),
+                Err(Error::Incomplete)
+            );
+        }
+        assert_eq!(
+            parse_sync_snapshot(&vec![b'x'; MAX_BYTES + 1], true),
+            Err(Error::Oversized)
+        );
+        let large = format!(
+            "ID|RUN_STATE|STATUS\n{}",
+            (1..=(MAX_ROWS + 1))
+                .map(|n| format!("Abc{n:08}|Running|Synced\n"))
+                .collect::<String>()
+        );
+        assert_eq!(
+            parse_sync_snapshot(large.as_bytes(), true),
+            Err(Error::Oversized)
+        );
+    }
+
+    #[test]
+    fn triple_capture_rejects_uncertain_or_dirty_process_results() {
+        let clean = CandidateCapture {
+            stdout: b"ID|RUN_STATE|STATUS\nAbcDef12_-x|Running|Synced\n",
+            stderr: b"",
+            exit_code: Some(0),
+            timed_out: false,
+            output_capped: false,
+        };
+        assert_eq!(
+            parse_sync_snapshot_capture(&clean),
+            Ok(vec![SyncSnapshotRow {
+                id: "AbcDef12_-x".into(),
+                run_state: RunState::Running,
+                status: Status::Synced,
+            }])
+        );
+        assert_eq!(
+            parse_sync_snapshot_capture(&CandidateCapture {
+                timed_out: true, ..clean
+            }),
+            Err(CaptureError::TimedOut)
+        );
+        assert_eq!(
+            parse_sync_snapshot_capture(&CandidateCapture {
+                output_capped: true, ..clean
+            }),
+            Err(CaptureError::OutputCapped)
+        );
+        for code in [None, Some(1), Some(-9)] {
+            assert_eq!(
+                parse_sync_snapshot_capture(&CandidateCapture {
+                    exit_code: code, ..clean
+                }),
+                Err(CaptureError::AbnormalExit)
+            );
+        }
+        assert_eq!(
+            parse_sync_snapshot_capture(&CandidateCapture {
+                stderr: b"PRIVATE_FAKE_DIAGNOSTIC",
+                ..clean
+            }),
+            Err(CaptureError::StandardErrorPresent)
+        );
+        assert_eq!(
+            parse_sync_snapshot_capture(&CandidateCapture {
+                stdout: b"ID|RUN_STATE|STATUS\nAbcDef12_-x|Running|Synced",
+                ..clean
+            }),
+            Err(CaptureError::InvalidTable(Error::Incomplete))
+        );
+        assert_eq!(
+            parse_sync_snapshot_capture(&CandidateCapture {
+                stdout: b"ID|RUN_STATE|STATUS\n",
+                ..clean
+            }),
+            Err(CaptureError::InvalidTable(Error::EmptyRows))
+        );
+    }
 
     #[test]
     fn fixed_profile_argv_never_accepts_mutation_or_variable_columns() {

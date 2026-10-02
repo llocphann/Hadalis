@@ -150,6 +150,92 @@ export function installedContract() {
   throw new Error("unsupported Desktop stream contract [" + failed.join(",") + "]");
 }
 
+// Read-only, finite diagnosis of a changing installed renderer.
+// Never emit module contents, export names, app identifiers or request data.
+export async function diagnoseNativeRenderer() {
+  const contract = installedContract();
+  const url = process.env.HADALIS_CHATGPT_CDP_URL ?? "http://127.0.0.1:9222";
+  const parsed = new URL(url);
+  if (parsed.protocol !== "http:" ||
+      !["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname))
+    throw new Error("Desktop connection must use loopback");
+  const {chromium} = await import(process.env.HADALIS_PLAYWRIGHT_MODULE ??
+    "file:///usr/lib/chatgpt/resources/cua_node/lib/node_modules/playwright-core/index.mjs");
+  const browser = await chromium.connectOverCDP(url, {timeout:10000});
+  let timer;
+  try {
+    const page = browser.contexts().flatMap(c => c.pages())
+      .find(p => p.url() === "app://-/index.html");
+    if (!page) return {renderer_found:false};
+    return await Promise.race([
+      page.evaluate(async contract => {
+        const result = {
+          renderer_found:true, modules_loaded:false, static_api_valid:false,
+          safe_get_exports:"zero", stream_post_exports:"zero",
+          combined_api_exports:"zero", stream_definition_valid:false,
+          react_root_found:false, scope_found:false, transport_valid:false
+        };
+        let shared, initial;
+        try {
+          [shared,initial] = await Promise.all([
+            import("./assets/" + contract.shared),
+            import("./assets/" + contract.initial)
+          ]);
+          result.modules_loaded=true;
+        } catch { return result; }
+        const values = Object.values(shared);
+        const safe = values.filter(v => typeof v?.safeGet === "function");
+        const post = values.filter(v => typeof v?.streamPost === "function");
+        const both = values.filter(v => typeof v?.safeGet === "function" &&
+          typeof v?.streamPost === "function");
+        const bucket = values => values.length === 0 ? "zero" :
+          new Set(values).size === 1 ? "one" : "multiple";
+        result.safe_get_exports=bucket(safe);
+        result.stream_post_exports=bucket(post);
+        result.combined_api_exports=bucket(both);
+        const staticApi = contract.api && shared[contract.api];
+        result.static_api_valid=typeof staticApi?.safeGet === "function" &&
+          typeof staticApi?.streamPost === "function";
+        const definition=initial[contract.stream];
+        result.stream_definition_valid=typeof definition?.resolve === "function" &&
+          definition?.scope?.id != null;
+        if (!result.stream_definition_valid) return result;
+        const todo=Array.from(document.body.children).flatMap(el =>
+          Object.keys(el).filter(k => k.startsWith("__reactContainer$")).map(k => el[k]));
+        result.react_root_found=todo.length>0;
+        let chain;
+        const seen=new Set();
+        for(let i=0;i<30000 && todo.length;i++) {
+          const node=todo.pop();
+          if(!node || seen.has(node)) continue;
+          seen.add(node);
+          const value=node.memoizedProps?.value;
+          if(value instanceof Map && value.has(definition.scope.id)) {
+            chain=value; break;
+          }
+          todo.push(node.child,node.sibling,node.alternate,node.current);
+        }
+        result.scope_found=!!chain;
+        if(!chain) return result;
+        try {
+          const scoped=chain.get(definition.scope.id);
+          const transport=scoped.store.get(definition.resolve(scoped,chain));
+          result.transport_valid=typeof transport?.prepareCompletionStream==="function" &&
+            typeof transport?.startCompletionStream==="function";
+        } catch {}
+        return result;
+      },contract),
+      new Promise((_,reject) => {
+        timer=setTimeout(() => reject(new Error("DESKTOP_OPERATION_TIMEOUT")), 12000);
+      })
+    ]);
+  } finally {
+    clearTimeout(timer);
+    await Promise.race([browser.close().catch(()=>{}),
+      new Promise(resolve => setTimeout(resolve,1500))]);
+  }
+}
+
 export async function connectNative() {
   // Verify the installed bundle before allocating any CDP resources.
   // Unsupported upgrades must fail promptly, not time out during cleanup.

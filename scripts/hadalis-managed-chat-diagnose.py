@@ -78,6 +78,13 @@ def main() -> int:
         kind = recovery.get("kind", "") if isinstance(recovery, dict) else ""
         print(label + "SUPERSEDED_RECEIPT=" + (
             "YES" if kind == "session_superseded" else "NO"))
+        # Fixed protocol category only. Never export a completed response,
+        # worker output, evidence details or free-form last_error.
+        code = recovery.get("code") if kind == "response_protocol" else None
+        permitted = {"invalid_directive", "invalid_checkpoint",
+                     "unsupported_diagnosis", "foreign_job_owner"}
+        print(label + "PROTOCOL_CODE=" + (
+            code.upper() if code in permitted else "OTHER" if code else "NONE"))
         error = item.get("last_error", "")
         print(label + "GUARD=" + (
             "LATER_USER" if isinstance(error, str) and "later user" in error.lower()

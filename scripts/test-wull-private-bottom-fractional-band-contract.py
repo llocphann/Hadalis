@@ -18,7 +18,7 @@ MODEL = ROOT / "scripts/wull-private-bottom-fractional-band-model.py"
 RUNNER = ROOT / "scripts/wull-manual-private-bottom-fractional-band.py"
 BASE = ROOT / "scripts/wull-manual-private-bottom-inset.py"
 ALPHA = ROOT / "scripts/wull-private-painted-alpha-model.py"
-ORIGINAL = ROOT / "modules/abyss/companion/AbyssCompanion.qml"
+ORIGINAL = ROOT / "scripts/wull-fixtures/historical/pre-surface-attachment-companion.snapshot"
 
 
 def blob(path):

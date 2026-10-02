@@ -2577,3 +2577,39 @@ production input change.
 - Owner executed exact `SOURCE_SHA=d917826b28ac73a6a372ff419ee7303f8f5d67d1`. Source pins PASS, BOTH NEW field-rim fake-only tests PASS. Guest Niri ONE verified output, DISTINCT sockets, original full Wull + identical m025 cradle for BOTH geometry cases. Old `SCREEN_BOUNDARY_M025_NESTED_FULL_IMAGE=CAPTURED` and new `INNER_FIELD_RIM_M025_NESTED_FULL_IMAGE=CAPTURED` with `GATE=NESTED_PRIVATE_FIELD_RIM_CAPTURES_READY`, production mask unchanged and two owner-local private images saved/opened. **Capture gate accepted**, dynamic wave, four edges, physical input and REAL PANEL VISUAL CONNECTION still UNTESTED/OWNER_REVIEW_REQUIRED. New actual two images have NOT been inspected by Cloud Bot; older physical-edge owner screenshots cannot represent these captures. NO DUPLICATE RERUN. Ask owner to classify real inner surface seam, cropping and tray/clock overlap from the two already saved images, with only short visual categories, not private paths/logs.
 - In parallel, staged safe INERT layout solution `scripts/wull-private-bar-free-slot.js` blob `342960e0c6d19068732eea805a6c4cc35e055a3e` + Node-only fake behavior contract `scripts/test-wull-private-bar-free-slot.cjs` blob `abf5cfe2afa48861cb55b19f2a6cecf7b57c2872` (NOT owner-run). Source audit: current Wull 0.72 position ignores full output-specific `bar.layoutRecords`, so inward contact alone risks overlapping real Bar foreground. Pure interval solver source-safely finds closest actual clear slot from full active module `edge/along/span`, scale1.5 footprint, bounded corner/edge clearance and explicitly qualified future popup reservations; fail closed with no slot. 11 direct in-memory logic probes PASS; 1,200 deterministic fuzz cases with 1,181 qualified/19 rejected, zero static same-edge bbox clearance violations. These are research geometry checks, NOT real Qt/Niri acceptance. Do NOT import new helper into original production or blindly bind `liquid.records` until records' schemas and popup ownership are verified.
 - NEXT: owner categorical visual verdict for saved baseline-vs-field-rim images. If new field-rim still misses actual surface, fix private attachment pose, scale transform and cradle seam before integrating slot policy; if visually promising, test private import of slot against live `bar.layoutRecords` with no-space fail-closed, then inspect private Niri results. Organic shader-union neck/theme and bounded existing-wave attachment remain separate; native pointer/popup and 4-edge coverage remain postponed. Existing production QML/Region/Wull default-off, `stable` and concurrent MegaQML untouched. Details: `docs/WULL_NESTED_VISUAL_QUARTER_DESIGN.md`.
+
+
+## Checkpoint — owner-authorized production code on dev, self-test next (2026-10-02)
+
+- Owner explicitly requested IMPLEMENT rather than more private-only
+  checkpoints, and will personally test/refine dev. Production
+  implementation introduces `WullSurfacePlacement.js` (reviewed free
+  Bar-slot algorithm) and connects current Wull's four-edge position to
+  ACTUAL inner Abyss shader-field depth at the chosen non-overlapping
+  `bar.layoutRecords` footprint, not the physical display border.
+  Centered item scale is accounted for. No nearby clear slot means Wull
+  hidden; when editor, popup/side panel or utility overlay is open, Wull
+  is hidden until dynamic popup occupancy is reviewed. Original full
+  production input Region, default Wull OFF, existing shader, colors and
+  bridge are preserved. Original bottom cradle receives ONLY
+  `bottomMargin=0.25`; other edges still retain original cradle.
+- Keep historical input material explicitly in two source-exact
+  `scripts/wull-fixtures/historical/*.snapshot` files, and update
+  archived fake tests to test the archive rather than demand an old
+  SHA from the NEW current production. New
+  `scripts/test-wull-production-surface-slot.cjs` +
+  `scripts/test-wull-production-surface-integration.py` exercise
+  production policy/geometry, same old mask/default-off, and 1,200
+  deterministic cases against the reviewed private research. Do not
+  weaken source-pinned old owner opt-in commands; their pin mismatch
+  is expected against new dev. Keep stable, MegaQML and unrelated
+  parallel work untouched.
+- NEXT owner action: use updated dev checkout, run the focused tests
+  and canonical local validator, manually enable Wull in a dev-loaded
+  desktop and report actual four-edge UI/contact/tray overlap and
+  color/theme observations. Missing actual visual acceptance must
+  NOT be reported as PASS. Iteratively fix direct dev implementation
+  as bugs are observed; no further duplicate private screenshot
+  boilerplate. Organic SDF/material weld, sampled extreme spring
+  motion, actual dynamic local wave following, real popup occupancy
+  and scale1.5 physical click/pass-through remain subsequent tasks.

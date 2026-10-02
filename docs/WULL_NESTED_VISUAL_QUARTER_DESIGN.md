@@ -561,3 +561,74 @@ A separate shared-field material neck and the existing wave-simulator
 connection are STILL required after actual visual and occupancy
 evidence, as are other edges, scales and native pointer/popup tests.
 No production, `stable` or unrelated MegaQML changes.
+
+
+## 2026-10-02 — MAINTAINER-AUTHORIZED dev production integration (awaiting local validation)
+
+The maintainer explicitly asked to stop postponing the implementation in
+private copies and to make the current Wull development code available
+directly on **dev**, so they can personally test and refine the design.
+This overrides the former instruction to withhold all production edits
+until screenshots received individual visual approval. **It does not
+convert private screenshots into a visual PASS** and authorizes no
+`stable` changes.
+
+INITIAL PRODUCTION implementation (dev-only, Wull still disabled by
+default):
+
+- `modules/abyss/companion/WullSurfacePlacement.js`: deploy the
+  previously source-reviewed, pure interval solver from the private
+  prototype as the production Wull geometry module. It receives the
+  live `bar.layoutRecords` of the current output and source Wull
+  edge, scaled host footprint plus 16px motion buffer, 18px module
+  clearance, native inset / corner guards and a bounded nearest-slot
+  distance. An absent nearby free slot is a fail-closed **hidden Wull**,
+  not a fallback that overlaps clock/tray. The module has no desktop
+  reads, no painting, no timer and no new process.
+- `modules/abyss/AbyssPerimeter.qml`: import the real new module,
+  qualify `companionPlacement` only on the owned output, and gate the
+  existing single Wull host via `&& window.companionPlacement.qualified`.
+  Use `window.bodyInsets(edge,along,scaledFootprint)` at its ACTUAL
+  chosen free position to sample the resting INNER shared SDF surface
+  depth (including a locally expanded Bar surface), not the physical
+  display border. Attach TOP, RIGHT, BOTTOM and LEFT relative to the
+  actual depth; correct each axis by the companion's centered
+  transform scale so the OUTER side of the scaled full host reaches
+  just inside the drawn field rim. Preserve original
+  `WlrLayershell.namespace`, `CompanionBridge` binary/default-off,
+  original full input Region and all material renderer paths.
+- Existing popups, open side panels, utility overlays and Edge editor
+  temporarily hide Wull, because their actual dynamic occupancy has
+  not yet been validated as explicit solver reservations. This is a
+  conservative dev behavior, **not** seamless popup ownership. When
+  modules change width, the live source layout recalculates the
+  candidate; visual animation and anti-jitter are not yet proven.
+- `modules/abyss/companion/AbyssCompanion.qml`: enable the owner-tested
+  original separate cradle `bottomMargin=0.25` on BOTTOM only.
+  TOP/RIGHT/LEFT retain their original cradle spacing; although
+  placement formulas now cover four sides, four-edge contact,
+  material weld and extreme-spring behavior are **unqualified**.
+
+Regression protection: production-only Node tests exercise the
+actual deployed JS policy with deterministic geometry and a
+1,200-case fuzz comparison against its reviewed prototype;
+production Python integration checks the actual QML bindings, exact
+unchanged input Region and default-off safety. Historical pre-dev
+QML blobs are archived as **.snapshot**, preventing old prior-fake
+tests from falsely asserting that NEW production should have the OLD
+byte-for-byte SHA. Old opt-in private Niri/source-pinned runners
+intentionally keep their historical SHA pins and now fail closed
+against changed live production: do NOT blindly loosen these pins
+or treat their previous guest screenshots as proof of this dev build.
+
+LOCAL MAINTAINER TEST REQUIRED after the integration commit:
+(1) focused production Node+Python tests and canonical
+`bash scripts/validate-maintainer-local.sh` on the EXACT updated SHA;
+(2) enable default-off Wull explicitly in a dev-loaded desktop,
+inspect all four attachment edges, real Bar module no-overlap and
+behavior when no free gap remains; (3) check theme, local expanded
+field, scale .65/1/1.5, auto-hide and open popups; then animated
+spring extrema, screenshot seam/material weld and nested native
+pointer/popup pass-through separately. No binary/Wayland visual
+validation or end-to-end canonical PASS is claimed from the GitHub
+source edits alone; the owner will report issues and refine.

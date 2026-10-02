@@ -13,8 +13,8 @@ import tempfile
 os.umask(0o077)
 ROOT = Path(__file__).resolve().parents[1]
 HELPER = ROOT / "scripts/wull-private-panel-quarter-shadow.py"
-ORIGINAL = ROOT / "modules/abyss/companion/AbyssCompanion.qml"
-PERIMETER = ROOT / "modules/abyss/AbyssPerimeter.qml"
+ORIGINAL = ROOT / "scripts/wull-fixtures/historical/pre-surface-attachment-companion.snapshot"
+PERIMETER = ROOT / "scripts/wull-fixtures/historical/pre-surface-attachment-perimeter.snapshot"
 PERIMETER_SHA = "a3cd2a7bfbdf32dac2c7e42057a1dfaaeea214ac"
 PREFLIGHT = ROOT / "scripts/wull-private-nested-visual-prerequisites.py"
 EXPECTED_PREFLIGHT_BLOB = "83367598877fa61804cdb84ef500fce744fbbb99"

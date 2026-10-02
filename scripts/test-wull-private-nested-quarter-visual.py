@@ -46,7 +46,16 @@ def blob(raw):
 
 
 for path, sha in EXPECTED.items():
-    assert path.is_file() and blob(path.read_bytes()) == sha, path.name
+    # A historical owner-qualified trial must read its ORIGINAL QML from
+    # archived fixtures now that dev has intentionally moved production.
+    historic = ROOT / "scripts/wull-fixtures/historical"
+    archived = (
+        historic / "pre-surface-attachment-companion.snapshot"
+        if path == ORIGINAL else
+        historic / "pre-surface-attachment-perimeter.snapshot"
+        if path == PERIMETER else path
+    )
+    assert archived.is_file() and blob(archived.read_bytes()) == sha, path.name
 
 script = RUNNER.read_text(encoding="utf-8")
 runner = runpy.run_path(str(RUNNER), run_name="wull_fake_nested_quarter_import")

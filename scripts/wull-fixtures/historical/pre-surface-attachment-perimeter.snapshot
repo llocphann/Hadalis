@@ -12,7 +12,6 @@ import "looks/AbyssGeometry.js" as Geometry
 import "looks/AbyssLayout.js" as ModuleLayout
 import "looks/AbyssPresentation.js" as Presentation
 import "companion/WullHostPolicy.js" as WullHostPolicy
-import "companion/WullSurfacePlacement.js" as WullSurfacePlacement
 
 Scope {
     id: root
@@ -147,74 +146,17 @@ Scope {
                 && (!fullscreenCovered || (Config.options?.abyss?.perimeter?.visibleInFullscreen ?? false))
             readonly property bool editorOpen: GlobalStates.abyssEditing && GlobalStates.abyssEditorTargetOutput === outputName
             // A dead/uninitialized daemon must never leave an interactive host.
-            // While modal/attached surfaces are open, never let the full Wull
-            // host mask steal pointer interactions from their owners.
-            readonly property bool companionOccluded: window.editorOpen
-                || utility.open || liquid.popupsOpen || popup.presented
-                || leftPanel.presented || rightPanel.presented
-            readonly property var companionPlacement: {
-                if (!root.companionSessionVisible
-                        || root.companionTargetOutput !== window.outputName
-                        || !window.presented || window.companionOccluded)
-                    return { qualified: false, reason: "INACTIVE_OR_SURFACE_OCCUPIED" }
-                const horizontal = Geometry.horizontal(root.companionEdge)
-                const extent = horizontal ? window.width : window.height
-                const span = (horizontal ? companion.implicitWidth
-                    : companion.implicitHeight) * root.companionScale
-                const desired = WullHostPolicy.alongPosition(extent, span,
-                    root.companionAlong)
-                // The FULL foreground layout is authoritative. Local
-                // bar.deformations alone omit most clocks/tray/modules.
-                const records = bar.visible ? bar.layoutRecords.map(record => ({
-                    edge: record.edge, along: record.along, span: record.span
-                })) : []
-                return WullSurfacePlacement.slot({
-                    edge: root.companionEdge,
-                    extent: extent,
-                    footprint: span + 16,
-                    desired: desired,
-                    clearance: 18,
-                    sideGuard: 16,
-                    cornerStart: (horizontal ? window.nativeInsets.left
-                        : window.nativeInsets.top) + 32,
-                    cornerEnd: (horizontal ? window.nativeInsets.right
-                        : window.nativeInsets.bottom) + 32,
-                    maxShift: Math.min(360, extent * 0.28),
-                    records: records,
-                    // Popups are handled by companionOccluded until their
-                    // independent, live occupancy geometry is qualified.
-                    reservations: []
-                })
-            }
             readonly property bool companionHostActive: WullHostPolicy.hostActive(
                 root.companionSessionVisible, companionBridge.ready,
                 root.companionTargetOutput, window.outputName,
                 window.presented, field.ready)
-                && window.companionPlacement.qualified
             function companionAlongPosition(): real {
                 const horizontal = Geometry.horizontal(root.companionEdge)
                 const extent = horizontal ? window.width : window.height
                 const span = horizontal ? companion.implicitWidth * root.companionScale
                     : companion.implicitHeight * root.companionScale
-                const preferred = WullHostPolicy.alongPosition(extent, span,
+                return WullHostPolicy.alongPosition(extent, span,
                     root.companionAlong)
-                return window.companionPlacement.qualified
-                    ? window.companionPlacement.center : preferred
-            }
-            // Bind to the INNER shared shader-field rim where Wull is
-            // located, including the real per-output Bar thickness and
-            // any local module surface expansion. Never use the physical
-            // output border as its attachment target.
-            function companionFieldDepth(): real {
-                const horizontal = Geometry.horizontal(root.companionEdge)
-                const span = (horizontal ? companion.implicitWidth
-                    : companion.implicitHeight) * root.companionScale
-                const along = window.companionAlongPosition() - span * 0.5
-                const actual = window.bodyInsets(root.companionEdge, along, span)
-                const depth = Number(actual[root.companionEdge])
-                return Number.isFinite(depth)
-                    ? Math.max(AbyssStyle.perimeterThickness, depth)
-                    : AbyssStyle.perimeterThickness
             }
             onPresentedChanged: if (!presented && editorOpen) GlobalStates.abyssEditing = false
             screen: modelData
@@ -421,24 +363,15 @@ Scope {
                 mouthCurve: companionBridge.mouthCurve
                 pulse: companionBridge.pulse
 
-                // Scale is centered on the FULL host. Account for its
-                // outward half-extent so the rendered cradle, not the
-                // unscaled host rectangle, reaches the INNER field rim.
                 x: Geometry.horizontal(edge)
                     ? window.companionAlongPosition() - implicitWidth * 0.5
                     : edge === "left"
-                        ? window.companionFieldDepth() - 5
-                            + (root.companionScale - 1) * implicitWidth * 0.5
-                        : window.width - window.companionFieldDepth()
-                            - implicitWidth + 5
-                            - (root.companionScale - 1) * implicitWidth * 0.5
+                        ? AbyssStyle.perimeterThickness - 5
+                        : window.width - AbyssStyle.perimeterThickness - implicitWidth + 5
                 y: Geometry.horizontal(edge)
                     ? edge === "top"
-                        ? window.companionFieldDepth() - 5
-                            + (root.companionScale - 1) * implicitHeight * 0.5
-                        : window.height - window.companionFieldDepth()
-                            - implicitHeight + 5
-                            - (root.companionScale - 1) * implicitHeight * 0.5
+                        ? AbyssStyle.perimeterThickness - 5
+                        : window.height - AbyssStyle.perimeterThickness - implicitHeight + 5
                     : window.companionAlongPosition() - implicitHeight * 0.5
 
                 onActivated: companionBridge.sendEvent("click")

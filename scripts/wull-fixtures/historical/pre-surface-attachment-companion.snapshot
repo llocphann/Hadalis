@@ -64,9 +64,6 @@ Item {
         radius: 6
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        // Pilot-proven .25px original-cradle inset on BOTTOM only; other
-        // sides keep the source-original pose until individual visual review.
-        anchors.bottomMargin: root.edge === "bottom" ? 0.25 : 0
         scale: 1 + root.ripple * 0.16
         opacity: 0.72 + root.ripple * 0.28
         color: Qt.alpha(AbyssStyle.accent, 0.16 + root.pulse * 0.10)

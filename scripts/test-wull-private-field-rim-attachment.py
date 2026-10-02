@@ -16,9 +16,9 @@ HELPER = ROOT / "scripts/wull-private-field-rim-attachment.py"
 EXPECTED_HELPER = "b7c2ac861ab11073540d113df86a1339c7f43e6e"
 ORIGINAL_BASE = ROOT / "scripts/wull-private-panel-quarter-shadow.py"
 ORIGINAL_BASE_BLOB = "dd62b2b834e86d41856730547bca8ea4d73aaca8"
-PERIMETER = ROOT / "modules/abyss/AbyssPerimeter.qml"
+PERIMETER = ROOT / "scripts/wull-fixtures/historical/pre-surface-attachment-perimeter.snapshot"
 PERIMETER_BLOB = "a3cd2a7bfbdf32dac2c7e42057a1dfaaeea214ac"
-BODY = ROOT / "modules/abyss/companion/AbyssCompanion.qml"
+BODY = ROOT / "scripts/wull-fixtures/historical/pre-surface-attachment-companion.snapshot"
 BODY_BLOB = "b5b01835a282458eba0d0268396ae2c350d919d2"
 DEPS = {
     "modules/abyss/looks/AbyssLayout.js":

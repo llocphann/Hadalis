@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import vm from "node:vm";
 import {projectTurn, installedContract, nativeStreamStatus, nativeCursor} from "../automation/chat_bridge/native_adapter.mjs";
 const message = (id, role, status, end, text, recipient = "all", channel = null) =>
   ({id, author:{role}, status, end_turn:end, recipient, channel, content:{parts:[text]}});
@@ -64,7 +65,10 @@ try {
       reads++;
       return history;
     }}}};
-    const page={evaluate:async (fn,arg)=>fn(arg)};
+    // Emulate the real Playwright renderer's separate JS realm. A closure
+    // accidentally captured from Node must not make this regression pass.
+    const page={evaluate:async (fn,arg)=>vm.runInNewContext(
+      `(${fn.toString()})`, {window:globalThis.window,AbortSignal})(arg)};
     const cursor=await nativeCursor(page,conversationId,null);
     assert.deepEqual(cursor,{conversation_id:conversationId,current_node:nodeId,model:"model-lane"});
     assert.equal(reads,1);

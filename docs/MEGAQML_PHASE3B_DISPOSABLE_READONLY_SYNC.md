@@ -154,3 +154,34 @@ or to explicitly implement and unit-test a separate
 privacy-preserving inherited-terminal transport. It is not
 an installed vendor qualification and does not change the
 live read-only probe or the ten-deny policy.
+
+## Python text prompt and fake-token getpass observation
+
+The dedicated `machinectl shell` /dev/tty capability check returned
+all six kernel/stdio terminal booleans true and classified its
+controlling terminal as a candidate. Nevertheless the read-only vendor
+probe still stopped with `tty_confirmation_unavailable` and did not
+run `whoami` or `sync`. The initial terminal diagnostic had not
+exercised Python's text `open(..., "r+")`, its prompt write and
+flush, line reading, or the `getpass` no-echo operation.
+
+The separate `scripts/megaqml-phase3b-fake-tty-interaction.py`
+offers an **explicit fake-only challenge**, independent of the
+vendor/probe. In the same one-shot `machinectl shell` invocation
+it asks for the *public fixed* acknowledgement `TTY_TEST_ONLY`,
+then a *public fixed* no-echo `FAKE_PIN_ONLY` solely to identify
+which Python interactive operation fails. Never enter an account
+email, account password, recovery code or actual OTP in this test.
+It prints only fixed states for text TTY open, prompt flush,
+bounded fake acknowledgement read, fake no-echo read, and
+`VENDOR_EXECUTED=NO`. It catches getpass fallback warnings rather
+than accepting secret input echo or exposing arbitrary errors.
+The new companion mock-only test covers open, write, flush,
+read, EOF, mismatch and no-echo failure/success paths without
+touching a real terminal.
+
+Do not change the main disposable read-only probe or retry real
+vendor reads until this no-vendor test returns conclusive stage
+evidence. A text/flush/read failure is not evidence of a wrong
+MEGA credential or faulty server. No runtime/auth gate is
+unlocked by a terminal transport observation.

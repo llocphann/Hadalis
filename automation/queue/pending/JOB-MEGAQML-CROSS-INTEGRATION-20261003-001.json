@@ -1,0 +1,57 @@
+{
+  "id": "JOB-MEGAQML-CROSS-INTEGRATION-20261003-001",
+  "base_sha": "2ddaf2801695b0fd3ba71559d94483af96abd79a",
+  "profile_id": "profile-a25585b748dd4220",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-megaqml-phase2-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-megaqml-host-route-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-megaqml-waffle-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-megaqml-phase3b-fixture-remote-ls-classify.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "scripts/test-megaqml-phase2p-contracts.sh"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 300
+      }
+    }
+  ]
+}

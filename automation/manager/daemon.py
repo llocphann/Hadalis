@@ -305,6 +305,39 @@ def _observe_failure(profile_id: str, now: int, exc: Exception, *, pending=None,
         if not pending and not job and detail == "THINKING_EFFORT_UNAVAILABLE":
             item.update(status="thinking_unavailable",
                 status_detail="Thinking level unavailable for this chat. Choose another level.")
+        # The live cursor still requires the Desktop's authoritative history.
+        # A long thread can repeatedly time out even with a small CDP projection.
+        # After three confirmed consecutive cursor timeouts an *opted-in*
+        # profile may rotate to a distinct new chat, but only at a fully
+        # consumed turn boundary with a trusted prior response and durable
+        # repository/job context. Never rotate a pending or uncertain send,
+        # bypass current-branch validation, or alter another profile.
+        if not pending and not job:
+            cursor_timeout = (isinstance(exc, NativeOperationError)
+                and exc.observation.get("operation") == "cursor"
+                and exc.observation.get("code") == "DESKTOP_OPERATION_TIMEOUT")
+            previous = item.get("cursor_timeout_streak", 0)
+            if type(previous) is not int or previous < 0 or previous > 3:
+                previous = 0
+            streak = min(3, previous + 1) if cursor_timeout else 0
+            item["cursor_timeout_streak"] = streak
+            session = item.get("session") or {}
+            trusted_context = (bool(item.get("response_message_id"))
+                and bool(session.get("conversation_id"))
+                and bool(item.get("checkpoint") or item.get("last_job_id")))
+            if (cursor_timeout and streak >= 3
+                    and _profile(config, profile_id).get("rotate_on_cursor_timeout") is True
+                    and _profile(config, profile_id)["mode"] == "continuous"
+                    and item.get("desired") == "run" and item.get("run_active")
+                    and not item.get("job_id") and not item.get("park_requested")
+                    and trusted_context):
+                item.update(request="rotation", status="rotating",
+                    status_detail="Repeated live cursor timeout; recover in a distinct "
+                        "conversation from existing objective, checkpoint and receipts.",
+                    next_run_at_unix=max(item.get("next_run_at_unix") or 0, now + 300),
+                    cursor_timeout_streak=0)
+                event(state, profile_id, "cursor_timeout_rotation",
+                    "Three consecutive live cursor timeouts; no uncertain send or job replay")
         # Observations are bounded/backed off, but never disabled by navigation,
         # a finite error counter, Desktop/network downtime or shell crashes.
     change_state(record)
@@ -461,7 +494,8 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
         # This intent consumes the command durably, even if its ACK is lost.
         # A later explicit Restart has its own sequence and survives the ACK.
         current.update(pending=pending, request="continuation", status="thinking", status_detail="",
-                       poll_errors=0, last_error="", transport_observation=None, last_activity_at_unix=now)
+                       poll_errors=0, cursor_timeout_streak=0, last_error="",
+                       transport_observation=None, last_activity_at_unix=now)
         if new_chat:
             current.update(session={"conversation_id":None, "project_id":project_id},
                 active_project_name=profile["project_name"], chat_started_at_unix=now, chat_iterations=0)

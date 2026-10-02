@@ -85,6 +85,21 @@ def exercise():
 
     assert "private-" not in out.getvalue()
 
+    # Unknown state must not be labeled READY merely because desired=run.
+    for suspicious in ("unexpected_transport_state", "parked_unresolved"):
+        c, st = fixtures()
+        for p in c["profiles"]:
+            p["auto_protocol_recovery"] = True
+        st["profiles"][c["profiles"][1]["id"]]["status"] = suspicious
+        report = io.StringIO()
+        with patch.object(m.store, "read_snapshot", return_value=(c, st, [])):
+            with patch.object(m, "unit_check", return_value=True):
+                with patch.object(m.time, "time", return_value=1000):
+                    with contextlib.redirect_stdout(report):
+                        assert m.run() == 2
+        assert "WULL_RUNNING=FAIL" in report.getvalue()
+        assert "RESULT=NEEDS_ATTENTION" in report.getvalue()
+
     # A pause/stop or user-owned limit must not be silently overridden.
     for change, value in (("desired", "paused"), ("stop_on_done", True),
                           ("iteration_limit", 1)):

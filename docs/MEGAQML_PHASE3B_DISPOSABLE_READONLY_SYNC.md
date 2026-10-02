@@ -214,3 +214,42 @@ owner confirms both `TTY_ACK_READ=passed` and
 and test the private-email transport before any real whoami/sync
 observation. Phase 3b remains unqualified and all ten cloud
 domains denied.
+
+## Owner-approved direct local disposable account test
+
+The owner clarified that the installed MEGAcmd should be tested **on
+the real local Linux host**, using a **separate empty disposable MEGA
+account**, rather than repeating standalone fake terminal rounds or
+deploying a virtual machine. Previous `machinectl shell` commands
+already executed on the local Linux host, under the separate
+`megaqml-disposable` Unix account; `machinectl` itself was NOT a VM.
+The local dedicated Unix user remains mandatory so an existing
+personal MEGAcmd server/account cannot be accidentally reused.
+
+The first real local TTY tests observed `os.open("/dev/tty",
+O_RDWR|O_NOCTTY)` succeed while Python's duplex text
+`open("/dev/tty", "r+")` failed before prompting. The read-only
+probe now opens that already-observed low-level descriptor but
+wraps two **separate unidirectional** Python text streams, one for
+bounded confirmation input and one for flushing private prompts.
+It verifies terminal attributes and converts getpass warnings to a
+closed failure, never echoing or logging private account input.
+The read-only `whoami` and `sync` calls retain the same
+pre-existing dedicated-UID/server/package gates and finite
+capture/timeouts. Mock-only contract coverage was expanded for
+open, wrapped-descriptor cleanup, invalid confirmation, invalid
+account formatting, no-echo fallback, identity and zero-byte Sync
+stdout. A single SHA-pinned command is the owner acceptance path:
+run non-vendor mocks, then the guarded local-host disposable read
+immediately. If secure terminal input fails, there must be **no
+vendor execution** and no further permissive fallback.
+
+A completely empty account may legitimately produce only a Sync
+header or no stdout; such data are insufficient to classify real
+Sync row IDs or lifecycle. `sync_header_only_not_qualified` and
+`sync_no_snapshot_unqualified` remain distinct finite outcomes
+and **are not proofs of an empty account**. A later nonempty
+disposable fixture must be separately authorized and observed to
+consider any Phase 3b row-shape qualification. Never create
+Sync jobs, upload files, turn on writes or unlock the ten cloud
+domains as part of this read-only observation.

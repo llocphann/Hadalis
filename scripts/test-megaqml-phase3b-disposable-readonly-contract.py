@@ -18,7 +18,11 @@ assert 'EXPECTED_USER = "megaqml-disposable"' in source
 assert '"operator_confirmation_mismatch"' in source
 assert '"disposable_email_format_invalid"' in source
 assert '"tty_confirmation_unavailable"' in source
-assert 'stream=tty' in source
+assert 'stream=tty_out' in source
+assert 'os.open("/dev/tty", os.O_RDWR | os.O_NOCTTY)' in source
+assert 'os.fdopen(child, mode, encoding="utf-8",' in source
+assert '"sync_no_snapshot_unqualified"' in source
+assert 'warnings.simplefilter("error", getpass.GetPassWarning)' in source
 assert '["--read-disposable-session-only"]' in source
 assert '"--output-cols=ID,RUN_STATE,STATUS"' in source
 assert '"--col-separator=|"' in source
@@ -58,50 +62,91 @@ with mock.patch.object(g["subprocess"], "Popen",
         assert code == 20
         assert "dedicated_os_user_required" in output
 
-    # No-vendor local TTY path: never publish confirmation input or email.
+    # No-vendor, two unidirectional TTY streams: do not test real input,
+    # accounts or vendor processes. Each fd is separately accounted for.
     class FakeTty:
-        def __init__(self, answer):
+        def __init__(self, answer=""):
             self.answer = answer
             self.messages = []
+            self.closed = False
         def __enter__(self):
             return self
         def __exit__(self, *_):
+            self.closed = True
             return False
-        def write(self, message):
-            self.messages.append(message)
+        def write(self, value):
+            self.messages.append(value)
         def flush(self):
             pass
         def readline(self, limit):
-            assert limit <= 64
+            assert limit == 64
             return self.answer[:limit]
 
-    bad_tty = FakeTty("not-the-confirmation\n")
-    with mock.patch("builtins.open", return_value=bad_tty):
-        with mock.patch.object(g["getpass"], "getpass",
-                               side_effect=AssertionError("must not read email")):
-            reason, private = g["tty_confirmation"]()
-            assert reason == "operator_confirmation_mismatch" and private is None
-            assert "not-the-confirmation" not in "".join(bad_tty.messages)
+    def fake_tty_case(answer="", email="fixture@example.invalid",
+                      failure=None, tty_valid=True):
+        tty_in = FakeTty(answer)
+        tty_out = FakeTty()
+        if failure == "open":
+            low_open = mock.patch.object(g["os"], "open",
+                                         side_effect=OSError("PRIVATE_CANARY"))
+        else:
+            low_open = mock.patch.object(g["os"], "open", return_value=71)
+        def fdopen(fd, mode, **kwargs):
+            assert kwargs == {"encoding": "utf-8", "buffering": 1}
+            if failure == "fdopen" and mode == "r":
+                raise OSError("PRIVATE_CANARY")
+            assert (fd, mode) in ((72, "r"), (73, "w"))
+            return tty_in if mode == "r" else tty_out
+        gp_error = (g["getpass"].GetPassWarning("PRIVATE_CANARY")
+                    if failure == "getpass" else None)
+        with low_open as opened:
+            with mock.patch.object(g["os"], "dup",
+                                   side_effect=[72, 73]) as dup:
+                with mock.patch.object(g["os"], "fdopen",
+                                       side_effect=fdopen) as fdopen_mock:
+                    with mock.patch.object(g["os"], "close") as close:
+                        with mock.patch.object(g["os"], "isatty",
+                                               return_value=tty_valid):
+                            with mock.patch.object(g["termios"], "tcgetattr",
+                                                   return_value=[0]*7):
+                                with mock.patch.object(
+                                        g["getpass"], "getpass",
+                                        side_effect=gp_error,
+                                        return_value=email) as gp:
+                                    result = g["tty_confirmation"]()
+        if failure != "open":
+            opened.assert_called_once_with(
+                "/dev/tty", g["os"].O_RDWR | g["os"].O_NOCTTY)
+            close.assert_any_call(71)
+        else:
+            dup.assert_not_called()
+            close.assert_not_called()
+        if failure == "fdopen":
+            close.assert_any_call(72)
+        if failure is None and tty_valid and answer == "READ_DISPOSABLE_ONLY\n":
+            assert gp.call_args.kwargs["stream"] is tty_out
+        if failure is None and tty_valid:
+            assert tty_in.closed and tty_out.closed
+        assert "PRIVATE_CANARY" not in "".join(tty_out.messages)
+        return result
 
-    malformed_tty = FakeTty("READ_DISPOSABLE_ONLY\n")
-    with mock.patch("builtins.open", return_value=malformed_tty):
-        with mock.patch.object(g["getpass"], "getpass",
-                               return_value="INVALID FAKE EMAIL") as private_read:
-            reason, private = g["tty_confirmation"]()
-            assert reason == "disposable_email_format_invalid" and private is None
-            assert private_read.call_args.kwargs["stream"] is malformed_tty
-            assert "INVALID FAKE EMAIL" not in "".join(malformed_tty.messages)
-
-    good_tty = FakeTty("READ_DISPOSABLE_ONLY\n")
-    with mock.patch("builtins.open", return_value=good_tty):
-        with mock.patch.object(g["getpass"], "getpass",
-                               return_value="fixture@example.invalid"):
-            reason, private = g["tty_confirmation"]()
-            assert reason is None and private == b"fixture@example.invalid"
-            assert "fixture@example.invalid" not in "".join(good_tty.messages)
-
-    with mock.patch("builtins.open", side_effect=OSError("PRIVATE_CANARY")):
-        assert g["tty_confirmation"]() == ("tty_confirmation_unavailable", None)
+    reason, private = fake_tty_case(failure="open")
+    assert reason == "tty_confirmation_unavailable" and private is None
+    reason, private = fake_tty_case(tty_valid=False)
+    assert reason == "tty_confirmation_unavailable" and private is None
+    reason, private = fake_tty_case(failure="fdopen")
+    assert reason == "tty_confirmation_unavailable" and private is None
+    reason, private = fake_tty_case("wrong-public-token\n")
+    assert reason == "operator_confirmation_mismatch" and private is None
+    reason, private = fake_tty_case("READ_DISPOSABLE_ONLY\n",
+                                    email="INVALID FAKE EMAIL")
+    assert reason == "disposable_email_format_invalid" and private is None
+    reason, private = fake_tty_case("READ_DISPOSABLE_ONLY\n",
+                                    failure="getpass")
+    assert reason == "tty_confirmation_unavailable" and private is None
+    reason, private = fake_tty_case("READ_DISPOSABLE_ONLY\n")
+    assert reason is None and private == b"fixture@example.invalid"
+    assert "fixture@example.invalid" not in g["summary"]("selftest_pass")
     assert "PRIVATE_CANARY" not in g["summary"]("tty_confirmation_unavailable")
 
     # Deterministic end-to-end supervisor with *all* potentially real
@@ -192,5 +237,21 @@ with mock.patch.object(g["subprocess"], "Popen",
                                             assert code == 21
                                             assert "sync_header_or_row_invalid" in output
                                             assert "PRIVATE_FAKE_CANARY" not in output
+
+                                        simulated_calls.clear()
+                                        def empty_sync(argv, env):
+                                            simulated_calls.append(tuple(argv))
+                                            if argv[1] == "whoami":
+                                                return 0, b"Account: fixture@example.invalid\n", b"", None
+                                            return 0, b"", b"", None
+                                        with mock.patch.dict(
+                                                g, {"bounded_read": empty_sync}):
+                                            code, output = run_main(
+                                                ["--read-disposable-session-only"])
+                                            assert code == 21
+                                            assert "sync_no_snapshot_unqualified" in output
+                                            assert "DISPOSABLE_ACCOUNT_MATCH=true" in output
+                                            assert "NONEMPTY_SYNC_SCALARS=false" in output
+                                            assert len(simulated_calls) == 2
 
 print("PASS MegaQML disposable read-only probe fake-only contract")

@@ -5,6 +5,7 @@ No login/setup/mutations/real output display. Requires a pre-existing
 dedicated Unix user, its own pre-running server and throwaway MEGA login.
 Only boolean/finite diagnostics leave this process; stdout/stderr stay RAM.
 """
+import contextlib
 import getpass
 import os
 from pathlib import Path
@@ -14,9 +15,11 @@ import runpy
 import selectors
 import signal
 import stat
+import termios
 import subprocess
 import sys
 import time
+import warnings
 
 HERE = Path(__file__).resolve().parent
 CAT = runpy.run_path(str(HERE / "megaqml-phase3b-offline-help-catalog.py"),
@@ -49,7 +52,8 @@ def summary(reason, *, server=False, identity=False, rows=False):
         "whoami_output_capped", "whoami_failed_or_ambiguous",
         "account_identity_mismatch", "sync_timeout", "sync_output_capped",
         "sync_failed_or_diagnostic", "sync_header_or_row_invalid",
-        "sync_header_only_not_qualified", "sync_shape_observed_unqualified",
+        "sync_header_only_not_qualified", "sync_no_snapshot_unqualified",
+        "sync_shape_observed_unqualified",
         "supervisor_error", "selftest_pass",
     }
     assert reason in allowed
@@ -208,31 +212,58 @@ def parse_snapshot(raw):
     return "nonempty_shape"
 
 def tty_confirmation():
-    # Return a finite reason and a private account identity. The private
-    # value must NEVER enter summary(), stdout, stderr, argv or environment.
+    # This is deliberately distinct from the previous failed r+ text open:
+    # low-level O_NOCTTY already succeeded on the owner's dedicated local
+    # session. Independent read/write wrappers avoid buffered random access
+    # to an inherently non-seekable terminal.
+    #
+    # The identity is held in process memory only: never stdout, env or argv.
     try:
-        with open("/dev/tty", "r+", encoding="utf-8") as tty:
-            tty.write(
+        with contextlib.ExitStack() as stack:
+            fd = os.open("/dev/tty", os.O_RDWR | os.O_NOCTTY)
+            stack.callback(os.close, fd)
+            if not os.isatty(fd):
+                return "tty_confirmation_unavailable", None
+            termios.tcgetattr(fd)
+
+            def wrap(mode):
+                child = os.dup(fd)
+                try:
+                    stream = os.fdopen(child, mode, encoding="utf-8",
+                                       buffering=1)
+                except (OSError, ValueError, UnicodeError):
+                    os.close(child)
+                    raise
+                return stack.enter_context(stream)
+
+            tty_in = wrap("r")
+            tty_out = wrap("w")
+            tty_out.write(
                 "ONLY in a dedicated disposable OS account, pre-authenticated "
                 "to a disposable MEGA account, never a personal account.\n"
                 "This will invoke read-only mega-exec whoami then sync; "
                 "the vendor server may access the network.\n"
                 "Type READ_DISPOSABLE_ONLY to proceed: "
             )
-            tty.flush()
-            # Read at most one bounded token from this terminal, failing
-            # before any vendor execution if confirmation differs.
-            answer = tty.readline(64)
-            if answer.strip() != "READ_DISPOSABLE_ONLY":
+            tty_out.flush()
+            # Refuse to run any vendor query without an exact bounded opt-in.
+            if tty_in.readline(64).strip() != "READ_DISPOSABLE_ONLY":
                 return "operator_confirmation_mismatch", None
-            expected = getpass.getpass(
-                "Disposable MEGA email (not logged): ", stream=tty
-            )
+
+            # If getpass cannot disable terminal echo, fail closed rather
+            # than falling back to reading and echoing private account data.
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", getpass.GetPassWarning)
+                expected = getpass.getpass(
+                    "Disposable MEGA email (not logged): ",
+                    stream=tty_out,
+                )
             if (len(expected) > 254 or not expected.isascii()
                     or not IDENTITY.fullmatch(expected.encode("ascii"))):
                 return "disposable_email_format_invalid", None
             return None, expected.encode("ascii")
-    except (OSError, EOFError, UnicodeError, ValueError):
+    except (OSError, EOFError, UnicodeError, ValueError,
+            getpass.GetPassWarning):
         return "tty_confirmation_unavailable", None
 
 def self_test():
@@ -373,6 +404,11 @@ def main():
             return 21
         if existing_server(server[1], account.pw_uid) != servers:
             print(summary("server_changed_during_probe", server=True,
+                          identity=True))
+            return 21
+        # Zero-byte stdout is NOT proof of an empty cloud account.
+        if not out:
+            print(summary("sync_no_snapshot_unqualified", server=True,
                           identity=True))
             return 21
         result = parse_snapshot(out)

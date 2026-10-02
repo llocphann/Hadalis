@@ -28,8 +28,8 @@ for token in (
         '"sandbox_client_output_limited"',
         '"sandbox_supervisor_error"', "read(4096)", "time.monotonic() + 8.5",
         "start_new_session=True", "os.killpg(p.pid, signal.SIGKILL)",
-        'sandbox(bwrap[0], [true[0]]',
-        'sandbox(bwrap[0], [python[0], "-I", "-S", "-c", INNER,',
+        "def command(payload):",
+        "return sandbox(bwrap[0], payload, ver[0].parent)",
         "return 21"):
     assert token in text, token
 for forbidden in ('"--share-net"', '"mega-login"', '"mega-whoami"',

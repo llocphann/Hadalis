@@ -1,0 +1,30 @@
+{
+  "actions": [
+    {
+      "cancelled": false,
+      "command_sha256": "60eb69c4bc49a066a80b98d7d83812ec6b4133c57c065dc44afbb3c5cdaa8aa6",
+      "evidence_id": "JOB-MEGAQML-F1-CONTRACT-REPAIR-20261003-001:0",
+      "exit_code": 1,
+      "index": 0,
+      "kind": "exec",
+      "observed_at_unix": 1790977774,
+      "source_sha": "5f7b4760af7a7664513b8288818680b0de33e102",
+      "stderr_bytes": 425,
+      "stderr_sha256": "9e52cfcbcf67c0cb8b4196c7dcd879c6f4ba2bb28b53e548b712b1531b1aa348",
+      "stderr_truncated": false,
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "50f167b52dbe69cbdd85fcb9f2f55f0cb2bce546",
+  "evidence_location": "Private local evidence; raw output is not published",
+  "finished_at_unix": 1790977774,
+  "input_sha256": "b032360ac330bd216747711b3d452db10be32f06d2d2a504cbb9ad938820857d",
+  "job": "JOB-MEGAQML-F1-CONTRACT-REPAIR-20261003-001",
+  "job_commit": "5f7b4760af7a7664513b8288818680b0de33e102",
+  "profile_id": "profile-a25585b748dd4220",
+  "started_at_unix": 1790977774,
+  "status": "failed"
+}

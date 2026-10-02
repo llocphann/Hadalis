@@ -100,7 +100,7 @@ for phrase in (
     'base["audit_clone"]()', "BORROW_BLOB", "FIXTURE_BLOB",
     "MODEL_BLOB", 'base["private_env"](',
     'env.pop("WULL_CAPTURE_OUTPUT", None)',
-    'env["WULL_DYNAMIC_PILOT_DIR"]',
+    'env["WULL_DYNAMIC_CORE_DIR"]',
     "start_new_session=True", "preexec_fn=resource_limits",
     "proc.wait(timeout=TIMEOUT)", "os.killpg(proc.pid, signal.SIGTERM)",
     "os.killpg(proc.pid, signal.SIGKILL)", "stages == stages()" if

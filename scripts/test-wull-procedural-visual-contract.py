@@ -17,10 +17,10 @@ defaults = json.loads((ROOT / "defaults/config.json").read_text())
 
 # Wull stays generated from actual geometry in the live QML scene.
 assert "import QtQuick.Shapes" in body
-assert not re.search(r"\\b(?:Image|AnimatedImage|AnimatedSprite|SpriteSequence|Video)\\s*\\{", body)
-assert not re.search(r"(?:\\.png|\\.gif|\\.webp|\\.apng|\\.jpg|mascot/manifest)", body, re.I)
-outline = body.split("    Shape {\\n        anchors.fill: parent", 1)[1].split(
-    "    Rectangle {\\n        width: 17", 1
+assert not re.search(r"\b(?:Image|AnimatedImage|AnimatedSprite|SpriteSequence|Video)\s*\{", body)
+assert not re.search(r"(?:\.png|\.gif|\.webp|\.apng|\.jpg|mascot/manifest)", body, re.I)
+outline = body.split("    Shape {\n        anchors.fill: parent", 1)[1].split(
+    "    Rectangle {\n        width: 17", 1
 )[0]
 assert outline.count("PathCubic {") == 4, "body must have a procedural closed outline"
 assert "root.width * 0.07" in outline and "root.width * 0.93" in outline, (
@@ -41,7 +41,7 @@ assert "root.eyeOpen" in eye
 assert "root.gazeX" in eye and "root.gazeY" in eye
 assert eye.count("AbyssStyle.specular") >= 2, "two eye specular layers"
 cheeks = body.split("// Two small warm cheek glints", 1)[1].split(
-    "    Shape {\\n        width: 24; height: 12", 1
+    "    Shape {\n        width: 24; height: 12", 1
 )[0]
 assert "model: 2" in cheeks and "radius: 2.5" in cheeks
 assert "root.pulse" in cheeks, "cheeks must respond to expressions"

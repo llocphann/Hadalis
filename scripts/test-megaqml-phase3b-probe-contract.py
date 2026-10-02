@@ -52,6 +52,22 @@ with mock.patch.object(module["subprocess"], "Popen",
 parse = module["sanitized_version"]
 assert parse("MEGAcmd version: 2.6.0\n") == "2.6.0"
 assert parse("MEGAcmd server version: v2.6.1\n") == "2.6.1"
+assert parse("MEGAcmd version: 2.6.0.0: code 2060000") == "2.6.0.0"
+assert parse("MEGAcmd version: 2.6.0.0: code 2060000 (64 bits)") == "2.6.0.0"
+classify = module["classify_vendor_failure"]
+known = {
+    b"error while loading shared libraries: PRIVATE_FAKE_LIB": "sandbox_runtime_library_missing",
+    b"Error creating runtime directory for socket file: PRIVATE_FAKE": "sandbox_socket_directory_unavailable",
+    b"Couln't initiate MEGAcmd server: executable not found": "sandbox_server_executable_unavailable",
+    b"Unable to connect to service: error=PRIVATE_FAKE": "sandbox_server_handshake_failed",
+    b"permission denied PRIVATE_FAKE": "sandbox_vendor_permission_rejected",
+    b"PRIVATE_FAKE_CANARY": "vendor_exit_nonzero_unclassified",
+}
+for raw, category in known.items():
+    fixed = classify(b"", raw)
+    assert fixed == category and b"PRIVATE_FAKE" not in fixed.encode("utf-8")
+assert classify(b"MEGAcmd version: 2.6.0.0: code 2060000", b"") == (
+    "vendor_nonzero_version_line_seen")
 for payload in ("MEGA SDK version: 7.4.3",
                 "Latest version available: 100.100.100",
                 "MEGAcmd version: /private/path",
@@ -90,5 +106,14 @@ assert "git stash" not in publisher
 assert "mega-version -l" not in publisher  # Only Python launches inside bwrap.
 assert "git merge --ff-only" in publisher
 assert "git merge --no-ff" in publisher
+for fixed_reason in (
+    "sandbox_runtime_library_missing", "sandbox_socket_directory_unavailable",
+    "sandbox_server_executable_unavailable", "sandbox_server_handshake_failed",
+    "sandbox_vendor_permission_rejected", "vendor_nonzero_version_line_seen",
+    "vendor_exit_nonzero_unclassified"):
+    assert fixed_reason in publisher, fixed_reason
+assert 'classify_vendor_failure(data, diagnostic)' in source
+assert 'return code, bytes(chunks["stdout"]), bytes(chunks["stderr"]), None' in source
+assert 'print(diagnostic)' not in source and 'print(data)' not in source
 
 print("PASS MegaQML Phase 3b fake-only probe contract: no vendor executed")

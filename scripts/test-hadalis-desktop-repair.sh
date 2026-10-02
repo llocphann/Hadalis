@@ -29,7 +29,9 @@ try {
   const result = inspectInstalledContract();
   for (const [name,ok] of Object.entries(result.checks))
     console.log("CONTRACT_" + name.toUpperCase() + "=" + (ok ? "PASS" : "FAIL"));
-  console.log("CONTRACT=" + (result.contract ? "PASS" : "UNSUPPORTED"));
+  console.log("CONTRACT=" + (result.contract ?
+    result.contract.api_resolution === "static_export" ?
+      "PASS_STATIC" : "RUNTIME_VALIDATION_REQUIRED" : "UNSUPPORTED"));
 } catch (error) {
   // Never leak a private archive path, source line, native symbols, or a stack.
   console.log("CONTRACT=UNAVAILABLE");

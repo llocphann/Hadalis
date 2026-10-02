@@ -108,6 +108,38 @@ mod tests {
     }
 
     #[test]
+    fn even_a_visible_synthetic_refresh_cannot_authorize_runtime_domains() {
+        use crate::column_fixtures::CandidateCapture;
+        use crate::snapshot_lifecycle::{Finish, SnapshotRefresh, Start};
+
+        let mut candidate = SnapshotRefresh::default();
+        assert!(candidate.activate());
+        let Start::Started(request) = candidate.request() else {
+            panic!("expected isolated fake refresh token");
+        };
+        let capture = CandidateCapture {
+            stdout: b"ID|RUN_STATE|STATUS\nAbcDef12_-x|Running|Synced\n",
+            stderr: b"",
+            exit_code: Some(0),
+            timed_out: false,
+            output_capped: false,
+        };
+        assert_eq!(candidate.finish(request, &capture), Finish::Applied(1));
+        assert!(candidate.ready().is_some());
+        let preview = offline_policy_preview();
+        assert_eq!(preview["auth_qualified"], false);
+        assert_eq!(preview["account_reads_enabled"], false);
+        assert_eq!(preview["writes_enabled"], false);
+        for domain in DOMAINS {
+            assert_eq!(preview["domains"][domain]["read"], false, "{domain}");
+            assert_eq!(preview["domains"][domain]["write"], false, "{domain}");
+        }
+        candidate.close();
+        assert!(candidate.ready().is_none());
+        assert_eq!(offline_policy_preview(), preview);
+    }
+
+    #[test]
     fn all_ten_domains_explicitly_deny_unqualified_reads_and_writes() {
         let preview = offline_policy_preview();
         let domains = preview["domains"].as_object().unwrap();

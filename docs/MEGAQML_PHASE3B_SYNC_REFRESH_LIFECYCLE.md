@@ -54,3 +54,23 @@ all ten denied capability domains are unmodified. Run
 `cargo test -p inir-mega` offline for exact-source validation;
 that does not qualify the installed vendor, real QML races
 or actual cloud features.
+
+## Expanded bounded synthetic event-sequence regression
+
+A follow-up test explores all **32,768** five-step traces over eight
+simulated events: activate, close, refresh, expire, reap with a valid
+capture, reap with a truncated capture, stale-token completion, and
+no-op/visibility inspection. After every event it checks active lease
+consistency, a single matching in-flight token, and that a ready
+snapshot exists only after a clean current completion. It checks a
+stale callback cannot reveal or replace a current snapshot. Separate
+focused regressions cover expiration without a queued refresh and a
+reopen with no refresh request: neither may resurrect old output.
+
+An additional test calls the **actual** offline policy after a
+synthetically completed visible refresh and verifies that all ten
+cloud read/write domains and authentication/read/write flags remain
+blocked. The model never launches a process; only a separately
+qualified runner could attest actual process reap, session identity
+and capture provenance. These local tests must not be presented as
+installed MEGAcmd qualification or a live QML race acceptance.

@@ -286,6 +286,151 @@ mod tests {
     }
 
     #[test]
+    fn timeout_without_new_request_never_promotes_late_valid_output() {
+        let mut state = SnapshotRefresh::default();
+        assert!(state.activate());
+        let current = token(state.request());
+        assert!(state.expire(current));
+        // Timeout is NOT a reap event and must never make output ready.
+        assert!(state.ready().is_none());
+        assert_eq!(state.finish(current, &good()), Finish::Ignored);
+        assert!(state.ready().is_none());
+        let next = token(state.request());
+        assert_ne!(next, current);
+        assert_eq!(state.finish(next, &good()), Finish::Applied(1));
+    }
+
+    #[test]
+    fn reopen_without_request_never_adopts_old_child_output() {
+        let mut state = SnapshotRefresh::default();
+        assert!(state.activate());
+        let old = token(state.request());
+        state.close();
+        assert!(state.activate());
+        // The new generation must explicitly request a fresh capture.
+        assert_eq!(state.finish(old, &good()), Finish::Ignored);
+        assert!(state.ready().is_none());
+        let next = token(state.request());
+        assert_ne!(next, old);
+        assert_eq!(state.finish(next, &good()), Finish::Applied(1));
+        state.close();
+        assert!(state.ready().is_none());
+    }
+
+    #[test]
+    fn all_short_fake_event_sequences_keep_the_reap_and_visibility_invariants() {
+        // Bounded deterministic exploration: 8^5 event traces. No threads,
+        // clocks, filesystem, subprocesses, accounts, or vendor binaries.
+        const ACTIONS: u32 = 8;
+        const DEPTH: usize = 5;
+        for trace in 0..ACTIONS.pow(DEPTH as u32) {
+            let mut code = trace;
+            let mut state = SnapshotRefresh::default();
+            let mut active = false;
+            let mut live: Option<RefreshToken> = None;
+            let mut old: Option<RefreshToken> = None;
+            let mut expected_ready = false;
+            for _ in 0..DEPTH {
+                let action = code % ACTIONS;
+                code /= ACTIONS;
+                match action {
+                    0 => {
+                        let opened = state.activate();
+                        assert_eq!(opened, !active, "trace={trace}");
+                        if opened {
+                            active = true;
+                            expected_ready = false;
+                        }
+                    }
+                    1 => {
+                        state.close();
+                        active = false;
+                        expected_ready = false;
+                    }
+                    2 => {
+                        match state.request() {
+                            Start::Hidden => assert!(!active, "trace={trace}"),
+                            Start::Started(next) => {
+                                assert!(active && live.is_none(), "trace={trace}");
+                                live = Some(next);
+                            }
+                            Start::Queued => {
+                                assert!(active && live.is_some(), "trace={trace}");
+                            }
+                            Start::Exhausted => panic!("short trace unexpectedly overflowed"),
+                        }
+                        if active { expected_ready = false; }
+                    }
+                    3 => {
+                        if let Some(current) = live {
+                            assert!(state.expire(current), "trace={trace}");
+                            expected_ready = false;
+                        } else {
+                            assert!(!state.expire(RefreshToken {
+                                generation: 0, serial: 0,
+                            }));
+                        }
+                    }
+                    4 | 5 => {
+                        if let Some(current) = live {
+                            let broken = CandidateCapture {
+                                stdout: b"ID|RUN_STATE|STATUS\nAbcDef12_-x|Running|Synced",
+                                ..good()
+                            };
+                            let capture = if action == 4 { good() } else { broken };
+                            let result = state.finish(current, &capture);
+                            old = Some(current);
+                            live = None;
+                            match result {
+                                Finish::Applied(1) => {
+                                    assert_eq!(action, 4, "trace={trace}");
+                                    expected_ready = true;
+                                }
+                                Finish::Restart(next) => {
+                                    assert!(active && next != current, "trace={trace}");
+                                    live = Some(next);
+                                    expected_ready = false;
+                                }
+                                Finish::Rejected(
+                                    CaptureError::InvalidTable(Error::Incomplete)
+                                ) => expected_ready = false,
+                                Finish::Ignored => expected_ready = false,
+                                unexpected => panic!(
+                                    "unexpected fake result {unexpected:?} trace={trace}"
+                                ),
+                            }
+                        }
+                    }
+                    6 => {
+                        let stale = old.unwrap_or(RefreshToken {
+                            generation: 0, serial: 0,
+                        });
+                        let prior_ready = state.ready().is_some();
+                        assert_eq!(
+                            state.finish(stale, &good()), Finish::Ignored,
+                            "trace={trace}"
+                        );
+                        assert_eq!(state.ready().is_some(), prior_ready);
+                    }
+                    7 => {
+                        // Visibility inspection without changing the model.
+                    }
+                    _ => unreachable!(),
+                }
+                assert_eq!(state.active, active, "trace={trace} action={action}");
+                assert_eq!(state.in_flight, live, "trace={trace} action={action}");
+                assert_eq!(
+                    state.ready().is_some(), expected_ready,
+                    "trace={trace} action={action}"
+                );
+                if !active || live.is_some() {
+                    assert!(state.ready().is_none(), "trace={trace}");
+                }
+            }
+        }
+    }
+
+    #[test]
     fn monotonic_overflow_permanently_fails_closed() {
         let mut state = SnapshotRefresh::default();
         state.generation = u64::MAX;

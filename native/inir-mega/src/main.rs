@@ -134,19 +134,19 @@ enum AuthPrompt {
 }
 
 fn classify_auth_prompt(text: &str) -> AuthPrompt {
-    let normalized = text.to_ascii_lowercase();
-    if normalized.contains("multi-factor") || normalized.contains("two-factor")
-        || normalized.contains("2fa") || normalized.contains("mfa")
-    {
-        AuthPrompt::Mfa
-    } else if normalized.contains("password") {
-        AuthPrompt::Password
-    } else if normalized.contains("logged in") || normalized.contains("login successful") {
-        AuthPrompt::Complete
-    } else if normalized.contains("incorrect") || normalized.contains("failed") {
-        AuthPrompt::Failed
-    } else {
-        AuthPrompt::Unexpected
+    // Match complete finite prompts, not substrings inside diagnostics or
+    // vendor-echoed secret text. New installed-version variants must be
+    // individually qualified before enabling live authentication.
+    let normalized = text.trim().to_ascii_lowercase();
+    match normalized.as_str() {
+        "password:" => AuthPrompt::Password,
+        "multi-factor authentication code:"
+        | "two-factor authentication code:"
+        | "2fa code:"
+        | "mfa code:" => AuthPrompt::Mfa,
+        "logged in" | "login successful" => AuthPrompt::Complete,
+        "login failed" | "incorrect password" => AuthPrompt::Failed,
+        _ => AuthPrompt::Unexpected,
     }
 }
 
@@ -154,6 +154,7 @@ fn classify_auth_prompt(text: &str) -> AuthPrompt {
 enum AuthState {
     AwaitPassword,
     AwaitMfaOrComplete,
+    AwaitCompleteAfterMfa,
     Terminal,
 }
 
@@ -178,9 +179,11 @@ fn advance_auth(state: &mut AuthState, prompt: AuthPrompt) -> AuthStep {
             AuthStep::Write(SecretWrite::Password)
         }
         (AuthState::AwaitMfaOrComplete, AuthPrompt::Mfa) => {
+            // A repeated MFA prompt must never resend a code.
+            *state = AuthState::AwaitCompleteAfterMfa;
             AuthStep::Write(SecretWrite::Mfa)
         }
-        (AuthState::AwaitMfaOrComplete, AuthPrompt::Complete) => {
+        (AuthState::AwaitMfaOrComplete | AuthState::AwaitCompleteAfterMfa, AuthPrompt::Complete) => {
             *state = AuthState::Terminal;
             AuthStep::Complete
         }
@@ -558,6 +561,41 @@ mod tests {
         assert_eq!(classify_auth_prompt("Login successful"), AuthPrompt::Complete);
         assert_eq!(classify_auth_prompt("Login failed"), AuthPrompt::Failed);
         assert_eq!(classify_auth_prompt("Enter something else:"), AuthPrompt::Unexpected);
+    }
+
+    #[test]
+    fn auth_prompt_classifier_rejects_embedded_or_echoed_phrases() {
+        for ambiguous in [
+            "Debug: Password:",
+            "Please check password:",
+            "Secret value includes 2fa code:",
+            "Login successful despite unknown output",
+            "Warning: login failed unexpectedly",
+            "Logged in to an unrelated service",
+            "Login successful: vendor debug suffix",
+        ] {
+            assert_eq!(
+                classify_auth_prompt(ambiguous),
+                AuthPrompt::Unexpected,
+                "unexpected accepted prompt shape"
+            );
+        }
+    }
+
+    #[test]
+    fn auth_state_rejects_repeat_mfa_without_duplicate_secret_submission() {
+        let (terminal, writes) = FakeVendorHarness {
+            prompts: vec![
+                "Password:",
+                "Multi-factor authentication code:",
+                "Multi-factor authentication code:",
+                "Login successful",
+            ],
+            writes: Vec::new(),
+        }
+        .run("fixture-password-never-log", "123456");
+        assert_eq!(terminal, AuthStep::RejectUnexpected);
+        assert_eq!(writes, vec!["fixture-password-never-log", "123456"]);
     }
 
     struct FakeVendorHarness {

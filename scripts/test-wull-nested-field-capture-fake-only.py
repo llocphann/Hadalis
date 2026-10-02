@@ -11,6 +11,10 @@ ROOT = Path(__file__).resolve().parents[1]
 P = ROOT / "scripts/wull-manual-nested-field-capture.py"
 SOURCE = P.read_text(encoding="utf-8")
 ast.parse(SOURCE)
+FIXTURE = (ROOT / "scripts/wull-fixtures/real-field-canary/shell.qml").read_text()
+assert "id: sheet\n            // The compositor owns FloatingWindow sizing" in FIXTURE
+assert "width: 512\n            height: 512" in FIXTURE
+assert "id: sheet\n            anchors.fill: parent" not in FIXTURE
 for required in (
     'QT_QPA_PLATFORM": "wayland"',
     '"QSG_RHI_BACKEND": "opengl"',

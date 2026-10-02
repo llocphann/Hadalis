@@ -1,0 +1,39 @@
+{
+  "id": "JOB-MEGAQML-F1-CONTRACT-REPAIR-20261003-001",
+  "base_sha": "50f167b52dbe69cbdd85fcb9f2f55f0cb2bce546",
+  "profile_id": "profile-a25585b748dd4220",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "scripts/test-megaqml-phase2-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "scripts/test-megaqml-phase2p-contracts.sh"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-c",
+          "pin=\"$(git rev-parse --verify HEAD)\" || exit 66; exec bash scripts/test-megaqml-phase2-local.sh \"$pin\" --local-only"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1800
+      }
+    }
+  ]
+}

@@ -69,33 +69,81 @@ function asarReader(path) {
 }
 
 function exported(source, name) {
-  const tail = source.slice(source.lastIndexOf("export{"));
-  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = tail.match(new RegExp("[,{]" + escaped + " as ([\\w$]+)[,}]"));
-  if (!match) throw new Error("unsupported Desktop export contract");
-  return match[1];
+  if (!name || !/^[\w$]+$/.test(name)) return null;
+  const hits = [];
+  for (const match of source.matchAll(/\bexport\s*\{([^}]{0,200000})\}/g)) {
+    for (const specifier of match[1].split(",")) {
+      const pieces = specifier.trim().split(/\s+as\s+/);
+      if (pieces[0] === name && pieces.length <= 2 && /^[\w$]+$/.test(pieces.at(-1)))
+        hits.push(pieces.at(-1));
+    }
+  }
+  return unique(hits);
+}
+
+function unique(items) {
+  const values = [...new Set(items.filter(Boolean))];
+  return values.length === 1 ? values[0] : null;
+}
+
+// Read-only structural check. Returned diagnostics contain boolean capability
+// flags only; never send asset source or private renderer state to GitHub.
+export function inspectContractAssets(archive) {
+  const checks = {
+    initial_asset:false, shared_asset:false, conversation_stream_hook:false,
+    api_import:false, stream_scope:false, stream_method:false,
+    api_export:false, stream_export:false
+  };
+  const initialNames = archive.files.filter(n => /^app-initial-.*\.js$/.test(n));
+  const sharedNames = archive.files.filter(n => /^app-shared-.*\.js$/.test(n));
+  checks.initial_asset = initialNames.length === 1;
+  checks.shared_asset = sharedNames.length === 1;
+  if (!checks.initial_asset || !checks.shared_asset) return {checks, contract:null};
+  const initial = archive.read(initialNames[0]), shared = archive.read(sharedNames[0]);
+  const apiLocal = unique([...initial.matchAll(
+    /\b([\w$]+)\s*\.\s*streamPost\s*\(\s*[\x60'"]\/f\/conversation/g
+  )].map(m => m[1]));
+  checks.conversation_stream_hook = Boolean(apiLocal);
+  const apiImport = apiLocal && unique([...initial.matchAll(
+    new RegExp("([\\w$]+)\\s+as\\s+" + apiLocal.replace(/\$/g, "\\$") + "(?=[,}])", "g")
+  )].map(m => m[1]));
+  checks.api_import = Boolean(apiImport);
+  // Unlike the original expression, this does not depend on the arbitrary
+  // name of a neighboring minified function such as "brn".
+  const candidateAtoms = [...initial.matchAll(
+    /(?:^|[,;])([\w$]+)\s*=\s*[\w$]+\s*\(\s*\$\s*,\s*\(\s*\{\s*scope\s*:\s*([\w$]+)\s*\}\s*\)\s*=>\s*new\s+([\w$]+)\s*\(\s*\2\s*\)\s*\)/g
+  )].map(m => m[1]);
+  const atom = unique(candidateAtoms.filter(x => exported(initial, x)));
+  checks.stream_scope = Boolean(atom);
+  checks.stream_method = /\b(?:async\s+)?startCompletionStream\s*\(/.test(initial);
+  const api = exported(shared, apiImport), stream = exported(initial, atom);
+  checks.api_export = Boolean(api);
+  checks.stream_export = Boolean(stream);
+  if (Object.values(checks).some(ok => !ok)) return {checks, contract:null};
+  return {checks, contract:{
+    shared:sharedNames[0], initial:initialNames[0], api, stream,
+    serverStreamStatus:initial.includes("/conversation/{conversation_id}/stream_status"),
+    fingerprint:crypto.createHash("sha256").update(initial).update(shared).digest("hex")
+  }};
+}
+
+export function inspectInstalledContract() {
+  const archive = asarReader(process.env.HADALIS_DESKTOP_ASAR ?? "/usr/lib/chatgpt/resources/app.asar");
+  try { return inspectContractAssets(archive); }
+  finally { archive.close(); }
 }
 
 export function installedContract() {
-  const archive = asarReader(process.env.HADALIS_DESKTOP_ASAR ?? "/usr/lib/chatgpt/resources/app.asar");
-  try {
-    const initialNames = archive.files.filter(n => /^app-initial-.*\.js$/.test(n));
-    const sharedNames = archive.files.filter(n => /^app-shared-.*\.js$/.test(n));
-    if (initialNames.length !== 1 || sharedNames.length !== 1) throw new Error("ambiguous Desktop build");
-    const initial = archive.read(initialNames[0]), shared = archive.read(sharedNames[0]);
-    const apiLocal = initial.match(/([\w$]+)\.streamPost\(`\/f\/conversation`/)[1];
-    const apiImport = initial.match(new RegExp("([\\w$]+) as " + apiLocal + "[,}]"))?.[1];
-    const atom = initial.match(/,([\w$]+)=\w+\(\$,\(\{scope:e\}\)=>new (\w+)\(e\)\)\}\)\)\)\(\)\}\s*function brn/);
-    if (!apiImport || !atom || !initial.includes("async startCompletionStream("))
-      throw new Error("unsupported Desktop stream contract");
-    return { shared: sharedNames[0], initial: initialNames[0], api: apiImport,
-      stream: exported(initial, atom[1]),
-      serverStreamStatus: initial.includes("/conversation/{conversation_id}/stream_status"),
-      fingerprint: crypto.createHash("sha256").update(initial).update(shared).digest("hex") };
-  } finally { archive.close(); }
+  const result = inspectInstalledContract();
+  if (result.contract) return result.contract;
+  const failed = Object.entries(result.checks).filter(([,passed]) => !passed).map(([key]) => key);
+  throw new Error("unsupported Desktop stream contract [" + failed.join(",") + "]");
 }
 
 export async function connectNative() {
+  // Verify the installed bundle before allocating any CDP resources.
+  // Unsupported upgrades must fail promptly, not time out during cleanup.
+  const contract = installedContract();
   const url = process.env.HADALIS_CHATGPT_CDP_URL ?? "http://127.0.0.1:9222";
   const parsed = new URL(url);
   if (parsed.protocol !== "http:" || !["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname))
@@ -104,8 +152,9 @@ export async function connectNative() {
     "file:///usr/lib/chatgpt/resources/cua_node/lib/node_modules/playwright-core/index.mjs");
   const browser = await chromium.connectOverCDP(url, { timeout: 10000 });
   const page = browser.contexts().flatMap(c => c.pages()).find(p => p.url() === "app://-/index.html");
-  if (!page) { await browser.close(); throw new Error("Desktop main renderer unavailable"); }
-  const contract = installedContract();
+  if (!page) { await Promise.race([browser.close().catch(() => {}),
+    new Promise(resolve => setTimeout(resolve, 1500))]);
+    throw new Error("Desktop main renderer unavailable"); }
   await page.evaluate(async contract => {
     const shared = await import(`./assets/${contract.shared}`), initial = await import(`./assets/${contract.initial}`);
     const api = shared[contract.api], definition = initial[contract.stream];

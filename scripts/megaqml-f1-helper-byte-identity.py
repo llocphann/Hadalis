@@ -79,7 +79,7 @@ def digest_helper(path):
             if fingerprint(opened) != fingerprint(initial):
                 return None
             prefix = stream.read(4)
-            if prefix != b"\\x7fELF":
+            if prefix != b"\x7fELF":
                 return None
             h.update(prefix)
             consumed = 4

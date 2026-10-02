@@ -176,6 +176,10 @@ pub(crate) fn run_auth_dialog(
     let mut reader = unsafe { File::from_raw_fd(master) };
     let mut command = configure_child(program, slave)?;
     let mut child = command.spawn().context("spawn MEGAcmd interactive shell")?;
+    // Command retains its configured Stdio handles after spawn. Release the
+    // parent-owned PTY slave copies now: otherwise a vendor that closes all
+    // child-side streams cannot signal EOF/EIO to our master before timeout.
+    drop(command);
     let mut writer = match reader.try_clone() {
         Ok(writer) => writer,
         Err(error) => {

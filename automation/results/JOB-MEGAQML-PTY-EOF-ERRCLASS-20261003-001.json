@@ -1,0 +1,30 @@
+{
+  "actions": [
+    {
+      "cancelled": false,
+      "command_sha256": "da937fe11b855cdcb49f1a27cece09b7eb52f3aedaaa7513665953c20982e876",
+      "evidence_id": "JOB-MEGAQML-PTY-EOF-ERRCLASS-20261003-001:0",
+      "exit_code": 22,
+      "index": 0,
+      "kind": "exec",
+      "observed_at_unix": 1790970916,
+      "source_sha": "abd9db9770fc157e4e69b6160e0c3bb78ce15980",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_truncated": false,
+      "stdout_bytes": 26,
+      "stdout_sha256": "a13a87164361b72ade0a9bcd521bbfb0a4f41f1281fa2b4c98bb9485e6794dcf",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "fd8847113affb08e704aed26be6e37219ca5c135",
+  "evidence_location": "Private local evidence; raw output is not published",
+  "finished_at_unix": 1790970916,
+  "input_sha256": "e365a1405a79a9fd0f6f9a7672256b0a1932c110acbe2e6184f6e4d33e4bcc2d",
+  "job": "JOB-MEGAQML-PTY-EOF-ERRCLASS-20261003-001",
+  "job_commit": "abd9db9770fc157e4e69b6160e0c3bb78ce15980",
+  "profile_id": "profile-a25585b748dd4220",
+  "started_at_unix": 1790970901,
+  "status": "failed"
+}

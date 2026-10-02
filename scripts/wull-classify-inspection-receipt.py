@@ -103,9 +103,21 @@ def fixed_reason_private(text):
     return 199
 
 
+def inner_line_private(text):
+    """Exit code = exact OLD inspector RGBA frame line, not private text."""
+    if classify_private(text) != 33:
+        return 199
+    frames = re.findall(
+        r'wull-existing-matrix-evidence\.py", line (\d{1,3})',
+        text)
+    rgba_frames = [int(f) for f in frames if 121 <= int(f) <= 165]
+    return rgba_frames[0] if len(rgba_frames) == 1 else 199
+
+
 def main():
     if sys.argv[1:] not in (["--prior-action-only"], ["--detail-only"],
-                            ["--fixed-reason-only"]):
+                            ["--fixed-reason-only"],
+                            ["--inner-line-only"]):
         return 39
     state = Path(os.environ.get(
         "XDG_STATE_HOME", str(Path.home() / ".local/state")))
@@ -127,6 +139,8 @@ def main():
             or result.get("exit_code") != 1
             or result.get("timed_out") is not False):
         return 39
+    if sys.argv[1:] == ["--inner-line-only"]:
+        return inner_line_private(result.get("stderr", ""))
     if sys.argv[1:] == ["--fixed-reason-only"]:
         return fixed_reason_private(result.get("stderr", ""))
     if sys.argv[1:] == ["--detail-only"]:

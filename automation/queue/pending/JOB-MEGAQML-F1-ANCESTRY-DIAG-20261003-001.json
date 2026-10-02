@@ -1,0 +1,50 @@
+{
+  "id": "JOB-MEGAQML-F1-ANCESTRY-DIAG-20261003-001",
+  "base_sha": "b5cba278f284fc46ae8a51ed60760a18e1538869",
+  "profile_id": "profile-a25585b748dd4220",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "scripts/test-megaqml-f1-worker-descendant-guard.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "scripts/test-megaqml-phase2p-contracts.sh"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-c",
+          "pin=\"$(git rev-parse --verify HEAD)\" || exit 81; if ! git fetch --quiet --no-tags origin refs/heads/dev; then echo 'CLONE_LOCAL_BRANCH=FETCH_FAILED'; exit 80; fi; if git merge-base --is-ancestor \"$pin\" FETCH_HEAD; then echo 'CLONE_LOCAL_BRANCH=DESCENDANT'; exit 0; else echo 'CLONE_LOCAL_BRANCH=NON_DESCENDANT'; exit 79; fi"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 90
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-c",
+          "pin=\"$(git rev-parse --verify HEAD)\" || exit 81; if ! git fetch --quiet --no-tags origin refs/remotes/origin/dev; then echo 'CLONE_UPSTREAM_TRACKING=FETCH_FAILED'; exit 80; fi; if git merge-base --is-ancestor \"$pin\" FETCH_HEAD; then echo 'CLONE_UPSTREAM_TRACKING=DESCENDANT'; exit 0; else echo 'CLONE_UPSTREAM_TRACKING=NON_DESCENDANT'; exit 79; fi"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 90
+      }
+    }
+  ]
+}

@@ -56,8 +56,8 @@ assert "rotation: -root.orientationAngle" in body
 assert 'orientationAngle: root.edge === "left" ? 90' in host
 assert 'rotation: root.edge' not in host
 assert 'anchors.verticalCenter: root.verticalEdge ? parent.verticalCenter : undefined' in host
-assert 'anchors.left: root.edge === "left" ? parent.left : undefined' in host
-assert 'anchors.right: root.edge === "right" ? parent.right : undefined' in host
+assert 'anchors.left: root.edge === "right" ? parent.left : undefined' in host
+assert 'anchors.right: root.edge === "left" ? parent.right : undefined' in host
 assert "running: root.motionEnabled" in body
 assert "root.motionEnabled && AbyssStyle.quality" in body
 assert "Timer {" not in body
@@ -66,7 +66,9 @@ assert "Timer {" not in body
 assert "implicitWidth: 76" in body and "implicitHeight: 92" in body
 assert "implicitWidth: verticalEdge ? 98 : 112" in host
 assert "implicitHeight: verticalEdge ? 112 : 98" in host
-assert 'anchors.bottomMargin: root.edge === "bottom" ? 0.25 : 0' in host
+assert 'anchors.top: root.edge === "bottom" ? parent.top : undefined' in host
+assert 'anchors.bottom: root.edge === "top" ? parent.bottom : undefined' in host
+assert "anchors.bottomMargin" not in host
 assert perimeter.count("AbyssCompanion {") == 1
 assert perimeter.count("CompanionBridge {") == 1
 assert 'WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible)' in perimeter

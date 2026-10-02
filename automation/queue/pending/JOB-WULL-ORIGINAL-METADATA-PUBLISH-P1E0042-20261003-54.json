@@ -1,0 +1,21 @@
+{
+  "id": "JOB-WULL-ORIGINAL-METADATA-PUBLISH-P1E0042-20261003-54",
+  "base_sha": "c38ea8dd9b3669541efe9f67a12d3130f1b0f25d",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "resources": [
+    "git:dev-wull-reference-metadata"
+  ],
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-original-metadata-projection.py",
+          "--publish-safe-only"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    }
+  ]
+}

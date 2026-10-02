@@ -25,7 +25,7 @@ DYNAMIC_FIXTURE = "scripts/wull-fixtures/motion-envelope/shell.qml"
 FROZEN_RECEIPT = (
     "docs/wull-qt-motion-20261001T185752Z-53e5c5cc-72ac0580b12e.json")
 DYNAMIC_PINS = {
-    DYNAMIC_FIXTURE: "221c07d0a451ba918e3e2074aeafe389e588f594",
+    DYNAMIC_FIXTURE: "6e3b5402d32d263868c1ec688925adba0fd7250b",
     FROZEN_RUNNER: "0dd833ed05d54e9d1045553a1da8be8f66b6511a",
     FROZEN_RECEIPT: "dc2f36b525ef7e412869f155153dc4e48720f898",
 }
@@ -38,6 +38,11 @@ PHASE_FLAGS = ("samples", "active", "stretch_witness",
                "mapped_frame_change_witness", "bob_witness",
                "sway_witness", *FLAGS, "bbox_beyond_frozen")
 MARKER = "WULL_OFFSCREEN_DYNAMIC_GEOMETRY "
+STAGE_MARKER = "WULL_OFFSCREEN_DYNAMIC_STAGE="
+EXPECTED_STAGES = (
+    "BOOT", "SETUP_START", "FROZEN_VERIFIED", "NEUTRAL_VERIFIED",
+    "STRETCH_SAMPLE", "RELEASE_START", "RELEASE_SAMPLE", "SAMPLING_DONE",
+)
 MAX_LOG = 524288
 frozen = runpy.run_path(str(ROOT / FROZEN_RUNNER),
                         run_name="wull_dynamic_borrow_reviewed_safety")
@@ -292,6 +297,30 @@ def categorize_private_qml_failure(raw, code, marker_count):
     return "UNKNOWN_PRIVATE_MARKER_FAILURE"
 
 
+def private_stage_summary(raw):
+    """Never return raw log lines; fail closed on unexpected stage markers."""
+    stages = []
+    for line in raw.splitlines():
+        if STAGE_MARKER not in line:
+            continue
+        token = line.split(STAGE_MARKER, 1)[1].strip()
+        if token not in EXPECTED_STAGES or token in stages or len(stages) >= len(EXPECTED_STAGES):
+            return None
+        stages.append(token)
+    return stages
+
+
+def private_exit_class(code):
+    """Classify a process return code without disclosing private log text."""
+    if type(code) is not int:
+        return "NOT_RECORDED"
+    if code < 0:
+        return "SIGNAL"
+    if code > 0:
+        return "NONZERO"
+    return "ZERO"
+
+
 def run_fixture(folder):
     qs = shutil.which("qs") or shutil.which("quickshell")
     dbus = shutil.which("dbus-run-session")
@@ -378,12 +407,20 @@ def run_fixture(folder):
     raw = log.read_text(encoding="utf-8", errors="replace")
     lines = [line.split(MARKER, 1)[1] for line in raw.splitlines()
              if MARKER in line]
+    stages = private_stage_summary(raw)
+    print("PRIVATE_QS_EXIT_CLASS=" + private_exit_class(code), flush=True)
+    print("PRIVATE_QML_STAGES=" + str(0 if stages is None else len(stages)), flush=True)
+    print("PRIVATE_QML_LAST_STAGE=" + (
+        "INVALID_SEQUENCE" if stages is None else
+        stages[-1] if stages else "NO_BOOT"), flush=True)
     if (code != 0 or "WULL_OFFSCREEN_DYNAMIC_INVALID" in raw
             or "WULL_OFFSCREEN_DYNAMIC_TIMEOUT" in raw or len(lines) != 1):
         print("PRIVATE_QML_FAILURE_CATEGORY="
               + categorize_private_qml_failure(raw, code, len(lines)),
               file=sys.stderr)
         stop("private_dynamic_qml_marker_inconclusive")
+    if stages != list(EXPECTED_STAGES):
+        stop("private_dynamic_qml_stage_sequence_inconclusive")
     try:
         return model_summary(json.loads(lines[0]), known_frozen())
     except (ValueError, TypeError, json.JSONDecodeError):

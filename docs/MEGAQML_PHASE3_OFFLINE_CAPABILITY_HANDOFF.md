@@ -1,7 +1,11 @@
 # MegaQML Phase 3a — offline-denied feature gate handoff
 
-**Status:** new `dev` source staged; exact-source Linux qualification pending.
-This is a typed **policy preview**, not installed-version capability detection,
+**Status:** exact-source Linux synthetic/offscreen qualification complete at
+`ad79725acda0fe3c61ba6b1afaba700e1a73b78b`:
+`docs/evidence/megaqml/phase2p-ad79725acda0-20261002T031538Z.md`
+(40/40 PASS, 0 FAIL/SKIP; 8/8 fake-only race repeats). An earlier
+independent run at `bbd429a20878c6cbad6bcbf63de8f51b3922c9af` also
+passed 40/40 and 8/8. This is a typed **policy preview**, not installed-version capability detection,
 a MEGA session, or ten implemented features.
 
 ## Qualified baseline versus new implementation
@@ -54,8 +58,8 @@ strict preview. The fake PATH contains executable-looking vendor names
 that create a marker **if run**; the test proves the preview does not
 launch them. It injects fabricated password/account fields and
 forged read/write state and requires fail-closed behavior and no
-canary leakage. The newer source has not yet passed owner Linux.
-Do not change the historic F1 40/40 source SHA in evidence.
+canary leakage. The qualified source above passed owner Linux. Retain the historical
+F1 evidence and its distinct source SHA rather than rewriting it.
 
 No automatically generated reports should contain vendor output,
 paths, email, credentials, tokens, screenshots or raw QML diagnostics.
@@ -65,9 +69,10 @@ auto-connect on navigation, start MEGAcmd server, or permit mutation.
 
 ## Owner-approval gates remaining
 
-1. Re-run the full exact-source Linux matrix (40/40 and 8/8).
-   A clean **temporary checkout** is required when the maintainer's
-   normal `dev` worktree contains parallel Wull changes.
+1. **Completed for the exact source listed above:** the full Linux matrix
+   passed 40/40 and 8/8 and the report was published. Any future change
+   to MegaQML code requires new exact-source qualification; concurrent
+   Wull/evidence-only descendants do not by themselves qualify vendor behavior.
 2. Verify standalone Material and Waffle and any actively used
    overlay/focus in the owner's actual desktop. Source consistency,
    compact UI feedback and fake-Quickshell PASS are separate evidence.

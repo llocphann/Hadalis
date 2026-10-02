@@ -108,6 +108,13 @@ for attempt in 1 2 3; do
   fi
   git fetch --quiet --no-tags origin refs/heads/dev || break
   remote_sha="$(git rev-parse FETCH_HEAD)"
+  # A transport error can occur after the server has accepted the push.
+  if git cat-file -e "$remote_sha:$report" 2>/dev/null &&
+      git show "$remote_sha:$report" | cmp -s - "$report"; then
+    echo PUBLICATION=ALREADY_PUBLISHED_SAFE_SUMMARY
+    echo "REPORT=$report"
+    exit 0
+  fi
   git merge-base --is-ancestor "$source_sha" "$remote_sha" || break
   python3 scripts/test-megaqml-phase2p-history-guard.py \
     "$source_sha" "$remote_sha" >/dev/null || break

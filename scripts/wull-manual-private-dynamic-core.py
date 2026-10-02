@@ -265,7 +265,7 @@ def main():
     require(report["sampled_frames"] == 32 and len(report["cases"]) == 2,
             "DYNAMIC_PAINT_SUMMARY_INCONCLUSIVE")
     print("SOURCE_SHA=" + source)
-    print("SOURCE_ORIGINAL_BÉZIER_STROKE=ISOLATED_PRIVATE_QT")
+    print("SOURCE_ORIGINAL_BEZIER_STROKE=ISOLATED_PRIVATE_QT")
     print("QT_DYNAMIC_CORE_FRAMES=32")
     print("INDEPENDENT_40MS_QT_MOTION_WITNESSES=YES")
     print("CORE_ONLY_PRIVATE_VISIBILITY=YES")

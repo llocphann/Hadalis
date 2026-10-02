@@ -3,7 +3,10 @@ import {operationErrorCode, operationErrorObservation} from "./native_errors.mjs
 
 let browser, input;
 // A supervisor crash must not leave an orphan CDP client indefinitely alive.
-const deadline=setTimeout(()=>process.exit(1),45000);deadline.unref();
+const deadline=setTimeout(()=>{
+  console.error(JSON.stringify({code:"DESKTOP_OPERATION_TIMEOUT"}));
+  process.exit(124);
+},40000);deadline.unref();
 try {
   let raw = "";
   for await (const chunk of process.stdin) {
@@ -55,4 +58,11 @@ try {
   // Never serialize a raw request/headers or an HTTP error body.
   console.error(input?.error_observation === true ? JSON.stringify(operationErrorObservation(error)) : operationErrorCode(error));
   process.exitCode = 1;
-} finally { clearTimeout(deadline); if (browser) await browser.close(); }
+ } finally {
+  // A detached CDP client must never stall the scheduler's bounded process.
+  if (browser) await Promise.race([
+    browser.close().catch(() => {}),
+    new Promise(resolve => setTimeout(resolve, 1500))
+  ]);
+  clearTimeout(deadline);
+}

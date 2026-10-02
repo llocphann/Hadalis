@@ -3,7 +3,8 @@
 
 No host screen capture, compositor, Niri, pointer injection, backend, Git
 commit or publication. A pass demonstrates only a static TOP scale-1 body-only shadow
-PNG can be captured and parsed in this private offscreen environment.\nThis altered assembly omits the separate companion cradle: NOT production.
+PNG can be captured and parsed in this private offscreen environment.
+This altered assembly omits the separate companion cradle: NOT production.
 """
 import os
 from pathlib import Path
@@ -34,7 +35,11 @@ PINS = {
         "2bdf7d37f183b976d928fa15b0eb2ec57c646b60",
     "scripts/wull-manual-offscreen-motion-geometry.py":
         "0dd833ed05d54e9d1045553a1da8be8f66b6511a",
-    "defaults/config.json": "e10d98c0f26d3e47c51cb8452bcd0d2cea735501",\n    "scripts/wull-manual-private-paint-canary.py":\n        "5ce5155303913b9eda49590ba017c074b8e176fc",\n    "scripts/wull-fixtures/paint-alpha-canary/shell.qml":\n        "4ed1c92b81870197927b449cfe60cd2c57859b30",
+    "defaults/config.json": "e10d98c0f26d3e47c51cb8452bcd0d2cea735501",
+    "scripts/wull-manual-private-paint-canary.py":
+        "5ce5155303913b9eda49590ba017c074b8e176fc",
+    "scripts/wull-fixtures/paint-alpha-canary/shell.qml":
+        "4ed1c92b81870197927b449cfe60cd2c57859b30",
 }
 ORIGINS = {
     "https://github.com/llocphann/Hadalis.git",
@@ -259,10 +264,13 @@ def main():
             not git("status", "--porcelain=v1", "--untracked-files=all"),
             "POSTRUN_SOURCE_IDENTITY_CHANGED")
     print("SOURCE_SHA=" + source)
-    print("UNMODIFIED_WATER_DROPLET_BODY=YES")\n    print("PRODUCTION_COMPOSITE=NO")\n    print("EXTERNAL_CRADLE_INCLUDED=NO")
+    print("UNMODIFIED_WATER_DROPLET_BODY=YES")
+    print("PRODUCTION_COMPOSITE=NO")
+    print("EXTERNAL_CRADLE_INCLUDED=NO")
     print("STATIC_TOP_SCALE1_SHADOW_PNG=VALID")
     print("SHADOW_OUTSIDE_HOST_ALPHA=" + ("YES" if outside else "NO"))
-    print("PRODUCTION_BODY_PAINT_OUTSIDE_HOST=UNPROVEN")\n    print("BODY_SHAPE_VS_INTERNAL_CHILDREN=UNRESOLVED")
+    print("PRODUCTION_BODY_PAINT_OUTSIDE_HOST=UNPROVEN")
+    print("BODY_SHAPE_VS_INTERNAL_CHILDREN=UNRESOLVED")
     print("DYNAMIC_WITNESS=NOT_RUN")
     print("PRODUCTION_MASK_CHANGED=NO")
     print("GATE=PRIVATE_ONE_CASE_SHADOW_CLASSIFIED")

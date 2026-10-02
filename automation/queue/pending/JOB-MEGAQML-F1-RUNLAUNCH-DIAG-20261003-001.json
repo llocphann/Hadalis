@@ -1,0 +1,31 @@
+{
+  "id": "JOB-MEGAQML-F1-RUNLAUNCH-DIAG-20261003-001",
+  "profile_id": "profile-a25585b748dd4220",
+  "base_sha": "3a2162a533671a04f4e2eb32c41264bcf92e68af",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "-c",
+          "import importlib.util,tempfile,pathlib\np=pathlib.Path(\"scripts/megaqml-f1-running-launch-identity.py\").resolve();s=importlib.util.spec_from_file_location(\"f1_diag\",p);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\nwith tempfile.TemporaryDirectory() as d:\n root=pathlib.Path(d); v=m.assess_running(root,\"material\",78123,proc_root=root/\"mock_proc\",uid=0); assert v==\"process_unavailable\", \"DIAG_MISSING_ENTRY_CLASS_MISMATCH\"\nprint(\"DIAG_MISSING_ENTRY_PROCESS_UNAVAILABLE=YES\")"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "-c",
+          "import runpy,sys\ntry: runpy.run_path(\"scripts/test-megaqml-f1-running-launch-identity.py\",run_name=\"__main__\")\nexcept AssertionError as e:\n expected=(\"deployed_entry_unavailable\",\"process_unavailable\"); assert e.args and e.args[0]==expected,\"DIAG_DIFFERENT_SYNTHETIC_FAILURE\"; print(\"DIAG_ORIGINAL_TEST_EXPECTED_ACTUAL_CATEGORY_MATCH=YES\")\nelse: sys.exit(\"DIAG_UNEXPECTED_TEST_PASS\")"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    }
+  ]
+}

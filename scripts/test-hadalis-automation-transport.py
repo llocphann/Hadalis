@@ -147,26 +147,61 @@ assert.equal(operationErrorCode({message:"PRIVATE_CANARY auth body"}), "DESKTOP_
             t.down=True;daemon.tick(102)
             assert t.pending(pid)["poll_after_unix"] == 132
 
-    # Two due profiles consume distinct shared read slots; their generations
-    # remain simultaneous and their exact pending identities survive admission.
+    # Both fresh submissions and polling share the account-wide admission
+    # slot. The other profile is deferred durably without losing its intent.
     with environment(), patch.object(daemon,"TRANSPORT_POLL_SPACING_SECONDS",production_spacing):
         a,b=profile("Paced A"),profile("Paced B");t=Transport()
         with patch.object(daemon,"native_command",side_effect=t):
-            daemon.tick(100);assert t.count("submit")==2
-            identities={pid:t.pending(pid)["user_message_id"] for pid in (a,b)}
-            t.reply(a,"HADALIS_LOOP:DONE");t.reply(b,"HADALIS_LOOP:DONE")
-            daemon.tick(102);assert t.count("poll")==1
+            daemon.tick(100)
             state=store.read_snapshot()[1]
-            waiting=[pid for pid in (a,b) if state["profiles"][pid]["pending"]]
-            assert len(waiting)==1
-            pid=waiting[0]
-            assert state["profiles"][pid]["pending"]["user_message_id"]==identities[pid]
-            assert state["transport_next_poll_at_unix"]==102+production_spacing
-            assert json.loads(store.state_path().read_text())["transport_next_poll_at_unix"]==102+production_spacing
-            daemon.tick(102+production_spacing-1);assert t.count("poll")==1
-            daemon.tick(102+production_spacing);assert t.count("poll")==2
+            started=[pid for pid in (a,b) if state["profiles"][pid]["pending"]]
+            assert len(started)==1 and t.count("submit")==1
+            first=started[0]
+            deferred=next(pid for pid in (a,b) if pid != first)
+            assert state["profiles"][deferred]["next_run_at_unix"] == 100+production_spacing
+            assert state["transport_next_poll_at_unix"] == 100+production_spacing
+            original=t.pending(first)["user_message_id"]
+            # Avoid an earlier poll competing with the second submit in
+            # this precise admission regression.
+            store.change_state(lambda c,s:s["profiles"][first]["pending"].update(
+                poll_after_unix=100+2*production_spacing))
+            daemon.tick(100+production_spacing-1)
+            assert t.count("submit")==1 and t.pending(first)["user_message_id"]==original
+            daemon.tick(100+production_spacing)
             assert t.count("submit")==2
+            identities={pid:t.pending(pid)["user_message_id"] for pid in (a,b)}
+            assert len(set(identities.values()))==2
+            t.reply(a,"HADALIS_LOOP:DONE");t.reply(b,"HADALIS_LOOP:DONE")
+            daemon.tick(100+2*production_spacing)
+            assert t.count("poll")==1
+            daemon.tick(100+3*production_spacing-1)
+            assert t.count("poll")==1
+            daemon.tick(100+3*production_spacing)
+            assert t.count("poll")==2 and t.count("submit")==2
             assert all(store.read_snapshot()[1]["profiles"][p]["iterations"]==1 for p in (a,b))
+
+    # Rate limit during the preflight for the first new submission must
+    # suspend the second profile's send without speculative replay.
+    with environment(), patch.object(daemon,"TRANSPORT_POLL_SPACING_SECONDS",production_spacing):
+        a,b=profile("Preflight A"),profile("Preflight B");t=Transport()
+        first=[True]
+        def limited_preflight(op,**data):
+            if op=="project" and first[0]:
+                first[0]=False
+                raise daemon.NativeOperationError(
+                    {"code":"DESKTOP_RATE_LIMITED","resource":"projects","http_status":429},op)
+            return t(op,**data)
+        with patch.object(daemon,"native_command",side_effect=limited_preflight):
+            daemon.tick(100)
+            state=store.read_snapshot()[1]
+            assert state["transport_retry_at_unix"]==100+daemon.RATE_LIMIT_SECONDS
+            assert t.count("submit")==0
+            daemon.tick(100+production_spacing)
+            assert t.count("submit")==0
+            daemon.tick(100+daemon.RATE_LIMIT_SECONDS)
+            assert t.count("submit")==1
+            assert store.read_snapshot()[1]["transport_next_poll_at_unix"]==(
+                100+daemon.RATE_LIMIT_SECONDS+production_spacing)
 
     # Repeated 429 retry rounds increase durable backoff; concurrent failures in
     # one round and an isolated successful read cannot reset/amplify it.

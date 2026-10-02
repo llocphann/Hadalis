@@ -123,9 +123,10 @@ ShellRoot {
     }
     FloatingWindow {
         id: privateWindow
-        visible: false
+        // Match the existing real-shader lifecycle fixture: create backing
+        // immediately; a delayed hidden first frame is not a valid probe.
+        visible: true
         color: "transparent"
-        Component.onCompleted: visible = true
         implicitWidth: 512
         implicitHeight: 512
         title: "Private synthetic real AbyssField shader canary"

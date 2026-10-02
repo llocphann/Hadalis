@@ -1,4 +1,4 @@
-import {connectNative, nativeRead, nativeStreamStatus, nativeStreamReceipt, nativeServerStreamStatus, nativeModelCatalog, pollNativeTurn, resolveProject, nativePreflight, nativeSubmit, nativeResume, discoverSubmission} from "./native_adapter.mjs";
+import {diagnoseNativeRenderer, connectNative, nativeRead, nativeStreamStatus, nativeStreamReceipt, nativeServerStreamStatus, nativeModelCatalog, pollNativeTurn, resolveProject, nativePreflight, nativeSubmit, nativeResume, discoverSubmission} from "./native_adapter.mjs";
 import {operationErrorCode, operationErrorObservation} from "./native_errors.mjs";
 
 let browser, input;
@@ -14,6 +14,10 @@ try {
     if (raw.length > 200000) throw new Error("request exceeds bound");
   }
   input = JSON.parse(raw);
+  if (input.op === "diagnose") {
+    // Never submit or read messages: finite, read-only renderer inspection.
+    console.log(JSON.stringify(await diagnoseNativeRenderer()));
+  } else {
   const connection = await connectNative(); browser = connection.browser;
   const page = connection.page;
   let result;
@@ -54,6 +58,7 @@ try {
   } else if (input.op === "probe") result = {supported: true, fingerprint: connection.contract.fingerprint};
   else throw new Error("unknown native operation");
   console.log(JSON.stringify(result));
+  }
 } catch (error) {
   // Never serialize a raw request/headers or an HTTP error body.
   console.error(input?.error_observation === true ? JSON.stringify(operationErrorObservation(error)) : operationErrorCode(error));

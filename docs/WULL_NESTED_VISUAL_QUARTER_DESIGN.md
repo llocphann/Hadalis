@@ -445,3 +445,119 @@ near-corners and popup overlays in later independent gates.
 Do NOT begin previous scale1 pointer/mask tests at the wrong
 scale, do NOT alter the production Region or default-off and
 NEVER touch \`stable\`. Continue other unrelated \`dev\` work.
+
+
+## 2026-10-02 — owner's INNER-FIELD-RIM nested A/B CAPTURE GATE PASSED; visual verdict pending
+
+The maintainer executed the *actual* exact source-pinned private pilot at
+`SOURCE_SHA=d917826b28ac73a6a372ff419ee7303f8f5d67d1`.
+Owner-supplied short terminal evidence:
+
+- `SOURCE_PINS=PASS`;
+  `WULL_PRIVATE_FIELD_RIM_ATTACHMENT_INERT_PASS`;
+  `WULL_PRIVATE_FIELD_RIM_NESTED_RUNNER_INERT_PASS`;
+  `GATE=PRIVATE_FIELD_RIM_VISUAL_AUTHORIZED`.
+- `SCREEN_BOUNDARY_M025_NESTED_FULL_IMAGE=CAPTURED`;
+  `INNER_FIELD_RIM_M025_NESTED_FULL_IMAGE=CAPTURED`;
+  `NESTED_ONE_OUTPUT=YES`;
+  `NESTED_DISTINCT_IPC_AND_WAYLAND=YES`;
+  `BOTH_CASES_ORIGINAL_CRADLE_M025=YES`;
+  `ANCHOR_COMPARISON=SCREEN_FIXED_VS_LOCAL_ABYSS_FIELD`;
+  `TWO_SEQUENTIAL_NESTED_CAPTURES=YES`.
+- `DYNAMIC_WAVE_ATTACHMENT=NOT_TESTED`;
+  `FOUR_EDGE_ATTACHMENT=NOT_TESTED`;
+  `REAL_PANEL_VISUAL_CONNECTION=OWNER_REVIEW_REQUIRED`;
+  `PRODUCTION_MASK_CHANGED=NO`;
+  `GATE=NESTED_PRIVATE_FIELD_RIM_CAPTURES_READY`;
+  `PRIVATE_IMAGES_SAVED_LOCALLY=YES`.
+
+This proves the new field-rim candidate could be staged and both
+different geometry versions drew source-pinned real AbyssBar/full Wull
+in the verified guest compositor, with cleanup. **It does not prove the
+new field-rim anchor makes Wull visually touch the painted inner contour,
+clears tray/clock, avoids physical-edge cropping, or blends the materials.**
+The TWO NEW locally saved screenshots were automatically opened on the
+owner's machine but have NOT been supplied for inspection or categorized
+by the owner. Earlier pictures depicting the OLD physical-border placement
+must not be mistaken for this new candidate. Do NOT rerun this already
+successful capture just to obtain the same images.
+
+Immediate remaining real-visual categories for the two ALREADY saved
+`screen_boundary_m025.nested.private.png` and
+`inner_field_rim_m025.nested.private.png`: (1) original Wull visible;
+(2) actual workspace-facing Bar / Screen Edge contact YES/GAP/OVERLAP/UNCLEAR
+for EACH case; (3) tray/clock obstruction YES/NO/UNCLEAR and
+(4) cropping YES/NO/UNCLEAR. Sequential independent animated sessions are
+not same-instant proof. Only the owner may qualify these local visuals.
+Actual rendered field-rim screenshots or owner's categorical observations
+must precede a claim of visual improvement or a new material-union test.
+
+### New research: find a free Bar segment before visual/pointer integration
+
+Old `root.companionAlong=0.72` is independent of actual module placement:
+source-pinned `AbyssPerimeter.qml` invokes
+`WullHostPolicy.alongPosition` without reading real
+`bar.layoutRecords`. The earlier owner-supplied screenshots showed Wull
+near foreground module content. A surface-contact correction alone
+does NOT solve this; merely shifting Wull inward can obscure the tray.
+
+Source review at current unchanged
+`modules/abyss/bar/AbyssBar.qml`
+`b9d91627734d0cfdf3057d598f7ec600649be45c` and
+`modules/abyss/looks/AbyssLayout.js`
+`f65d9c1922696d236fc0d3bfee735ad8df16924b`:
+`bar.layoutRecords` is live output-specific module geometry.
+Its enabled records contain `edge`, `along`, `span` and
+`content`. `bar.deformations` are only the subset of special
+locally expanded surfaces, NOT all foreground modules and not a
+sufficient no-obstruction source. Active popup/panel reservations must
+be separately converted from their actual occupied rectangles when
+their owner and field geometry have been explicitly source-reviewed.
+
+NEW **private inert research**, intentionally NOT imported into any
+production QML or nested experiment:
+
+- `scripts/wull-private-bar-free-slot.js`, exact staged blob
+  `342960e0c6d19068732eea805a6c4cc35e055a3e`.
+  Pure deterministic source-geometry interval subtraction:
+  inputs are actual same-edge `layoutRecords`, separate explicit
+  popup/panel reservations, scaled Wull along-footprint, output extent,
+  corner-reservation lengths, user-preferred center, clearance and
+  maximum acceptable shift. Finds a *nearest free center* with
+  provable 1D bounding-box clearance; defaults include 18px module
+  and 16px physical-corner guards but are explicit parameters.
+  Both other-edge records and explicitly inactive reservations are
+  ignored. Invalid geometry, malformed records, tiny/full occupancy,
+  overlarge record lists or no nearby clearance return fixed
+  `qualified:false` reason codes. No nearest-icon or display-border
+  fallback. It does not promise an organic Wull weld or account for
+  every *moving* popup until its actual records are bound.
+- `scripts/test-wull-private-bar-free-slot.cjs`, exact staged blob
+  `abf5cfe2afa48861cb55b19f2a6cecf7b57c2872`.
+  Fake-only built-in Node runner with exact Git blob pin, isolated JS VM
+  and behavioral contracts for missing/invalid/full occupancy,
+  other-edge filtering, popup reservations, nearest deterministic
+  clearance, large scale1.5 footprint, corner bounds and fail-closed
+  malformed data. The FULL Node script has NOT been run by owner.
+  Cloud Bot separately evaluated the exact staged pure function in a
+  sandboxed orchestration isolate for 11 directed probes
+  (11 PASS) and 1,200 seeded random source geometry examples:
+  1,181 had candidates, 19 were rejected and **no candidate
+  intersected an active module's specified clearance**. These are
+  in-memory mathematical feasibility checks, NOT Qt tests, native
+  pointer tests, compositor rendering, or visual acceptance.
+
+**Next source gate**, after locally reviewing the existing field-rim
+screenshots: decide whether INNER field-rim attachment is geometrically
+promising. Only then create a **private QML import/anchor experiment**
+using the inert slot solver with exact reviewed
+`bar.layoutRecords` for Wull's edge. Before turning it on, define
+and validate the actual popup/corner reservations and behavior when
+no free segment exists (hide or defer Wull; never default to overlapping
+a module). Watch for measurement reflow oscillation as Bar modules
+update their `naturalSpan`; use bounded hysteresis or hold only after
+behavior tests. Keep the old full original input mask for now.
+A separate shared-field material neck and the existing wave-simulator
+connection are STILL required after actual visual and occupancy
+evidence, as are other edges, scales and native pointer/popup tests.
+No production, `stable` or unrelated MegaQML changes.

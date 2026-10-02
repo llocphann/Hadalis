@@ -376,6 +376,32 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
                 "in the response, including quotations or code fences; do not "
                 "invent job IDs or resend an uncertain operation.\n"
             )
+        if protocol.get("code") == "unsupported_diagnosis":
+            prompt += (
+                "\nEvidence repair required: the previous HADALIS_DIAGNOSIS "
+                "referenced unavailable or unobserved worker evidence IDs. "
+                "Never repeat the completed turn or cite imaginary IDs. "
+                "Cite ONLY verified IDs in the supplied local job evidence; "
+                "if evidence is missing, collect a fresh, distinct bounded "
+                "diagnostic job only after inspecting existing job results "
+                "and confirming it cannot duplicate an indeterminate action. "
+                "Ordinary repository conclusions use normal source citations, "
+                "not HADALIS_DIAGNOSIS.\n"
+            )
+        if protocol.get("code") == "invalid_checkpoint":
+            prompt += (
+                "\nCheckpoint repair required: retain verified previous work. "
+                "Use at most one valid HADALIS_CHECKPOINT object, or omit "
+                "the checkpoint entirely when its details are uncertain. "
+                "Do not invent evidence IDs or replay completed actions.\n"
+            )
+        if protocol.get("kind") == "response_protocol" and profile.get("auto_protocol_recovery"):
+            prompt += (
+                "\nThis is a bounded protocol correction, not authorization "
+                "to repeat any previous changes, jobs, writes or network "
+                "mutations. Inspect immutable receipts before choosing the "
+                "next distinct action.\n"
+            )
         if protocol.get("code") == "foreign_job_owner":
             prompt += "\nThe previous WAIT_RESULT referenced " + protocol["job_id"] + ", owned by a different profile. Its result was not adopted. Inspect existing repository effects and the published result before deciding the next step; do not re-execute or reuse that job. Previous profiles' work can be cited as repository artifacts, but WAIT_RESULT must reference only a job authored for this managed profile ID.\n"
     if kind=="recovery":

@@ -152,3 +152,26 @@ successful visual run still does **not** authorize real MEGAcmd vendor
 execution, installed-version prompt/parser claims, authentication,
 account reads, synchronization or writes. Those require independent
 owner-approved disposable-client and capability qualification.
+
+## Optional owner-local Gate 0 helper (static bytes only)
+
+`scripts/megaqml-f1-deployed-source-identity.py` compares the **ten**
+source/deployed files enumerated in Gate 0, with an exact pinned Git SHA and
+clean tracked source files, without invoking MEGAcmd or reading account data.
+Run it only from the reviewed clean source checkout:
+
+```bash
+python3 scripts/megaqml-f1-deployed-source-identity.py \
+  --source-root "$CLEAN_CHECKOUT" \
+  --deployed-config-root "$ACTUAL_DEPLOYED_CONFIG" \
+  --expect-sha "$QUALIFIED_SOURCE_SHA"
+```
+
+These three variables must be established independently by the owner in a
+private terminal; the helper emits only fixed categories and counts, not
+paths or file content. An exit-zero `static_bytes_match` confirms only the
+compared bytes. It **cannot** verify the actual running process loaded that
+config, establish installed Rust helper identity, replace exact-source local
+qualification or count as a real mouse/visual observation. Never publish
+private installed paths or interpret a static match as full Gate 0 PASS.
+`scripts/test-megaqml-f1-deployed-source-identity.py` is fake-only.

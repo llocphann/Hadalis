@@ -22,8 +22,8 @@ assert not re.search(r"(?:\.png|\.gif|\.webp|\.apng|\.jpg|mascot/manifest)", bod
 outline = body.split("    Shape {\n        anchors.fill: parent", 1)[1].split(
     "    Rectangle {\n        width: 17", 1
 )[0]
-assert outline.count("PathCubic {") == 4, "body must have a procedural closed outline"
-assert "root.width * 0.07" in outline and "root.width * 0.93" in outline, (
+assert outline.count("PathCubic {") == 6, "six-lobe procedural plump outline required"
+assert "root.width * 0.035" in outline and "root.width * 0.965" in outline, (
     "plump lateral outline must not regress to the old narrow body"
 )
 for token in ("AbyssStyle.accent", "AbyssStyle.surfaceRaised",
@@ -41,7 +41,7 @@ assert "root.eyeOpen" in eye
 assert "root.gazeX" in eye and "root.gazeY" in eye
 assert eye.count("AbyssStyle.specular") >= 2, "two eye specular layers"
 cheeks = body.split("// Two small warm cheek glints", 1)[1].split(
-    "    Shape {\n        width: 24; height: 12", 1
+    "        Shape {\n            width: 24; height: 12", 1
 )[0]
 assert "model: 2" in cheeks and "radius: 2.5" in cheeks
 assert "root.pulse" in cheeks, "cheeks must respond to expressions"
@@ -49,6 +49,15 @@ for token in ("SpringAnimation", "stateSquash", "stateStretch",
               "stateLean", "stateTip", "on eyeOpen", "on mouthCurve",
               "SequentialAnimation on bob", "SequentialAnimation on sway"):
     assert token in body, token
+assert "property real orientationAngle: 0" in body
+assert "rotation: orientationAngle + sway" in body
+assert body.count("id: faceOverlay") == 1
+assert "rotation: -root.orientationAngle" in body
+assert 'orientationAngle: root.edge === "left" ? 90' in host
+assert not re.search(r'^\\s*rotation: root\\.edge', host, re.M)
+assert 'anchors.verticalCenter: root.verticalEdge ? parent.verticalCenter : undefined' in host
+assert 'anchors.left: root.edge === "left" ? parent.left : undefined' in host
+assert 'anchors.right: root.edge === "right" ? parent.right : undefined' in host
 assert "running: root.motionEnabled" in body
 assert "root.motionEnabled && AbyssStyle.quality" in body
 assert "Timer {" not in body

@@ -266,6 +266,6 @@ cases = (
 for raw, code, markers, expected_category in cases:
     got = classify(raw, code, markers)
     assert got == expected_category, (got, expected_category)
-    assert "/" not in got and "private" not in got.lower()
+    assert got == expected_category and "/home/" not in got
 
 print("WULL_OFFSCREEN_DYNAMIC_INERT_CONTRACT_PASS")

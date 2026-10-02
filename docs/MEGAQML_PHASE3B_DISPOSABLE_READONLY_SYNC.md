@@ -401,3 +401,84 @@ creation, login automation, file upload or mutation command
 is authorized. If no such approval is given, remain at
 this evidence boundary and continue only source-only
 research; do not unlock any runtime read path.
+
+## Owner-authorized controlled nonempty throwaway Sync fixture (source-staged)
+
+After the separate owner-local empty-branch result on
+`f5c689cea67d8e8db036b6c364274b7a78d7f69a`, the owner
+**explicitly approved** creating exactly **one new, empty local
+and remote Sync fixture**, only inside the already independent
+`megaqml-disposable` Linux user and existing empty throwaway
+MEGA account, observing it and cleaning it up. This is a
+narrow, time-bounded **test mutation authorization**; it
+does **not** authorize MEGA main-account use, account login,
+cloud-product writes, real transfers, production Connect,
+automated general provisioning or changes to any other Sync.
+
+The dedicated script
+`scripts/megaqml-phase3b-disposable-single-fixture.py` has
+three explicit modes: `--self-test` (no vendor),
+`--execute-fixture` (exact interactive operator consent,
+bounded fixed-argv vendor calls) and `--cleanup-only`
+(independent operator-confirmed recovery of only the existing
+private journal fixture after interruption). It runs only
+directly on the owner's installed Linux host under
+`megaqml-disposable`, never in an application runtime.
+Its separate fake-only companion test never calls vendor.
+
+Owner-only ordered test acceptance:
+1. Existing UID, HOME and independent runtime, vetted package
+   binary/libraries and exactly one pre-running dedicated
+   server must all match. Manual no-echo entry must match
+   `whoami`; no caller environment credentials inherited.
+2. Immediately before provisioning, an exact clean
+   selected-column Sync blank-line response **and** an exact
+   clean empty root listing must be observed; otherwise
+   **do not create anything**. One random nonce generates
+   one unique local folder and one unique remote root
+   folder. An exclusive 0600 private home journal and lock
+   prevent untracked/reentrant experiments.
+3. Create the empty local test folder, then create and
+   verify the random remote root folder; only then create
+   **one** MEGAcmd Sync. Every vendor command uses a
+   bounded subprocess with capped stdout/stderr entirely
+   in memory. Recheck account and dedicated server before
+   mutations. No test files are placed in either folder.
+4. Obtain exact whole-table `ID|LOCALPATH|REMOTEPATH|
+   RUN_STATE|STATUS`, separately a single-response
+   `ID|RUN_STATE|STATUS`, then the original five-column
+   table again. Require exactly one permitted syntactic ID,
+   unchanged across all three responses, with both original
+   same-response local and remote fixture paths. Finite
+   run state and status may legitimately change between
+   snapshots. Observed stability is **not** a transactional
+   vendor epoch or production qualification.
+5. Remove a discovered Sync only by the nonce-derived
+   exclusive local path, only after a separate `ID|LOCALPATH`
+   snapshot proves the one Sync belongs to this fixture.
+   Verify subsequent Sync list is exactly one blank line.
+   Only then, with identity rechecked and a successful
+   exact empty `ls` of the nonce-derived remote folder,
+   allow the narrowly scoped `rm -r -f` of that folder.
+   Recheck the root returns its original empty form.
+   Finally use local `rmdir` (not recursive delete),
+   require the local test folder to be empty, and remove
+   the private journal only after full safe cleanup.
+6. If any proof fails, leave uncertain resources
+   untouched, report only fixed booleans/reason and
+   retain the owner-private journal for
+   `--cleanup-only`. Do not print nonce, journal, remote
+   path, account email, stdout, stderr or test Sync ID.
+   Do not rerun creation while a prior journal exists.
+   On every outcome **keep Phase 3b unqualified** and
+   production live-auth plus all ten cloud domains disabled.
+
+The locally observed original blank-line branch no
+longer needs repeating on its own. This fixture is the
+next source-staged test; its actual on-host mutation,
+vendor output grammar and safe cleanup remain
+**unobserved until the owner returns finite results**.
+Only if the observed nonempty row meets these gates
+should subsequent source-only work design independently
+correlated identity and refresh epochs; no automatic
+feature-gate promotion.

@@ -22,7 +22,7 @@ assert model["EDGES"] == ("top", "right", "bottom", "left")
 assert model["SCALES"] == (0.65, 1.0, 1.5)
 assert model["DYNAMIC_FIXTURE"] == "scripts/wull-fixtures/motion-envelope/shell.qml"
 assert model["DYNAMIC_PINS"][model["DYNAMIC_FIXTURE"]] == (
-    "221c07d0a451ba918e3e2074aeafe389e588f594")
+    "6e3b5402d32d263868c1ec688925adba0fd7250b")
 assert model["DYNAMIC_PINS"][model["FROZEN_RUNNER"]] == (
     "0dd833ed05d54e9d1045553a1da8be8f66b6511a")
 assert model["DYNAMIC_PINS"][model["FROZEN_RECEIPT"]] == (
@@ -35,7 +35,7 @@ def blob(path):
         b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
 
 
-assert blob(RUNNER) == "c152a1fec7a5a1514407d7850549f987923621c2"
+assert blob(RUNNER) == "9978fa6da0fd2e05b7d52a801fc9cce4a4e5131d"
 for name, digest in model["DYNAMIC_PINS"].items():
     assert blob(ROOT / name) == digest, name
 assert model["frozen"]["PINNED"][
@@ -69,6 +69,14 @@ for literal in (
     "WULL_OFFSCREEN_DYNAMIC_GEOMETRY ",
     "WULL_OFFSCREEN_DYNAMIC_INVALID",
     "WULL_OFFSCREEN_DYNAMIC_TIMEOUT",
+    "WULL_OFFSCREEN_DYNAMIC_STAGE=",
+    'root.stage("BOOT")',
+    'root.stage("FROZEN_VERIFIED")',
+    'root.stage("NEUTRAL_VERIFIED")',
+    'root.stage("STRETCH_SAMPLE")',
+    'root.stage("RELEASE_START")',
+    'root.stage("RELEASE_SAMPLE")',
+    'root.stage("SAMPLING_DONE")',
 ):
     assert literal in qml, literal
 assert qml.count("delegate: AbyssCompanion {") == 1
@@ -87,6 +95,9 @@ for literal in (
     "resource.setrlimit(resource.RLIMIT_FSIZE, (MAX_LOG, MAX_LOG))",
     '"QML_IMPORT_PATH", "QML2_IMPORT_PATH"',
     "private_dynamic_child_cleanup_unverified",
+    "PRIVATE_QS_EXIT_CLASS=",
+    "PRIVATE_QML_LAST_STAGE=",
+    "private_dynamic_qml_stage_sequence_inconclusive",
     '"mapped_frame_change_witness", "bob_witness"',
     "os.killpg(proc.pid, 0)",
     "os.killpg(proc.pid, signal.SIGTERM)",
@@ -267,5 +278,26 @@ for raw, code, markers, expected_category in cases:
     got = classify(raw, code, markers)
     assert got == expected_category, (got, expected_category)
     assert got == expected_category and "/home/" not in got
+
+# The 312-byte 3-line old log is not a runtime verdict: the future
+# controlled rerun must distinguish private child exit from QML stage failure.
+stages = model["EXPECTED_STAGES"]
+summarize = model["private_stage_summary"]
+assert stages == (
+    "BOOT", "SETUP_START", "FROZEN_VERIFIED", "NEUTRAL_VERIFIED",
+    "STRETCH_SAMPLE", "RELEASE_START", "RELEASE_SAMPLE", "SAMPLING_DONE")
+clean_stage_log = "\n".join(
+    "private safe stage WULL_OFFSCREEN_DYNAMIC_STAGE=" + name for name in stages)
+assert summarize(clean_stage_log) == list(stages)
+assert summarize("three private startup log lines only") == []
+assert summarize(clean_stage_log + "\nWULL_OFFSCREEN_DYNAMIC_STAGE=BOOT") is None
+assert summarize(clean_stage_log + "\nWULL_OFFSCREEN_DYNAMIC_STAGE=SECRET") is None
+assert summarize(clean_stage_log.splitlines()[0]) == ["BOOT"]
+assert summarize(clean_stage_log.replace("NEUTRAL_VERIFIED", "SECRET")) is None
+for value, status in ((0, "ZERO"), (2, "NONZERO"), (-9, "SIGNAL"),
+                      (None, "NOT_RECORDED"), ("0", "NOT_RECORDED")):
+    assert model["private_exit_class"](value) == status
+# Marker and stage classifications do not contain any private line content.
+assert "private" not in "\n".join(stages).lower()
 
 print("WULL_OFFSCREEN_DYNAMIC_INERT_CONTRACT_PASS")

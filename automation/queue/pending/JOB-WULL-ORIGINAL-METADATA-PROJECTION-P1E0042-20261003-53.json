@@ -1,0 +1,30 @@
+{
+  "id": "JOB-WULL-ORIGINAL-METADATA-PROJECTION-P1E0042-20261003-53",
+  "base_sha": "b759c369745353094cd1b9e1e67c2894ce699ce8",
+  "profile_id": "profile-1e0042aca8e24db2",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-I",
+          "-c",
+          "import ast,pathlib; ast.parse(pathlib.Path('scripts/wull-original-metadata-projection.py').read_text(encoding='utf-8')); print('SOURCE_PARSE=PASS')"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 30
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/wull-original-metadata-projection.py",
+          "--prepare-safe-only"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 75
+      }
+    }
+  ]
+}

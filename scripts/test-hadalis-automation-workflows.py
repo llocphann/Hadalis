@@ -137,6 +137,36 @@ def main():
             control.profile_action("stop",a);daemon.tick(222)
             assert store.read_snapshot()[1]["profiles"][a]["desired"]=="stopped"
             assert t.count("resume")==0 and t.count("submit")==3
+    # A completed response with no valid loop directive is not a transport
+    # failure. Owner Resume must keep the finished response, use a fresh user
+    # message on its existing verified branch, and state the exact protocol.
+    with environment():
+        pid=profile("Protocol repair");t=Transport()
+        with patch.object(daemon,"native_command",side_effect=t):
+            daemon.tick(100)
+            original=t.pending(pid).copy()
+            t.reply(pid,"Completed the repository review, but omitted the final control marker.")
+            daemon.tick(102)
+            before=store.read_snapshot()[1]["profiles"][pid]
+            assert before["status"]=="evidence_required"
+            assert before["recovery"]["code"]=="invalid_directive"
+            assert before["desired"]=="paused" and before["pending"] is None
+            saved_response=before["response_message_id"]
+            assert saved_response
+            with patch.object(control,"_ensure_runtime_services"),patch.object(control,"_await_dispatch"):
+                control.profile_action("resume",pid)
+            daemon.tick(104)
+            after=store.read_snapshot()[1]["profiles"][pid]
+            assert after["pending"] and after["pending"]["user_message_id"]!=original["user_message_id"]
+            assert after["pending"]["conversation_id"]==original["conversation_id"]
+            assert after["pending"]["parent_message_id"]==saved_response
+            assert t.count("submit")==2
+            correction=[data for op,data in t.calls if op=="submit"][-1]["prompt"]
+            assert "Protocol repair required" in correction
+            assert "EXACTLY ONE" in correction and "as its last line" in correction
+            assert "do not repeat them" in correction
+            assert "do not invent job IDs" in correction
+
     print("PASS: generic evidence/checkpoints, quarantine, failure recovery and isolated superseded turns without prompt replay or stream reattachment")
 
 

@@ -28,6 +28,8 @@ LOCAL_RECEIPT_POLL_SECONDS = 30
 CHAT_HISTORY_POLL_SECONDS = max(60, min(300, int(os.environ.get("HADALIS_CHAT_HISTORY_POLL_SECONDS", "120"))))
 RATE_LIMIT_SECONDS = max(60, min(300, int(os.environ.get("HADALIS_RATE_LIMIT_SECONDS", "120"))))
 MAX_RATE_LIMIT_SECONDS = 1800
+MAX_AUTOMATIC_PROTOCOL_REPAIRS = 2
+PROTOCOL_REPAIR_BASE_DELAY_SECONDS = 120
 TRANSPORT_POLL_SPACING_SECONDS = max(1, min(30, int(os.environ.get("HADALIS_TRANSPORT_POLL_SPACING_SECONDS", "10"))))
 CONCURRENCY = max(1, min(8, int(os.environ.get("HADALIS_MANAGER_CONCURRENCY", "4"))))
 _INFLIGHT = {}
@@ -647,9 +649,38 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
             poll_errors=0, last_error="", status_detail="", transport_observation=None, last_activity_at_unix=now,
             last_success=directive.kind.value if directive else "protocol_error", loop_state=directive.kind.value.lower() if directive else "protocol_error")
         if protocol_error:
+            recovery = {"kind":"response_protocol","code":protocol_code,
+                        "response_message_id":response["message_id"]}
+            attempts = current.get("protocol_repair_attempts", 0)
+            safe_repair = (
+                _profile(c, profile_id).get("auto_protocol_recovery") is True
+                and _profile(c, profile_id)["mode"] == "continuous"
+                and protocol_code in {"invalid_directive", "invalid_checkpoint",
+                                      "unsupported_diagnosis"}
+                and current["desired"] == "run"
+                and current.get("request") == "continuation"
+                and current.get("job_id") is None
+                and not current.get("remove_requested")
+                and isinstance(current.get("session"), dict)
+                and current["session"].get("conversation_id")
+                and current.get("response_message_id") == response["message_id"]
+            )
+            event(s, profile_id, "response_protocol_error", protocol_error)
+            if safe_repair and type(attempts) is int and 0 <= attempts < MAX_AUTOMATIC_PROTOCOL_REPAIRS:
+                # A NEW correction turn, never the original message replay.
+                # Every retry rechecks the exact current chat branch in _submit.
+                # Persist this budget before dispatch, including scheduler reboot.
+                current.update(status="recovering_protocol", last_error=protocol_error,
+                    recovery=recovery, protocol_repair_attempts=attempts + 1,
+                    next_run_at_unix=now + PROTOCOL_REPAIR_BASE_DELAY_SECONDS * (2 ** attempts))
+                event(s, profile_id, "protocol_repair_scheduled", protocol_code)
+                return
             current.update(desired="paused",status="evidence_required",last_error=protocol_error,
-                recovery={"kind":"response_protocol","code":protocol_code,"response_message_id":response["message_id"]})
-            event(s,profile_id,"response_protocol_error",protocol_error);return
+                recovery=recovery)
+            if safe_repair and attempts >= MAX_AUTOMATIC_PROTOCOL_REPAIRS:
+                event(s, profile_id, "protocol_repair_exhausted", protocol_code)
+            return
+        current["protocol_repair_attempts"] = 0
         if (current.get("recovery") or {}).get("kind") == "response_protocol":current["recovery"] = None
         if checkpoint is not None: current["checkpoint"] = checkpoint
         event(s, profile_id, "response", directive.kind.value)

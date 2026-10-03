@@ -16,6 +16,21 @@ QML -> daemon semantic event:
 
 Rules: one JSON object per line; `v` and monotonic `seq` required; messages are semantic state/events only, never frames or pixels; unknown fields are ignored; unknown versions/types are rejected; malformed or oversized input must not terminate the daemon; hidden state must not require periodic QML updates.
 
+## Sparse walking suggestions
+
+State messages additionally carry `travel_id` (initially zero) and
+`travel_target` (initially 0.5). A new positive ID requests one destination;
+the target is a finite fraction in 0..1. Rust chooses these sparsely during
+an already scheduled visible-idle action, with no extra timer or frame stream.
+Hover, tasks and explicit hide cancel the idle schedule; hide resets the ID.
+
+QML accepts safe integer IDs monotonically, ignores missing fields from an
+older daemon, and maps each new target into the current verified free Bar
+interval. The host validates every intermediate position, applies local
+Blender-authored gait curves and owns interpolation. An unavailable safe path
+does not move Wull. Stable panel/popup relocation is owned by the existing
+surface host, independently of a daemon destination suggestion.
+
 ## Personality and appearance preferences
 
 The single bridge sends preferences before the first `show`, again after a

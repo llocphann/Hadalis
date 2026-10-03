@@ -2,6 +2,11 @@
 
 // Semantic vocabulary for the renderer, Rust bridge and future local AI.
 var names = ["idle", "happy", "excited", "thinking", "working", "surprised", "sleepy", "sad", "alert"]
+// Shared immutable layouts: changing shimmer must not allocate new arrays.
+var dropletSize = [13.5, 14, 11, 6.5, 4, 4.5, 4, 3]
+var shineX = [9, 64, 4, 66, 58]
+var shineY = [20, 14, 48, 43, 73]
+var bubblePhase = [3.35, 0.40, 4.10, 5.40, 4.78, 5.08, 2.50, 0.03]
 
 function resolve(expression, mood, activity) {
     if (names.indexOf(expression) >= 0) return expression

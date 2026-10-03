@@ -143,6 +143,10 @@ pub struct StateSnapshot {
     pub body: BodyTargets,
     pub face: FaceTargets,
     pub pulse: f32,
+    // A destination suggestion, never frame traffic. The host maps it into
+    // its current verified free interval and owns local path interpolation.
+    pub travel_id: u64,
+    pub travel_target: f32,
 }
 
 impl StateSnapshot {
@@ -157,6 +161,8 @@ impl StateSnapshot {
             body: BodyTargets::default(),
             face: FaceTargets::default(),
             pulse: 0.0,
+            travel_id: 0,
+            travel_target: 0.5,
         }
     }
 
@@ -437,6 +443,7 @@ enum ScheduledAction {
     BlinkClose,
     BlinkOpen,
     IdleCuriosity,
+    Wander,
     EndIntent,
 }
 
@@ -463,6 +470,7 @@ pub struct Engine {
     phase: Phase,
     last_input_seq: Option<u64>,
     next_output_seq: u64,
+    next_travel_id: u64,
     scheduled: Option<Scheduled>,
     rng_state: u64,
     preferences: Preferences,
@@ -482,6 +490,7 @@ impl Engine {
             phase: Phase::Dormant,
             last_input_seq: None,
             next_output_seq: 1,
+            next_travel_id: 1,
             scheduled: None,
             intent_restore: None,
             preferences: Preferences::default(),
@@ -608,6 +617,18 @@ impl Engine {
                     at_ms: now_ms.saturating_add(700),
                     action: ScheduledAction::Settle,
                 });
+            }
+            ScheduledAction::Wander => {
+                if self.state.visibility != Visibility::Present || self.hovered || self.task_active
+                {
+                    return None;
+                }
+                self.state.travel_id = self.next_travel_id;
+                self.next_travel_id = self.next_travel_id.saturating_add(1);
+                self.state.travel_target = (self.next_random() % 1001) as f32 / 1000.0;
+                self.state.gaze = [(self.state.travel_target - 0.5) * 0.6, 0.0];
+                self.phase = Phase::Curious;
+                self.schedule_settle(now_ms, 5_000);
             }
             ScheduledAction::EndIntent => {
                 self.restore_intent();
@@ -938,7 +959,7 @@ impl Engine {
     }
 
     fn schedule_idle(&mut self, now_ms: u64) {
-        if self.state.visibility != Visibility::Present {
+        if self.state.visibility != Visibility::Present || self.hovered || self.task_active {
             self.scheduled = None;
             return;
         }
@@ -949,7 +970,9 @@ impl Engine {
             Personality::Balanced => 6_000 + (random % 5_001),
             Personality::Energetic => 3_000 + (random % 3_001),
         };
-        let action = if random.is_multiple_of(5) {
+        let action = if random.is_multiple_of(3) {
+            ScheduledAction::Wander
+        } else if random.is_multiple_of(5) {
             ScheduledAction::IdleCuriosity
         } else {
             ScheduledAction::BlinkClose
@@ -985,6 +1008,46 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use std::io::Cursor;
+
+    #[test]
+    fn wandering_is_sparse_bounded_and_cancelled_by_hover_task_or_hide() {
+        let mut engine = super::Engine::new(91);
+        engine
+            .apply_line(br#"{"v":1,"seq":1,"type":"event","event":"show"}"#, 0)
+            .unwrap();
+        let mut now = 0;
+        let mut previous = 0;
+        for _ in 0..80 {
+            now = engine.next_deadline_ms().unwrap();
+            let message = engine.tick(now).unwrap();
+            assert!((0.0..=1.0).contains(&message.state.travel_target));
+            assert!(message.state.travel_id >= previous);
+            previous = message.state.travel_id;
+        }
+        assert!(previous > 0, "visible idle should actually explore");
+        engine
+            .apply_line(
+                br#"{"v":1,"seq":2,"type":"event","event":"hover","active":true}"#,
+                now,
+            )
+            .unwrap();
+        assert_eq!(engine.next_deadline_ms(), None);
+        assert!(engine.tick(now + 600_000).is_none());
+        engine
+            .apply_line(
+                br#"{"v":1,"seq":3,"type":"event","event":"task_start"}"#,
+                now,
+            )
+            .unwrap();
+        assert_eq!(engine.next_deadline_ms(), None);
+        assert!(engine.tick(now + 600_000).is_none());
+        engine
+            .apply_line(br#"{"v":1,"seq":4,"type":"event","event":"hide"}"#, now)
+            .unwrap();
+        assert_eq!(engine.state().travel_id, 0);
+        assert_eq!(engine.next_deadline_ms(), None);
+        assert!(engine.tick(now + 3_600_000).is_none());
+    }
 
     use super::{
         Activity, BoundedLine, Engine, Expression, MAX_LINE_BYTES, Mood, Phase, ProtocolError,

@@ -37,7 +37,7 @@ ApplicationWindow {
         width: 1200; height: 830
         color: "#020c18"
         Text { x: 24; y: 22; text: "Wull — liquid material"; color: "#e2f7ff"; font.pixelSize: 30; font.bold: true }
-        Text { x: 24; y: 61; text: "Actual QML renderer · same live Abyss accent · centered tip · four water feet"; color: "#84adce"; font.pixelSize: 15 }
+        Text { x: 24; y: 61; text: "Actual QML renderer · same live Abyss accent · centered tip · two feet and two hands"; color: "#84adce"; font.pixelSize: 15 }
         Repeater {
             id: tiers
             model: ["performance", "balanced", "quality"]
@@ -112,7 +112,15 @@ ApplicationWindow {
                 const body = tiers.itemAt(i).specimen
                 root.require(body.materialReady && body.qualityLevel === i, "material tier not rendered")
                 root.require(body.accentColor.toString() === AbyssStyle.accent.toString(), "theme binding lost")
-                root.require(root.find(body, "wullWaterFeet").count === 4, "quality tier lost feet")
+                const limbs=root.find(body,"wullWaterLimbs")
+                root.require(limbs.count===4,"quality tier lost limbs")
+                let hands=0, feet=0
+                for (let j=0;j<limbs.count;j++) {
+                    const limb=limbs.itemAt(j)
+                    if (limb.hand) { hands++; root.require(limb.y<60,"hand at ground height") }
+                    else { feet++; root.require(limb.y>68,"foot above ground") }
+                }
+                root.require(hands===2 && feet===2,"Wull must have two hands and two feet")
                 root.require(root.find(body, "wullExternalDroplets").count === [3,6,8][i], "tier droplet budget wrong")
                 root.require((root.find(body, "wullFloorReflectionSource").sourceItem !== null) === (i > 0), "floor capture tier budget wrong")
             }

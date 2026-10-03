@@ -7,7 +7,7 @@ layout(std140,binding=0) uniform buf {
     vec4 accent;
     vec4 specular;
     vec4 motion;
-    vec4 feet; // projected camera-facing foot contacts in this surface
+    vec4 feet; // projected foot positions (xy) and ground-contact weights (zw)
     vec4 rendering;
 };
 layout(binding=1) uniform sampler2D surfaceSource;
@@ -41,8 +41,8 @@ void main() {
     vec4 rings=vec4(mix(hue,light,0.50)*caustic,caustic);
     vec2 leftContact=(uv-vec2(feet.x,0.51))/vec2(0.065,0.060);
     vec2 rightContact=(uv-vec2(feet.y,0.51))/vec2(0.065,0.060);
-    float contact=(exp(-dot(leftContact,leftContact)*1.8)
-        +exp(-dot(rightContact,rightContact)*1.8))*0.72*mask;
+    float contact=(exp(-dot(leftContact,leftContact)*1.8)*feet.z
+        +exp(-dot(rightContact,rightContact)*1.8)*feet.w)*0.72*mask;
     vec4 contactLight=vec4(mix(hue,light,0.72)*contact,contact);
     float haze=exp(-dot(disc/vec2(0.68,0.58),disc/vec2(0.68,0.58))*2.0)*0.11;
     vec4 floorGlow=vec4(hue*haze,haze);

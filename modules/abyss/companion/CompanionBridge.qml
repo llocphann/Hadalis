@@ -40,6 +40,8 @@ Item {
     property real eyeOpen: 1
     property real mouthCurve: 0.12
     property real pulse: 0
+    property double travelId: 0
+    property real travelTarget: 0.5
 
     signal stateAccepted(double sequence)
 
@@ -70,6 +72,8 @@ Item {
         root.eyeOpen = 1
         root.mouthCurve = 0.12
         root.pulse = 0
+        root.travelId = 0
+        root.travelTarget = 0.5
     }
 
     function scheduleRestart() {
@@ -185,6 +189,10 @@ Item {
         root.eyeOpen = root.boundedNumber(face.eye, root.eyeOpen, 0.05, 1)
         root.mouthCurve = root.boundedNumber(face.mouth, root.mouthCurve, -1, 1)
         root.pulse = root.boundedNumber(message.pulse, root.pulse, 0, 1)
+        root.travelTarget = root.boundedNumber(message.travel_target, root.travelTarget, 0, 1)
+        if (message.visibility === "hidden") root.travelId = 0
+        else if (Number.isSafeInteger(message.travel_id) && message.travel_id >= root.travelId)
+            root.travelId = message.travel_id
         root.ready = true
         if (!wasReady)
             stableConnectionTimer.restart()

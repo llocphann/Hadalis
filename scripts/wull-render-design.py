@@ -21,6 +21,7 @@ def main():
     destination.add_argument("--output", type=Path)
     destination.add_argument("--frames", type=Path, help="existing empty directory for 180 real QML frames")
     parser.add_argument("--software", action="store_true")
+    parser.add_argument("--motion", action="store_true", help="walking and emergence study using the actual host")
     args = parser.parse_args()
     output = (args.output or args.frames).resolve()
     if args.output and (output.exists() or not output.parent.is_dir()):
@@ -33,7 +34,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="wull-design-") as temporary:
         private = Path(temporary)
         shell, xdg = core["staged"](private)
-        (shell / "shell.qml").write_text((ROOT / "wullDesign.qml").read_text())
+        (shell / "shell.qml").write_text((ROOT / ("wullMotion.qml" if args.motion else "wullDesign.qml")).read_text())
         env = core["private_env"](xdg, output)
         env.pop("WULL_VISUAL_MATRIX_PRIVATE_FILE", None)
         env.update({
@@ -68,7 +69,7 @@ def main():
         marker = "WULL_DESIGN_FRAMES=180_SAVED" if args.frames else "WULL_DESIGN_CAPTURE=SAVED"
         if code or any(message in log for message in bad) or marker not in log:
             for line in log.splitlines():
-                if "scene:" in line or "WULL_DESIGN_" in line:
+                if "scene:" in line or "WULL_DESIGN_" in line or "WULL_MOTION_" in line:
                     print(line)
             raise SystemExit("Wull QML capture failed")
         if args.output and not output.is_file():
@@ -76,6 +77,8 @@ def main():
         if args.frames and len(list(output.glob("frame-*.png"))) != 180:
             raise SystemExit("Wull animation capture did not create all frames")
         print("WULL_DESIGN_REAL_QML_CAPTURE_PASS")
+        for line in log.splitlines():
+            if "WULL_MOTION_BEHAVIOR=" in line: print(line.split("WULL_MOTION_BEHAVIOR=",1)[1])
         print(output)
 
 

@@ -90,3 +90,62 @@ function slot(options) {
             footprint:options.footprint, occupiedOnEdge:occupied,
             freeInterval:best.interval.slice()};
 }
+
+// Walking stays in ONE verified free interval, including every intermediate
+// position. Never interpolate across a bar module to reach another free slot.
+function wander(placement, current, fraction, scale) {
+    if (!placement || !placement.qualified || !Array.isArray(placement.freeInterval)
+        || placement.freeInterval.length !== 2 || !finite(current)
+        || !finite(fraction) || !finite(scale) || scale <= 0)
+        return {qualified:false};
+    const lo=placement.freeInterval[0], hi=placement.freeInterval[1];
+    if (!finite(lo) || !finite(hi) || lo > hi || current < lo || current > hi)
+        return {qualified:false};
+    const limit=160*scale;
+    let target=Math.max(current-limit,Math.min(current+limit,
+        lo+(hi-lo)*Math.max(0,Math.min(1,fraction))));
+    target=Math.max(lo,Math.min(hi,target));
+    const distance=Math.abs(target-current);
+    if (distance < 12*scale) return {qualified:false};
+    return {qualified:true,center:target,direction:target>=current?1:-1,
+        duration:Math.round(distance/(32*scale)*1000)};
+}
+
+function validRect(rect) {
+    return rect && [rect.x,rect.y,rect.width,rect.height].every(finite)
+        && rect.width>0 && rect.height>0;
+}
+function intersects(a,b,gap) {
+    return a.x < b.x+b.width+gap && a.x+a.width+gap > b.x
+        && a.y < b.y+b.height+gap && a.y+a.height+gap > b.y;
+}
+
+// Park beside a stable live Panel/Popup content rectangle. Keep the FULL host
+// and pointer Region clear of its content and every other occupied rectangle.
+// Candidate ranking depends on the source edge; failure hides, never overlaps.
+function besideSurface(rect, edge, outputWidth, outputHeight, width, height, blockers) {
+    if (!validRect(rect) || ![outputWidth,outputHeight,width,height].every(finite)
+        || Math.min(outputWidth,outputHeight,width,height)<=0
+        || !["top","right","bottom","left"].includes(edge)
+        || !Array.isArray(blockers) || blockers.length>512
+        || blockers.some(r=>!validRect(r))) return {qualified:false};
+    const gap=12;
+    const positions={
+        top:{x:rect.x+(rect.width-width)/2,y:rect.y-height-gap,source:"bottom"},
+        bottom:{x:rect.x+(rect.width-width)/2,y:rect.y+rect.height+gap,source:"top"},
+        left:{x:rect.x-width-gap,y:rect.y+(rect.height-height)/2,source:"right"},
+        right:{x:rect.x+rect.width+gap,y:rect.y+(rect.height-height)/2,source:"left"}
+    };
+    const order={top:["bottom","right","left","top"],bottom:["top","right","left","bottom"],
+        left:["right","bottom","top","left"],right:["left","bottom","top","right"]}[edge];
+    for (const side of order) {
+        const p=positions[side];
+        const candidate={x:p.x,y:p.y,width:width,height:height};
+        if (p.x<8 || p.y<8 || p.x+width>outputWidth-8 || p.y+height>outputHeight-8)
+            continue;
+        if (intersects(candidate,rect,gap-.001) || blockers.some(r=>intersects(candidate,r,8)))
+            continue;
+        return {qualified:true,x:p.x,y:p.y,emergenceEdge:p.source};
+    }
+    return {qualified:false};
+}

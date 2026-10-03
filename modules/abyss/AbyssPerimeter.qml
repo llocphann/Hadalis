@@ -153,12 +153,42 @@ Scope {
             // While modal/attached surfaces are open, never let the full Wull
             // host mask steal pointer interactions from their owners.
             readonly property bool companionOccluded: window.editorOpen
-                || utility.open || liquid.popupsOpen || popup.presented
-                || leftPanel.presented || rightPanel.presented
+                || utility.open || liquid.activeDialog || liquid.popupsOpen
+                || settings.presented || dashboardBody.presented || controls.presented
+                || aux.presented || clipboardBody.presented
+            readonly property var companionSurface: popup.presented && popup.ready && popup.progress > 0.99
+                ? {rect:popup.inputBounds,edge:popup.record?.edge ?? root.companionEdge,key:popup.contentKind}
+                : leftPanel.presented && leftPanel.ready && leftPanel.progress > 0.99
+                    ? {rect:leftPanel.inputBounds,edge:leftPanel.edge,key:"leftPanel"}
+                    : rightPanel.presented && rightPanel.ready && rightPanel.progress > 0.99
+                        ? {rect:rightPanel.inputBounds,edge:rightPanel.edge,key:"rightPanel"} : null
+            readonly property var companionSurfacePlacement: {
+                if (!window.companionSurface || window.companionOccluded)
+                    return {qualified:false}
+                const blockers=[]
+                if (bar.visible) {
+                    for (const r of bar.layoutRecords) {
+                        const horizontal=Geometry.horizontal(r.edge)
+                        const depth=Number(window.nativeInsets[r.edge])
+                        blockers.push(horizontal
+                            ? {x:r.along,y:r.edge === "top" ? 0 : window.height-depth,width:r.span,height:depth}
+                            : {x:r.edge === "left" ? 0 : window.width-depth,y:r.along,width:depth,height:r.span})
+                    }
+                }
+                for (const owner of [popup,leftPanel,rightPanel,dock,notification,toastBody,osd]) {
+                    if (owner.presented && owner.inputBounds !== window.companionSurface.rect)
+                        blockers.push(owner.inputBounds)
+                }
+                return WullSurfacePlacement.besideSurface(window.companionSurface.rect,
+                    window.companionSurface.edge,window.width,window.height,
+                    companion.implicitWidth*root.companionScale,
+                    companion.implicitHeight*root.companionScale,blockers)
+            }
             readonly property var companionPlacement: {
                 if (!root.companionSessionVisible
                         || root.companionTargetOutput !== window.outputName
-                        || !window.presented || window.companionOccluded)
+                        || !window.presented || window.companionOccluded
+                        || popup.presented || leftPanel.presented || rightPanel.presented)
                     return { qualified: false, reason: "INACTIVE_OR_SURFACE_OCCUPIED" }
                 const horizontal = Geometry.horizontal(root.companionEdge)
                 const extent = horizontal ? window.width : window.height
@@ -184,8 +214,8 @@ Scope {
                         : window.nativeInsets.bottom) + 32,
                     maxShift: Math.min(360, extent * 0.28),
                     records: records,
-                    // Popups are handled by companionOccluded until their
-                    // independent, live occupancy geometry is qualified.
+                    // A stable popup/panel uses its own beside-surface route;
+                    // edge wandering only consumes the verified Bar interval.
                     reservations: []
                 })
             }
@@ -193,7 +223,42 @@ Scope {
                 root.companionSessionVisible, companionBridge.ready,
                 root.companionTargetOutput, window.outputName,
                 window.presented, field.ready)
-                && window.companionPlacement.qualified
+                && (window.companionSurfacePlacement.qualified || window.companionPlacement.qualified)
+            property real companionWanderCenter: NaN
+            property int companionTravelDuration: 1000
+            property real companionTravelDirection: 1
+            property bool companionPathAllowed: false
+            onCompanionPlacementChanged: {
+                window.companionPathAllowed = false
+                window.companionWanderCenter = NaN
+            }
+            onCompanionSurfaceChanged: {
+                window.companionPathAllowed = false
+                window.companionWanderCenter = NaN
+            }
+            Connections {
+                target: companionBridge
+                function onTravelIdChanged(): void {
+                    if (!window.companionHostActive || window.companionSurface
+                            || !root.companionPreferences.animationsEnabled
+                            || !AbyssStyle.motionEnabled
+                            || companion.hovered || companionBridge.travelId === 0)
+                        return
+                    const horizontal=Geometry.horizontal(root.companionEdge)
+                    const current=(horizontal ? companion.x : companion.y)
+                        + (horizontal ? companion.implicitWidth : companion.implicitHeight)*0.5
+                    const route=WullSurfacePlacement.wander(window.companionPlacement,
+                        current,companionBridge.travelTarget,root.companionScale)
+                    if (!route.qualified) return
+                    window.companionTravelDuration = route.duration
+                    window.companionTravelDirection = route.direction
+                    window.companionPathAllowed = true
+                    window.companionWanderCenter = route.center
+                }
+                function onActivityChanged(): void {
+                    if (companionBridge.activity !== "idle") companion.stopTravel()
+                }
+            }
             function companionAlongPosition(): real {
                 const horizontal = Geometry.horizontal(root.companionEdge)
                 const extent = horizontal ? window.width : window.height
@@ -202,7 +267,8 @@ Scope {
                 const preferred = WullHostPolicy.alongPosition(extent, span,
                     root.companionAlong)
                 return window.companionPlacement.qualified
-                    ? window.companionPlacement.center : preferred
+                    ? Number.isFinite(window.companionWanderCenter)
+                        ? window.companionWanderCenter : window.companionPlacement.center : preferred
             }
             // Bind to the INNER shared shader-field rim where Wull is
             // located, including the real per-output Bar thickness and
@@ -250,7 +316,7 @@ Scope {
             }
             readonly property Region nativeInputMask: Region {
                 Region { regions: window.presented && field.ready && bar.visible ? bar.inputRegions : [] }
-                Region { item: WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible) ? companion : emptyInput }
+                Region { item: WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible && companion.inputReady) ? companion : emptyInput }
                 Region { regions: window.presented && field.ready && editor.visible ? editor.regions : [] }
                 Region { item: window.presented && revealTrigger.visible ? revealTrigger : emptyInput }
                 Region { item: window.presented && dockTrigger.visible ? dockTrigger : emptyInput }
@@ -415,6 +481,13 @@ Scope {
                 motionScale: WullPreferences.motionScale(root.companionPreferences.personality)
                 renderQuality: root.companionPreferences.renderQuality
                 translucency: root.companionPreferences.translucency
+                travelEnabled: window.companionPathAllowed
+                travelDuration: window.companionTravelDuration
+                travelDirection: window.companionTravelDirection
+                managedPlacement: true
+                emergenceEdge: window.companionSurfacePlacement.qualified
+                    ? window.companionSurfacePlacement.emergenceEdge : root.companionEdge
+                upright: window.companionSurfacePlacement.qualified
                 reveal: !window.companionHostActive ? 0
                     : companionBridge.visibility === "present" ? 1
                     : companionBridge.visibility === "peeking" ? 0.46 : 0
@@ -436,7 +509,9 @@ Scope {
                 // Scale is centered on the FULL host. Account for its
                 // outward half-extent so the rendered cradle, not the
                 // unscaled host rectangle, reaches the INNER field rim.
-                x: Geometry.horizontal(edge)
+                targetX: window.companionSurfacePlacement.qualified
+                    ? window.companionSurfacePlacement.x + (root.companionScale-1)*implicitWidth*0.5
+                    : Geometry.horizontal(edge)
                     ? window.companionAlongPosition() - implicitWidth * 0.5
                     : edge === "left"
                         ? window.companionFieldDepth() - 5
@@ -444,7 +519,9 @@ Scope {
                         : window.width - window.companionFieldDepth()
                             - implicitWidth + 5
                             - (root.companionScale - 1) * implicitWidth * 0.5
-                y: Geometry.horizontal(edge)
+                targetY: window.companionSurfacePlacement.qualified
+                    ? window.companionSurfacePlacement.y + (root.companionScale-1)*implicitHeight*0.5
+                    : Geometry.horizontal(edge)
                     ? edge === "top"
                         ? window.companionFieldDepth() - 5
                             + (root.companionScale - 1) * implicitHeight * 0.5

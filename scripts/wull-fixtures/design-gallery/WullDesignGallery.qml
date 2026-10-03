@@ -17,6 +17,7 @@ ApplicationWindow {
     property bool animate: true
     property real previewReveal: 1
     property real previewX: 115
+    property real previewDirection: 1
     property real previewYaw: -15
     readonly property string capturePath: Quickshell.env("WULL_DESIGN_CAPTURE") ?? ""
     readonly property bool capturing: capturePath.length > 0
@@ -57,6 +58,8 @@ ApplicationWindow {
                     energy: expressionProfile.energy
                     pulse: expressionProfile.shine ? 0.6 : 0.1
                     motionEnabled: root.animate && !root.capturing
+                    walking: previewTravel.running
+                    walkingDirection: root.previewDirection
                     opacity: root.previewReveal
                     reveal: root.previewReveal
                     onPressed: root.react("happy")
@@ -80,7 +83,10 @@ ApplicationWindow {
                             onClicked: {
                                 if (modelData === "Appear") root.previewReveal = 1
                                 else if (modelData === "Hide") root.previewReveal = 0
-                                else if (modelData === "Travel") root.previewX = root.previewX === 115 ? 200 : 115
+                                else if (modelData === "Travel") {
+                                    root.previewDirection = root.previewX === 115 ? 1 : -1
+                                    root.previewX = root.previewDirection > 0 ? 200 : 115
+                                }
                                 else root.react(modelData === "Tap" ? "happy" : modelData === "Notify" ? "alert" : "excited")
                             }
                         }
@@ -217,7 +223,7 @@ ApplicationWindow {
         }
     }
     Behavior on previewReveal { enabled: root.animate && !root.capturing; NumberAnimation { duration: 360; easing.type: Easing.OutCubic } }
-    Behavior on previewX { enabled: root.animate && !root.capturing; NumberAnimation { duration: 850; easing.type: Easing.InOutCubic } }
+    Behavior on previewX { enabled: root.animate && !root.capturing; NumberAnimation { id: previewTravel; duration: 885 } }
     Timer {
         interval: 50; running: root.framesPath.length > 0; repeat: true
         onTriggered: {
@@ -234,7 +240,9 @@ ApplicationWindow {
                 const phase = Math.floor(index / 18)
                 root.selectedExpression = Expressions.names[phase % 9]
                 root.previewReveal = phase === 9 ? 0 : 1
-                root.previewX = phase === 2 || phase === 3 ? 180 : 115
+                const nextX = phase === 2 || phase === 3 ? 180 : 115
+                root.previewDirection = nextX >= root.previewX ? 1 : -1
+                root.previewX = nextX
                 root.previewYaw = phase === 3 || phase === 6 ? 35 : phase === 4 ? 90 : phase === 5 ? 180 : 0
                 root.selectedAccent = root.themes[Math.floor(phase / 2) % 4].color
             }

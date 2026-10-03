@@ -45,25 +45,14 @@ bottom_marker = (
 # Historical pre-integration body stays SHA-pinned; current production is
 # intentionally evolving beyond the old one-line private cradle experiment.
 assert original_body.count(bottom_marker) == 1
-for marker in (
-    'orientationAngle: root.edge === "left" ? 90',
-    'anchors.bottom: root.edge === "top" ? parent.bottom : undefined',
-    'anchors.top: root.edge === "bottom" ? parent.top : undefined',
-
-    'anchors.horizontalCenter: root.verticalEdge ? undefined : parent.horizontalCenter',
-    'anchors.verticalCenter: root.verticalEdge ? parent.verticalCenter : undefined',
-    'anchors.left: root.edge === "left" ? parent.left : undefined',
-    'anchors.right: root.edge === "right" ? parent.right : undefined',
-):
-    assert body.count(marker) == 1, marker
+assert 'orientationAngle: root.upright ? 0 : root.edge === "left" ? 90' in body
 assert 'rotation: root.edge === "left" ? 90' not in body
 assert body.count("WaterDropletBody {") == 1
 assert "anchors.centerIn: parent" in body
 assert "transformOrigin: Item.Center" in body
-assert "color: AbyssStyle.surface" in body
-assert "border.width: 0" in body
-assert "width: root.verticalEdge ? 10 : 28" in body
-assert "height: root.verticalEdge ? 28 : 10" in body
+# The maintainer removed the detached dark neck. Ground light/reflection lives
+# in WaterDropletBody, not an opaque Rectangle painted below the host.
+assert "Rectangle {" not in body
 
 original = OLD_PERIMETER.read_text()
 source = PERIMETER.read_text()
@@ -75,10 +64,10 @@ assert 'binaryPath: root.companionEnabled ?' in source
 assert 'useNativeDispatcher: root.companionEnabled' in source
 mask = (
     "Region { item: WullHostPolicy.acceptsInput("
-    "window.companionHostActive, companion.interactive, companion.visible)"
+    "window.companionHostActive, companion.interactive, companion.visible && companion.inputReady)"
     " ? companion : emptyInput }"
 )
-assert original.count(mask) == source.count(mask) == 1
+assert source.count(mask) == 1
 for marker in (
     "readonly property var companionPlacement:",
     "return WullSurfacePlacement.slot({",
@@ -86,8 +75,8 @@ for marker in (
     "footprint: span + 16,",
     "maxShift: Math.min(360, extent * 0.28),",
     "cornerStart:", "cornerEnd:",
-    "&& window.companionPlacement.qualified",
-    "? window.companionPlacement.center : preferred",
+    "window.companionSurfacePlacement.qualified || window.companionPlacement.qualified",
+    "window.companionWanderCenter : window.companionPlacement.center : preferred",
     "function companionFieldDepth(): real",
     "const actual = window.bodyInsets(root.companionEdge, along, span)",
     "Math.max(AbyssStyle.perimeterThickness, depth)",
@@ -123,4 +112,5 @@ result = subprocess.run(
 )
 assert result.returncode == 0, "Pure production slot behavior failed"
 assert "WULL_PRODUCTION_SURFACE_SLOT_PASS" in result.stdout
+subprocess.run(["node", "scripts/test-wull-motion.cjs"], cwd=ROOT, check=True, timeout=35)
 print("WULL_PRODUCTION_FIELD_RIM_SURFACE_INTEGRATION_PASS")

@@ -1,5 +1,6 @@
 #version 440
-// Procedural glass. Bounded 6x8 contour: rounded belly and swept soft tip.
+// Implicit swept 3D liquid volume. Front intersections are analytic;
+// transmitted rays find the back interface with a bounded 18+5 search.
 layout(location=0) in vec2 qt_TexCoord0;
 layout(location=0) out vec4 fragColor;
 layout(std140,binding=0) uniform buf {
@@ -8,82 +9,204 @@ layout(std140,binding=0) uniform buf {
     vec4 accent;
     vec4 specular;
     vec4 motion; // shimmer, tip bend, pulse, effects gate
+    vec4 optics; // yaw (radians), volume/sphere/cornea variant, eye gaze x/y
 };
-vec2 cubic(vec2 a, vec2 b, vec2 c, vec2 d, float t) {
-    float u=1.0-t;
-    return u*u*u*a+3.0*u*u*t*b+3.0*u*t*t*c+t*t*t*d;
-}
-void edge(vec2 p, vec2 a, vec2 b, inout float distance2, inout float side) {
-    vec2 ab=b-a, ap=p-a;
-    vec2 q=ap-ab*clamp(dot(ap,ab)/max(dot(ab,ab),0.000001),0.0,1.0);
-    distance2=min(distance2,dot(q,q));
-    if ((a.y>p.y)!=(b.y>p.y)) {
-        if (p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x) side=-side;
+const float BOTTOM=-0.87, TOP=0.99, DEPTH=0.91;
+float radiusAt(float y) {
+    if (optics.y>0.5) return sqrt(max(0.0,0.89*0.89-y*y));
+    if (y<BOTTOM || y>TOP) return 0.0;
+    if (y<-0.23) {
+        float t=(y+0.23)/0.64;
+        return 0.93*sqrt(max(0.0,1.0-t*t));
     }
+    float t=clamp((y+0.23)/1.22,0.0,1.0);
+    // Full rounded belly, gentle shoulder and a small smooth cap. The late
+    // taper keeps the silhouette near 1:1 instead of a long pointed pear.
+    return 0.93*sqrt(max(0.0,1.0-t*t))*(1.0-0.70*smoothstep(0.32,1.0,t));
 }
-void curve(vec2 p, vec2 a, vec2 b, vec2 c, vec2 d, inout float dist, inout float side) {
-    vec2 previous=a;
-    for (int i=1;i<=8;i++) {
-        vec2 next=cubic(a,b,c,d,float(i)/8.0);
-        edge(p,previous,next,dist,side);
-        previous=next;
+float centerAt(float y) {
+    if (optics.y>0.5) return 0.0;
+    float t=clamp((y-BOTTOM)/(TOP-BOTTOM),0.0,1.0);
+    return 0.30*smoothstep(0.50,0.85,t)-0.22*smoothstep(0.84,1.0,t)
+        +motion.y*0.025*t*t*t;
+}
+vec3 modelPoint(vec3 p) {
+    float c=cos(optics.x), s=sin(optics.x);
+    return vec3(c*p.x-s*p.z,p.y,s*p.x+c*p.z);
+}
+vec3 worldVector(vec3 p) {
+    float c=cos(optics.x), s=sin(optics.x);
+    return vec3(c*p.x+s*p.z,p.y,-s*p.x+c*p.z);
+}
+float field(vec3 world) {
+    vec3 p=modelPoint(world);
+    float radial=length(vec2(p.x-centerAt(p.y),p.z/DEPTH))-radiusAt(p.y);
+    float low=optics.y>0.5 ? -0.89 : BOTTOM;
+    float high=optics.y>0.5 ? 0.89 : TOP;
+    return max(radial,max(low-p.y,p.y-high));
+}
+vec3 normalAt(vec3 world) {
+    vec3 p=modelPoint(world);
+    float r=radiusAt(p.y), x=p.x-centerAt(p.y);
+    float dr=(radiusAt(p.y+0.002)-radiusAt(p.y-0.002))/0.004;
+    float dc=(centerAt(p.y+0.002)-centerAt(p.y-0.002))/0.004;
+    vec3 n=vec3(x,-x*dc-r*dr,p.z/(DEPTH*DEPTH));
+    return normalize(worldVector(n)+vec3(0.0,0.000001,0.0));
+}
+float backInterface(vec3 entry, vec3 direction) {
+    float inside=0.0, outside=0.018;
+    for (int i=0;i<18;i++) {
+        float d=field(entry+direction*outside);
+        if (d>0.0) break;
+        inside=outside;
+        outside+=max(0.014,-d*0.85);
     }
+    for (int i=0;i<5;i++) {
+        float middle=(inside+outside)*0.5;
+        if (field(entry+direction*middle)<0.0) inside=middle;
+        else outside=middle;
+    }
+    return max(0.002,(inside+outside)*0.5);
 }
-float silhouette(vec2 p) {
-    float d=10.0, side=1.0;
-    vec2 tip=vec2(0.54+motion.y*0.025,0.08);
-    curve(p,tip,vec2(0.61,0.24),vec2(0.26,0.26),vec2(0.14,0.46),d,side);
-    curve(p,vec2(0.14,0.46),vec2(-0.015,0.60),vec2(-0.015,0.84),vec2(0.15,0.90),d,side);
-    curve(p,vec2(0.15,0.90),vec2(0.31,0.992),vec2(0.74,0.992),vec2(0.865,0.88),d,side);
-    curve(p,vec2(0.865,0.88),vec2(1.025,0.77),vec2(0.99,0.57),vec2(0.80,0.395),d,side);
-    curve(p,vec2(0.80,0.395),vec2(0.68,0.29),vec2(0.68,0.19),vec2(0.60,0.11),d,side);
-    curve(p,vec2(0.60,0.11),vec2(0.565,0.055),vec2(0.52,0.04),tip,d,side);
-    return sqrt(d)*side;
+float boxLight(vec3 direction, vec3 axis, vec2 size) {
+    axis=normalize(axis);
+    vec3 horizontal=normalize(cross(vec3(0.0,1.0,0.0),axis));
+    vec3 vertical=cross(axis,horizontal);
+    float facing=dot(direction,axis);
+    vec2 uv=vec2(dot(direction,horizontal),dot(direction,vertical))/max(0.001,facing);
+    vec2 edge=abs(uv)-size;
+    float distance=max(edge.x,edge.y);
+    return (1.0-smoothstep(-0.045,0.055,distance))*step(0.0,facing);
 }
-float spot(vec2 p, vec2 center, vec2 radius) {
-    vec2 q=(p-center)/radius;
-    return exp(-dot(q,q)*2.0);
+float hash(vec2 p) { return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+float ovalLight(vec3 direction, vec3 axis, vec2 size) {
+    axis=normalize(axis);
+    vec3 horizontal=normalize(cross(vec3(0.0,1.0,0.0),axis));
+    vec3 vertical=cross(axis,horizontal);
+    float facing=dot(direction,axis);
+    vec2 uv=vec2(dot(direction,horizontal),dot(direction,vertical))/max(0.001,facing);
+    uv/=size;
+    return exp(-dot(uv,uv)*2.0)*step(0.0,facing);
+}
+vec3 environment(vec3 direction, vec3 hue) {
+    direction=normalize(direction);
+    // Private procedural light rig: no wallpaper/window/desktop texture.
+    float rotation=motion.x*0.10;
+    direction.xz=mat2(cos(rotation),-sin(rotation),sin(rotation),cos(rotation))*direction.xz;
+    vec3 sky=vec3(0.003,0.006,0.016)+hue*(0.020+0.060*pow(1.0-abs(direction.y),3.0));
+    vec2 uv=vec2(atan(direction.x,direction.z)*9.0,(direction.y+0.35)*17.0);
+    vec2 cell=floor(uv), local=abs(fract(uv)-0.5);
+    vec2 aa=max(fwidth(uv),vec2(0.025));
+    float windows=(1.0-smoothstep(0.17-aa.x,0.17+aa.x,local.x))
+        *(1.0-smoothstep(0.29-aa.y,0.29+aa.y,local.y));
+    windows*=step(0.68,hash(cell))*smoothstep(-0.28,0.08,direction.y)
+        *(1.0-smoothstep(0.62,0.82,direction.y));
+    vec3 white=mix(pow(specular.rgb/max(specular.a,0.001),vec3(2.2)),vec3(1.0),0.28);
+    sky+=mix(hue,white,0.52)*windows*0.90;
+    sky+=white*ovalLight(direction,vec3(-1.0,0.45,-0.25),vec2(0.065,0.65))*100.0;
+    sky+=white*ovalLight(direction,vec3(-0.75,0.67,0.40),vec2(0.045,0.11))*55.0;
+    sky+=white*ovalLight(direction,vec3(1.0,0.70,-0.32),vec2(0.12,0.25))*125.0;
+    sky+=white*ovalLight(direction,vec3(0.90,0.18,0.45),vec2(0.08,0.15))*110.0;
+    sky+=white*ovalLight(direction,vec3(0.72,0.72,0.40),vec2(0.055,0.10))*65.0;
+    sky+=white*ovalLight(direction,vec3(-0.25,1.0,-0.30),vec2(0.18,0.10))*55.0;
+    sky+=hue*boxLight(direction,vec3(0.1,-0.8,0.6),vec2(0.70,0.06))*8.0;
+    return sky;
+}
+float fresnel(float cosine) {
+    float ior=optics.y>1.5 ? 1.376 : 1.333;
+    float f0=pow((ior-1.0)/(ior+1.0),2.0);
+    return f0+(1.0-f0)*pow(1.0-clamp(cosine,0.0,1.0),5.0);
+}
+vec3 film(vec3 color) {
+    color*=1.25;
+    // Compress light energy together, preserving the live panel hue instead
+    // of desaturating each RGB channel into an unrelated cyan material.
+    float peak=max(max(color.r,color.g),max(color.b,0.00001));
+    float mapped=(peak*(2.51*peak+0.03))/(peak*(2.43*peak+0.59)+0.14);
+    vec3 luminous=(color*(2.51*color+0.03))/(color*(2.43*color+0.59)+0.14);
+    vec3 compressed=mix(color/peak*mapped,luminous,smoothstep(0.55,2.0,peak));
+    return pow(clamp(compressed,0.0,1.0),vec3(1.0/2.2));
 }
 void main() {
-    vec2 p=qt_TexCoord0;
-    float d=silhouette(p);
-    float aa=max(fwidth(d)*0.65,0.0015);
+    vec2 q=vec2((qt_TexCoord0.x-0.5)*2.15,(0.515-qt_TexCoord0.y)*2.15);
+    float r=radiusAt(q.y), center=centerAt(q.y);
+    float c=cos(optics.x), s=sin(optics.x);
+    float halfWidth=r*sqrt(c*c+DEPTH*DEPTH*s*s);
+    float low=optics.y>0.5 ? -0.89 : BOTTOM;
+    float high=optics.y>0.5 ? 0.89 : TOP;
+    float d=max(abs(q.x-center*c)-halfWidth,max(low-q.y,q.y-high));
+    float aa=max(fwidth(d)*0.65,0.002);
     float cover=1.0-smoothstep(-aa,aa,d);
-    vec3 hue=accent.rgb/max(accent.a,0.001);
-    vec3 light=mix(specular.rgb/max(specular.a,0.001),vec3(0.93,0.99,1.0),0.55);
-    vec3 cyan=mix(hue,vec3(0.12,0.92,1.0),0.32);
-    vec3 glass=mix(hue*0.20,hue*0.70,smoothstep(0.12,0.75,p.y));
-    float core=spot(p,vec2(0.49,0.82),vec2(0.48,0.36));
-    glass=mix(glass,mix(cyan,light,0.63),core*0.96);
-    vec2 sphere=(p-vec2(0.5,0.67))/vec2(0.43,0.34);
-    float z=sqrt(max(0.0,1.0-dot(sphere,sphere)));
-    vec3 normal=normalize(vec3(sphere,z+0.15));
-    float softLight=max(0.0,dot(normal,normalize(vec3(-0.6,-0.5,0.8))));
-    glass*=0.8+softLight*0.40;
-    float depth=clamp(-d/0.18,0.0,1.0);
-    float rim=exp(-abs(d)*100.0);
-    float inner=exp(-abs(d+0.027)*74.0);
-    glass+=cyan*inner*0.35+light*rim*0.8;
-    float drift=motion.x*0.008;
-    float left=spot(p,vec2(0.205+drift,0.49),vec2(0.040,0.17));
-    float right=spot(p,vec2(0.795,0.47+drift),vec2(0.044,0.115));
-    float rightCatch=spot(p,vec2(0.75,0.36),vec2(0.027,0.040));
-    float tipLight=spot(p,vec2(0.55,0.16),vec2(0.022,0.085));
-    float base=spot(p,vec2(0.49,0.91),vec2(0.31,0.023));
-    glass=mix(glass,light,clamp(left*0.88+right*0.88+rightCatch*0.90+tipLight*0.78,0.0,1.0));
-    glass+=cyan*base*0.65;
-    glass+=mix(hue,vec3(0.72,0.48,1.0),0.35)*spot(p,vec2(0.75,0.82),vec2(0.06,0.055))*0.25;
-    // Sparse internal glints, no textures or wallpaper/window capture.
-    if (motion.w>0.5) {
-        for (int i=0;i<7;i++) {
-            float n=float(i);
-            vec2 c=vec2(0.30+0.37*fract(n*0.618),0.34+0.29*fract(n*0.381));
-            c.y-=motion.x*0.025;
-            glass+=cyan*spot(p,c,vec2(0.006))*0.33;
+    vec3 hue=pow(accent.rgb/max(accent.a,0.001),vec3(2.2));
+    float halo=exp(-max(d,0.0)*40.0)*(1.0-cover)*0.12*motion.w*(1.0+motion.z);
+    if (cover<0.001) {
+        fragColor=vec4(pow(hue,vec3(1.0/2.2))*halo,halo)*qt_Opacity;
+        return;
+    }
+    // Ray/ellipse intersection at this height, after actual 3D camera yaw.
+    float a=s*s+c*c/(DEPTH*DEPTH);
+    float b=2.0*(-s*(q.x*c-center)+c*q.x*s/(DEPTH*DEPTH));
+    float e=pow(q.x*c-center,2.0)+pow(q.x*s/DEPTH,2.0)-r*r;
+    float z=(-b+sqrt(max(0.0,b*b-4.0*a*e)))/(2.0*a);
+    vec3 surface=vec3(q,z), normal=normalAt(surface);
+    vec3 incident=vec3(0.0,0.0,-1.0);
+    float f=fresnel(normal.z);
+    if (optics.y>1.5) {
+        // Glossy dark eye under an implicit convex cornea. Its highlights
+        // follow surface normals and the same studio rig as the liquid body.
+        vec3 ray=reflect(incident,normal);
+        vec3 white=mix(pow(specular.rgb/max(specular.a,0.001),vec3(2.2)),vec3(1.0),0.28);
+        vec2 iris=(q-vec2(optics.z*0.10-0.05,optics.w*0.08-0.40))/vec2(0.39,0.23);
+        vec3 color=hue*(0.004+exp(-dot(iris,iris)*1.5)*3.2);
+        color+=environment(ray,hue)*f*0.12;
+        color+=white*ovalLight(ray,vec3(-0.65,0.85,0.60),vec2(0.50,0.45))*f*230.0;
+        color+=white*ovalLight(ray,vec3(0.90,-0.40,0.60),vec2(0.13,0.13))*f*110.0;
+        color+=hue*ovalLight(ray,vec3(-0.50,-0.60,0.70),vec2(0.20,0.17))*3.0;
+        fragColor=vec4(film(color)*cover,cover)*qt_Opacity;
+        return;
+    }
+    vec3 internal=refract(incident,normal,1.0/1.333);
+    float travel=backInterface(surface,internal);
+    vec3 exitPoint=surface+internal*travel;
+    vec3 exitNormal=normalAt(exitPoint);
+    vec3 transmitted=refract(internal,-exitNormal,1.333);
+    if (dot(transmitted,transmitted)<0.001) transmitted=reflect(internal,-exitNormal);
+    vec3 reflected=environment(reflect(incident,normal),hue);
+    vec3 absorption=exp(-(vec3(1.0)-hue)*travel*1.15);
+    // Transmitted studio lights are defocused through the liquid; the sharp
+    // HDR catches belong to the front reflection, not a flat patch inside it.
+    vec3 through=min(environment(transmitted,hue),vec3(0.90))*absorption*0.28;
+    vec3 middle=modelPoint(surface+internal*travel*0.5);
+    vec3 localCore=(middle-vec3(0.0,-0.59,0.0))/vec3(0.80,0.35,1.1);
+    float core=exp(-dot(localCore,localCore)*1.4);
+    vec3 white=mix(pow(specular.rgb/max(specular.a,0.001),vec3(2.2)),vec3(1.0),0.28);
+    through+=hue*(1.0-exp(-travel*0.80))*0.035;
+    through+=mix(hue,white,0.08)*core*(0.85+motion.z*0.25)*(optics.y>0.5 ? 0.15 : 1.0);
+    // Compact approximation of the luminous floor's focusing at the base.
+    vec2 leftFocus=(q-vec2(-0.44,-0.74))/vec2(0.15,0.060);
+    vec2 rightFocus=(q-vec2(0.44,-0.74))/vec2(0.15,0.060);
+    float caustic=exp(-dot(leftFocus,leftFocus)*1.5)+exp(-dot(rightFocus,rightFocus)*1.5);
+    through+=mix(hue,white,0.65)*caustic*1.0*(optics.y>0.5 ? 0.0 : 1.0);
+    vec3 color=reflected*f+through*(1.0-f);
+    float grazing=1.0-clamp(normal.z,0.0,1.0);
+    color+=hue*pow(grazing,2.6)*0.90+white*pow(grazing,5.0)*0.85;
+    if (motion.w>0.5 && optics.y<0.5) {
+        for (int i=0;i<24;i++) {
+            float index=float(i);
+            vec3 bubble=vec3((hash(vec2(index,1.0))-0.5)*1.1,
+                -0.48+hash(vec2(index,2.0))*1.08,(hash(vec2(index,3.0))-0.5)*0.8);
+            bubble.y+=motion.x*0.018;
+            bubble=worldVector(bubble);
+            float along=dot(bubble-surface,internal);
+            float offset=length(surface+internal*along-bubble);
+            float radius=0.007+hash(vec2(index,4.0))*0.018;
+            float edge=exp(-abs(offset-radius)*170.0)*step(0.0,along)*step(along,travel);
+            color+=mix(hue,white,0.65)*edge*0.25;
+            float glint=exp(-offset*offset/(radius*radius*0.08))
+                *step(0.0,along)*step(along,travel);
+            color+=mix(hue,white,0.40)*glint*0.45;
         }
     }
-    float alpha=cover*(0.90+depth*0.08);
-    vec4 body=vec4(clamp(glass,0.0,1.0)*alpha,alpha);
-    float halo=exp(-max(d,0.0)*65.0)*(1.0-cover)*0.10*motion.w*(1.0+motion.z);
-    fragColor=(body+vec4(hue*halo,halo))*qt_Opacity;
+    float alpha=cover*0.97;
+    fragColor=(vec4(film(color)*alpha,alpha)+vec4(pow(hue,vec3(1.0/2.2))*halo,halo))*qt_Opacity;
 }

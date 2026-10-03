@@ -39,6 +39,7 @@ def main():
         env.update({
             "WULL_DESIGN_CAPTURE": str(output) if args.output else "",
             "WULL_DESIGN_FRAMES": str(output) if args.frames else "",
+            "WULL_DESIGN_REFERENCE": str(ROOT / "docs/wull-visual/design-20261003/reference-closeup.png"),
             "QT_QPA_PLATFORM": "wayland",
             "QSG_RHI_BACKEND": "opengl",
             "QT_QUICK_BACKEND": "software" if args.software else "rhi",

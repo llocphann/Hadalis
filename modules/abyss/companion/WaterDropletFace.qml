@@ -1,6 +1,8 @@
 import QtQuick
 import QtQuick.Shapes
+import QtQuick.Window
 import qs.modules.abyss.looks
+import qs.modules.common.functions
 import "WullExpressions.js" as Expressions
 
 Item {
@@ -15,17 +17,17 @@ Item {
     property bool motionEnabled: true
     readonly property var profile: Expressions.profile(expression)
     readonly property real unit: width / 76
-    readonly property color ink: Qt.hsla(accent.hslHue, 0.78, 0.065, 1)
+    readonly property color ink: Qt.hsla(Math.max(0, accent.hslHue), accent.hslSaturation * 0.78, 0.065, 1)
     Repeater {
         model: 2
         Item {
             id: eye
             required property int index
             x: (index === 0 ? 15 : 47) * root.unit
-            y: 50 * root.unit
-            width: 14 * root.unit; height: 18 * root.unit
+            y: 46 * root.unit
+            width: 14 * root.unit; height: 16 * root.unit
             rotation: root.profile.worried ? (index === 0 ? 13 : -13) : 0
-            scale: root.profile.eyeScale
+            scale: root.profile.eyeScale * 0.78
             Behavior on scale { enabled: root.motionEnabled; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
             Item {
                 anchors.fill: parent
@@ -36,61 +38,76 @@ Item {
                     origin.x: eye.width * 0.5; origin.y: eye.height * 0.5
                     yScale: Math.max(0.06, root.eyeOpen)
                 }
-                Shape {
+                ShaderEffect {
+                    id: cornea
+                    anchors.fill: parent; anchors.margins: -root.unit
+                    visible: GraphicsInfo.api !== GraphicsInfo.Software && status !== ShaderEffect.Error
+                    property color accent: root.accent
+                    property color specular: ColorUtils.colorWithLightness(root.accent, 0.85)
+                    property vector4d motion: Qt.vector4d(0, 0, 0, 0)
+                    property vector4d optics: Qt.vector4d(0, 2, root.gazeX, root.gazeY)
+                    fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
+                }
+                Item {
                     anchors.fill: parent
-                    antialiasing: true
-                    preferredRendererType: Shape.CurveRenderer
-                    ShapePath {
-                        strokeWidth: root.unit * 0.65
-                        strokeColor: Qt.alpha(root.accent, 0.68)
-                        fillGradient: RadialGradient {
-                            centerX: eye.width * 0.52; centerY: eye.height * 0.93
-                            centerRadius: eye.height * 0.91
-                            focalX: centerX; focalY: centerY
-                            GradientStop { position: 0; color: Qt.lighter(root.accent, 1.6) }
-                            GradientStop { position: 0.36; color: Qt.darker(root.accent, 1.25) }
-                            GradientStop { position: 0.67; color: root.ink }
-                            GradientStop { position: 1; color: "#010610" }
+                    visible: GraphicsInfo.api === GraphicsInfo.Software || cornea.status === ShaderEffect.Error
+                    Shape {
+                        anchors.fill: parent
+                        antialiasing: true
+                        preferredRendererType: Shape.CurveRenderer
+                        ShapePath {
+                            strokeWidth: root.unit * 0.65
+                            strokeColor: Qt.alpha(root.accent, 0.68)
+                            fillGradient: RadialGradient {
+                                centerX: eye.width * 0.52; centerY: eye.height * 0.93
+                                centerRadius: eye.height * 0.91
+                                focalX: centerX; focalY: centerY
+                                GradientStop { position: 0; color: Qt.lighter(root.accent, 1.05) }
+                                GradientStop { position: 0.25; color: Qt.darker(root.accent, 1.25) }
+                                GradientStop { position: 0.50; color: root.ink }
+                                GradientStop { position: 1; color: "#010610" }
+                            }
+                            startX: eye.width * 0.5; startY: 0
+                            PathCubic { x: eye.width; y: eye.height * 0.5; control1X: eye.width * 0.82; control1Y: 0; control2X: eye.width; control2Y: eye.height * 0.20 }
+                            PathCubic { x: eye.width * 0.5; y: eye.height; control1X: eye.width; control1Y: eye.height * 0.82; control2X: eye.width * 0.82; control2Y: eye.height }
+                            PathCubic { x: 0; y: eye.height * 0.5; control1X: eye.width * 0.18; control1Y: eye.height; control2X: 0; control2Y: eye.height * 0.82 }
+                            PathCubic { x: eye.width * 0.5; y: 0; control1X: 0; control1Y: eye.height * 0.20; control2X: eye.width * 0.18; control2Y: 0 }
                         }
-                        startX: eye.width * 0.5; startY: 0
-                        PathCubic { x: eye.width; y: eye.height * 0.5; control1X: eye.width * 0.82; control1Y: 0; control2X: eye.width; control2Y: eye.height * 0.20 }
-                        PathCubic { x: eye.width * 0.5; y: eye.height; control1X: eye.width; control1Y: eye.height * 0.82; control2X: eye.width * 0.82; control2Y: eye.height }
-                        PathCubic { x: 0; y: eye.height * 0.5; control1X: eye.width * 0.18; control1Y: eye.height; control2X: 0; control2Y: eye.height * 0.82 }
-                        PathCubic { x: eye.width * 0.5; y: 0; control1X: 0; control1Y: eye.height * 0.20; control2X: eye.width * 0.18; control2Y: 0 }
                     }
-                }
-                Shape {
-                    x: 2 * root.unit; y: 10 * root.unit
-                    width: 10 * root.unit; height: 7 * root.unit
-                    preferredRendererType: Shape.CurveRenderer
-                    ShapePath {
-                        strokeWidth: 0
-                        fillGradient: RadialGradient {
-                            centerX: 5 * root.unit; centerY: 4 * root.unit
-                            centerRadius: 5 * root.unit
-                            focalX: centerX; focalY: centerY
-                            GradientStop { position: 0; color: "#b2fcff" }
-                            GradientStop { position: 0.35; color: root.accent }
-                            GradientStop { position: 1; color: Qt.alpha(root.accent, 0) }
+                    Shape {
+                        x: 2 * root.unit; y: 10 * root.unit
+                        width: 10 * root.unit; height: 7 * root.unit
+                        opacity: 0.65
+                        preferredRendererType: Shape.CurveRenderer
+                        ShapePath {
+                            strokeWidth: 0
+                            fillGradient: RadialGradient {
+                                centerX: 5 * root.unit; centerY: 4 * root.unit
+                                centerRadius: 3.4 * root.unit
+                                focalX: centerX; focalY: centerY
+                                GradientStop { position: 0; color: "#b2fcff" }
+                                GradientStop { position: 0.35; color: root.accent }
+                                GradientStop { position: 1; color: Qt.alpha(root.accent, 0) }
+                            }
+                            startX: 0; startY: 3.5 * root.unit
+                            PathArc { x: 10 * root.unit; y: 3.5 * root.unit; radiusX: 5 * root.unit; radiusY: 3.5 * root.unit }
+                            PathArc { x: 0; y: 3.5 * root.unit; radiusX: 5 * root.unit; radiusY: 3.5 * root.unit }
                         }
-                        startX: 0; startY: 3.5 * root.unit
-                        PathArc { x: 10 * root.unit; y: 3.5 * root.unit; radiusX: 5 * root.unit; radiusY: 3.5 * root.unit }
-                        PathArc { x: 0; y: 3.5 * root.unit; radiusX: 5 * root.unit; radiusY: 3.5 * root.unit }
                     }
-                }
-                Rectangle {
-                    x: (2.5 + root.gazeX * 1.5) * root.unit; y: (2.4 + root.gazeY) * root.unit
-                    width: 5.2 * root.unit; height: 4.4 * root.unit
-                    radius: width / 2; rotation: -25; color: "#f1fdff"
-                }
-                Rectangle {
-                    x: (9 + root.gazeX) * root.unit; y: (10 + root.gazeY) * root.unit
-                    width: 2.2 * root.unit; height: width; radius: width / 2; color: "#d3f9ff"
-                }
-                Rectangle {
-                    x: 4 * root.unit; y: 13 * root.unit
-                    width: 4.8 * root.unit; height: 2.6 * root.unit; radius: height / 2
-                    rotation: -25; color: Qt.alpha(Qt.lighter(root.accent, 1.5), 0.75)
+                    Rectangle {
+                        x: (2.5 + root.gazeX * 1.5) * root.unit; y: (2.4 + root.gazeY) * root.unit
+                        width: 4.0 * root.unit; height: 3.2 * root.unit
+                        radius: width / 2; rotation: -25; color: "#f1fdff"
+                    }
+                    Rectangle {
+                        x: (9 + root.gazeX) * root.unit; y: (10 + root.gazeY) * root.unit
+                        width: 2.2 * root.unit; height: width; radius: width / 2; color: "#d3f9ff"
+                    }
+                    Rectangle {
+                        x: 4 * root.unit; y: 13 * root.unit
+                        width: 4.8 * root.unit; height: 2.6 * root.unit; radius: height / 2
+                        rotation: -25; color: Qt.alpha(Qt.lighter(root.accent, 1.5), 0.75)
+                    }
                 }
             }
             Shape {
@@ -129,9 +146,9 @@ Item {
         model: 2
         Shape {
             required property int index
-            x: (index === 0 ? 12 : 53) * root.unit; y: 66 * root.unit
+            x: (index === 0 ? 12 : 53) * root.unit; y: 62 * root.unit
             width: 11 * root.unit; height: 5 * root.unit
-            opacity: 0.70 + root.pulse * 0.18
+            opacity: 0.45 + root.pulse * 0.18
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
                 strokeWidth: 0
@@ -151,8 +168,9 @@ Item {
     }
     Item {
         id: mouth
-        x: 31 * root.unit; y: 69 * root.unit
+        x: 31 * root.unit; y: 58 * root.unit
         width: 14 * root.unit; height: 10 * root.unit
+        scale: root.profile.openMouth || root.expression === "surprised" ? 0.80 : 0.55
         Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
             width: 6 * root.unit; height: 8 * root.unit; radius: width / 2

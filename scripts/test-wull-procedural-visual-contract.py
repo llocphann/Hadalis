@@ -24,15 +24,16 @@ assert "implicitWidth: verticalEdge ? 98 : 112" in host
 assert "implicitHeight: verticalEdge ? 112 : 98" in host
 defaults = json.loads((ROOT / "defaults/config.json").read_text())
 assert defaults["abyss"]["companion"]["enabled"] is False
-shader = COMPANION / "WaterDropletMaterial.frag"
-package = shader.with_suffix(".frag.qsb")
-assert package.is_file() and package.stat().st_size > 1000
 # Reproducible shader/source pairing where the shader compiler is installed.
 compiler = shutil.which("qsb") or "/usr/lib/qt6/bin/qsb"
-if Path(compiler).is_file():
-    with tempfile.TemporaryDirectory() as temporary:
-        rebuilt = Path(temporary) / package.name
-        subprocess.run([compiler, "--qt6", "-o", str(rebuilt), str(shader)], check=True, capture_output=True)
-        assert rebuilt.read_bytes() == package.read_bytes(), "stale bundled Wull shader"
+for filename in ("WaterDropletMaterial.frag", "WaterDropletContact.frag"):
+    shader = COMPANION / filename
+    package = shader.with_suffix(".frag.qsb")
+    assert package.is_file() and package.stat().st_size > 1000
+    if Path(compiler).is_file():
+        with tempfile.TemporaryDirectory() as temporary:
+            rebuilt = Path(temporary) / package.name
+            subprocess.run([compiler, "--qt6", "-o", str(rebuilt), str(shader)], check=True, capture_output=True)
+            assert rebuilt.read_bytes() == package.read_bytes(), f"stale bundled Wull shader: {filename}"
 subprocess.run(["node", str(ROOT / "scripts/test-wull-expressions.cjs")], check=True)
 print("WULL_PROCEDURAL_VISUAL_SOURCE_SAFETY_PASS")

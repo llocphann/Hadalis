@@ -16,6 +16,37 @@ QML -> daemon semantic event:
 
 Rules: one JSON object per line; `v` and monotonic `seq` required; messages are semantic state/events only, never frames or pixels; unknown fields are ignored; unknown versions/types are rejected; malformed or oversized input must not terminate the daemon; hidden state must not require periodic QML updates.
 
+## Personality and appearance preferences
+
+The single bridge sends preferences before the first `show`, again after a
+restart handshake, and when the corresponding settings change:
+
+```json
+{"v":1,"seq":2,"type":"preferences","personality":"calm","appearance_frequency":"occasional"}
+```
+
+`personality` accepts `calm`, `balanced` or `energetic`; `appearance_frequency`
+accepts `always`, `frequent`, `occasional` or `rare`. Unknown values, versions
+and non-monotonic sequences are rejected without consuming a sequence number.
+State messages acknowledge both preference fields. Defaults are `balanced`
+and `always`, preserving the previous behavior until configured.
+
+Calm/energetic scale reaction energy and targets by 0.55/1.35. Idle deadlines
+are non-uniform: 9–16 seconds, 6–11 seconds and 3–6 seconds respectively.
+Energetic uses the excited expression for positive reactions. Targets remain
+bounded and each new reaction begins with neutral body/face targets.
+
+Scheduled visits last 20 seconds. Their start periods are 1, 3 or 10 minutes;
+interaction extends a visit, hovering holds it, and a waiting task holds it
+until semantic completion. The presence deadline is independent of blink and
+reaction deadlines. Between visits, there is only one future arrival deadline
+and no autonomous state stream. An explicit shell `hide` clears both clocks
+and the permission to appear; changing preferences or sending a model intent
+cannot revive that host. Sleep remains peeking until a wake event. A preference
+change can preempt a temporary model overlay while preserving its waiting-task
+baseline. Rendering quality is a local QML setting and never drives a frame IPC
+stream or a second daemon.
+
 ## Optional local-model intent adapter
 
 State messages additionally include `expression`: `idle`, `happy`, `excited`, `thinking`, `working`, `surprised`, `sleepy`, `sad`, or `alert`. Older QML clients ignore it; newer QML clients derive it from mood/activity when talking to an older daemon.

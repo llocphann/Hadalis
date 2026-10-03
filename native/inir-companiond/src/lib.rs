@@ -49,6 +49,53 @@ pub enum Expression {
     Alert,
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Personality {
+    Calm,
+    #[default]
+    Balanced,
+    Energetic,
+}
+
+impl Personality {
+    fn gain(self) -> f32 {
+        match self {
+            Self::Calm => 0.55,
+            Self::Balanced => 1.0,
+            Self::Energetic => 1.35,
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AppearanceFrequency {
+    #[default]
+    Always,
+    Frequent,
+    Occasional,
+    Rare,
+}
+
+impl AppearanceFrequency {
+    fn gap_ms(self) -> Option<u64> {
+        // Visits last twenty seconds. The gap completes the selected period.
+        match self {
+            Self::Always => None,
+            Self::Frequent => Some(40_000),
+            Self::Occasional => Some(160_000),
+            Self::Rare => Some(580_000),
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Preferences {
+    pub personality: Personality,
+    pub appearance_frequency: AppearanceFrequency,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct BodyTargets {
     pub squash: f32,
@@ -133,6 +180,8 @@ pub struct StateMessage {
     pub kind: &'static str,
     #[serde(flatten)]
     pub state: StateSnapshot,
+    #[serde(flatten)]
+    pub preferences: Preferences,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -176,6 +225,12 @@ enum ClientMessage {
         intensity: f32,
         ttl_ms: u64,
     },
+    Preferences {
+        v: u32,
+        seq: u64,
+        personality: Personality,
+        appearance_frequency: AppearanceFrequency,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -190,6 +245,7 @@ pub struct SemanticIntent {
 enum Request {
     Event(SemanticEvent),
     Intent(SemanticIntent),
+    Preferences(Preferences, u64),
 }
 
 impl Request {
@@ -197,6 +253,7 @@ impl Request {
         match self {
             Self::Event(event) => event.seq,
             Self::Intent(intent) => intent.seq,
+            Self::Preferences(_, seq) => seq,
         }
     }
 }
@@ -232,7 +289,7 @@ pub fn parse_event_line(
 ) -> Result<SemanticEvent, ProtocolError> {
     match parse_request_line(line, last_sequence)? {
         Request::Event(event) => Ok(event),
-        Request::Intent(_) => Err(ProtocolError::Malformed),
+        Request::Intent(_) | Request::Preferences(_, _) => Err(ProtocolError::Malformed),
     }
 }
 
@@ -289,6 +346,26 @@ fn parse_request_line(line: &[u8], last_sequence: Option<u64>) -> Result<Request
                 intensity,
                 ttl_ms,
             }))
+        }
+        ClientMessage::Preferences {
+            v,
+            seq,
+            personality,
+            appearance_frequency,
+        } => {
+            if v != PROTOCOL_VERSION {
+                return Err(ProtocolError::UnsupportedVersion);
+            }
+            if last_sequence.is_some_and(|last| seq <= last) {
+                return Err(ProtocolError::NonMonotonicSequence);
+            }
+            Ok(Request::Preferences(
+                Preferences {
+                    personality,
+                    appearance_frequency,
+                },
+                seq,
+            ))
         }
     }
 }
@@ -369,6 +446,18 @@ struct Scheduled {
     action: ScheduledAction,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PresenceAction {
+    Arrive,
+    Leave,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PresenceDeadline {
+    at_ms: u64,
+    action: PresenceAction,
+}
+
 pub struct Engine {
     state: StateSnapshot,
     phase: Phase,
@@ -376,6 +465,11 @@ pub struct Engine {
     next_output_seq: u64,
     scheduled: Option<Scheduled>,
     rng_state: u64,
+    preferences: Preferences,
+    session_visible: bool,
+    hovered: bool,
+    task_active: bool,
+    presence: Option<PresenceDeadline>,
     // An optional semantic AI reaction is a bounded overlay. It cannot erase
     // a task, revive a hidden host, or own the animation clock.
     intent_restore: Option<(StateSnapshot, Phase, Option<Scheduled>)>,
@@ -390,6 +484,11 @@ impl Engine {
             next_output_seq: 1,
             scheduled: None,
             intent_restore: None,
+            preferences: Preferences::default(),
+            session_visible: false,
+            hovered: false,
+            task_active: false,
+            presence: None,
             rng_state: if seed == 0 {
                 0x9e37_79b9_7f4a_7c15
             } else {
@@ -407,7 +506,13 @@ impl Engine {
     }
 
     pub fn next_deadline_ms(&self) -> Option<u64> {
-        self.scheduled.map(|scheduled| scheduled.at_ms)
+        match (
+            self.scheduled.map(|s| s.at_ms),
+            self.presence.map(|p| p.at_ms),
+        ) {
+            (Some(a), Some(b)) => Some(a.min(b)),
+            (a, b) => a.or(b),
+        }
     }
 
     pub fn initial_message(&mut self) -> StateMessage {
@@ -423,11 +528,34 @@ impl Engine {
                 self.apply_event(event, now_ms);
             }
             Request::Intent(intent) => self.apply_intent(intent, now_ms),
+            Request::Preferences(preferences, _) => self.apply_preferences(preferences, now_ms),
         }
         Ok(self.next_message())
     }
 
     pub fn tick(&mut self, now_ms: u64) -> Option<StateMessage> {
+        // The presence clock is independent of blinks/reactions. Between visits
+        // only the next arrival wakes the process; a shell hide cancels both.
+        if self.presence.is_some_and(|p| p.at_ms <= now_ms) {
+            let presence = self.presence.take().unwrap();
+            match presence.action {
+                PresenceAction::Leave => {
+                    self.intent_restore = None;
+                    self.state = StateSnapshot::dormant();
+                    self.phase = Phase::Dormant;
+                    self.scheduled = None;
+                    self.schedule_arrival(now_ms);
+                }
+                PresenceAction::Arrive => {
+                    self.state.visibility = Visibility::Present;
+                    self.settle();
+                    self.phase = Phase::Idle;
+                    self.schedule_idle(now_ms);
+                    self.extend_visit(now_ms);
+                }
+            }
+            return Some(self.next_message());
+        }
         let scheduled = self.scheduled?;
         if now_ms < scheduled.at_ms {
             return None;
@@ -440,7 +568,7 @@ impl Engine {
                     self.phase = Phase::Dormant;
                 } else {
                     self.phase = Phase::Settle;
-                    self.state.settle();
+                    self.settle();
                     self.schedule_idle(now_ms);
                 }
             }
@@ -450,7 +578,11 @@ impl Engine {
                 }
                 self.state.face.eye = 0.08;
                 self.scheduled = Some(Scheduled {
-                    at_ms: now_ms.saturating_add(120),
+                    at_ms: now_ms.saturating_add(match self.preferences.personality {
+                        Personality::Calm => 160,
+                        Personality::Balanced => 120,
+                        Personality::Energetic => 100,
+                    }),
                     action: ScheduledAction::BlinkOpen,
                 });
             }
@@ -471,6 +603,7 @@ impl Engine {
                 self.state.energy = 0.30;
                 self.state.body.lean = 0.10;
                 self.state.body.tip = 0.14;
+                self.tune_reaction();
                 self.scheduled = Some(Scheduled {
                     at_ms: now_ms.saturating_add(700),
                     action: ScheduledAction::Settle,
@@ -488,19 +621,36 @@ impl Engine {
     }
 
     fn apply_event(&mut self, event: SemanticEvent, now_ms: u64) {
+        if event.event == EventKind::Hover && self.task_active {
+            self.hovered = event.active.unwrap_or(false);
+            return;
+        }
+        // Build each reaction from neutral targets before applying its profile.
+        // Otherwise repeated events would multiply the previous profile gain.
+        self.state.body = BodyTargets::default();
+        self.state.face = FaceTargets::default();
+        self.state.pulse = 0.0;
         match event.event {
             EventKind::Show | EventKind::Wake => {
+                self.session_visible = true;
+                self.hovered = false;
+                self.task_active = false;
                 self.state.visibility = Visibility::Present;
                 self.state.settle();
                 self.phase = Phase::Idle;
                 self.schedule_idle(now_ms);
             }
             EventKind::Hide => {
+                self.session_visible = false;
+                self.hovered = false;
+                self.task_active = false;
+                self.presence = None;
                 self.state = StateSnapshot::dormant();
                 self.phase = Phase::Dormant;
                 self.scheduled = None;
             }
             EventKind::Hover => {
+                self.hovered = event.active.unwrap_or(false);
                 self.state.visibility = Visibility::Present;
                 if event.active.unwrap_or(false) {
                     self.phase = Phase::Curious;
@@ -546,6 +696,7 @@ impl Engine {
                 self.schedule_idle(now_ms);
             }
             EventKind::TaskStart => {
+                self.task_active = true;
                 self.state.visibility = Visibility::Present;
                 self.phase = Phase::Engage;
                 self.state.mood = Mood::Focused;
@@ -555,6 +706,7 @@ impl Engine {
                 self.scheduled = None;
             }
             EventKind::TaskSuccess => {
+                self.task_active = false;
                 self.state.visibility = Visibility::Present;
                 self.phase = Phase::React;
                 self.state.mood = Mood::Happy;
@@ -590,6 +742,7 @@ impl Engine {
                 self.schedule_settle(now_ms, 1_600);
             }
             EventKind::Sleep => {
+                self.presence = None;
                 self.state.visibility = Visibility::Peeking;
                 self.phase = Phase::Idle;
                 self.state.mood = Mood::Sleepy;
@@ -615,6 +768,94 @@ impl Engine {
                 Mood::Concerned => Expression::Sad,
                 _ => Expression::Idle,
             },
+        };
+        if self.preferences.personality == Personality::Energetic
+            && self.state.expression == Expression::Happy
+        {
+            self.state.expression = Expression::Excited;
+        }
+        self.tune_reaction();
+        self.extend_visit(now_ms);
+    }
+
+    fn settle(&mut self) {
+        self.state.settle();
+        self.tune_reaction();
+    }
+
+    fn tune_reaction(&mut self) {
+        let gain = self.preferences.personality.gain();
+        self.state.energy = (self.state.energy * gain).clamp(0.0, 1.0);
+        self.state.body.squash = (self.state.body.squash * gain).clamp(-1.0, 1.0);
+        self.state.body.stretch = (self.state.body.stretch * gain).clamp(-1.0, 1.0);
+        self.state.body.lean = (self.state.body.lean * gain).clamp(-1.0, 1.0);
+        self.state.body.tip = (self.state.body.tip * gain).clamp(-1.0, 1.0);
+        self.state.body.ripple = (self.state.body.ripple * gain).clamp(0.0, 1.0);
+        self.state.pulse = (self.state.pulse * gain).clamp(0.0, 1.0);
+    }
+
+    fn apply_preferences(&mut self, preferences: Preferences, now_ms: u64) {
+        if self.preferences == preferences {
+            return;
+        }
+        self.preferences = preferences;
+        // A settings change can preempt a temporary AI overlay, but never a
+        // waiting task, hover lease or the shell's permission to show Wull.
+        self.restore_intent();
+        if !self.session_visible {
+            return;
+        }
+        if self.state.visibility == Visibility::Hidden {
+            if preferences.appearance_frequency == AppearanceFrequency::Always {
+                self.state.visibility = Visibility::Present;
+                self.settle();
+                self.phase = Phase::Idle;
+                self.schedule_idle(now_ms);
+                self.presence = None;
+            } else {
+                self.schedule_arrival(now_ms);
+            }
+        } else {
+            if !self.task_active
+                && !self.hovered
+                && self.state.visibility == Visibility::Present
+                && self.state.activity == Activity::Idle
+            {
+                self.settle();
+                self.phase = Phase::Idle;
+                self.schedule_idle(now_ms);
+            }
+            self.extend_visit(now_ms);
+        }
+    }
+
+    fn extend_visit(&mut self, now_ms: u64) {
+        self.presence = if self.session_visible
+            && !self.hovered
+            && !self.task_active
+            && self.state.visibility == Visibility::Present
+            && self.preferences.appearance_frequency.gap_ms().is_some()
+        {
+            Some(PresenceDeadline {
+                at_ms: now_ms.saturating_add(20_000),
+                action: PresenceAction::Leave,
+            })
+        } else {
+            None
+        };
+    }
+
+    fn schedule_arrival(&mut self, now_ms: u64) {
+        self.presence = if self.session_visible {
+            self.preferences
+                .appearance_frequency
+                .gap_ms()
+                .map(|gap| PresenceDeadline {
+                    at_ms: now_ms.saturating_add(gap),
+                    action: PresenceAction::Arrive,
+                })
+        } else {
+            None
         };
     }
 
@@ -684,6 +925,9 @@ impl Engine {
             at_ms: now_ms.saturating_add(intent.ttl_ms),
             action: ScheduledAction::EndIntent,
         });
+        self.tune_reaction();
+        // An overlay on a waiting task must not create an auto-hide deadline.
+        self.extend_visit(now_ms);
     }
 
     fn schedule_settle(&mut self, now_ms: u64, delay_ms: u64) {
@@ -700,7 +944,11 @@ impl Engine {
         }
 
         let random = self.next_random();
-        let delay_ms = 6_000 + (random % 5_001);
+        let delay_ms = match self.preferences.personality {
+            Personality::Calm => 9_000 + (random % 7_001),
+            Personality::Balanced => 6_000 + (random % 5_001),
+            Personality::Energetic => 3_000 + (random % 3_001),
+        };
         let action = if random.is_multiple_of(5) {
             ScheduledAction::IdleCuriosity
         } else {
@@ -729,6 +977,7 @@ impl Engine {
             seq,
             kind: "state",
             state: self.state.clone(),
+            preferences: self.preferences,
         }
     }
 }
@@ -741,6 +990,183 @@ mod tests {
         Activity, BoundedLine, Engine, Expression, MAX_LINE_BYTES, Mood, Phase, ProtocolError,
         Visibility, parse_event_line, read_bounded_line,
     };
+
+    fn preferences(engine: &mut Engine, seq: u64, personality: &str, frequency: &str, now: u64) {
+        let message = serde_json::json!({
+            "v": 1, "seq": seq, "type": "preferences", "personality": personality,
+            "appearance_frequency": frequency
+        })
+        .to_string();
+        engine.apply_line(message.as_bytes(), now).unwrap();
+    }
+
+    #[test]
+    fn preferences_are_strict_and_cannot_reveal_a_policy_hidden_host() {
+        let mut engine = Engine::new(21);
+        for invalid in [
+            br#"{"v":1,"seq":1,"type":"preferences","personality":"hyper","appearance_frequency":"always"}"#.as_slice(),
+            br#"{"v":1,"seq":1,"type":"preferences","personality":"calm","appearance_frequency":"sometimes"}"#,
+            br#"{"v":2,"seq":1,"type":"preferences","personality":"calm","appearance_frequency":"rare"}"#,
+        ] {
+            assert!(engine.apply_line(invalid, 0).is_err());
+        }
+        preferences(&mut engine, 1, "energetic", "frequent", 0);
+        assert_eq!(engine.state().visibility, Visibility::Hidden);
+        assert_eq!(engine.next_deadline_ms(), None);
+        assert!(engine.apply_line(br#"{"v":1,"seq":1,"type":"preferences","personality":"calm","appearance_frequency":"always"}"#, 0).is_err());
+        engine
+            .apply_line(br#"{"v":1,"seq":2,"type":"event","event":"show"}"#, 0)
+            .unwrap();
+        engine
+            .apply_line(br#"{"v":1,"seq":3,"type":"event","event":"hide"}"#, 1)
+            .unwrap();
+        preferences(&mut engine, 4, "balanced", "always", 2);
+        assert_eq!(engine.state().visibility, Visibility::Hidden);
+        assert_eq!(engine.next_deadline_ms(), None);
+        assert!(engine.tick(600_000).is_none());
+    }
+
+    #[test]
+    fn each_frequency_has_twenty_second_visits_and_one_quiet_gap_deadline() {
+        for (frequency, period) in [
+            ("frequent", 60_000),
+            ("occasional", 180_000),
+            ("rare", 600_000),
+        ] {
+            let mut engine = Engine::new(22);
+            preferences(&mut engine, 1, "balanced", frequency, 0);
+            engine
+                .apply_line(br#"{"v":1,"seq":2,"type":"event","event":"show"}"#, 0)
+                .unwrap();
+            while engine.next_deadline_ms().unwrap() < 20_000 {
+                engine.tick(engine.next_deadline_ms().unwrap()).unwrap();
+            }
+            assert_eq!(engine.next_deadline_ms(), Some(20_000));
+            let hidden = engine.tick(20_000).unwrap();
+            assert_eq!(hidden.state.visibility, Visibility::Hidden);
+            assert_eq!(engine.next_deadline_ms(), Some(period));
+            assert!(engine.tick(period - 1).is_none());
+            let visit = engine.tick(period).unwrap();
+            assert_eq!(visit.state.visibility, Visibility::Present);
+            assert!(visit.seq > hidden.seq);
+            assert_eq!(engine.presence.unwrap().at_ms, period + 20_000);
+        }
+    }
+
+    #[test]
+    fn hover_and_tasks_hold_a_visit_and_preferences_preserve_a_waiting_task() {
+        let mut engine = Engine::new(23);
+        preferences(&mut engine, 1, "balanced", "frequent", 0);
+        engine
+            .apply_line(br#"{"v":1,"seq":2,"type":"event","event":"show"}"#, 0)
+            .unwrap();
+        engine
+            .apply_line(
+                br#"{"v":1,"seq":3,"type":"event","event":"hover","active":true}"#,
+                19_000,
+            )
+            .unwrap();
+        assert_eq!(engine.next_deadline_ms(), None);
+        assert!(engine.tick(80_000).is_none());
+        engine
+            .apply_line(
+                br#"{"v":1,"seq":4,"type":"event","event":"hover","active":false}"#,
+                80_000,
+            )
+            .unwrap();
+        assert_eq!(engine.presence.unwrap().at_ms, 100_000);
+        engine
+            .apply_line(
+                br#"{"v":1,"seq":5,"type":"event","event":"task_start"}"#,
+                90_000,
+            )
+            .unwrap();
+        let working = engine.state().clone();
+        assert_eq!(engine.next_deadline_ms(), None);
+        preferences(&mut engine, 6, "calm", "rare", 91_000);
+        assert_eq!(engine.state(), &working);
+        engine
+            .apply_line(
+                br#"{"v":1,"seq":7,"type":"event","event":"hover","active":true}"#,
+                92_000,
+            )
+            .unwrap();
+        assert_eq!(engine.state(), &working);
+        engine
+            .apply_line(
+                br#"{"v":1,"seq":8,"type":"event","event":"hover","active":false}"#,
+                93_000,
+            )
+            .unwrap();
+        engine.apply_line(br#"{"v":1,"seq":9,"type":"intent","expression":"happy","intensity":0.5,"ttl_ms":500}"#, 94_000).unwrap();
+        engine.tick(94_500).unwrap();
+        assert_eq!(engine.state(), &working);
+        assert_eq!(engine.next_deadline_ms(), None);
+        engine
+            .apply_line(
+                br#"{"v":1,"seq":10,"type":"event","event":"task_success"}"#,
+                100_000,
+            )
+            .unwrap();
+        assert_eq!(engine.presence.unwrap().at_ms, 120_000);
+    }
+
+    #[test]
+    fn always_visible_resumes_an_allowed_visit_and_hidden_intents_do_not() {
+        let mut engine = Engine::new(24);
+        preferences(&mut engine, 1, "balanced", "frequent", 0);
+        engine
+            .apply_line(br#"{"v":1,"seq":2,"type":"event","event":"show"}"#, 0)
+            .unwrap();
+        engine.tick(20_000).unwrap();
+        engine.apply_line(br#"{"v":1,"seq":3,"type":"intent","expression":"excited","intensity":1,"ttl_ms":10000}"#, 21_000).unwrap();
+        assert_eq!(engine.state().visibility, Visibility::Hidden);
+        assert_eq!(engine.next_deadline_ms(), Some(60_000));
+        preferences(&mut engine, 4, "balanced", "always", 22_000);
+        assert_eq!(engine.state().visibility, Visibility::Present);
+        assert!(engine.presence.is_none());
+        engine
+            .apply_line(br#"{"v":1,"seq":5,"type":"event","event":"sleep"}"#, 23_000)
+            .unwrap();
+        preferences(&mut engine, 6, "energetic", "frequent", 24_000);
+        assert_eq!(engine.state().visibility, Visibility::Peeking);
+        assert_eq!(engine.next_deadline_ms(), None);
+    }
+
+    #[test]
+    fn personality_changes_reaction_strength_expression_and_idle_pace() {
+        let mut energies = Vec::new();
+        let mut delays = Vec::new();
+        for personality in ["calm", "balanced", "energetic"] {
+            let mut engine = Engine::new(25);
+            preferences(&mut engine, 1, personality, "always", 0);
+            engine
+                .apply_line(br#"{"v":1,"seq":2,"type":"event","event":"show"}"#, 0)
+                .unwrap();
+            energies.push(engine.state().energy);
+            delays.push(engine.next_deadline_ms().unwrap());
+            engine
+                .apply_line(
+                    br#"{"v":1,"seq":3,"type":"event","event":"task_success"}"#,
+                    1,
+                )
+                .unwrap();
+            assert_eq!(
+                engine.state().expression,
+                if personality == "energetic" {
+                    Expression::Excited
+                } else {
+                    Expression::Happy
+                }
+            );
+            assert!((0.0..=1.0).contains(&engine.state().energy));
+            assert!((0.0..=1.0).contains(&engine.state().pulse));
+        }
+        assert!(energies[0] < energies[1] && energies[1] < energies[2]);
+        assert!((9_000..=16_000).contains(&delays[0]));
+        assert!((6_000..=11_000).contains(&delays[1]));
+        assert!((3_000..=6_000).contains(&delays[2]));
+    }
 
     #[test]
     fn protocol_rejects_unknown_version_and_non_monotonic_sequence() {

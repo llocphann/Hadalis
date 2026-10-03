@@ -70,7 +70,7 @@ Item {
     ]
     Item {
         id: contact
-        x: -9; y: 72.5; width: 94; height: 13; z: -1
+        x: -9; y: 71.8; width: 94; height: 13; z: -1
         Shape {
             anchors.fill: parent
             antialiasing: true
@@ -116,22 +116,75 @@ Item {
             property color accent: root.accentColor
             property color specular: root.reflectionColor
             property vector4d motion: Qt.vector4d(root.shimmer, Math.max(root.ripple, root.reactionRipple), contact.width / material.width, 0)
+            readonly property real contactSide: Math.cos(root.viewYaw * Math.PI / 180) >= 0 ? 19 : 13
+            readonly property real contactDepth: Math.cos(root.viewYaw * Math.PI / 180) >= 0 ? 8 : -8
+            property vector4d feet: Qt.vector4d(
+                (47 - contactSide * Math.cos(root.viewYaw * Math.PI / 180) + contactDepth * Math.sin(root.viewYaw * Math.PI / 180)) / contact.width,
+                (47 + contactSide * Math.cos(root.viewYaw * Math.PI / 180) + contactDepth * Math.sin(root.viewYaw * Math.PI / 180)) / contact.width, 0, 0)
             fragmentShader: Qt.resolvedUrl("WaterDropletContact.frag.qsb")
         }
     }
     ShaderEffectSource {
         id: reflectionSource
         sourceItem: root.effectsEnabled && !root.softwareFallback && material.status !== ShaderEffect.Error ? reflectionLayer : null
-        sourceRect: Qt.rect(0, 7, 76, 76)
-        textureSize: Qt.size(76, 76)
+        sourceRect: Qt.rect(0, 7, 76, 82)
+        textureSize: Qt.size(76, 82)
         smooth: true
         live: root.visible && root.effectsEnabled
         visible: false
     }
-    // Only our body and face enter the floor reflection, never desktop content.
+    // Only our body, feet and face enter the floor reflection, never desktop content.
     Item {
         id: reflectionLayer
         width: root.width; height: root.height
+        // Two pairs of water feet. The rear pair is recessed behind the body;
+        // the front pair's small flattened pods match the reference's base.
+        Repeater {
+            model: 4
+            Item {
+                id: waterFoot
+                required property int index
+                readonly property bool front: index >= 2
+                readonly property real side: index % 2 === 0 ? -1 : 1
+                readonly property real yaw: root.viewYaw * Math.PI / 180
+                readonly property real depth: -side * (front ? 19 : 13) * Math.sin(yaw)
+                    + (front ? 8 : -8) * Math.cos(yaw)
+                width: front ? 14 : 10.5
+                height: width * 0.40
+                x: 38 + side * (front ? 19 : 13) * Math.cos(yaw)
+                    + (front ? 8 : -8) * Math.sin(yaw) - width / 2
+                y: front ? 73.1 : 72.0
+                z: depth >= 0 ? 1 : -1
+                ShaderEffect {
+                    anchors.fill: parent
+                    visible: !root.softwareFallback && material.status !== ShaderEffect.Error
+                    property color accent: root.accentColor
+                    property color specular: root.reflectionColor
+                    property vector4d motion: Qt.vector4d(root.shimmer, 0, root.pulse, root.effectsEnabled ? 1 : 0)
+                    property vector4d optics: Qt.vector4d(waterFoot.yaw, 3, 0, 0)
+                    fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
+                }
+                Shape {
+                    anchors.fill: parent
+                    visible: root.softwareFallback || material.status === ShaderEffect.Error
+                    antialiasing: true
+                    preferredRendererType: Shape.CurveRenderer
+                    ShapePath {
+                        strokeWidth: 0.45; strokeColor: root.reflectionColor
+                        fillGradient: LinearGradient {
+                            x1: 0; y1: 0; x2: 0; y2: waterFoot.height
+                            GradientStop { position: 0; color: Qt.darker(root.accentColor, 1.4) }
+                            GradientStop { position: 0.36; color: root.reflectionColor }
+                            GradientStop { position: 0.70; color: root.accentColor }
+                            GradientStop { position: 1; color: root.reflectionColor }
+                        }
+                        startX: 0; startY: waterFoot.height / 2
+                        PathArc { x: waterFoot.width; y: waterFoot.height / 2; radiusX: waterFoot.width / 2; radiusY: waterFoot.height / 2 }
+                        PathArc { x: 0; y: waterFoot.height / 2; radiusX: waterFoot.width / 2; radiusY: waterFoot.height / 2 }
+                    }
+                }
+            }
+        }
         // Rounded vector fallback for software/error; volume optics require a GPU.
         Shape {
             x: 0; y: 7; width: 76; height: 76

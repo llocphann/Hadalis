@@ -9,11 +9,16 @@ layout(std140,binding=0) uniform buf {
     vec4 accent;
     vec4 specular;
     vec4 motion; // shimmer, tip bend, pulse, effects gate
-    vec4 optics; // yaw (radians), volume/sphere/cornea variant, eye gaze x/y
+    vec4 optics; // yaw (radians), body/sphere/cornea/foot variant, eye gaze x/y
 };
 const float BOTTOM=-0.87, TOP=0.99, DEPTH=0.91;
+float verticalScale() { return optics.y>2.5 ? 0.40 : 1.0; }
+float depthScale() { return optics.y>2.5 ? 0.55 : DEPTH; }
 float radiusAt(float y) {
-    if (optics.y>0.5) return sqrt(max(0.0,0.89*0.89-y*y));
+    if (optics.y>0.5) {
+        y/=verticalScale();
+        return sqrt(max(0.0,0.89*0.89-y*y));
+    }
     if (y<BOTTOM || y>TOP) return 0.0;
     if (y<-0.23) {
         float t=(y+0.23)/0.64;
@@ -42,9 +47,9 @@ vec3 worldVector(vec3 p) {
 }
 float field(vec3 world) {
     vec3 p=modelPoint(world);
-    float radial=length(vec2(p.x-centerAt(p.y),p.z/DEPTH))-radiusAt(p.y);
-    float low=optics.y>0.5 ? -0.89 : BOTTOM;
-    float high=optics.y>0.5 ? 0.89 : TOP;
+    float radial=length(vec2(p.x-centerAt(p.y),p.z/depthScale()))-radiusAt(p.y);
+    float low=optics.y>0.5 ? -0.89*verticalScale() : BOTTOM;
+    float high=optics.y>0.5 ? 0.89*verticalScale() : TOP;
     return max(radial,max(low-p.y,p.y-high));
 }
 vec3 normalAt(vec3 world) {
@@ -52,7 +57,8 @@ vec3 normalAt(vec3 world) {
     float r=radiusAt(p.y), x=p.x-centerAt(p.y);
     float dr=(radiusAt(p.y+0.002)-radiusAt(p.y-0.002))/0.004;
     float dc=(centerAt(p.y+0.002)-centerAt(p.y-0.002))/0.004;
-    vec3 n=vec3(x,-x*dc-r*dr,p.z/(DEPTH*DEPTH));
+    float depth=depthScale();
+    vec3 n=vec3(x,-x*dc-r*dr,p.z/(depth*depth));
     return normalize(worldVector(n)+vec3(0.0,0.000001,0.0));
 }
 float backInterface(vec3 entry, vec3 direction) {
@@ -121,7 +127,7 @@ vec3 environment(vec3 direction, vec3 hue) {
     return sky;
 }
 float fresnel(float cosine) {
-    float ior=optics.y>1.5 ? 1.376 : 1.333;
+    float ior=optics.y>1.5 && optics.y<2.5 ? 1.376 : 1.333;
     float f0=pow((ior-1.0)/(ior+1.0),2.0);
     return f0+(1.0-f0)*pow(1.0-clamp(cosine,0.0,1.0),5.0);
 }
@@ -137,11 +143,13 @@ vec3 film(vec3 color) {
 }
 void main() {
     vec2 q=vec2((qt_TexCoord0.x-0.5)*2.15,(0.515-qt_TexCoord0.y)*2.15);
+    q.y*=verticalScale();
     float r=radiusAt(q.y), center=centerAt(q.y);
     float c=cos(optics.x), s=sin(optics.x);
-    float halfWidth=r*sqrt(c*c+DEPTH*DEPTH*s*s);
-    float low=optics.y>0.5 ? -0.89 : BOTTOM;
-    float high=optics.y>0.5 ? 0.89 : TOP;
+    float depth=depthScale();
+    float halfWidth=r*sqrt(c*c+depth*depth*s*s);
+    float low=optics.y>0.5 ? -0.89*verticalScale() : BOTTOM;
+    float high=optics.y>0.5 ? 0.89*verticalScale() : TOP;
     float d=max(abs(q.x-center*c)-halfWidth,max(low-q.y,q.y-high));
     float aa=max(fwidth(d)*0.65,0.002);
     float cover=1.0-smoothstep(-aa,aa,d);
@@ -152,9 +160,9 @@ void main() {
         return;
     }
     // Ray/ellipse intersection at this height, after actual 3D camera yaw.
-    float a=s*s+c*c/(DEPTH*DEPTH);
-    float b=2.0*(-s*(q.x*c-center)+c*q.x*s/(DEPTH*DEPTH));
-    float e=pow(q.x*c-center,2.0)+pow(q.x*s/DEPTH,2.0)-r*r;
+    float a=s*s+c*c/(depth*depth);
+    float b=2.0*(-s*(q.x*c-center)+c*q.x*s/(depth*depth));
+    float e=pow(q.x*c-center,2.0)+pow(q.x*s/depth,2.0)-r*r;
     float z=(-b+sqrt(max(0.0,b*b-4.0*a*e)))/(2.0*a);
     vec3 surface=vec3(q,z), normal=normalAt(surface);
     if (optics.y<0.5 && motion.w>0.5) {
@@ -169,7 +177,7 @@ void main() {
     }
     vec3 incident=vec3(0.0,0.0,-1.0);
     float f=fresnel(normal.z);
-    if (optics.y>1.5) {
+    if (optics.y>1.5 && optics.y<2.5) {
         // Glossy dark eye under an implicit convex cornea. Its highlights
         // follow surface normals and the same studio rig as the liquid body.
         vec3 ray=reflect(incident,normal);
@@ -201,6 +209,13 @@ void main() {
     vec3 waterLight=vec3(hue.r,sqrt(hue.g*max(hue.g,hue.b)),hue.b);
     through+=hue*(1.0-exp(-travel*0.80))*0.13;
     through+=mix(waterLight,white,0.025)*core*(1.15+motion.z*0.25)*(optics.y>0.5 ? 0.15 : 1.0);
+    if (optics.y>2.5) {
+        // Flattened water pods share the body's interfaces and light rig.
+        // A shallow luminous core and bottom catch give the tiny feet depth.
+        vec3 footCore=middle/vec3(0.85,0.24,0.65);
+        through+=mix(waterLight,white,0.06)*exp(-dot(footCore,footCore))*0.95;
+        through+=mix(waterLight,white,0.65)*exp(-pow((q.y+0.24)/0.055,2.0))*0.70;
+    }
     // Compact approximation of the luminous floor's focusing at the base.
     vec2 leftFocus=(q-vec2(-0.44,-0.74))/vec2(0.13,0.035);
     vec2 rightFocus=(q-vec2(0.44,-0.74))/vec2(0.13,0.035);

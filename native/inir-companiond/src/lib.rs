@@ -701,7 +701,7 @@ impl Engine {
 
         let random = self.next_random();
         let delay_ms = 6_000 + (random % 5_001);
-        let action = if random % 5 == 0 {
+        let action = if random.is_multiple_of(5) {
             ScheduledAction::IdleCuriosity
         } else {
             ScheduledAction::BlinkClose

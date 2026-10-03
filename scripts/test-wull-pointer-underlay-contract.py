@@ -3,7 +3,9 @@
 import ast
 import json
 from pathlib import Path
+import re
 import runpy
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 fixture = (ROOT / "scripts/wull-fixtures/pointer-underlay/shell.qml").read_text()
@@ -44,7 +46,19 @@ assert "Quickshell.env" not in fixture
 # This test only recognizes the CURRENT complete-host input mask. A future
 # narrowed mask MUST receive its own independent pointer acceptance.
 assert "WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible && companion.inputReady) ? companion : emptyInput" in perimeter
-assert "onActivated: companionBridge.sendEvent(\"click\")" in perimeter
+# Execute the actual activation handler with inert event sinks. Adding a water
+# response must keep one native click and must not broaden the mask above.
+handlers = re.findall(r'onActivated:\s*\{([^{}]+)\}', perimeter)
+assert len(handlers) == 1
+subprocess.run(["node", "-e", '''
+const vm=require('node:vm'),assert=require('node:assert/strict');
+let taps=0;const events=[];
+vm.runInNewContext(process.argv[1],{
+    companionWater:{tap:()=>{taps++;}},
+    companionBridge:{sendEvent:(...args)=>events.push(args)}
+});
+assert.equal(taps,1);assert.deepEqual(events,[['click']]);
+''', handlers[0]], check=True, timeout=5)
 assert "transformOrigin: Item.Center" in companion
 assert "anchors.centerIn: parent" in companion
 assert "function alongPosition(extent, footprint, along)" in policy

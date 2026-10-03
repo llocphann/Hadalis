@@ -36,6 +36,17 @@ DEPS = {
     "modules/abyss/AbyssSurfaceController.qml":
         "1fbbe81d2c9f62827c2e6835600caec01e24227f",
 }
+# This consumed proof uses its original field, just like its original body and
+# perimeter above. Preserve every reviewed hash and the helper's drift guard;
+# production's new shared water has independent current-source coverage.
+FROZEN_FIELDS = {
+    "modules/abyss/looks/AbyssField.frag": ROOT / "scripts/wull-fixtures/historical/pre-shared-water-field-frag.snapshot",
+    "modules/abyss/looks/AbyssField.qml": ROOT / "scripts/wull-fixtures/historical/pre-shared-water-field-qml.snapshot",
+    "modules/abyss/looks/AbyssField.frag.qsb": ROOT / "scripts/wull-fixtures/historical/pre-shared-water-field-qsb.snapshot",
+}
+def dependency_bytes(path):
+    return FROZEN_FIELDS.get(path, ROOT / path).read_bytes()
+
 def blob(data):
     return hashlib.sha1(
         b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
@@ -44,7 +55,7 @@ for file, sha in ((HELPER, EXPECTED_HELPER),
                   (PERIMETER, PERIMETER_BLOB), (BODY, BODY_BLOB)):
     assert blob(file.read_bytes()) == sha, file.name
 for path, sha in DEPS.items():
-    assert blob((ROOT / path).read_bytes()) == sha, path
+    assert blob(dependency_bytes(path)) == sha, path
 
 x = runpy.run_path(str(HELPER), run_name="inert_only_no_local_session")
 base = runpy.run_path(str(ORIGINAL_BASE), run_name="inert_only_base")
@@ -101,7 +112,7 @@ with tempfile.TemporaryDirectory(prefix="wull-paint-canary.") as temp:
     for name in DEPS:
         item = clone / name
         item.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        item.write_bytes((ROOT / name).read_bytes())
+        item.write_bytes(dependency_bytes(name))
     (clone / "scripts").mkdir(mode=0o700)
     (clone / x["OLD"]).write_bytes(ORIGINAL_BASE.read_bytes())
     shell0 = work / "private" / "baseline" / "shell"
@@ -132,5 +143,13 @@ with tempfile.TemporaryDirectory(prefix="wull-paint-canary.") as temp:
         assert str(exc) == "UNREVIEWED_FIELD_ATTACHMENT_MODE"
     else:
         raise AssertionError("Accepted unreviewed mode")
+    reviewed_field = clone / x["FIELD"]
+    reviewed_field.write_bytes(reviewed_field.read_bytes() + b"\n// drift")
+    try:
+        x["original_pins"](clone)
+    except ValueError as exc:
+        assert str(exc) == "FIELD_ATTACHMENT_REVIEWED_SOURCE_MISMATCH"
+    else:
+        raise AssertionError("Accepted drift in a frozen field dependency")
 
 print("WULL_PRIVATE_FIELD_RIM_ATTACHMENT_INERT_PASS")

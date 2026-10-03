@@ -174,11 +174,26 @@ Item {
         }
     }
     Item {
-        x: 0; y: 46; width: 76; height: 18
+        id: workingOrbit
+        x: 0; y: 34; width: 76; height: 14
         visible: root.expressionProfile.orbit && root.effectsEnabled
         rotation: -12 + root.shimmer * 24
-        Rectangle { anchors.fill: parent; radius: width / 2; color: "transparent"; border.width: 0.6; border.color: Qt.alpha(root.accentColor, 0.65) }
-        Rectangle { x: parent.width * root.shimmer; y: -1; width: 3; height: 3; radius: 1.5; color: "#d7fbff" }
+        Shape {
+            anchors.fill: parent
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                fillColor: "transparent"; strokeWidth: 0.6
+                strokeColor: Qt.alpha(root.accentColor, 0.65)
+                startX: 0; startY: workingOrbit.height / 2
+                PathArc { x: workingOrbit.width; y: workingOrbit.height / 2; radiusX: workingOrbit.width / 2; radiusY: workingOrbit.height / 2 }
+                PathArc { x: 0; y: workingOrbit.height / 2; radiusX: workingOrbit.width / 2; radiusY: workingOrbit.height / 2 }
+            }
+        }
+        Rectangle {
+            x: workingOrbit.width / 2 + (workingOrbit.width / 2 - 3) * Math.cos(root.shimmer * Math.PI * 2) - 1.5
+            y: workingOrbit.height / 2 + workingOrbit.height / 2 * Math.sin(root.shimmer * Math.PI * 2) - 1.5
+            width: 3; height: 3; radius: 1.5; color: "#d7fbff"
+        }
     }
     HoverHandler { id: hoverHandler; enabled: root.enabled }
     Repeater {

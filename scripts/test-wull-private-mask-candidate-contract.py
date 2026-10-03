@@ -5,6 +5,7 @@ No Wayland input, compositor, Rust daemon, live shell or production edit.
 Only private filesystem copies and source/command structure are examined.
 """
 import ast
+import hashlib
 from pathlib import Path
 import runpy
 import tempfile
@@ -23,8 +24,18 @@ parent = runpy.run_path(str(PARENT), run_name="wull_candidate_inert_parent")
 
 perimeter_path = ROOT / "modules/abyss/AbyssPerimeter.qml"
 body_path = ROOT / "modules/abyss/companion/AbyssCompanion.qml"
-original = perimeter_path.read_text(encoding="utf-8")
-body = body_path.read_text(encoding="utf-8")
+current_perimeter = perimeter_path.read_text(encoding="utf-8")
+current_body = body_path.read_text(encoding="utf-8")
+# This reviewed private BBOX probe predates moving/popup attachments. Its
+# exact guard must continue rejecting current production instead of being
+# relaxed to accept geometry never physically qualified by that old trial.
+frozen = ROOT / "scripts/wull-fixtures/historical"
+def read_frozen(name, expected):
+    raw = (frozen / name).read_bytes()
+    assert hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest() == expected
+    return raw.decode()
+original = read_frozen("pre-locomotion-perimeter.snapshot", "f52e0427ee36f2501fa25c3e51f5807b112375c0")
+body = read_frozen("pre-locomotion-companion.snapshot", "7e45b63073bc92907d5ee40c678596224ca4ca4f")
 marker = gen["INPUT_MARKER"]
 source = gen["candidate_source"](original, body)
 
@@ -56,20 +67,48 @@ except ValueError as error:
 else:
     raise AssertionError("Unreviewed body geometry unexpectedly accepted")
 
+for perimeter, host, expected in (
+    (current_perimeter, current_body, "unreviewed_production_mask_or_multiple_regions"),
+    (original, current_body, "unreviewed_centered_top_body"),
+):
+    try:
+        gen["candidate_source"](perimeter, host)
+    except ValueError as error:
+        assert str(error) == expected
+    else:
+        raise AssertionError("Historical BBOX guard accepted unqualified moving production")
+
 with tempfile.TemporaryDirectory(prefix="wull-candidate-inert-") as tmp:
     folder = Path(tmp)
+    historical = folder / "historical-source"
+    historical.mkdir()
+    for name in ("services", "GlobalStates.qml", "qmldir", "assets", "scripts", "defaults", "translations"):
+        (historical / name).symlink_to(ROOT / name)
+    modules = historical / "modules"; modules.mkdir()
+    for item in (ROOT / "modules").iterdir():
+        if item.name != "abyss": (modules / item.name).symlink_to(item)
+    abyss = modules / "abyss"; abyss.mkdir()
+    for item in (ROOT / "modules/abyss").iterdir():
+        if item.name not in ("AbyssPerimeter.qml", "companion"): (abyss / item.name).symlink_to(item)
+    companion = abyss / "companion"; companion.mkdir()
+    for item in (ROOT / "modules/abyss/companion").iterdir():
+        if item.name != "AbyssCompanion.qml": (companion / item.name).symlink_to(item)
+    (abyss / "AbyssPerimeter.qml").write_text(original)
+    (companion / "AbyssCompanion.qml").write_text(body)
+    # Only inert filesystem staging is run; no QML/daemon/pointer execution.
+    child["phase_config"].__globals__["ROOT"] = historical
     shell = folder / "shell"
     shell.mkdir()
-    target = gen["stage_candidate_modules"](ROOT, shell)
+    target = gen["stage_candidate_modules"](historical, shell)
     assert target.parent == shell / "modules/abyss"
     assert target.is_file() and not target.is_symlink()
     assert target.read_text(encoding="utf-8") == source
     assert (shell / "modules").is_dir() and not (shell / "modules").is_symlink()
     assert (shell / "modules/abyss/companion").is_symlink()
     assert (shell / "modules/abyss/qmldir").is_symlink()
-    assert perimeter_path.read_text(encoding="utf-8") == original
+    assert perimeter_path.read_text(encoding="utf-8") == current_perimeter
     try:
-        gen["stage_candidate_modules"](ROOT, shell)
+        gen["stage_candidate_modules"](historical, shell)
     except ValueError as error:
         assert str(error) == "candidate_module_shadow_already_exists"
     else:
@@ -86,7 +125,7 @@ with tempfile.TemporaryDirectory(prefix="wull-candidate-inert-") as tmp:
         private_shell / "modules/abyss/AbyssPerimeter.qml").read_text()
     assert not (private_shell / "modules").is_symlink()
     assert env["QT_QPA_PLATFORM"] == "wayland"
-    assert perimeter_path.read_text(encoding="utf-8") == original
+    assert perimeter_path.read_text(encoding="utf-8") == current_perimeter
 
     # Independently stage a RIGHT-edge private copy, not a production edit.
     # The runtime still needs a separately owned real nested compositor test.
@@ -105,7 +144,7 @@ with tempfile.TemporaryDirectory(prefix="wull-candidate-inert-") as tmp:
     assert __import__("json").loads(
         right_config_path.read_text())["abyss"]["companion"]["edge"] == "right"
     assert right_env["QT_QPA_PLATFORM"] == "wayland"
-    assert perimeter_path.read_text(encoding="utf-8") == original
+    assert perimeter_path.read_text(encoding="utf-8") == current_perimeter
 
     # Left must independently stage the SAME guarded private vertical BBOX.
     left_config = __import__("json").loads(
@@ -123,7 +162,7 @@ with tempfile.TemporaryDirectory(prefix="wull-candidate-inert-") as tmp:
     assert __import__("json").loads(
         left_config_path.read_text())["abyss"]["companion"]["edge"] == "left"
     assert left_env["QT_QPA_PLATFORM"] == "wayland"
-    assert perimeter_path.read_text(encoding="utf-8") == original
+    assert perimeter_path.read_text(encoding="utf-8") == current_perimeter
 
 assert parent["REVIEWED"]["scripts/wull-private-mask-candidate.py"] == (
     "91049b2ca2beb7b1936af624adca5133d251ea3c")

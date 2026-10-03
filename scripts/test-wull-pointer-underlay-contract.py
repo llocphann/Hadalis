@@ -43,7 +43,7 @@ assert "Quickshell.env" not in fixture
 
 # This test only recognizes the CURRENT complete-host input mask. A future
 # narrowed mask MUST receive its own independent pointer acceptance.
-assert "WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible) ? companion : emptyInput" in perimeter
+assert "WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible && companion.inputReady) ? companion : emptyInput" in perimeter
 assert "onActivated: companionBridge.sendEvent(\"click\")" in perimeter
 assert "transformOrigin: Item.Center" in companion
 assert "anchors.centerIn: parent" in companion

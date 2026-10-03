@@ -27,7 +27,7 @@ for category in ("WINDOW_NOT_BACKING", "SHEET_DIMENSIONS_INVALID",
     assert category in fixture and category in runner_text
 
 assert "AbyssField.frag.qsb" in actual_field
-assert "orientationAngle: root.edge" in actual_host
+assert 'orientationAngle: root.upright ? 0 : root.edge === "left" ? 90' in actual_host
 for marker in (
     'QT_QPA_PLATFORM": "offscreen"',
     '"QSG_RHI_BACKEND": "opengl"',

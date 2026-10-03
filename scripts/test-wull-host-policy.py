@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 """Execute the real Wull host decision policy across output and input states."""
 from pathlib import Path
+import json
+import re
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 policy = (ROOT / "modules/abyss/companion/WullHostPolicy.js").read_text(
     encoding="utf-8"
 )
-script = policy + r"""
+perimeter = (ROOT / "modules/abyss/AbyssPerimeter.qml").read_text()
+calls = re.findall(r"Region \{ item: (WullHostPolicy\.acceptsInput\([^)]*\)) \? companion : emptyInput \}", perimeter)
+assert len(calls) == 1, "one complete-host Region; no new input owner"
+script = policy + "\nconst productionInput = " + json.dumps(calls[0]) + ";\n" + r"""
 const assert = require('node:assert/strict');
 let cases = 0;
 const check = (condition, label) => {
@@ -39,6 +44,18 @@ for (const current of outputs) {
 for (const invalid of ['', null, undefined, 17]) {
     check(!hostActive(true, true, invalid, 'DP-1', true, true),
         'no ambiguous output owner');
+}
+// Evaluate the actual Region expression across emergence/relocation readiness,
+// rather than insisting that its old one-line spelling remain unchanged.
+const WullHostPolicy = {acceptsInput};
+for (const active of bool)
+for (const interactive of bool)
+for (const visible of bool)
+for (const inputReady of bool) {
+    const window = {companionHostActive: active};
+    const companion = {interactive, visible, inputReady};
+    check(eval(productionInput) === (active && interactive && visible && inputReady),
+        'partially emerged or relocating Wull cannot capture input');
 }
 check(!acceptsInput(false, true, true), 'unexpected exit releases input');
 check(!hostActive(true, false, 'DP-1', 'DP-1', true, true),

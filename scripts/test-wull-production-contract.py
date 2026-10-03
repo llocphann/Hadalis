@@ -32,7 +32,7 @@ assert "useNativeDispatcher: root.companionEnabled" in production_bridge
 for marker in (
     "useNativeDispatcher: root.companionEnabled",
     "WullHostPolicy.hostActive(",
-    "WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible)",
+    "WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible && companion.inputReady)",
     "!Appearance.gameModeMinimal",
     "GameMode.hasFullscreenOnOutput(companionTargetOutput)",
     'companionBridge.sendEvent("click")',
@@ -75,7 +75,7 @@ companion_item = perimeter.split("AbyssCompanion {", 1)[1].split(
     "onActivated:", 1
 )[0]
 assert "opacity: companionBridge.ready ? 1 : 0" in companion_item
-assert "WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible)" in perimeter
+assert "WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible && companion.inputReady)" in perimeter
 assert "WullHostPolicy.alongPosition(extent, span," in perimeter
 assert "reveal: !window.companionHostActive ? 0" in perimeter
 

@@ -237,13 +237,17 @@ Scope {
                 height: dialogBody.inputBounds.height
             }
             readonly property Region utilityInputMask: Region {
-                x: utility.inputBounds.x; y: utility.inputBounds.y
-                width: window.presented && field.ready ? utility.inputBounds.width : 0
-                height: utility.inputBounds.height
+                Region {
+                    x: utility.inputBounds.x; y: utility.inputBounds.y
+                    width: window.presented && field.ready ? utility.inputBounds.width : 0
+                    height: utility.inputBounds.height
+                }
+                Region { regions: [window.companionInputMask] }
             }
+            readonly property Region companionInputMask: Region { item: WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible && companion.inputReady) ? companion : emptyInput }
             readonly property Region nativeInputMask: Region {
                 Region { regions: window.presented && field.ready && bar.visible ? bar.inputRegions : [] }
-                Region { item: WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible && companion.inputReady) ? companion : emptyInput }
+                Region { regions: [window.companionInputMask] }
                 Region { regions: window.presented && field.ready && editor.visible ? editor.regions : [] }
                 Region { item: window.presented && revealTrigger.visible ? revealTrigger : emptyInput }
                 Region { item: window.presented && dockTrigger.visible ? dockTrigger : emptyInput }

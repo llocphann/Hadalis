@@ -22,7 +22,13 @@ def main():
     destination.add_argument("--frames", type=Path, help="existing empty directory for 180 real QML frames")
     parser.add_argument("--software", action="store_true")
     parser.add_argument("--motion", action="store_true", help="walking and emergence study using the actual host")
+    parser.add_argument("--presence", action="store_true", help="four-edge visits, flight, drag and water-hide study")
+    parser.add_argument("--peek", action="store_true", help="capture the initial peek in the presence scene")
     args = parser.parse_args()
+    if args.motion and args.presence:
+        parser.error("choose one motion/presence scene")
+    if args.peek and (not args.presence or not args.output):
+        parser.error("peek requires presence and a single image")
     output = (args.output or args.frames).resolve()
     if args.output and (output.exists() or not output.parent.is_dir()):
         parser.error("output must be a new file in an existing directory")
@@ -34,12 +40,14 @@ def main():
     with tempfile.TemporaryDirectory(prefix="wull-design-") as temporary:
         private = Path(temporary)
         shell, xdg = core["staged"](private)
-        (shell / "shell.qml").write_text((ROOT / ("wullMotion.qml" if args.motion else "wullDesign.qml")).read_text())
+        scene = "wullPresence.qml" if args.presence else "wullMotion.qml" if args.motion else "wullDesign.qml"
+        (shell / "shell.qml").write_text((ROOT / scene).read_text())
         env = core["private_env"](xdg, output)
         env.pop("WULL_VISUAL_MATRIX_PRIVATE_FILE", None)
         env.update({
             "WULL_DESIGN_CAPTURE": str(output) if args.output else "",
             "WULL_DESIGN_FRAMES": str(output) if args.frames else "",
+            "WULL_PRESENCE_CAPTURE_PEEK": "1" if args.peek else "",
             "WULL_DESIGN_REFERENCE": str(ROOT / "docs/wull-visual/design-20261003/reference-closeup.png"),
             "QT_QPA_PLATFORM": "wayland",
             "QSG_RHI_BACKEND": "opengl",
@@ -56,6 +64,8 @@ def main():
                 stdin=subprocess.DEVNULL, start_new_session=True)
             try:
                 code = proc.wait(timeout=40 if args.frames else 15)
+            except subprocess.TimeoutExpired:
+                code=-1
             finally:
                 if proc.poll() is None:
                     os.killpg(proc.pid, signal.SIGTERM)
@@ -65,20 +75,23 @@ def main():
                         os.killpg(proc.pid, signal.SIGKILL)
                         proc.wait(timeout=3)
         log = logfile.read_text()
-        bad = ("ReferenceError:", "TypeError:", "SyntaxError:", "Unable to assign", "Failed to load configuration")
-        marker = "WULL_DESIGN_FRAMES=180_SAVED" if args.frames else "WULL_DESIGN_CAPTURE=SAVED"
+        bad = ("ReferenceError:", "TypeError:", "SyntaxError:", "Unable to assign", "Binding loop", "non-root animation nodes", "Failed to load configuration", "WULL_PRESENCE_CHECK=FAIL")
+        frame_count=180
+        marker = f"WULL_DESIGN_FRAMES={frame_count}_SAVED" if args.frames else "WULL_DESIGN_CAPTURE=SAVED"
         if code or any(message in log for message in bad) or marker not in log:
             for line in log.splitlines():
-                if "scene:" in line or "WULL_DESIGN_" in line or "WULL_MOTION_" in line:
+                if "scene:" in line or "WULL_DESIGN_" in line or "WULL_MOTION_" in line or "WULL_PRESENCE_" in line:
                     print(line)
-            raise SystemExit("Wull QML capture failed")
+            raise SystemExit("Wull QML capture timed out" if code==-1 else "Wull QML capture failed")
         if args.output and not output.is_file():
             raise SystemExit("Wull QML capture did not create the image")
-        if args.frames and len(list(output.glob("frame-*.png"))) != 180:
+        if args.frames and len(list(output.glob("frame-*.png"))) != frame_count:
             raise SystemExit("Wull animation capture did not create all frames")
         print("WULL_DESIGN_REAL_QML_CAPTURE_PASS")
         for line in log.splitlines():
             if "WULL_MOTION_BEHAVIOR=" in line: print(line.split("WULL_MOTION_BEHAVIOR=",1)[1])
+            if "WULL_PRESENCE_BEHAVIOR=" in line: print(line.split("WULL_PRESENCE_BEHAVIOR=",1)[1])
+            if "WULL_PRESENCE_PEEK=" in line: print(line.split("WULL_PRESENCE_PEEK=",1)[1])
         print(output)
 
 

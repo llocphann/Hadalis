@@ -15,11 +15,15 @@ const invalid = api.normalize({
     animationsEnabled: 0, effectsEnabled: null, hideInFullscreen: "true", renderQuality: "ultra"
 });
 assert.deepEqual(plain(invalid), defaults);
-for (const [field, min, max] of [["size", 0.65, 1.5], ["along", 0.08, 0.92], ["translucency", 0, 0.35]]) {
+for (const [field, min, max] of [["size", 0.65, 1.5], ["translucency", 0, 0.35]]) {
     assert.equal(api.normalize({[field]: -10})[field], min);
     assert.equal(api.normalize({[field]: 20})[field], max);
     for (const value of [NaN, Infinity, -Infinity, null, "NaN", "1"])
         assert.equal(api.normalize({[field]: value})[field], defaults[field]);
+}
+for (const edge of ['top','bottom','left','right']) {
+    const migrated=api.normalize({edge,along:.11,output:'old-fixed-output'});
+    assert.equal(migrated.edge,'auto');assert.equal(migrated.along,.72);assert.equal(migrated.output,'');
 }
 assert.equal(api.motionScale("calm"), 0.55);
 assert.equal(api.motionScale("balanced"), 1);

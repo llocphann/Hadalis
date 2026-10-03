@@ -36,7 +36,7 @@ for marker in (
     "!Appearance.gameModeMinimal",
     "GameMode.hasFullscreenOnOutput(companionTargetOutput)",
     'companionBridge.sendEvent("click")',
-    'companionBridge.sendEvent("hover", hovered)',
+    'companionBridge.sendEvent("hover",window.companionHoverHeld)',
 ):
     assert marker in perimeter, marker
 
@@ -60,24 +60,23 @@ for path in (ROOT / "modules/abyss/companion").glob("*.qml"):
 # The input mask and reveal both derive from companionHostActive. Readiness
 # must gate that shared host condition so a daemon exit drops hit testing at
 # once, even while the ordinary reveal animation is settling.
-host_gate = perimeter.split(
-    "readonly property bool companionHostActive:", 1
-)[1].split("function companionAlongPosition()", 1)[0]
+host_gate = perimeter.split("readonly property bool companionPermission:", 1)[1].split(
+    "readonly property bool companionHostActive:", 1)[0]
 for marker in (
-    "root.companionSessionVisible",
-    "root.companionSessionVisible, companionBridge.ready",
-    "root.companionTargetOutput, window.outputName",
-    "window.presented, field.ready",
+    "root.companionSessionVisible,companionBridge.ready",
+    "root.companionTargetOutput,window.outputName,window.presented,field.ready",
+    "!window.companionOccluded",
 ):
     assert marker in host_gate, marker
-
+assert "window.companionPermission && companionPresence.qualified" in perimeter
+assert "permitted: window.companionPermission" in perimeter
 companion_item = perimeter.split("AbyssCompanion {", 1)[1].split(
     "onActivated:", 1
 )[0]
 assert "opacity: companionBridge.ready ? 1 : 0" in companion_item
 assert "WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible && companion.inputReady)" in perimeter
-assert "WullHostPolicy.alongPosition(extent, span," in perimeter
-assert "reveal: !window.companionHostActive ? 0" in perimeter
+assert "companionPreferences.edge" not in perimeter
+assert "reveal: companionPresence.renderedReveal" in perimeter
 
 # The bridge must fail readiness closed on either process termination signal
 # but preserve pending show intent through the next initial state handshake.

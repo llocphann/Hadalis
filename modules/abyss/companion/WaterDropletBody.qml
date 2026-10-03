@@ -13,7 +13,10 @@ Item {
     objectName: "wullLiquidBody"
     property string expression: "idle"
     property color accentColor: AbyssStyle.accent
-    readonly property color reflectionColor: ColorUtils.colorWithLightness(accentColor, 0.85)
+    property real hoverAmount: hovered ? 1 : 0
+    readonly property color liquidAccent: ColorUtils.colorWithLightness(accentColor,
+        Math.min(.82,accentColor.hslLightness+hoverAmount*.035+tapPulse*.018))
+    readonly property color reflectionColor: ColorUtils.colorWithLightness(accentColor, 0.85+hoverAmount*.04)
     property real energy: 0.45
     property real gazeX: 0
     property real gazeY: 0
@@ -40,6 +43,10 @@ Item {
     readonly property real yawCos: Math.cos(yawRadians)
     readonly property real yawSin: Math.sin(yawRadians)
     property bool walking: false
+    property bool flying: false
+    property bool grounded: true
+    property bool dragging: false
+    property bool traveling: false
     property real walkingDirection: 1
     property real ripple: 0
     property real eyeOpen: 1
@@ -50,6 +57,10 @@ Item {
     readonly property real reactionLift: Curves.sample("hop", "lift", reactionPhase) * 0.6
     property real reactionRipple: 0
     property real shine: 0
+    property real tapPhase: 1
+    property real tapPulse: 0
+    property real tapX: 38
+    property real tapY: 48
     readonly property var expressionProfile: Expressions.profile(expression)
     property real expressionSquash: expressionProfile.squash
     readonly property real motionAmount: motionEnabled ? AbyssStyle.motionIntensity * motionScale : 0
@@ -68,10 +79,18 @@ Item {
     }
     signal pressed()
     signal settingsRequested()
+    function reactToTap(px,py): void {
+        pressed()
+        if (!motionEnabled) return
+        tapX=Math.max(8,Math.min(width-8,px)); tapY=Math.max(12,Math.min(height-12,py))
+        squashBurst.restart(); tapBurst.restart()
+        reactionBounce.restart()
+    }
 
     WullMotion {
         id: gait
         walking: root.walking
+        flying: root.flying
         direction: root.walkingDirection
         motionEnabled: root.motionEnabled && root.visible
     }
@@ -80,7 +99,7 @@ Item {
     implicitWidth: 76
     implicitHeight: 92
     transformOrigin: Item.Bottom
-    scale: 1 + squash * 0.035 + (hovered ? 0.015 : 0)
+    scale: 1 + squash * 0.035 + hoverAmount * 0.015
     rotation: orientationAngle + ((walking ? 0 : sway * 2.2) + stateLean * 5.0 + stateTip * 2.4 + expressionProfile.tilt * 4) * motionAmount
     transform: [
         Scale {
@@ -94,6 +113,7 @@ Item {
     ]
     Item {
         id: contact
+        visible: root.grounded
         width: root.qualityLevel > 1 ? 102 : 94
         height: root.qualityLevel > 1 ? 18 : root.qualityLevel > 0 ? 15 : 13
         x: (root.width - width) * 0.5
@@ -108,7 +128,7 @@ Item {
                 fillGradient: RadialGradient {
                     centerX: contact.width * 0.5; centerY: contact.height * 0.5; centerRadius: contact.width * 0.5
                     focalX: centerX; focalY: centerY
-                    GradientStop { position: 0; color: Qt.alpha(root.accentColor, 0.18) }
+                    GradientStop { position: 0; color: Qt.alpha(root.liquidAccent, 0.18) }
                     GradientStop { position: 1; color: "transparent" }
                 }
                 startX: 0; startY: contact.height * 0.5
@@ -130,7 +150,7 @@ Item {
                 scale: 1 + Math.max(root.ripple, root.reactionRipple) * (0.03 + index * 0.015) + root.shimmer * 0.02
                 ShapePath {
                     fillColor: "transparent"; strokeWidth: 0.65
-                    strokeColor: Qt.alpha(root.accentColor, 0.78 - rippleRing.index * 0.20)
+                    strokeColor: Qt.alpha(root.liquidAccent, 0.78 - rippleRing.index * 0.20)
                     startX: 0; startY: rippleRing.height / 2
                     PathArc { x: rippleRing.width; y: rippleRing.height / 2; radiusX: rippleRing.width / 2; radiusY: rippleRing.height / 2 }
                     PathArc { x: 0; y: rippleRing.height / 2; radiusX: rippleRing.width / 2; radiusY: rippleRing.height / 2 }
@@ -141,7 +161,7 @@ Item {
             anchors.fill: parent
             visible: root.detailedEffects && !root.softwareFallback && material.status !== ShaderEffect.Error
             property var surfaceSource: reflectionSource
-            property color accent: root.accentColor
+            property color accent: root.liquidAccent
             property color specular: root.reflectionColor
             property vector4d motion: Qt.vector4d(root.shimmer, Math.max(root.ripple, root.reactionRipple), contact.width / material.width, 0)
             property vector4d rendering: Qt.vector4d(root.qualityLevel, 0, 0, 0)
@@ -157,11 +177,11 @@ Item {
     ShaderEffectSource {
         id: reflectionSource
         objectName: "wullFloorReflectionSource"
-        sourceItem: root.detailedEffects && !root.softwareFallback && material.status !== ShaderEffect.Error ? reflectionLayer : null
+        sourceItem: root.grounded && root.detailedEffects && !root.softwareFallback && material.status !== ShaderEffect.Error ? reflectionLayer : null
         sourceRect: Qt.rect(0, 7, 76, 82)
         textureSize: root.qualityLevel > 1 ? Qt.size(152, 164) : Qt.size(76, 82)
         smooth: true
-        live: root.visible && root.detailedEffects
+        live: root.visible && root.grounded && root.detailedEffects
         visible: false
     }
     // Reflect only our body, limbs, bubbles and face; never desktop content.
@@ -193,7 +213,7 @@ Item {
                 ShaderEffect {
                     anchors.fill: parent
                     visible: !root.softwareFallback && material.status !== ShaderEffect.Error
-                    property color accent: root.accentColor
+                    property color accent: root.liquidAccent
                     property color specular: root.reflectionColor
                     property vector4d motion: Qt.vector4d(root.shimmer, 0, root.pulse, root.effectsEnabled ? 1 : 0)
                     property vector4d optics: Qt.vector4d(waterFoot.yaw, 3, 0, 0)
@@ -210,9 +230,9 @@ Item {
                         strokeWidth: 0.45; strokeColor: root.reflectionColor
                         fillGradient: LinearGradient {
                             x1: 0; y1: 0; x2: 0; y2: waterFoot.height
-                            GradientStop { position: 0; color: Qt.darker(root.accentColor, 1.4) }
+                            GradientStop { position: 0; color: Qt.darker(root.liquidAccent, 1.4) }
                             GradientStop { position: 0.36; color: root.reflectionColor }
-                            GradientStop { position: 0.70; color: root.accentColor }
+                            GradientStop { position: 0.70; color: root.liquidAccent }
                             GradientStop { position: 1; color: root.reflectionColor }
                         }
                         startX: 0; startY: waterFoot.height / 2
@@ -240,9 +260,9 @@ Item {
                     strokeWidth: 1; strokeColor: root.reflectionColor
                     fillGradient: LinearGradient {
                         x1: 38; y1: 0; x2: 38; y2: 76
-                        GradientStop { position: 0; color: Qt.darker(root.accentColor, 2.2) }
-                        GradientStop { position: 0.55; color: root.accentColor }
-                        GradientStop { position: 1; color: Qt.lighter(root.accentColor, 1.65) }
+                        GradientStop { position: 0; color: Qt.darker(root.liquidAccent, 2.2) }
+                        GradientStop { position: 0.55; color: root.liquidAccent }
+                        GradientStop { position: 1; color: Qt.lighter(root.liquidAccent, 1.65) }
                     }
                     startX: 38; startY: 4.2
                     PathCubic { x: 15; y: 28.5; control1X: 32; control1Y: 14; control2X: 23; control2Y: 21 }
@@ -257,10 +277,10 @@ Item {
                 id: material
                 x: 0; y: 7; width: 76; height: 76
                 visible: GraphicsInfo.api !== GraphicsInfo.Software
-                property color accent: root.accentColor
+                property color accent: root.liquidAccent
                 property color specular: root.reflectionColor
                 property vector4d motion: Qt.vector4d(root.shimmer, root.stateTip + root.sway * 0.25,
-                    root.pulse + (root.hovered ? 0.25 : 0), root.effectsEnabled ? 1 : 0)
+                    Math.max(root.pulse,root.tapPulse*.65) + root.hoverAmount*.16, root.effectsEnabled ? 1 : 0)
                 property vector4d optics: Qt.vector4d(root.viewYaw * Math.PI / 180, 0, 0, 0)
                 property vector4d rendering: Qt.vector4d(root.qualityLevel, root.translucency, 0, 0)
                 fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
@@ -284,7 +304,7 @@ Item {
                     ShaderEffect {
                         anchors.fill: parent
                         visible: !root.softwareFallback && material.status !== ShaderEffect.Error
-                        property color accent: root.accentColor
+                        property color accent: root.liquidAccent
                         property color specular: root.reflectionColor
                         property vector4d motion: Qt.vector4d(root.shimmer, 0, root.pulse, 0)
                         property vector4d optics: Qt.vector4d(0, 1, 0, 0)
@@ -301,8 +321,8 @@ Item {
                             fillGradient: LinearGradient {
                                 x1: 0; y1: 0; x2: 0; y2: floatingDroplet.height
                                 GradientStop { position: 0; color: root.reflectionColor }
-                                GradientStop { position: 0.4; color: Qt.alpha(root.accentColor, 0.18) }
-                                GradientStop { position: 1; color: root.accentColor }
+                                GradientStop { position: 0.4; color: Qt.alpha(root.liquidAccent, 0.18) }
+                                GradientStop { position: 1; color: root.liquidAccent }
                             }
                             startX: 0; startY: floatingDroplet.height / 2
                             PathArc { x: floatingDroplet.width; y: floatingDroplet.height / 2; radiusX: floatingDroplet.width / 2; radiusY: floatingDroplet.height / 2 }
@@ -325,12 +345,18 @@ Item {
                     anchors.fill: parent
                     expression: root.expression
                     viewYaw: root.viewYaw
-                    accent: root.accentColor
+                    accent: root.liquidAccent
                     eyeOpen: root.eyeOpen
                     mouthCurve: root.mouthCurve
                     // Pointer feedback is interpolated locally, never streamed over IPC.
-                    gazeX: root.hovered ? Math.max(-1, Math.min(1, (hoverHandler.point.position.x - root.width * 0.5) / (root.width * 0.5))) : root.gazeX
-                    gazeY: root.hovered ? Math.max(-1, Math.min(1, (hoverHandler.point.position.y - root.height * 0.5) / (root.height * 0.5))) : root.gazeY
+                    gazeX: !root.traveling && !root.dragging && root.hovered && !Expressions.focusedExpressions.includes(root.expression)
+                        ? Math.max(-1, Math.min(1, (hoverHandler.point.position.x - root.width * 0.5) / (root.width * 0.5)))
+                        : root.gazeX
+                    gazeY: !root.traveling && !root.dragging && root.hovered && !Expressions.focusedExpressions.includes(root.expression)
+                        ? Math.max(-1, Math.min(1, (hoverHandler.point.position.y - root.height * 0.5) / (root.height * 0.5)))
+                        : root.gazeY
+                    microX: root.motionEnabled && !root.traveling ? root.sway*.045 : 0
+                    microY: root.motionEnabled && !root.traveling ? root.bob*.022 : 0
                     pulse: root.pulse
                     motionEnabled: root.motionEnabled
                     qualityLevel: root.qualityLevel
@@ -348,7 +374,7 @@ Item {
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
                 fillColor: "transparent"; strokeWidth: 0.6
-                strokeColor: Qt.alpha(root.accentColor, 0.65)
+                strokeColor: Qt.alpha(root.liquidAccent, 0.65)
                 startX: 0; startY: workingOrbit.height / 2
                 PathArc { x: workingOrbit.width; y: workingOrbit.height / 2; radiusX: workingOrbit.width / 2; radiusY: workingOrbit.height / 2 }
                 PathArc { x: 0; y: workingOrbit.height / 2; radiusX: workingOrbit.width / 2; radiusY: workingOrbit.height / 2 }
@@ -361,6 +387,25 @@ Item {
         }
     }
     HoverHandler { id: hoverHandler; enabled: root.enabled }
+    Repeater {
+        model: root.effectsEnabled && root.tapPhase<1 ? 2 : 0
+        Shape {
+            id: tapRing
+            required property int index
+            objectName: "wullTapRipple"+index
+            width: 36+index*12; height: width
+            x: root.tapX-width/2; y: root.tapY-height/2
+            scale: .35+root.tapPhase*(1.1+index*.2)
+            opacity: (1-root.tapPhase)*(.6-index*.15)
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                fillColor: "transparent"; strokeColor: root.reflectionColor; strokeWidth: .8
+                startX: 0; startY: tapRing.height/2
+                PathArc { x: tapRing.width; y: tapRing.height/2; radiusX: tapRing.width/2; radiusY: tapRing.height/2 }
+                PathArc { x: 0; y: tapRing.height/2; radiusX: tapRing.width/2; radiusY: tapRing.height/2 }
+            }
+        }
+    }
     Repeater {
         model: root.effectsEnabled && root.shine > 0 ? 5 : 0
         Shape {
@@ -383,12 +428,11 @@ Item {
         }
     }
     TapHandler {
-        enabled: root.enabled
+        id: primaryTap
+        enabled: root.enabled && !root.dragging
         acceptedButtons: Qt.LeftButton
-        onTapped: {
-            root.pressed()
-            if (root.motionEnabled) squashBurst.restart()
-        }
+        gesturePolicy: TapHandler.DragThreshold
+        onTapped: root.reactToTap(point.position.x,point.position.y)
     }
     TapHandler {
         enabled: root.enabled
@@ -397,8 +441,8 @@ Item {
     }
     onMotionEnabledChanged: {
         if (!motionEnabled) {
-            squashBurst.stop(); reactionBounce.stop(); shineBurst.stop()
-            squash = 0; bob = 0; sway = 0; orbitPhase = 0; reactionPhase = 1; reactionRipple = 0; shine = 0
+            squashBurst.stop(); reactionBounce.stop(); shineBurst.stop(); tapBurst.stop()
+            squash = 0; bob = 0; sway = 0; orbitPhase = 0; reactionPhase = 1; reactionRipple = 0; shine = 0; tapPhase = 1; tapPulse = 0
         }
     }
     onExpressionChanged: {
@@ -408,6 +452,7 @@ Item {
         }
     }
     Behavior on accentColor { enabled: root.motionEnabled; ColorAnimation { duration: 480 } }
+    Behavior on hoverAmount { enabled: root.motionEnabled; NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
     Behavior on viewYaw { enabled: root.motionEnabled; NumberAnimation { duration: 600; easing.type: Easing.InOutCubic } }
     Behavior on expressionSquash { enabled: root.motionEnabled; SpringAnimation { spring: 3; damping: 0.42 } }
     Behavior on stateSquash { enabled: root.motionEnabled; SpringAnimation { spring: 3.2; damping: 0.34 } }
@@ -422,6 +467,11 @@ Item {
         NumberAnimation { target: root; property: "squash"; to: 1; duration: 85; easing.type: Easing.OutQuad }
         NumberAnimation { target: root; property: "squash"; to: -0.35; duration: 150; easing.type: Easing.OutBack }
         NumberAnimation { target: root; property: "squash"; to: 0; duration: 210; easing.type: Easing.OutCubic }
+    }
+    ParallelAnimation {
+        id: tapBurst
+        NumberAnimation { target: root; property: "tapPhase"; from: 0; to: 1; duration: 650; easing.type: Easing.OutCubic }
+        NumberAnimation { target: root; property: "tapPulse"; from: 1; to: 0; duration: 500; easing.type: Easing.OutCubic }
     }
     ParallelAnimation {
         id: reactionBounce

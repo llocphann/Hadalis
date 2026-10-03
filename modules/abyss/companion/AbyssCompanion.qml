@@ -1,8 +1,10 @@
 import QtQuick
+import QtQuick.Shapes
 import qs.modules.abyss.looks
 import qs.modules.common
 import "WullExpressions.js" as Expressions
 import "WullMotionData.js" as Curves
+import "WullAttention.js" as Attention
 
 Item {
     id: root
@@ -30,11 +32,25 @@ Item {
     property string renderQuality: "balanced"
     property real translucency: 0.16
     property bool travelEnabled: false
+    property string travelMode: "walk"
+    property bool surfaceSupported: true
     property int travelDuration: 1000
     property real travelDirection: 1
+    property real travelDirectionY: 0
+    property bool pointerFresh: false
+    property real pointerX: 0
+    property real pointerY: 0
+    property bool dragEnabled: false
+    property bool hardResetting: false
+    property real dragStartX: 0
+    property real dragStartY: 0
+    readonly property bool dragging: dragHandler.active
     property string emergenceEdge: edge
     property bool upright: false
     property real presentation: 0
+    readonly property bool peeking: reveal>0 && reveal<.99
+    property real floorAlignment: upright && surfaceSupported ? height-2-((height-92)/2+78.3) : 0
+    Behavior on floorAlignment { enabled: root.motionEnabled && !root.hardResetting; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
     property bool initialized: false
     property bool managedPlacement: false
     property real targetX: 0
@@ -43,25 +59,73 @@ Item {
     property bool leaving: false
     readonly property bool relocating: relocation.running
     readonly property bool inputReady: presentation > 0.99 && reveal > 0.99 && !relocating
-        && (!managedPlacement || travelEnabled || (Math.abs(x-targetX)<0.1 && Math.abs(y-targetY)<0.1))
+        && !hardResetting && (dragging || !managedPlacement || travelEnabled || (Math.abs(x-targetX)<0.1 && Math.abs(y-targetY)<0.1))
     readonly property bool materialReady: droplet.materialReady
     readonly property bool softwareFallback: droplet.softwareFallback
-    readonly property bool walking: travelX.running || travelY.running
+    readonly property bool moving: travelX.running || travelY.running
+    readonly property bool walking: moving && surfaceSupported && travelMode === "walk"
+    readonly property bool flying: dragging || (moving && !walking)
+    readonly property var attention: Attention.resolve(moving || dragging,
+        travelDirection, travelDirectionY, moving || dragging ? false : pointerFresh,
+        moving || dragging ? 0 : pointerX, moving || dragging ? 0 : pointerY,
+        peeking && emergenceEdge==="left" ? .4 : peeking && emergenceEdge==="right" ? -.4 : gazeX,
+        peeking && emergenceEdge==="top" ? .3 : peeking && emergenceEdge==="bottom" ? -.3 : gazeY,
+        Expressions.resolve(expression,mood,activity))
     readonly property real emergenceNormal: leaving
         ? Curves.sample("dive", "normal", 1-presentation)
         : Curves.sample("emerge", "normal", presentation)
-    readonly property bool verticalEdge: edge === "left" || edge === "right"
+    readonly property bool verticalEdge: !upright && (edge === "left" || edge === "right")
     readonly property bool hovered: droplet.hovered
     signal activated()
     signal settingsRequested()
+    signal travelCompleted()
+    signal dragStarted()
+    signal dragPositionRequested(real x, real y)
+    signal dragEnded()
     function stopTravel(): void { travelX.stop(); travelY.stop() }
+    function present(value): void {
+        presentationTween.stop()
+        leaving=value<presentation
+        if (!motionEnabled || hardResetting) {presentation=value;return}
+        presentationTween.from=presentation
+        presentationTween.to=value
+        presentationTween.duration=leaving ? Curves.clips.dive.duration : peeking ? 480 : Curves.clips.emerge.duration
+        presentationTween.start()
+    }
+    function resetTo(px, py, sourceEdge): void {
+        hardResetting=true
+        stopTravel(); relocation.stop(); presentationTween.stop()
+        presentation=0; leaving=false; activeEmergenceEdge=sourceEdge
+        x=px; y=py
+        hardResetting=false
+    }
+    function checkArrival(): void {
+        if (initialized && travelEnabled && !moving && !dragging && !relocating
+                && presentation>.99 && Math.abs(x-targetX)<.1 && Math.abs(y-targetY)<.1)
+            travelCompleted()
+    }
+    onMovingChanged: if (!moving) Qt.callLater(root.checkArrival)
+    onPresentationChanged: if (presentation>.99) Qt.callLater(root.checkArrival)
     function place(): void {
-        if (!initialized || !managedPlacement) return
+        if (!initialized || !managedPlacement || hardResetting) return
         if (Math.abs(x-targetX)<0.01 && Math.abs(y-targetY)<0.01) return
-        if (travelEnabled || !motionEnabled || reveal <= 0 || presentation < 0.01) {
+        if (dragging || !motionEnabled || reveal <= 0 || presentation < 0.01) {
+            stopTravel()
             relocation.stop()
             activeEmergenceEdge = emergenceEdge
             x = targetX; y = targetY
+            Qt.callLater(root.checkArrival)
+        } else if (travelEnabled) {
+            relocation.stop()
+            activeEmergenceEdge=emergenceEdge
+            if (Math.abs(x-targetX)>.01) {
+                travelX.stop();travelX.from=x;travelX.to=targetX
+                travelX.duration=travelDuration;travelX.start()
+            }
+            if (Math.abs(y-targetY)>.01) {
+                travelY.stop();travelY.from=y;travelY.to=targetY
+                travelY.duration=travelDuration;travelY.start()
+            }
         } else {
             stopTravel()
             relocation.restart()
@@ -76,30 +140,70 @@ Item {
     clip: presentation < 0.999
 
     onRevealChanged: if (initialized) {
-        leaving = reveal < presentation
         if (reveal <= 0) { stopTravel(); relocation.stop() }
-        presentation = reveal
+        present(reveal)
     }
-    onTravelEnabledChanged: if (!travelEnabled) stopTravel()
+    onTravelEnabledChanged: if (!travelEnabled) stopTravel(); else Qt.callLater(root.place)
     Component.onCompleted: {
         initialized = true
         if (managedPlacement) { x=targetX; y=targetY }
         activeEmergenceEdge = emergenceEdge
-        presentation = reveal
+        present(reveal)
     }
-    onMotionEnabledChanged: if (!motionEnabled) { stopTravel(); relocation.stop(); presentation = reveal }
-    onHoveredChanged: if (hovered) { travelX.stop(); travelY.stop() }
-    Behavior on presentation {
-        enabled: root.motionEnabled
-        NumberAnimation { duration: root.leaving ? Curves.clips.dive.duration : Curves.clips.emerge.duration }
+    onMotionEnabledChanged: if (!motionEnabled) { stopTravel(); relocation.stop(); present(reveal) }
+    // Standalone animation nodes can really be stopped at their current value.
+    // Behavior's nested nodes reject stop(), breaking hover/drag interruption.
+    NumberAnimation { id: presentationTween; target: root; property: "presentation" }
+    NumberAnimation { id: travelX; target: root; property: "x"; onFinished: Qt.callLater(root.checkArrival) }
+    NumberAnimation { id: travelY; target: root; property: "y"; onFinished: Qt.callLater(root.checkArrival) }
+
+    DragHandler {
+        id: dragHandler
+        objectName: "wullDragHandler"
+        target: null
+        enabled: root.dragEnabled && root.interactive && root.inputReady
+        acceptedButtons: Qt.LeftButton
+        cursorShape: active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+        onActiveChanged: {
+            if (active) {
+                root.dragStartX=root.x; root.dragStartY=root.y
+                root.stopTravel(); relocation.stop()
+                root.dragStarted()
+            } else root.dragEnded()
+        }
+        onCentroidChanged: if (active) {
+            root.dragPositionRequested(root.dragStartX+centroid.scenePosition.x-centroid.scenePressPosition.x,
+                root.dragStartY+centroid.scenePosition.y-centroid.scenePressPosition.y)
+        }
     }
-    Behavior on x {
-        enabled: root.travelEnabled && root.motionEnabled && root.presentation > 0.99
-        NumberAnimation { id: travelX; duration: root.travelDuration }
-    }
-    Behavior on y {
-        enabled: root.travelEnabled && root.motionEnabled && root.presentation > 0.99
-        NumberAnimation { id: travelY; duration: root.travelDuration }
+
+    // Water rings share the presentation clock and accent, with no new timer.
+    Item {
+        id: waterRings
+        visible: root.motionEnabled && root.effectsEnabled && root.presentation>.001 && root.presentation<.999
+        width: 70; height: 13
+        x: root.activeEmergenceEdge === "left" ? -width/2 : root.activeEmergenceEdge === "right" ? root.width-width/2 : (root.width-width)/2
+        y: root.activeEmergenceEdge === "top" ? -height/2 : root.activeEmergenceEdge === "bottom" ? root.height-height/2 : (root.height-height)/2
+        rotation: root.activeEmergenceEdge === "left" || root.activeEmergenceEdge === "right" ? 90 : 0
+        opacity: Math.sin(Math.PI*root.presentation)
+        scale: .6+root.presentation*.7
+        Repeater {
+            model: 2
+            Shape {
+                id: waterRing
+                required property int index
+                width: 70-index*16; height: 13-index*3
+                anchors.centerIn: parent
+                preferredRendererType: Shape.CurveRenderer
+                ShapePath {
+                    fillColor: "transparent"; strokeColor: Qt.alpha(AbyssStyle.accent,.75)
+                    strokeWidth: .8
+                    startX: 0; startY: waterRing.height/2
+                    PathArc { x: waterRing.width; y: waterRing.height/2; radiusX: waterRing.width/2; radiusY: waterRing.height/2 }
+                    PathArc { x: 0; y: waterRing.height/2; radiusX: waterRing.width/2; radiusY: waterRing.height/2 }
+                }
+            }
+        }
     }
     SequentialAnimation {
         id: relocation
@@ -119,6 +223,7 @@ Item {
         id: emergenceLayer
         width: 76; height: 92
         anchors.centerIn: parent
+        anchors.verticalCenterOffset: root.floorAlignment
         transform: [
             Translate {
                 x: root.emergenceNormal * root.width * (root.activeEmergenceEdge === "left" ? -1 : root.activeEmergenceEdge === "right" ? 1 : 0)
@@ -134,16 +239,21 @@ Item {
             id: droplet
             width: 76; height: 92
             visible: root.visible
-            gazeX: root.gazeX
-            gazeY: root.gazeY
+            gazeX: root.attention.x
+            gazeY: root.attention.y
             energy: root.energy
             motionEnabled: root.motionEnabled && visible
             motionScale: root.motionScale
             renderQuality: root.renderQuality
             translucency: root.translucency
             walking: root.walking
+            flying: root.flying
+            grounded: root.surfaceSupported && !root.flying
+            dragging: root.dragging
+            traveling: root.moving
             walkingDirection: root.travelDirection * (root.upright || root.edge === "top" || root.edge === "left" ? 1 : -1)
-            viewYaw: root.walking ? walkingDirection * 32 : -15
+            viewYaw: root.moving ? root.travelDirection * (root.walking ? 32 : 20)
+                : root.peeking ? root.emergenceEdge==="left" ? 22 : root.emergenceEdge==="right" ? -22 : 0 : -15
             effectsEnabled: root.effectsEnabled
             stateSquash: root.motionEnabled ? root.bodySquash : 0
             stateStretch: root.motionEnabled ? root.bodyStretch : 0

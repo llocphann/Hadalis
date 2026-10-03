@@ -33,21 +33,6 @@ ContentPage {
         { displayName: Translation.tr("Balanced"), value: "balanced" },
         { displayName: Translation.tr("Quality"), value: "quality" }
     ]
-    readonly property var edgeOptions: [
-        { displayName: Translation.tr("Follow the bar"), value: "auto" },
-        { displayName: Translation.tr("Top"), value: "top" },
-        { displayName: Translation.tr("Right"), value: "right" },
-        { displayName: Translation.tr("Bottom"), value: "bottom" },
-        { displayName: Translation.tr("Left"), value: "left" }
-    ]
-    readonly property var outputOptions: {
-        const outputs = [{ displayName: Translation.tr("Automatic"), value: "" }]
-        for (const screen of Quickshell.screens)
-            outputs.push({ displayName: screen.name, value: screen.name })
-        if (root.preferences.output && !outputs.some(o => o.value === root.preferences.output))
-            outputs.push({ displayName: root.preferences.output + " (" + Translation.tr("Disconnected") + ")", value: root.preferences.output })
-        return outputs
-    }
     readonly property var expressionOptions: [
         { displayName: Translation.tr("Idle"), value: "idle" },
         { displayName: Translation.tr("Happy"), value: "happy" },
@@ -211,7 +196,6 @@ ContentPage {
         onSelected: value => root.activeSection = value
         options: [
             { displayName: Translation.tr("Overview"), icon: "water_drop", value: "overview" },
-            { displayName: Translation.tr("Placement"), icon: "open_with", value: "placement" },
             { displayName: Translation.tr("Behavior"), icon: "sentiment_satisfied", value: "behavior" },
             { displayName: Translation.tr("Rendering"), icon: "diamond", value: "rendering" }
         ]
@@ -235,7 +219,7 @@ ContentPage {
             SettingsSwitch {
                 objectName: "companionInteractive"
                 text: Translation.tr("Respond to pointer interactions")
-                description: Translation.tr("React to clicks and hovering, and allow the settings shortcut.")
+                description: Translation.tr("Highlight on hover, react to clicks, and drag Wull around your screen.")
                 autoToggle: false
                 checked: root.preferences.interactive
                 onToggledByUser: checked => root.setPreference("interactive", checked)
@@ -247,47 +231,6 @@ ContentPage {
                 autoToggle: false
                 checked: root.preferences.hideInFullscreen
                 onToggledByUser: checked => root.setPreference("hideInFullscreen", checked)
-            }
-        }
-    }
-
-    SettingsCardSection {
-        settingsTaskSection: "placement"
-        visible: root.activeSection === "placement"
-        title: Translation.tr("Placement")
-        icon: "open_with"
-        SettingsGroup {
-            enabled: Config.ready
-            ChoiceRow {
-                objectName: "companionOutput"
-                label: Translation.tr("Display")
-                description: Translation.tr("Choose the screen Wull lives on.")
-                options: root.outputOptions
-                currentValue: root.preferences.output
-                onSelected: value => root.setPreference("output", value)
-            }
-            ChoiceRow {
-                objectName: "companionEdge"
-                label: Translation.tr("Screen edge")
-                options: root.edgeOptions
-                currentValue: root.preferences.edge
-                onSelected: value => root.setPreference("edge", value)
-            }
-            PercentageRow {
-                objectName: "companionPosition"
-                label: Translation.tr("Position along edge")
-                description: Translation.tr("Measured from the left on horizontal edges, or from the top on vertical edges.")
-                value: root.preferences.along
-                minimum: 0.08; maximum: 0.92
-                onMoved: value => root.setPreference("along", value)
-            }
-            PercentageRow {
-                objectName: "companionSize"
-                label: Translation.tr("Companion size")
-                description: Translation.tr("Keep Wull small or give it a little more room.")
-                value: root.preferences.size
-                minimum: 0.65; maximum: 1.5
-                onMoved: value => root.setPreference("size", value)
             }
         }
     }
@@ -318,7 +261,7 @@ ContentPage {
             SettingsSwitch {
                 objectName: "companionMotion"
                 text: Translation.tr("Companion animations")
-                description: Translation.tr("Bobbing, blinking and expressive movement. Respects the shell motion setting.")
+                description: Translation.tr("Walk on surfaces, float through open space, and react naturally. Respects the shell motion setting.")
                 autoToggle: false
                 checked: root.preferences.animationsEnabled
                 onToggledByUser: checked => root.setPreference("animationsEnabled", checked)
@@ -333,6 +276,14 @@ ContentPage {
         icon: "diamond"
         SettingsGroup {
             enabled: Config.ready
+            PercentageRow {
+                objectName: "companionSize"
+                label: Translation.tr("Companion size")
+                description: Translation.tr("Keep Wull small or give it a little more room.")
+                value: root.preferences.size
+                minimum: 0.65; maximum: 1.5
+                onMoved: value => root.setPreference("size", value)
+            }
             ChoiceRow {
                 objectName: "companionQuality"
                 label: Translation.tr("Rendering quality")

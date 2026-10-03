@@ -59,7 +59,7 @@ source = PERIMETER.read_text()
 assert source != original
 assert source.count("AbyssCompanion {") == 1
 assert source.count("CompanionBridge {") == 1
-assert source.count('import "companion/WullSurfacePlacement.js" as WullSurfacePlacement') == 1
+assert source.count('import "companion/WullScene.js" as WullScene') == 1
 assert 'binaryPath: root.companionEnabled ?' in source
 assert 'useNativeDispatcher: root.companionEnabled' in source
 mask = (
@@ -68,34 +68,21 @@ mask = (
     " ? companion : emptyInput }"
 )
 assert source.count(mask) == 1
+# Current production feeds the actual output-local Bar and stable surface
+# bounds to one geometry controller. Pure path/selection behavior is executed
+# below; do not freeze the old fixed-edge placement implementation spelling.
+assert source.count("WullPresence {") == 1
 for marker in (
-    "readonly property var companionPlacement:",
-    "return WullSurfacePlacement.slot({",
-    "bar.visible ? bar.layoutRecords.map(record => ({",
-    "footprint: span + 16,",
-    "maxShift: Math.min(360, extent * 0.28),",
-    "cornerStart:", "cornerEnd:",
-    "window.companionSurfacePlacement.qualified || window.companionPlacement.qualified",
-    "window.companionWanderCenter : window.companionPlacement.center : preferred",
-    "function companionFieldDepth(): real",
-    "const actual = window.bodyInsets(root.companionEdge, along, span)",
-    "Math.max(AbyssStyle.perimeterThickness, depth)",
-    "const horizontal = Geometry.horizontal(root.companionEdge)",
-    "root.companionScale - 1",
-    "readonly property bool companionOccluded:",
-    "liquid.popupsOpen",
-    "popup.presented",
-    "leftPanel.presented",
-    "rightPanel.presented",
-    "WullHostPolicy.alongPosition(extent, span,",
+    "readonly property var companionScene:", "records:records,blockers:blockers,surfaces:window.companionSurfaces",
+    "scene: window.companionScene", "permitted: window.companionPermission",
+    "companionBridge.visibility", "window.companionPermission && companionPresence.qualified",
+    "travelMode: companionPresence.mode", "surfaceSupported: companionPresence.grounded",
+    "onDragPositionRequested:", "onDragEnded:", "onTravelCompleted:", "upright: true",
 ):
     assert marker in source, marker
-assert "window.height - AbyssStyle.perimeterThickness - implicitHeight" not in source
-assert "window.width - AbyssStyle.perimeterThickness - implicitWidth" not in source
-assert source.count("window.companionFieldDepth()") == 4
-assert source.count('edge === "left"') >= 1
-assert source.count('edge === "top"') >= 1
-assert source.count("function companionAlongPosition()") == 1
+assert "companionPreferences.edge" not in source
+assert "companionPreferences.along" not in source
+assert "companionPreferences.output" not in source
 # No new input-mask geometry, no extra full-screen renderer or new process.
 for marker in ("nativeInputMask: Region {", "AbyssField {",
                "AbyssBar {", "AbyssCompanion {"):
@@ -113,4 +100,5 @@ result = subprocess.run(
 assert result.returncode == 0, "Pure production slot behavior failed"
 assert "WULL_PRODUCTION_SURFACE_SLOT_PASS" in result.stdout
 subprocess.run(["node", "scripts/test-wull-motion.cjs"], cwd=ROOT, check=True, timeout=35)
+subprocess.run(["node", "scripts/test-wull-scene.cjs"], cwd=ROOT, check=True, timeout=35)
 print("WULL_PRODUCTION_FIELD_RIM_SURFACE_INTEGRATION_PASS")

@@ -5534,5 +5534,8 @@
   "Translucency": "Translucency",
   "Let a little of the background show through the liquid. Eyes and bright reflections stay clear.": "Let a little of the background show through the liquid. Eyes and bright reflections stay clear.",
   "Performance keeps lighting simple. Balanced adds reflected detail. Quality adds deeper refraction and richer liquid light. Follows the shell performance policy.": "Performance keeps lighting simple. Balanced adds reflected detail. Quality adds deeper refraction and richer liquid light. Follows the shell performance policy.",
-  "Add floating bubbles, sparkle and the liquid reflection beneath Wull. Performance uses a simpler floor effect. Respects the shell effects setting.": "Add floating bubbles, sparkle and the liquid reflection beneath Wull. Performance uses a simpler floor effect. Respects the shell effects setting."
+  "Add floating bubbles, sparkle and the liquid reflection beneath Wull. Performance uses a simpler floor effect. Respects the shell effects setting.": "Add floating bubbles, sparkle and the liquid reflection beneath Wull. Performance uses a simpler floor effect. Respects the shell effects setting.",
+  "Highlight on hover, react to clicks, and drag Wull around your screen.": "Highlight on hover, react to clicks, and drag Wull around your screen.",
+  "Walk on surfaces, float through open space, and react naturally. Respects the shell motion setting.": "Walk on surfaces, float through open space, and react naturally. Respects the shell motion setting.",
+  "Wull appearance, personality and movement": "Wull appearance, personality and movement"
 }

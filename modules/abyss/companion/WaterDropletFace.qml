@@ -7,11 +7,18 @@ import "WullExpressions.js" as Expressions
 
 Item {
     id: root
+    objectName: "wullFace"
     property string expression: "idle"
     property real eyeOpen: 1
     property real mouthCurve: 0.12
     property real gazeX: 0
     property real gazeY: 0
+    property real microX: 0
+    property real microY: 0
+    readonly property real pupilX: Math.max(-1,Math.min(1,gazeX+microX))
+    readonly property real pupilY: Math.max(-1,Math.min(1,gazeY+microY))
+    Behavior on gazeX { enabled: root.motionEnabled; SmoothedAnimation { velocity: 8; maximumEasingTime: 80 } }
+    Behavior on gazeY { enabled: root.motionEnabled; SmoothedAnimation { velocity: 7; maximumEasingTime: 80 } }
     property real viewYaw: 0
     property real pulse: 0
     property color accent: AbyssStyle.accent
@@ -47,7 +54,7 @@ Item {
                     property color accent: root.accent
                     property color specular: ColorUtils.colorWithLightness(root.accent, 0.85)
                     property vector4d motion: Qt.vector4d(0, 0, 0, 0)
-                    property vector4d optics: Qt.vector4d(0, 2, root.gazeX, root.gazeY)
+                    property vector4d optics: Qt.vector4d(0, 2, root.pupilX, root.pupilY)
                     property vector4d rendering: Qt.vector4d(root.qualityLevel, 0, 0, 0)
                     fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
                 }
@@ -98,12 +105,12 @@ Item {
                         }
                     }
                     Rectangle {
-                        x: (2.5 + root.gazeX * 1.5) * root.unit; y: (2.4 + root.gazeY) * root.unit
+                        x: (2.5 + root.pupilX * 1.5) * root.unit; y: (2.4 + root.pupilY) * root.unit
                         width: 4.0 * root.unit; height: 3.2 * root.unit
                         radius: width / 2; rotation: -25; color: "#f1fdff"
                     }
                     Rectangle {
-                        x: (9 + root.gazeX) * root.unit; y: (10 + root.gazeY) * root.unit
+                        x: (9 + root.pupilX) * root.unit; y: (10 + root.pupilY) * root.unit
                         width: 2.2 * root.unit; height: width; radius: width / 2; color: "#d3f9ff"
                     }
                     Rectangle {

@@ -24,9 +24,8 @@ function normalize(options) {
     const result = defaults()
     for (const key of ["enabled", "interactive", "soundEnabled", "animationsEnabled", "effectsEnabled", "hideInFullscreen"])
         if (typeof source[key] === "boolean") result[key] = source[key]
-    result.output = typeof source.output === "string" ? source.output : ""
-    result.edge = ["auto", "top", "right", "bottom", "left"].includes(source.edge) ? source.edge : "auto"
-    result.along = bounded(source.along, result.along, 0.08, 0.92)
+    // Older persisted placement values are tolerated but no longer pin Wull.
+    // Keep schema compatibility while geometry chooses every visit dynamically.
     result.size = bounded(source.size, result.size, 0.65, 1.5)
     result.translucency = bounded(source.translucency, result.translucency, 0, 0.35)
     result.personality = personalities.includes(source.personality) ? source.personality : "balanced"

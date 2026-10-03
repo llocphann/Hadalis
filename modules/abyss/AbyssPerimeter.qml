@@ -12,7 +12,7 @@ import "looks/AbyssGeometry.js" as Geometry
 import "looks/AbyssLayout.js" as ModuleLayout
 import "looks/AbyssPresentation.js" as Presentation
 import "companion/WullHostPolicy.js" as WullHostPolicy
-import "companion/WullSurfacePlacement.js" as WullSurfacePlacement
+import "companion/WullScene.js" as WullScene
 import "companion/WullPreferences.js" as WullPreferences
 
 Scope {
@@ -22,13 +22,8 @@ Scope {
     readonly property var companionPreferences: WullPreferences.normalize(companionOptions)
     readonly property bool companionEnabled: Config.ready && companionPreferences.enabled
     readonly property string companionTargetOutput: GlobalStates.resolveOutputName(
-        companionPreferences.output, Config.options?.bar?.screenList ?? [])
-    readonly property string companionEdge: {
-        const configured = companionPreferences.edge
-        return ["top", "right", "bottom", "left"].includes(configured)
-            ? configured : root.barEdge
-    }
-    readonly property real companionAlong: companionPreferences.along
+        "", Config.options?.bar?.screenList ?? [])
+    readonly property string companionEdge: root.barEdge
     readonly property real companionScale: companionPreferences.size
     readonly property bool companionInteractive: companionPreferences.interactive
     readonly property bool companionSessionVisible: companionEnabled
@@ -149,141 +144,93 @@ Scope {
             readonly property bool presented: !GlobalStates.screenLocked
                 && (!fullscreenCovered || (Config.options?.abyss?.perimeter?.visibleInFullscreen ?? false))
             readonly property bool editorOpen: GlobalStates.abyssEditing && GlobalStates.abyssEditorTargetOutput === outputName
-            // A dead/uninitialized daemon must never leave an interactive host.
-            // While modal/attached surfaces are open, never let the full Wull
-            // host mask steal pointer interactions from their owners.
+            // Existing modal and transitioning surfaces own their input. Wull
+            // resumes only after stable geometry can qualify its whole host.
             readonly property bool companionOccluded: window.editorOpen
                 || utility.open || liquid.activeDialog || liquid.popupsOpen
                 || settings.presented || dashboardBody.presented || controls.presented
                 || aux.presented || clipboardBody.presented
-            readonly property var companionSurface: popup.presented && popup.ready && popup.progress > 0.99
-                ? {rect:popup.inputBounds,edge:popup.record?.edge ?? root.companionEdge,key:popup.contentKind}
-                : leftPanel.presented && leftPanel.ready && leftPanel.progress > 0.99
-                    ? {rect:leftPanel.inputBounds,edge:leftPanel.edge,key:"leftPanel"}
-                    : rightPanel.presented && rightPanel.ready && rightPanel.progress > 0.99
-                        ? {rect:rightPanel.inputBounds,edge:rightPanel.edge,key:"rightPanel"} : null
-            readonly property var companionSurfacePlacement: {
-                if (!window.companionSurface || window.companionOccluded)
-                    return {qualified:false}
+                || [popup,leftPanel,rightPanel].some(owner=>owner.presented
+                    && (!owner.ready || owner.progress<.999))
+            readonly property var companionSurfaces: {
+                const surfaces=[]
+                for (const entry of [[popup,"popup"],[leftPanel,"leftPanel"],[rightPanel,"rightPanel"]]) {
+                    const owner=entry[0]
+                    if (owner.presented && owner.ready && owner.progress>.999)
+                        surfaces.push({rect:owner.inputBounds,
+                            edge:owner.record?.edge ?? owner.edge ?? root.barEdge,
+                            key:entry[1]+(owner.contentKind ?? "")})
+                }
+                return surfaces
+            }
+            readonly property var companionScene: {
                 const blockers=[]
-                if (bar.visible) {
-                    for (const r of bar.layoutRecords) {
-                        const horizontal=Geometry.horizontal(r.edge)
-                        const depth=Number(window.nativeInsets[r.edge])
-                        blockers.push(horizontal
-                            ? {x:r.along,y:r.edge === "top" ? 0 : window.height-depth,width:r.span,height:depth}
-                            : {x:r.edge === "left" ? 0 : window.width-depth,y:r.along,width:depth,height:r.span})
-                    }
+                const records=bar.visible ? bar.layoutRecords.map(record=>({
+                    edge:record.edge,along:record.along,span:record.span})) : []
+                for (const record of records) {
+                    const horizontal=Geometry.horizontal(record.edge)
+                    const depth=Number(window.nativeInsets[record.edge])
+                    blockers.push(horizontal
+                        ? {x:record.along,y:record.edge==="top" ? 0 : window.height-depth,width:record.span,height:depth}
+                        : {x:record.edge==="left" ? 0 : window.width-depth,y:record.along,width:depth,height:record.span})
                 }
-                for (const owner of [popup,leftPanel,rightPanel,dock,notification,toastBody,osd]) {
-                    if (owner.presented && owner.inputBounds !== window.companionSurface.rect)
+                for (const owner of [popup,leftPanel,rightPanel,dock,notification,toastBody,osd])
+                    if (owner.presented && WullScene.finite(owner.inputBounds?.width)
+                            && owner.inputBounds.width>0 && owner.inputBounds.height>0)
                         blockers.push(owner.inputBounds)
-                }
-                return WullSurfacePlacement.besideSurface(window.companionSurface.rect,
-                    window.companionSurface.edge,window.width,window.height,
-                    companion.implicitWidth*root.companionScale,
-                    companion.implicitHeight*root.companionScale,blockers)
+                return {width:window.width,height:window.height,
+                    hostWidth:112*root.companionScale,hostHeight:98*root.companionScale,
+                    scale:root.companionScale,insets:window.nativeInsets,
+                    records:records,blockers:blockers,surfaces:window.companionSurfaces}
             }
-            readonly property var companionPlacement: {
-                if (!root.companionSessionVisible
-                        || root.companionTargetOutput !== window.outputName
-                        || !window.presented || window.companionOccluded
-                        || popup.presented || leftPanel.presented || rightPanel.presented)
-                    return { qualified: false, reason: "INACTIVE_OR_SURFACE_OCCUPIED" }
-                const horizontal = Geometry.horizontal(root.companionEdge)
-                const extent = horizontal ? window.width : window.height
-                const span = (horizontal ? companion.implicitWidth
-                    : companion.implicitHeight) * root.companionScale
-                const desired = WullHostPolicy.alongPosition(extent, span,
-                    root.companionAlong)
-                // The FULL foreground layout is authoritative. Local
-                // bar.deformations alone omit most clocks/tray/modules.
-                const records = bar.visible ? bar.layoutRecords.map(record => ({
-                    edge: record.edge, along: record.along, span: record.span
-                })) : []
-                return WullSurfacePlacement.slot({
-                    edge: root.companionEdge,
-                    extent: extent,
-                    footprint: span + 16,
-                    desired: desired,
-                    clearance: 18,
-                    sideGuard: 16,
-                    cornerStart: (horizontal ? window.nativeInsets.left
-                        : window.nativeInsets.top) + 32,
-                    cornerEnd: (horizontal ? window.nativeInsets.right
-                        : window.nativeInsets.bottom) + 32,
-                    maxShift: Math.min(360, extent * 0.28),
-                    records: records,
-                    // A stable popup/panel uses its own beside-surface route;
-                    // edge wandering only consumes the verified Bar interval.
-                    reservations: []
-                })
+            readonly property bool companionPermission: WullHostPolicy.hostActive(
+                root.companionSessionVisible,companionBridge.ready,
+                root.companionTargetOutput,window.outputName,window.presented,field.ready)
+                && !window.companionOccluded
+            readonly property bool companionHostActive: window.companionPermission && companionPresence.qualified
+            readonly property bool companionHoverHeld: window.companionHostActive
+                && companion.interactive && (companion.hovered || companion.dragging)
+            onCompanionHoverHeldChanged: if (root.companionTargetOutput===window.outputName && companionBridge.ready)
+                companionBridge.sendEvent("hover",window.companionHoverHeld)
+            WullPresence {
+                id: companionPresence
+                scene: window.companionScene
+                actor: companion
+                permitted: window.companionPermission
+                requestedReveal: companionBridge.visibility==="present" ? 1
+                    : companionBridge.visibility==="peeking" ? .46 : 0
+                motionEnabled: root.companionPreferences.animationsEnabled && AbyssStyle.motionEnabled
+                interactionHeld: companionBridge.activity!=="idle"
+                travelId: companionBridge.travelId
+                travelFraction: companionBridge.travelTarget
+                onStopRequested: companion.stopTravel()
+                onResetRequested: (px,py,sourceEdge)=>companion.resetTo(
+                    px+(root.companionScale-1)*companion.implicitWidth/2,
+                    py+(root.companionScale-1)*companion.implicitHeight/2,sourceEdge)
             }
-            readonly property bool companionHostActive: WullHostPolicy.hostActive(
-                root.companionSessionVisible, companionBridge.ready,
-                root.companionTargetOutput, window.outputName,
-                window.presented, field.ready)
-                && (window.companionSurfacePlacement.qualified || window.companionPlacement.qualified)
-            property real companionWanderCenter: NaN
-            property int companionTravelDuration: 1000
-            property real companionTravelDirection: 1
-            property bool companionPathAllowed: false
-            onCompanionPlacementChanged: {
-                window.companionPathAllowed = false
-                window.companionWanderCenter = NaN
-            }
-            onCompanionSurfaceChanged: {
-                window.companionPathAllowed = false
-                window.companionWanderCenter = NaN
-            }
-            Connections {
-                target: companionBridge
-                function onTravelIdChanged(): void {
-                    if (!window.companionHostActive || window.companionSurface
-                            || !root.companionPreferences.animationsEnabled
-                            || !AbyssStyle.motionEnabled
-                            || companion.hovered || companionBridge.travelId === 0)
-                        return
-                    const horizontal=Geometry.horizontal(root.companionEdge)
-                    const current=(horizontal ? companion.x : companion.y)
-                        + (horizontal ? companion.implicitWidth : companion.implicitHeight)*0.5
-                    const route=WullSurfacePlacement.wander(window.companionPlacement,
-                        current,companionBridge.travelTarget,root.companionScale)
-                    if (!route.qualified) return
-                    window.companionTravelDuration = route.duration
-                    window.companionTravelDirection = route.direction
-                    window.companionPathAllowed = true
-                    window.companionWanderCenter = route.center
-                }
-                function onActivityChanged(): void {
-                    if (companionBridge.activity !== "idle") companion.stopTravel()
+            property real companionPointerX: 0
+            property real companionPointerY: 0
+            property bool companionPointerFresh: false
+            Item {
+                anchors.fill: parent
+                HoverHandler {
+                    id: companionPointer
+                    target: null
+                    blocking: false
+                    enabled: window.companionHostActive && root.companionInteractive
+                    onPointChanged: if (hovered) {
+                        window.companionPointerX=point.scenePosition.x
+                        window.companionPointerY=point.scenePosition.y
+                        window.companionPointerFresh=true
+                        companionPointerExpiry.restart()
+                    }
+                    onHoveredChanged: if (!hovered) window.companionPointerFresh=false
                 }
             }
-            function companionAlongPosition(): real {
-                const horizontal = Geometry.horizontal(root.companionEdge)
-                const extent = horizontal ? window.width : window.height
-                const span = horizontal ? companion.implicitWidth * root.companionScale
-                    : companion.implicitHeight * root.companionScale
-                const preferred = WullHostPolicy.alongPosition(extent, span,
-                    root.companionAlong)
-                return window.companionPlacement.qualified
-                    ? Number.isFinite(window.companionWanderCenter)
-                        ? window.companionWanderCenter : window.companionPlacement.center : preferred
-            }
-            // Bind to the INNER shared shader-field rim where Wull is
-            // located, including the real per-output Bar thickness and
-            // any local module surface expansion. Never use the physical
-            // output border as its attachment target.
-            function companionFieldDepth(): real {
-                const horizontal = Geometry.horizontal(root.companionEdge)
-                const span = (horizontal ? companion.implicitWidth
-                    : companion.implicitHeight) * root.companionScale
-                const along = window.companionAlongPosition() - span * 0.5
-                const actual = window.bodyInsets(root.companionEdge, along, span)
-                const depth = Number(actual[root.companionEdge])
-                return Number.isFinite(depth)
-                    ? Math.max(AbyssStyle.perimeterThickness, depth)
-                    : AbyssStyle.perimeterThickness
+            Timer {
+                id: companionPointerExpiry
+                interval: 1400; repeat: false
+                onTriggered: window.companionPointerFresh=false
             }
             onPresentedChanged: if (!presented && editorOpen) GlobalStates.abyssEditing = false
             screen: modelData
@@ -470,27 +417,31 @@ Scope {
             AbyssCompanion {
                 id: companion
                 z: 24
-                // Unlike reveal's normal fade, a backend loss hides immediately.
                 opacity: companionBridge.ready ? 1 : 0
-                edge: root.companionEdge
+                edge: companionPresence.emergenceEdge
                 scale: root.companionScale
-                interactive: root.companionInteractive && window.companionHostActive
+                interactive: root.companionInteractive && window.companionHostActive && !companionPresence.retreating
+                dragEnabled: interactive
                 motionEnabled: root.companionPreferences.animationsEnabled && AbyssStyle.motionEnabled
                 effectsEnabled: root.companionPreferences.effectsEnabled && Appearance.effectsEnabled
-                    && AbyssStyle.quality !== "performance"
+                    && AbyssStyle.quality!=="performance"
                 motionScale: WullPreferences.motionScale(root.companionPreferences.personality)
                 renderQuality: root.companionPreferences.renderQuality
                 translucency: root.companionPreferences.translucency
-                travelEnabled: window.companionPathAllowed
-                travelDuration: window.companionTravelDuration
-                travelDirection: window.companionTravelDirection
+                travelEnabled: companionPresence.traveling
+                travelMode: companionPresence.mode
+                surfaceSupported: companionPresence.grounded
+                travelDuration: companionPresence.duration
+                travelDirection: companionPresence.directionX/Math.max(1,Math.hypot(companionPresence.directionX,companionPresence.directionY))
+                travelDirectionY: companionPresence.directionY/Math.max(1,Math.hypot(companionPresence.directionX,companionPresence.directionY))
                 managedPlacement: true
-                emergenceEdge: window.companionSurfacePlacement.qualified
-                    ? window.companionSurfacePlacement.emergenceEdge : root.companionEdge
-                upright: window.companionSurfacePlacement.qualified
-                reveal: !window.companionHostActive ? 0
-                    : companionBridge.visibility === "present" ? 1
-                    : companionBridge.visibility === "peeking" ? 0.46 : 0
+                emergenceEdge: companionPresence.emergenceEdge
+                upright: true
+                reveal: companionPresence.renderedReveal
+                pointerFresh: window.companionPointerFresh
+                    && Math.hypot(window.companionPointerX-(x+width/2),window.companionPointerY-(y+height/2))<320*scale
+                pointerX: (window.companionPointerX-(x+width/2))/(140*scale)
+                pointerY: (window.companionPointerY-(y+height/2))/(140*scale)
                 gazeX: companionBridge.gazeX
                 gazeY: companionBridge.gazeY
                 energy: companionBridge.energy
@@ -505,37 +456,16 @@ Scope {
                 expression: companionBridge.expression
                 mood: companionBridge.mood
                 activity: companionBridge.activity
-
-                // Scale is centered on the FULL host. Account for its
-                // outward half-extent so the rendered cradle, not the
-                // unscaled host rectangle, reaches the INNER field rim.
-                targetX: window.companionSurfacePlacement.qualified
-                    ? window.companionSurfacePlacement.x + (root.companionScale-1)*implicitWidth*0.5
-                    : Geometry.horizontal(edge)
-                    ? window.companionAlongPosition() - implicitWidth * 0.5
-                    : edge === "left"
-                        ? window.companionFieldDepth() - 5
-                            + (root.companionScale - 1) * implicitWidth * 0.5
-                        : window.width - window.companionFieldDepth()
-                            - implicitWidth + 5
-                            - (root.companionScale - 1) * implicitWidth * 0.5
-                targetY: window.companionSurfacePlacement.qualified
-                    ? window.companionSurfacePlacement.y + (root.companionScale-1)*implicitHeight*0.5
-                    : Geometry.horizontal(edge)
-                    ? edge === "top"
-                        ? window.companionFieldDepth() - 5
-                            + (root.companionScale - 1) * implicitHeight * 0.5
-                        : window.height - window.companionFieldDepth()
-                            - implicitHeight + 5
-                            - (root.companionScale - 1) * implicitHeight * 0.5
-                    : window.companionAlongPosition() - implicitHeight * 0.5
-
+                targetX: companionPresence.targetX+(root.companionScale-1)*implicitWidth/2
+                targetY: companionPresence.targetY+(root.companionScale-1)*implicitHeight/2
+                onTravelCompleted: companionPresence.arrived()
+                onDragStarted: companionPresence.beginDrag()
+                onDragPositionRequested: (px,py)=>companionPresence.dragTo(
+                    px-(root.companionScale-1)*implicitWidth/2,
+                    py-(root.companionScale-1)*implicitHeight/2)
+                onDragEnded: companionPresence.endDrag()
                 onActivated: companionBridge.sendEvent("click")
-                onSettingsRequested: GlobalStates.openSettingsSection(37, "Overview")
-                onHoveredChanged: {
-                    if (window.companionHostActive)
-                        companionBridge.sendEvent("hover", hovered)
-                }
+                onSettingsRequested: GlobalStates.openSettingsSection(37,"Overview")
             }
             Item {
                 id: revealTrigger

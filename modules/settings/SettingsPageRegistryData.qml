@@ -269,7 +269,7 @@ Singleton {
         {key:"abyss-modules",name:"Modules",icon:"widgets",desc:"Edge modules and behavior",component:"modules/settings/AbyssModulesConfig.qml"},
         {key:"automation",name:Translation.tr("Automation"),icon:"smart_toy",desc:Translation.tr("ChatGPT sessions and service health"),component:"modules/settings/AutomationConfig.qml"},
         {key:"cloud-storage",name:Translation.tr("Cloud Storage"),icon:"cloud",desc:Translation.tr("MEGAcmd status"),component:"modules/settings/CloudStorageConfig.qml"},
-        {key:"companion",name:Translation.tr("Companion"),icon:"water_drop",desc:Translation.tr("Wull appearance, personality and placement"),essential:true,component:"modules/settings/CompanionConfig.qml"}
+        {key:"companion",name:Translation.tr("Companion"),icon:"water_drop",desc:Translation.tr("Wull appearance, personality and movement"),essential:true,component:"modules/settings/CompanionConfig.qml"}
     ]
 
     // v7 information architecture: navigation reflects the user's intent,
@@ -308,8 +308,8 @@ Singleton {
             return _staticSearchIndex
 
         _staticSearchIndex = [
-        {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Overview"),label:Translation.tr("Enable Companion"),description:Translation.tr("Wull appearance, personality and placement"),keywords:["wull","companion","droplet","pet","mascot","fullscreen","interactive"]},
-        {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Placement"),label:Translation.tr("Companion size"),description:Translation.tr("Choose the screen Wull lives on."),keywords:["wull","companion","output","monitor","position","size","screen edge"]},
+        {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Overview"),label:Translation.tr("Enable Companion"),description:Translation.tr("Wull appearance, personality and movement"),keywords:["wull","companion","droplet","pet","mascot","fullscreen","interactive"]},
+        {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Rendering"),label:Translation.tr("Companion size"),description:Translation.tr("Keep Wull small or give it a little more room."),keywords:["wull","companion","size","liquid"]},
         {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Behavior"),label:Translation.tr("Personality"),description:Translation.tr("Appearance frequency"),keywords:["wull","companion","calm","balanced","energetic","hyperactive","frequency","visits","animations","reflection","bubbles"]},
         {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Rendering"),label:Translation.tr("Rendering quality"),description:Translation.tr("Bubbles and floor reflections"),keywords:["wull","companion","rendering","performance","balanced","quality","glass","liquid","refraction","reflection","transparency"]},
         {pageIndex:36,pageName:root.pages[36].name,section:Translation.tr("Overview"),label:Translation.tr("Cloud Storage dependency status"),description:Translation.tr("MEGAcmd dependency status"),keywords:["mega","cloud","sync","drive","transfers","backup"]},

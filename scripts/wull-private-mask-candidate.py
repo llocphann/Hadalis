@@ -50,7 +50,7 @@ def candidate_source(perimeter: str, body: str) -> str:
                  'implicitHeight: verticalEdge ? 112 : 98',
                  'width: 76; height: 92', 'anchors.centerIn: parent',
                  'transformOrigin: Item.Center',
-                 'rotation: root.edge === "left" ? 90',
+                 'orientationAngle: root.edge === "left" ? 90',
                  'enabled: root.interactive', 'onPressed: root.activated()'):
         if item not in body:
             raise ValueError("unreviewed_centered_top_body")

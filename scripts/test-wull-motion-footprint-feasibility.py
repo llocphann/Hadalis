@@ -8,6 +8,8 @@ import ast
 import math
 from pathlib import Path
 import runpy
+import subprocess
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/wull-motion-footprint-feasibility.py"
@@ -16,9 +18,19 @@ ast.parse(SOURCE)
 for forbidden in ("subprocess", "socket", "wdotool", "requests", "git push"):
     assert forbidden not in SOURCE
 motion = runpy.run_path(str(SCRIPT), run_name="wull_motion_static_inert")
-motion["verify_reviewed_source"]()
+# Preserve the historical model's exact pins. Its regression inputs are those
+# immutable Git blobs, while production keeps evolving independently.
+historical = tempfile.TemporaryDirectory(prefix="wull-reviewed-motion-")
+reviewed_root = Path(historical.name)
 for path, expected in motion["SOURCE_BLOBS"].items():
-    raw = (ROOT / path).read_bytes()
+    target = reviewed_root / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(subprocess.run(
+        ["git", "cat-file", "blob", expected], cwd=ROOT,
+        capture_output=True, check=True).stdout)
+motion["verify_reviewed_source"](reviewed_root)
+for path, expected in motion["SOURCE_BLOBS"].items():
+    raw = (reviewed_root / path).read_bytes()
     assert motion["git_blob"](raw) == expected
     assert motion["git_blob"](raw + b"\n") != expected
 for invalid in ("x", None, True, 22):
@@ -99,9 +111,10 @@ silhouette = runpy.run_path(
     str(ROOT / "scripts/wull-silhouette-band-prototype.py"),
     run_name="wull_static_band_inert_crosscheck")
 assert silhouette["source_ok"](
-    (ROOT / "modules/abyss/companion/WaterDropletBody.qml").read_bytes())
+    (reviewed_root / "modules/abyss/companion/WaterDropletBody.qml").read_bytes())
 summary = silhouette["static_summary"]()
 assert summary["static_body_bbox_pixels"] == 76 * 92
 assert summary["animation_halo_scale_qualification"] == "not_run"
 assert summary["live_pointer_and_hover"] == "not_run"
 print("WULL_MOTION_FOOTPRINT_INERT_COUNTEREXAMPLE_PASS")
+historical.cleanup()

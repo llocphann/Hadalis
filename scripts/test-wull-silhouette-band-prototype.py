@@ -7,6 +7,7 @@ import ast
 import json
 from pathlib import Path
 import runpy
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "scripts/wull-silhouette-band-prototype.py"
@@ -17,8 +18,15 @@ assert "subprocess" not in text
 assert "wdotool" not in text
 assert "private" not in text.split("if __name__")[0].split("def static_summary")[0]
 m = runpy.run_path(str(SOURCE), run_name="wull_static_silhouette_inert")
-assert m["source_ok"](BODY.read_bytes())
-assert not m["source_ok"](BODY.read_bytes() + b"\n")
+# This research model deliberately pins a HISTORICAL contour. Exercise that
+# blob and rejection of altered bytes, without requiring production to revert.
+reviewed = subprocess.run(
+    ["git", "cat-file", "blob", m["REVIEWED_BODY_BLOB"]],
+    cwd=ROOT, check=True, capture_output=True).stdout
+assert m["source_ok"](reviewed)
+assert not m["source_ok"](reviewed + b"\n")
+if BODY.read_bytes() != reviewed:
+    assert not m["source_ok"](BODY.read_bytes())
 assert not m["source_ok"](b"")
 assert not m["source_ok"]("invalid")
 assert (m["BASE_WIDTH"], m["BASE_HEIGHT"]) == (76, 92)

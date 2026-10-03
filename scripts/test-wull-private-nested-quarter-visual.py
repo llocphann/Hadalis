@@ -46,14 +46,16 @@ def blob(raw):
 
 
 for path, sha in EXPECTED.items():
-    # A historical owner-qualified trial must read its ORIGINAL QML from
-    # archived fixtures now that dev has intentionally moved production.
+    # The original trial's QML and config remain frozen even as the live
+    # production renderer and Companion settings evolve.
     historic = ROOT / "scripts/wull-fixtures/historical"
     archived = (
         historic / "pre-surface-attachment-companion.snapshot"
         if path == ORIGINAL else
         historic / "pre-surface-attachment-perimeter.snapshot"
-        if path == PERIMETER else path
+        if path == PERIMETER else
+        historic / "pre-companion-settings-defaults.snapshot"
+        if path == DEFAULTS else path
     )
     assert archived.is_file() and blob(archived.read_bytes()) == sha, path.name
 
@@ -139,7 +141,14 @@ assert runner["parse_api"](
 # Original default is read, never changed. Private config has real Bar and
 # bottom Wull at scale1.5, disabled interactive pointer for visual phase.
 before = DEFAULTS.read_bytes()
-cfg = runner["fixed_config"]("Virtual-1")
+historical_defaults = ROOT / "scripts/wull-fixtures/historical/pre-companion-settings-defaults.snapshot"
+fixed_config = runner["fixed_config"]
+original_defaults_path = fixed_config.__globals__["DEFAULTS"]
+try:
+    fixed_config.__globals__["DEFAULTS"] = str(historical_defaults.relative_to(ROOT))
+    cfg = fixed_config("Virtual-1")
+finally:
+    fixed_config.__globals__["DEFAULTS"] = original_defaults_path
 assert DEFAULTS.read_bytes() == before
 assert cfg["bar"]["bottom"] is True
 assert cfg["bar"]["vertical"] is False

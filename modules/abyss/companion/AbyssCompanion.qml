@@ -140,7 +140,12 @@ Item {
     clip: presentation < 0.999
 
     onRevealChanged: if (initialized) {
-        if (reveal <= 0) { stopTravel(); relocation.stop() }
+        if (reveal <= 0) {
+            stopTravel(); relocation.stop()
+            // Arrival changes the selected water edge after the last target
+            // position. Dive through that edge, not the old drag/visit origin.
+            activeEmergenceEdge=emergenceEdge
+        }
         present(reveal)
     }
     onTravelEnabledChanged: if (!travelEnabled) stopTravel(); else Qt.callLater(root.place)

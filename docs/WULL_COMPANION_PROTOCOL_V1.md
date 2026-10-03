@@ -49,6 +49,8 @@ stream or a second daemon.
 
 ## Optional local-model intent adapter
 
+The planned AI connection defaults to **Local LLM**, with no automatic cloud fallback. Provider settings, conversation UI and inference lifecycle are future work described in the [reference design](WULL_REFERENCE_DESIGN.md#planned-ai-connection--local-llm-by-default). This existing intent contract carries reactions, not conversation requests or model credentials.
+
 State messages additionally include `expression`: `idle`, `happy`, `excited`, `thinking`, `working`, `surprised`, `sleepy`, `sad`, or `alert`. Older QML clients ignore it; newer QML clients derive it from mood/activity when talking to an older daemon.
 
 A future small local model may suggest one bounded semantic reaction:

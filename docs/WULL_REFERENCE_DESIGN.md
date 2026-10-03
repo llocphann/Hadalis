@@ -22,7 +22,7 @@ Run the interactive preview with `qs -p wullDesign.qml`. Select an expression or
 | Appear/disappear | Host fade, local float offset, contact ripple; no frame/pose switching |
 | Theme adaptation | Body, corneas, droplets and contact plane derive from live `AbyssStyle.accent` and its specular lightness role; palette changes interpolate locally |
 | Smooth travel | Explicit gallery position transition; automatic desktop routes remain an integration gate |
-| Small local LLM | Typed, expiring expression intents over the existing single Rust bridge |
+| Small local LLM | Planned local-default AI connection; typed, expiring expression intents already use the existing single Rust bridge |
 
 ## Motion and state ownership
 
@@ -51,6 +51,39 @@ Personality choices are Calm, Balanced and Energetic. They change local motion a
 `python3 scripts/wull-preview-settings.py --output /absolute/new.png --section rendering --roundtrip --legacy-config` exercises actual controls, reopens saved config, verifies the live material policy and resets only Companion in isolated storage. `python3 scripts/wull-preview-material.py --output /absolute/new.png` renders all three tiers next to the unchanged concept and checks their budgets and the shell Performance ceiling. Both export only their own QML board.
 
 The Rust state machine remains deterministic. The optional local-model adapter uses `intent` with one of nine expression names, intensity 0..1, and TTL 250..10000 ms. It cannot reveal a hidden companion or replace an ongoing task permanently. Expiry restores the saved baseline; shell events preempt the temporary reaction. See [protocol](WULL_COMPANION_PROTOCOL_V1.md). No model/inference runtime is installed in this design milestone.
+
+## Planned AI connection — Local LLM by default
+
+The maintainer's next design requirement is to connect Wull to an LLM, with **Local LLM as the default connection source**. This section describes future implementation; the renderer and bounded intent transport exist, but the AI settings, conversation UI and inference adapter do not yet exist. AI is enabled separately after configuration, so an unconfigured model cannot delay shell startup. Wull's ordinary personality, visits, expressions and animation remain available without inference.
+
+The first AI implementation targets a small locally installed model, with model size, quantization and CPU/GPU use chosen after measurement on the target machine. Its adapter connects to a local loopback endpoint. It requires no cloud account and does not download a model or start a model server when Settings opens. An unavailable local model produces an honest connection status while the deterministic companion continues. There is **no automatic cloud fallback**; any future remote connection requires the user to select it explicitly.
+
+Add an English **AI** section to the existing **Settings > Abyss > Companion** page:
+
+| Planned control | Default and behavior |
+| --- | --- |
+| Enable AI | Off until configured and explicitly enabled; independent of Enable Companion |
+| Connection | Local LLM; a future remote option must be explicitly selected |
+| Local endpoint | Loopback address for the configured local provider; validate before connecting |
+| Model | Select an installed small model; show unavailable models clearly |
+| Test connection | Explicit health/model probe; show Disconnected, Connecting, Ready, Generating or Error from actual results |
+| Context sharing | Direct messages only; selected companion events require opt-in |
+| Conversation memory | Session only with bounded history; Clear conversation removes that session context |
+| Advanced | Bounded response length, context limit and request timeout; separate from rendering quality |
+
+A **Chat** action opens a conversation surface connected to Wull through the existing Abyss surface host and keyboard ownership. It uses the panel's colors and material roles, keeps replies readable and offers Cancel while generating. Opening a conversation or receiving an automatic event must not steal focus. Calm / Balanced / Energetic may inform response tone, but the model cannot change the user's personality, appearance frequency or rendering settings.
+
+The planned data flow is:
+
+`Explicit message / opted-in event -> async local-model adapter -> validated reply + optional reaction -> CompanionBridge.sendIntent -> existing inir-companiond -> QML interpolation`
+
+Model I/O and generation run outside the UI and companion scheduling loop. There is still one companion daemon and one writer to its stdio bridge; the model server supplies inference, not animation scheduling. Replies are bounded plain text. An optional structured reaction accepts only the nine existing expression names, finite intensity 0..1 and integer TTL 250..10000 ms. The adapter owns validation and request identity; the existing bridge owns protocol sequence numbers. Invalid reaction data must not interrupt a valid text reply or the companion's deterministic state.
+
+Only direct user messages and explicitly enabled meaningful events may request inference. Blink, bobbing, hover motion, reflections and scheduled visits never trigger it. Keep one request in flight, coalesce optional event bursts and prevent an unbounded queue. Send only the user's message and approved semantic context; desktop images, clipboard contents, file contents and unrelated window details are not collected automatically. Model output cannot execute commands or modify shell settings.
+
+Cancel or discard outstanding results on AI disable, provider/model change, shell reload or suspend; a hidden host accepts no AI reaction and starts no automatic inference. An explicitly opened conversation may return text while shell policy hides the droplet, but it cannot reveal Wull. Late replies from a cancelled request cannot update the new session. Temporary model reactions preserve the existing task baseline and yield to shell events. Opening Settings and a quiet/hidden companion do not introduce model polling or inference loops.
+
+Implementation proceeds through provider/connection validation, the asynchronous adapter, English AI settings and connected conversation UI, then integration with the existing bounded intent bridge. First verify fake-provider cases for unavailable models, malformed output, timeouts, cancellation, stale replies and task restoration. Then qualify an actual small local model on a pinned source revision: text and reaction behavior, latency, CPU/PSS, bounded history/queues, model residency and shell frame pacing. Performance / Balanced / Quality continue to describe Wull's optical rendering, independently of AI budgets. Existing visual/native acceptance remains open; the active [Phase 6 plan](../to-do/cloud-bot/ABYSS_WATER_DROPLET_COMPANION.md#phase-6--local-llm-connection) records the implementation work.
 
 ## Evidence and acceptance limits
 

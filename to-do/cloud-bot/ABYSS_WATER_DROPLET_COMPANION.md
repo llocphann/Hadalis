@@ -2,6 +2,7 @@
 
 Status: **in progress — renderer/attachment proof implemented, production integration disabled pending evidence**  
 Current maintainer direction (2026-10-03): compare the actual renderer against the four supplied original boards and retained close-up throughout implementation. Keep a round, smooth 1:1 liquid body with a centered, evenly pointed tip and two pairs of small water feet; the maintainer rejected the permanently bent tip. The floor mirrors Wull's own body, feet and face with localized contact light and fading perspective. The latest source adds deeper tiered refraction/reflection, soft liquid focusing and slight adjustable translucency. **Settings > Abyss > Companion** is English-only, with Calm / Balanced / Energetic, appearance frequency, placement, motion/effects, Performance / Balanced / Quality and a 0..35% Translucency control initially at 16%. The single Rust daemon schedules twenty-second visits, preserves waiting tasks and never lets preferences bypass policy hide. Colors and reflection roles follow live Abyss Panel Style. Current preview: `qs -p wullDesign.qml`, including nine expressions, continuous motion and direct reference comparison. [Current design and limits](../../docs/WULL_REFERENCE_DESIGN.md) and [source-pinned renderer/settings evidence](../../docs/wull-visual/settings-20261003/README.md) track progress; the earlier feet evidence remains unchanged. The bounded local-model intent contract is in `docs/WULL_COMPANION_PROTOCOL_V1.md`; no model is installed. Keep 100% resemblance approval, fresh native paint/input acceptance and CPU/PSS qualification open, with production default-off. Continue in this one agent context; do not dispatch another original-preview/metadata job. Older connector-access blockers below are historical; the four original boards are present in Downloads and the retained close-up remains unchanged.
+AI design direction (2026-10-03): **Local LLM is the default connection source**. Add English AI settings and a connected conversation surface, with bounded, on-demand inference outside the animation loop. No automatic cloud fallback. The [AI connection design](../../docs/WULL_REFERENCE_DESIGN.md#planned-ai-connection--local-llm-by-default) and Phase 6 below are planned work; no model or inference adapter is installed. The maintainer has now deferred AI implementation while prioritizing Blender-authored walking/emergence/travel, removal of the detached dark base and lossless resource optimization.
 Scope owner: Cloud Bot reasoning + source changes; Local Bot only runs explicit deterministic validation jobs.  
 Latest checkpoint: renderer/settings source `2af514d9415dda3a73914ccff8195cf73f2da60f`; immutable historical-defaults test repair and canonical tested source `bf7da25c17cb0d20d4a545888394200999c0ade7`. Qt 6 canonical result: **371 PASS / 38 FAIL / 2 SKIP**, all **76 Wull Python regressions PASS**. Remaining failed-check identities are shared with the earlier report; the repo-wide status is still FAIL. Native behavior has 17 Rust tests and all-target clippy passing, plus actual preference/visit and isolated QML renderer/settings evidence. These do not close native desktop or resource acceptance.
 Target shell family: **Abyss first**.  
@@ -31,7 +32,7 @@ The companion must remain lightweight enough to live for the entire desktop sess
 - [ ] No busy loop while hidden or idle.
 - [ ] Hidden companion must approach zero render work and near-zero backend wakeups except scheduled/event-driven work.
 - [ ] Respect `Appearance.animationsEnabled`, reduced-motion, effects settings, Game Mode/fullscreen policy, battery policy and suspend/resume.
-- [ ] No continuous LLM/personality inference. Personality is a deterministic/local state machine. Optional AI commentary, if ever added, stays outside the core animation loop.
+- [ ] No continuous LLM/personality inference. Personality is a deterministic/local state machine. Planned AI conversation and opted-in event commentary default to a local model and stay outside the core animation loop; no automatic cloud fallback.
 - [ ] Multi-monitor behavior, shell reloads, suspend/resume and compositor restarts must not leave orphan processes or duplicate companions.
 - [ ] Existing Kira/static mascot behavior must not be deleted as part of the first Abyss implementation. Migrate only after live acceptance proves the new companion can replace the required surfaces.
 
@@ -116,6 +117,12 @@ Rendering direction:
 - contact shadow/ripple uses at most one cheap procedural pass;
 - avoid an extra full-screen wallpaper capture/FBO just for the companion;
 - avoid particle systems for normal idle behavior. Small secondary droplets should be generated sparingly and bounded if retained at all.
+
+### 4. Local LLM connection (planned)
+
+Add an asynchronous local-model adapter for explicit conversations and opted-in meaningful events. Local LLM is the default source; AI is enabled separately after configuration. Keep the existing single companion daemon, stdio writer and bounded expression intent contract. The adapter validates text/reaction output and forwards reactions through `CompanionBridge.sendIntent`; QML continues to render and interpolate locally. Model/network work must not block the UI or behavior scheduler.
+
+Use the existing connected Abyss surface for Chat, and add English AI controls inside Companion Settings. No model starts or downloads merely because Settings opens. An unavailable provider leaves ordinary Wull behavior working and never triggers remote fallback. See the [local-default AI design](../../docs/WULL_REFERENCE_DESIGN.md#planned-ai-connection--local-llm-by-default) for settings, context limits, cancellation and acceptance boundaries.
 
 ## Animation language — “alive”, not looping artwork
 
@@ -229,6 +236,8 @@ Abyss settings should expose only useful controls:
 
 Do not expose dozens of animation constants to normal users. Keep tuning values internal or grouped under Advanced.
 
+The existing page has Overview, Placement, Behavior and Rendering. The planned fifth section, **AI**, uses English labels: Enable AI, Connection (Local LLM by default), Local endpoint, Model, Test connection, Context sharing, Conversation memory and Clear conversation. Connection status must reflect actual provider/model availability. Direct messages only and bounded session history are the defaults; event context is opt-in. Advanced AI request limits are independent of Performance / Balanced / Quality rendering presets. These controls are design requirements, not shipped settings.
+
 ## Existing mascot migration policy
 
 The current mascot system can remain intact during development.
@@ -313,6 +322,18 @@ Do not make that migration decision before runtime/performance acceptance.
 - [ ] Record visual acceptance for idle, hover, click, working, success, warning/error, sleep/wake.
 - [ ] Compare disabled vs enabled CPU/RSS/frame-time before closing the task.
 
+### Phase 6 — Local LLM connection
+
+- [ ] Define the local provider adapter and loopback endpoint validation; keep Local LLM as the default and forbid automatic remote fallback.
+- [ ] Select a small installed model after measuring target-machine memory and latency; do not download or launch it on Settings open.
+- [ ] Implement asynchronous, bounded requests without blocking the companion scheduler or UI; one request in flight with cancellation and event coalescing.
+- [ ] Add English AI settings, actual connection/model checks, bounded session history and Clear conversation.
+- [ ] Add Chat through the existing connected Abyss surface and keyboard ownership, with generation status and Cancel.
+- [ ] Validate bounded text and optional structured reactions, forwarding only existing expression/intensity/TTL fields through the single bridge.
+- [ ] Respect hide, Game Mode/fullscreen and suspend policy; reject late results after cancellation, disable, provider/model change or reload, and preserve ongoing task baselines.
+- [ ] Verify fake-provider contracts for missing models, malformed replies, timeouts, cancellation, stale replies and quiet-state behavior.
+- [ ] Qualify an actual local model and exact-SHA canonical validation; record inference latency, CPU/PSS, model residency, bounded queues/history and shell frame pacing separately from rendering acceptance.
+
 ## Local Bot deterministic validation jobs to prepare later
 
 Do **not** dispatch these until implementation exists and a SHA is pinned:
@@ -342,12 +363,13 @@ This task is complete only when all of the following are true:
 - Long-run memory/resource usage is bounded.
 - Exact-SHA local validation passes.
 - Maintainer accepts the live appearance and animation quality.
+- The planned AI connection defaults to Local LLM, has working English settings and a connected conversation surface, handles provider failure/cancellation without disrupting Wull, and has measured local-model resource evidence. Existing renderer evidence does not close this later AI phase.
 
 ## Out of scope for the first implementation
 
 - continuous generative-AI personality;
 - speech synthesis/listening;
-- networking/cloud dependency;
+- required cloud inference or automatic remote fallback (the planned local loopback model connection belongs to Phase 6);
 - physically accurate full fluid simulation;
 - per-pixel Rust software rendering;
 - replacing every existing mascot surface in one patch;

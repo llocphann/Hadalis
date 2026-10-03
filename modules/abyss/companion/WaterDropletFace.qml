@@ -12,6 +12,7 @@ Item {
     property real mouthCurve: 0.12
     property real gazeX: 0
     property real gazeY: 0
+    property real viewYaw: 0
     property real pulse: 0
     property color accent: AbyssStyle.accent
     property bool motionEnabled: true
@@ -23,11 +24,11 @@ Item {
         Item {
             id: eye
             required property int index
-            x: (index === 0 ? 15 : 47) * root.unit
+            x: (index === 0 ? 18 : 44) * root.unit
             y: 46 * root.unit
             width: 14 * root.unit; height: 16 * root.unit
             rotation: root.profile.worried ? (index === 0 ? 13 : -13) : 0
-            scale: root.profile.eyeScale * 0.78
+            scale: root.profile.eyeScale * 0.83 * (1 + (index === 0 ? 1 : -1) * Math.sin(root.viewYaw * Math.PI / 180) * 0.25)
             Behavior on scale { enabled: root.motionEnabled; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
             Item {
                 anchors.fill: parent
@@ -146,23 +147,28 @@ Item {
         model: 2
         Shape {
             required property int index
-            x: (index === 0 ? 12 : 53) * root.unit; y: 62 * root.unit
-            width: 11 * root.unit; height: 5 * root.unit
-            opacity: 0.45 + root.pulse * 0.18
+            x: (index === 0 ? 12.5 : 53.5) * root.unit; y: 60 * root.unit
+            width: 9 * root.unit; height: 9 * root.unit
+            opacity: 0.55 + root.pulse * 0.18
+            antialiasing: true
+            transform: Scale {
+                origin.x: 4.5 * root.unit; origin.y: 4.5 * root.unit
+                xScale: 1.4; yScale: 0.68
+            }
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
                 strokeWidth: 0
                 fillGradient: RadialGradient {
-                    centerX: 5.5 * root.unit; centerY: 2.5 * root.unit
-                    centerRadius: 5.5 * root.unit
+                    centerX: 4.5 * root.unit; centerY: 4.5 * root.unit
+                    centerRadius: 4.5 * root.unit
                     focalX: centerX; focalY: centerY
                     GradientStop { position: 0; color: "#ffb6dc" }
-                    GradientStop { position: 0.38; color: "#ff8dc9" }
+                    GradientStop { position: 0.20; color: "#ff8dc9" }
                     GradientStop { position: 1; color: "#00ff8dc9" }
                 }
-                startX: 0; startY: 2.5 * root.unit
-                PathArc { x: 11 * root.unit; y: 2.5 * root.unit; radiusX: 5.5 * root.unit; radiusY: 2.5 * root.unit }
-                PathArc { x: 0; y: 2.5 * root.unit; radiusX: 5.5 * root.unit; radiusY: 2.5 * root.unit }
+                startX: 0; startY: 4.5 * root.unit
+                PathArc { x: 9 * root.unit; y: 4.5 * root.unit; radiusX: 4.5 * root.unit; radiusY: 4.5 * root.unit }
+                PathArc { x: 0; y: 4.5 * root.unit; radiusX: 4.5 * root.unit; radiusY: 4.5 * root.unit }
             }
         }
     }

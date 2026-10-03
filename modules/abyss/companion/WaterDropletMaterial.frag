@@ -102,7 +102,13 @@ vec3 environment(vec3 direction, vec3 hue) {
     windows*=step(0.68,hash(cell))*smoothstep(-0.28,0.08,direction.y)
         *(1.0-smoothstep(0.62,0.82,direction.y));
     vec3 white=mix(pow(specular.rgb/max(specular.a,0.001),vec3(2.2)),vec3(1.0),0.28);
+    vec3 waterLight=vec3(hue.r,sqrt(hue.g*max(hue.g,hue.b)),hue.b);
     sky+=mix(hue,white,0.52)*windows*0.90;
+    // Broad colored illumination surrounds the narrow white light catches.
+    // The tint follows the material: blue gains a cyan edge, warm palettes
+    // retain their amber light instead of receiving a fixed blue overlay.
+    sky+=waterLight*ovalLight(direction,vec3(-1.0,0.45,-0.25),vec2(0.15,0.75))*26.0;
+    sky+=waterLight*ovalLight(direction,vec3(1.0,0.70,-0.32),vec2(0.22,0.37))*28.0;
     sky+=white*ovalLight(direction,vec3(-1.0,0.45,-0.25),vec2(0.065,0.65))*100.0;
     sky+=white*ovalLight(direction,vec3(-0.75,0.67,0.40),vec2(0.045,0.11))*55.0;
     sky+=white*ovalLight(direction,vec3(1.0,0.70,-0.32),vec2(0.12,0.25))*125.0;
@@ -149,6 +155,16 @@ void main() {
     float e=pow(q.x*c-center,2.0)+pow(q.x*s/DEPTH,2.0)-r*r;
     float z=(-b+sqrt(max(0.0,b*b-4.0*a*e)))/(2.0*a);
     vec3 surface=vec3(q,z), normal=normalAt(surface);
+    if (optics.y<0.5 && motion.w>0.5) {
+        // A small tangent perturbation bends the reflected light like a
+        // settling liquid surface while keeping the round silhouette smooth.
+        vec3 p=modelPoint(surface);
+        vec3 wave=worldVector(vec3(
+            sin(p.y*16.0+p.z*9.0+motion.x*1.7),
+            sin(p.x*13.0-p.z*8.0-motion.x*1.3),
+            sin(p.x*11.0+p.y*9.0+motion.x*1.1)));
+        normal=normalize(normal+(wave-normal*dot(wave,normal))*0.016);
+    }
     vec3 incident=vec3(0.0,0.0,-1.0);
     float f=fresnel(normal.z);
     if (optics.y>1.5) {
@@ -180,16 +196,17 @@ void main() {
     vec3 localCore=(middle-vec3(0.0,-0.59,0.0))/vec3(0.80,0.35,1.1);
     float core=exp(-dot(localCore,localCore)*1.4);
     vec3 white=mix(pow(specular.rgb/max(specular.a,0.001),vec3(2.2)),vec3(1.0),0.28);
-    through+=hue*(1.0-exp(-travel*0.80))*0.035;
-    through+=mix(hue,white,0.08)*core*(0.85+motion.z*0.25)*(optics.y>0.5 ? 0.15 : 1.0);
+    vec3 waterLight=vec3(hue.r,sqrt(hue.g*max(hue.g,hue.b)),hue.b);
+    through+=hue*(1.0-exp(-travel*0.80))*0.13;
+    through+=mix(waterLight,white,0.025)*core*(1.15+motion.z*0.25)*(optics.y>0.5 ? 0.15 : 1.0);
     // Compact approximation of the luminous floor's focusing at the base.
-    vec2 leftFocus=(q-vec2(-0.44,-0.74))/vec2(0.15,0.060);
-    vec2 rightFocus=(q-vec2(0.44,-0.74))/vec2(0.15,0.060);
+    vec2 leftFocus=(q-vec2(-0.44,-0.74))/vec2(0.13,0.035);
+    vec2 rightFocus=(q-vec2(0.44,-0.74))/vec2(0.13,0.035);
     float caustic=exp(-dot(leftFocus,leftFocus)*1.5)+exp(-dot(rightFocus,rightFocus)*1.5);
-    through+=mix(hue,white,0.65)*caustic*1.0*(optics.y>0.5 ? 0.0 : 1.0);
+    through+=mix(waterLight,white,0.50)*caustic*2.2*(optics.y>0.5 ? 0.0 : 1.0);
     vec3 color=reflected*f+through*(1.0-f);
     float grazing=1.0-clamp(normal.z,0.0,1.0);
-    color+=hue*pow(grazing,2.6)*0.90+white*pow(grazing,5.0)*0.85;
+    color+=waterLight*pow(grazing,2.6)*1.25+white*pow(grazing,5.0)*0.85;
     if (motion.w>0.5 && optics.y<0.5) {
         for (int i=0;i<24;i++) {
             float index=float(i);

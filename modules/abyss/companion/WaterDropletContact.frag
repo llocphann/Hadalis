@@ -25,10 +25,12 @@ void main() {
     vec3 light=specular.rgb/max(specular.a,0.001);
     float angle=atan(disc.y,disc.x);
     float wave=sin(angle*4.0+motion.x)*0.012;
-    float caustic=exp(-pow((radius-0.51-wave)/0.030,2.0))*0.60
-        +exp(-pow((radius-0.74+wave)/0.030,2.0))*0.25
-        +exp(-pow((radius-0.90-wave)/0.027,2.0))*0.12;
-    caustic*=mask*(0.55+0.45*cos(angle*3.0+motion.x));
-    vec4 rings=vec4(mix(hue,light,0.70)*caustic,caustic);
+    float caustic=exp(-pow((radius-0.51-wave)/0.023,2.0))*1.10
+        +exp(-pow((radius-0.74+wave)/0.025,2.0))*0.55
+        +exp(-pow((radius-0.90-wave)/0.020,2.0))*0.28;
+    float glow=exp(-pow((radius-0.51-wave)/0.085,2.0))*0.24
+        +exp(-pow((radius-0.74+wave)/0.065,2.0))*0.12;
+    caustic=clamp((caustic+glow)*mask*(0.75+0.25*cos(angle*3.0+motion.x)),0.0,1.0);
+    vec4 rings=vec4(mix(hue,light,0.50)*caustic,caustic);
     fragColor=(rings+reflection*opacity*(1.0-caustic))*qt_Opacity;
 }

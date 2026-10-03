@@ -168,13 +168,13 @@ Item {
         }
         // Decorative droplets fit the enclosing host; the body hitbox stays 76x92.
         Repeater {
-            model: root.effectsEnabled ? 4 : 0
+            model: root.effectsEnabled ? 8 : 0
             Item {
                 id: floatingDroplet
                 required property int index
-                x: [-13, 77, 6, 73.5][index]
-                y: [42.5, 52, 25.5, 34.5][index] - root.shimmer * (index + 1) * 0.5
-                width: [13.5, 14, 11, 6.5][index]; height: width
+                x: [-13, 77, 6, 73.5, 20, 68, -3, 80][index]
+                y: [42.5, 52, 25.5, 34.5, 13, 24, 65, 44][index] - root.shimmer * (index + 1) * 0.25
+                width: [13.5, 14, 11, 6.5, 4, 4.5, 4, 3][index]; height: width
                 ShaderEffect {
                     anchors.fill: parent
                     visible: !root.softwareFallback && material.status !== ShaderEffect.Error
@@ -217,6 +217,7 @@ Item {
             WaterDropletFace {
                 anchors.fill: parent
                 expression: root.expression
+                viewYaw: root.viewYaw
                 accent: root.accentColor
                 eyeOpen: root.eyeOpen
                 mouthCurve: root.mouthCurve

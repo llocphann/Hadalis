@@ -32,8 +32,10 @@ def main():
     output = (args.output or args.frames).resolve()
     if args.output and (output.exists() or not output.parent.is_dir()):
         parser.error("output must be a new file in an existing directory")
-    if args.frames and (not output.is_dir() or any(output.iterdir()) or args.software):
-        parser.error("frames require an empty directory and the GPU renderer")
+    if args.frames and (not output.is_dir() or any(output.iterdir())):
+        parser.error("frames require an existing empty directory")
+    if args.frames and args.software and not args.presence:
+        parser.error("software animation export currently requires the presence scene")
     if not os.environ.get("WAYLAND_DISPLAY") or not os.environ.get("XDG_RUNTIME_DIR"):
         parser.error("a Wayland session is required for this standalone preview")
     core = runpy.run_path(str(ROOT / "scripts/wull-manual-visual-matrix.py"))
@@ -49,7 +51,7 @@ def main():
             "WULL_DESIGN_FRAMES": str(output) if args.frames else "",
             "WULL_PRESENCE_CAPTURE_PEEK": "1" if args.peek else "",
             "WULL_DESIGN_REFERENCE": str(ROOT / "docs/wull-visual/design-20261003/reference-closeup.png"),
-            "QT_QPA_PLATFORM": "wayland",
+            "QT_QPA_PLATFORM": "offscreen" if args.software and args.frames else "wayland",
             "QSG_RHI_BACKEND": "opengl",
             "QT_QUICK_BACKEND": "software" if args.software else "rhi",
             "QT_QUICK_CONTROLS_STYLE": "Basic",

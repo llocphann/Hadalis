@@ -217,11 +217,11 @@ Window {
     Timer {
         interval: 50; repeat: true; running: root.frames.length>0
         onTriggered: {
-            if (root.busy || !actor.materialReady || (root.frameIndex===0 && !actor.inputReady)) return
+            if (root.busy || (!actor.materialReady && !actor.softwareFallback) || (root.frameIndex===0 && !actor.inputReady)) return
             const body=root.named(actor,"wullLiquidBody")
             if (root.frameIndex===180) {
                 stop()
-                const behavior={walkFrames:root.walkFrames,flyFrames:root.flyFrames,dragFrames:root.dragFrames,clickFrames:root.clickFrames,retreat:root.retreatObserved,airborneFloorAbsent:root.airborneFloorAbsent,hiddenClocks:root.quiet,qtLocalEvents:true,nativeDesktopAcceptance:false}
+                const behavior={walkFrames:root.walkFrames,flyFrames:root.flyFrames,dragFrames:root.dragFrames,clickFrames:root.clickFrames,retreat:root.retreatObserved,airborneFloorAbsent:root.airborneFloorAbsent,hiddenClocks:root.quiet,softwareFallback:actor.softwareFallback,qtLocalEvents:true,nativeDesktopAcceptance:false}
                 console.log("WULL_PRESENCE_BEHAVIOR="+JSON.stringify(behavior))
                 root.require(root.walkFrames>10 && root.flyFrames>4 && root.dragFrames>1
                     && root.clickFrames>0 && root.retreatObserved && root.airborneFloorAbsent

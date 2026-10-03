@@ -13,30 +13,31 @@ import "looks/AbyssLayout.js" as ModuleLayout
 import "looks/AbyssPresentation.js" as Presentation
 import "companion/WullHostPolicy.js" as WullHostPolicy
 import "companion/WullSurfacePlacement.js" as WullSurfacePlacement
+import "companion/WullPreferences.js" as WullPreferences
 
 Scope {
     id: root
     property string largeTargetOutput: GlobalStates.resolveOutputName("",[])
     readonly property var companionOptions: Config.options?.abyss?.companion
-    readonly property bool companionEnabled: Config.ready && (companionOptions?.enabled ?? false)
+    readonly property var companionPreferences: WullPreferences.normalize(companionOptions)
+    readonly property bool companionEnabled: Config.ready && companionPreferences.enabled
     readonly property string companionTargetOutput: GlobalStates.resolveOutputName(
-        companionOptions?.output ?? "", Config.options?.bar?.screenList ?? [])
+        companionPreferences.output, Config.options?.bar?.screenList ?? [])
     readonly property string companionEdge: {
-        const configured = String(companionOptions?.edge ?? "auto")
+        const configured = companionPreferences.edge
         return ["top", "right", "bottom", "left"].includes(configured)
             ? configured : root.barEdge
     }
-    readonly property real companionAlong: Math.max(0.08,
-        Math.min(0.92, Number(companionOptions?.along ?? 0.72)))
-    readonly property real companionScale: Math.max(0.65,
-        Math.min(1.5, Number(companionOptions?.size ?? 1)))
-    readonly property bool companionInteractive: companionOptions?.interactive ?? true
+    readonly property real companionAlong: companionPreferences.along
+    readonly property real companionScale: companionPreferences.size
+    readonly property bool companionInteractive: companionPreferences.interactive
     readonly property bool companionSessionVisible: companionEnabled
         && companionTargetOutput.length > 0
         && !GlobalStates.screenLocked
         && !Appearance.gameModeMinimal
         && (!GameMode.hasFullscreenOnOutput(companionTargetOutput)
-            || (Config.options?.abyss?.perimeter?.visibleInFullscreen ?? false))
+            || (!companionPreferences.hideInFullscreen
+                && (Config.options?.abyss?.perimeter?.visibleInFullscreen ?? false)))
 
     function syncCompanionVisibility(): void {
         if (root.companionSessionVisible)
@@ -53,6 +54,8 @@ Scope {
         // An inherited INIR_COMPANIOND must not bypass default-off.
         binaryPath: root.companionEnabled ? (Quickshell.env("INIR_COMPANIOND") ?? "") : ""
         useNativeDispatcher: root.companionEnabled
+        personality: root.companionPreferences.personality
+        appearanceFrequency: root.companionPreferences.appearanceFrequency
     }
     // Match the mature ScreenCorners keyboard lease: hover previews may exist on
     // several outputs, but only one Quick Notes editor may own keyboard focus.
@@ -406,6 +409,12 @@ Scope {
                 edge: root.companionEdge
                 scale: root.companionScale
                 interactive: root.companionInteractive && window.companionHostActive
+                motionEnabled: root.companionPreferences.animationsEnabled && AbyssStyle.motionEnabled
+                effectsEnabled: root.companionPreferences.effectsEnabled && Appearance.effectsEnabled
+                    && AbyssStyle.quality !== "performance"
+                motionScale: WullPreferences.motionScale(root.companionPreferences.personality)
+                renderQuality: root.companionPreferences.renderQuality
+                translucency: root.companionPreferences.translucency
                 reveal: !window.companionHostActive ? 0
                     : companionBridge.visibility === "present" ? 1
                     : companionBridge.visibility === "peeking" ? 0.46 : 0
@@ -445,6 +454,7 @@ Scope {
                     : window.companionAlongPosition() - implicitHeight * 0.5
 
                 onActivated: companionBridge.sendEvent("click")
+                onSettingsRequested: GlobalStates.openSettingsSection(37, "Overview")
                 onHoveredChanged: {
                     if (window.companionHostActive)
                         companionBridge.sendEvent("hover", hovered)

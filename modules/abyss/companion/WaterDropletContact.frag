@@ -8,6 +8,7 @@ layout(std140,binding=0) uniform buf {
     vec4 specular;
     vec4 motion;
     vec4 feet; // projected camera-facing foot contacts in this surface
+    vec4 rendering;
 };
 layout(binding=1) uniform sampler2D surfaceSource;
 void main() {
@@ -21,11 +22,12 @@ void main() {
     vec2 reflectedUV=vec2((uv.x-0.5)*motion.z+0.5+ripple,
         0.865-max(0.0,uv.y-0.48)*1.55+ripple*0.30);
     vec4 reflection=texture(surfaceSource,reflectedUV)*0.50;
-    reflection+=texture(surfaceSource,reflectedUV+vec2(0.008,0.018))*0.25;
-    reflection+=texture(surfaceSource,reflectedUV-vec2(0.008,0.018))*0.25;
+    vec2 softness=rendering.x>1.5 ? vec2(0.004,0.010) : vec2(0.008,0.018);
+    reflection+=texture(surfaceSource,reflectedUV+softness)*0.25;
+    reflection+=texture(surfaceSource,reflectedUV-softness)*0.25;
     reflection*=step(0.0,reflectedUV.x)*step(reflectedUV.x,1.0)
         *step(0.0,reflectedUV.y)*step(reflectedUV.y,1.0);
-    float opacity=mask*smoothstep(0.44,0.53,uv.y)*exp(-max(0.0,uv.y-0.49)*6.2)*0.78;
+    float opacity=mask*smoothstep(0.44,0.53,uv.y)*exp(-max(0.0,uv.y-0.49)*5.3)*0.85;
     vec3 hue=accent.rgb/max(accent.a,0.001);
     vec3 light=specular.rgb/max(specular.a,0.001);
     float angle=atan(disc.y,disc.x);

@@ -1,0 +1,371 @@
+pragma ComponentBehavior: Bound
+
+import QtQuick
+import QtQuick.Layouts
+import Quickshell
+import qs.services
+import qs.modules.common
+import qs.modules.common.widgets
+import qs.modules.abyss.companion
+import qs.modules.abyss.looks
+import "../abyss/companion/WullPreferences.js" as Preferences
+
+ContentPage {
+    id: root
+    settingsPageIndex: 37
+    settingsPageName: Translation.tr("Companion")
+    property string activeSection: "overview"
+    property string previewExpression: "idle"
+    readonly property var preferences: Preferences.normalize(Config.options?.abyss?.companion)
+    readonly property var personalityOptions: [
+        { displayName: Translation.tr("Calm"), value: "calm" },
+        { displayName: Translation.tr("Balanced"), value: "balanced" },
+        { displayName: Translation.tr("Energetic"), value: "energetic" }
+    ]
+    readonly property var frequencyOptions: [
+        { displayName: Translation.tr("Always visible"), value: "always" },
+        { displayName: Translation.tr("Every minute"), value: "frequent" },
+        { displayName: Translation.tr("Every 3 minutes"), value: "occasional" },
+        { displayName: Translation.tr("Every 10 minutes"), value: "rare" }
+    ]
+    readonly property var qualityOptions: [
+        { displayName: Translation.tr("Performance"), value: "performance" },
+        { displayName: Translation.tr("Balanced"), value: "balanced" },
+        { displayName: Translation.tr("Quality"), value: "quality" }
+    ]
+    readonly property var edgeOptions: [
+        { displayName: Translation.tr("Follow the bar"), value: "auto" },
+        { displayName: Translation.tr("Top"), value: "top" },
+        { displayName: Translation.tr("Right"), value: "right" },
+        { displayName: Translation.tr("Bottom"), value: "bottom" },
+        { displayName: Translation.tr("Left"), value: "left" }
+    ]
+    readonly property var outputOptions: {
+        const outputs = [{ displayName: Translation.tr("Automatic"), value: "" }]
+        for (const screen of Quickshell.screens)
+            outputs.push({ displayName: screen.name, value: screen.name })
+        if (root.preferences.output && !outputs.some(o => o.value === root.preferences.output))
+            outputs.push({ displayName: root.preferences.output + " (" + Translation.tr("Disconnected") + ")", value: root.preferences.output })
+        return outputs
+    }
+    readonly property var expressionOptions: [
+        { displayName: Translation.tr("Idle"), value: "idle" },
+        { displayName: Translation.tr("Happy"), value: "happy" },
+        { displayName: Translation.tr("Excited"), value: "excited" },
+        { displayName: Translation.tr("Thinking"), value: "thinking" },
+        { displayName: Translation.tr("Working"), value: "working" },
+        { displayName: Translation.tr("Surprised"), value: "surprised" },
+        { displayName: Translation.tr("Sleepy"), value: "sleepy" },
+        { displayName: Translation.tr("Sad"), value: "sad" },
+        { displayName: Translation.tr("Alert"), value: "alert" }
+    ]
+
+    function setPreference(key, value): void {
+        Config.setNestedValue("abyss.companion." + key, value)
+    }
+
+    function resetPreferences(): void {
+        const values = {}
+        const defaults = Preferences.defaults()
+        for (const key of Object.keys(defaults))
+            values["abyss.companion." + key] = defaults[key]
+        Config.setNestedValues(values)
+    }
+
+    component ChoiceRow: GridLayout {
+        id: choice
+        property string label: ""
+        property string description: ""
+        property var options: []
+        property string currentValue: ""
+        signal selected(string value)
+        Layout.fillWidth: true
+        columns: width > 540 ? 2 : 1
+        columnSpacing: 24
+        rowSpacing: 8
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 3
+            StyledText { Layout.fillWidth: true; text: choice.label; wrapMode: Text.WordWrap }
+            StyledText {
+                Layout.fillWidth: true
+                visible: text.length > 0
+                text: choice.description
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                wrapMode: Text.WordWrap
+            }
+        }
+        StyledComboBox {
+            objectName: choice.objectName + "Control"
+            Layout.preferredWidth: 224
+            Layout.fillWidth: choice.columns === 1
+            model: choice.options
+            textRole: "displayName"
+            settingsSearchLabel: choice.label
+            settingsSearchDescription: choice.description
+            currentIndex: Math.max(0, choice.options.findIndex(o => o.value === choice.currentValue))
+            onActivated: index => choice.selected(choice.options[index].value)
+        }
+    }
+
+    component PercentageRow: ColumnLayout {
+        id: percentage
+        property string label: ""
+        property string description: ""
+        property real value: 1
+        property real minimum: 0
+        property real maximum: 1
+        signal moved(real value)
+        Layout.fillWidth: true
+        spacing: 4
+        RowLayout {
+            Layout.fillWidth: true
+            StyledText { Layout.fillWidth: true; text: percentage.label }
+            StyledText { text: Math.round(percentage.value * 100) + "%"; color: Appearance.colors.colPrimary }
+        }
+        StyledText {
+            Layout.fillWidth: true
+            text: percentage.description
+            color: Appearance.colors.colSubtext
+            font.pixelSize: Appearance.font.pixelSize.smaller
+            wrapMode: Text.WordWrap
+        }
+        StyledSlider {
+            objectName: percentage.objectName + "Control"
+            from: percentage.minimum
+            to: percentage.maximum
+            stepSize: 0.01
+            value: percentage.value
+            tooltipContent: Math.round(value * 100) + "%"
+            settingsSearchLabel: percentage.label
+            settingsSearchDescription: percentage.description
+            onMoved: percentage.moved(value)
+        }
+    }
+
+    Rectangle {
+        Layout.fillWidth: true
+        implicitHeight: hero.implicitHeight + 32
+        radius: SettingsMaterialPreset.cardRadius
+        color: AbyssStyle.surface
+        border.width: 1
+        border.color: Qt.alpha(AbyssStyle.accent, 0.18)
+        GridLayout {
+            id: hero
+            anchors.fill: parent
+            anchors.margins: 16
+            columns: width > 600 ? 2 : 1
+            columnSpacing: 24
+            rowSpacing: 8
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredWidth: 260
+                Layout.preferredHeight: 232
+                WaterDropletBody {
+                    id: preview
+                    objectName: "companionPreview"
+                    anchors.centerIn: parent
+                    width: 76; height: 92
+                    scale: Math.min(2, 1.8 * root.preferences.size)
+                    transformOrigin: Item.Center
+                    expression: root.previewExpression
+                    motionScale: Preferences.motionScale(root.preferences.personality)
+                    motionEnabled: root.preferences.animationsEnabled && AbyssStyle.motionEnabled && visible
+                    effectsEnabled: root.preferences.effectsEnabled && Appearance.effectsEnabled
+                        && AbyssStyle.quality !== "performance"
+                    renderQuality: root.preferences.renderQuality
+                    translucency: root.preferences.translucency
+                }
+            }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 12
+                StyledText { text: "Wull"; font.pixelSize: 26; font.weight: Font.DemiBold }
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("A little liquid companion for your desktop.")
+                    wrapMode: Text.WordWrap
+                }
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("Color and reflections follow Abyss Panel Style automatically.")
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: Appearance.colors.colSubtext
+                    wrapMode: Text.WordWrap
+                }
+                ChoiceRow {
+                    objectName: "companionPreviewExpression"
+                    label: Translation.tr("Preview expression")
+                    options: root.expressionOptions
+                    currentValue: root.previewExpression
+                    onSelected: value => root.previewExpression = value
+                }
+            }
+        }
+    }
+
+    SettingsTaskNavigator {
+        showIntro: false
+        currentValue: root.activeSection
+        onSelected: value => root.activeSection = value
+        options: [
+            { displayName: Translation.tr("Overview"), icon: "water_drop", value: "overview" },
+            { displayName: Translation.tr("Placement"), icon: "open_with", value: "placement" },
+            { displayName: Translation.tr("Behavior"), icon: "sentiment_satisfied", value: "behavior" },
+            { displayName: Translation.tr("Rendering"), icon: "diamond", value: "rendering" }
+        ]
+    }
+
+    SettingsCardSection {
+        settingsTaskSection: "overview"
+        visible: root.activeSection === "overview"
+        title: Translation.tr("Overview")
+        icon: "water_drop"
+        SettingsGroup {
+            enabled: Config.ready
+            SettingsSwitch {
+                objectName: "companionEnabled"
+                text: Translation.tr("Enable Companion")
+                description: Translation.tr("Let Wull join your desktop. Right-click Wull to open these settings.")
+                autoToggle: false
+                checked: root.preferences.enabled
+                onToggledByUser: checked => root.setPreference("enabled", checked)
+            }
+            SettingsSwitch {
+                objectName: "companionInteractive"
+                text: Translation.tr("Respond to pointer interactions")
+                description: Translation.tr("React to clicks and hovering, and allow the settings shortcut.")
+                autoToggle: false
+                checked: root.preferences.interactive
+                onToggledByUser: checked => root.setPreference("interactive", checked)
+            }
+            SettingsSwitch {
+                objectName: "companionFullscreen"
+                text: Translation.tr("Always hide in fullscreen")
+                description: Translation.tr("Otherwise, follow the screen edge fullscreen setting.")
+                autoToggle: false
+                checked: root.preferences.hideInFullscreen
+                onToggledByUser: checked => root.setPreference("hideInFullscreen", checked)
+            }
+        }
+    }
+
+    SettingsCardSection {
+        settingsTaskSection: "placement"
+        visible: root.activeSection === "placement"
+        title: Translation.tr("Placement")
+        icon: "open_with"
+        SettingsGroup {
+            enabled: Config.ready
+            ChoiceRow {
+                objectName: "companionOutput"
+                label: Translation.tr("Display")
+                description: Translation.tr("Choose the screen Wull lives on.")
+                options: root.outputOptions
+                currentValue: root.preferences.output
+                onSelected: value => root.setPreference("output", value)
+            }
+            ChoiceRow {
+                objectName: "companionEdge"
+                label: Translation.tr("Screen edge")
+                options: root.edgeOptions
+                currentValue: root.preferences.edge
+                onSelected: value => root.setPreference("edge", value)
+            }
+            PercentageRow {
+                objectName: "companionPosition"
+                label: Translation.tr("Position along edge")
+                description: Translation.tr("Measured from the left on horizontal edges, or from the top on vertical edges.")
+                value: root.preferences.along
+                minimum: 0.08; maximum: 0.92
+                onMoved: value => root.setPreference("along", value)
+            }
+            PercentageRow {
+                objectName: "companionSize"
+                label: Translation.tr("Companion size")
+                description: Translation.tr("Keep Wull small or give it a little more room.")
+                value: root.preferences.size
+                minimum: 0.65; maximum: 1.5
+                onMoved: value => root.setPreference("size", value)
+            }
+        }
+    }
+
+    SettingsCardSection {
+        settingsTaskSection: "behavior"
+        visible: root.activeSection === "behavior"
+        title: Translation.tr("Behavior")
+        icon: "sentiment_satisfied"
+        SettingsGroup {
+            enabled: Config.ready
+            ChoiceRow {
+                objectName: "companionPersonality"
+                label: Translation.tr("Personality")
+                description: Translation.tr("Calm moves gently. Balanced feels natural. Energetic reacts with bigger movements and more frequent expressions.")
+                options: root.personalityOptions
+                currentValue: root.preferences.personality
+                onSelected: value => root.setPreference("personality", value)
+            }
+            ChoiceRow {
+                objectName: "companionFrequency"
+                label: Translation.tr("Appearance frequency")
+                description: Translation.tr("Scheduled visits last 20 seconds. Wull stays while you interact or a task is running.")
+                options: root.frequencyOptions
+                currentValue: root.preferences.appearanceFrequency
+                onSelected: value => root.setPreference("appearanceFrequency", value)
+            }
+            SettingsSwitch {
+                objectName: "companionMotion"
+                text: Translation.tr("Companion animations")
+                description: Translation.tr("Bobbing, blinking and expressive movement. Respects the shell motion setting.")
+                autoToggle: false
+                checked: root.preferences.animationsEnabled
+                onToggledByUser: checked => root.setPreference("animationsEnabled", checked)
+            }
+        }
+    }
+
+    SettingsCardSection {
+        settingsTaskSection: "rendering"
+        visible: root.activeSection === "rendering"
+        title: Translation.tr("Rendering")
+        icon: "diamond"
+        SettingsGroup {
+            enabled: Config.ready
+            ChoiceRow {
+                objectName: "companionQuality"
+                label: Translation.tr("Rendering quality")
+                description: Translation.tr("Performance keeps lighting simple. Balanced adds reflected detail. Quality adds deeper refraction and richer liquid light. Follows the shell performance policy.")
+                options: root.qualityOptions
+                currentValue: root.preferences.renderQuality
+                onSelected: value => root.setPreference("renderQuality", value)
+            }
+            PercentageRow {
+                objectName: "companionTranslucency"
+                label: Translation.tr("Translucency")
+                description: Translation.tr("Let a little of the background show through the liquid. Eyes and bright reflections stay clear.")
+                value: root.preferences.translucency
+                minimum: 0
+                maximum: 0.35
+                onMoved: value => root.setPreference("translucency", value)
+            }
+            SettingsSwitch {
+                objectName: "companionEffects"
+                text: Translation.tr("Bubbles and floor reflections")
+                description: Translation.tr("Add floating bubbles, sparkle and the liquid reflection beneath Wull. Performance uses a simpler floor effect. Respects the shell effects setting.")
+                autoToggle: false
+                checked: root.preferences.effectsEnabled
+                onToggledByUser: checked => root.setPreference("effectsEnabled", checked)
+            }
+        }
+    }
+
+    DialogButton {
+        objectName: "companionReset"
+        Layout.alignment: Qt.AlignRight
+        enabled: Config.ready
+        buttonText: Translation.tr("Reset Companion settings")
+        onClicked: root.resetPreferences()
+    }
+}

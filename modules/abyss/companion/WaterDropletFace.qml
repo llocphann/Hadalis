@@ -16,6 +16,7 @@ Item {
     property real pulse: 0
     property color accent: AbyssStyle.accent
     property bool motionEnabled: true
+    property int qualityLevel: 1
     readonly property var profile: Expressions.profile(expression)
     readonly property real unit: width / 76
     readonly property color ink: Qt.hsla(Math.max(0, accent.hslHue), accent.hslSaturation * 0.78, 0.065, 1)
@@ -47,6 +48,7 @@ Item {
                     property color specular: ColorUtils.colorWithLightness(root.accent, 0.85)
                     property vector4d motion: Qt.vector4d(0, 0, 0, 0)
                     property vector4d optics: Qt.vector4d(0, 2, root.gazeX, root.gazeY)
+                    property vector4d rendering: Qt.vector4d(root.qualityLevel, 0, 0, 0)
                     fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
                 }
                 Item {

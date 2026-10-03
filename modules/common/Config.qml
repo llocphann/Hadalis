@@ -488,6 +488,13 @@ Singleton {
                     property real size: 1
                     property bool interactive: true
                     property bool soundEnabled: false
+                    property string personality: "balanced"
+                    property string appearanceFrequency: "always"
+                    property bool animationsEnabled: true
+                    property bool effectsEnabled: true
+                    property bool hideInFullscreen: false
+                    property string renderQuality: "balanced"
+                    property real translucency: 0.16
                 }
                 property JsonObject spectrum: JsonObject {
                     property bool configured: false

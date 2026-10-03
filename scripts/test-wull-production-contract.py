@@ -88,8 +88,10 @@ exit_handler = bridge.split("onExited:", 1)[1]
 assert "if (!running)" in running_handler
 assert "root.ready = false" in running_handler
 assert "root.ready = false" in exit_handler
-assert "if (!wasReady && root.requestedVisible)" in bridge
-assert 'Qt.callLater(() => root.sendEvent("show"))' in bridge
+# Execute the handshake and settings dispatch, including preference-before-show
+# ordering, rather than requiring the previous one-line callback spelling.
+import subprocess
+subprocess.run(["node", str(ROOT / "scripts/test-wull-preferences.cjs")], check=True)
 
 # Unexpected exits retry with a finite exponential budget. Explicit disable
 # cancels pending retries, and stale stdout cannot restore an unready host.

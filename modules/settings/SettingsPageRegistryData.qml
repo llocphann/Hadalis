@@ -268,7 +268,8 @@ Singleton {
         {key:"abyss-popups",name:"Popups",icon:"chat_bubble",desc:"Popup and indicator placement",component:"modules/settings/AbyssPopupsConfig.qml"},
         {key:"abyss-modules",name:"Modules",icon:"widgets",desc:"Edge modules and behavior",component:"modules/settings/AbyssModulesConfig.qml"},
         {key:"automation",name:Translation.tr("Automation"),icon:"smart_toy",desc:Translation.tr("ChatGPT sessions and service health"),component:"modules/settings/AutomationConfig.qml"},
-        {key:"cloud-storage",name:Translation.tr("Cloud Storage"),icon:"cloud",desc:Translation.tr("MEGAcmd status"),component:"modules/settings/CloudStorageConfig.qml"}
+        {key:"cloud-storage",name:Translation.tr("Cloud Storage"),icon:"cloud",desc:Translation.tr("MEGAcmd status"),component:"modules/settings/CloudStorageConfig.qml"},
+        {key:"companion",name:Translation.tr("Companion"),icon:"water_drop",desc:Translation.tr("Wull appearance, personality and placement"),essential:true,component:"modules/settings/CompanionConfig.qml"}
     ]
 
     // v7 information architecture: navigation reflects the user's intent,
@@ -276,7 +277,7 @@ Singleton {
     // stable for saved routes, search results and existing deep links.
     readonly property var defaultCategories: [
         { label: Translation.tr("Home"), pages: [0] },
-        { label: "Abyss", pages: Config.options?.panelFamily === "abyss" ? [2,32,34,33,22,23,16] : [] },
+        { label: "Abyss", pages: Config.options?.panelFamily === "abyss" ? [2,32,34,33,37,22,23,16] : [] },
         { label: Translation.tr("Appearance"), pages: [4, 3, 25, 8] },
         { label: Translation.tr("Desktop & Layout"), pages: Config.options?.panelFamily === "abyss" ? [15,5,14,29,10,11] : [15,26,2,22,23,5,16,14,29,10,11] },
         { label: Translation.tr("System"), pages: [1, 12, 17] },
@@ -307,6 +308,10 @@ Singleton {
             return _staticSearchIndex
 
         _staticSearchIndex = [
+        {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Overview"),label:Translation.tr("Enable Companion"),description:Translation.tr("Wull appearance, personality and placement"),keywords:["wull","companion","droplet","pet","mascot","fullscreen","interactive"]},
+        {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Placement"),label:Translation.tr("Companion size"),description:Translation.tr("Choose the screen Wull lives on."),keywords:["wull","companion","output","monitor","position","size","screen edge"]},
+        {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Behavior"),label:Translation.tr("Personality"),description:Translation.tr("Appearance frequency"),keywords:["wull","companion","calm","balanced","energetic","hyperactive","frequency","visits","animations","reflection","bubbles"]},
+        {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Rendering"),label:Translation.tr("Rendering quality"),description:Translation.tr("Bubbles and floor reflections"),keywords:["wull","companion","rendering","performance","balanced","quality","glass","liquid","refraction","reflection","transparency"]},
         {pageIndex:36,pageName:root.pages[36].name,section:Translation.tr("Overview"),label:Translation.tr("Cloud Storage dependency status"),description:Translation.tr("MEGAcmd dependency status"),keywords:["mega","cloud","sync","drive","transfers","backup"]},
         {
             pageIndex: 35, pageName: root.pages[35].name,

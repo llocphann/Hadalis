@@ -5,6 +5,7 @@ import qs.modules.abyss.looks
 import qs.modules.common
 import qs.modules.common.functions
 import "WullExpressions.js" as Expressions
+import "WullPreferences.js" as Preferences
 
 Item {
     id: root
@@ -15,7 +16,12 @@ Item {
     property real gazeX: 0
     property real gazeY: 0
     property bool motionEnabled: AbyssStyle.motionEnabled && visible
+    property real motionScale: 1
     property bool effectsEnabled: Appearance.effectsEnabled && AbyssStyle.quality !== "performance"
+    property string renderQuality: "balanced"
+    property real translucency: 0.16
+    readonly property int qualityLevel: Preferences.renderTier(renderQuality, AbyssStyle.quality)
+    readonly property bool detailedEffects: effectsEnabled && qualityLevel > 0
     property real squash: 0
     property real bob: 0
     property real sway: 0
@@ -36,7 +42,7 @@ Item {
     property real shine: 0
     readonly property var expressionProfile: Expressions.profile(expression)
     property real expressionSquash: expressionProfile.squash
-    readonly property real motionAmount: motionEnabled ? AbyssStyle.motionIntensity : 0
+    readonly property real motionAmount: motionEnabled ? AbyssStyle.motionIntensity * motionScale : 0
     readonly property bool hovered: hoverHandler.hovered
     // QSB reflection reuse may leave status Uncompiled after drawing. A real
     // presented frame and a supported API are the authoritative readiness.
@@ -51,13 +57,14 @@ Item {
         function onFrameSwapped(): void { root.framePresented = true }
     }
     signal pressed()
+    signal settingsRequested()
 
     // Preserve placement and native input bounds. The body itself is square.
     implicitWidth: 76
     implicitHeight: 92
     transformOrigin: Item.Bottom
     scale: 1 + squash * 0.035 + (hovered ? 0.015 : 0)
-    rotation: orientationAngle + sway * 2.2 + stateLean * 5.0 + stateTip * 2.4 + expressionProfile.tilt * 4
+    rotation: orientationAngle + (sway * 2.2 + stateLean * 5.0 + stateTip * 2.4 + expressionProfile.tilt * 4) * motionAmount
     transform: [
         Scale {
             origin.x: root.width * 0.5; origin.y: root.height * 0.5
@@ -70,7 +77,11 @@ Item {
     ]
     Item {
         id: contact
-        x: -9; y: 71.8; width: 94; height: 13; z: -1
+        width: root.qualityLevel > 1 ? 102 : 94
+        height: root.qualityLevel > 1 ? 18 : root.qualityLevel > 0 ? 15 : 13
+        x: (root.width - width) * 0.5
+        y: 78.3 - height * 0.5
+        z: -1
         Shape {
             anchors.fill: parent
             antialiasing: true
@@ -78,14 +89,14 @@ Item {
             ShapePath {
                 strokeWidth: 0
                 fillGradient: RadialGradient {
-                    centerX: 47; centerY: 6.5; centerRadius: 47
+                    centerX: contact.width * 0.5; centerY: contact.height * 0.5; centerRadius: contact.width * 0.5
                     focalX: centerX; focalY: centerY
                     GradientStop { position: 0; color: Qt.alpha(root.accentColor, 0.18) }
                     GradientStop { position: 1; color: "transparent" }
                 }
-                startX: 0; startY: 6.5
-                PathArc { x: 94; y: 6.5; radiusX: 47; radiusY: 6.5 }
-                PathArc { x: 0; y: 6.5; radiusX: 47; radiusY: 6.5 }
+                startX: 0; startY: contact.height * 0.5
+                PathArc { x: contact.width; y: contact.height * 0.5; radiusX: contact.width * 0.5; radiusY: contact.height * 0.5 }
+                PathArc { x: 0; y: contact.height * 0.5; radiusX: contact.width * 0.5; radiusY: contact.height * 0.5 }
             }
         }
         Repeater {
@@ -93,7 +104,7 @@ Item {
             Shape {
                 id: rippleRing
                 required property int index
-                visible: root.softwareFallback || material.status === ShaderEffect.Error || !root.effectsEnabled
+                visible: root.softwareFallback || material.status === ShaderEffect.Error || !root.detailedEffects
                 anchors.centerIn: parent
                 width: contact.width * (0.55 + index * 0.18)
                 height: contact.height * (0.50 + index * 0.24)
@@ -111,26 +122,28 @@ Item {
         }
         ShaderEffect {
             anchors.fill: parent
-            visible: root.effectsEnabled && !root.softwareFallback && material.status !== ShaderEffect.Error
+            visible: root.detailedEffects && !root.softwareFallback && material.status !== ShaderEffect.Error
             property var surfaceSource: reflectionSource
             property color accent: root.accentColor
             property color specular: root.reflectionColor
             property vector4d motion: Qt.vector4d(root.shimmer, Math.max(root.ripple, root.reactionRipple), contact.width / material.width, 0)
+            property vector4d rendering: Qt.vector4d(root.qualityLevel, 0, 0, 0)
             readonly property real contactSide: Math.cos(root.viewYaw * Math.PI / 180) >= 0 ? 19 : 13
             readonly property real contactDepth: Math.cos(root.viewYaw * Math.PI / 180) >= 0 ? 8 : -8
             property vector4d feet: Qt.vector4d(
-                (47 - contactSide * Math.cos(root.viewYaw * Math.PI / 180) + contactDepth * Math.sin(root.viewYaw * Math.PI / 180)) / contact.width,
-                (47 + contactSide * Math.cos(root.viewYaw * Math.PI / 180) + contactDepth * Math.sin(root.viewYaw * Math.PI / 180)) / contact.width, 0, 0)
+                (contact.width * 0.5 - contactSide * Math.cos(root.viewYaw * Math.PI / 180) + contactDepth * Math.sin(root.viewYaw * Math.PI / 180)) / contact.width,
+                (contact.width * 0.5 + contactSide * Math.cos(root.viewYaw * Math.PI / 180) + contactDepth * Math.sin(root.viewYaw * Math.PI / 180)) / contact.width, 0, 0)
             fragmentShader: Qt.resolvedUrl("WaterDropletContact.frag.qsb")
         }
     }
     ShaderEffectSource {
         id: reflectionSource
-        sourceItem: root.effectsEnabled && !root.softwareFallback && material.status !== ShaderEffect.Error ? reflectionLayer : null
+        objectName: "wullFloorReflectionSource"
+        sourceItem: root.detailedEffects && !root.softwareFallback && material.status !== ShaderEffect.Error ? reflectionLayer : null
         sourceRect: Qt.rect(0, 7, 76, 82)
-        textureSize: Qt.size(76, 82)
+        textureSize: root.qualityLevel > 1 ? Qt.size(152, 164) : Qt.size(76, 82)
         smooth: true
-        live: root.visible && root.effectsEnabled
+        live: root.visible && root.detailedEffects
         visible: false
     }
     // Only our body, feet and face enter the floor reflection, never desktop content.
@@ -140,6 +153,7 @@ Item {
         // Two pairs of water feet. The rear pair is recessed behind the body;
         // the front pair's small flattened pods match the reference's base.
         Repeater {
+            objectName: "wullWaterFeet"
             model: 4
             Item {
                 id: waterFoot
@@ -162,11 +176,13 @@ Item {
                     property color specular: root.reflectionColor
                     property vector4d motion: Qt.vector4d(root.shimmer, 0, root.pulse, root.effectsEnabled ? 1 : 0)
                     property vector4d optics: Qt.vector4d(waterFoot.yaw, 3, 0, 0)
+                    property vector4d rendering: Qt.vector4d(root.qualityLevel, root.translucency, 0, 0)
                     fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
                 }
                 Shape {
                     anchors.fill: parent
                     visible: root.softwareFallback || material.status === ShaderEffect.Error
+                    opacity: 1 - Math.max(0, Math.min(0.35, root.translucency)) * 0.25
                     antialiasing: true
                     preferredRendererType: Shape.CurveRenderer
                     ShapePath {
@@ -189,6 +205,7 @@ Item {
         Shape {
             x: 0; y: 7; width: 76; height: 76
             visible: GraphicsInfo.api === GraphicsInfo.Software || material.status === ShaderEffect.Error
+            opacity: 1 - Math.max(0, Math.min(0.35, root.translucency)) * 0.55
             antialiasing: true
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
@@ -217,11 +234,13 @@ Item {
             property vector4d motion: Qt.vector4d(root.shimmer, root.stateTip + root.sway * 0.25,
                 root.pulse + (root.hovered ? 0.25 : 0), root.effectsEnabled ? 1 : 0)
             property vector4d optics: Qt.vector4d(root.viewYaw * Math.PI / 180, 0, 0, 0)
+            property vector4d rendering: Qt.vector4d(root.qualityLevel, root.translucency, 0, 0)
             fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
         }
         // Decorative droplets fit the enclosing host; the body hitbox stays 76x92.
         Repeater {
-            model: root.effectsEnabled ? 8 : 0
+            objectName: "wullExternalDroplets"
+            model: !root.effectsEnabled ? 0 : root.qualityLevel > 1 ? 8 : root.qualityLevel > 0 ? 6 : 3
             Item {
                 id: floatingDroplet
                 required property int index
@@ -235,6 +254,7 @@ Item {
                     property color specular: root.reflectionColor
                     property vector4d motion: Qt.vector4d(root.shimmer, 0, root.pulse, 0)
                     property vector4d optics: Qt.vector4d(0, 1, 0, 0)
+                    property vector4d rendering: Qt.vector4d(root.qualityLevel, root.translucency, 0, 0)
                     fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
                 }
                 Shape {
@@ -279,6 +299,7 @@ Item {
                 gazeY: root.hovered ? Math.max(-1, Math.min(1, (hoverHandler.point.position.y - root.height * 0.5) / (root.height * 0.5))) : root.gazeY
                 pulse: root.pulse
                 motionEnabled: root.motionEnabled
+                qualityLevel: root.qualityLevel
             }
         }
     }
@@ -328,10 +349,16 @@ Item {
     }
     TapHandler {
         enabled: root.enabled
+        acceptedButtons: Qt.LeftButton
         onTapped: {
             root.pressed()
             if (root.motionEnabled) squashBurst.restart()
         }
+    }
+    TapHandler {
+        enabled: root.enabled
+        acceptedButtons: Qt.RightButton
+        onTapped: root.settingsRequested()
     }
     onMotionEnabledChanged: {
         if (!motionEnabled) {

@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "WullExpressions.js" as Expressions
+import "WullPreferences.js" as Preferences
 
 Item {
     id: root
@@ -15,6 +16,8 @@ Item {
     readonly property bool backendEnabled: backendCommand.length > 0
     property bool ready: false
     property bool requestedVisible: false
+    property string personality: "balanced"
+    property string appearanceFrequency: "always"
     // Four bounded retries per unstable spell (500, 1000, 2000, 4000 ms).
     // Stable initial handshakes reset the budget only after 30 seconds.
     property int restartAttempts: 0
@@ -102,6 +105,22 @@ Item {
             root.sendEvent("show")
     }
 
+    function sendPreferences() {
+        if (!root.backendEnabled || !backendProcess.running || !root.ready
+                || !Preferences.personalities.includes(root.personality)
+                || !Preferences.frequencies.includes(root.appearanceFrequency))
+            return false
+        root.outboundSeq += 1
+        backendProcess.write(JSON.stringify({
+            v: 1, seq: root.outboundSeq, type: "preferences",
+            personality: root.personality, appearance_frequency: root.appearanceFrequency
+        }) + "\n")
+        return true
+    }
+
+    onPersonalityChanged: root.sendPreferences()
+    onAppearanceFrequencyChanged: root.sendPreferences()
+
     // Called by a future local model adapter after its structured-output
     // validation. Only a finite expression vocabulary reaches the renderer.
     function sendIntent(expression, intensity, ttlMs) {
@@ -171,8 +190,11 @@ Item {
             stableConnectionTimer.restart()
         root.stateAccepted(sequence)
 
-        if (!wasReady && root.requestedVisible)
-            Qt.callLater(() => root.sendEvent("show"))
+        if (!wasReady)
+            Qt.callLater(() => {
+                root.sendPreferences()
+                if (root.requestedVisible) root.sendEvent("show")
+            })
     }
 
     onBackendEnabledChanged: {

@@ -1,6 +1,6 @@
 #version 440
 // Implicit rounded 3D liquid volume. Front intersections are analytic;
-// transmitted rays find the back interface with a bounded 18+5 search.
+// transmitted rays find the back interface with a bounded tiered search.
 layout(location=0) in vec2 qt_TexCoord0;
 layout(location=0) out vec4 fragColor;
 layout(std140,binding=0) uniform buf {
@@ -10,6 +10,7 @@ layout(std140,binding=0) uniform buf {
     vec4 specular;
     vec4 motion; // shimmer, tip bend, pulse, effects gate
     vec4 optics; // yaw (radians), body/sphere/cornea/foot variant, eye gaze x/y
+    vec4 rendering; // quality tier 0..2, liquid translucency 0..0.35
 };
 const float BOTTOM=-0.87, TOP=0.99, DEPTH=0.91;
 float verticalScale() { return optics.y>2.5 ? 0.40 : 1.0; }
@@ -63,13 +64,17 @@ vec3 normalAt(vec3 world) {
 }
 float backInterface(vec3 entry, vec3 direction) {
     float inside=0.0, outside=0.018;
-    for (int i=0;i<18;i++) {
+    int steps=rendering.x>1.5 ? 28 : rendering.x>0.5 ? 18 : 10;
+    for (int i=0;i<28;i++) {
+        if (i>=steps) break;
         float d=field(entry+direction*outside);
         if (d>0.0) break;
         inside=outside;
         outside+=max(0.014,-d*0.85);
     }
-    for (int i=0;i<5;i++) {
+    int refinements=rendering.x>1.5 ? 7 : rendering.x>0.5 ? 5 : 3;
+    for (int i=0;i<7;i++) {
+        if (i>=refinements) break;
         float middle=(inside+outside)*0.5;
         if (field(entry+direction*middle)<0.0) inside=middle;
         else outside=middle;
@@ -111,17 +116,19 @@ vec3 environment(vec3 direction, vec3 hue) {
         *(1.0-smoothstep(0.62,0.82,direction.y));
     vec3 white=mix(pow(specular.rgb/max(specular.a,0.001),vec3(2.2)),vec3(1.0),0.28);
     vec3 waterLight=vec3(hue.r,sqrt(hue.g*max(hue.g,hue.b)),hue.b);
-    sky+=mix(hue,white,0.52)*windows*0.90;
+    sky+=mix(hue,white,0.24)*windows*(rendering.x>1.5 ? 4.0 : rendering.x>0.5 ? 1.8 : 0.0);
     // Broad colored illumination surrounds the narrow white light catches.
     // The tint follows the material: blue gains a cyan edge, warm palettes
     // retain their amber light instead of receiving a fixed blue overlay.
     sky+=waterLight*ovalLight(direction,vec3(-1.0,0.45,-0.25),vec2(0.15,0.75))*26.0;
     sky+=waterLight*ovalLight(direction,vec3(1.0,0.70,-0.32),vec2(0.22,0.37))*28.0;
     sky+=white*ovalLight(direction,vec3(-1.0,0.45,-0.25),vec2(0.065,0.65))*100.0;
-    sky+=white*ovalLight(direction,vec3(-0.75,0.67,0.40),vec2(0.045,0.11))*55.0;
     sky+=white*ovalLight(direction,vec3(1.0,0.70,-0.32),vec2(0.12,0.25))*125.0;
-    sky+=white*ovalLight(direction,vec3(0.90,0.18,0.45),vec2(0.08,0.15))*110.0;
-    sky+=white*ovalLight(direction,vec3(0.72,0.72,0.40),vec2(0.055,0.10))*65.0;
+    if (rendering.x>0.5) {
+        sky+=white*ovalLight(direction,vec3(-0.75,0.67,0.40),vec2(0.045,0.11))*55.0;
+        sky+=white*ovalLight(direction,vec3(0.90,0.18,0.45),vec2(0.08,0.15))*110.0;
+        sky+=white*ovalLight(direction,vec3(0.72,0.72,0.40),vec2(0.055,0.10))*65.0;
+    }
     sky+=white*ovalLight(direction,vec3(-0.25,1.0,-0.30),vec2(0.18,0.10))*55.0;
     sky+=hue*boxLight(direction,vec3(0.1,-0.8,0.6),vec2(0.70,0.06))*8.0;
     return sky;
@@ -130,6 +137,51 @@ float fresnel(float cosine) {
     float ior=optics.y>1.5 && optics.y<2.5 ? 1.376 : 1.333;
     float f0=pow((ior-1.0)/(ior+1.0),2.0);
     return f0+(1.0-f0)*pow(1.0-clamp(cosine,0.0,1.0),5.0);
+}
+
+vec3 softTransmission(vec3 direction, vec3 hue) {
+    vec3 light=environment(direction,hue);
+    // Compress transmitted HDR energy as a whole, retaining colored window
+    // detail. Independent channel clipping produced the old opaque gray fill.
+    float peak=max(max(light.r,light.g),light.b);
+    return light/(1.0+peak*0.35);
+}
+
+vec3 mediumLight(vec3 entry, vec3 internal, float travel, vec3 exitNormal,
+                 float ior, vec3 hue, bool secondInterface) {
+    vec3 exitPoint=entry+internal*travel;
+    vec3 outgoing=refract(internal,-exitNormal,ior);
+    bool totalReflection=dot(outgoing,outgoing)<0.001;
+    float backF=totalReflection ? 1.0 : fresnel(abs(dot(internal,exitNormal)));
+    vec3 extinction=(vec3(1.0)-hue)*1.35+vec3(0.025);
+    vec3 light=totalReflection ? vec3(0.0)
+        : softTransmission(outgoing,hue)*exp(-extinction*travel)*(1.0-backF);
+    if (secondInterface || totalReflection) {
+        // Trace one bounded internal bounce. This creates a real second
+        // optical path through the curved volume, including total reflection.
+        vec3 bounced=reflect(internal,-exitNormal);
+        vec3 bounceStart=exitPoint+bounced*0.006;
+        float bounceTravel=backInterface(bounceStart,bounced);
+        vec3 bounceNormal=normalAt(bounceStart+bounced*bounceTravel);
+        vec3 escaped=refract(bounced,-bounceNormal,ior);
+        if (dot(escaped,escaped)>0.001)
+            light+=softTransmission(escaped,hue)*exp(-extinction*(travel+bounceTravel))*backF;
+    }
+    return light;
+}
+
+vec3 dispersedLight(vec3 surface, vec3 normal, float ior, vec3 hue) {
+    vec3 internal=refract(vec3(0.0,0.0,-1.0),normal,1.0/ior);
+    float travel=backInterface(surface,internal);
+    return mediumLight(surface,internal,travel,normalAt(surface+internal*travel),ior,hue,false);
+}
+
+float liquidFocus(vec3 p) {
+    float flow=motion.x*0.45;
+    float ridge=sin(p.x*14.0+p.y*5.0+sin(p.z*9.0+flow))
+        +cos(p.z*13.0-p.y*7.0+sin(p.x*6.0-flow));
+    float envelope=exp(-pow((p.y+0.56)/0.38,2.0));
+    return exp(-ridge*ridge*36.0)*envelope;
 }
 vec3 film(vec3 color) {
     color*=1.25;
@@ -195,20 +247,34 @@ void main() {
     float travel=backInterface(surface,internal);
     vec3 exitPoint=surface+internal*travel;
     vec3 exitNormal=normalAt(exitPoint);
-    vec3 transmitted=refract(internal,-exitNormal,1.333);
-    if (dot(transmitted,transmitted)<0.001) transmitted=reflect(internal,-exitNormal);
     vec3 reflected=environment(reflect(incident,normal),hue);
-    vec3 absorption=exp(-(vec3(1.0)-hue)*travel*1.15);
-    // Transmitted studio lights are defocused through the liquid; the sharp
-    // HDR catches belong to the front reflection, not a flat patch inside it.
-    vec3 through=min(environment(transmitted,hue),vec3(0.90))*absorption*0.28;
+    // The deeper medium absorbs more of the weaker accent channels. Keep the
+    // surface illumination pale, with a saturated core beneath the glass.
+    vec3 volumeHue=pow(hue,vec3(1.45));
+    vec3 through=mediumLight(surface,internal,travel,exitNormal,1.333,volumeHue,rendering.x>1.5);
+    if (rendering.x>1.5) {
+        // Water's dispersion is small. Separate red/blue exit rays give the
+        // rim depth without turning the droplet into a rainbow glass bead.
+        through.r=dispersedLight(surface,normal,1.331,volumeHue).r;
+        through.b=dispersedLight(surface,normal,1.339,volumeHue).b;
+    }
+    through*=0.32;
     vec3 middle=modelPoint(surface+internal*travel*0.5);
     vec3 localCore=(middle-vec3(0.0,-0.59,0.0))/vec3(0.80,0.35,1.1);
     float core=exp(-dot(localCore,localCore)*1.4);
     vec3 white=mix(pow(specular.rgb/max(specular.a,0.001),vec3(2.2)),vec3(1.0),0.28);
     vec3 waterLight=vec3(hue.r,sqrt(hue.g*max(hue.g,hue.b)),hue.b);
-    through+=hue*(1.0-exp(-travel*0.80))*0.13;
-    through+=mix(waterLight,white,0.025)*core*(1.15+motion.z*0.25)*(optics.y>0.5 ? 0.15 : 1.0);
+    through+=volumeHue*(1.0-exp(-travel*0.95))*0.28;
+    through*=mix(1.0,0.62,smoothstep(-0.10,0.50,q.y));
+    through+=mix(waterLight,white,0.015)*core*(1.45+motion.z*0.25)*(optics.y>0.5 ? 0.15 : 1.0);
+    if (rendering.x>0.5 && optics.y<0.5) {
+        float focus=liquidFocus(middle);
+        if (rendering.x>1.5) {
+            focus+=liquidFocus(modelPoint(surface+internal*travel*0.25))*0.55;
+            focus+=liquidFocus(modelPoint(surface+internal*travel*0.75))*0.40;
+        }
+        through+=mix(waterLight,white,0.04)*focus*(1.0-exp(-travel))*0.20;
+    }
     if (optics.y>2.5) {
         // Flattened water pods share the body's interfaces and light rig.
         // A shallow luminous core and bottom catch give the tiny feet depth.
@@ -223,9 +289,11 @@ void main() {
     through+=mix(waterLight,white,0.50)*caustic*2.2*(optics.y>0.5 ? 0.0 : 1.0);
     vec3 color=reflected*f+through*(1.0-f);
     float grazing=1.0-clamp(normal.z,0.0,1.0);
-    color+=waterLight*pow(grazing,2.6)*1.25+white*pow(grazing,5.0)*0.85;
+    color+=waterLight*pow(grazing,2.6)*1.25+white*pow(grazing,5.0)*0.55;
     if (motion.w>0.5 && optics.y<0.5) {
-        for (int i=0;i<24;i++) {
+        int candidates=rendering.x>1.5 ? 48 : rendering.x>0.5 ? 18 : 0;
+        for (int i=0;i<48;i++) {
+            if (i>=candidates) break;
             float index=float(i);
             vec3 bubble=vec3((hash(vec2(index,1.0))-0.5)*1.1,
                 -0.48+hash(vec2(index,2.0))*1.08,(hash(vec2(index,3.0))-0.5)*0.8);
@@ -235,12 +303,20 @@ void main() {
             float offset=length(surface+internal*along-bubble);
             float radius=0.007+hash(vec2(index,4.0))*0.018;
             float edge=exp(-abs(offset-radius)*170.0)*step(0.0,along)*step(along,travel);
-            color+=mix(hue,white,0.65)*edge*0.25;
+            float attenuation=exp(-along*0.70);
+            color+=mix(waterLight,white,0.25)*edge*0.30*attenuation;
             float glint=exp(-offset*offset/(radius*radius*0.08))
                 *step(0.0,along)*step(along,travel);
-            color+=mix(hue,white,0.40)*glint*0.45;
+            color+=mix(waterLight,white,0.20)*glint*0.50*attenuation;
         }
     }
-    float alpha=cover*0.97;
+    // Thickness-dependent translucency lets the desktop contribute at thin
+    // edges while the illuminated liquid core and bright catches stay dense.
+    float opacity=mix(optics.y>0.5 && optics.y<1.5 ? 0.60 : 0.82,
+        0.98,clamp(travel*0.55,0.0,1.0));
+    opacity*=1.0-clamp(rendering.y,0.0,0.35)*0.55;
+    float reflectedPeak=max(reflected.r,max(reflected.g,reflected.b))*f;
+    opacity=mix(opacity,0.995,clamp(f*0.80+reflectedPeak*0.20,0.0,1.0));
+    float alpha=cover*opacity;
     fragColor=(vec4(film(color)*alpha,alpha)+vec4(pow(hue,vec3(1.0/2.2))*halo,halo))*qt_Opacity;
 }

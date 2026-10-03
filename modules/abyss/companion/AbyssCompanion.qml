@@ -1,5 +1,6 @@
 import QtQuick
 import qs.modules.abyss.looks
+import qs.modules.common
 import "WullExpressions.js" as Expressions
 
 Item {
@@ -22,16 +23,22 @@ Item {
     property string mood: "calm"
     property string activity: "idle"
     property bool interactive: true
+    property bool motionEnabled: AbyssStyle.motionEnabled
+    property bool effectsEnabled: Appearance.effectsEnabled && AbyssStyle.quality !== "performance"
+    property real motionScale: 1
+    property string renderQuality: "balanced"
+    property real translucency: 0.16
     readonly property bool verticalEdge: edge === "left" || edge === "right"
     readonly property bool hovered: droplet.hovered
     signal activated()
+    signal settingsRequested()
 
     implicitWidth: verticalEdge ? 98 : 112
     implicitHeight: verticalEdge ? 112 : 98
     visible: reveal > 0.001
 
     Behavior on reveal {
-        enabled: AbyssStyle.motionEnabled
+        enabled: root.motionEnabled
         NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
     }
 
@@ -42,12 +49,17 @@ Item {
         gazeX: root.gazeX
         gazeY: root.gazeY
         energy: root.energy
-        stateSquash: root.bodySquash
-        stateStretch: root.bodyStretch
-        stateLean: root.bodyLean
-        stateTip: root.bodyTip
+        motionEnabled: root.motionEnabled && visible
+        motionScale: root.motionScale
+        renderQuality: root.renderQuality
+        translucency: root.translucency
+        effectsEnabled: root.effectsEnabled
+        stateSquash: root.motionEnabled ? root.bodySquash : 0
+        stateStretch: root.motionEnabled ? root.bodyStretch : 0
+        stateLean: root.motionEnabled ? root.bodyLean : 0
+        stateTip: root.motionEnabled ? root.bodyTip : 0
         ripple: root.ripple
-        eyeOpen: root.eyeOpen
+        eyeOpen: root.motionEnabled ? root.eyeOpen : 1
         mouthCurve: root.mouthCurve
         pulse: root.pulse
         expression: Expressions.resolve(root.expression, root.mood, root.activity)
@@ -61,6 +73,7 @@ Item {
         transformOrigin: Item.Center
         anchors.centerIn: parent
         onPressed: root.activated()
+        onSettingsRequested: root.settingsRequested()
     }
 
     Rectangle {
@@ -88,7 +101,7 @@ Item {
         border.width: 0
 
         Behavior on scale {
-            enabled: AbyssStyle.motionEnabled
+            enabled: root.motionEnabled
             NumberAnimation { duration: 260; easing.type: Easing.OutCubic }
         }
     }

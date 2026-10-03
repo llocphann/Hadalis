@@ -2079,7 +2079,14 @@
             "along": 0.72,
             "size": 1,
             "interactive": true,
-            "soundEnabled": false
+            "soundEnabled": false,
+            "personality": "balanced",
+            "appearanceFrequency": "always",
+            "animationsEnabled": true,
+            "effectsEnabled": true,
+            "hideInFullscreen": false,
+            "renderQuality": "balanced",
+            "translucency": 0.16
         },
         "quality": "balanced",
         "positions": [],

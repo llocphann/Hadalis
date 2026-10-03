@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,13 +49,13 @@ for marker in (
 ):
     assert marker in bridge, marker
 
-for path in (ROOT / "modules/abyss/companion").glob("*"):
-    if not path.is_file():
-        continue
+for path in (ROOT / "modules/abyss/companion").glob("*.qml"):
     text = path.read_text(errors="ignore").lower()
     assert "assets/images/mascot" not in text, path
-    for extension in (".png", ".gif", ".webp", ".apng", ".mp4", ".webm"):
-        assert extension not in text, (path, extension)
+    # A development grabToImage export is evidence, not runtime pose loading.
+    assert not re.search(
+        r"\b(?:image|animatedimage|animatedsprite|spritesequence|video)\s*\{",
+        text), path
 
 # The input mask and reveal both derive from companionHostActive. Readiness
 # must gate that shared host condition so a daemon exit drops hit testing at

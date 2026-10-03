@@ -1,13 +1,19 @@
 import QtQuick
 import QtQuick.Shapes
+import QtQuick.Window
 import qs.modules.abyss.looks
+import qs.modules.common
+import "WullExpressions.js" as Expressions
 
 Item {
     id: root
+    property string expression: "idle"
+    property color accentColor: Qt.hsla(Math.max(0, AbyssStyle.accent.hslHue), Math.max(0.72, AbyssStyle.accent.hslSaturation), 0.57, 1)
     property real energy: 0.45
     property real gazeX: 0
     property real gazeY: 0
     property bool motionEnabled: AbyssStyle.motionEnabled && visible
+    property bool effectsEnabled: Appearance.effectsEnabled && AbyssStyle.quality !== "performance"
     property real squash: 0
     property real bob: 0
     property real sway: 0
@@ -16,201 +22,235 @@ Item {
     property real stateStretch: 0
     property real stateLean: 0
     property real stateTip: 0
-    // Static attachment orientation is independent of alive local sway/lean.
     property real orientationAngle: 0
     property real ripple: 0
     property real eyeOpen: 1
     property real mouthCurve: 0.12
     property real pulse: 0
+    property real reveal: 1
+    property real reactionLift: 0
+    property real reactionRipple: 0
+    property real shine: 0
+    readonly property var expressionProfile: Expressions.profile(expression)
+    property real expressionSquash: expressionProfile.squash
+    readonly property real motionAmount: motionEnabled ? AbyssStyle.motionIntensity : 0
     readonly property bool hovered: hoverHandler.hovered
+    // QSB reflection reuse may leave status Uncompiled after drawing. A real
+    // presented frame and a supported API are the authoritative readiness.
+    property bool framePresented: false
+    readonly property bool softwareFallback: GraphicsInfo.api === GraphicsInfo.Software
+    readonly property bool materialReady: framePresented && GraphicsInfo.api !== GraphicsInfo.Software
+        && GraphicsInfo.api !== GraphicsInfo.Null && material.status !== ShaderEffect.Error
+    Window.onWindowChanged: root.framePresented = false
+    Connections {
+        target: root.Window.window
+        enabled: !root.framePresented
+        function onFrameSwapped(): void { root.framePresented = true }
+    }
     signal pressed()
 
+    // Preserve placement and native input bounds. The body itself is square.
     implicitWidth: 76
     implicitHeight: 92
     transformOrigin: Item.Bottom
-
-    scale: 1 + squash * 0.035
-    y: bob
-    rotation: orientationAngle + sway * 2.2 + stateLean * 5.0 + stateTip * 2.4
-    transform: Scale {
-        origin.x: root.width * 0.5
-        origin.y: root.height
-        xScale: 1 + root.stateSquash * 0.05 - root.stateStretch * 0.025
-        yScale: 1 - root.stateSquash * 0.035 + root.stateStretch * 0.06
-    }
-
-    Rectangle {
-        z: -1
-        anchors.centerIn: parent
-        width: parent.width * (0.82 + root.pulse * 0.18)
-        height: parent.height * (0.78 + root.pulse * 0.20)
-        radius: width * 0.5
-        color: Qt.alpha(AbyssStyle.accent, 0.16)
-        opacity: root.pulse * 0.48
-    }
-
-    Shape {
-        anchors.fill: parent
-        antialiasing: true
-        ShapePath {
-            strokeWidth: 1.2
-            strokeColor: Qt.alpha(AbyssStyle.specular, 0.58)
-            fillGradient: LinearGradient {
-                x1: 8; y1: 8; x2: root.width - 4; y2: root.height
-                GradientStop { position: 0; color: Qt.lighter(AbyssStyle.accent, 1.12) }
-                GradientStop { position: 0.42; color: AbyssStyle.surfaceRaised }
-                GradientStop { position: 1; color: AbyssStyle.surfaceDeep }
+    scale: 1 + squash * 0.035 + (hovered ? 0.015 : 0)
+    rotation: orientationAngle + sway * 2.2 + stateLean * 5.0 + stateTip * 2.4 + expressionProfile.tilt * 4
+    transform: [
+        Scale {
+            origin.x: root.width * 0.5; origin.y: root.height * 0.5
+            xScale: 1 + (root.stateSquash + root.expressionSquash) * 0.05 - root.stateStretch * 0.025 + root.squash * 0.06
+            yScale: 1 - (root.stateSquash + root.expressionSquash) * 0.035 + root.stateStretch * 0.06 - root.squash * 0.05
+        },
+        Translate {
+            y: (root.bob + root.reactionLift) * root.motionAmount + (1 - root.reveal) * 6 * root.motionAmount
+        }
+    ]
+    Item {
+        id: contact
+        x: 1; y: 79; width: 74; height: 11; z: -1
+        Shape {
+            anchors.fill: parent
+            antialiasing: true
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                strokeWidth: 0
+                fillGradient: RadialGradient {
+                    centerX: 37; centerY: 5.5; centerRadius: 37
+                    GradientStop { position: 0; color: Qt.alpha(root.accentColor, 0.36) }
+                    GradientStop { position: 1; color: "transparent" }
+                }
+                startX: 0; startY: 5.5
+                PathArc { x: 74; y: 5.5; radiusX: 37; radiusY: 5.5 }
+                PathArc { x: 0; y: 5.5; radiusX: 37; radiusY: 5.5 }
             }
-            startX: root.width * 0.5; startY: 2
-            // Six round Bézier lobes: a gently flattened soft tip and fuller
-            // shoulders, instead of the previous sharp triangular outline.
-            PathCubic { x: root.width * 0.16; y: root.height * 0.33; control1X: root.width * 0.42; control1Y: 2; control2X: root.width * 0.23; control2Y: root.height * 0.15 }
-            PathCubic { x: root.width * 0.035; y: root.height * 0.57; control1X: root.width * 0.08; control1Y: root.height * 0.41; control2X: root.width * 0.035; control2Y: root.height * 0.47 }
-            PathCubic { x: root.width * 0.5; y: root.height - 3; control1X: root.width * 0.008; control1Y: root.height * 0.83; control2X: root.width * 0.25; control2Y: root.height - 3 }
-            PathCubic { x: root.width * 0.965; y: root.height * 0.57; control1X: root.width * 0.75; control1Y: root.height - 3; control2X: root.width * 0.992; control2Y: root.height * 0.83 }
-            PathCubic { x: root.width * 0.84; y: root.height * 0.33; control1X: root.width * 0.965; control1Y: root.height * 0.47; control2X: root.width * 0.92; control2Y: root.height * 0.41 }
-            PathCubic { x: root.width * 0.5; y: 2; control1X: root.width * 0.77; control1Y: root.height * 0.15; control2X: root.width * 0.58; control2Y: 2 }
+        }
+        Repeater {
+            model: 3
+            Shape {
+                id: rippleRing
+                required property int index
+                anchors.centerIn: parent
+                width: contact.width * (0.55 + index * 0.18)
+                height: contact.height * (0.50 + index * 0.24)
+                antialiasing: true
+                preferredRendererType: Shape.CurveRenderer
+                scale: 1 + Math.max(root.ripple, root.reactionRipple) * (0.03 + index * 0.015) + root.shimmer * 0.02
+                ShapePath {
+                    fillColor: "transparent"; strokeWidth: 0.65
+                    strokeColor: Qt.alpha(root.accentColor, 0.78 - rippleRing.index * 0.20)
+                    startX: 0; startY: rippleRing.height / 2
+                    PathArc { x: rippleRing.width; y: rippleRing.height / 2; radiusX: rippleRing.width / 2; radiusY: rippleRing.height / 2 }
+                    PathArc { x: 0; y: rippleRing.height / 2; radiusX: rippleRing.width / 2; radiusY: rippleRing.height / 2 }
+                }
+            }
         }
     }
-
-    Rectangle {
-        width: 17; height: 28; radius: 10
-        x: 15 + shimmer * 5; y: 20 + shimmer * 3
-        rotation: 24
-        color: Qt.alpha(AbyssStyle.specular, 0.42)
+    // Software/error fallback uses the same contour, with simpler glass.
+    Shape {
+        x: 0; y: 7; width: 76; height: 76
+        visible: GraphicsInfo.api === GraphicsInfo.Software || material.status === ShaderEffect.Error
+        antialiasing: true
+        preferredRendererType: Shape.CurveRenderer
+        ShapePath {
+            strokeWidth: 1; strokeColor: AbyssStyle.specular
+            fillGradient: LinearGradient {
+                x1: 38; y1: 0; x2: 38; y2: 76
+                GradientStop { position: 0; color: Qt.darker(root.accentColor, 2.2) }
+                GradientStop { position: 0.55; color: root.accentColor }
+                GradientStop { position: 1; color: Qt.lighter(root.accentColor, 1.65) }
+            }
+            startX: 41.04; startY: 6.08
+            PathCubic { x: 10.64; y: 34.96; control1X: 46.36; control1Y: 18.24; control2X: 19.76; control2Y: 19.76 }
+            PathCubic { x: 11.4; y: 68.4; control1X: -1.14; control1Y: 45.6; control2X: -1.14; control2Y: 63.84 }
+            PathCubic { x: 65.74; y: 66.88; control1X: 23.56; control1Y: 75.39; control2X: 56.24; control2Y: 75.39 }
+            PathCubic { x: 60.8; y: 30.02; control1X: 77.9; control1Y: 58.52; control2X: 75.24; control2Y: 43.32 }
+            PathCubic { x: 45.6; y: 8.36; control1X: 51.68; control1Y: 22.04; control2X: 51.68; control2Y: 14.44 }
+            PathCubic { x: 41.04; y: 6.08; control1X: 42.94; control1Y: 4.18; control2X: 39.52; control2Y: 3.04 }
+        }
     }
-
-    // Counter-rotate the COMPLETE face around the body center; all four
-    // panel orientations keep readable upright eyes, cheeks and mouth.
+    ShaderEffect {
+        id: material
+        x: 0; y: 7; width: 76; height: 76
+        visible: GraphicsInfo.api !== GraphicsInfo.Software
+        property color accent: root.accentColor
+        property color specular: AbyssStyle.specular
+        property vector4d motion: Qt.vector4d(root.shimmer, root.stateTip + root.sway * 0.25,
+            root.pulse + (root.hovered ? 0.25 : 0), root.effectsEnabled ? 1 : 0)
+        fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
+    }
+    // Floating droplets stay inside the existing paint/input envelope.
+    Repeater {
+        model: root.effectsEnabled ? 4 : 0
+        Rectangle {
+            required property int index
+            x: [2, 69, 7, 67][index]
+            y: [31, 24, 61, 58][index] - root.shimmer * (index + 1) * 0.5
+            width: [3.2, 4.2, 2.4, 2.8][index]; height: width
+            radius: width / 2
+            gradient: Gradient {
+                GradientStop { position: 0; color: "#e3fbff" }
+                GradientStop { position: 0.4; color: Qt.alpha(root.accentColor, 0.18) }
+                GradientStop { position: 1; color: root.accentColor }
+            }
+            border.width: 0.4; border.color: Qt.alpha(root.accentColor, 0.8)
+        }
+    }
     Item {
         id: faceOverlay
         anchors.fill: parent
         transformOrigin: Item.Center
         rotation: -root.orientationAngle
-
-        // Larger paired eyes and layered moving catchlights stay procedural.
-        Row {
-            spacing: 15
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: 46
-            Repeater {
-                model: 2
-                Item {
-                    width: 14; height: 18
-                    Rectangle {
-                        width: parent.width
-                        height: Math.max(1, parent.height * root.eyeOpen)
-                        anchors.centerIn: parent
-                        radius: width / 2
-                        color: AbyssStyle.textColor
-    
-                        Rectangle {
-                            width: 6; height: Math.min(7, parent.height)
-                            radius: width / 2
-                            x: Math.max(1, Math.min(parent.width - width - 1, 3 + root.gazeX * 2))
-                            y: Math.max(0, Math.min(parent.height - height, (parent.height - height) * 0.5 + root.gazeY * 2))
-                            color: AbyssStyle.surfaceDeep
-                        }
-                        Rectangle {
-                            width: 3; height: Math.min(3, parent.height)
-                            radius: 2
-                            x: 2; y: Math.min(2, Math.max(0, parent.height - height))
-                            color: AbyssStyle.specular
-                        }
-                        Rectangle {
-                            width: 1.5; height: Math.min(1.5, parent.height)
-                            radius: 1
-                            x: 10; y: Math.min(9, Math.max(0, parent.height - height))
-                            color: Qt.alpha(AbyssStyle.specular, 0.8)
-                        }
-                    }
-                }
-            }
+        WaterDropletFace {
+            anchors.fill: parent
+            expression: root.expression
+            accent: root.accentColor
+            eyeOpen: root.eyeOpen
+            mouthCurve: root.mouthCurve
+            // Pointer feedback is interpolated locally, never streamed over IPC.
+            gazeX: root.hovered ? Math.max(-1, Math.min(1, (hoverHandler.point.position.x - root.width * 0.5) / (root.width * 0.5))) : root.gazeX
+            gazeY: root.hovered ? Math.max(-1, Math.min(1, (hoverHandler.point.position.y - root.height * 0.5) / (root.height * 0.5))) : root.gazeY
+            pulse: root.pulse
+            motionEnabled: root.motionEnabled
         }
-    
-        // Two small warm cheek glints; body, pupil and specular colors still
-        // track the desktop theme and no reference artwork enters runtime.
-        Row {
-            spacing: 37
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: 63
-            Repeater {
-                model: 2
-                Rectangle {
-                    width: 9; height: 5; radius: 2.5
-                    color: Qt.rgba(1.0, 0.42, 0.58, 0.42)
-                    opacity: 0.54 + root.pulse * 0.23
-                }
-            }
-        }
-    
+    }
+    Item {
+        x: 0; y: 46; width: 76; height: 18
+        visible: root.expressionProfile.orbit && root.effectsEnabled
+        rotation: -12 + root.shimmer * 24
+        Rectangle { anchors.fill: parent; radius: width / 2; color: "transparent"; border.width: 0.6; border.color: Qt.alpha(root.accentColor, 0.65) }
+        Rectangle { x: parent.width * root.shimmer; y: -1; width: 3; height: 3; radius: 1.5; color: "#d7fbff" }
+    }
+    HoverHandler { id: hoverHandler; enabled: root.enabled }
+    Repeater {
+        model: root.effectsEnabled && root.shine > 0 ? 5 : 0
         Shape {
-            width: 24; height: 12
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: 67
+            required property int index
+            x: [9, 64, 4, 66, 58][index]
+            y: [20, 14, 48, 43, 73][index]
+            width: 5; height: 5; opacity: root.shine
             ShapePath {
-                fillColor: "transparent"
-                strokeColor: Qt.alpha(AbyssStyle.textColor, 0.86)
-                strokeWidth: 2
-                capStyle: ShapePath.RoundCap
-                startX: 3; startY: 6 - root.mouthCurve * 2
-                PathCubic {
-                    x: 21; y: 6 - root.mouthCurve * 2
-                    control1X: 8; control1Y: 6 + root.mouthCurve * 8
-                    control2X: 16; control2Y: 6 + root.mouthCurve * 8
-                }
+                fillColor: "#fff2b6"; strokeWidth: 0
+                startX: 2.5; startY: 0
+                PathLine { x: 3.2; y: 1.8 }
+                PathLine { x: 5; y: 2.5 }
+                PathLine { x: 3.2; y: 3.2 }
+                PathLine { x: 2.5; y: 5 }
+                PathLine { x: 1.8; y: 3.2 }
+                PathLine { x: 0; y: 2.5 }
+                PathLine { x: 1.8; y: 1.8 }
+                PathLine { x: 2.5; y: 0 }
             }
         }
     }
-
-    HoverHandler {
-        id: hoverHandler
-        enabled: root.enabled
-    }
-
     TapHandler {
         enabled: root.enabled
         onTapped: {
             root.pressed()
-            if (root.motionEnabled)
-                squashBurst.restart()
+            if (root.motionEnabled) squashBurst.restart()
         }
     }
-
-    Behavior on stateSquash {
-        enabled: root.motionEnabled
-        SpringAnimation { spring: 3.2; damping: 0.34 }
+    onMotionEnabledChanged: {
+        if (!motionEnabled) {
+            squashBurst.stop(); reactionBounce.stop(); shineBurst.stop()
+            squash = 0; bob = 0; sway = 0; reactionLift = 0; reactionRipple = 0; shine = 0
+        }
     }
-    Behavior on stateStretch {
-        enabled: root.motionEnabled
-        SpringAnimation { spring: 2.8; damping: 0.36 }
+    onExpressionChanged: {
+        if (motionEnabled && ["happy", "excited", "surprised", "alert"].includes(expression)) {
+            reactionBounce.restart()
+            if (["happy", "excited"].includes(expression) && effectsEnabled) shineBurst.restart()
+        }
     }
-    Behavior on stateLean {
-        enabled: root.motionEnabled
-        SpringAnimation { spring: 2.5; damping: 0.42 }
-    }
-    Behavior on stateTip {
-        enabled: root.motionEnabled
-        SpringAnimation { spring: 2.4; damping: 0.44 }
-    }
-    Behavior on eyeOpen {
-        enabled: root.motionEnabled
-        NumberAnimation { duration: 110; easing.type: Easing.OutQuad }
-    }
-    Behavior on mouthCurve {
-        enabled: root.motionEnabled
-        NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
-    }
-    Behavior on pulse {
-        enabled: root.motionEnabled
-        NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
-    }
-
+    Behavior on accentColor { enabled: root.motionEnabled; ColorAnimation { duration: 480 } }
+    Behavior on expressionSquash { enabled: root.motionEnabled; SpringAnimation { spring: 3; damping: 0.42 } }
+    Behavior on stateSquash { enabled: root.motionEnabled; SpringAnimation { spring: 3.2; damping: 0.34 } }
+    Behavior on stateStretch { enabled: root.motionEnabled; SpringAnimation { spring: 2.8; damping: 0.36 } }
+    Behavior on stateLean { enabled: root.motionEnabled; SpringAnimation { spring: 2.5; damping: 0.42 } }
+    Behavior on stateTip { enabled: root.motionEnabled; SpringAnimation { spring: 2.4; damping: 0.44 } }
+    Behavior on eyeOpen { enabled: root.motionEnabled; NumberAnimation { duration: 110; easing.type: Easing.OutQuad } }
+    Behavior on mouthCurve { enabled: root.motionEnabled; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+    Behavior on pulse { enabled: root.motionEnabled; NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
     SequentialAnimation {
         id: squashBurst
         NumberAnimation { target: root; property: "squash"; to: 1; duration: 85; easing.type: Easing.OutQuad }
         NumberAnimation { target: root; property: "squash"; to: -0.35; duration: 150; easing.type: Easing.OutBack }
         NumberAnimation { target: root; property: "squash"; to: 0; duration: 210; easing.type: Easing.OutCubic }
+    }
+    SequentialAnimation {
+        id: reactionBounce
+        ParallelAnimation {
+            NumberAnimation { target: root; property: "reactionLift"; to: -4; duration: 180; easing.type: Easing.OutCubic }
+            NumberAnimation { target: root; property: "reactionRipple"; to: 1; duration: 160 }
+        }
+        ParallelAnimation {
+            NumberAnimation { target: root; property: "reactionLift"; to: 0; duration: 440; easing.type: Easing.OutBounce }
+            NumberAnimation { target: root; property: "reactionRipple"; to: 0; duration: 650; easing.type: Easing.OutCubic }
+        }
+    }
+    SequentialAnimation {
+        id: shineBurst
+        NumberAnimation { target: root; property: "shine"; to: 1; duration: 160 }
+        NumberAnimation { target: root; property: "shine"; to: 0; duration: 850 }
     }
     SequentialAnimation on bob {
         running: root.motionEnabled; loops: Animation.Infinite
@@ -223,7 +263,7 @@ Item {
         NumberAnimation { to: -0.3 - root.energy * 0.7; duration: 3170; easing.type: Easing.InOutSine }
     }
     SequentialAnimation on shimmer {
-        running: root.motionEnabled && AbyssStyle.quality !== "performance"; loops: Animation.Infinite
+        running: root.motionEnabled && root.effectsEnabled; loops: Animation.Infinite
         NumberAnimation { to: 1; duration: 2800; easing.type: Easing.InOutSine }
         NumberAnimation { to: 0; duration: 4300; easing.type: Easing.InOutSine }
     }

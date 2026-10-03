@@ -1,5 +1,6 @@
 import QtQuick
 import qs.modules.abyss.looks
+import "WullExpressions.js" as Expressions
 
 Item {
     id: root
@@ -17,6 +18,9 @@ Item {
     property real eyeOpen: 1
     property real mouthCurve: 0.12
     property real pulse: 0
+    property string expression: ""
+    property string mood: "calm"
+    property string activity: "idle"
     property bool interactive: true
     readonly property bool verticalEdge: edge === "left" || edge === "right"
     readonly property bool hovered: droplet.hovered
@@ -46,6 +50,8 @@ Item {
         eyeOpen: root.eyeOpen
         mouthCurve: root.mouthCurve
         pulse: root.pulse
+        expression: Expressions.resolve(root.expression, root.mood, root.activity)
+        reveal: root.reveal
         enabled: root.interactive
         opacity: root.reveal
         orientationAngle: root.edge === "left" ? 90 : root.edge === "right" ? -90 : root.edge === "bottom" ? 180 : 0

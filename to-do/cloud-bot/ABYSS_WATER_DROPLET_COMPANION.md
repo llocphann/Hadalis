@@ -1,6 +1,7 @@
 # Cloud Bot — Abyss Water Droplet Companion
 
 Status: **in progress — renderer/attachment proof implemented, production integration disabled pending evidence**  
+Current maintainer direction (2026-10-03): match the four supplied original water-droplet boards directly. The original files are accessible locally and visually inspectable; older connector-access blockers below are historical. Prioritize the rounded 1:1 liquid-glass body, blue-black glossy eyes, nine expressions and their continuous motion. Keep production default-off until live acceptance. Current design preview: `qs -p wullDesign.qml`; reference mapping and remaining acceptance are in [the current design](../../docs/WULL_REFERENCE_DESIGN.md), and the bounded local-model intent contract is in `docs/WULL_COMPANION_PROTOCOL_V1.md`. Continue in this one agent context; do not dispatch another original-preview/metadata job.
 Scope owner: Cloud Bot reasoning + source changes; Local Bot only runs explicit deterministic validation jobs.  
 Target shell family: **Abyss first**.  
 Primary constraint from maintainer: **do not implement this as a static image mascot. The Water Droplet Companion must be a genuinely animated, continuously alive runtime companion. Prefer Rust for the continuously running backend.**

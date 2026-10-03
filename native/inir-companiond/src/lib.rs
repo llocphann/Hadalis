@@ -35,6 +35,20 @@ pub enum Activity {
     Error,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Expression {
+    Idle,
+    Happy,
+    Excited,
+    Thinking,
+    Working,
+    Surprised,
+    Sleepy,
+    Sad,
+    Alert,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct BodyTargets {
     pub squash: f32,
@@ -76,6 +90,7 @@ pub struct StateSnapshot {
     pub visibility: Visibility,
     pub mood: Mood,
     pub activity: Activity,
+    pub expression: Expression,
     pub energy: f32,
     pub gaze: [f32; 2],
     pub body: BodyTargets,
@@ -89,6 +104,7 @@ impl StateSnapshot {
             visibility: Visibility::Hidden,
             mood: Mood::Calm,
             activity: Activity::Idle,
+            expression: Expression::Idle,
             energy: 0.0,
             gaze: [0.0, 0.0],
             body: BodyTargets::default(),
@@ -100,6 +116,7 @@ impl StateSnapshot {
     fn settle(&mut self) {
         self.mood = Mood::Calm;
         self.activity = Activity::Idle;
+        self.expression = Expression::Idle;
         self.energy = 0.22;
         self.gaze = [0.0, 0.0];
         self.body = BodyTargets::default();
@@ -152,6 +169,36 @@ enum ClientMessage {
         #[serde(default)]
         active: Option<bool>,
     },
+    Intent {
+        v: u32,
+        seq: u64,
+        expression: Expression,
+        intensity: f32,
+        ttl_ms: u64,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SemanticIntent {
+    pub seq: u64,
+    pub expression: Expression,
+    pub intensity: f32,
+    pub ttl_ms: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Request {
+    Event(SemanticEvent),
+    Intent(SemanticIntent),
+}
+
+impl Request {
+    fn sequence(self) -> u64 {
+        match self {
+            Self::Event(event) => event.seq,
+            Self::Intent(intent) => intent.seq,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -162,6 +209,7 @@ pub enum ProtocolError {
     UnsupportedVersion,
     NonMonotonicSequence,
     MissingActive,
+    InvalidIntent,
 }
 
 impl ProtocolError {
@@ -173,6 +221,7 @@ impl ProtocolError {
             Self::UnsupportedVersion => "unsupported_version",
             Self::NonMonotonicSequence => "non_monotonic_sequence",
             Self::MissingActive => "missing_active",
+            Self::InvalidIntent => "invalid_intent",
         }
     }
 }
@@ -181,6 +230,13 @@ pub fn parse_event_line(
     line: &[u8],
     last_sequence: Option<u64>,
 ) -> Result<SemanticEvent, ProtocolError> {
+    match parse_request_line(line, last_sequence)? {
+        Request::Event(event) => Ok(event),
+        Request::Intent(_) => Err(ProtocolError::Malformed),
+    }
+}
+
+fn parse_request_line(line: &[u8], last_sequence: Option<u64>) -> Result<Request, ProtocolError> {
     if line.is_empty() {
         return Err(ProtocolError::Empty);
     }
@@ -206,7 +262,33 @@ pub fn parse_event_line(
             if event == EventKind::Hover && active.is_none() {
                 return Err(ProtocolError::MissingActive);
             }
-            Ok(SemanticEvent { seq, event, active })
+            Ok(Request::Event(SemanticEvent { seq, event, active }))
+        }
+        ClientMessage::Intent {
+            v,
+            seq,
+            expression,
+            intensity,
+            ttl_ms,
+        } => {
+            if v != PROTOCOL_VERSION {
+                return Err(ProtocolError::UnsupportedVersion);
+            }
+            if last_sequence.is_some_and(|last| seq <= last) {
+                return Err(ProtocolError::NonMonotonicSequence);
+            }
+            if !intensity.is_finite()
+                || !(0.0..=1.0).contains(&intensity)
+                || !(250..=10_000).contains(&ttl_ms)
+            {
+                return Err(ProtocolError::InvalidIntent);
+            }
+            Ok(Request::Intent(SemanticIntent {
+                seq,
+                expression,
+                intensity,
+                ttl_ms,
+            }))
         }
     }
 }
@@ -278,6 +360,7 @@ enum ScheduledAction {
     BlinkClose,
     BlinkOpen,
     IdleCuriosity,
+    EndIntent,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -293,6 +376,9 @@ pub struct Engine {
     next_output_seq: u64,
     scheduled: Option<Scheduled>,
     rng_state: u64,
+    // An optional semantic AI reaction is a bounded overlay. It cannot erase
+    // a task, revive a hidden host, or own the animation clock.
+    intent_restore: Option<(StateSnapshot, Phase, Option<Scheduled>)>,
 }
 
 impl Engine {
@@ -303,6 +389,7 @@ impl Engine {
             last_input_seq: None,
             next_output_seq: 1,
             scheduled: None,
+            intent_restore: None,
             rng_state: if seed == 0 {
                 0x9e37_79b9_7f4a_7c15
             } else {
@@ -327,14 +414,16 @@ impl Engine {
         self.next_message()
     }
 
-    pub fn apply_line(
-        &mut self,
-        line: &[u8],
-        now_ms: u64,
-    ) -> Result<StateMessage, ProtocolError> {
-        let event = parse_event_line(line, self.last_input_seq)?;
-        self.last_input_seq = Some(event.seq);
-        self.apply_event(event, now_ms);
+    pub fn apply_line(&mut self, line: &[u8], now_ms: u64) -> Result<StateMessage, ProtocolError> {
+        let request = parse_request_line(line, self.last_input_seq)?;
+        self.last_input_seq = Some(request.sequence());
+        match request {
+            Request::Event(event) => {
+                self.restore_intent();
+                self.apply_event(event, now_ms);
+            }
+            Request::Intent(intent) => self.apply_intent(intent, now_ms),
+        }
         Ok(self.next_message())
     }
 
@@ -378,6 +467,7 @@ impl Engine {
                 }
                 self.phase = Phase::Curious;
                 self.state.mood = Mood::Curious;
+                self.state.expression = Expression::Thinking;
                 self.state.energy = 0.30;
                 self.state.body.lean = 0.10;
                 self.state.body.tip = 0.14;
@@ -385,6 +475,12 @@ impl Engine {
                     at_ms: now_ms.saturating_add(700),
                     action: ScheduledAction::Settle,
                 });
+            }
+            ScheduledAction::EndIntent => {
+                self.restore_intent();
+                if self.scheduled.is_some_and(|s| s.at_ms <= now_ms) {
+                    self.schedule_idle(now_ms);
+                }
             }
         }
 
@@ -506,6 +602,88 @@ impl Engine {
                 self.scheduled = None;
             }
         }
+        self.state.expression = match self.state.activity {
+            Activity::Thinking => Expression::Thinking,
+            Activity::Working => Expression::Working,
+            Activity::Success => Expression::Happy,
+            Activity::Warning => Expression::Alert,
+            Activity::Error => Expression::Sad,
+            Activity::Idle => match self.state.mood {
+                Mood::Happy => Expression::Happy,
+                Mood::Curious => Expression::Thinking,
+                Mood::Sleepy => Expression::Sleepy,
+                Mood::Concerned => Expression::Sad,
+                _ => Expression::Idle,
+            },
+        };
+    }
+
+    fn restore_intent(&mut self) {
+        if let Some((state, phase, scheduled)) = self.intent_restore.take() {
+            self.state = state;
+            self.phase = phase;
+            self.scheduled = scheduled;
+        }
+    }
+
+    fn apply_intent(&mut self, intent: SemanticIntent, now_ms: u64) {
+        if self.state.visibility == Visibility::Hidden {
+            return;
+        }
+        // Replacement reactions keep the original baseline, including any
+        // waiting task and its event-driven scheduling contract.
+        if let Some((baseline, _, _)) = &self.intent_restore {
+            self.state = baseline.clone();
+        } else {
+            self.intent_restore = Some((self.state.clone(), self.phase, self.scheduled));
+        }
+        self.state.expression = intent.expression;
+        self.state.body = BodyTargets::default();
+        self.state.face = FaceTargets::default();
+        self.state.energy = intent.intensity;
+        self.state.pulse = 0.0;
+        self.phase = Phase::React;
+        match intent.expression {
+            Expression::Idle => {}
+            Expression::Happy | Expression::Excited => {
+                self.state.mood = Mood::Happy;
+                self.state.body.stretch = 0.24 * intent.intensity;
+                self.state.body.ripple = 0.70 * intent.intensity;
+                self.state.face.mouth = 0.68;
+                self.state.pulse = 0.75 * intent.intensity;
+            }
+            Expression::Thinking => {
+                self.state.mood = Mood::Curious;
+                self.state.activity = Activity::Thinking;
+                self.state.body.lean = 0.16 * intent.intensity;
+                self.state.body.tip = 0.2 * intent.intensity;
+            }
+            Expression::Working => {
+                self.state.mood = Mood::Focused;
+                self.state.activity = Activity::Working;
+                self.state.pulse = 0.15 * intent.intensity;
+            }
+            Expression::Surprised | Expression::Alert => {
+                self.state.body.stretch = 0.28 * intent.intensity;
+                self.state.body.ripple = 0.85 * intent.intensity;
+                self.state.pulse = 0.8 * intent.intensity;
+            }
+            Expression::Sleepy => {
+                self.state.mood = Mood::Sleepy;
+                self.state.energy = 0.04;
+                self.state.face.eye = 0.28;
+                self.state.face.mouth = 0.02;
+            }
+            Expression::Sad => {
+                self.state.mood = Mood::Concerned;
+                self.state.body.squash = 0.28 * intent.intensity;
+                self.state.face.mouth = -0.34;
+            }
+        }
+        self.scheduled = Some(Scheduled {
+            at_ms: now_ms.saturating_add(intent.ttl_ms),
+            action: ScheduledAction::EndIntent,
+        });
     }
 
     fn schedule_settle(&mut self, now_ms: u64, delay_ms: u64) {
@@ -560,21 +738,19 @@ mod tests {
     use std::io::Cursor;
 
     use super::{
-        Activity, BoundedLine, Engine, MAX_LINE_BYTES, Mood, Phase, ProtocolError, Visibility,
-        parse_event_line, read_bounded_line,
+        Activity, BoundedLine, Engine, Expression, MAX_LINE_BYTES, Mood, Phase, ProtocolError,
+        Visibility, parse_event_line, read_bounded_line,
     };
 
     #[test]
     fn protocol_rejects_unknown_version_and_non_monotonic_sequence() {
-        let unsupported =
-            br#"{"v":2,"seq":1,"type":"event","event":"show"}"#;
+        let unsupported = br#"{"v":2,"seq":1,"type":"event","event":"show"}"#;
         assert_eq!(
             parse_event_line(unsupported, None),
             Err(ProtocolError::UnsupportedVersion)
         );
 
-        let repeated =
-            br#"{"v":1,"seq":7,"type":"event","event":"show"}"#;
+        let repeated = br#"{"v":1,"seq":7,"type":"event","event":"show"}"#;
         assert_eq!(
             parse_event_line(repeated, Some(7)),
             Err(ProtocolError::NonMonotonicSequence)
@@ -583,8 +759,7 @@ mod tests {
 
     #[test]
     fn hover_requires_explicit_active_state() {
-        let missing =
-            br#"{"v":1,"seq":1,"type":"event","event":"hover"}"#;
+        let missing = br#"{"v":1,"seq":1,"type":"event","event":"hover"}"#;
         assert_eq!(
             parse_event_line(missing, None),
             Err(ProtocolError::MissingActive)
@@ -664,10 +839,7 @@ mod tests {
     fn task_state_waits_for_semantic_completion_without_polling() {
         let mut engine = Engine::new(4);
         let working = engine
-            .apply_line(
-                br#"{"v":1,"seq":1,"type":"event","event":"task_start"}"#,
-                0,
-            )
+            .apply_line(br#"{"v":1,"seq":1,"type":"event","event":"task_start"}"#, 0)
             .expect("task start");
         assert_eq!(working.state.activity, Activity::Working);
         assert_eq!(engine.next_deadline_ms(), None);
@@ -698,5 +870,115 @@ mod tests {
             read_bounded_line(&mut cursor).expect("second read"),
             Some(BoundedLine::Line(valid.to_vec()))
         );
+    }
+
+    #[test]
+    fn all_nine_intents_round_trip_and_expire_to_exact_previous_state() {
+        let expressions = [
+            "idle",
+            "happy",
+            "excited",
+            "thinking",
+            "working",
+            "surprised",
+            "sleepy",
+            "sad",
+            "alert",
+        ];
+        for expression in expressions {
+            let mut engine = Engine::new(9);
+            engine
+                .apply_line(br#"{"v":1,"seq":1,"type":"event","event":"show"}"#, 0)
+                .unwrap();
+            let baseline = engine.state().clone();
+            let message = serde_json::json!({
+                "v":1, "seq":2, "type":"intent", "expression":expression,
+                "intensity":0.6, "ttl_ms":1200
+            })
+            .to_string();
+            let state = engine.apply_line(message.as_bytes(), 100).unwrap();
+            assert_eq!(
+                serde_json::to_value(state).unwrap()["expression"],
+                expression
+            );
+            assert_eq!(engine.next_deadline_ms(), Some(1300));
+            assert!(engine.tick(1299).is_none());
+            engine.tick(1300).unwrap();
+            assert_eq!(engine.state(), &baseline);
+        }
+    }
+
+    #[test]
+    fn intent_cannot_reveal_hidden_companion_or_schedule_hidden_work() {
+        let mut engine = Engine::new(10);
+        let state = engine.apply_line(
+            br#"{"v":1,"seq":1,"type":"intent","expression":"alert","intensity":1,"ttl_ms":10000}"#, 0).unwrap();
+        assert_eq!(state.state.visibility, Visibility::Hidden);
+        assert_eq!(state.state.expression, Expression::Idle);
+        assert_eq!(engine.next_deadline_ms(), None);
+        assert!(engine.intent_restore.is_none());
+    }
+
+    #[test]
+    fn repeated_intents_preserve_waiting_task_and_event_preemption() {
+        let mut engine = Engine::new(11);
+        engine
+            .apply_line(br#"{"v":1,"seq":1,"type":"event","event":"task_start"}"#, 0)
+            .unwrap();
+        let working = engine.state().clone();
+        for (seq, expression) in [(2, "thinking"), (3, "excited")] {
+            let intent = serde_json::json!({
+                "v":1, "seq":seq, "type":"intent", "expression":expression,
+                "intensity":0.5, "ttl_ms":500
+            })
+            .to_string();
+            engine.apply_line(intent.as_bytes(), seq * 100).unwrap();
+        }
+        engine.tick(800).unwrap();
+        assert_eq!(engine.state(), &working);
+        assert_eq!(engine.next_deadline_ms(), None);
+        engine.apply_line(
+            br#"{"v":1,"seq":4,"type":"intent","expression":"sad","intensity":0.5,"ttl_ms":500}"#, 900).unwrap();
+        let success = engine
+            .apply_line(
+                br#"{"v":1,"seq":5,"type":"event","event":"task_success"}"#,
+                1000,
+            )
+            .unwrap();
+        assert_eq!(success.state.expression, Expression::Happy);
+        assert!(engine.intent_restore.is_none());
+        engine
+            .apply_line(br#"{"v":1,"seq":6,"type":"event","event":"hide"}"#, 1100)
+            .unwrap();
+        assert_eq!(engine.next_deadline_ms(), None);
+        assert_eq!(engine.state().visibility, Visibility::Hidden);
+    }
+
+    #[test]
+    fn invalid_intents_do_not_consume_sequence_or_change_state() {
+        let invalid = [
+            ("thinking", -0.1, 1000),
+            ("thinking", 1.1, 1000),
+            ("thinking", 0.5, 249),
+            ("thinking", 0.5, 10001),
+            ("run_command", 0.5, 1000),
+        ];
+        let mut engine = Engine::new(12);
+        for (expression, intensity, ttl) in invalid {
+            let message = serde_json::json!({
+                "v":1, "seq":1, "type":"intent", "expression":expression,
+                "intensity":intensity, "ttl_ms":ttl
+            })
+            .to_string();
+            assert!(engine.apply_line(message.as_bytes(), 0).is_err());
+            assert_eq!(engine.next_deadline_ms(), None);
+            assert_eq!(engine.state().visibility, Visibility::Hidden);
+        }
+        engine
+            .apply_line(br#"{"v":1,"seq":1,"type":"event","event":"show"}"#, 0)
+            .unwrap();
+        assert_eq!(engine.apply_line(
+            br#"{"v":1,"seq":1,"type":"intent","expression":"happy","intensity":0.5,"ttl_ms":500}"#, 0),
+            Err(ProtocolError::NonMonotonicSequence));
     }
 }

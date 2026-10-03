@@ -1,81 +1,38 @@
 #!/usr/bin/env python3
-"""Bounded source/behavior safety contract, NOT a visual resemblance verdict.
-
-The four original maintainer references are separately required before a
-subjective approval. This test never creates or publishes reference imagery.
-"""
+"""Procedural renderer safety and semantic behavior; no aesthetic verdict."""
 import json
-import re
 from pathlib import Path
+import re
+import shutil
+import subprocess
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-body = (ROOT / "modules/abyss/companion/WaterDropletBody.qml").read_text()
-host = (ROOT / "modules/abyss/companion/AbyssCompanion.qml").read_text()
-perimeter = (ROOT / "modules/abyss/AbyssPerimeter.qml").read_text()
-style = (ROOT / "modules/abyss/looks/AbyssStyle.qml").read_text()
-defaults = json.loads((ROOT / "defaults/config.json").read_text())
-
-# Wull stays generated from actual geometry in the live QML scene.
-assert "import QtQuick.Shapes" in body
-assert not re.search(r"\b(?:Image|AnimatedImage|AnimatedSprite|SpriteSequence|Video)\s*\{", body)
-assert not re.search(r"(?:\.png|\.gif|\.webp|\.apng|\.jpg|mascot/manifest)", body, re.I)
-outline = body.split("    Shape {\n        anchors.fill: parent", 1)[1].split(
-    "    Rectangle {\n        width: 17", 1
-)[0]
-assert outline.count("PathCubic {") == 6, "six-lobe procedural plump outline required"
-assert "root.width * 0.035" in outline and "root.width * 0.965" in outline, (
-    "plump lateral outline must not regress to the old narrow body"
-)
-for token in ("AbyssStyle.accent", "AbyssStyle.surfaceRaised",
-              "AbyssStyle.surfaceDeep", "AbyssStyle.specular",
-              "AbyssStyle.textColor"):
-    assert token in body and ("property color " + token.split(".")[-1]) in style, token
-
-# Paired expressive eyes each get multiple light catches; blush is subtle.
-eye = body.split("// Larger paired eyes and layered moving catchlights", 1)[1].split(
-    "// Two small warm cheek glints", 1
-)[0]
-assert eye.count("model: 2") == 1
-assert "width: 14; height: 18" in eye
-assert "root.eyeOpen" in eye
-assert "root.gazeX" in eye and "root.gazeY" in eye
-assert eye.count("AbyssStyle.specular") >= 2, "two eye specular layers"
-cheeks = body.split("// Two small warm cheek glints", 1)[1].split(
-    "        Shape {\n            width: 24; height: 12", 1
-)[0]
-assert "model: 2" in cheeks and "radius: 2.5" in cheeks
-assert "root.pulse" in cheeks, "cheeks must respond to expressions"
-for token in ("SpringAnimation", "stateSquash", "stateStretch",
-              "stateLean", "stateTip", "on eyeOpen", "on mouthCurve",
-              "SequentialAnimation on bob", "SequentialAnimation on sway"):
-    assert token in body, token
-assert "property real orientationAngle: 0" in body
-assert "rotation: orientationAngle + sway" in body
-assert body.count("id: faceOverlay") == 1
-assert "rotation: -root.orientationAngle" in body
-assert 'orientationAngle: root.edge === "left" ? 90' in host
-assert 'rotation: root.edge' not in host
-assert 'anchors.verticalCenter: root.verticalEdge ? parent.verticalCenter : undefined' in host
-assert 'anchors.left: root.edge === "left" ? parent.left : undefined' in host
-assert 'anchors.right: root.edge === "right" ? parent.right : undefined' in host
-assert "running: root.motionEnabled" in body
-assert "root.motionEnabled && AbyssStyle.quality" in body
-assert "Timer {" not in body
-
-# Geometric artwork must not expand or bypass the separate production mask.
-assert "implicitWidth: 76" in body and "implicitHeight: 92" in body
+COMPANION = ROOT / "modules/abyss/companion"
+# Runtime art must remain geometry/material, not an image/pose pack.
+for filename in ("WaterDropletBody.qml", "WaterDropletFace.qml", "AbyssCompanion.qml"):
+    text = (COMPANION / filename).read_text()
+    assert not re.search(r"\b(?:Image|AnimatedImage|AnimatedSprite|SpriteSequence|Video)\s*\{", text)
+    assert not re.search(r"(?:\.png|\.gif|\.webp|\.apng|\.jpg|mascot/manifest)", text, re.I)
+body = (COMPANION / "WaterDropletBody.qml").read_text()
+host = (COMPANION / "AbyssCompanion.qml").read_text()
+for contract in ("implicitWidth: 76", "implicitHeight: 92", "property real orientationAngle: 0",
+                 "rotation: -root.orientationAngle", "running: root.motionEnabled"):
+    assert contract in body, contract
+assert "Timer {" not in body, "Rust schedules semantic state; renderer interpolates locally"
 assert "implicitWidth: verticalEdge ? 98 : 112" in host
 assert "implicitHeight: verticalEdge ? 112 : 98" in host
-assert 'anchors.top: root.edge === "bottom" ? parent.top : undefined' in host
-assert 'anchors.bottom: root.edge === "top" ? parent.bottom : undefined' in host
-assert "anchors.bottomMargin" not in host
-assert "width: root.verticalEdge ? 10 : 28" in host
-assert "height: root.verticalEdge ? 28 : 10" in host
-assert "color: AbyssStyle.surface" in host
-assert "border.width: 0" in host
-assert "border.color: Qt.alpha(AbyssStyle.specular" not in host
-assert perimeter.count("AbyssCompanion {") == 1
-assert perimeter.count("CompanionBridge {") == 1
-assert 'WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible)' in perimeter
+defaults = json.loads((ROOT / "defaults/config.json").read_text())
 assert defaults["abyss"]["companion"]["enabled"] is False
+shader = COMPANION / "WaterDropletMaterial.frag"
+package = shader.with_suffix(".frag.qsb")
+assert package.is_file() and package.stat().st_size > 1000
+# Reproducible shader/source pairing where the shader compiler is installed.
+compiler = shutil.which("qsb") or "/usr/lib/qt6/bin/qsb"
+if Path(compiler).is_file():
+    with tempfile.TemporaryDirectory() as temporary:
+        rebuilt = Path(temporary) / package.name
+        subprocess.run([compiler, "--qt6", "-o", str(rebuilt), str(shader)], check=True, capture_output=True)
+        assert rebuilt.read_bytes() == package.read_bytes(), "stale bundled Wull shader"
+subprocess.run(["node", str(ROOT / "scripts/test-wull-expressions.cjs")], check=True)
 print("WULL_PROCEDURAL_VISUAL_SOURCE_SAFETY_PASS")

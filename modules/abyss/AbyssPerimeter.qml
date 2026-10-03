@@ -420,6 +420,9 @@ Scope {
                 eyeOpen: companionBridge.eyeOpen
                 mouthCurve: companionBridge.mouthCurve
                 pulse: companionBridge.pulse
+                expression: companionBridge.expression
+                mood: companionBridge.mood
+                activity: companionBridge.activity
 
                 // Scale is centered on the FULL host. Account for its
                 // outward half-extent so the rendered cradle, not the

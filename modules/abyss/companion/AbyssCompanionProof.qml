@@ -53,6 +53,9 @@ ApplicationWindow {
         eyeOpen: bridge.eyeOpen
         mouthCurve: bridge.mouthCurve
         pulse: bridge.pulse
+        expression: bridge.expression
+        mood: bridge.mood
+        activity: bridge.activity
 
         onActivated: {
             pulse.restart()

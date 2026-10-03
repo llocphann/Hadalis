@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "WullExpressions.js" as Expressions
 
 Item {
     id: root
@@ -24,6 +25,7 @@ Item {
     property string visibility: "hidden"
     property string mood: "calm"
     property string activity: "idle"
+    property string expression: "idle"
     property real energy: 0
     property real gazeX: 0
     property real gazeY: 0
@@ -53,6 +55,7 @@ Item {
         root.visibility = "hidden"
         root.mood = "calm"
         root.activity = "idle"
+        root.expression = "idle"
         root.energy = 0
         root.gazeX = 0
         root.gazeY = 0
@@ -99,6 +102,23 @@ Item {
             root.sendEvent("show")
     }
 
+    // Called by a future local model adapter after its structured-output
+    // validation. Only a finite expression vocabulary reaches the renderer.
+    function sendIntent(expression, intensity, ttlMs) {
+        if (!root.backendEnabled || !backendProcess.running || !root.ready
+                || !Expressions.names.includes(expression)
+                || typeof intensity !== "number" || !Number.isFinite(intensity)
+                || intensity < 0 || intensity > 1
+                || !Number.isInteger(ttlMs) || ttlMs < 250 || ttlMs > 10000)
+            return false
+        root.outboundSeq += 1
+        backendProcess.write(JSON.stringify({
+            v: 1, seq: root.outboundSeq, type: "intent",
+            expression: expression, intensity: intensity, ttl_ms: ttlMs
+        }) + "\n")
+        return true
+    }
+
     function hide() {
         root.requestedVisible = false
         if (root.ready)
@@ -134,6 +154,7 @@ Item {
             ? message.visibility : root.visibility
         root.mood = typeof message.mood === "string" ? message.mood : root.mood
         root.activity = typeof message.activity === "string" ? message.activity : root.activity
+        root.expression = Expressions.resolve(message.expression, root.mood, root.activity)
         root.energy = root.boundedNumber(message.energy, root.energy, 0, 1)
         root.gazeX = root.boundedNumber(gaze[0], root.gazeX, -1, 1)
         root.gazeY = root.boundedNumber(gaze[1], root.gazeY, -1, 1)

@@ -65,4 +65,12 @@ assert.equal(dockHeld(true,true,{key:'top'},{key:'dock'},true),true);
 assert.equal(dockHeld(true,true,{key:'top'},{key:'dock'},false),false);
 assert.equal(dockHeld(true,false,{key:'dock'}),false);
 assert.equal(dockHeld(false,true,{key:'dock'}),false);
+const permission=perimeter.match(/readonly property bool companionPermission: ([\s\S]*?)\n\s*readonly property bool companionHostActive:/)[1];
+function fieldPermission(count,capacity=40){return vm.runInNewContext(permission,{
+    WullHostPolicy:{hostActive:()=>true},root:{},companionBridge:{},window:{companionOccluded:false},
+    liquid:{records:Array(count)},field:{capacity}});}
+assert.equal(fieldPermission(39),true);
+assert.equal(fieldPermission(40),true);
+assert.equal(fieldPermission(41),false,'never visit a body beyond the actual painted field capacity');
+assert.equal(fieldPermission(2,1),false,'use the field capacity, not a duplicate fixed budget');
 console.log(`WULL_SHARED_ABYSS_REGISTRY_CONTACT_SUPPORT_AND_RETREAT_PASS contacts=${contacts}`);

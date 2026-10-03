@@ -159,6 +159,7 @@ Scope {
                 root.companionSessionVisible,companionBridge.ready,
                 root.companionTargetOutput,window.outputName,window.presented,field.ready)
                 && !window.companionOccluded
+                && liquid.records.length<=field.capacity
             readonly property bool companionHostActive: window.companionPermission && companionPresence.qualified
             readonly property bool companionHoverHeld: window.companionHostActive
                 && companion.interactive && (companion.hovered || companion.dragging)

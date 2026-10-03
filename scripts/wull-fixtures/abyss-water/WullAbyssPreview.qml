@@ -105,12 +105,16 @@ Window {
         check(!water.running && water.ripple.w===0,"motion-off did not cancel finite impulse")
         actor.motionEnabled=true;water.tap();allowed=false;input.wait(40)
         check(!actor.visible && !actor.inputReady && !water.running,"policy hide retained input or local water animation")
+        allowed=true;input.tryCompare(actor,"inputReady",true,4000)
+        liquid.moduleRecords=Array(40).fill(body.record);input.wait(50)
+        check(!presence.permitted && !actor.visible && !water.running,"shader capacity overflow retained an unpainted water visit")
+        liquid.moduleRecords=[];allowed=false
         liquid.presented=false;input.wait(150)
         check(!liquid.waves.running,"owned Edge solver did not stop before teardown")
         console.log("WULL_ABYSS_CHECK=PASS "+JSON.stringify({realBodyRegistry:true,paintedSurfaceContacts:true,
             dock:true,settings:true,sidebars:true,styledPopupIpc:true,osd:true,utility:true,
             coupledPeek:true,bodyWalk:true,bodyDive:true,finiteLocalImpulse:true,parentEdgeWaves:true,
-            effectsOff:true,motionOff:true,policyHide:true,nativeDesktopAcceptance:false,gpuPixels:false}))
+            effectsOff:true,motionOff:true,policyHide:true,capacityHide:true,nativeDesktopAcceptance:false,gpuPixels:false}))
         Qt.callLater(Qt.quit)
     }
     Item {
@@ -157,7 +161,7 @@ Window {
         }
         WullPresence {
             id: presence
-            scene:root.scene;actor:actor;permitted:root.allowed;requestedReveal:root.requested
+            scene:root.scene;actor:actor;permitted:root.allowed && liquid.records.length<=field.capacity;requestedReveal:root.requested
             motionEnabled:actor.motionEnabled
             onStopRequested:actor.stopTravel()
             onResetRequested:(x,y,edge)=>actor.resetTo(x+(root.actorScale-1)*actor.width/2,y+(root.actorScale-1)*actor.height/2,edge)

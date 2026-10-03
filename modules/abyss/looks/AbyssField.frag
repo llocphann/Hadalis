@@ -9,6 +9,10 @@ layout(std140,binding=0) uniform buf {
     vec4 viewport;
     vec4 insets;
     vec4 material;
+    vec4 liquidContact;
+    vec4 liquidContactNormal;
+    vec4 liquidRipple;
+    vec4 liquidRippleNormal;
     vec4 effects;
     vec4 contentMaterial;
     vec4 waveMaterial;
@@ -66,6 +70,37 @@ vec2 waveProfile(vec2 p) {
     if(weights.w>0.001) result+=waveAt(arcs.w)*weights.w;
     return result/dot(weights,vec4(1.0))*smoothstep(0.0,10.0,nearest);
 }
+// Local surface tension and two traveling crests are evaluated in the same
+// distance/material pass. Zero uniforms preserve the resting field exactly.
+vec2 waterInteraction(vec2 p) {
+    float displacement=0.0,light=0.0;
+    if(liquidContact.w>0.001) {
+        vec2 offset=p-liquidContact.xy,n=liquidContactNormal.xy;
+        float tangent=dot(offset,vec2(-n.y,n.x))/max(0.1,liquidContact.z);
+        float depth=dot(offset,n)/max(0.1,liquidContact.z);
+        if(abs(tangent)<72.0 && abs(depth)<48.0) {
+            float neck=exp(-tangent*tangent/460.0-depth*depth/550.0)*liquidContact.w;
+            displacement+=16.0*liquidContact.z*neck;
+            light+=neck*.22;
+        }
+    }
+    if(liquidRipple.w>0.001 && liquidRipple.z<1.0) {
+        vec2 offset=p-liquidRipple.xy,n=liquidRippleNormal.xy;
+        float scale=max(0.1,liquidRippleNormal.z);
+        float tangent=abs(dot(offset,vec2(-n.y,n.x)))/scale;
+        float depth=dot(offset,n)/scale;
+        if(tangent<220.0 && abs(depth)<36.0) {
+            float phase=liquidRipple.z;
+            float front=phase*240.0;
+            float a=exp(-pow((tangent-front)/13.0,2.0));
+            float b=exp(-pow((tangent-front+24.0)/16.0,2.0));
+            float envelope=exp(-abs(depth)/12.0)*pow(1.0-phase,1.5)*liquidRipple.w;
+            displacement+=(a-.28*b)*18.0*scale*envelope;
+            light+=(a+b*.3)*envelope*.6;
+        }
+    }
+    return vec2(displacement,light);
+}
 float roundedBox(vec2 p, vec4 rect, float radius) {
     float r = min(radius,min(rect.z,rect.w)*0.5);
     vec2 q = abs(p-rect.xy-rect.zw*0.5)-rect.zw*0.5+r;
@@ -98,7 +133,8 @@ float field(vec2 p) {
 void main() {
     vec2 p=qt_TexCoord0*viewport.xy;
     vec2 wave=waveProfile(p);
-    float d=field(p)-wave.x;
+    vec2 interaction=waterInteraction(p);
+    float d=field(p)-wave.x-interaction.x;
     // Derivatives are evaluated before any divergent early return.
     vec2 gradient=vec2(dFdx(d),dFdy(d));
     float aa=max(0.6,fwidth(d)*0.6);
@@ -135,6 +171,9 @@ void main() {
     float spec=exp(-abs(d)*0.8)*pow(facing,5.0)*material.w;
     body.rgb=mix(body.rgb,raised.rgb*body.a,reflection);
     body.rgb+=rim.rgb*body.a*(spec*0.65+reflection*0.32);
+    // QColor uniforms arrive premultiplied. The local specular catch uses the
+    // same light color while recovering its brightness at the liquid contact.
+    body.rgb+=rim.rgb/max(rim.a,0.0001)*body.a*interaction.y*exp(-abs(d)/5.0)*material.w;
     body.rgb*=1.0-exp(-max(-d,0.0)*0.10)*(1.0-facing)*0.18*material.w;
     // A thin, broken foam band follows the same crest distance. Its phase is
     // driven by crest motion, not a wall-clock uniform, so sleeping stays static.

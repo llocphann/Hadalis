@@ -47,6 +47,7 @@ Item {
     readonly property bool dragging: dragHandler.active
     property string emergenceEdge: edge
     property bool upright: false
+    property bool connectedWater: false
     property real presentation: 0
     readonly property bool peeking: reveal>0 && reveal<.99
     property real floorAlignment: upright && surfaceSupported ? height-2-((height-92)/2+78.3) : 0
@@ -185,7 +186,7 @@ Item {
     // Water rings share the presentation clock and accent, with no new timer.
     Item {
         id: waterRings
-        visible: root.motionEnabled && root.effectsEnabled && root.presentation>.001 && root.presentation<.999
+        visible: !root.connectedWater && root.motionEnabled && root.effectsEnabled && root.presentation>.001 && root.presentation<.999
         width: 70; height: 13
         x: root.activeEmergenceEdge === "left" ? -width/2 : root.activeEmergenceEdge === "right" ? root.width-width/2 : (root.width-width)/2
         y: root.activeEmergenceEdge === "top" ? -height/2 : root.activeEmergenceEdge === "bottom" ? root.height-height/2 : (root.height-height)/2

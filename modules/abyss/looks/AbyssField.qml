@@ -15,6 +15,7 @@ Item {
     readonly property bool wallpaperReady: wallpaperImage.status === Image.Ready
     property var records: []
     property var waveTexture: null
+    property var waterLink: null
     property var edgeInsets: ({left:8,top:8,right:8,bottom:8})
     readonly property int capacity: 40
     // Qt's QSB reflection cache can render a recreated effect while its new
@@ -50,6 +51,10 @@ Item {
         readonly property vector4d viewport: Qt.vector4d(root.width,root.height,0,0)
         readonly property vector4d insets: Qt.vector4d(root.edgeInsets.left,root.edgeInsets.top,root.edgeInsets.right,root.edgeInsets.bottom)
         readonly property vector4d material: Qt.vector4d(AbyssStyle.perimeterRadius,AbyssStyle.connectionDepth,AbyssStyle.neckRadius,AbyssStyle.highlightStrength)
+        readonly property vector4d liquidContact: root.waterLink?.contact ?? Qt.vector4d(0,0,0,0)
+        readonly property vector4d liquidContactNormal: root.waterLink?.contactNormal ?? Qt.vector4d(0,0,0,0)
+        readonly property vector4d liquidRipple: root.waterLink?.ripple ?? Qt.vector4d(0,0,1,0)
+        readonly property vector4d liquidRippleNormal: root.waterLink?.rippleNormal ?? Qt.vector4d(0,0,0,0)
         readonly property var wallpaper: wallpaperImage
         readonly property var waveSamples: root.waveTexture
         readonly property vector4d waveMaterial: Qt.vector4d(root.waveTexture?.width ?? 0,

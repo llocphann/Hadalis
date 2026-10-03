@@ -16,8 +16,39 @@ function valid(scene) {
         && scene.records.every(r=>r && edges.includes(r.edge) && finite(r.along) && finite(r.span) && r.span>=0)
         && Array.isArray(scene.blockers) && scene.blockers.length <= 128
         && scene.blockers.every(Slots.validRect)
-        && Array.isArray(scene.surfaces) && scene.surfaces.length <= 16
+        && Array.isArray(scene.surfaces) && scene.surfaces.length <= 40
         && scene.surfaces.every(s=>s && Slots.validRect(s.rect) && edges.includes(s.edge))
+}
+// Every registered Abyss body participates: Dock, Settings, Sidebars, ordinary
+// and StyledPopup/IPC hosts, OSD, notifications and future body-host surfaces.
+// Use the actual painted silhouette, never the inset content/input rectangle.
+function fromParticipants(base, participants, modules) {
+    const records=Array.isArray(modules) ? modules : [], blockers=[], surfaces=[]
+    for (const record of records) {
+        const horizontal=record.edge==="top" || record.edge==="bottom"
+        const depth=Number(base.insets?.[record.edge])
+        blockers.push(horizontal
+            ? {x:record.along,y:record.edge==="top" ? 0 : base.height-depth,width:record.span,height:depth}
+            : {x:record.edge==="left" ? 0 : base.width-depth,y:record.along,width:depth,height:record.span})
+    }
+    const keys=Object.keys(participants ?? {})
+    // Capacity overflow fails closed rather than dropping a visible obstacle.
+    if (keys.length>40) return Object.assign({},base,{records:records,blockers:[],surfaces:null})
+    for (const key of keys) {
+        const participant=participants[key], geometry=participant?.geometry, r=geometry?.surface
+        if (!geometry) continue
+        if (!r || ![r.x,r.y,r.width,r.height].every(finite)
+                || r.width<0 || r.height<0 || !edges.includes(geometry.edge))
+            return Object.assign({},base,{records:records,blockers:null,surfaces:[]})
+        // Match the shared field's visible-record rule, including custom IPC
+        // participants without a body-host progress property.
+        if (r.width<=0 || r.height<=0) continue
+        blockers.push({x:r.x,y:r.y,width:r.width,height:r.height,walkable:false})
+        if (participant.surfaceSettled && edges.includes(geometry.edge))
+            surfaces.push({key:key,edge:geometry.edge,rect:blockers[blockers.length-1],
+                radius:Math.max(0,Number(base.rimRadius) || 0)})
+    }
+    return Object.assign({},base,{records:records,blockers:blockers,surfaces:surfaces})
 }
 function rect(scene, point) {
     return {x:point.x,y:point.y,width:scene.hostWidth,height:scene.hostHeight}
@@ -30,18 +61,21 @@ function clearAt(scene, point) {
 }
 function supportAt(scene, point) {
     if (!clearAt(scene,point)) return null
-    const bottom=point.y+scene.hostHeight, tolerance=3*scene.scale
+    const bottom=point.y+scene.hostHeight, tolerance=Math.max(2.1,3*scene.scale)
     const floor=scene.height-scene.insets.bottom
     if (Math.abs(bottom-floor)<=tolerance)
         return {key:"bottom",y:floor,from:scene.insets.left+2,to:scene.width-scene.insets.right-2}
     for (const surface of scene.surfaces) {
         const r=surface.rect
-        if (Math.abs(bottom-r.y)<=tolerance && point.x>=r.x && point.x+scene.hostWidth<=r.x+r.width)
-            return {key:surface.key,y:r.y,from:r.x,to:r.x+r.width}
+        const margin=Math.min(Number(surface.radius)||0,r.width/2)
+        if (Math.abs(bottom-r.y)<=tolerance && point.x>=r.x+margin && point.x+scene.hostWidth<=r.x+r.width-margin)
+            return {key:surface.key,y:r.y,from:r.x+margin,to:r.x+r.width-margin}
     }
     // A module's upper rim is also a real horizontal surface, if fully clear.
     for (let i=0;i<scene.blockers.length;i++) {
         const r=scene.blockers[i]
+        if (r.walkable===false) continue
+        if (scene.surfaces.some(s=>s.rect.x===r.x && s.rect.y===r.y && s.rect.width===r.width && s.rect.height===r.height)) continue
         if (Math.abs(bottom-r.y)<=tolerance && point.x>=r.x && point.x+scene.hostWidth<=r.x+r.width)
             return {key:"rim"+i,y:r.y,from:r.x,to:r.x+r.width}
     }
@@ -49,8 +83,33 @@ function supportAt(scene, point) {
 }
 function annotate(scene, point, edge, kind, key) {
     const support=supportAt(scene,point)
-    return {qualified:true,x:point.x,y:point.y,edge:edge,kind:kind,key:key,
+    const placement={qualified:true,x:point.x,y:point.y,edge:edge,kind:kind,key:key,
         grounded:!!support,support:support}
+    placement.contact=waterContact(scene,placement,point)
+    return placement
+}
+function waterContact(scene, placement, point) {
+    if (!valid(scene) || !placement || !point || !clearAt(scene,point)) return null
+    const key=placement.kind==="surface" ? placement.key : supportAt(scene,point)?.key
+    const surface=scene.surfaces.find(s=>s.key===key)
+    let edge=surface ? (placement.kind==="surface" ? placement.edge : "bottom")
+        : key==="bottom" ? "bottom" : placement.kind==="edge" ? placement.edge : ""
+    if (!edges.includes(edge)) return null
+    const horizontal=edge==="top" || edge==="bottom"
+    const r=surface?.rect
+    const x=horizontal ? point.x+scene.hostWidth/2
+        : r ? edge==="left" ? r.x+r.width : r.x : edge==="left" ? scene.insets.left : scene.width-scene.insets.right
+    const y=!horizontal ? point.y+scene.hostHeight/2
+        : r ? edge==="bottom" ? r.y : r.y+r.height : edge==="top" ? scene.insets.top : scene.height-scene.insets.bottom
+    const boundary=horizontal ? edge==="bottom" ? point.y+scene.hostHeight : point.y
+        : edge==="left" ? point.x : point.x+scene.hostWidth
+    if (Math.abs(boundary-(horizontal ? y : x))>5*scene.scale) return null
+    return {x:x,y:y,nx:edge==="left" ? 1 : edge==="right" ? -1 : 0,
+        ny:edge==="top" ? 1 : edge==="bottom" ? -1 : 0,scale:scene.scale,
+        span:(horizontal ? scene.hostWidth : scene.hostHeight)*.7,
+        sourceEdge:surface?.edge ?? edge,
+        sourceAlong:(surface?.edge ?? edge)==="top" || (surface?.edge ?? edge)==="bottom" ? x : y,
+        key:surface?.key ?? edge}
 }
 function edgePoint(scene, edge, fraction) {
     if (!valid(scene) || !edges.includes(edge) || !finite(fraction)) return {qualified:false}
@@ -82,7 +141,7 @@ function edgePoint(scene, edge, fraction) {
 }
 function surfacePoints(scene) {
     if (!valid(scene)) return []
-    const result=[], w=scene.hostWidth, h=scene.hostHeight, gap=2*scene.scale
+    const result=[], w=scene.hostWidth, h=scene.hostHeight, gap=Math.max(2,2*scene.scale)
     for (const surface of scene.surfaces) {
         const r=surface.rect
         const points={
@@ -100,7 +159,7 @@ function surfacePoints(scene) {
     }
     return result
 }
-// All four edges remain eligible. A visible Sidebar/Popup has a 35% initial
+// All four edges remain eligible. Any settled Abyss body has a 35% initial
 // visit chance, not a preference that pins Wull to that surface.
 function appearance(scene, surfaceRoll, edgeRoll, alongRoll) {
     if (!valid(scene) || ![surfaceRoll,edgeRoll,alongRoll].every(finite)) return {qualified:false}
@@ -177,12 +236,18 @@ function path(scene, from, to) {
 }
 function nearestWater(scene, point) {
     if (!valid(scene) || !clearAt(scene,point)) return {qualified:false}
-    let best=null
+    let best=null, candidates=surfacePoints(scene)
     for (const edge of edges) {
         const horizontal=edge==="top" || edge==="bottom"
         const fraction=(horizontal ? point.x+scene.hostWidth/2 : point.y+scene.hostHeight/2)/(horizontal ? scene.width : scene.height)
         const water=edgePoint(scene,edge,fraction)
-        if (!water.qualified) continue
+        if (water.qualified) candidates.push(water)
+    }
+    candidates.sort((a,b)=>distance(point,a)-distance(point,b))
+    for (const water of candidates) {
+        // Straight distance is a lower bound on every routed path. Once it
+        // exceeds the best clear route, later candidates cannot improve it.
+        if (best && distance(point,water)>=best.route.distance) break
         const route=path(scene,point,water)
         if (route.qualified && (!best || route.distance<best.route.distance)) best={qualified:true,placement:water,route:route}
     }
@@ -194,7 +259,10 @@ function drop(scene, x, y, previous) {
     if (!clearAt(scene,point)) return clearAt(scene,previous) ? annotate(scene,previous,"top","drop","drop") : {qualified:false}
     // Snap to a nearby upper rim, never invent a surface under an airborne drop.
     const floors=[{y:scene.height-scene.insets.bottom,from:scene.insets.left,to:scene.width-scene.insets.right}]
-    for (const s of scene.surfaces) floors.push({y:s.rect.y,from:s.rect.x,to:s.rect.x+s.rect.width})
+    for (const s of scene.surfaces) {
+        const margin=Math.min(Number(s.radius)||0,s.rect.width/2)
+        floors.push({y:s.rect.y,from:s.rect.x+margin,to:s.rect.x+s.rect.width-margin})
+    }
     for (const floor of floors) {
         const candidate={x:point.x,y:floor.y-scene.hostHeight-2*scene.scale}
         if (Math.abs(candidate.y-point.y)<12*scene.scale && point.x>=floor.from

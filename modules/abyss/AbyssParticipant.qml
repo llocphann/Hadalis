@@ -9,6 +9,9 @@ QtObject {
     // snapshots only; the allocator still consumes placementRequest alone.
     property var restingRecord: null
     property var visualPlacement: null
+    // The common body host publishes this only after real content and reveal
+    // are ready. Geometry remains a blocker during entry, exit and eviction.
+    property bool surfaceSettled: false
     // Post-allocation metadata only; never part of placementRequest.
     property string vacancyRole: ""
     property bool vacancyHovered: false

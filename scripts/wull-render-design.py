@@ -23,15 +23,24 @@ def main():
     parser.add_argument("--software", action="store_true")
     parser.add_argument("--motion", action="store_true", help="walking and emergence study using the actual host")
     parser.add_argument("--presence", action="store_true", help="four-edge visits, flight, drag and water-hide study")
+    parser.add_argument("--abyss", action="store_true", help="actual shared water field, body registry and Wull")
+    parser.add_argument("--water-proof", action="store_true", help="three frozen field-only GPU snapshots: rest, contact, restored")
+    parser.add_argument("--surface", choices=["edge","dock","settings","leftPanel","rightPanel","styledPopup0","osd","utility"], default="dock")
     parser.add_argument("--peek", action="store_true", help="capture the initial peek in the presence scene")
     args = parser.parse_args()
-    if args.motion and args.presence:
+    if sum([args.motion,args.presence,args.abyss])>1:
         parser.error("choose one motion/presence scene")
-    if args.peek and (not args.presence or not args.output):
-        parser.error("peek requires presence and a single image")
+    if args.peek and (not (args.presence or args.abyss) or not args.output):
+        parser.error("peek requires presence/abyss and a single image")
+    if args.abyss and (args.frames or args.software):
+        parser.error("the shared water study requires a single GPU image")
+    if args.water_proof and not (args.abyss and args.output):
+        parser.error("water proof requires abyss and an output image")
     output = (args.output or args.frames).resolve()
     if args.output and (output.exists() or not output.parent.is_dir()):
         parser.error("output must be a new file in an existing directory")
+    if args.water_proof and any(Path(str(output)+suffix).exists() for suffix in [".rest.png",".restored.png"]):
+        parser.error("water proof companion files must also be new")
     if args.frames and (not output.is_dir() or any(output.iterdir())):
         parser.error("frames require an existing empty directory")
     if args.frames and args.software and not args.presence:
@@ -42,14 +51,16 @@ def main():
     with tempfile.TemporaryDirectory(prefix="wull-design-") as temporary:
         private = Path(temporary)
         shell, xdg = core["staged"](private)
-        scene = "wullPresence.qml" if args.presence else "wullMotion.qml" if args.motion else "wullDesign.qml"
+        scene = "wullAbyss.qml" if args.abyss else "wullPresence.qml" if args.presence else "wullMotion.qml" if args.motion else "wullDesign.qml"
         (shell / "shell.qml").write_text((ROOT / scene).read_text())
         env = core["private_env"](xdg, output)
         env.pop("WULL_VISUAL_MATRIX_PRIVATE_FILE", None)
         env.update({
             "WULL_DESIGN_CAPTURE": str(output) if args.output else "",
             "WULL_DESIGN_FRAMES": str(output) if args.frames else "",
-            "WULL_PRESENCE_CAPTURE_PEEK": "1" if args.peek else "",
+            "WULL_PRESENCE_CAPTURE_PEEK": "1" if args.peek or args.water_proof else "",
+            "WULL_ABYSS_WATER_PROOF": "1" if args.water_proof else "",
+            "WULL_ABYSS_SURFACE": args.surface,
             "WULL_DESIGN_REFERENCE": str(ROOT / "docs/wull-visual/design-20261003/reference-closeup.png"),
             "QT_QPA_PLATFORM": "offscreen" if args.software and args.frames else "wayland",
             "QSG_RHI_BACKEND": "opengl",
@@ -77,16 +88,18 @@ def main():
                         os.killpg(proc.pid, signal.SIGKILL)
                         proc.wait(timeout=3)
         log = logfile.read_text()
-        bad = ("ReferenceError:", "TypeError:", "SyntaxError:", "Unable to assign", "Binding loop", "non-root animation nodes", "Failed to load configuration", "WULL_PRESENCE_CHECK=FAIL")
+        bad = ("ReferenceError:", "TypeError:", "SyntaxError:", "Unable to assign", "Binding loop", "non-root animation nodes", "Failed to load configuration", "Quickshell has crashed", "Quickshell has been restarted", "WULL_PRESENCE_CHECK=FAIL", "WULL_ABYSS_CHECK=FAIL")
         frame_count=180
         marker = f"WULL_DESIGN_FRAMES={frame_count}_SAVED" if args.frames else "WULL_DESIGN_CAPTURE=SAVED"
         if code or any(message in log for message in bad) or marker not in log:
             for line in log.splitlines():
-                if "scene:" in line or "WULL_DESIGN_" in line or "WULL_MOTION_" in line or "WULL_PRESENCE_" in line:
+                if "scene:" in line or "WULL_DESIGN_" in line or "WULL_MOTION_" in line or "WULL_PRESENCE_" in line or "WULL_ABYSS_" in line:
                     print(line)
             raise SystemExit("Wull QML capture timed out" if code==-1 else "Wull QML capture failed")
         if args.output and not output.is_file():
             raise SystemExit("Wull QML capture did not create the image")
+        if args.water_proof and not all(Path(str(output)+suffix).is_file() for suffix in [".rest.png",".restored.png"]):
+            raise SystemExit("Wull water proof did not create both controls")
         if args.frames and len(list(output.glob("frame-*.png"))) != frame_count:
             raise SystemExit("Wull animation capture did not create all frames")
         print("WULL_DESIGN_REAL_QML_CAPTURE_PASS")
@@ -94,6 +107,7 @@ def main():
             if "WULL_MOTION_BEHAVIOR=" in line: print(line.split("WULL_MOTION_BEHAVIOR=",1)[1])
             if "WULL_PRESENCE_BEHAVIOR=" in line: print(line.split("WULL_PRESENCE_BEHAVIOR=",1)[1])
             if "WULL_PRESENCE_PEEK=" in line: print(line.split("WULL_PRESENCE_PEEK=",1)[1])
+            if "WULL_ABYSS_BEHAVIOR=" in line: print(line.split("WULL_ABYSS_BEHAVIOR=",1)[1])
         print(output)
 
 

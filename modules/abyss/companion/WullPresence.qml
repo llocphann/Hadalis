@@ -43,6 +43,11 @@ Item {
     readonly property string surfaceKey: (scene?.surfaces ?? []).map(s=>s.key).join("|")
     signal resetRequested(real x, real y, string edge)
     signal stopRequested()
+    signal waterInteraction(var contact, string action)
+    function disturb(action, selected): void {
+        const contact=selected?.contact ?? null
+        if (permitted && motionEnabled && contact) waterInteraction(contact,action)
+    }
 
     function random(): real {
         randomState = (randomState*1664525+1013904223) % 4294967296
@@ -63,9 +68,9 @@ Item {
         dragging=false; retreating=false; visitActive=false; renderedReveal=0
         resetRequested(targetX,targetY,emergenceEdge)
     }
-    function appear(): void {
-        const selected=Scene.appearance(scene,random(),random(),random())
-        if (!selected.qualified) {hideImmediately();return}
+    function appear(selected): void {
+        if (!selected) selected=Scene.appearance(scene,random(),random(),random())
+        if (!selected.qualified || !Scene.clearAt(scene,selected)) {hideImmediately();return}
         clearMotion()
         placement=selected; destination=selected
         targetX=selected.x; targetY=selected.y
@@ -75,6 +80,7 @@ Item {
         peekIntro=motionEnabled && requestedReveal>.99
         peekDeadline.interval=550+Math.floor(random()*450)
         renderedReveal=peekIntro || requestedReveal<.99 ? peekReveal : requestedReveal
+        disturb(peekIntro || requestedReveal<.99 ? "peek" : "emerge",selected)
         scheduleSurface()
     }
     function synchronize(): void {
@@ -95,12 +101,13 @@ Item {
         const here=position(), support=Scene.supportAt(scene,here)
         targetX=here.x; targetY=here.y
         clearMotion()
-        placement=Object.assign({},placement,{x:here.x,y:here.y,grounded:!!support,support:support})
+        placement=Scene.annotate(scene,here,placement.edge,placement.kind,placement.key)
     }
     function moveTo(selected, exit): bool {
         if (!permitted || !actor || actor.presentation<.99 || dragging || (peekIntro && !exit)) return false
         const here=position(), route=Scene.path(scene,here,selected)
         if (!route.qualified) return false
+        disturb("depart",Scene.annotate(scene,here,placement.edge,placement.kind,placement.key))
         clearMotion()
         destination=selected; mode=exit ? "fly" : route.mode
         retreating=!!exit; waypoints=route.points; waypoint=0
@@ -116,8 +123,9 @@ Item {
             traveling=false; waypoints=[]
             if (exiting) {
                 // The host's Blender dive now goes through the nearest water rim.
+                disturb("dive",placement)
                 visitActive=false; renderedReveal=0; surfaceDeadline.stop()
-            }
+            } else disturb("land",placement)
             return
         }
         const here=position(), next=waypoints[waypoint++]
@@ -139,6 +147,7 @@ Item {
         if (!motionEnabled || !actor) {hideImmediately();return}
         if (actor.presentation<.99) {
             // A peek is already at its water opening: simply retract there.
+            disturb("dive",placement)
             clearMotion();visitActive=false;renderedReveal=0;surfaceDeadline.stop();return
         }
         const water=Scene.nearestWater(scene,position())
@@ -187,7 +196,7 @@ Item {
             }
         } else {
             const support=Scene.supportAt(scene,from)
-            placement=Object.assign({},placement,{grounded:!!support,support:support})
+            placement=Scene.annotate(scene,from,placement.edge,placement.kind,placement.key)
         }
     }
     function beginDrag(): void {
@@ -205,6 +214,7 @@ Item {
         if (!dragging) return
         dragging=false
         reconcileScene()
+        disturb("land",placement)
         if (requestedReveal<=0) retreat()
         else scheduleSurface()
     }
@@ -239,6 +249,7 @@ Item {
         onTriggered: {
             if (root.permitted && root.visitActive && root.requestedReveal>.99) {
                 root.peekIntro=false;root.renderedReveal=1
+                root.disturb("emerge",root.placement)
             }
         }
     }

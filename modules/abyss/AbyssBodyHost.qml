@@ -189,6 +189,12 @@ Item {
         geometry: root.record
         restingRecord: root.pyramidRestingRecord
         visualPlacement: root.visualPlacement
+        surfaceSettled: root.presented && root.ready && Math.abs(root.progress-1) < .001
+            && !root.pyramidClosing && !root.pyramidReopening
+            && Math.abs(root.visualPlacementAlong-(root.coordinatedPlacement?.along ?? root.along))<.1
+            && Math.abs(root.visualPlacementSpan-(root.coordinatedPlacement?.span ?? root.span))<.1
+            && Math.abs(root.visualPlacementDepth-(root.coordinatedPlacement?.depth ?? root.depth))<.1
+            && Math.abs(root.visualPlacementInward-(root.coordinatedPlacement?.inward ?? 0))<.1
         vacancyRole: root.vacancyRole
         vacancyHovered: root.vacancyHovered
         vacancyHoverOrder: root.vacancyHoverOrder

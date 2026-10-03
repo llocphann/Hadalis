@@ -144,45 +144,17 @@ Scope {
             readonly property bool presented: !GlobalStates.screenLocked
                 && (!fullscreenCovered || (Config.options?.abyss?.perimeter?.visibleInFullscreen ?? false))
             readonly property bool editorOpen: GlobalStates.abyssEditing && GlobalStates.abyssEditorTargetOutput === outputName
-            // Existing modal and transitioning surfaces own their input. Wull
-            // resumes only after stable geometry can qualify its whole host.
+            // Ordinary Abyss surfaces are Wull's habitat. Actual modal/security
+            // owners still preempt it; moving bodies remain scene obstacles.
             readonly property bool companionOccluded: window.editorOpen
-                || utility.open || liquid.activeDialog || liquid.popupsOpen
-                || settings.presented || dashboardBody.presented || controls.presented
-                || aux.presented || clipboardBody.presented
-                || [popup,leftPanel,rightPanel].some(owner=>owner.presented
-                    && (!owner.ready || owner.progress<.999))
-            readonly property var companionSurfaces: {
-                const surfaces=[]
-                for (const entry of [[popup,"popup"],[leftPanel,"leftPanel"],[rightPanel,"rightPanel"]]) {
-                    const owner=entry[0]
-                    if (owner.presented && owner.ready && owner.progress>.999)
-                        surfaces.push({rect:owner.inputBounds,
-                            edge:owner.record?.edge ?? owner.edge ?? root.barEdge,
-                            key:entry[1]+(owner.contentKind ?? "")})
-                }
-                return surfaces
-            }
-            readonly property var companionScene: {
-                const blockers=[]
-                const records=bar.visible ? bar.layoutRecords.map(record=>({
-                    edge:record.edge,along:record.along,span:record.span})) : []
-                for (const record of records) {
-                    const horizontal=Geometry.horizontal(record.edge)
-                    const depth=Number(window.nativeInsets[record.edge])
-                    blockers.push(horizontal
-                        ? {x:record.along,y:record.edge==="top" ? 0 : window.height-depth,width:record.span,height:depth}
-                        : {x:record.edge==="left" ? 0 : window.width-depth,y:record.along,width:depth,height:record.span})
-                }
-                for (const owner of [popup,leftPanel,rightPanel,dock,notification,toastBody,osd])
-                    if (owner.presented && WullScene.finite(owner.inputBounds?.width)
-                            && owner.inputBounds.width>0 && owner.inputBounds.height>0)
-                        blockers.push(owner.inputBounds)
-                return {width:window.width,height:window.height,
-                    hostWidth:112*root.companionScale,hostHeight:98*root.companionScale,
-                    scale:root.companionScale,insets:window.nativeInsets,
-                    records:records,blockers:blockers,surfaces:window.companionSurfaces}
-            }
+                || liquid.activeDialog || GlobalStates.settingsNativeDialogOpen
+                || PolkitService.active || GlobalStates.regionSelectorOpen || window.overviewDragging
+            readonly property var companionScene: WullScene.fromParticipants({
+                width:window.width,height:window.height,
+                hostWidth:112*root.companionScale,hostHeight:98*root.companionScale,
+                scale:root.companionScale,insets:window.nativeInsets,rimRadius:AbyssStyle.neckRadius},
+                liquid.participants,bar.visible ? bar.layoutRecords.map(record=>({
+                    edge:record.edge,along:record.along,span:record.span})) : [])
             readonly property bool companionPermission: WullHostPolicy.hostActive(
                 root.companionSessionVisible,companionBridge.ready,
                 root.companionTargetOutput,window.outputName,window.presented,field.ready)
@@ -207,6 +179,13 @@ Scope {
                 onResetRequested: (px,py,sourceEdge)=>companion.resetTo(
                     px+(root.companionScale-1)*companion.implicitWidth/2,
                     py+(root.companionScale-1)*companion.implicitHeight/2,sourceEdge)
+            }
+            WullAbyssLink {
+                id: companionWater
+                presence: companionPresence
+                actor: companion
+                controller: liquid
+                allowed: window.companionHostActive
             }
             property real companionPointerX: 0
             property real companionPointerY: 0
@@ -437,6 +416,7 @@ Scope {
                 managedPlacement: true
                 emergenceEdge: companionPresence.emergenceEdge
                 upright: true
+                connectedWater: true
                 reveal: companionPresence.renderedReveal
                 pointerFresh: window.companionPointerFresh
                     && Math.hypot(window.companionPointerX-(x+width/2),window.companionPointerY-(y+height/2))<320*scale
@@ -464,7 +444,7 @@ Scope {
                     px-(root.companionScale-1)*implicitWidth/2,
                     py-(root.companionScale-1)*implicitHeight/2)
                 onDragEnded: companionPresence.endDrag()
-                onActivated: companionBridge.sendEvent("click")
+                onActivated: {companionWater.tap();companionBridge.sendEvent("click")}
                 onSettingsRequested: GlobalStates.openSettingsSection(37,"Overview")
             }
             Item {
@@ -731,6 +711,14 @@ Scope {
                 }
             }
             property bool dockHovered: false
+            // Retain the source/arrival water during a visit and its final dive.
+            // This reads semantic placement and the actor's presentation, not
+            // the derived scene/permission, so Dock geometry cannot bind back
+            // into its own open decision. Policy reset removes the hold at once.
+            readonly property bool companionDockHeld: companionBridge.ready && companion.visible
+                && (companionPresence.placement.key==="dock"
+                    || companionPresence.placement.support?.key==="dock"
+                    || (companionPresence.traveling && companionPresence.destination.key==="dock"))
             readonly property string dockEdge: ["top","bottom","left","right"].includes(Config.options?.dock?.position) ? Config.options.dock.position : "bottom"
             AbyssBodyHost {
                 id: dock
@@ -758,6 +746,7 @@ Scope {
                         || attachedPopupHold
                         || !liquid.hasPopupOverlapRect(requestedRecord.surface, 10))
                     && (((Config.options?.dock?.pinnedOnStartup ?? false) && !(Config.options?.dock?.hoverToReveal ?? false)) || window.dockHovered
+                        || window.companionDockHeld
                         || attachedPopupHold
                         || (contentItem.item?.requestDockShow ?? false)
                         || ((Config.options?.dock?.showOnDesktop ?? true) && !ToplevelManager.activeToplevel?.activated))
@@ -1015,6 +1004,7 @@ Scope {
                 edgeInsets: window.nativeInsets
                 records: liquid.records
                 waveTexture: liquid.waves.texture
+                waterLink: companionWater
             }
         }
     }

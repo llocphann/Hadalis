@@ -73,7 +73,7 @@ assert source.count(mask) == 1
 # below; do not freeze the old fixed-edge placement implementation spelling.
 assert source.count("WullPresence {") == 1
 for marker in (
-    "readonly property var companionScene:", "records:records,blockers:blockers,surfaces:window.companionSurfaces",
+    "readonly property var companionScene:", "WullScene.fromParticipants(", "liquid.participants",
     "scene: window.companionScene", "permitted: window.companionPermission",
     "companionBridge.visibility", "window.companionPermission && companionPresence.qualified",
     "travelMode: companionPresence.mode", "surfaceSupported: companionPresence.grounded",
@@ -101,4 +101,5 @@ assert result.returncode == 0, "Pure production slot behavior failed"
 assert "WULL_PRODUCTION_SURFACE_SLOT_PASS" in result.stdout
 subprocess.run(["node", "scripts/test-wull-motion.cjs"], cwd=ROOT, check=True, timeout=35)
 subprocess.run(["node", "scripts/test-wull-scene.cjs"], cwd=ROOT, check=True, timeout=35)
+subprocess.run(["node", "scripts/test-wull-water.cjs"], cwd=ROOT, check=True, timeout=35)
 print("WULL_PRODUCTION_FIELD_RIM_SURFACE_INTEGRATION_PASS")

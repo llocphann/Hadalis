@@ -61,10 +61,10 @@ ApplicationWindow {
                     reveal: root.previewReveal
                     onPressed: root.react("happy")
                 }
-                Text { x: 320; y: 38; text: "Wull"; font.pixelSize: 62; font.bold: true; color: "#edfaff" }
-                Text { x: 321; y: 119; text: "A little drop of life."; font.pixelSize: 25; color: "#5ae1ff" }
+                Text { x: 410; y: 38; text: "Wull"; font.pixelSize: 62; font.bold: true; color: "#edfaff" }
+                Text { x: 411; y: 119; text: "A little drop of life."; font.pixelSize: 25; color: "#5ae1ff" }
                 Text {
-                    x: 322; y: 162; width: 480
+                    x: 412; y: 162; width: 480
                     text: "3D liquid volume · reflected light · refraction\nCurved surface, liquid depth and luminous caustics"
                     color: "#9eb6cd"; font.pixelSize: 16; lineHeight: 1.5
                 }

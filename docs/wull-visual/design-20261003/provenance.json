@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
-  "source_sha": "0a639e67498ebf484f2f7854bf21f2ab0e5ba3e6",
+  "source_sha": "d0f9b9e5d546ddcea9758118a4aafa1e35f4c7c4",
   "branch": "dev",
-  "captured_utc": "2026-10-03T03:42:22.722552+00:00",
+  "captured_utc": "2026-10-03T03:58:56.350116+00:00",
   "status": "MANUAL_VALIDATED_SOURCE_RENDER_ONLY",
   "source_blobs": {
-    "modules/abyss/companion/WaterDropletBody.qml": "30a34b00ec00e40b34dc76d5465b5e4da35d6771",
-    "modules/abyss/companion/WaterDropletFace.qml": "488845a845136146dca48e942183cc6746549585",
-    "modules/abyss/companion/WaterDropletMaterial.frag": "6766b2047dd5450021b9cbd30b8bb10ff0e0ce46",
-    "modules/abyss/companion/WaterDropletMaterial.frag.qsb": "70bc7f995145559312461ed6d7226c03e7504c84",
+    "modules/abyss/companion/WaterDropletBody.qml": "3720705d7f562f7a9b9d441550028ed8316fddaa",
+    "modules/abyss/companion/WaterDropletFace.qml": "e27d8658f36f3963af15a07686ea78723d5d44bd",
+    "modules/abyss/companion/WaterDropletMaterial.frag": "512edb75a59c2e831aa889520f47386408a37c36",
+    "modules/abyss/companion/WaterDropletMaterial.frag.qsb": "1b8deea228671978e1c0fb53d43ef77e6c1e117a",
     "modules/abyss/companion/WullExpressions.js": "eabef6d3992907f53473d414422238ad5c91847c",
     "modules/abyss/companion/WullDesignGallery.qml": "1cfea0149601b0800bee83c3f7732ef79c979da3",
     "modules/abyss/companion/AbyssCompanion.qml": "f01d418a8a33ad421cc696360c4e25796b17e85d",
@@ -20,20 +20,20 @@
   },
   "artifacts": {
     "gallery.png": {
-      "sha256": "2f6236d3f8bbf54952f55020848b193c7a8741b0f9fc3fc584523abd134e7f35",
-      "bytes": 324241,
+      "sha256": "445e83a491e2bd06ba889035d7a730f88c411bcd752760505c58308354249d3f",
+      "bytes": 337236,
       "size": [
         1440,
         920
       ]
     },
     "motion.mp4": {
-      "sha256": "fe7852d76eb4c9b78eeb9c5c2ab628531c467cea63f48451ebce64c337cd9408",
-      "bytes": 1162763
+      "sha256": "7cff370795fb32e0083cca6190d6a3314003d400cceb9d8602c74c1303ec3f8b",
+      "bytes": 1128430
     },
     "software-fallback.png": {
-      "sha256": "8461cc231b95ac3b1518dbef7a1e9b5d9ea2b01423442cd96e4756e354c9d34b",
-      "bytes": 197404,
+      "sha256": "b509dfc5f6a1a9b2821937f4047a44b0e9d93eda569c33dc38461ee58f5a407c",
+      "bytes": 210185,
       "size": [
         1440,
         920
@@ -54,9 +54,20 @@
     "rust_engine_tests": 12,
     "clippy_all_targets_deny_warnings": "PASS",
     "expression_and_bridge_behavior": "PASS",
-    "four_original_assets_identical_to_maintainer_downloads": true
+    "four_original_assets_identical_to_maintainer_downloads": true,
+    "rust_engine_source_sha": "0a639e67498ebf484f2f7854bf21f2ab0e5ba3e6",
+    "rust_engine_blob_unchanged_from_verified_source": true
   },
-  "canonical_validation": "RUN_SEPARATELY_ON_EVIDENCE_COMMIT",
+  "canonical_validation": {
+    "recorded_sha": "fa5000f3bab73d5736b00433944b209513575d02",
+    "status": "FAIL",
+    "passed": 369,
+    "failed": 38,
+    "skipped": 3,
+    "wull_python_passed": 75,
+    "final_evidence_commit_validation": "RUN_SEPARATELY",
+    "details": "validation.json"
+  },
   "maintainer_visual_acceptance": "PENDING",
   "native_production_desktop_acceptance": "PENDING",
   "cpu_pss_qualification": "NOT_RUN",

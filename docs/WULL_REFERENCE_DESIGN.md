@@ -4,7 +4,7 @@ The four original `assets/Water Droplet Companion*.png` boards supplied again by
 
 Run the interactive preview with `qs -p wullDesign.qml`. Select an expression or theme, tap the large Wull, and use Appear, Notify, Complete, Travel, Hide and Pause motion. It uses the same body/face/shader as `AbyssCompanion`; the gallery is a development surface.
 
-[Actual QML gallery](wull-visual/design-20261003/gallery.png), [9-second motion demonstration](wull-visual/design-20261003/motion.mp4), [software fallback](wull-visual/design-20261003/software-fallback.png), and [source provenance](wull-visual/design-20261003/provenance.json) were captured from source `0a639e67498ebf484f2f7854bf21f2ab0e5ba3e6`. The native stdio process accepted all nine intents, restored an ongoing task after expiry, and remained quiet after hide. These are manual source/renderer checks; desktop and maintainer visual acceptance remain open.
+[Actual QML gallery](wull-visual/design-20261003/gallery.png), [9-second motion demonstration](wull-visual/design-20261003/motion.mp4), [software fallback](wull-visual/design-20261003/software-fallback.png), and [source provenance](wull-visual/design-20261003/provenance.json) were captured from source `d0f9b9e5d546ddcea9758118a4aafa1e35f4c7c4`. The native stdio process accepted all nine intents, restored an ongoing task after expiry, and remained quiet after hide. These are manual source/renderer checks; desktop and maintainer visual acceptance remain open.
 
 ## Reference mapping
 

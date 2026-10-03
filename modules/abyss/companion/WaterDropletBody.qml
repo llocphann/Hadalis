@@ -76,6 +76,7 @@ Item {
                 strokeWidth: 0
                 fillGradient: RadialGradient {
                     centerX: 37; centerY: 5.5; centerRadius: 37
+                    focalX: centerX; focalY: centerY
                     GradientStop { position: 0; color: Qt.alpha(root.accentColor, 0.36) }
                     GradientStop { position: 1; color: "transparent" }
                 }

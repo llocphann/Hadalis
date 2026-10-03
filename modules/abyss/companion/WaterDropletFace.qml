@@ -46,6 +46,7 @@ Item {
                         fillGradient: RadialGradient {
                             centerX: eye.width * 0.52; centerY: eye.height * 0.93
                             centerRadius: eye.height * 0.91
+                            focalX: centerX; focalY: centerY
                             GradientStop { position: 0; color: Qt.lighter(root.accent, 1.6) }
                             GradientStop { position: 0.36; color: Qt.darker(root.accent, 1.25) }
                             GradientStop { position: 0.67; color: root.ink }
@@ -67,6 +68,7 @@ Item {
                         fillGradient: RadialGradient {
                             centerX: 5 * root.unit; centerY: 4 * root.unit
                             centerRadius: 5 * root.unit
+                            focalX: centerX; focalY: centerY
                             GradientStop { position: 0; color: "#b2fcff" }
                             GradientStop { position: 0.35; color: root.accent }
                             GradientStop { position: 1; color: Qt.alpha(root.accent, 0) }
@@ -125,11 +127,26 @@ Item {
     }
     Repeater {
         model: 2
-        Rectangle {
+        Shape {
             required property int index
             x: (index === 0 ? 12 : 53) * root.unit; y: 66 * root.unit
-            width: 11 * root.unit; height: 5 * root.unit; radius: height / 2
-            color: "#ff8dc9"; opacity: 0.52 + root.pulse * 0.18
+            width: 11 * root.unit; height: 5 * root.unit
+            opacity: 0.70 + root.pulse * 0.18
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                strokeWidth: 0
+                fillGradient: RadialGradient {
+                    centerX: 5.5 * root.unit; centerY: 2.5 * root.unit
+                    centerRadius: 5.5 * root.unit
+                    focalX: centerX; focalY: centerY
+                    GradientStop { position: 0; color: "#ffb6dc" }
+                    GradientStop { position: 0.38; color: "#ff8dc9" }
+                    GradientStop { position: 1; color: "#00ff8dc9" }
+                }
+                startX: 0; startY: 2.5 * root.unit
+                PathArc { x: 11 * root.unit; y: 2.5 * root.unit; radiusX: 5.5 * root.unit; radiusY: 2.5 * root.unit }
+                PathArc { x: 0; y: 2.5 * root.unit; radiusX: 5.5 * root.unit; radiusY: 2.5 * root.unit }
+            }
         }
     }
     Item {

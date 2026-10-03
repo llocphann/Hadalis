@@ -52,9 +52,9 @@ void main() {
     vec3 hue=accent.rgb/max(accent.a,0.001);
     vec3 light=mix(specular.rgb/max(specular.a,0.001),vec3(0.93,0.99,1.0),0.55);
     vec3 cyan=mix(hue,vec3(0.12,0.92,1.0),0.32);
-    vec3 glass=mix(hue*0.35,hue*0.80,smoothstep(0.12,0.65,p.y));
-    float core=spot(p,vec2(0.49,0.80),vec2(0.43,0.30));
-    glass=mix(glass,mix(cyan,light,0.40),core*0.87);
+    vec3 glass=mix(hue*0.20,hue*0.70,smoothstep(0.12,0.75,p.y));
+    float core=spot(p,vec2(0.49,0.82),vec2(0.48,0.36));
+    glass=mix(glass,mix(cyan,light,0.63),core*0.96);
     vec2 sphere=(p-vec2(0.5,0.67))/vec2(0.43,0.34);
     float z=sqrt(max(0.0,1.0-dot(sphere,sphere)));
     vec3 normal=normalize(vec3(sphere,z+0.15));
@@ -66,11 +66,13 @@ void main() {
     glass+=cyan*inner*0.35+light*rim*0.8;
     float drift=motion.x*0.008;
     float left=spot(p,vec2(0.205+drift,0.49),vec2(0.040,0.17));
-    float right=spot(p,vec2(0.795,0.47+drift),vec2(0.038,0.105));
+    float right=spot(p,vec2(0.795,0.47+drift),vec2(0.044,0.115));
+    float rightCatch=spot(p,vec2(0.75,0.36),vec2(0.027,0.040));
     float tipLight=spot(p,vec2(0.55,0.16),vec2(0.022,0.085));
     float base=spot(p,vec2(0.49,0.91),vec2(0.31,0.023));
-    glass=mix(glass,light,left*0.88+right*0.80+tipLight*0.78);
+    glass=mix(glass,light,clamp(left*0.88+right*0.88+rightCatch*0.90+tipLight*0.78,0.0,1.0));
     glass+=cyan*base*0.65;
+    glass+=mix(hue,vec3(0.72,0.48,1.0),0.35)*spot(p,vec2(0.75,0.82),vec2(0.06,0.055))*0.25;
     // Sparse internal glints, no textures or wallpaper/window capture.
     if (motion.w>0.5) {
         for (int i=0;i<7;i++) {

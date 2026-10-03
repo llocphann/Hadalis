@@ -146,13 +146,13 @@ Item {
                     GradientStop { position: 0.55; color: root.accentColor }
                     GradientStop { position: 1; color: Qt.lighter(root.accentColor, 1.65) }
                 }
-                startX: 40.8; startY: 4.2
-                PathCubic { x: 14.4; y: 28.5; control1X: 46; control1Y: 11; control2X: 24; control2Y: 21 }
-                PathCubic { x: 5.1; y: 47.3; control1X: 6; control1Y: 34; control2X: 4; control2Y: 41 }
+                startX: 38; startY: 4.2
+                PathCubic { x: 15; y: 28.5; control1X: 32; control1Y: 14; control2X: 23; control2Y: 21 }
+                PathCubic { x: 5.1; y: 47.3; control1X: 8; control1Y: 34; control2X: 5.1; control2Y: 41 }
                 PathCubic { x: 38; y: 69.9; control1X: 5.1; control1Y: 62; control2X: 16; control2Y: 69.9 }
                 PathCubic { x: 70.9; y: 47.3; control1X: 60; control1Y: 69.9; control2X: 71; control2Y: 62 }
-                PathCubic { x: 50.4; y: 12; control1X: 73; control1Y: 30; control2X: 61; control2Y: 22 }
-                PathCubic { x: 40.8; y: 4.2; control1X: 45; control1Y: 6; control2X: 40; control2Y: 2 }
+                PathCubic { x: 61; y: 28.5; control1X: 70.9; control1Y: 41; control2X: 68; control2Y: 34 }
+                PathCubic { x: 38; y: 4.2; control1X: 53; control1Y: 21; control2X: 44; control2Y: 14 }
             }
         }
         ShaderEffect {

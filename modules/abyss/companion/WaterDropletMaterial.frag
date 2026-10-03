@@ -1,5 +1,5 @@
 #version 440
-// Implicit swept 3D liquid volume. Front intersections are analytic;
+// Implicit rounded 3D liquid volume. Front intersections are analytic;
 // transmitted rays find the back interface with a bounded 18+5 search.
 layout(location=0) in vec2 qt_TexCoord0;
 layout(location=0) out vec4 fragColor;
@@ -20,15 +20,17 @@ float radiusAt(float y) {
         return 0.93*sqrt(max(0.0,1.0-t*t));
     }
     float t=clamp((y+0.23)/1.22,0.0,1.0);
-    // Full rounded belly, gentle shoulder and a small smooth cap. The late
-    // taper keeps the silhouette near 1:1 instead of a long pointed pear.
-    return 0.93*sqrt(max(0.0,1.0-t*t))*(1.0-0.70*smoothstep(0.32,1.0,t));
+    // Both shoulders narrow evenly into one centered point. The finite
+    // slope at the apex avoids the former curled, blunt cap; the belly
+    // retains its smooth tangent and near 1:1 overall proportions.
+    return 0.93*(1.0-t*t)*(1.0-0.15*smoothstep(0.50,1.0,t));
 }
 float centerAt(float y) {
     if (optics.y>0.5) return 0.0;
     float t=clamp((y-BOTTOM)/(TOP-BOTTOM),0.0,1.0);
-    return 0.30*smoothstep(0.50,0.85,t)-0.22*smoothstep(0.84,1.0,t)
-        +motion.y*0.025*t*t*t;
+    // No permanent sideways sweep. State-driven tip motion is subpixel at
+    // the native size, so the pointed shape remains balanced while alive.
+    return clamp(motion.y,-1.0,1.0)*0.008*t*t*t;
 }
 vec3 modelPoint(vec3 p) {
     float c=cos(optics.x), s=sin(optics.x);

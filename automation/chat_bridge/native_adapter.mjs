@@ -165,6 +165,11 @@ export function inspectContractAssets(archive) {
   const api = exported(shared, apiImport), stream = exported(initial, atom);
   checks.api_export = Boolean(api);
   checks.stream_export = Boolean(stream);
+  // Static stream-symbol discovery is preferred but not required. Minifiers
+  // may legitimately change the factory expression while preserving the exact
+  // exported runtime capability. In that case the renderer must discover a
+  // unique definition exposing resolve()+scope.id before any transport use.
+  checks.stream_runtime_discovery = checks.stream_method && !checks.stream_export;
   const exactBinding = exactSharedImport(initial, sharedNames[0], apiLocal);
   checks.api_exact_binding = Boolean(exactBinding);
   checks.api_exact_export = publicExportExists(shared, exactBinding);
@@ -174,13 +179,17 @@ export function inspectContractAssets(archive) {
   // capability-checked export of this *exact* shared module in the renderer.
   checks.api_runtime_link = initial.includes(sharedNames[0]);
   const structural = ["initial_asset", "shared_asset", "conversation_stream_hook",
-    "stream_scope", "stream_method", "stream_export"];
+    "stream_method"];
   if (structural.some(key => !checks[key])) return {checks, contract:null};
   const staticApi = checks.api_exact_binding && checks.api_exact_export;
   if (!staticApi && !checks.api_runtime_link) return {checks, contract:null};
+  const staticStream = checks.stream_scope && checks.stream_export;
+  if (!staticStream && !checks.stream_runtime_discovery) return {checks, contract:null};
   return {checks, contract:{
     shared:sharedNames[0], initial:initialNames[0], api:staticApi ? exactBinding : null,
-    api_resolution:staticApi ? "static_export" : "unique_runtime_export", stream,
+    api_resolution:staticApi ? "static_export" : "unique_runtime_export",
+    stream:staticStream ? stream : null,
+    stream_resolution:staticStream ? "static_export" : "unique_runtime_export",
     serverStreamStatus:initial.includes("/conversation/{conversation_id}/stream_status"),
     fingerprint:crypto.createHash("sha256").update(initial).update(shared).digest("hex")
   }};
@@ -223,6 +232,7 @@ export async function diagnoseNativeRenderer() {
     contract_stream_method:checks.stream_method === true,
     contract_api_export:checks.api_export === true,
     contract_stream_export:checks.stream_export === true,
+    contract_stream_runtime_discovery:checks.stream_runtime_discovery === true,
     contract_api_exact_binding:checks.api_exact_binding === true,
     contract_api_exact_export:checks.api_exact_export === true,
     contract_api_runtime_link:checks.api_runtime_link === true
@@ -247,7 +257,8 @@ export async function diagnoseNativeRenderer() {
         const result = {
           renderer_found:true, modules_loaded:false, static_api_valid:false,
           safe_get_exports:"zero", stream_post_exports:"zero",
-          combined_api_exports:"zero", stream_definition_valid:false,
+          combined_api_exports:"zero", stream_definition_exports:"zero",
+          stream_definition_valid:false,
           react_root_found:false, scope_found:false, transport_valid:false
         };
         let shared, initial;
@@ -271,10 +282,15 @@ export async function diagnoseNativeRenderer() {
         const staticApi = contract.api && shared[contract.api];
         result.static_api_valid=typeof staticApi?.safeGet === "function" &&
           typeof staticApi?.streamPost === "function";
-        const definition=initial[contract.stream];
-        result.stream_definition_valid=typeof definition?.resolve === "function" &&
-          definition?.scope?.id != null;
-        if (!result.stream_definition_valid) return result;
+        const definitionCandidates = contract.stream_resolution === "static_export"
+          ? [initial[contract.stream]]
+          : Object.values(initial).filter(value =>
+              typeof value?.resolve === "function" && value?.scope?.id != null);
+        const definitions=[...new Set(definitionCandidates.filter(Boolean))].slice(0,65);
+        result.stream_definition_exports=bucket(definitions);
+        const definition=definitions.length === 1 ? definitions[0] : null;
+        result.stream_definition_valid=!!definition;
+        if (!definition) return result;
         const todo=Array.from(document.body.children).flatMap(el =>
           Object.keys(el).filter(k => k.startsWith("__reactContainer$")).map(k => el[k]));
         result.react_root_found=todo.length>0;
@@ -340,10 +356,16 @@ export async function connectNative() {
     // one exported client exposing both methods used by the Desktop.
     const api = contract.api_resolution === "static_export"
       ? shared[contract.api] : uniqueCandidates.length === 1 ? uniqueCandidates[0] : null;
-    const definition = initial[contract.stream];
+    const definitionCandidates = contract.stream_resolution === "static_export"
+      ? [initial[contract.stream]]
+      : Object.values(initial).filter(value =>
+          typeof value?.resolve === "function" && value?.scope?.id != null);
+    const definitions=[...new Set(definitionCandidates.filter(Boolean))];
+    const definition=definitions.length === 1 ? definitions[0] : null;
     if (typeof api?.safeGet !== "function" ||
         typeof api?.streamPost !== "function" ||
-        typeof definition?.resolve !== "function")
+        typeof definition?.resolve !== "function" ||
+        definition?.scope?.id == null)
       throw new Error("Desktop capabilities unavailable");
     // Read the app-wide scope, never the selected chat/composer. This is
     // bounded and capability checked; navigation does not change identities.

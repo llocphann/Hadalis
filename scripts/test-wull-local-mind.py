@@ -4,10 +4,12 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('wull_mind',ROOT/'scripts/wull/local_mind.py')
 mind=importlib.util.module_from_spec(spec);spec.loader.exec_module(mind)
@@ -65,6 +67,27 @@ class Tests(unittest.TestCase):
         self.assertLessEqual(len(data['messages']),8)
         self.assertTrue(all(len(m['content'])<=500 for m in data['messages'][1:-1]))
         self.assertNotIn('tools',data)
+    def test_persistent_quick_chat_history_is_paged_and_clearable(self):
+        with tempfile.TemporaryDirectory(prefix='wull-history-') as temporary, patch.dict(
+                os.environ, {'INIR_WULL_HISTORY_DB':str(Path(temporary)/'chat.sqlite3')}):
+            self.assertTrue(mind.clear_chat_history()['cleared'])
+            first=mind.chat({'endpoint':self.base,'model':'tiny:local','prompt':'First','persistHistory':True})
+            self.assertTrue(first['historySaved'])
+            self.assertGreater(first['assistantMessageId'],first['userMessageId'])
+            rows=mind.chat_history({'limit':20})['messages']
+            self.assertEqual([(x['role'],x['content']) for x in rows],
+                [('user','First'),('assistant','Splish! I am right here with you.')])
+            mind.chat({'endpoint':self.base,'model':'tiny:local','prompt':'Second','persistHistory':True})
+            payload=Handler.calls[-1][1]
+            self.assertIn('First',json.dumps(payload))
+            newest=mind.chat_history({'limit':2})
+            self.assertEqual(len(newest['messages']),2)
+            older=mind.chat_history({'limit':2,'beforeId':newest['messages'][0]['id']})
+            self.assertEqual(len(older['messages']),2)
+            self.assertTrue(mind.clear_chat_history()['cleared'])
+            self.assertEqual(mind.chat_history({'limit':20})['messages'],[])
+            self.assertEqual((Path(temporary)/'chat.sqlite3').stat().st_mode&0o777,0o600)
+
     def test_remote_alias_rejected_before_prompt(self):
         Handler.remote=True
         with self.assertRaises(mind.MindError) as ctx:mind.chat({'endpoint':self.base,'model':'custom-alias','prompt':'private message'})

@@ -38,6 +38,7 @@ try:
         env.update(QT_QUICK_BACKEND='software',QT_QUICK_CONTROLS_STYLE='Basic',QT_QPA_PLATFORMTHEME='generic',
                    QT_NO_XDG_DESKTOP_PORTAL='1',WULL_TEST_ENDPOINT=f'http://127.0.0.1:{server.server_port}')
         env['WULL_TEST_VAULT']=str(private/'vault')
+        env['INIR_WULL_HISTORY_DB']=str(private/'wull-history.sqlite3')
         env['INIR_GGUF_ROOTS']='[]'
         with (private/'test.log').open('w') as output:
             p=subprocess.Popen(['dbus-run-session','--','qs','--path',str(shell/'shell.qml')],env=env,cwd=ROOT,

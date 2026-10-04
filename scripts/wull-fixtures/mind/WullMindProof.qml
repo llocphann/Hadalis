@@ -48,14 +48,23 @@ Window {
                 check(WullMind.connectionStatus==="ready" && WullMind.models.length===1,"local probe not ready")
                 mouseMove(root.contentItem,20,720);WullMind.openChat();wait(100)
                 check(cloud.editing,"explicit chat did not open editor")
+                tryCompare(WullMind,"busy",false,3000)
                 field.text="Hello Wull!"
                 keyClick(Qt.Key_Return);wait(20)
                 check(field.text==="","Enter did not submit the input")
-                check(!root.named(cloud,"wullChatSend") && !root.named(cloud,"wullMessageSource")
-                    && !root.named(cloud,"wullCloudDismiss"),"unnecessary buttons remain")
+                check(!!root.named(cloud,"wullChatSend") && !!root.named(cloud,"wullChatHistory")
+                    && !root.named(cloud,"wullMessageSource") && !root.named(cloud,"wullCloudDismiss"),
+                    "quick chat did not retain exactly the send control")
                 tryCompare(WullMind,"busy",false,6000)
-                check(WullMind.source==="local" && WullMind.text.indexOf("Splish!")===0 && WullMind.history.length===2,"local reply not presented")
+                check(WullMind.source==="local" && WullMind.text.indexOf("Splish!")===0 && WullMind.history.length===2
+                    && WullMind.history[0].role==="user" && WullMind.history[1].role==="assistant",
+                    "local reply/history not presented")
+                WullMind.closeChat();WullMind.history=[];WullMind.historyLoaded=false;WullMind.openChat()
+                tryCompare(WullMind,"busy",false,3000)
+                check(WullMind.history.length===2 && WullMind.history[0].role==="user"
+                    && WullMind.history[1].role==="assistant","persisted quick-chat history did not reload")
                 WullMind.clearConversation();check(WullMind.history.length===0,"clear retained history")
+                tryCompare(WullMind,"historyClearPending",false,3000);tryCompare(WullMind,"busy",false,3000)
                 check(WullMind.sendMessage("slow reply"),"cancellation request rejected")
                 wait(45);const stale=WullMind.epoch;WullMind.cancel()
                 WullMind.completed(JSON.stringify({ok:true,result:{text:"STALE",expression:"happy"}}),0,stale)
@@ -96,7 +105,7 @@ Window {
                 mouseClick(root.contentItem,20,720);wait(30)
                 check(root.outsideClicks===1,"speech guard blocked clicks outside the cloud")
                 WullMind.dismiss();check(!cloud.visible,"dismiss retained speech input")
-                console.log("WULL_MIND=PASS actualProcess localProbe EnglishReply borderlessCloud noCheckInInput separateQuestions journalWrites explicitChatFocus enterSend noExtraButtons retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint offlineMessage settingsAI noReferenceVault")
+                console.log("WULL_MIND=PASS actualProcess localProbe EnglishReply borderlessCloud noCheckInInput separateQuestions journalWrites explicitChatFocus enterSend sendOnlyControl persistentHistory retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint offlineMessage settingsAI noReferenceVault")
             } catch(e) {console.error("WULL_MIND=FAIL "+e)}
             shutdown.start()
         }

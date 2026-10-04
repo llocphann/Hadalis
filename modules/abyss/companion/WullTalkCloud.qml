@@ -16,12 +16,12 @@ Item {
     property bool allowed: false
     readonly property bool editing: visible && WullMind.conversationOpen
     readonly property bool controlsVisible: visible && (editing || WullMind.checkInStage.length>0)
-    width: Math.min(310, Math.max(190, outputWidth - 32))
-    height: content.implicitHeight + 24
+    width: Math.min(380, Math.max(220, outputWidth - 32))
+    height: editing ? Math.min(430, Math.max(230, outputHeight - 48)) : content.implicitHeight + 24
     x: Math.max(12, Math.min(outputWidth - width - 12, actor.x + actor.width / 2 - width / 2))
     y: actor.y - height - 18 >= 12 ? actor.y - height - 18
         : Math.min(outputHeight - height - 12, actor.y + actor.height + 18)
-    visible: allowed && actor.visible && actor.inputReady && WullMind.text.length > 0
+    visible: allowed && actor.visible && actor.inputReady && (WullMind.text.length > 0 || WullMind.conversationOpen)
     z: 240
     function containsScenePoint(point): bool {
         const local = root.mapFromItem(null, point.x, point.y)
@@ -70,14 +70,85 @@ Item {
     ColumnLayout {
         id: content
         x: 12; y: 12; width: parent.width - 24
+        height: root.editing ? root.height - 24 : implicitHeight
         spacing: 7
         StyledText {
             Layout.fillWidth: true
+            visible: !root.editing
             text: WullMind.text
             textFormat: Text.PlainText
             wrapMode: Text.WordWrap
             font.pixelSize: Appearance.font.pixelSize.small
             Accessible.description: WullMind.source === "local" ? "Local AI" : "Companion message"
+        }
+        Item {
+            visible: root.editing && WullMind.historyLoaded && WullMind.history.length===0
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            StyledText {
+                anchors.centerIn: parent
+                width: Math.min(parent.width, 260)
+                horizontalAlignment: Text.AlignHCenter
+                text: "Splish! What's on your mind?"
+                textFormat: Text.PlainText
+                wrapMode: Text.WordWrap
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.small
+            }
+        }
+        ListView {
+            id: transcript
+            objectName: "wullChatHistory"
+            visible: root.editing && WullMind.history.length>0
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+            spacing: 7
+            model: WullMind.history
+            property bool readyForOlder: false
+            onCountChanged: {
+                if (WullMind.historyLoadingOlder) return
+                readyForOlder=false
+                Qt.callLater(() => {
+                    if (!root.editing) return
+                    transcript.positionViewAtEnd()
+                    transcript.readyForOlder=true
+                })
+            }
+            onContentYChanged: {
+                if (readyForOlder && contentY<=12 && WullMind.historyHasMore && !WullMind.busy)
+                    WullMind.loadHistory(true)
+            }
+            delegate: Item {
+                required property var modelData
+                width: transcript.width
+                height: bubble.height + 2
+                readonly property bool fromUser: modelData?.role === "user"
+                Rectangle {
+                    id: bubble
+                    width: Math.min(parent.width*.88,Math.max(86,messageText.implicitWidth+20))
+                    height: messageText.implicitHeight+14
+                    x: parent.fromUser ? parent.width-width : 0
+                    radius: 14
+                    color: parent.fromUser ? Qt.alpha(AbyssStyle.accent,.14) : Qt.alpha(AbyssStyle.surfaceRaised,.72)
+                    opacity: parent.modelData?.failed === true ? .58 : 1
+                    StyledText {
+                        id: messageText
+                        x: 10; y: 7; width: parent.width-20
+                        text: String(parent.parent.modelData?.content ?? "")
+                        textFormat: Text.PlainText
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: Appearance.font.pixelSize.small
+                    }
+                }
+            }
+            Connections {
+                target: WullMind
+                function onHistoryPrepended(count): void {
+                    transcript.positionViewAtIndex(count,ListView.Beginning)
+                    transcript.readyForOlder=true
+                }
+            }
         }
         ColumnLayout {
             visible: root.controlsVisible
@@ -110,7 +181,7 @@ Item {
             RowLayout {
                 visible: root.editing
                 Layout.fillWidth: true
-                spacing: 4
+                spacing: 6
                 MaterialTextField {
                     id: message
                     objectName: "wullChatInput"
@@ -122,15 +193,34 @@ Item {
                     Accessible.name: "Message"
                     background: Rectangle {
                         implicitHeight: 36
-                        radius: 8
+                        radius: 18
                         border.width: 0
                         color: Qt.alpha(AbyssStyle.accent, .05)
                     }
-                    onAccepted: if (WullMind.sendMessage(text)) text = ""
+                    onAccepted: root.submit()
                     Keys.onEscapePressed: { focus = false; WullMind.cancel(); WullMind.dismiss() }
+                }
+                RippleButton {
+                    objectName: "wullChatSend"
+                    Layout.preferredWidth: 36
+                    Layout.preferredHeight: 36
+                    implicitWidth: 36
+                    implicitHeight: 36
+                    enabled: !WullMind.busy && message.text.trim().length>0
+                    buttonRadius: 18
+                    onClicked: root.submit()
+                    contentItem: MaterialSymbol {
+                        anchors.centerIn: parent
+                        text: "arrow_upward"
+                        iconSize: 20
+                        color: Appearance.colors.colPrimary
+                    }
                 }
             }
         }
+    }
+    function submit(): void {
+        if (WullMind.sendMessage(message.text)) message.text=""
     }
     onEditingChanged: if (editing) Qt.callLater(() => { if (root.editing) message.forceActiveFocus() })
     onControlsVisibleChanged: if (!controlsVisible) {

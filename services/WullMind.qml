@@ -32,6 +32,10 @@ Singleton {
     readonly property var downloadedModel: LocalModels.modelFor(model)
     readonly property var selectableModels: LocalModels.models.map(m=>({name:m.id,label:m.name,size:m.size})).concat(models)
     property var history: []
+    property bool historyLoaded: false
+    property bool historyHasMore: false
+    property bool historyLoadingOlder: false
+    property bool historyClearPending: false
     property var journal: ({schedule:[],mood:"",energy:"",journalPath:""})
     property var reminded: []
     property double epoch: 0
@@ -48,6 +52,7 @@ Singleton {
     readonly property bool available: aiEnabled && model.length>0 && (connectionStatus==="ready"
         || (downloadedModel && LocalModels.runtimePath.length>0))
     signal reactionRequested(string expression)
+    signal historyPrepended(int count)
 
     function payload(action): var {
         const todo=Config.options?.todo?.obsidian ?? ({})
@@ -62,7 +67,9 @@ Singleton {
             shareObsidian:obsidianEnabled}
     }
     function cancel(): void {
+        const cancelledChat=pending?.action==="chat" && !pending?.automatic
         epoch++;pending=null;busy=false;deadline.stop()
+        if (cancelledChat) history=history.filter(entry=>entry?.pending!==true)
         if (worker.running) {draining=true;worker.running=false}
         if (connectionStatus==="generating" || connectionStatus==="connecting") connectionStatus="disconnected"
     }
@@ -94,23 +101,62 @@ Singleton {
         text=String(value).slice(0,420);source=from
         expiry.interval=conversationOpen ? 120000 : 18000;expiry.restart()
     }
+    function oldestHistoryId(): double {
+        for (const entry of history) {
+            const id=Number(entry?.id ?? 0)
+            if (id>0) return id
+        }
+        return 0
+    }
+    function loadHistory(older = false): bool {
+        if (busy || draining || worker.running) return false
+        const before=older ? oldestHistoryId() : 0
+        if (older && (!historyLoaded || !historyHasMore || before<=0)) return false
+        historyLoadingOlder=older
+        if (!dispatch("history",{limit:60,beforeId:before})) {
+            historyLoadingOlder=false
+            return false
+        }
+        return true
+    }
     function openChat(): void {
         if (!talkEnabled) return
         checkInStage=""
-        conversationOpen=true;expiry.stop()
-        say("Splish! What's on your mind?", "built-in")
+        conversationOpen=true;expiry.stop();text=""
+        if (!historyLoaded) loadHistory(false)
     }
     function closeChat(): void {conversationOpen=false;expiry.interval=18000;expiry.restart()}
     function dismiss(): void {conversationOpen=false;checkInStage="";text="";expiry.stop();if(pending?.automatic) cancel()}
-    function clearConversation(): void {cancel();history=[];text="";userMood="";userEnergy=""}
+    function clearConversation(): void {
+        cancel();history=[];historyLoaded=true;historyHasMore=false;text="";userMood="";userEnergy=""
+        historyClearPending=true;historyClearRetry.restart()
+    }
+    function resolvePendingUser(id = 0, failed = false): void {
+        const items=history.slice()
+        for(let i=items.length-1;i>=0;i--) {
+            if(items[i]?.role==="user" && items[i]?.pending===true) {
+                items[i]=Object.assign({},items[i],{id:id||items[i].id,pending:false,failed:failed})
+                history=items
+                return
+            }
+        }
+    }
     function sendMessage(message): bool {
         const prompt=String(message).trim().slice(0,1200)
         if (!prompt) return false
         if (!aiEnabled || !model) {
-            say("My local model is taking a nap. Choose one in Companion > AI, then we can chat!", "built-in")
-            return false
+            const offline="My local model is taking a nap. Choose one in Companion > AI, then we can chat!"
+            history=history.concat([{id:0,role:"user",content:prompt,ephemeral:true},
+                {id:0,role:"assistant",content:offline,ephemeral:true}]).slice(-2000)
+            historyLoaded=true;say(offline,"built-in")
+            return true
         }
-        return dispatch("chat",{prompt:prompt,history:history})
+        const accepted=dispatch("chat",{prompt:prompt,history:history.slice(-12),persistHistory:true})
+        if (accepted) {
+            history=history.concat([{id:0,role:"user",content:prompt,pending:true}]).slice(-2000)
+            historyLoaded=true
+        }
+        return accepted
     }
     function today(): string {
         const now=new Date()
@@ -204,9 +250,22 @@ Singleton {
         catch(e) {envelope={ok:false,error:{message:"Wull's local helper did not return a valid reply."}}}
         if (!envelope.ok) {
             errorMessage=String(envelope.error?.message ?? "Local model is unavailable.")
+            if (job.action==="history") {
+                historyLoaded=true;historyHasMore=false;historyLoadingOlder=false
+                return
+            }
+            if (job.action==="history_clear") {
+                historyClearPending=false
+                return
+            }
             if (job.action==="probe" || job.action==="chat") connectionStatus="error"
             if (job.action==="check_in") say("I couldn't save that to your journal. "+errorMessage)
-            if (job.action==="chat" && !job.automatic) say("My local model couldn't answer just now. We can try again in a little bit.","built-in")
+            if (job.action==="chat" && !job.automatic) {
+                const failure="My local model couldn't answer just now. We can try again in a little bit."
+                resolvePendingUser(0,true)
+                history=history.concat([{id:0,role:"assistant",content:failure,ephemeral:true}]).slice(-2000)
+                say(failure,"built-in")
+            }
             return
         }
         const result=envelope.result
@@ -217,6 +276,19 @@ Singleton {
                 Config.setNestedValue("abyss.companionMind.model",installed[0].name)
             }
             connectionStatus=models.some(m=>m.name===model) || (!model && models.length) ? "ready" : "model-unavailable"
+        } else if (job.action==="history") {
+            const incoming=(result.messages ?? [])
+            if (Number(job.request.beforeId ?? 0)>0) {
+                const existing=new Set(history.map(entry=>Number(entry?.id ?? 0)).filter(id=>id>0))
+                const older=incoming.filter(entry=>!existing.has(Number(entry?.id ?? 0)))
+                history=older.concat(history).slice(-2000)
+                historyHasMore=result.hasMore===true;historyLoaded=true;historyLoadingOlder=false
+                if (older.length) historyPrepended(older.length)
+            } else {
+                history=incoming.slice(-2000);historyHasMore=result.hasMore===true;historyLoaded=true;historyLoadingOlder=false
+            }
+        } else if (job.action==="history_clear") {
+            historyClearPending=false;history=[];historyLoaded=true;historyHasMore=false
         } else if (job.action==="context") {
             journal=result;lastContext=Date.now()
             if (job.automatic) Qt.callLater(root.offerAutomatic)
@@ -226,8 +298,12 @@ Singleton {
                 choiceSaved(result.field,result.value)
             }
         } else if (job.action==="chat") {
-            connectionStatus="ready"
-            history=history.slice(-4).concat([{role:"user",content:job.request.prompt},{role:"assistant",content:result.text}])
+            connectionStatus="ready";historyLoaded=true
+            if (!job.automatic) {
+                resolvePendingUser(result.userMessageId ?? 0,false)
+                history=history.concat([{id:result.assistantMessageId ?? 0,role:"assistant",content:result.text,
+                    persisted:result.historySaved===true}]).slice(-2000)
+            }
             say(result.text,"local")
             if (hostVisible) reactionRequested(result.expression)
         }
@@ -248,6 +324,11 @@ Singleton {
         && root.proactive==="occasional" && idleMonitor.isIdle && !root.conversationOpen;onTriggered:root.offerAutomatic()}
     Timer {id:expiry;repeat:false;onTriggered:if(!root.conversationOpen){root.text="";root.checkInStage=""}}
     Timer {id:deadline;interval:35000;repeat:false;onTriggered:{root.cancel();root.errorMessage="Local model request timed out.";root.connectionStatus="error"}}
+    Timer {id:historyClearRetry;interval:100;repeat:false;onTriggered:{
+        if(!root.historyClearPending)return
+        if(root.busy || root.draining || worker.running){restart();return}
+        if(!root.dispatch("history_clear")){restart();return}
+    }}
     Process {
         id:worker
         running:false;stdinEnabled:true

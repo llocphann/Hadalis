@@ -288,6 +288,23 @@ Singleton {
     property string desktopWidgetQuickControls: ""
     property bool shellLayoutEditMode: false
 
+    // Per-output controls retain their Background context while the existing
+    // Abyss body host owns painting, clipping and input. Identity checks protect
+    // a replacement output from a retiring window's unregister callback.
+    property var desktopWidgetEditors: ({})
+    function registerDesktopWidgetEditor(outputName: string, item: var): void {
+        if (!outputName || !item || desktopWidgetEditors[outputName] === item) return
+        const next = Object.assign({}, desktopWidgetEditors)
+        next[outputName] = item
+        desktopWidgetEditors = next
+    }
+    function unregisterDesktopWidgetEditor(outputName: string, item: var): void {
+        if (!outputName || desktopWidgetEditors[outputName] !== item) return
+        const next = Object.assign({}, desktopWidgetEditors)
+        delete next[outputName]
+        desktopWidgetEditors = next
+    }
+
     function setWidgetEditMode(enabled: bool): void {
         if (enabled)
             shellLayoutEditMode = false

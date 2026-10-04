@@ -1,4 +1,5 @@
 module qs.modules.background.widgets
+DesktopWidgetEditToolbar 1.0 DesktopWidgetEditToolbar.qml
 AbstractBackgroundWidget 1.0 AbstractBackgroundWidget.qml
 CustomImageWidget 1.0 CustomImageWidget.qml
 ManifestPopover 1.0 ManifestPopover.qml

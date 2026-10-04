@@ -292,6 +292,7 @@ Scope {
                 Region { regions: window.presented && field.ready && editor.visible ? editor.regions : [] }
                 Region { item: window.presented && revealTrigger.visible ? revealTrigger : emptyInput }
                 Region { item: window.presented && dockTrigger.visible ? dockTrigger : emptyInput }
+                Region { x: widgetEditorBody.inputBounds.x; y: widgetEditorBody.inputBounds.y; width: window.presented && field.ready ? widgetEditorBody.inputBounds.width : 0; height: widgetEditorBody.inputBounds.height }
                 Region { x: leftReveal.x; y: leftReveal.y; width: leftReveal.available ? leftReveal.width : 0; height: leftReveal.height }
                 Region { x: rightReveal.x; y: rightReveal.y; width: rightReveal.available ? rightReveal.width : 0; height: rightReveal.height }
                 Region { x: leftPanel.inputBounds.x; y: leftPanel.inputBounds.y; width: window.presented && field.ready ? leftPanel.inputBounds.width : 0; height: leftPanel.inputBounds.height }
@@ -592,6 +593,38 @@ Scope {
                     || GlobalStates.settingsNativeDialogOpen || PolkitService.active || GlobalStates.regionSelectorOpen
                 onQuickNotesEditorLeaseChanged:(outputName,focused)=>
                     root.setQuickNotesEditorOutput(outputName,focused)
+            }
+            AbyssBodyHost {
+                id: widgetEditorBody
+                identity: "widgetEditor"
+                controller: liquid
+                anchors.fill: parent
+                outputName: window.outputName
+                embeddedItem: GlobalStates.desktopWidgetEditors[window.outputName] ?? null
+                readonly property var editorWorkArea: ({
+                    left:window.nativeInsets.left, top:window.nativeInsets.top,
+                    right:window.width-window.nativeInsets.right,
+                    bottom:window.height-window.nativeInsets.bottom})
+                readonly property var editorPlacement: embeddedItem?.placement ?? {edge:"bottom",along:0,span:900,depth:64}
+                edge: editorPlacement.edge
+                along: editorPlacement.along
+                span: editorPlacement.span
+                depth: editorPlacement.depth
+                padding: 6
+                edgeInsets: window.bodyInsets(edge,along,span)
+                placementPriority: 1
+                placementCanResize: false
+                placementCanStackInward: false
+                animatePlacementChanges: false
+                stableContentSize: true
+                open: window.presented && field.ready && embeddedItem !== null && GlobalStates.widgetEditMode
+                Binding {
+                    target: widgetEditorBody.embeddedItem
+                    property: "abyssHost"
+                    value: widgetEditorBody
+                    when: widgetEditorBody.embeddedItem !== null
+                    restoreMode: Binding.RestoreBindingOrValue
+                }
             }
             AbyssBodyHost {
                 id: leftPanel

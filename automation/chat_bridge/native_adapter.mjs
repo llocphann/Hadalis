@@ -258,7 +258,7 @@ export async function diagnoseNativeRenderer() {
           renderer_found:true, modules_loaded:false, static_api_valid:false,
           safe_get_exports:"zero", stream_post_exports:"zero",
           combined_api_exports:"zero", stream_definition_exports:"zero",
-          stream_definition_valid:false,
+          stream_transport_matches:"zero", stream_definition_valid:false,
           react_root_found:false, scope_found:false, transport_valid:false
         };
         let shared, initial;
@@ -288,32 +288,41 @@ export async function diagnoseNativeRenderer() {
               typeof value?.resolve === "function" && value?.scope?.id != null);
         const definitions=[...new Set(definitionCandidates.filter(Boolean))].slice(0,65);
         result.stream_definition_exports=bucket(definitions);
-        const definition=definitions.length === 1 ? definitions[0] : null;
-        result.stream_definition_valid=!!definition;
-        if (!definition) return result;
+        result.stream_definition_valid=definitions.length > 0 && definitions.length <= 64;
+        if (!result.stream_definition_valid) return result;
         const todo=Array.from(document.body.children).flatMap(el =>
           Object.keys(el).filter(k => k.startsWith("__reactContainer$")).map(k => el[k]));
         result.react_root_found=todo.length>0;
-        let chain;
-        const seen=new Set();
+        const seen=new Set(), chains=[];
         for(let i=0;i<30000 && todo.length;i++) {
           const node=todo.pop();
           if(!node || seen.has(node)) continue;
           seen.add(node);
           const value=node.memoizedProps?.value;
-          if(value instanceof Map && value.has(definition.scope.id)) {
-            chain=value; break;
+          if(value instanceof Map && !chains.includes(value)) {
+            chains.push(value);
+            if(chains.length > 1024) return result;
           }
           todo.push(node.child,node.sibling,node.alternate,node.current);
         }
-        result.scope_found=!!chain;
-        if(!chain) return result;
-        try {
-          const scoped=chain.get(definition.scope.id);
-          const transport=scoped.store.get(definition.resolve(scoped,chain));
-          result.transport_valid=typeof transport?.prepareCompletionStream==="function" &&
-            typeof transport?.startCompletionStream==="function";
-        } catch {}
+        const transports=[];
+        let scopeFound=false;
+        for(const definition of definitions) {
+          for(const chain of chains) {
+            if(!chain.has(definition.scope.id)) continue;
+            scopeFound=true;
+            try {
+              const scoped=chain.get(definition.scope.id);
+              const transport=scoped?.store?.get?.(definition.resolve(scoped,chain));
+              if(typeof transport?.prepareCompletionStream==="function" &&
+                  typeof transport?.startCompletionStream==="function" &&
+                  !transports.includes(transport)) transports.push(transport);
+            } catch {}
+          }
+        }
+        result.scope_found=scopeFound;
+        result.stream_transport_matches=bucket(transports);
+        result.transport_valid=transports.length === 1;
         return result;
       },contract),
       new Promise((_,reject) => {
@@ -361,31 +370,45 @@ export async function connectNative() {
       : Object.values(initial).filter(value =>
           typeof value?.resolve === "function" && value?.scope?.id != null);
     const definitions=[...new Set(definitionCandidates.filter(Boolean))];
-    const definition=definitions.length === 1 ? definitions[0] : null;
     if (typeof api?.safeGet !== "function" ||
         typeof api?.streamPost !== "function" ||
-        typeof definition?.resolve !== "function" ||
-        definition?.scope?.id == null)
+        definitions.length < 1 || definitions.length > 64)
       throw new Error("Desktop capabilities unavailable");
-    // Read the app-wide scope, never the selected chat/composer. This is
-    // bounded and capability checked; navigation does not change identities.
-    let chain;
+    // Read the app-wide scope, never the selected chat/composer. A changed
+    // minifier may expose several resolve()+scope definitions, so disambiguate
+    // by the actual transport capability rather than by export order/name.
     const todo = Array.from(document.body.children).flatMap(el => Object.keys(el)
       .filter(k => k.startsWith("__reactContainer$")).map(k => el[k]));
-    const seen = new Set();
+    const seen = new Set(), chains=[];
     for (let i = 0; i < 30000 && todo.length; i++) {
       const node = todo.pop();
       if (!node || seen.has(node)) continue;
       seen.add(node);
       const value = node.memoizedProps?.value;
-      if (value instanceof Map && value.has(definition.scope.id)) { chain = value; break; }
+      if (value instanceof Map && !chains.includes(value)) {
+        chains.push(value);
+        if (chains.length > 1024) throw new Error("Desktop app scope unavailable");
+      }
       todo.push(node.child, node.sibling, node.alternate, node.current);
     }
-    if (!chain) throw new Error("Desktop app scope unavailable");
-    const node = chain.get(definition.scope.id);
-    const transport = node.store.get(definition.resolve(node, chain));
-    if (typeof transport?.prepareCompletionStream !== "function" ||
-        typeof transport?.startCompletionStream !== "function") throw new Error("unsupported Desktop transport");
+    const transports=[];
+    let scopeFound=false;
+    for(const definition of definitions) {
+      for(const chain of chains) {
+        if(!chain.has(definition.scope.id)) continue;
+        scopeFound=true;
+        try {
+          const scoped=chain.get(definition.scope.id);
+          const candidate=scoped?.store?.get?.(definition.resolve(scoped,chain));
+          if(typeof candidate?.prepareCompletionStream==="function" &&
+              typeof candidate?.startCompletionStream==="function" &&
+              !transports.includes(candidate)) transports.push(candidate);
+        } catch {}
+      }
+    }
+    if (!scopeFound) throw new Error("Desktop app scope unavailable");
+    if (transports.length !== 1) throw new Error("unsupported Desktop transport");
+    const transport=transports[0];
     window.__hadalisNative = { api, transport, fingerprint: contract.fingerprint,
       serverStreamStatus: contract.serverStreamStatus };
     window.__hadalisReceipts ??= new Map();

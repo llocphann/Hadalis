@@ -204,6 +204,38 @@ function clearSegment(scene, from, to) {
     return true
 }
 function distance(a,b) { return Math.hypot(a.x-b.x,a.y-b.y) }
+// Conservative full swept envelope, not sparse sampling of a curved path.
+// Every authored height lies in [0,1]; the entire host stays inside this box.
+function clearArc(scene, from, to, height) {
+    if (!finite(height) || height<0 || !clearSegment(scene,from,to)) return false
+    const envelope={x:Math.min(from.x,to.x),y:Math.min(from.y,to.y)-height,
+        width:scene.hostWidth+Math.abs(to.x-from.x),
+        height:scene.hostHeight+Math.abs(to.y-from.y)+height}
+    return envelope.x>=2 && envelope.y>=2 && envelope.x+envelope.width<=scene.width-2
+        && envelope.y+envelope.height<=scene.height-2
+        && !scene.blockers.some(b=>Slots.intersects(envelope,b,1.5))
+}
+function landingBelow(scene, point) {
+    if (!clearAt(scene,point)) return {qualified:false}
+    const floors=[{key:"bottom",y:scene.height-scene.insets.bottom,
+        from:scene.insets.left+2,to:scene.width-scene.insets.right-2}]
+    for (const s of scene.surfaces) {
+        const margin=Math.min(Number(s.radius)||0,s.rect.width/2)
+        floors.push({key:s.key,y:s.rect.y,from:s.rect.x+margin,to:s.rect.x+s.rect.width-margin})
+    }
+    for (let i=0;i<scene.blockers.length;i++) {
+        const b=scene.blockers[i]
+        if (b.walkable!==false) floors.push({key:"rim"+i,y:b.y,from:b.x,to:b.x+b.width})
+    }
+    floors.sort((a,b)=>a.y-b.y)
+    for (const floor of floors) {
+        const next={x:point.x,y:floor.y-scene.hostHeight-Math.max(2,2*scene.scale)}
+        if (next.y<point.y+.1 || point.x<floor.from || point.x+scene.hostWidth>floor.to
+                || !clearSegment(scene,point,next) || !supportAt(scene,next)) continue
+        return annotate(scene,next,"bottom",floor.key==="bottom" ? "edge" : "surface",floor.key)
+    }
+    return {qualified:false}
+}
 function path(scene, from, to) {
     if (!valid(scene) || !clearAt(scene,from) || !clearAt(scene,to)) return {qualified:false}
     const a=supportAt(scene,from), b=supportAt(scene,to)

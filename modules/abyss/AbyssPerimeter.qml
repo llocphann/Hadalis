@@ -195,10 +195,16 @@ Scope {
                         surfaces:scene.surfaces?.slice(0,40)},
                     presence:{qualified:companionPresence.qualified,
                         visitActive:companionPresence.visitActive,
+                        traveling:companionPresence.traveling,mode:companionPresence.mode,
+                        dragging:companionPresence.dragging,arc:companionPresence.arc,
                         requestedReveal:companionPresence.requestedReveal,
                         renderedReveal:companionPresence.renderedReveal,
                         placement:companionPresence.placement},
+                    curiosity:{enabled:root.companionPreferences.exploreFeatures,
+                        stage:companionCuriosity.stage,owned:companionCuriosity.owned,
+                        feature:companionCuriosity.feature?.kind ?? ""},
                     actor:{visible:companion.visible,inputReady:companion.inputReady,
+                        moving:companion.moving,walking:companion.walking,flying:companion.flying,
                         presentation:companion.presentation,opacity:companion.opacity,
                         x:companion.x,y:companion.y}}
             }
@@ -215,6 +221,7 @@ Scope {
                     : companionBridge.visibility==="peeking" ? .46 : 0
                 motionEnabled: root.companionPreferences.animationsEnabled && AbyssStyle.motionEnabled
                 interactionHeld: companionBridge.activity!=="idle"
+                personality: root.companionPreferences.personality
                 travelId: companionBridge.travelId
                 travelFraction: companionBridge.travelTarget
                 onStopRequested: companion.stopTravel()
@@ -229,6 +236,108 @@ Scope {
                 controller: liquid
                 allowed: window.companionHostActive
             }
+            property bool companionCuriosityDockRequested: false
+            function companionFeaturesIdle(): bool {
+                return window.companionPermission && !window.companionOccluded
+                    && !liquid.popupsOpen && !GlobalStates.abyssPopupKind && !GlobalStates.mediaControlsOpen
+                    && !GlobalStates.sidebarLeftOpen && !GlobalStates.sidebarRightOpen
+                    && !GlobalStates.settingsOverlayOpen && !GlobalStates.overviewOpen
+                    && !GlobalStates.clipboardOpen && !GlobalStates.dashboardOpen
+                    && !GlobalStates.controlPanelOpen && !GlobalStates.notificationCenterOpen
+                    && !GlobalStates.widgetEditMode && !utility.open && !window.dockHovered
+                    && !barHover.hovered && !revealHover.hovered
+            }
+            readonly property var companionFeatures: {
+                const result=[]
+                if (!root.companionEnabled || !root.companionPreferences.exploreFeatures) return result
+                const panels=Config.options?.enabledPanels ?? []
+                const gestures={clock:"inspect",resources:"inspect",battery:"inspect",
+                    weather:"inspect",media:"wave",utilButtons:"press"}
+                if (bar.visible && panels.includes("abyssPopup")) {
+                    for (const record of bar.layoutRecords) {
+                        const kind=bar.placements.find(p=>p.id===record.id)?.kind
+                        if (record.span>0 && gestures[kind]) result.push({
+                            kind:kind==="utilButtons" ? "utilities" : kind,key:"popup",edge:record.edge,
+                            along:record.along+record.span/2,openGesture:"press",gesture:gestures[kind]})
+                    }
+                }
+                const sidebarOutput=GlobalStates.resolveOutputName(window.outputName,Config.options?.sidebar?.screenList ?? [])
+                for (const side of ["left","right"]) {
+                    const key=side+"Panel", body=side==="left" ? leftPanel : rightPanel
+                    if (panels.includes(side==="left" ? "abyssSidebarLeft" : "abyssSidebarRight")
+                            && sidebarOutput===window.outputName && !body.open)
+                        result.push({kind:key,key:key,edge:body.edge,along:body.along+body.span/2,
+                            openGesture:"reach",gesture:side==="left" ? "inspect" : "press"})
+                }
+                if (panels.includes("abyssDock") && (Config.options?.dock?.enable ?? true) && !dock.open
+                        && Geometry.targets(window.outputName,Config.options?.dock?.screenList ?? [],Quickshell.screens.map(s=>s.name)))
+                    result.push({kind:"dock",key:"dock",edge:dock.edge,along:dock.along+dock.span/2,
+                        openGesture:"reach",gesture:"wave"})
+                if (!settings.open) result.push({kind:"settings",key:"settings",edge:settings.edge,
+                    along:settings.along+settings.span/2,openGesture:"press",gesture:"inspect"})
+                return result
+            }
+            function openCompanionFeature(feature): bool {
+                if (!companionFeaturesIdle()) return false
+                if (feature.kind==="leftPanel") GlobalStates.openSidebarLeft(window.outputName,false)
+                else if (feature.kind==="rightPanel") GlobalStates.openSidebarRight(window.outputName,false)
+                else if (feature.kind==="dock") window.companionCuriosityDockRequested=true
+                else if (feature.kind==="settings") {
+                    GlobalStates.openSettingsSection(37,"Overview")
+                    GlobalStates.settingsOverlayTargetOutput=window.outputName
+                } else if (["clock","resources","battery","weather","media","utilities"].includes(feature.kind)) {
+                    GlobalStates.abyssPopupTargetOutput=window.outputName
+                    GlobalStates.abyssPopupEdge=feature.edge
+                    GlobalStates.abyssPopupAlong=feature.along
+                    if (feature.kind==="media") GlobalStates.mediaControlsOpen=true
+                    else GlobalStates.abyssPopupKind=feature.kind
+                } else return false
+                return ownsCompanionFeature(feature)
+            }
+            function ownsCompanionFeature(feature): bool {
+                if (!feature) return false
+                if (feature.kind==="leftPanel") return GlobalStates.sidebarLeftOpen
+                    && GlobalStates.sidebarLeftTargetOutput===window.outputName
+                if (feature.kind==="rightPanel") return GlobalStates.sidebarRightOpen
+                    && GlobalStates.sidebarRightTargetOutput===window.outputName
+                if (feature.kind==="dock") return window.companionCuriosityDockRequested
+                if (feature.kind==="settings") return GlobalStates.settingsOverlayOpen
+                    && GlobalStates.settingsOverlayTargetOutput===window.outputName
+                    && (GlobalStates.settingsOverlayRequestedPage===37 || GlobalStates.settingsOverlayCurrentPage===37)
+                return GlobalStates.abyssPopupTargetOutput===window.outputName
+                    && (feature.kind==="media" ? GlobalStates.mediaControlsOpen && !GlobalStates.abyssPopupKind
+                        : GlobalStates.abyssPopupKind===feature.kind && !GlobalStates.mediaControlsOpen)
+            }
+            function closeCompanionFeature(feature): void {
+                if (!ownsCompanionFeature(feature)) return
+                if (feature.kind==="leftPanel") GlobalStates.closeSidebarLeft()
+                else if (feature.kind==="rightPanel") GlobalStates.closeSidebarRight()
+                else if (feature.kind==="dock") window.companionCuriosityDockRequested=false
+                else if (feature.kind==="settings") GlobalStates.settingsOverlayOpen=false
+                else window.closeGenericPopup(feature.kind)
+            }
+            function releaseCompanionFeature(feature): void {
+                // Dock resumes its ordinary hover/attachment lifetime when a
+                // human takes over. A Companion lease must never pin it open.
+                if (feature?.kind==="dock") window.companionCuriosityDockRequested=false
+            }
+            readonly property string companionFeatureState: [GlobalStates.sidebarLeftOpen,
+                GlobalStates.sidebarLeftTargetOutput,GlobalStates.sidebarRightOpen,GlobalStates.sidebarRightTargetOutput,
+                GlobalStates.settingsOverlayOpen,GlobalStates.settingsOverlayTargetOutput,
+                GlobalStates.settingsOverlayRequestedPage,GlobalStates.settingsOverlayCurrentPage,
+                GlobalStates.abyssPopupKind,GlobalStates.abyssPopupTargetOutput,GlobalStates.mediaControlsOpen].join("|")
+            onCompanionFeatureStateChanged: if (companionCuriosity) companionCuriosity.checkOwnership()
+            WullCuriosity {
+                id: companionCuriosity
+                presence: companionPresence
+                actor: companion
+                adapter: window
+                features: window.companionFeatures
+                allowed: window.companionHostActive && root.companionPreferences.exploreFeatures
+                    && root.companionPreferences.animationsEnabled && AbyssStyle.motionEnabled
+                idle: companionBridge.activity==="idle" && companionBridge.visibility==="present"
+                eventId: companionBridge.travelId
+            }
             property real companionPointerX: 0
             property real companionPointerY: 0
             property bool companionPointerFresh: false
@@ -238,14 +347,20 @@ Scope {
                     id: companionPointer
                     target: null
                     blocking: false
-                    enabled: window.companionHostActive && root.companionInteractive
+                    enabled: window.companionHostActive && (root.companionInteractive || companionCuriosity.busy)
                     onPointChanged: if (hovered) {
                         window.companionPointerX=point.scenePosition.x
                         window.companionPointerY=point.scenePosition.y
                         window.companionPointerFresh=true
                         companionPointerExpiry.restart()
+                        companionCuriosity.pointerMoved(window.companionPointerX,window.companionPointerY)
                     }
                     onHoveredChanged: if (!hovered) window.companionPointerFresh=false
+                }
+                PointHandler {
+                    enabled: companionCuriosity.busy
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+                    onActiveChanged: if (active) companionCuriosity.yieldToUser()
                 }
             }
             Timer {
@@ -387,6 +502,7 @@ Scope {
                 HoverHandler { id: barHover; onHoveredChanged: { if (hovered) { barClose.stop(); root.setBarRevealed(window.outputName,true) } else barClose.restart() } }
                 onInteraction: (edge,along,span,strength) => liquid.impulse(edge,along,span,strength)
                 onPopupRequested: (kind,edge,along) => {
+                    companionCuriosity.yieldToUser()
                     const same = (GlobalStates.abyssPopupKind === kind || (kind === "media" && GlobalStates.mediaControlsOpen))
                         && GlobalStates.abyssPopupTargetOutput === window.outputName
                     // Utilities is hover-owned. A click while it is already open
@@ -418,6 +534,7 @@ Scope {
                     }
                 }
                 onPopupHoveredRequested: (kind,edge,along) => {
+                    companionCuriosity.yieldToUser()
                     const same = GlobalStates.abyssPopupKind === kind
                         && GlobalStates.abyssPopupTargetOutput === window.outputName
                     if (same)
@@ -458,6 +575,7 @@ Scope {
                 travelMode: companionPresence.mode
                 surfaceSupported: companionPresence.grounded
                 travelDuration: companionPresence.duration
+                travelArc: companionPresence.arc
                 travelDirection: companionPresence.directionX/Math.max(1,Math.hypot(companionPresence.directionX,companionPresence.directionY))
                 travelDirectionY: companionPresence.directionY/Math.max(1,Math.hypot(companionPresence.directionX,companionPresence.directionY))
                 managedPlacement: true
@@ -825,7 +943,7 @@ Scope {
                         || attachedPopupHold
                         || !liquid.hasPopupOverlapRect(requestedRecord.surface, 10))
                     && (((Config.options?.dock?.pinnedOnStartup ?? false) && !(Config.options?.dock?.hoverToReveal ?? false)) || window.dockHovered
-                        || window.companionDockHeld
+                        || window.companionDockHeld || window.companionCuriosityDockRequested
                         || attachedPopupHold
                         || (contentItem.item?.requestDockShow ?? false)
                         || ((Config.options?.dock?.showOnDesktop ?? true) && !ToplevelManager.activeToplevel?.activated))

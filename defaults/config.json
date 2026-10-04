@@ -2086,7 +2086,8 @@
             "effectsEnabled": true,
             "hideInFullscreen": false,
             "renderQuality": "balanced",
-            "translucency": 0.16
+            "translucency": 0.16,
+            "exploreFeatures": true
         },
         "quality": "balanced",
         "positions": [],

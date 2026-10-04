@@ -137,6 +137,97 @@ def author(blend_path, module_path, parity_path):
         'hop':(650,{'lift':[(0,0),(.15,1.4),(.42,-10),(.65,-6),(.82,0),(.91,1.2),(1,0)]}),
         'orbit':(24000,{'angle':[(0,0),(1,math.tau)]}),
     }
+    # New actions keep the original six exports intact. Two alternating feet
+    # match 70 px/s travel; flying has a propulsion stroke and tucked feet.
+    run={
+        'lift':[(0,0),(.25,-3),(.5,0),(.75,-3),(1,0)],
+        'roll':[(0,-3),(.25,0),(.5,3),(.75,0),(1,-3)],
+        'scaleX':[(0,1.03),(.25,.97),(.5,1.03),(.75,.97),(1,1.03)],
+        'scaleY':[(0,.975),(.25,1.035),(.5,.975),(.75,1.035),(1,.975)],
+    }
+    for i in range(2):
+        offset=.5 if i else 0
+        knots=[(0,10.5,0),(.25,0,0),(.5,-10.5,0),(.65,-4,7),(.75,0,9),(.85,4,7)]
+        shifted=sorted({((t+offset)%1):(x,z) for t,x,z in knots}.items())
+        shifted.append((1,shifted[0][1]))
+        run[f'foot{i}X']=[(t,p[0]) for t,p in shifted]
+        run[f'foot{i}Z']=[(t,p[1]) for t,p in shifted]
+        sign=1 if i else -1
+        run[f'arm{i}X']=[(0,3*sign),(.5,-3*sign),(1,3*sign)]
+        run[f'arm{i}Z']=[(0,-2*sign),(.25,4*sign),(.5,2*sign),(.75,-4*sign),(1,-2*sign)]
+    definitions['run']=(600,run)
+    definitions['fly']=(800,{
+        'lift':[(0,0),(.22,-2.8),(.45,-1.8),(.75,.5),(1,0)],
+        'roll':[(0,-2.5),(.25,1),(.5,2.5),(.75,-1),(1,-2.5)],
+        'scaleX':[(0,1.02),(.22,.975),(.55,1),(.75,1.025),(1,1.02)],
+        'scaleY':[(0,.985),(.22,1.04),(.55,1.01),(.75,.985),(1,.985)],
+        'arm0X':[(0,-1),(.22,-4),(.55,-2),(.75,1),(1,-1)],
+        'arm1X':[(0,1),(.22,4),(.55,2),(.75,-1),(1,1)],
+        'arm0Z':[(0,2),(.22,9),(.55,5),(.75,-1),(1,2)],
+        'arm1Z':[(0,2),(.22,9),(.55,5),(.75,-1),(1,2)],
+        'foot0X':[(0,-1),(.4,-3),(.75,0),(1,-1)],
+        'foot1X':[(0,1),(.4,3),(.75,0),(1,1)],
+        'foot0Z':[(0,6),(.35,9),(.7,5),(1,6)],
+        'foot1Z':[(0,8),(.35,5),(.7,9),(1,8)],
+        'height':[(0,0),(.25,.7),(.5,1),(.75,.7),(1,0)],
+    })
+    definitions['jump']=(950,{
+        'height':[(0,0),(.12,0),(.4,1),(.62,.85),(.88,0),(1,0)],
+        'journey':[(0,0),(.12,0),(.4,.42),(.62,.76),(.88,1),(1,1)],
+        'scaleX':[(0,1),(.12,1.05),(.25,.96),(.62,.98),(.88,1.05),(1,1)],
+        'scaleY':[(0,1),(.12,.94),(.25,1.045),(.62,1.02),(.88,.94),(1,1)],
+        'roll':[(0,0),(.25,-4),(.62,3),(1,0)],
+        'arm0Z':[(0,0),(.25,8),(.62,5),(.88,0),(1,0)],
+        'arm1Z':[(0,0),(.25,8),(.62,5),(.88,0),(1,0)],
+        'foot0Z':[(0,0),(.25,7),(.62,9),(.88,0),(1,0)],
+        'foot1Z':[(0,0),(.25,9),(.62,7),(.88,0),(1,0)],
+    })
+    definitions['drag']=(1100,{
+        'roll':[(0,-4),(.25,0),(.5,4),(.75,0),(1,-4)],
+        'scaleX':[(0,.985),(.5,.97),(1,.985)],
+        'scaleY':[(0,1.015),(.5,1.04),(1,1.015)],
+        'arm0Z':[(0,-2),(.5,2),(1,-2)],'arm1Z':[(0,2),(.5,-2),(1,2)],
+        'foot0X':[(0,-2),(.5,2),(1,-2)],'foot1X':[(0,2),(.5,-2),(1,2)],
+        'foot0Z':[(0,0),(.5,2),(1,0)],'foot1Z':[(0,2),(.5,0),(1,2)],
+    })
+    definitions['fall']=(1100,{
+        'scaleX':[(0,1),(.25,.965),(.72,.965),(1,1.025)],
+        'scaleY':[(0,1),(.25,1.045),(.72,1.045),(1,.97)],
+        'arm0X':[(0,0),(.2,-4),(.8,-4),(1,0)],
+        'arm1X':[(0,0),(.2,4),(.8,4),(1,0)],
+        'arm0Z':[(0,0),(.2,9),(.8,9),(1,0)],
+        'arm1Z':[(0,0),(.2,9),(.8,9),(1,0)],
+        'foot0Z':[(0,4),(.7,5),(1,0)],'foot1Z':[(0,5),(.7,4),(1,0)],
+    })
+    definitions['land']=(500,{
+        'scaleX':[(0,1.05),(.22,1.035),(.5,.985),(1,1)],
+        'scaleY':[(0,.93),(.22,.95),(.5,1.025),(1,1)],
+        'arm0Z':[(0,4),(.35,-1),(1,0)],'arm1Z':[(0,4),(.35,-1),(1,0)],
+    })
+    # Feature-specific gestures: push a control, reach for a panel, study a
+    # calendar/status display, or wave at Media. No feature action changes data.
+    definitions['press']=(800,{
+        'arm1X':[(0,0),(.35,4),(.55,2),(.72,4),(1,0)],
+        'arm1Z':[(0,0),(.35,8),(.55,6),(.72,8),(1,0)],
+        'roll':[(0,0),(.35,3),(.72,3),(1,0)],
+    })
+    definitions['reach']=(1000,{
+        'arm0X':[(0,0),(.35,-3),(.65,-3),(1,0)],
+        'arm1X':[(0,0),(.35,3),(.65,3),(1,0)],
+        'arm0Z':[(0,0),(.35,8),(.65,8),(1,0)],
+        'arm1Z':[(0,0),(.35,8),(.65,8),(1,0)],
+        'scaleY':[(0,1),(.35,1.035),(.65,1.035),(1,1)],
+    })
+    definitions['inspect']=(1500,{
+        'roll':[(0,0),(.25,-5),(.5,2),(.75,5),(1,0)],
+        'arm0Z':[(0,0),(.25,4),(.75,2),(1,0)],
+        'arm1Z':[(0,0),(.25,2),(.75,4),(1,0)],
+    })
+    definitions['wave']=(1300,{
+        'arm1Z':[(0,0),(.2,8),(.35,5),(.5,9),(.65,5),(.8,8),(1,0)],
+        'arm1X':[(0,0),(.2,3),(.35,1),(.5,4),(.65,1),(.8,3),(1,0)],
+        'roll':[(0,0),(.2,-2),(.8,-2),(1,0)],
+    })
     all_channels={name for _,tracks in definitions.values() for name in tracks}
     for channel in all_channels:
         rig[channel]=1.0 if channel.startswith('scale') else 0.0
@@ -165,6 +256,8 @@ def author(blend_path, module_path, parity_path):
     # A parent authoring rig demonstrates actual displacement from an edge.
     body.parent=rig
     driver(rig,'location',1,rig,'normal',gain=98)
+    driver(rig,'location',2,rig,'height',gain=42)
+    driver(rig,'location',0,rig,'journey',gain=90)
     parity=[]
     for name,(duration,tracks) in definitions.items():
         action=bpy.data.actions.new('Wull — '+name.title())

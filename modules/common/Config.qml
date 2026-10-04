@@ -495,6 +495,7 @@ Singleton {
                     property bool hideInFullscreen: false
                     property string renderQuality: "balanced"
                     property real translucency: 0.16
+                    property bool exploreFeatures: true
                 }
                 property JsonObject spectrum: JsonObject {
                     property bool configured: false

@@ -6,4 +6,5 @@ WaterDropletBody 1.0 WaterDropletBody.qml
 WaterDropletFace 1.0 WaterDropletFace.qml
 WullMotion 1.0 WullMotion.qml
 WullPresence 1.0 WullPresence.qml
+WullCuriosity 1.0 WullCuriosity.qml
 WullAbyssLink 1.0 WullAbyssLink.qml

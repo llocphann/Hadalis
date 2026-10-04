@@ -9,6 +9,8 @@ const plain = value => JSON.parse(JSON.stringify(value));
 const defaults = require("../defaults/config.json").abyss.companion;
 assert.deepEqual(plain(api.defaults()), defaults);
 assert.deepEqual(plain(api.normalize()), defaults);
+assert.equal(api.normalize({exploreFeatures:false}).exploreFeatures,false);
+assert.equal(api.normalize({exploreFeatures:"false"}).exploreFeatures,true);
 const invalid = api.normalize({
     enabled: "true", output: [], edge: "diagonal", along: NaN, size: Infinity,
     interactive: "false", personality: "run_command", appearanceFrequency: "once",

@@ -16,6 +16,7 @@ ContentPage {
     settingsPageName: Translation.tr("Companion")
     property string activeSection: "overview"
     property string previewExpression: "idle"
+    property string previewMotion: ""
     readonly property var preferences: Preferences.normalize(Config.options?.abyss?.companion)
     readonly property var personalityOptions: [
         { displayName: Translation.tr("Calm"), value: "calm" },
@@ -43,6 +44,18 @@ ContentPage {
         { displayName: Translation.tr("Sleepy"), value: "sleepy" },
         { displayName: Translation.tr("Sad"), value: "sad" },
         { displayName: Translation.tr("Alert"), value: "alert" }
+    ]
+    readonly property var motionOptions: [
+        { displayName: Translation.tr("Rest"), value: "" },
+        { displayName: Translation.tr("Walk"), value: "walk" },
+        { displayName: Translation.tr("Run"), value: "run" },
+        { displayName: Translation.tr("Fly"), value: "fly" },
+        { displayName: Translation.tr("Jump"), value: "jump" },
+        { displayName: Translation.tr("Dragged"), value: "drag" },
+        { displayName: Translation.tr("Fall"), value: "fall" },
+        { displayName: Translation.tr("Reach"), value: "reach" },
+        { displayName: Translation.tr("Inspect"), value: "inspect" },
+        { displayName: Translation.tr("Wave"), value: "wave" }
     ]
 
     function setPreference(key, value): void {
@@ -155,6 +168,8 @@ ContentPage {
                     scale: Math.min(2, 1.8 * root.preferences.size)
                     transformOrigin: Item.Center
                     expression: root.previewExpression
+                    motionAction: root.previewMotion
+                    grounded: !["fly","jump","drag","fall"].includes(root.previewMotion)
                     motionScale: Preferences.motionScale(root.preferences.personality)
                     motionEnabled: root.preferences.animationsEnabled && AbyssStyle.motionEnabled && visible
                     effectsEnabled: root.preferences.effectsEnabled && Appearance.effectsEnabled
@@ -185,6 +200,13 @@ ContentPage {
                     options: root.expressionOptions
                     currentValue: root.previewExpression
                     onSelected: value => root.previewExpression = value
+                }
+                ChoiceRow {
+                    objectName: "companionPreviewMotion"
+                    label: Translation.tr("Preview movement")
+                    options: root.motionOptions
+                    currentValue: root.previewMotion
+                    onSelected: value => root.previewMotion = value
                 }
             }
         }
@@ -257,6 +279,14 @@ ContentPage {
                 options: root.frequencyOptions
                 currentValue: root.preferences.appearanceFrequency
                 onSelected: value => root.setPreference("appearanceFrequency", value)
+            }
+            SettingsSwitch {
+                objectName: "companionExploreFeatures"
+                text: Translation.tr("Explore Abyss features")
+                description: Translation.tr("Occasionally open and explore panels, then close them. Wull leaves them open when you start using them.")
+                autoToggle: false
+                checked: root.preferences.exploreFeatures
+                onToggledByUser: checked => root.setPreference("exploreFeatures", checked)
             }
             SettingsSwitch {
                 objectName: "companionMotion"

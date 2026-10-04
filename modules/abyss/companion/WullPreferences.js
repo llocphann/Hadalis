@@ -10,7 +10,7 @@ function defaults() {
         interactive: true, soundEnabled: false, personality: "balanced",
         appearanceFrequency: "always", animationsEnabled: true,
         effectsEnabled: true, hideInFullscreen: false, renderQuality: "balanced",
-        translucency: 0.16
+        translucency: 0.16, exploreFeatures: true
     }
 }
 
@@ -22,7 +22,7 @@ function bounded(value, fallback, minimum, maximum) {
 function normalize(options) {
     const source = options ?? {}
     const result = defaults()
-    for (const key of ["enabled", "interactive", "soundEnabled", "animationsEnabled", "effectsEnabled", "hideInFullscreen"])
+    for (const key of ["enabled", "interactive", "soundEnabled", "animationsEnabled", "effectsEnabled", "hideInFullscreen", "exploreFeatures"])
         if (typeof source[key] === "boolean") result[key] = source[key]
     // Older persisted placement values are tolerated but no longer pin Wull.
     // Keep schema compatibility while geometry chooses every visit dynamically.

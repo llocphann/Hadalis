@@ -42,7 +42,7 @@ def main():
         options = json.loads(config.read_text())
         options["panelFamily"] = "abyss"
         if args.legacy_config:
-            for key in ("personality", "appearanceFrequency", "animationsEnabled", "effectsEnabled", "hideInFullscreen", "renderQuality", "translucency"):
+            for key in ("personality", "appearanceFrequency", "animationsEnabled", "effectsEnabled", "hideInFullscreen", "renderQuality", "translucency", "exploreFeatures"):
                 options["abyss"]["companion"].pop(key, None)
         config.write_text(json.dumps(options))
         env = core["private_env"](xdg, output)
@@ -78,6 +78,7 @@ def main():
                 saved = json.loads(config.read_text())["abyss"]["companion"]
                 assert saved["personality"] == "calm" and saved["appearanceFrequency"] == "occasional"
                 assert saved["enabled"] and not saved["animationsEnabled"] and not saved["effectsEnabled"]
+                assert not saved["exploreFeatures"]
                 assert saved["renderQuality"] == "quality"
                 assert abs(saved["translucency"] - 0.24) < 0.001
         assert output.is_file(), "settings capture missing"

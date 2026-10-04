@@ -47,6 +47,8 @@ Item {
     property bool grounded: true
     property bool dragging: false
     property bool traveling: false
+    property string motionAction: ""
+    property real motionProgress: -1
     property real walkingDirection: 1
     property real ripple: 0
     property real eyeOpen: 1
@@ -91,7 +93,9 @@ Item {
         id: gait
         walking: root.walking
         flying: root.flying
-        direction: root.walkingDirection
+        action: root.motionAction
+        progress: root.motionProgress
+        direction: Math.abs(root.walkingDirection)>.05 ? root.walkingDirection : 1
         motionEnabled: root.motionEnabled && root.visible
     }
 
@@ -100,7 +104,7 @@ Item {
     implicitHeight: 92
     transformOrigin: Item.Bottom
     scale: 1 + squash * 0.035 + hoverAmount * 0.015
-    rotation: orientationAngle + ((walking ? 0 : sway * 2.2) + stateLean * 5.0 + stateTip * 2.4 + expressionProfile.tilt * 4) * motionAmount
+    rotation: orientationAngle + ((gait.active ? 0 : sway * 2.2) + stateLean * 5.0 + stateTip * 2.4 + expressionProfile.tilt * 4) * motionAmount
     transform: [
         Scale {
             origin.x: root.width * 0.5; origin.y: root.height * 0.5
@@ -108,7 +112,7 @@ Item {
             yScale: 1 - (root.stateSquash + root.expressionSquash) * 0.035 + root.stateStretch * 0.06 - root.squash * 0.05
         },
         Translate {
-            y: (root.walking ? 0 : root.bob) * root.motionAmount + (1 - root.reveal) * 6 * root.motionAmount
+            y: (gait.active ? 0 : root.bob) * root.motionAmount + (1 - root.reveal) * 6 * root.motionAmount
         }
     ]
     Item {
@@ -484,12 +488,12 @@ Item {
         NumberAnimation { target: root; property: "shine"; to: 0; duration: 850 }
     }
     SequentialAnimation on bob {
-        running: root.motionEnabled && root.visible && !root.walking; loops: Animation.Infinite
+        running: root.motionEnabled && root.visible && !gait.active; loops: Animation.Infinite
         NumberAnimation { to: -1.2 - root.energy * 2.4; duration: 1570; easing.type: Easing.InOutSine }
         NumberAnimation { to: 0.6 + root.energy * 1.2; duration: 2110; easing.type: Easing.InOutSine }
     }
     SequentialAnimation on sway {
-        running: root.motionEnabled && root.visible && !root.walking; loops: Animation.Infinite
+        running: root.motionEnabled && root.visible && !gait.active; loops: Animation.Infinite
         NumberAnimation { to: 0.45 + root.energy; duration: 2390; easing.type: Easing.InOutSine }
         NumberAnimation { to: -0.3 - root.energy * 0.7; duration: 3170; easing.type: Easing.InOutSine }
     }

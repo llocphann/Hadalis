@@ -64,6 +64,7 @@ ApplicationWindow {
         root.require(saved.enabled && !saved.interactive && saved.hideInFullscreen, "switches did not persist")
         root.require(saved.personality === "calm" && saved.appearanceFrequency === "occasional", "behavior did not persist")
         root.require(!saved.animationsEnabled && !saved.effectsEnabled, "render policy did not persist")
+        root.require(!saved.exploreFeatures, "feature exploration switch did not persist")
         root.require(saved.renderQuality === "quality", "render quality did not persist")
         root.require(Math.abs(saved.translucency - 0.24) < 0.001, "translucency did not persist")
         root.require(Math.abs(saved.size - 1.27) < 0.001, "size did not persist")
@@ -114,7 +115,7 @@ ApplicationWindow {
                     && page.preferences.appearanceFrequency === "always"
                     && page.preferences.renderQuality === "balanced"
                     && page.preferences.translucency === 0.16
-                    && page.preferences.animationsEnabled && page.preferences.effectsEnabled,
+                    && page.preferences.animationsEnabled && page.preferences.effectsEnabled && page.preferences.exploreFeatures,
                     "new defaults were not available to existing configurations")
                 root.toggle("companionEnabled", true)
                 root.toggle("companionInteractive", false)
@@ -122,6 +123,7 @@ ApplicationWindow {
                 root.choose("companionPersonality", 0)
                 root.choose("companionFrequency", 2)
                 root.toggle("companionMotion", false)
+                root.toggle("companionExploreFeatures", false)
                 root.toggle("companionEffects", false)
                 root.choose("companionQuality", 2)
                 root.slide("companionTranslucency", 0.24)

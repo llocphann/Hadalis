@@ -35,6 +35,15 @@ Item {
     property string travelMode: "walk"
     property bool surfaceSupported: true
     property int travelDuration: 1000
+    property real travelArc: 0
+    property real travelPhase: 0
+    property real travelFromX: 0
+    property real travelFromY: 0
+    property real travelToX: 0
+    property real travelToY: 0
+    property string gesture: ""
+    property real gesturePhase: 1
+    readonly property string motionAction: dragging ? "drag" : moving ? travelMode : gesture
     property real travelDirection: 1
     property real travelDirectionY: 0
     property bool pointerFresh: false
@@ -63,9 +72,10 @@ Item {
         && !hardResetting && (dragging || !managedPlacement || travelEnabled || (Math.abs(x-targetX)<0.1 && Math.abs(y-targetY)<0.1))
     readonly property bool materialReady: droplet.materialReady
     readonly property bool softwareFallback: droplet.softwareFallback
-    readonly property bool moving: travelX.running || travelY.running
-    readonly property bool walking: moving && surfaceSupported && travelMode === "walk"
+    readonly property bool moving: travelTween.running
+    readonly property bool walking: moving && surfaceSupported && ["walk","run"].includes(travelMode)
     readonly property bool flying: dragging || (moving && !walking)
+    readonly property bool gesturing: gestureTween.running
     readonly property var attention: Attention.resolve(moving || dragging,
         travelDirection, travelDirectionY, moving || dragging ? false : pointerFresh,
         moving || dragging ? 0 : pointerX, moving || dragging ? 0 : pointerY,
@@ -83,7 +93,22 @@ Item {
     signal dragStarted()
     signal dragPositionRequested(real x, real y)
     signal dragEnded()
-    function stopTravel(): void { travelX.stop(); travelY.stop() }
+    signal gestureCompleted(string action)
+    function stopTravel(): void { travelTween.stop() }
+    function stopGesture(): void { gestureTween.stop(); gesture="";gesturePhase=1 }
+    function perform(action): bool {
+        if (!visible || !motionEnabled || !Curves.clips[action] || dragging || moving) return false
+        stopGesture();gesture=action;gesturePhase=0
+        gestureTween.duration=Curves.clips[action].duration;gestureTween.start()
+        return true
+    }
+    function updateTravel(): void {
+        const t=travelMode==="jump" ? Curves.sample("jump","journey",travelPhase) : travelPhase
+        const height=travelArc>0 ? Curves.sample(travelMode==="jump" ? "jump" : "fly","height",travelPhase)*travelArc : 0
+        x=travelFromX+(travelToX-travelFromX)*t
+        y=travelFromY+(travelToY-travelFromY)*t-height
+    }
+    onTravelPhaseChanged: if (moving) updateTravel()
     function present(value): void {
         presentationTween.stop()
         leaving=value<presentation
@@ -95,11 +120,15 @@ Item {
     }
     function resetTo(px, py, sourceEdge): void {
         hardResetting=true
-        stopTravel(); relocation.stop(); presentationTween.stop()
+        stopTravel(); stopGesture(); relocation.stop(); presentationTween.stop()
         presentation=0; leaving=false; activeEmergenceEdge=sourceEdge
         x=px; y=py
         hardResetting=false
+        // Geometry can relocate an already revealed actor without changing
+        // reveal's value. Re-arm emergence even when that binding is unchanged.
+        Qt.callLater(root.synchronizePresentation)
     }
+    function synchronizePresentation(): void { present(reveal) }
     function checkArrival(): void {
         if (initialized && travelEnabled && !moving && !dragging && !relocating
                 && presentation>.99 && Math.abs(x-targetX)<.1 && Math.abs(y-targetY)<.1)
@@ -118,15 +147,14 @@ Item {
             Qt.callLater(root.checkArrival)
         } else if (travelEnabled) {
             relocation.stop()
+            stopGesture()
             activeEmergenceEdge=emergenceEdge
-            if (Math.abs(x-targetX)>.01) {
-                travelX.stop();travelX.from=x;travelX.to=targetX
-                travelX.duration=travelDuration;travelX.start()
-            }
-            if (Math.abs(y-targetY)>.01) {
-                travelY.stop();travelY.from=y;travelY.to=targetY
-                travelY.duration=travelDuration;travelY.start()
-            }
+            stopTravel()
+            travelFromX=x;travelFromY=y;travelToX=targetX;travelToY=targetY
+            travelPhase=0;travelTween.duration=travelDuration
+            travelTween.easing.type=travelMode==="fall" ? Easing.InQuad
+                : travelMode==="fly" ? Easing.InOutSine : Easing.Linear
+            travelTween.start()
         } else {
             stopTravel()
             relocation.restart()
@@ -142,7 +170,7 @@ Item {
 
     onRevealChanged: if (initialized) {
         if (reveal <= 0) {
-            stopTravel(); relocation.stop()
+            stopTravel(); stopGesture(); relocation.stop()
             // Arrival changes the selected water edge after the last target
             // position. Dive through that edge, not the old drag/visit origin.
             activeEmergenceEdge=emergenceEdge
@@ -156,12 +184,18 @@ Item {
         activeEmergenceEdge = emergenceEdge
         present(reveal)
     }
-    onMotionEnabledChanged: if (!motionEnabled) { stopTravel(); relocation.stop(); present(reveal) }
+    onMotionEnabledChanged: if (!motionEnabled) { stopTravel(); stopGesture(); relocation.stop(); present(reveal) }
     // Standalone animation nodes can really be stopped at their current value.
     // Behavior's nested nodes reject stop(), breaking hover/drag interruption.
     NumberAnimation { id: presentationTween; target: root; property: "presentation" }
-    NumberAnimation { id: travelX; target: root; property: "x"; onFinished: Qt.callLater(root.checkArrival) }
-    NumberAnimation { id: travelY; target: root; property: "y"; onFinished: Qt.callLater(root.checkArrival) }
+    NumberAnimation {
+        id: travelTween; target: root; property: "travelPhase"; from: 0; to: 1
+        onFinished: {root.updateTravel();Qt.callLater(root.checkArrival)}
+    }
+    NumberAnimation {
+        id: gestureTween; target: root; property: "gesturePhase"; from: 0; to: 1
+        onFinished: {const action=root.gesture;root.gesture="";root.gestureCompleted(action)}
+    }
 
     DragHandler {
         id: dragHandler
@@ -173,7 +207,7 @@ Item {
         onActiveChanged: {
             if (active) {
                 root.dragStartX=root.x; root.dragStartY=root.y
-                root.stopTravel(); relocation.stop()
+                root.stopTravel(); root.stopGesture(); relocation.stop()
                 root.dragStarted()
             } else root.dragEnded()
         }
@@ -254,6 +288,9 @@ Item {
             translucency: root.translucency
             walking: root.walking
             flying: root.flying
+            motionAction: root.motionAction
+            motionProgress: root.moving && ["jump","fall"].includes(root.travelMode) ? root.travelPhase
+                : root.gesture ? root.gesturePhase : -1
             grounded: root.surfaceSupported && !root.flying
             dragging: root.dragging
             traveling: root.moving

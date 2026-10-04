@@ -7,6 +7,8 @@ import runpy
 root = Path(__file__).resolve().parents[1]
 script = (root / "scripts/wull-manual-nested-niri.py").read_text()
 ast.parse(script)
+assert 'background-color "#000000"' in script
+assert 'backdrop-color "#000000"' in script
 for must in (
     'sys.argv[1:] != ["--acknowledge-nested-niri"]',
     'env.pop("NIRI_SOCKET", None)',

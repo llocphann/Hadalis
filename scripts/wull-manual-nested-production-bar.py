@@ -245,7 +245,8 @@ def capture(mode):
         for folder in ("config", "data", "cache", "state"):
             (private / folder).mkdir(mode=0o700)
         config, log = private / "nested.kdl", private / "nested.private.log"
-        config.write_text("", encoding="utf-8")
+        config.write_text('layout {\n    background-color "#000000"\n}\n',
+                          encoding="utf-8")
         nested_env = os.environ.copy()
         nested_env.pop("NIRI_SOCKET", None)
         nested_env.update({

@@ -58,3 +58,57 @@ this continuation. Cloud-side tests use independent temporary fixtures/clones.
   retain the clean log and classify failures without changing unrelated product
   behavior. Live automation acceptance is not enabled.
 - [ ] Retain owner-session desktop acceptance separately from local tests.
+
+## Maintainer product repair and optimization — 2026-10-04
+
+One active context handles the four requested outcomes. Automation remains
+excluded; concurrent Wull development and unrelated MEGA evidence are preserved.
+
+- [x] Rehost the desktop Edit Widget toolbar in the existing Abyss body/field,
+  choose bottom/top/left/right placement around nearby widgets, and retain all
+  controls and output ownership. Native four-edge/narrow-output callbacks,
+  input release and lifecycle passed; owner-session acceptance remains separate.
+- [x] Reconcile all forty failures in the current canonical report at
+  `docs/wull-visual/abyss-water-20261004/canonical-summary.txt`. Fix real runtime
+  defects and replace stale implementation assertions with current behavior
+  coverage; 31 active checks passed at `151e86a5b`, nine explicit phase/manual
+  exclusions remain visible. The original failed evidence is unchanged.
+- [x] Consolidate duplicate Settings destinations/sections without shifting
+  persisted page slots, losing search/deep links or removing Waffle support.
+- [x] Continue proven lossless Abyss/Wull reductions. Wull segment arrays
+  2 → 0 per visited obstacle; native parity: 3,821 cases and 13 reactive steps.
+  Integrated Abyss allocation oracles passed. These are scoped allocation
+  reductions, not whole-application CPU/RAM/FPS measurements.
+- [x] Tune named Waves presets: Balanced equals the previous Calm; Calm, Fluid
+  and Deep are restrained. Preserve explicit and fallback Custom values. Source
+  and regression milestone: `96edb680e`.
+- [x] Run canonical validation at
+  `e6d6f9083be1e251c958e7c9fa6228fcd60bc9c7`: 415 PASS, 0 FAIL, 11 SKIP;
+  strict Qt 6.11.2 parsing PASS. Retain log, all forty failure dispositions,
+  native parity output and four-edge isolated toolbar images. This qualifies
+  the integrated earlier allocation reductions at this descendant, not the
+  consumed worker evidence or later concurrent Wull commits.
+- [x] Repair notification lifetime: pause remaining time on hover, resume on
+  final-output leave/delegate retirement, and cover late arrivals and history.
+  Native regression and source milestone: `f480a9de0`.
+- [x] Replace Abyss notification Anchor with the existing free-position editor,
+  per-output storage/reset and visible app-timeout preference. Native Settings
+  regression and source milestone: `e6d6f9083`.
+
+Product changes and retained evidence:
+[`PRODUCT_REPAIR_LOSSLESS_2026-10-04.md`](../../docs/abyss/PRODUCT_REPAIR_LOSSLESS_2026-10-04.md).
+
+## Maintainer connected popup continuation — 2026-10-04
+
+The maintainer added these outcomes and requested continued bug finding and
+lossless optimization. Automation exclusion and the single-agent dev workflow
+remain in effect.
+
+- [ ] Present Niri Reloaded through the same notification placement/stack;
+  retain reload debounce, cooldown and Game Mode suppression.
+- [ ] Move Edit Dashboard Layout controls outside the Dashboard canvas into
+  an Abyss popup above it. Preserve actual widget/workspace dimensions, draft
+  commit/cancel, hidden-widget controls, clipping/input and output lifecycle.
+- [ ] Find and repair related runtime defects; promote further lossless work
+  only with behavior/read/dependency parity evidence and bounded validation.
+- [ ] Validate a new exact committed SHA; retain desktop acceptance separately.

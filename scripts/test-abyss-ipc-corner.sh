@@ -9,7 +9,7 @@ ipc_test_root="$(mktemp -d)"
 trap 'rm -rf -- "$ipc_test_root"' EXIT
 python3 - "$repo_root" "$ipc_test_root" <<'PYSETUP'
 from pathlib import Path
-import shutil,sys
+import re,shutil,sys
 repo,base=map(Path,sys.argv[1:])
 (base/'modules').mkdir()
 for entry in (repo/'modules').iterdir():
@@ -17,9 +17,9 @@ for entry in (repo/'modules').iterdir():
     else: (base/'modules'/entry.name).symlink_to(entry)
 for name in ['services','GlobalStates.qml','qmldir','assets','scripts','defaults','translations']: (base/name).symlink_to(repo/name)
 p=base/'modules/abyss/AbyssPerimeter.qml';s=p.read_text()
-s=s.replace('id: root\n','id: root\n    readonly property var qaWindows: qaOutputs.instances\n    readonly property bool qaIPCReady: qaOsdController.initialized\n',1)
+variants_id=re.search(r'\bVariants\s*\{\s*id:\s*(\w+)',s).group(1)
+s=s.replace('id: root\n',f'id: root\n    readonly property var qaWindows: {variants_id}.instances\n    readonly property bool qaIPCReady: qaOsdController.initialized\n',1)
 s=s.replace('    AbyssOsdController {}','    AbyssOsdController { id: qaOsdController }',1)
-s=s.replace('    Variants {\n','    Variants {\n        id: qaOutputs\n',1)
 s=s.replace('id: window\n','id: window\n            property alias qaOsd: osd\n            property alias qaField: field\n',1)
 p.write_text(s)
 (base/'config/illogical-impulse').mkdir(parents=True)

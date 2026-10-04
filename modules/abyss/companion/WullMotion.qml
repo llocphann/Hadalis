@@ -19,6 +19,8 @@ Item {
     property real weight: 0
     readonly property real lift: Curves.sample(clip, "lift", sampledPhase) * weight
     readonly property real roll: Curves.sample(clip, "roll", sampledPhase) * direction * weight
+    readonly property real pitch: Curves.sample(clip, "pitch", sampledPhase) * weight
+    readonly property real yaw: Curves.sample(clip, "yaw", sampledPhase) * direction * weight
     readonly property real scaleX: 1 + (Curves.sample(clip, "scaleX", sampledPhase) - 1) * weight
     readonly property real scaleY: 1 + (Curves.sample(clip, "scaleY", sampledPhase) - 1) * weight
     function footX(channel): real { return Curves.sample(clip, channel, sampledPhase) * direction * weight }

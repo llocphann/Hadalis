@@ -7,6 +7,7 @@ import qs.modules.common.functions
 import "WullExpressions.js" as Expressions
 import "WullPreferences.js" as Preferences
 import "WullMotionData.js" as Curves
+import "WullPose.js" as Pose
 
 Item {
     id: root
@@ -42,6 +43,13 @@ Item {
     readonly property real yawRadians: viewYaw * Math.PI / 180
     readonly property real yawCos: Math.cos(yawRadians)
     readonly property real yawSin: Math.sin(yawRadians)
+    property real viewPitch: 0
+    readonly property real modelYaw: viewYaw+gait.yaw
+    readonly property real modelPitch: viewPitch+gait.pitch
+    readonly property var poseRotation: Pose.rotation(modelYaw,modelPitch,gait.roll)
+    readonly property real poseScaleX: gait.scaleX
+    readonly property real poseScaleY: gait.scaleY
+    function project(x,y,z): var {return Pose.project(poseRotation,x,y,z,poseScaleX,poseScaleY)}
     property bool walking: false
     property bool flying: false
     property bool grounded: true
@@ -176,8 +184,8 @@ Item {
             readonly property real contactSide: 19
             readonly property real contactDepth: 8
             property vector4d feet: Qt.vector4d(
-                (contact.width * 0.5 - contactSide * root.yawCos + contactDepth * root.yawSin + gait.footX("foot0X")) / contact.width,
-                (contact.width * 0.5 + contactSide * root.yawCos + contactDepth * root.yawSin + gait.footX("foot1X")) / contact.width,
+                (contact.width*.5+root.project(-contactSide+gait.footX("foot0X"),-29.76+gait.footZ("foot0Z"),contactDepth).x)/contact.width,
+                (contact.width*.5+root.project(contactSide+gait.footX("foot1X"),-29.76+gait.footZ("foot1Z"),contactDepth).x)/contact.width,
                 1-Math.min(1, gait.footZ("foot0Z")/2), 1-Math.min(1, gait.footZ("foot1Z")/2))
             fragmentShader: Qt.resolvedUrl("WaterDropletContact.frag.qsb")
         }
@@ -210,13 +218,14 @@ Item {
                 readonly property string zTrack: (hand ? "arm"+index : "foot"+(index-2)) + "Z"
                 readonly property real stepX: gait.footX(xTrack)
                 readonly property real stepZ: gait.footZ(zTrack)
-                readonly property real yaw: root.yawRadians
-                readonly property real depth: -side * (hand ? 34 : 19) * root.yawSin + 8 * root.yawCos
+                readonly property real yaw: root.modelYaw*Math.PI/180
+                readonly property var spatial: root.project(side*(hand ? 34 : 19)+stepX,
+                    46.14-(hand ? 53.3 : 75.9)+stepZ,8)
+                readonly property real depth: spatial.z
                 width: hand ? 10.5 : 14
-                height: width * (hand ? 0.82 : 0.40)
-                x: 38 + side * (hand ? 34 : 19) * root.yawCos
-                    + 8 * root.yawSin - width / 2 + stepX
-                y: (hand ? 49 : 73.1) - stepZ + root.reactionLift * root.motionAmount + (hand ? gait.lift : 0)
+                height: width
+                x:38+spatial.x-width/2
+                y:46.14-spatial.y-height/2+root.reactionLift*root.motionAmount+gait.lift
                 z: depth >= 0 ? 1 : -1
                 ShaderEffect {
                     anchors.fill: parent
@@ -226,6 +235,7 @@ Item {
                     property vector4d motion: Qt.vector4d(root.shimmer, 0, root.pulse, root.effectsEnabled ? 1 : 0)
                     property vector4d optics: Qt.vector4d(waterFoot.yaw, 3, 0, 0)
                     property vector4d rendering: Qt.vector4d(root.qualityLevel, root.translucency, 0, 0)
+                    property vector4d pose:Qt.vector4d(root.modelPitch*Math.PI/180,gait.roll*Math.PI/180,0,0)
                     fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
                 }
                 Shape {
@@ -254,9 +264,6 @@ Item {
             id: torso
             width: root.width; height: root.height
             y: gait.lift + root.reactionLift * root.motionAmount
-            rotation: gait.roll
-            transformOrigin: Item.Bottom
-            transform: Scale { origin.x: 38; origin.y: 76; xScale: gait.scaleX; yScale: gait.scaleY }
             // Rounded vector fallback for software/error; volume optics require a GPU.
             Shape {
                 x: 0; y: 7; width: 76; height: 76
@@ -283,14 +290,16 @@ Item {
             }
             ShaderEffect {
                 id: material
+                objectName:"wullVolumeMaterial"
                 x: 0; y: 7; width: 76; height: 76
                 visible: GraphicsInfo.api !== GraphicsInfo.Software
                 property color accent: root.liquidAccent
                 property color specular: root.reflectionColor
                 property vector4d motion: Qt.vector4d(root.shimmer, root.stateTip + root.sway * 0.25,
                     Math.max(root.pulse,root.tapPulse*.65) + root.hoverAmount*.16, root.effectsEnabled ? 1 : 0)
-                property vector4d optics: Qt.vector4d(root.viewYaw * Math.PI / 180, 0, 0, 0)
+                property vector4d optics: Qt.vector4d(root.modelYaw * Math.PI / 180, 0, 0, 0)
                 property vector4d rendering: Qt.vector4d(root.qualityLevel, root.translucency, 0, 0)
+                property vector4d pose:Qt.vector4d(root.modelPitch*Math.PI/180,gait.roll*Math.PI/180,root.poseScaleX-1,root.poseScaleY-1)
                 fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
             }
             // Decorative droplets fit the enclosing host; the body hitbox stays 76x92.
@@ -303,9 +312,10 @@ Item {
                     readonly property real angle: root.orbitAngle + Expressions.bubblePhase[index]
                     readonly property real orbitCos: Math.cos(angle)
                     readonly property real orbitSin: Math.sin(angle)
-                    readonly property real depth: -47 * orbitCos * root.yawSin + 25 * orbitSin * root.yawCos
-                    x: 38 + 47 * orbitCos * root.yawCos + 25 * orbitSin * root.yawSin - width/2
-                    y: 42 + 37 * orbitSin - height/2
+                    readonly property var spatial:root.project(47*orbitCos,4.14-37*orbitSin,25*orbitSin)
+                    readonly property real depth:spatial.z
+                    x:38+spatial.x-width/2
+                    y:46.14-spatial.y-height/2
                     z: depth < 0 ? -1 : 2
                     opacity: depth < 0 ? 0.78 : 1
                     width: Expressions.dropletSize[index]; height: width
@@ -317,6 +327,7 @@ Item {
                         property vector4d motion: Qt.vector4d(root.shimmer, 0, root.pulse, 0)
                         property vector4d optics: Qt.vector4d(0, 1, 0, 0)
                         property vector4d rendering: Qt.vector4d(root.qualityLevel, root.translucency, 0, 0)
+                        property vector4d pose:Qt.vector4d(0,0,0,0)
                         fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
                     }
                     Shape {
@@ -343,15 +354,17 @@ Item {
                 id: faceOverlay
                 anchors.fill: parent
                 transformOrigin: Item.Center
-                opacity: Math.max(0, root.yawCos)
-                transform: [
-                    Scale { origin.x: 38; origin.y: 60; xScale: Math.max(0.01, root.yawCos) },
-                    Translate { x: 18 * root.yawSin }
-                ]
+                opacity:Math.max(0,Math.min(1,root.poseRotation[8]*5))
+                transform:Matrix4x4 {
+                    matrix: {
+                        const m=Pose.faceMatrix(root.poseRotation,root.poseScaleX,root.poseScaleY)
+                        return Qt.matrix4x4(m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8],m[9],m[10],m[11],m[12],m[13],m[14],m[15])
+                    }
+                }
                 WaterDropletFace {
                     anchors.fill: parent
                     expression: root.expression
-                    viewYaw: root.viewYaw
+                    viewYaw: root.modelYaw
                     accent: root.liquidAccent
                     eyeOpen: root.eyeOpen
                     mouthCurve: root.mouthCurve

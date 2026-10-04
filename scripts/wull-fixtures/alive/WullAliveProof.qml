@@ -159,7 +159,8 @@ Window {
                 wait(80);check(presence.retreating,"minimum visit never released the hide")
                 check(Curves.clips.sink.duration>=5000,"quicksand remains too fast")
                 check(Curves.sample("launch","normal",.30)<-1 && Curves.sample("riseJump","normal",.36)<-.8,"entrance arc remained ordinary")
-                check(Math.abs(Curves.sample("buttplant","roll",.60))>60 && Curves.sample("buttplant","foot0Z",.60)>14,"backside landing has no visible seated pose")
+                check(Math.abs(Curves.sample("buttplant","pitch",.60))>60 && Curves.sample("buttplant","foot0Z",.60)>14,"backside landing has no spatial seated pose")
+                check(Curves.sample("buttplant","scaleY",.60)>.95,"backside fall flattened Wull")
                 root.allowed=false;wait(40)
                 check(!actor.visible && !gait.active && !root.named(presence,"wullPeekDeadline").running && !notice.running
                     && !root.named(presence,"wullFullVisitDeadline").running,"policy hide retained clocks")

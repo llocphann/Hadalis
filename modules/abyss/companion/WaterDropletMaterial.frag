@@ -11,6 +11,7 @@ layout(std140,binding=0) uniform buf {
     vec4 motion; // shimmer, tip bend, pulse, effects gate
     vec4 optics; // yaw (radians), body/sphere/cornea/foot variant, eye gaze x/y
     vec4 rendering; // quality tier 0..2, liquid translucency 0..0.35
+    vec4 pose; // pitch, roll (radians), local X/Y scale minus one
 };
 const float BOTTOM=-0.87, TOP=0.99, DEPTH=0.91;
 float verticalScale() { return optics.y>2.5 ? 0.40 : 1.0; }
@@ -38,13 +39,21 @@ float centerAt(float y) {
     // the native size, so the pointed shape remains balanced while alive.
     return clamp(motion.y,-1.0,1.0)*0.008*t*t*t;
 }
+mat3 rotation() {
+    float cy=cos(optics.x),sy=sin(optics.x),cp=cos(pose.x),sp=sin(pose.x),cr=cos(pose.y),sr=sin(pose.y);
+    return mat3(cr*cy,sr*cy,-sy,
+        cr*sy*sp-sr*cp,sr*sy*sp+cr*cp,cy*sp,
+        cr*sy*cp+sr*sp,sr*sy*cp-cr*sp,cy*cp);
+}
+vec3 modelScale() {
+    vec2 s=max(vec2(0.4),vec2(1.0)+pose.zw);
+    return vec3(s,1.0/(s.x*s.y));
+}
 vec3 modelPoint(vec3 p) {
-    float c=cos(optics.x), s=sin(optics.x);
-    return vec3(c*p.x-s*p.z,p.y,s*p.x+c*p.z);
+    return transpose(rotation())*p/modelScale();
 }
 vec3 worldVector(vec3 p) {
-    float c=cos(optics.x), s=sin(optics.x);
-    return vec3(c*p.x+s*p.z,p.y,-s*p.x+c*p.z);
+    return rotation()*(p*modelScale());
 }
 float field(vec3 world) {
     vec3 p=modelPoint(world);
@@ -60,7 +69,45 @@ vec3 normalAt(vec3 world) {
     float dc=(centerAt(p.y+0.002)-centerAt(p.y-0.002))/0.004;
     float depth=depthScale();
     vec3 n=vec3(x,-x*dc-r*dr,p.z/(depth*depth));
-    return normalize(worldVector(n)+vec3(0.0,0.000001,0.0));
+    return normalize(rotation()*(n/modelScale())+vec3(0.0,0.000001,0.0));
+}
+// A tilted droplet changes its 3D silhouette, front/back interfaces and light
+// paths. The common unpitched pose retains the exact analytic fast path.
+bool frontInterface(vec2 q, out vec3 surface, out float distance) {
+    if(abs(pose.x)<0.00001) {
+        float cr=cos(pose.y),sr=sin(pose.y),c=cos(optics.x),s=sin(optics.x);
+        vec2 v=vec2(cr*q.x+sr*q.y,-sr*q.x+cr*q.y);
+        vec3 scale=modelScale();
+        float y=v.y/scale.y,r=radiusAt(y),center=centerAt(y),depth=depthScale()*scale.z;
+        float halfWidth=r*sqrt(scale.x*scale.x*c*c+depth*depth*s*s);
+        float low=optics.y>0.5 ? -0.89*verticalScale() : BOTTOM;
+        float high=optics.y>0.5 ? 0.89*verticalScale() : TOP;
+        distance=max(abs(v.x-center*scale.x*c)-halfWidth,max(low*scale.y-v.y,v.y-high*scale.y));
+        float a=s*s/(scale.x*scale.x)+c*c/(depth*depth);
+        float b=2.0*(-s/scale.x*(v.x*c/scale.x-center)+c*v.x*s/(depth*depth));
+        float e=pow(v.x*c/scale.x-center,2.0)+pow(v.x*s/depth,2.0)-r*r;
+        surface=vec3(q,(-b+sqrt(max(0.0,b*b-4.0*a*e)))/(2.0*a));
+        return distance<=0.0;
+    }
+    float bound=1.15*max(max(modelScale().x,modelScale().y),modelScale().z);
+    float circle=dot(q,q)-bound*bound;
+    if(circle>0.0){distance=sqrt(dot(q,q))-bound;surface=vec3(q,0);return false;}
+    float start=sqrt(max(0.0,-circle)),previous=start;
+    distance=10.0;bool hit=false;float inside=0.0;
+    int steps=rendering.x>1.5 ? 40 : rendering.x>0.5 ? 32 : 24;
+    for(int i=0;i<=40;i++) {
+        if(i>steps)break;
+        float z=mix(start,-start,float(i)/float(steps));
+        float value=field(vec3(q,z));distance=min(distance,value);
+        if(!hit && value<=0.0){inside=z;hit=true;}
+        if(!hit)previous=z;
+    }
+    if(!hit){surface=vec3(q,0);return false;}
+    for(int i=0;i<7;i++) {
+        float middle=(inside+previous)*0.5;
+        if(field(vec3(q,middle))<=0.0)inside=middle;else previous=middle;
+    }
+    surface=vec3(q,(inside+previous)*0.5);return true;
 }
 float backInterface(vec3 entry, vec3 direction) {
     float inside=0.0, outside=0.018;
@@ -195,28 +242,17 @@ vec3 film(vec3 color) {
 }
 void main() {
     vec2 q=vec2((qt_TexCoord0.x-0.5)*2.15,(0.515-qt_TexCoord0.y)*2.15);
-    q.y*=verticalScale();
-    float r=radiusAt(q.y), center=centerAt(q.y);
-    float c=cos(optics.x), s=sin(optics.x);
-    float depth=depthScale();
-    float halfWidth=r*sqrt(c*c+depth*depth*s*s);
-    float low=optics.y>0.5 ? -0.89*verticalScale() : BOTTOM;
-    float high=optics.y>0.5 ? 0.89*verticalScale() : TOP;
-    float d=max(abs(q.x-center*c)-halfWidth,max(low-q.y,q.y-high));
+    vec3 surface;float d;
+    bool hit=frontInterface(q,surface,d);
     float aa=max(fwidth(d)*0.65,0.002);
     float cover=1.0-smoothstep(-aa,aa,d);
     vec3 hue=pow(accent.rgb/max(accent.a,0.001),vec3(2.2));
     float halo=exp(-max(d,0.0)*40.0)*(1.0-cover)*0.12*motion.w*(1.0+motion.z);
-    if (cover<0.001) {
+    if (cover<0.001 || !hit) {
         fragColor=vec4(pow(hue,vec3(1.0/2.2))*halo,halo)*qt_Opacity;
         return;
     }
-    // Ray/ellipse intersection at this height, after actual 3D camera yaw.
-    float a=s*s+c*c/(depth*depth);
-    float b=2.0*(-s*(q.x*c-center)+c*q.x*s/(depth*depth));
-    float e=pow(q.x*c-center,2.0)+pow(q.x*s/depth,2.0)-r*r;
-    float z=(-b+sqrt(max(0.0,b*b-4.0*a*e)))/(2.0*a);
-    vec3 surface=vec3(q,z), normal=normalAt(surface);
+    vec3 normal=normalAt(surface);
     if (optics.y<0.5 && motion.w>0.5) {
         // A small tangent perturbation bends the reflected light like a
         // settling liquid surface while keeping the round silhouette smooth.

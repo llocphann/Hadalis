@@ -65,6 +65,7 @@ Item {
                     property vector4d motion: Qt.vector4d(0, 0, 0, 0)
                     property vector4d optics: Qt.vector4d(0, 2, root.pupilX, root.pupilY)
                     property vector4d rendering: Qt.vector4d(root.qualityLevel, 0, 0, 0)
+                    property vector4d pose:Qt.vector4d(0,0,0,0)
                     fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
                 }
                 Item {

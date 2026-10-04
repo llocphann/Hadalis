@@ -62,9 +62,20 @@ assert.equal(placement.besideSurface({x:10,y:10,width:300,height:200},'top',1200
 if(process.argv[2]) {
     let max=0;
     for(const [clip,channel,phase,value] of JSON.parse(fs.readFileSync(process.argv[2],'utf8'))) {
-        max=Math.max(max,Math.abs(curves.sample(clip,channel,phase)-value));
+        const error=Math.abs(curves.sample(clip,channel,phase)-value);
+        max=Math.max(max,error);
+        // Blender evaluates in float32. Bound input-frame rounding and the
+        // float arithmetic separately; large spatial angles need a scaled
+        // bound rather than the old constant tuned for small gait offsets.
+        const keys=curves.clips[clip].tracks[channel],frames=curves.clips[clip].duration*60/1000;
+        const upper=keys.findIndex((k,i)=>i>0 && phase<=k[0]);
+        const a=keys[Math.max(0,upper-1)],b=keys[upper<0 ? keys.length-1 : upper];
+        const slope=upper<0 ? 0 : Math.abs((b[1]-a[1])/((b[0]-a[0])*frames));
+        const frame=1+phase*frames;
+        const ulp=Math.pow(2,Math.floor(Math.log2(Math.max(1,Math.abs(a[1]),Math.abs(b[1]))))-23);
+        const bound=slope*Math.abs(Math.fround(frame)-frame)+8*ulp;
+        assert.ok(error<=bound,`Blender float32 parity ${clip}.${channel}@${phase}: ${error} > ${bound}`);
     }
-    assert.ok(max<0.00002,`Blender float32 evaluation parity: ${max}`);
     console.log(`WULL_BLENDER_CURVE_PARITY_PASS max_error=${max}`);
 }
 console.log('WULL_MOTION_CURVES_AND_SAFE_TRAVEL_PASS');

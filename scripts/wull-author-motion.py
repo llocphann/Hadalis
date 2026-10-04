@@ -64,7 +64,7 @@ def author(blend_path, module_path, parity_path):
         r = radius(y)
         for j in range(segments):
             angle = math.tau * j / segments
-            verts.append((38*r*math.cos(angle), 38*r*.91*math.sin(angle), 38*y+37))
+            verts.append((38*r*math.cos(angle), 38*r*.91*math.sin(angle), 38*y))
     for i in range(rings-1):
         for j in range(segments):
             a=i*segments+j; b=i*segments+(j+1)%segments
@@ -74,6 +74,8 @@ def author(blend_path, module_path, parity_path):
     mesh.from_pydata(verts, [], faces)
     mesh.update()
     body = bpy.data.objects.new('Liquid body', mesh)
+    body.location.z=37
+    body.rotation_mode='XZY'
     scene.collection.objects.link(body)
     body.data.materials.append(blue)
     for poly in mesh.polygons: poly.use_smooth=True
@@ -93,6 +95,7 @@ def author(blend_path, module_path, parity_path):
         eye.name='Glossy eye'
         eye.scale=(5,2.6,6)
         eye.data.materials.append(dark)
+        eye.location.z-=37
         eye.parent=body
         eyes.append(eye)
     clips={}
@@ -258,13 +261,17 @@ def author(blend_path, module_path, parity_path):
             tracks[f'foot{i}X']=[(0,0),(.3,sign*3),(.5,-sign*3),(.7,sign*4),(1,0)]
             tracks[f'foot{i}Z']=[(0,0),(.3,4+i*3),(.5,9-i*4),(.7,3+i*4),(1,0)]
         if name=='faceplant':
-            tracks['roll']=[(0,0),(.35,10),(.53,65),(.72,65),(.85,12),(1,0)]
-            tracks['scaleY']=[(0,1),(.35,1.03),(.53,.70),(.72,.72),(.9,1.04),(1,1)]
-            tracks['scaleX']=[(0,1),(.35,.98),(.53,1.18),(.72,1.15),(.9,.98),(1,1)]
+            tracks['pitch']=[(0,0),(.35,12),(.53,78),(.72,78),(.85,15),(1,0)]
+            tracks['yaw']=[(0,0),(.35,-8),(.53,-12),(.72,-12),(1,0)]
+            tracks['roll']=[(0,0),(.35,4),(.53,8),(.72,8),(1,0)]
+            tracks['scaleY']=[(0,1),(.35,1.03),(.53,.96),(.72,.98),(1,1)]
+            tracks['scaleX']=[(0,1),(.35,.98),(.53,1.035),(.72,1.02),(1,1)]
         if name in ('buttplant','fallVanish'):
-            tracks['roll']=[(0,0),(.32,-28),(.57,-68),(.76,-68),(.9,-12),(1,0)]
-            tracks['scaleY']=[(0,1),(.32,1.04),(.57,.68),(.76,.72),(.9,1.03),(1,1)]
-            tracks['scaleX']=[(0,1),(.32,.97),(.57,1.22),(.76,1.16),(.9,.98),(1,1)]
+            tracks['pitch']=[(0,0),(.32,-28),(.57,-68),(.76,-68),(.9,-12),(1,0)]
+            tracks['yaw']=[(0,0),(.32,-12),(.57,-22),(.76,-22),(1,0)]
+            tracks['roll']=[(0,0),(.32,-6),(.57,-12),(.76,-12),(1,0)]
+            tracks['scaleY']=[(0,1),(.32,1.04),(.57,.96),(.76,.98),(1,1)]
+            tracks['scaleX']=[(0,1),(.32,.97),(.57,1.035),(.76,1.02),(1,1)]
             tracks['eyeOpen']=[(0,1),(.24,0),(.76,0),(.88,.25),(1,1 if name=='buttplant' else 0)]
             for i in range(2):
                 tracks[f'foot{i}X']=[(0,0),(.35,(1 if i else -1)*5),(.58,(1 if i else -1)*9),(.8,(1 if i else -1)*8),(1,0)]
@@ -274,9 +281,11 @@ def author(blend_path, module_path, parity_path):
         definitions[name]=(duration,tracks)
     definitions['ice']=(2400,{
         'lift':[(0,0),(.18,-9),(.40,2),(.65,1),(.82,-2),(1,0)],
-        'roll':[(0,0),(.18,-12),(.40,-65),(.72,-65),(.9,3),(1,0)],
-        'scaleX':[(0,1),(.4,1.12),(.65,1.1),(1,1)],
-        'scaleY':[(0,1),(.4,.66),(.72,.72),(1,1)],
+        'pitch':[(0,0),(.18,-12),(.40,-65),(.72,-65),(.9,3),(1,0)],
+        'yaw':[(0,0),(.18,8),(.4,20),(.72,20),(1,0)],
+        'roll':[(0,0),(.18,-4),(.4,-10),(.72,-10),(1,0)],
+        'scaleX':[(0,1),(.4,1.035),(.65,1.02),(1,1)],
+        'scaleY':[(0,1),(.4,.96),(.72,.98),(1,1)],
         'eyeOpen':[(0,1),(.35,0),(.6,0),(1,1)],
         'arm0Z':[(0,0),(.4,8),(.7,4),(1,0)],'arm1Z':[(0,0),(.4,8),(.7,4),(1,0)],
         'foot0Z':[(0,0),(.4,8),(.7,6),(1,0)],'foot1Z':[(0,0),(.4,8),(.7,6),(1,0)],
@@ -307,18 +316,29 @@ def author(blend_path, module_path, parity_path):
     all_channels={name for _,tracks in definitions.values() for name in tracks}
     for channel in all_channels:
         rig[channel]=1.0 if channel.startswith('scale') or channel=='eyeOpen' else 0.0
-    driver(body,'location',2,rig,'lift',gain=-1)
-    driver(body,'rotation_euler',1,rig,'roll',gain=math.pi/180)
+    definitions['fly'][1]['pitch']=[(0,-5),(.22,6),(.55,-3),(.75,-7),(1,-5)]
+    definitions['fall'][1]['pitch']=[(0,0),(.25,18),(.72,-12),(1,0)]
+    # Same spatial rotation order as the runtime volume: roll, yaw, pitch.
+    # Blender's Y is depth (opposite runtime Z), and its Z is vertical.
+    driver(body,'location',2,rig,'lift',base=37,gain=-1)
+    driver(body,'rotation_euler',0,rig,'pitch',gain=math.pi/180)
+    driver(body,'rotation_euler',1,rig,'roll',gain=-math.pi/180)
+    driver(body,'rotation_euler',2,rig,'yaw',gain=math.pi/180)
     driver(body,'scale',0,rig,'scaleX')
     driver(body,'scale',2,rig,'scaleY')
+    depth_driver=body.driver_add('scale',1)
+    for channel in ('scaleX','scaleY'):
+        var=depth_driver.driver.variables.new();var.name=channel
+        var.targets[0].id=rig;var.targets[0].data_path='["'+channel+'"]'
+    depth_driver.driver.expression='1/max(0.01,scaleX*scaleY)'
     for eye in eyes:
         driver(eye,'scale',2,rig,'eyeOpen',gain=6)
     for i,limb in enumerate(limbs):
         base=limb.location.copy()
         channel=('arm'+str(i)) if i<2 else ('foot'+str(i-2))
         driver(limb,'location',0,rig,channel+'X',base=base.x)
-        driver(limb,'location',2,rig,channel+'Z',base=base.z)
-        limb.parent=body if i<2 else rig
+        driver(limb,'location',2,rig,channel+'Z',base=base.z-37)
+        limb.parent=body
     # Editable orbital bubbles share the same angular control exported to QML.
     for i,offset in enumerate((3.35,.4,4.1,5.4,4.78,5.08,2.5,.03)):
         bpy.ops.mesh.primitive_uv_sphere_add(segments=16,ring_count=8)
@@ -326,7 +346,7 @@ def author(blend_path, module_path, parity_path):
         bubble.name='Orbital bubble '+str(i+1)
         size=(13.5,14,11,6.5,4,4.5,4,3)[i]
         bubble.scale=(size/2,)*3; bubble.parent=body; bubble.data.materials.append(blue)
-        for axis,expression in enumerate((f'47*cos(motion+{offset})',f'25*sin(motion+{offset})',f'40-37*sin(motion+{offset})')):
+        for axis,expression in enumerate((f'47*cos(motion+{offset})',f'25*sin(motion+{offset})',f'3-37*sin(motion+{offset})')):
             curve=bubble.driver_add('location',axis)
             var=curve.driver.variables.new(); var.name='motion'
             var.targets[0].id=rig; var.targets[0].data_path='["angle"]'

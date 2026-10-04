@@ -14,11 +14,13 @@ use std::ffi::{OsStr, OsString};
 #[cfg(unix)]
 use std::io::{self, Read};
 #[cfg(unix)]
+use std::os::fd::AsRawFd;
+#[cfg(unix)]
 use std::os::unix::process::CommandExt;
 #[cfg(unix)]
 use std::path::{Path, PathBuf};
 #[cfg(unix)]
-use std::process::{Command, ExitStatus, Stdio};
+use std::process::{Child, Command, ExitStatus, Stdio};
 #[cfg(unix)]
 use std::thread;
 #[cfg(unix)]
@@ -26,6 +28,8 @@ use std::time::Duration;
 
 #[cfg(unix)]
 const POLL_INTERVAL: Duration = Duration::from_millis(10);
+#[cfg(unix)]
+const MAX_DRAIN_PER_TICK: usize = 64 * 1024;
 
 #[cfg(unix)]
 const PRESERVED_EXACT: &[&str] = &[
@@ -193,28 +197,45 @@ fn boottime_now() -> io::Result<Duration> {
 }
 
 #[cfg(unix)]
-fn drain_bounded<R: Read + Send + 'static>(
-    mut stream: R,
+fn set_nonblocking<T: AsRawFd>(stream: &T) -> io::Result<()> {
+    let fd = stream.as_raw_fd();
+    let flags = unsafe { libc::fcntl(fd, libc::F_GETFL) };
+    if flags < 0 {
+        return Err(io::Error::last_os_error());
+    }
+    if unsafe { libc::fcntl(fd, libc::F_SETFL, flags | libc::O_NONBLOCK) } < 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+fn drain_available<R: Read>(
+    stream: &mut R,
+    kept: &mut Vec<u8>,
     cap: usize,
-) -> thread::JoinHandle<io::Result<(Vec<u8>, bool)>> {
-    thread::spawn(move || {
-        let mut kept = Vec::with_capacity(cap.min(8192));
-        let mut capped = false;
-        let mut chunk = [0u8; 4096];
-        loop {
-            let count = stream.read(&mut chunk)?;
-            if count == 0 {
-                break;
+    capped: &mut bool,
+) -> io::Result<bool> {
+    let mut drained = 0usize;
+    let mut chunk = [0u8; 4096];
+    while drained < MAX_DRAIN_PER_TICK {
+        match stream.read(&mut chunk) {
+            Ok(0) => return Ok(true),
+            Ok(count) => {
+                drained = drained.saturating_add(count);
+                let remaining = cap.saturating_sub(kept.len());
+                let take = remaining.min(count);
+                kept.extend_from_slice(&chunk[..take]);
+                if take != count {
+                    *capped = true;
+                }
             }
-            let remaining = cap.saturating_sub(kept.len());
-            let take = remaining.min(count);
-            kept.extend_from_slice(&chunk[..take]);
-            if take != count {
-                capped = true;
-            }
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => return Ok(false),
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+            Err(error) => return Err(error),
         }
-        Ok((kept, capped))
-    })
+    }
+    Ok(false)
 }
 
 #[cfg(unix)]
@@ -235,12 +256,10 @@ fn kill_private_group(pid: u32) -> io::Result<()> {
 }
 
 #[cfg(unix)]
-fn join_drain(
-    handle: thread::JoinHandle<io::Result<(Vec<u8>, bool)>>,
-) -> io::Result<(Vec<u8>, bool)> {
-    handle.join().map_err(|_| {
-        io::Error::new(io::ErrorKind::Other, "process output drain thread panicked")
-    })?
+fn cleanup_after_spawn(child: &mut Child, pid: u32) {
+    let _ = kill_private_group(pid);
+    let _ = child.kill();
+    let _ = child.wait();
 }
 
 #[cfg(unix)]
@@ -256,6 +275,13 @@ pub fn run_bounded(spec: &VendorCommand) -> io::Result<Capture> {
         ));
     }
 
+    // Read the suspend-aware clock before process creation so a clock failure
+    // can never strand a child that has already been dispatched.
+    let started = boottime_now()?;
+    let deadline = started.checked_add(spec.timeout).ok_or_else(|| {
+        io::Error::new(io::ErrorKind::InvalidInput, "process timeout overflow")
+    })?;
+
     let mut command = Command::new(&spec.program);
     command.args(&spec.args);
     spec.environment.apply(&mut command);
@@ -264,7 +290,7 @@ pub fn run_bounded(spec: &VendorCommand) -> io::Result<Capture> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    // Each Hadalis-owned client is its own session/process group.  Timeout
+    // Each Hadalis-owned client is its own session/process group. Timeout
     // cleanup can therefore terminate descendants that inherited its pipes
     // without touching an externally owned mega-cmd-server.
     unsafe {
@@ -277,48 +303,137 @@ pub fn run_bounded(spec: &VendorCommand) -> io::Result<Capture> {
     }
 
     let mut child = command.spawn()?;
-    let stdout = child.stdout.take().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::Other, "missing child stdout pipe")
-    })?;
-    let stderr = child.stderr.take().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::Other, "missing child stderr pipe")
-    })?;
-    let stdout_thread = drain_bounded(stdout, spec.stdout_cap);
-    let stderr_thread = drain_bounded(stderr, spec.stderr_cap);
-
-    let started = boottime_now()?;
-    let deadline = started.checked_add(spec.timeout).ok_or_else(|| {
-        io::Error::new(io::ErrorKind::InvalidInput, "process timeout overflow")
-    })?;
-
-    let mut timed_out = false;
-    let status: ExitStatus = loop {
-        if let Some(status) = child.try_wait()? {
-            break status;
+    let pid = child.id();
+    let mut stdout = match child.stdout.take() {
+        Some(pipe) => pipe,
+        None => {
+            let error = io::Error::new(io::ErrorKind::Other, "missing child stdout pipe");
+            cleanup_after_spawn(&mut child, pid);
+            return Err(error);
         }
-        if boottime_now()? >= deadline {
-            timed_out = true;
-            // Best-effort group kill first, then direct-child fallback.  Always
-            // wait/reap before returning a result or allowing another process.
-            let group_result = kill_private_group(child.id());
-            let _ = child.kill();
-            let status = child.wait()?;
-            if let Err(error) = group_result {
-                let _ = join_drain(stdout_thread);
-                let _ = join_drain(stderr_thread);
+    };
+    let mut stderr = match child.stderr.take() {
+        Some(pipe) => pipe,
+        None => {
+            let error = io::Error::new(io::ErrorKind::Other, "missing child stderr pipe");
+            cleanup_after_spawn(&mut child, pid);
+            return Err(error);
+        }
+    };
+    if let Err(error) = set_nonblocking(&stdout).and_then(|_| set_nonblocking(&stderr)) {
+        cleanup_after_spawn(&mut child, pid);
+        return Err(error);
+    }
+
+    let mut stdout_kept = Vec::with_capacity(spec.stdout_cap.min(8192));
+    let mut stderr_kept = Vec::with_capacity(spec.stderr_cap.min(8192));
+    let mut stdout_capped = false;
+    let mut stderr_capped = false;
+    let mut stdout_eof = false;
+    let mut stderr_eof = false;
+    let mut status: Option<ExitStatus> = None;
+    let mut timed_out = false;
+
+    loop {
+        if !stdout_eof {
+            match drain_available(
+                &mut stdout,
+                &mut stdout_kept,
+                spec.stdout_cap,
+                &mut stdout_capped,
+            ) {
+                Ok(eof) => stdout_eof = eof,
+                Err(error) => {
+                    cleanup_after_spawn(&mut child, pid);
+                    return Err(error);
+                }
+            }
+        }
+        if !stderr_eof {
+            match drain_available(
+                &mut stderr,
+                &mut stderr_kept,
+                spec.stderr_cap,
+                &mut stderr_capped,
+            ) {
+                Ok(eof) => stderr_eof = eof,
+                Err(error) => {
+                    cleanup_after_spawn(&mut child, pid);
+                    return Err(error);
+                }
+            }
+        }
+
+        if status.is_none() {
+            match child.try_wait() {
+                Ok(Some(observed)) => status = Some(observed),
+                Ok(None) => {}
+                Err(error) => {
+                    cleanup_after_spawn(&mut child, pid);
+                    return Err(error);
+                }
+            }
+        }
+
+        if status.is_some() && stdout_eof && stderr_eof {
+            break;
+        }
+
+        let now = match boottime_now() {
+            Ok(now) => now,
+            Err(error) => {
+                cleanup_after_spawn(&mut child, pid);
                 return Err(error);
             }
-            break status;
-        }
-        thread::sleep(POLL_INTERVAL);
-    };
+        };
+        if now >= deadline {
+            timed_out = true;
+            // The deadline covers both the leader and pipe lifetime. A leader
+            // that exited while descendants still hold inherited stdout/stderr
+            // therefore cannot make join/read cleanup block indefinitely.
+            let group_result = kill_private_group(pid);
+            let _ = child.kill();
+            if status.is_none() {
+                match child.wait() {
+                    Ok(observed) => status = Some(observed),
+                    Err(error) => return Err(error),
+                }
+            } else {
+                let _ = child.wait();
+            }
 
-    let (stdout, stdout_capped) = join_drain(stdout_thread)?;
-    let (stderr, stderr_capped) = join_drain(stderr_thread)?;
+            // Best effort: consume bytes already buffered after the group kill.
+            // Never wait for EOF here; dropping the nonblocking pipes keeps the
+            // function bounded even if a descendant escaped the private group.
+            if !stdout_eof {
+                let _ = drain_available(
+                    &mut stdout,
+                    &mut stdout_kept,
+                    spec.stdout_cap,
+                    &mut stdout_capped,
+                );
+            }
+            if !stderr_eof {
+                let _ = drain_available(
+                    &mut stderr,
+                    &mut stderr_kept,
+                    spec.stderr_cap,
+                    &mut stderr_capped,
+                );
+            }
+            if let Err(error) = group_result {
+                return Err(error);
+            }
+            break;
+        }
+
+        thread::sleep(POLL_INTERVAL);
+    }
+
     Ok(Capture {
-        stdout,
-        stderr,
-        exit_code: status.code(),
+        stdout: stdout_kept,
+        stderr: stderr_kept,
+        exit_code: status.and_then(|value| value.code()),
         timed_out,
         stdout_capped,
         stderr_capped,
@@ -459,6 +574,26 @@ mod tests {
         assert!(!result.clean_success());
         thread::sleep(Duration::from_millis(350));
         assert!(!marker.exists(), "timed-out descendant survived group cleanup");
+        let _ = fs::remove_file(marker);
+    }
+
+    #[test]
+    fn leader_exit_with_inherited_pipes_remains_deadline_bounded() {
+        let marker = env::temp_dir().join(format!(
+            "megaqml-process-leader-exit-{}-marker",
+            std::process::id()
+        ));
+        let _ = fs::remove_file(&marker);
+        let script = r#"(sleep 0.25; printf late > "$1") & exit 0"#;
+        let mut spec = shell(script, Duration::from_millis(50), 1024, 1024);
+        spec.args.push(OsString::from("fixture-sh"));
+        spec.args.push(marker.as_os_str().to_os_string());
+
+        let result = run_bounded(&spec).unwrap();
+        assert!(result.timed_out, "inherited pipe lifetime escaped deadline");
+        assert_eq!(result.exit_code, Some(0), "leader should have exited cleanly");
+        thread::sleep(Duration::from_millis(350));
+        assert!(!marker.exists(), "orphan descendant survived deadline cleanup");
         let _ = fs::remove_file(marker);
     }
 

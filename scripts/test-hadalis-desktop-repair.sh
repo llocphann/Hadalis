@@ -101,11 +101,13 @@ if not run("NATIVE_PROBE", {"op":"probe"}):
         "contract_conversation_stream_hook", "contract_api_import",
         "contract_stream_scope", "contract_stream_method",
         "contract_api_export", "contract_stream_export",
+        "contract_stream_runtime_discovery",
         "contract_api_exact_binding", "contract_api_exact_export",
         "contract_api_runtime_link",
         "renderer_found", "modules_loaded", "static_api_valid",
         "safe_get_exports", "stream_post_exports", "combined_api_exports",
-        "stream_definition_valid", "react_root_found", "scope_found",
+        "stream_definition_exports", "stream_definition_valid",
+        "react_root_found", "scope_found",
         "transport_valid",
     }
     try:

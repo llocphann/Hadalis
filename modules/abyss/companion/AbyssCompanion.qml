@@ -36,6 +36,13 @@ Item {
     property bool surfaceSupported: true
     property int travelDuration: 1000
     property real travelArc: 0
+    property real travelNormalX: 0
+    property real travelNormalY: -1
+    property real standingAngle: 0
+    property string appearClip: "emerge"
+    property string hideClip: "dive"
+    property string reactionExpression: ""
+    readonly property real tangentDirection: travelDirection*Math.cos(standingAngle*Math.PI/180)+travelDirectionY*Math.sin(standingAngle*Math.PI/180)
     property real travelPhase: 0
     property real travelFromX: 0
     property real travelFromY: 0
@@ -43,7 +50,9 @@ Item {
     property real travelToY: 0
     property string gesture: ""
     property real gesturePhase: 1
-    readonly property string motionAction: dragging ? "drag" : moving ? travelMode : gesture
+    readonly property string presentationAction: presentation<.999 && !peeking ? (leaving ? hideClip : appearClip) : ""
+    readonly property string motionAction: dragging ? "drag" : moving ? travelMode : gesture || presentationAction
+    readonly property string faceExpression: Expressions.resolve(reactionExpression || expression,mood,activity)
     property real travelDirection: 1
     property real travelDirectionY: 0
     property bool pointerFresh: false
@@ -59,7 +68,9 @@ Item {
     property bool connectedWater: false
     property real presentation: 0
     readonly property bool peeking: reveal>0 && reveal<.99
-    property real floorAlignment: upright && surfaceSupported ? height-2-((height-92)/2+78.3) : 0
+    property real floorAlignment: upright && surfaceSupported ? (height/2-34.3)*Math.cos(standingAngle*Math.PI/180) : 0
+    property real sideAlignment: upright && surfaceSupported ? -(width/2-34.3)*Math.sin(standingAngle*Math.PI/180) : 0
+    Behavior on sideAlignment { enabled: root.motionEnabled && !root.hardResetting; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
     Behavior on floorAlignment { enabled: root.motionEnabled && !root.hardResetting; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
     property bool initialized: false
     property bool managedPlacement: false
@@ -76,15 +87,19 @@ Item {
     readonly property bool walking: moving && surfaceSupported && ["walk","run"].includes(travelMode)
     readonly property bool flying: dragging || (moving && !walking)
     readonly property bool gesturing: gestureTween.running
+    readonly property real viewCos: Math.cos(standingAngle*Math.PI/180)
+    readonly property real viewSin: Math.sin(standingAngle*Math.PI/180)
     readonly property var attention: Attention.resolve(moving || dragging,
-        travelDirection, travelDirectionY, moving || dragging ? false : pointerFresh,
-        moving || dragging ? 0 : pointerX, moving || dragging ? 0 : pointerY,
+        travelDirection*viewCos+travelDirectionY*viewSin, -travelDirection*viewSin+travelDirectionY*viewCos,
+        pointerFresh || hovered,
+        hovered ? droplet.hoverGazeX : pointerX*viewCos+pointerY*viewSin,
+        hovered ? droplet.hoverGazeY : -pointerX*viewSin+pointerY*viewCos,
         peeking && emergenceEdge==="left" ? .4 : peeking && emergenceEdge==="right" ? -.4 : gazeX,
         peeking && emergenceEdge==="top" ? .3 : peeking && emergenceEdge==="bottom" ? -.3 : gazeY,
-        Expressions.resolve(expression,mood,activity))
+        faceExpression,moving ? tangentDirection : Math.abs(droplet.viewYaw)>=25 ? droplet.viewYaw : 0)
     readonly property real emergenceNormal: leaving
-        ? Curves.sample("dive", "normal", 1-presentation)
-        : Curves.sample("emerge", "normal", presentation)
+        ? Curves.sample(hideClip, "normal", 1-presentation)
+        : Curves.sample(peeking ? "emerge" : appearClip, "normal", presentation)
     readonly property bool verticalEdge: !upright && (edge === "left" || edge === "right")
     readonly property bool hovered: droplet.hovered
     signal activated()
@@ -106,17 +121,22 @@ Item {
         const t=travelMode==="jump" ? Curves.sample("jump","journey",travelPhase) : travelPhase
         const height=travelArc>0 ? Curves.sample(travelMode==="jump" ? "jump" : "fly","height",travelPhase)*travelArc : 0
         x=travelFromX+(travelToX-travelFromX)*t
-        y=travelFromY+(travelToY-travelFromY)*t-height
+        y=travelFromY+(travelToY-travelFromY)*t+height*travelNormalY
+        x+=height*travelNormalX
     }
     onTravelPhaseChanged: if (moving) updateTravel()
     function present(value): void {
         presentationTween.stop()
         leaving=value<presentation
         if (!motionEnabled || hardResetting) {presentation=value;return}
-        presentationTween.from=presentation
+        presentationTween.from=value>.99 && presentation<.99 && !leaving && appearClip!=="emerge" ? 0 : presentation
         presentationTween.to=value
-        presentationTween.duration=leaving ? Curves.clips.dive.duration : peeking ? 480 : Curves.clips.emerge.duration
+        presentationTween.duration=leaving ? Curves.clips[hideClip].duration : peeking ? 480 : Curves.clips[appearClip].duration
         presentationTween.start()
+    }
+    function carryTo(px,py): void {
+        stopTravel();relocation.stop()
+        x=px;y=py
     }
     function resetTo(px, py, sourceEdge): void {
         hardResetting=true
@@ -166,7 +186,7 @@ Item {
     implicitWidth: verticalEdge ? 98 : 112
     implicitHeight: verticalEdge ? 112 : 98
     visible: presentation > 0.001
-    clip: presentation < 0.999
+    clip: presentation < 0.999 && emergenceNormal>=0
 
     onRevealChanged: if (initialized) {
         if (reveal <= 0) {
@@ -264,6 +284,7 @@ Item {
         width: 76; height: 92
         anchors.centerIn: parent
         anchors.verticalCenterOffset: root.floorAlignment
+        anchors.horizontalCenterOffset: root.sideAlignment
         transform: [
             Translate {
                 x: root.emergenceNormal * root.width * (root.activeEmergenceEdge === "left" ? -1 : root.activeEmergenceEdge === "right" ? 1 : 0)
@@ -271,8 +292,8 @@ Item {
             },
             Scale {
                 origin.x: emergenceLayer.width / 2; origin.y: emergenceLayer.height / 2
-                xScale: Curves.sample("emerge", "scaleX", root.presentation)
-                yScale: Curves.sample("emerge", "scaleY", root.presentation)
+                xScale: root.presentationAction ? 1 : Curves.sample("emerge", "scaleX", root.presentation)
+                yScale: root.presentationAction ? 1 : Curves.sample("emerge", "scaleY", root.presentation)
             }
         ]
         WaterDropletBody {
@@ -290,12 +311,12 @@ Item {
             flying: root.flying
             motionAction: root.motionAction
             motionProgress: root.moving && ["jump","fall"].includes(root.travelMode) ? root.travelPhase
-                : root.gesture ? root.gesturePhase : -1
+                : root.gesture ? root.gesturePhase : root.presentationAction ? root.leaving ? 1-root.presentation : root.presentation : -1
             grounded: root.surfaceSupported && !root.flying
             dragging: root.dragging
             traveling: root.moving
-            walkingDirection: root.travelDirection * (root.upright || root.edge === "top" || root.edge === "left" ? 1 : -1)
-            viewYaw: root.moving ? root.travelDirection * (root.walking ? 32 : 20)
+            walkingDirection: (root.upright ? root.tangentDirection : root.travelDirection) * (root.upright || root.edge === "top" || root.edge === "left" ? 1 : -1)
+            viewYaw: root.moving ? (root.walking ? root.tangentDirection : root.travelDirection) * (root.walking ? 32 : 20)
                 : root.peeking ? root.emergenceEdge==="left" ? 22 : root.emergenceEdge==="right" ? -22 : 0 : -15
             effectsEnabled: root.effectsEnabled
             stateSquash: root.motionEnabled ? root.bodySquash : 0
@@ -303,14 +324,15 @@ Item {
             stateLean: root.motionEnabled ? root.bodyLean : 0
             stateTip: root.motionEnabled ? root.bodyTip : 0
             ripple: root.ripple
-            eyeOpen: root.motionEnabled ? root.eyeOpen : 1
+            eyeOpen: root.motionEnabled ? (Curves.clips[root.motionAction]?.tracks.eyeOpen
+                ? Curves.sample(root.motionAction,"eyeOpen",root.gesture ? root.gesturePhase : root.leaving ? 1-root.presentation : root.presentation) : root.eyeOpen) : 1
             mouthCurve: root.mouthCurve
             pulse: root.pulse
-            expression: Expressions.resolve(root.expression, root.mood, root.activity)
+            expression: root.faceExpression
             reveal: 1
             enabled: root.interactive && root.inputReady
             opacity: Math.min(1, root.presentation * 4)
-            orientationAngle: root.upright ? 0 : root.edge === "left" ? 90 : root.edge === "right" ? -90 : root.edge === "bottom" ? 180 : 0
+            orientationAngle: root.upright ? root.standingAngle : root.edge === "left" ? 90 : root.edge === "right" ? -90 : root.edge === "bottom" ? 180 : 0
             // Centered bounds contain the rotated clickable body for all four
             // output edges. Verified in the offscreen four-edge prototype; keep
             // compositor input-mask changes as a separate qualification gate.

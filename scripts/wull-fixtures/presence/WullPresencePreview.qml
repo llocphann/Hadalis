@@ -64,6 +64,10 @@ Window {
         const p=physical()
         presence.moveTo(Scene.drop(scene,p.x,p.y-48*actorScale,p),false)
     }
+    function waitFor(item,property,value,timeout): void {
+        try {input.tryCompare(item,property,value,timeout)}
+        catch(e) {require(false,"deadline missed: "+property+" "+JSON.stringify({mode:presence.mode,traveling:presence.traveling,presentation:actor.presentation,peekOnly:presence.peekOnly,peekIntro:presence.peekIntro,reveal:presence.renderedReveal,edge:presence.emergenceEdge,x:actor.x,y:actor.y,targetX:presence.targetX,targetY:presence.targetY}))}
+    }
     function runChecks(): void {
         const body=named(actor,"wullLiquidBody"), face=named(actor,"wullFace")
         require(actor.peeking && !actor.inputReady && presence.peekIntro,"visit did not peek before emerging")
@@ -71,7 +75,7 @@ Window {
         require(!actor.visible && !presence.visitActive && !named(presence,"wullPeekDeadline").running,"peek did not retract into water")
         presence.randomState=3;root.requested=1;input.wait(650)
         require(actor.peeking && !actor.inputReady && presence.peekIntro,"next visit skipped peek")
-        input.tryCompare(actor,"inputReady",true,4000)
+        waitFor(actor,"inputReady",true,4000)
         require(actor.inputReady && presence.grounded,"initial visit did not land on the lower water rim")
         const normal=body.liquidAccent.hslLightness
         input.mouseMove(body,38,49);input.wait(220)
@@ -80,7 +84,7 @@ Window {
         require(taps===1 && body.tapPhase<1 && body.tapPulse>.1,"real click did not create feedback")
         input.wait(750);require(body.tapPhase===1 && body.tapPulse===0,"tap did not settle")
         input.mouseMove(body,12,50);input.wait(240)
-        require(face.gazeX<-.3,"pointer gaze did not interpolate")
+        require(face.gazeX<-.3,"pointer gaze did not interpolate "+JSON.stringify({face:face.gazeX,body:body.gazeX,hovered:body.hovered,point:body.hoverGazeX,attention:actor.attention,moving:actor.moving,expression:actor.faceExpression,yaw:body.viewYaw}))
         actor.expression="working";input.wait(260)
         require(Math.abs(face.gazeX)<.25,"focused expression chased pointer")
         actor.expression="idle";input.mouseMove(board,10,10);input.wait(100)
@@ -92,7 +96,7 @@ Window {
         const held=physical();input.wait(160)
         require(Scene.distance(held,physical())<.01,"hovered walk kept moving")
         input.mouseMove(board,10,10);input.wait(60)
-        walk();input.tryCompare(presence,"traveling",false,2500)
+        walk();waitFor(presence,"traveling",false,presence.duration+600)
         require(!presence.traveling && presence.grounded,"walk did not finish on its surface")
         floatUp();input.wait(150)
         require(actor.flying && !actor.walking && !body.grounded,"airborne movement used footsteps")
@@ -108,25 +112,25 @@ Window {
         input.mouseMove(board,10,10);input.wait(80)
         const water=Scene.nearestWater(scene,physical())
         require(water.qualified,"drop had no reachable water")
-        root.requested=0;input.wait(40)
+        presence.randomState=1000;root.requested=0;input.wait(40)
         require(presence.retreating && !actor.interactive,"hide did not seek nearby water and release input")
-        input.tryCompare(presence,"traveling",false,2500)
+        waitFor(presence,"traveling",false,presence.duration+600)
         require(actor.activeEmergenceEdge===water.placement.edge && actor.leaving,"dive kept the old emergence edge after arrival")
-        input.wait(850)
+        waitFor(actor,"visible",false,3000)
         require(!actor.visible && !actor.inputReady && !presence.traveling,"water dive did not vanish")
         const frozen=clocks();input.wait(170)
         require(clocks()===frozen,"hidden motion clocks continued")
         root.requested=1;input.wait(1100)
         root.allowed=false;input.wait(30)
         require(!actor.visible && !actor.inputReady && !presence.visitActive,"policy hide faded with active input")
-        root.allowed=true;input.tryCompare(actor,"inputReady",true,4000)
+        root.allowed=true;input.wait(20);presence.peekOnly=false;waitFor(actor,"inputReady",true,5000)
         // A real one-shot deadline tests the sustained-popup offer, with its
         // deterministic fixture seed. Production keeps the twelve-second delay.
         const deadline=named(presence,"wullSurfaceDeadline")
         deadline.interval=100;presence.randomState=3;root.popupOpen=true
         input.wait(160)
         require(presence.traveling || presence.placement.kind==="surface","sustained popup did not offer a destination")
-        input.tryCompare(presence,"traveling",false,10000)
+        waitFor(presence,"traveling",false,10000)
         require(!presence.traveling && presence.placement.kind==="surface","popup visit did not settle")
         root.allowed=false;input.wait(40)
         require(!deadline.running && !named(presence,"wullPeekDeadline").running,"hidden presence left a deadline running")

@@ -86,6 +86,7 @@ def author(blend_path, module_path, parity_path):
         limb.scale=(5.25 if hand else 7,3.8,4.3 if hand else 2.8)
         limb.data.materials.append(blue)
         limbs.append(limb)
+    eyes=[]
     for x in (-16,16):
         bpy.ops.mesh.primitive_uv_sphere_add(segments=24,ring_count=16,location=(x,-29,31))
         eye=bpy.context.object
@@ -93,6 +94,7 @@ def author(blend_path, module_path, parity_path):
         eye.scale=(5,2.6,6)
         eye.data.materials.append(dark)
         eye.parent=body
+        eyes.append(eye)
     clips={}
     walk={
         'lift': [(0,0),(.125,-1.7),(.25,-2.6),(.375,-1.7),(.5,0),(.625,-1.7),(.75,-2.6),(.875,-1.7),(1,0)],
@@ -101,7 +103,7 @@ def author(blend_path, module_path, parity_path):
         'scaleY': [(0,.985),(.25,1.02),(.5,.985),(.75,1.02),(1,.985)],
     }
     # Two feet alternate stance/swing, with the opposite arm moving forwards.
-    # Stance moves 16 px in .5 s, matching the runtime's 32 px/s root travel.
+    # Stance moves 16 px in 1 s, matching the runtime's 16 px/s root travel.
     for i in range(2):
         offset=.5 if i==1 else 0
         knots=[(0,8,0),(.125,4,0),(.25,0,0),(.375,-4,0),(.5,-8,0),(.625,-4,4),(.75,0,5.5),(.875,4,4),(1,8,0)]
@@ -113,7 +115,7 @@ def author(blend_path, module_path, parity_path):
         walk[f'arm{i}X']=[(t,value*sign) for t,value in [(0,-1.5),(.25,0),(.5,1.5),(.75,0),(1,-1.5)]]
         walk[f'arm{i}Z']=[(t,value*sign) for t,value in [(0,-1),(.25,2),(.5,1),(.75,-2),(1,-1)]]
     definitions={
-        'walk':(1000,walk),
+        'walk':(2000,walk),
         'float':(1800,{
             'lift':[(0,-1),(.22,-3.2),(.52,-1),(.8,.6),(1,-1)],
             'roll':[(0,-1.1),(.25,0),(.5,1.1),(.75,0),(1,-1.1)],
@@ -138,7 +140,7 @@ def author(blend_path, module_path, parity_path):
         'orbit':(24000,{'angle':[(0,0),(1,math.tau)]}),
     }
     # New actions keep the original six exports intact. Two alternating feet
-    # match 70 px/s travel; flying has a propulsion stroke and tucked feet.
+    # match 32 px/s travel; flying has a propulsion stroke and tucked feet.
     run={
         'lift':[(0,0),(.25,-3),(.5,0),(.75,-3),(1,0)],
         'roll':[(0,-3),(.25,0),(.5,3),(.75,0),(1,-3)],
@@ -147,7 +149,7 @@ def author(blend_path, module_path, parity_path):
     }
     for i in range(2):
         offset=.5 if i else 0
-        knots=[(0,10.5,0),(.25,0,0),(.5,-10.5,0),(.65,-4,7),(.75,0,9),(.85,4,7)]
+        knots=[(0,10.4,0),(.25,0,0),(.5,-10.4,0),(.65,-4,7),(.75,0,9),(.85,4,7)]
         shifted=sorted({((t+offset)%1):(x,z) for t,x,z in knots}.items())
         shifted.append((1,shifted[0][1]))
         run[f'foot{i}X']=[(t,p[0]) for t,p in shifted]
@@ -155,7 +157,7 @@ def author(blend_path, module_path, parity_path):
         sign=1 if i else -1
         run[f'arm{i}X']=[(0,3*sign),(.5,-3*sign),(1,3*sign)]
         run[f'arm{i}Z']=[(0,-2*sign),(.25,4*sign),(.5,2*sign),(.75,-4*sign),(1,-2*sign)]
-    definitions['run']=(600,run)
+    definitions['run']=(1300,run)
     definitions['fly']=(800,{
         'lift':[(0,0),(.22,-2.8),(.45,-1.8),(.75,.5),(1,0)],
         'roll':[(0,-2.5),(.25,1),(.5,2.5),(.75,-1),(1,-2.5)],
@@ -228,13 +230,79 @@ def author(blend_path, module_path, parity_path):
         'arm1X':[(0,0),(.2,3),(.35,1),(.5,4),(.65,1),(.8,3),(1,0)],
         'roll':[(0,0),(.2,-2),(.8,-2),(1,0)],
     })
+    # Appearance/action curves are authored in this editable rig too. Normal
+    # displacements below zero are an actual jump away from the water opening.
+    for name,duration,normal in (
+        ('riseJump',1300,[(0,1),(.15,.7),(.36,-.30),(.58,-.22),(.78,0),(1,0)]),
+        ('launch',1500,[(0,1),(.12,.92),(.30,-.38),(.55,-.28),(.77,0),(1,0)]),
+        ('stuckJump',2400,[(0,1),(.18,.55),(.30,.53),(.40,.62),(.53,.48),(.64,-.30),(.80,0),(1,0)]),
+        ('stuckLaunch',2550,[(0,1),(.18,.55),(.30,.56),(.40,.64),(.52,.49),(.65,-.38),(.82,0),(1,0)]),
+        ('faceplant',1900,[(0,1),(.16,.70),(.35,-.25),(.53,0),(.80,0),(1,0)]),
+        ('diveJump',1300,[(0,0),(.18,-.25),(.34,-.38),(.50,-.20),(.65,0),(.82,.55),(1,1)]),
+        ('sink',2000,[(0,0),(.25,.07),(.52,.32),(.72,.34),(.85,.65),(1,1)]),
+    ):
+        stuck=name.startswith('stuck')
+        launch='Launch' in name or name=='launch'
+        tracks={'normal':normal,
+            'scaleX':[(0,1),(.18,1.06),(.40,.98),(.65,.96),(.82,1.08),(1,1)],
+            'scaleY':[(0,1),(.18,.93),(.40,1.03),(.65,1.06),(.82,.91),(1,1)],
+            'roll':[(0,0),(.24,-6),(.4,5),(.6,-5),(.8,3),(1,0)],
+            'eyeOpen':[(0,1),(.18,.0),(.68,0),(.9,1),(1,1)],
+        }
+        for i in range(2):
+            sign=1 if i else -1
+            tracks[f'arm{i}X']=[(0,0),(.24,sign*3),(.4,-sign*2),(.6,sign*4),(.8,-sign*2),(1,0)]
+            tracks[f'arm{i}Z']=[(0,0),(.24,9 if stuck else 4),(.4,2),(.6,10 if launch else 7),(.8,3),(1,0)]
+            tracks[f'foot{i}X']=[(0,0),(.3,sign*3),(.5,-sign*3),(.7,sign*4),(1,0)]
+            tracks[f'foot{i}Z']=[(0,0),(.3,4+i*3),(.5,9-i*4),(.7,3+i*4),(1,0)]
+        if name=='faceplant':
+            tracks['roll']=[(0,0),(.35,10),(.53,65),(.72,65),(.85,12),(1,0)]
+            tracks['scaleY']=[(0,1),(.35,1.03),(.53,.70),(.72,.72),(.9,1.04),(1,1)]
+            tracks['scaleX']=[(0,1),(.35,.98),(.53,1.18),(.72,1.15),(.9,.98),(1,1)]
+        if name=='sink':
+            tracks['eyeOpen']=[(0,1),(.15,.1),(.35,1),(.55,0),(.75,.05),(1,0)]
+        definitions[name]=(duration,tracks)
+    definitions['ice']=(1500,{
+        'lift':[(0,0),(.18,-9),(.40,2),(.65,1),(.82,-2),(1,0)],
+        'roll':[(0,0),(.18,-12),(.40,-32),(.65,-32),(.9,3),(1,0)],
+        'scaleX':[(0,1),(.4,1.12),(.65,1.1),(1,1)],
+        'scaleY':[(0,1),(.4,.80),(.65,.82),(1,1)],
+        'eyeOpen':[(0,1),(.35,0),(.6,0),(1,1)],
+        'arm0Z':[(0,0),(.4,8),(.7,4),(1,0)],'arm1Z':[(0,0),(.4,8),(.7,4),(1,0)],
+        'foot0Z':[(0,0),(.4,8),(.7,6),(1,0)],'foot1Z':[(0,0),(.4,8),(.7,6),(1,0)],
+    })
+    definitions['balance']=(1800,{
+        'roll':[(0,0),(.15,-10),(.32,12),(.5,-8),(.68,7),(.85,-3),(1,0)],
+        'scaleX':[(0,1),(.32,.985),(.68,1.015),(1,1)],
+        'scaleY':[(0,1),(.32,1.02),(.68,.99),(1,1)],
+        'arm0Z':[(0,0),(.15,7),(.32,10),(.5,6),(.68,8),(1,0)],
+        'arm1Z':[(0,0),(.15,10),(.32,7),(.5,9),(.68,6),(1,0)],
+        'foot0X':[(0,0),(.32,-3),(.68,-2),(1,0)],'foot1X':[(0,0),(.32,2),(.68,3),(1,0)],
+    })
+    definitions['startle']=(850,{
+        'lift':[(0,0),(.18,-10),(.50,-5),(.8,1),(1,0)],
+        'roll':[(0,0),(.18,-8),(.5,4),(1,0)],
+        'scaleX':[(0,1),(.18,.95),(.8,1.05),(1,1)],
+        'scaleY':[(0,1),(.18,1.07),(.8,.94),(1,1)],
+        'arm0Z':[(0,0),(.18,10),(.5,5),(1,0)],'arm1Z':[(0,0),(.18,10),(.5,5),(1,0)],
+        'foot0Z':[(0,0),(.18,7),(.5,4),(1,0)],'foot1Z':[(0,0),(.18,7),(.5,4),(1,0)],
+    })
+    definitions['delight']=(1600,{
+        'lift':[(0,0),(.18,-11),(.36,0),(.55,-8),(.72,0),(.86,-5),(1,0)],
+        'scaleX':[(0,1),(.18,.98),(.36,1.04),(.55,.98),(.72,1.03),(1,1)],
+        'scaleY':[(0,1),(.18,1.04),(.36,.95),(.55,1.03),(.72,.96),(1,1)],
+        'arm0Z':[(0,0),(.18,8),(.36,3),(.55,8),(.72,3),(1,0)],
+        'arm1Z':[(0,0),(.18,8),(.36,3),(.55,8),(.72,3),(1,0)],
+    })
     all_channels={name for _,tracks in definitions.values() for name in tracks}
     for channel in all_channels:
-        rig[channel]=1.0 if channel.startswith('scale') else 0.0
+        rig[channel]=1.0 if channel.startswith('scale') or channel=='eyeOpen' else 0.0
     driver(body,'location',2,rig,'lift',gain=-1)
     driver(body,'rotation_euler',1,rig,'roll',gain=math.pi/180)
     driver(body,'scale',0,rig,'scaleX')
     driver(body,'scale',2,rig,'scaleY')
+    for eye in eyes:
+        driver(eye,'scale',2,rig,'eyeOpen',gain=6)
     for i,limb in enumerate(limbs):
         base=limb.location.copy()
         channel=('arm'+str(i)) if i<2 else ('foot'+str(i-2))
@@ -265,7 +333,8 @@ def author(blend_path, module_path, parity_path):
         rig.animation_data.action=action
         frames=duration*60/1000
         for channel in sorted(all_channels):
-            points=tracks.get(channel,[(0,1 if channel.startswith('scale') else 0),(1,1 if channel.startswith('scale') else 0)])
+            neutral=1 if channel.startswith('scale') or channel=='eyeOpen' else 0
+            points=tracks.get(channel,[(0,neutral),(1,neutral)])
             for t,value in points:
                 rig[channel]=float(value)
                 rig.keyframe_insert(data_path='["'+channel+'"]',frame=1+t*frames,group='Wull '+name)
@@ -284,7 +353,7 @@ def author(blend_path, module_path, parity_path):
                     parity.append([name,channel,phase,float(curve.evaluate(1+phase*frames))])
         clips[name]={'duration':duration,'tracks':exported}
     rig.animation_data.action=bpy.data.actions.get('Wull — Walk')
-    scene.frame_start=1; scene.frame_end=61
+    scene.frame_start=1; scene.frame_end=121
     scene.frame_set(1)
     bpy.ops.object.camera_add(location=(0,-220,82))
     camera=bpy.context.object

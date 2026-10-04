@@ -25,7 +25,9 @@ with tempfile.TemporaryDirectory(prefix="wull-presence-test-") as temporary:
         process = subprocess.Popen(["dbus-run-session", "--", "qs", "--path", str(shell / "shell.qml")],
             env=env, cwd=ROOT, stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
         try:
-            code = process.wait(timeout=40)
+            code = process.wait(timeout=85)
+        except subprocess.TimeoutExpired:
+            code = -1
         finally:
             if process.poll() is None:
                 os.killpg(process.pid, signal.SIGTERM)
@@ -37,9 +39,7 @@ with tempfile.TemporaryDirectory(prefix="wull-presence-test-") as temporary:
     log = logfile.read_text()
     bad = ("WULL_PRESENCE_CHECK=FAIL", "ReferenceError:", "TypeError:", "SyntaxError:", "Unable to assign", "Binding loop", "non-root animation nodes", "Failed to load configuration")
     if code or "WULL_PRESENCE_CHECK=PASS" not in log or any(message in log for message in bad):
-        for line in log.splitlines():
-            if any(message in line for message in (*bad, "ERROR", "WULL_PRESENCE_")):
-                print(line)
+        print(log[-16000:])
         raise SystemExit("Actual Wull QML interaction proof failed")
     for line in log.splitlines():
         if "WULL_PRESENCE_CHECK=PASS" in line:

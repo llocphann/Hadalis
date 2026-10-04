@@ -67,6 +67,9 @@ Item {
     property real expressionSquash: expressionProfile.squash
     readonly property real motionAmount: motionEnabled ? AbyssStyle.motionIntensity * motionScale : 0
     readonly property bool hovered: hoverHandler.hovered
+    // Qt reports handler positions in this item's already rotated coordinates.
+    readonly property real hoverGazeX: Math.max(-1,Math.min(1,(hoverHandler.point.position.x-width/2)/(width/2)))
+    readonly property real hoverGazeY: Math.max(-1,Math.min(1,(hoverHandler.point.position.y-height/2)/(height/2)))
     // QSB reflection reuse may leave status Uncompiled after drawing. A real
     // presented frame and a supported API are the authoritative readiness.
     property bool framePresented: false
@@ -339,7 +342,6 @@ Item {
                 id: faceOverlay
                 anchors.fill: parent
                 transformOrigin: Item.Center
-                rotation: -root.orientationAngle
                 opacity: Math.max(0, root.yawCos)
                 transform: [
                     Scale { origin.x: 38; origin.y: 60; xScale: Math.max(0.01, root.yawCos) },
@@ -353,14 +355,12 @@ Item {
                     eyeOpen: root.eyeOpen
                     mouthCurve: root.mouthCurve
                     // Pointer feedback is interpolated locally, never streamed over IPC.
-                    gazeX: !root.traveling && !root.dragging && root.hovered && !Expressions.focusedExpressions.includes(root.expression)
-                        ? Math.max(-1, Math.min(1, (hoverHandler.point.position.x - root.width * 0.5) / (root.width * 0.5)))
-                        : root.gazeX
-                    gazeY: !root.traveling && !root.dragging && root.hovered && !Expressions.focusedExpressions.includes(root.expression)
-                        ? Math.max(-1, Math.min(1, (hoverHandler.point.position.y - root.height * 0.5) / (root.height * 0.5)))
-                        : root.gazeY
-                    microX: root.motionEnabled && !root.traveling ? root.sway*.045 : 0
-                    microY: root.motionEnabled && !root.traveling ? root.bob*.022 : 0
+                    // The actor projects observed coordinates into this face's
+                    // orientation, including sideways and upper water rims.
+                    gazeX: root.gazeX
+                    gazeY: root.gazeY
+                    microX: root.motionEnabled && !root.traveling ? root.sway*.16 : 0
+                    microY: root.motionEnabled && !root.traveling ? root.bob*.055 : 0
                     pulse: root.pulse
                     motionEnabled: root.motionEnabled
                     qualityLevel: root.qualityLevel

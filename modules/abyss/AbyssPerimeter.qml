@@ -361,9 +361,12 @@ Scope {
                     onHoveredChanged: if (!hovered) window.companionPointerFresh=false
                 }
                 PointHandler {
-                    enabled: companionCuriosity.busy
+                    enabled: window.companionHostActive && root.companionInteractive
                     acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-                    onActiveChanged: if (active) companionCuriosity.yieldToUser()
+                    onActiveChanged: if (active) {
+                        companionCuriosity.yieldToUser()
+                        companionPresence.nearbyClick(point.scenePosition.x,point.scenePosition.y)
+                    }
                 }
             }
             Timer {
@@ -584,6 +587,11 @@ Scope {
                 managedPlacement: true
                 emergenceEdge: companionPresence.emergenceEdge
                 upright: true
+                standingAngle: companionPresence.standingAngle
+                appearClip: companionPresence.appearClip
+                hideClip: companionPresence.hideClip
+                travelNormalX: companionPresence.normalX
+                travelNormalY: companionPresence.normalY
                 connectedWater: true
                 reveal: companionPresence.renderedReveal
                 pointerFresh: window.companionPointerFresh

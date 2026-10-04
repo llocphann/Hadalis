@@ -28,7 +28,8 @@ for(const scale of [.65,1,1.5]) for(const [w,h] of [[800,600],[1280,820],[1920,1
     for(let i=0;i<80;i++){
         const p=api.appearance(s,.8,(i%4+.1)/4,(i+.5)/80);
         assert.equal(p.qualified,true);assert.equal(api.clearAt(s,p),true);
-        assert.equal(p.grounded,p.edge==='bottom','only the lower water rim supports a walk');
+        assert.equal(p.grounded,true,'all four water rims support an oriented walk');
+        assert.equal(p.support.edge,p.edge);
         seen.add(p.edge);cases++;
     }
 }
@@ -85,5 +86,7 @@ for(const expression of ['sleepy','working','thinking','sad'])
     assert.equal(attention.resolve(false,0,0,true,1,1,.1,.2,expression).source,'activity');
 assert.equal(attention.resolve(false,0,0,false,-1,0,.1,.2,'idle').source,'curiosity');
 assert.equal(attention.resolve(false,0,0,true,5,-5,0,0,'idle').x,1);
+assert.equal(attention.resolve(false,0,0,true,-1,0,.4,0,'idle',1).source,'curiosity');
+assert.equal(attention.resolve(true,1,0,true,1,0,0,0,'idle',1).source,'pointer');
 assert.equal(attention.resolve(false,0,0,true,NaN,Infinity,0,0,'idle').y,0);
 console.log(`WULL_FOUR_EDGE_SURFACE_WALK_FLIGHT_DROP_ATTENTION_PASS cases=${cases} paths=${paths}`);

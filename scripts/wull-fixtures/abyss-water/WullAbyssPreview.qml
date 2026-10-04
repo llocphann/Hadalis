@@ -14,11 +14,13 @@ Window {
     width: 1100; height: 720; visible: true; color: "#04101e"
     minimumWidth:1100;maximumWidth:1100;minimumHeight:720;maximumHeight:720
     title: "Wull — born from Abyss"
+    Component.onCompleted: Quickshell.watchFiles=false
     readonly property bool testMode: (Quickshell.env("WULL_ABYSS_TEST") ?? "")==="1"
     readonly property string capture: Quickshell.env("WULL_DESIGN_CAPTURE") ?? ""
     readonly property bool capturePeek: (Quickshell.env("WULL_PRESENCE_CAPTURE_PEEK") ?? "")==="1"
     readonly property bool waterProof: (Quickshell.env("WULL_ABYSS_WATER_PROOF") ?? "")==="1"
     property int proofStep: 0
+    property string testStep: "startup"
     property string surfaceKind: Quickshell.env("WULL_ABYSS_SURFACE") ?? "dock"
     property bool allowed: false
     property real requested: capturePeek ? .46 : 1
@@ -43,7 +45,14 @@ Window {
     }
     function visit(): void {
         allowed=true;requested=capturePeek ? .46 : 1
+        if(testMode)presence.randomState=1000
         presence.appear(target())
+        if(testMode) {
+            // This fixture isolates contact/solver behavior. The alive fixture
+            // separately exercises the randomized authored entrances/exits.
+            presence.peekOnly=false;presence.appearClip="emerge"
+            presence.lastBalance=Date.now()+120000
+        }
     }
     function captureField(): void {
         // Frozen actual field uniforms. These controls isolate water pixels
@@ -67,12 +76,13 @@ Window {
     }
     function change(kind): void {
         allowed=false;surfaceKind=kind
-        input.tryVerify(()=>scene.surfaces.some(s=>s.key===kind),2500)
-        check(scene.surfaces.some(s=>s.key===kind),"body did not settle: "+kind)
+        input.tryVerify(()=>scene.surfaces.some(s=>s.key===kind && s.settled!==false),2500)
+        check(scene.surfaces.some(s=>s.key===kind && s.settled!==false),"body did not settle: "+kind)
         visit()
     }
     function runChecks(): void {
         for (const kind of ["dock","settings","leftPanel","rightPanel","styledPopup0","osd","utility"]) {
+            testStep=kind+":appear"
             change(kind)
             input.tryVerify(()=>actor.presentation>.6,1500)
             check(water.running && water.neck>.2,"peek did not deform parent water: "+kind)
@@ -81,24 +91,32 @@ Window {
             input.wait(1500)
             check(!water.running && water.ripple.w===0 && water.neck===0,"contact did not settle")
             if (presence.grounded) {
+                testStep=kind+":walk"
                 const point=presence.position()
-                const next=Scene.annotate(scene,{x:point.x-30,y:point.y},presence.emergenceEdge,"surface",kind)
+                const vertical=presence.placement.support.axis==="y"
+                const next=Scene.annotate(scene,vertical ? {x:point.x,y:point.y-30} : {x:point.x-30,y:point.y},presence.emergenceEdge,"surface",kind)
                 check(presence.moveTo(next,false),"body walk had no route")
                 input.wait(100);check(actor.walking,"horizontal body rim did not support walking")
-                input.tryCompare(presence,"traveling",false,2000)
+                input.tryCompare(presence,"traveling",false,presence.duration+500)
                 check(water.impact.key===kind && water.running,"walking did not disturb actual body water")
             }
-            requested=0
+            testStep=kind+":dive";presence.randomState=1000;requested=0
             input.tryVerify(()=>actor.leaving,1600)
             check(water.impact.key===kind && water.running,"hide did not return to nearby body water: "+kind)
-            input.tryCompare(actor,"visible",false,1800)
+            input.tryCompare(actor,"visible",false,3500)
             input.wait(1500)
             check(!water.running && water.contact.w===0 && water.ripple.w===0,"hidden local impulse never settled")
         }
-        change("dock");input.tryCompare(actor,"inputReady",true,4000)
+        testStep="parent waves:ready";change("dock");input.tryCompare(actor,"inputReady",true,4000)
         Config.setNestedValue("abyss.waves.enabled",true)
+        presence.lastBalance=0
         water.tap();input.wait(80)
         check(liquid.waves.running && liquid.waves.simulation.traveling.length>0,"parent Edge solver did not receive contact")
+        const waveContact=presence.placement.contact
+        liquid.impulse(waveContact.sourceEdge,waveContact.sourceAlong,200,1,1,"open")
+        testStep="parent waves:balance"
+        input.tryVerify(()=>actor.gesture==="balance",2000)
+        check(actor.gesture==="balance","existing Edge wave did not prompt balance")
         actor.effectsEnabled=false;input.wait(30)
         check(!water.running && water.ripple.w===0 && water.contact.w===0,"effects-off did not release local motion")
         actor.effectsEnabled=true;water.tap();actor.motionEnabled=false;input.wait(30)
@@ -172,6 +190,8 @@ Window {
             edge:presence.emergenceEdge;emergenceEdge:presence.emergenceEdge;upright:true;managedPlacement:true;connectedWater:true
             reveal:presence.renderedReveal;interactive:root.allowed && !presence.retreating;dragEnabled:interactive
             travelEnabled:presence.traveling;travelMode:presence.mode;surfaceSupported:presence.grounded
+            standingAngle:presence.standingAngle;appearClip:presence.appearClip;hideClip:presence.hideClip
+            travelArc:presence.arc;travelNormalX:presence.normalX;travelNormalY:presence.normalY
             travelDuration:presence.duration;travelDirection:presence.directionX/Math.max(1,Math.hypot(presence.directionX,presence.directionY))
             travelDirectionY:presence.directionY/Math.max(1,Math.hypot(presence.directionX,presence.directionY))
             targetX:presence.targetX+(scale-1)*width/2;targetY:presence.targetY+(scale-1)*height/2
@@ -187,12 +207,16 @@ Window {
     Timer {id:proofDelay;interval:280;onTriggered:root.captureField()}
     Timer {
         interval:100;running:!root.started;repeat:true
-        onTriggered: if (root.surfaceKind==="edge" || root.scene.surfaces.length) {
+        onTriggered: if (root.surfaceKind==="edge" || root.scene.surfaces.some(s=>s.settled!==false)) {
             root.started=true
-            if (root.testMode) root.runChecks()
+            if (root.testMode) {
+                try {root.runChecks()}
+                catch(error){console.error("WULL_ABYSS_CHECK=FAIL "+root.testStep+" "+error);failureExit.start()}
+            }
             else root.visit()
         }
     }
+    Timer {id:failureExit;interval:150;onTriggered:Qt.quit()}
     Timer {
         interval:80;running:root.capture.length>0 && root.started && !root.captured;repeat:true
         onTriggered: if (field.ready && actor.materialReady

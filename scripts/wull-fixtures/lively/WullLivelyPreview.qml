@@ -50,6 +50,8 @@ Window {
         edge:presence.emergenceEdge;emergenceEdge:presence.emergenceEdge
         travelEnabled:presence.traveling;travelMode:presence.mode;travelDuration:presence.duration
         travelArc:presence.arc;surfaceSupported:presence.grounded
+        standingAngle:presence.standingAngle;appearClip:presence.appearClip;hideClip:presence.hideClip
+        travelNormalX:presence.normalX;travelNormalY:presence.normalY
         travelDirection:presence.directionX/Math.max(1,Math.hypot(presence.directionX,presence.directionY))
         travelDirectionY:presence.directionY/Math.max(1,Math.hypot(presence.directionX,presence.directionY))
         targetX:presence.targetX;targetY:presence.targetY
@@ -77,7 +79,7 @@ Window {
                 check(presence.moveTo(Scene.annotate(root.scene,{x:550,y:600},"bottom","edge","bottom"),false,"run"),"run route rejected")
                 wait(170);check(actor.walking && gait.clip==="run","run pose not selected")
                 check(gait.footZ("foot0Z")>0 || gait.footZ("foot1Z")>0,"run did not move its feet")
-                tryCompare(presence,"traveling",false,1800)
+                tryCompare(presence,"traveling",false,presence.duration+600)
                 check(presence.grounded,"running lost its surface")
                 check(presence.moveTo(Scene.annotate(root.scene,{x:620,y:600},"bottom","edge","bottom"),false,"jump"),"jump route rejected")
                 wait(360)
@@ -101,7 +103,7 @@ Window {
                 presence.pause();check(presence.traveling,"hover suspended gravity")
                 presence.beginDrag();wait(30);check(!presence.traveling && presence.dragging,"re-grab did not interrupt gravity")
                 presence.randomState=0;presence.endDrag()
-                tryCompare(presence,"traveling",false,1800)
+                tryCompare(presence,"traveling",false,presence.duration+600)
                 check(presence.grounded && actor.gesture==="land","fall lacked a landing reaction")
                 tryCompare(actor,"gesturing",false,1000)
                 root.place(480,190)

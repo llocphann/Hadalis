@@ -1,6 +1,7 @@
 import QtQuick
 import qs.modules.abyss.looks
 import "WullScene.js" as Scene
+import "../looks/AbyssWave.js" as Wave
 
 // A contact in the existing field, not a second painted surface or window.
 // One finite impulse envelope; the liquid neck shares Wull's presentation clock.
@@ -51,6 +52,20 @@ Item {
     Connections {
         target: root.presence
         function onWaterInteraction(point, action): void {root.disturb(point,action)}
+    }
+    Connections {
+        target: root.controller?.waves ?? null
+        enabled: root.enabledPolicy && root.presence?.grounded === true
+        function onRevisionChanged(): void {
+            const waves=root.controller?.waves,state=waves?.simulation,point=root.origin
+            if (!waves?.running || !state || !point || Date.now()-root.presence.lastBalance<5500) return
+            // Sample the existing solver at the contact, without another frame
+            // timer, array copy, IPC message or a new wave implementation.
+            const location=Wave.arc(point.sourceEdge,point.sourceAlong,state.width,state.height)/state.length*state.count
+            const index=Math.floor(location)%state.count,next=(index+1)%state.count
+            const displacement=state.displacement[index]*(1-(location-index))+state.displacement[next]*(location-index)
+            if (Math.abs(displacement)>.7*point.scale) root.presence.balance()
+        }
     }
     NumberAnimation {id:pulse;target:root;property:"phase";to:1;duration:1450}
 }

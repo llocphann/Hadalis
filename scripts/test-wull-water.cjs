@@ -55,8 +55,11 @@ for(const key of ['dock','settings','leftPanel','rightPanel','styledPopup0','pop
         const air=api.drop(scene,60,210,{x:60,y:210});assert.equal(air.contact,null);
         participant.surfaceSettled=false;
         const moving=api.fromParticipants(base,{[key]:participant},[]);
-        assert.equal(moving.surfaces.length,0);assert.equal(moving.blockers.length,1,'entry/exit remains an obstacle');
-        assert.equal(api.supportAt(moving,top),null,'never walk on an unsettled body');
+        assert.equal(moving.surfaces.length,1,'moving water remains available for carrying its existing actor');
+        assert.equal(moving.surfaces[0].settled,false);
+        assert.equal(moving.blockers.length,1,'entry/exit remains an obstacle');
+        assert.equal(api.surfacePoints(moving).length,0,'do not choose a new visit on an unsettled body');
+        assert.ok(api.supportAt(moving,top),'retain support for an actor already riding this rim');
         participant.geometry.progress=0;
         participant.geometry.surface={...rect,height:0};
         assert.equal(api.fromParticipants(base,{[key]:participant},[]).blockers.length,0);

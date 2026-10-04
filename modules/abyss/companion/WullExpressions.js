@@ -10,7 +10,7 @@ var bubblePhase = [3.35, 0.40, 4.10, 5.40, 4.78, 5.08, 2.50, 0.03]
 var focusedExpressions = ["sleepy", "working", "thinking", "sad"]
 
 function resolve(expression, mood, activity) {
-    if (names.indexOf(expression) >= 0) return expression
+    if (names.indexOf(expression) >= 0 || expression==="angry" || expression==="panicked") return expression
     if (activity === "error") return "sad"
     if (activity === "warning") return "alert"
     if (activity === "success") return "happy"
@@ -30,8 +30,9 @@ function profile(expression) {
         smilingEyes: name === "happy",
         closedEyes: name === "sleepy" || name === "working",
         openMouth: name === "happy" || name === "excited" || name === "surprised",
-        worried: name === "sad",
-        eyeScale: name === "excited" || name === "surprised" ? 1.1 : 1,
+        worried: name === "sad" || name === "panicked",
+        angry: name === "angry",
+        eyeScale: name === "excited" || name === "surprised" || name === "panicked" ? 1.1 : 1,
         energy: name === "sleepy" ? 0.08 : name === "excited" ? 0.95 : name === "alert" ? 0.7 : 0.35,
         mark: name === "thinking" ? "?" : name === "surprised" || name === "alert" ? "!" : name === "sleepy" ? "zZ" : "",
         orbit: name === "working",

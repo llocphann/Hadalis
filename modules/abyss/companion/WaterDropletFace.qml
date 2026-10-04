@@ -35,9 +35,18 @@ Item {
             x: (index === 0 ? 18 : 44) * root.unit
             y: 46 * root.unit
             width: 14 * root.unit; height: 16 * root.unit
-            rotation: root.profile.worried ? (index === 0 ? 13 : -13) : 0
+            rotation: root.profile.angry ? (index === 0 ? -15 : 15) : root.profile.worried ? (index === 0 ? 13 : -13) : 0
             scale: root.profile.eyeScale * 0.83 * (1 + (index === 0 ? 1 : -1) * Math.sin(root.viewYaw * Math.PI / 180) * 0.25)
             Behavior on scale { enabled: root.motionEnabled; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+            Shape {
+                visible: root.profile.angry
+                x:-root.unit;y:-3*root.unit;width:eye.width+2*root.unit;height:4*root.unit
+                antialiasing:true
+                ShapePath {strokeColor:root.ink;strokeWidth:1.8*root.unit;fillColor:"transparent"
+                    startX:0;startY:eye.index===0 ? 0 : 3*root.unit
+                    PathLine {x:eye.width;y:eye.index===0 ? 3*root.unit : 0}
+                }
+            }
             Item {
                 anchors.fill: parent
                 opacity: !root.profile.smilingEyes && !root.profile.closedEyes ? 1 : 0
@@ -203,7 +212,7 @@ Item {
                 PathCubic {
                     x: 12 * root.unit; y: 2 * root.unit
                     control1X: 4 * root.unit; control2X: 10 * root.unit
-                    control1Y: (root.profile.worried ? -2 : root.profile.openMouth ? 12 : 5 + root.mouthCurve * 3) * root.unit
+                    control1Y: (root.profile.worried || root.profile.angry ? -2 : root.profile.openMouth ? 12 : 5 + root.mouthCurve * 3) * root.unit
                     control2Y: control1Y
                 }
                 PathLine { x: root.profile.openMouth ? 2 * root.unit : 12 * root.unit; y: 2 * root.unit }

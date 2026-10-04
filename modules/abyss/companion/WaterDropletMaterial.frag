@@ -234,7 +234,7 @@ void main() {
         // follow surface normals and the same studio rig as the liquid body.
         vec3 ray=reflect(incident,normal);
         vec3 white=mix(pow(specular.rgb/max(specular.a,0.001),vec3(2.2)),vec3(1.0),0.28);
-        vec2 iris=(q-vec2(optics.z*0.10-0.05,optics.w*0.08-0.40))/vec2(0.39,0.23);
+        vec2 iris=(q-vec2(optics.z*0.26-0.05,optics.w*0.20-0.40))/vec2(0.39,0.23);
         vec3 color=hue*(0.004+exp(-dot(iris,iris)*1.5)*3.2);
         color+=environment(ray,hue)*f*0.12;
         color+=white*ovalLight(ray,vec3(-0.65,0.85,0.60),vec2(0.50,0.45))*f*230.0;

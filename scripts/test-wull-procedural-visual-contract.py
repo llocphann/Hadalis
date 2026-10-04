@@ -17,7 +17,7 @@ for filename in ("WaterDropletBody.qml", "WaterDropletFace.qml", "AbyssCompanion
 body = (COMPANION / "WaterDropletBody.qml").read_text()
 host = (COMPANION / "AbyssCompanion.qml").read_text()
 for contract in ("implicitWidth: 76", "implicitHeight: 92", "property real orientationAngle: 0",
-                 "rotation: -root.orientationAngle", "running: root.motionEnabled"):
+                 "running: root.motionEnabled"):
     assert contract in body, contract
 assert "Timer {" not in body, "Rust schedules semantic state; renderer interpolates locally"
 assert "implicitWidth: verticalEdge ? 98 : 112" in host

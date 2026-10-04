@@ -48,7 +48,7 @@ ShellRoot {
             }
             root.step++
             if(root.step>root.kinds.length) { console.info("ABYSS_OSD_PASS");Qt.quit();return }
-            content.indicatorKind=root.kinds[root.step-1]
+            content.kind=root.kinds[root.step-1]
         }
     }
 }

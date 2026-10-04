@@ -16,6 +16,10 @@ ColumnLayout {
     readonly property var output:
         Quickshell.screens.find(s => s.name === outputName) ?? null
     readonly property var activeKinds: {
+        // Layout previews and explicit hosts select one indicator independently
+        // of live desktop OSD leases. The ordinary shared host leaves kind empty.
+        if (root.kind.length > 0)
+            return [root.kind]
         if (GlobalStates.abyssOsdKind === "voiceSearch")
             return ["voiceSearch"]
         if (GlobalStates.osdMediaOpen)
@@ -62,13 +66,20 @@ ColumnLayout {
         spacing: 10
 
         Repeater {
+            id: indicators
             model: root.activeKinds
+            onItemAdded: (index, item) => { if (index === 0) root.primaryIndicator = item }
+            onItemRemoved: (index, item) => { if (root.primaryIndicator === item) root.primaryIndicator = null }
             delegate: IndicatorHost {
                 required property var modelData
                 indicatorKind: String(modelData ?? "")
             }
         }
     }
+
+    // The first mature indicator is also exposed to host behavior fixtures.
+    property var primaryIndicator: null
+    readonly property var feature: primaryIndicator?.item ?? null
 
     StyledText {
         id: message

@@ -28,7 +28,7 @@ Item {
 
     Component {
         id:indicator
-        AbyssOsdContent { indicatorKind:root.kind;outputName:root.outputName }
+        AbyssOsdContent { kind:root.kind;outputName:root.outputName }
     }
     Component {
         id:popup

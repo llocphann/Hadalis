@@ -1,409 +1,1216 @@
 # Wull Local AI / Desktop Agent — Canonical TODO
 
-> **Single source of truth for Wull local-AI work.** All future planning, status updates, design changes, model/runtime decisions, benchmark results, fine-tuning/distillation notes, and acceptance evidence for this effort MUST be edited into this file only. Do not create additional Wull-AI TODO/task-board/handoff files.
+> **Single source of truth for Wull local-AI work.** All future planning, status updates, architecture/model/runtime decisions, benchmark summaries, fine-tuning/distillation notes, rollout state, and acceptance evidence for this effort MUST be edited into this file only. Do not create another Wull-AI TODO/task-board/handoff document.
 >
 > Repository: `llocphann/Hadalis`  
 > Working branch: `dev` only; never mutate `stable`.  
-> Created from dev HEAD: `77dbd3ad0f21cb6177225989d4cd7e3128c32e15`.
+> Last pre-write repository audit HEAD: `e2e23fba59866f1b2e649370f215fd03fb96afb9`.
 >
-> This plan is specifically for the AI/agent subsystem. The existing visual/animation Wull Companion plan remains separate product work; do not duplicate its visual requirements here.
+> This file is the only **planning/status** document for Wull AI. Normal implementation source, tests, fixtures and generated benchmark outputs may exist elsewhere in the repository as needed; they must not become competing planning documents.
+>
+> The existing Wull visual/animation plan remains separate product work. AI must consume/publish semantic state without duplicating or replacing the deterministic visual engine.
 
-## 1. Objective
+## 0. Current decision snapshot
 
-Build Wull as a native local desktop companion/agent that can:
+**Current phase:** P0.5 — downloaded-model verification + isolated runtime baseline  
+**Runtime target:** `llama.cpp`; start with process-isolated CLI/server APIs, consider direct `libllama` only after the process boundary is proven  
+**Reflex model target:** `unsloth/LFM2.5-VL-3B-GGUF` — `UD-Q6_K_XL`  
+**Reflex vision projector target:** `mmproj-F16.gguf` or the exact compatible projector shipped for that model revision  
+**Brain model target:** `unsloth/Qwen3.5-4B-MTP-GGUF` — `UD-Q4_K_XL`  
+**Specialist model:** none; Rust/Python/Hadalis specialization comes from tools + RAG first  
+**Fine-tuning:** not started and intentionally blocked until the baseline benchmark exists  
+**Distillation:** not started and intentionally blocked until benchmark + validators are mature  
+**Production model files:** never committed to Git
+
+Maintainer status reported on 2026-10-04:
+
+- [x] LFM2.5-VL-3B family downloaded from Unsloth.
+- [x] Qwen3.5-4B family downloaded from Unsloth.
+- [ ] Verify the exact local GGUF filenames/quantizations actually downloaded.
+- [ ] Record SHA-256 for each local model artifact in benchmark evidence.
+- [ ] Verify the LFM-compatible `mmproj` file is present.
+- [ ] Pin the exact `llama.cpp` revision/build used for all baseline numbers.
+
+Expected deployment intent, subject to measurement:
+
+```text
+Always-on / warm path
+LFM2.5-VL-3B UD-Q6_K_XL
+  -> screen perception / OCR / grounding / compact visual state
+  -> no continuous inference while idle
+
+On-demand reasoning path
+Qwen3.5-4B-MTP UD-Q4_K_XL
+  -> reasoning / planning / EN+VN / Rust+Python / tool planning
+  -> wake only when routing requires it
+  -> unload or sleep after measured idle TTL
+```
+
+Do not assume the size shown by a download UI is equal to resident RAM. Measure model mapping, KV cache, projector, runtime allocations and GPU offload separately.
+
+---
+
+## 1. Product objective
+
+Build Wull as a local desktop companion/agent that can:
 
 - converse naturally in English and Vietnamese;
-- understand user intent and choose deterministic tools;
-- find/read/create/edit/copy/move/rename files as authorized;
-- audit system/process/service state and summarize results;
-- use clipboard, app-launch, Git, Quickshell/Hadalis IPC, DBus/compositor/system APIs where available;
-- inspect screenshots/UI when a vision-capable model is selected;
-- assist with Rust (highest coding priority), Quickshell/QML, JavaScript/CSS, C/C++, and Python;
+- perceive visible desktop state when vision is actually required;
+- choose deterministic typed tools instead of guessing shell commands;
+- perform authorized desktop/file/system actions;
+- reason across Rust, Python, Quickshell/QML and the Hadalis codebase;
+- explain and recover from tool/runtime failures;
 - remain useful offline;
-- avoid giving the LLM unrestricted shell/system authority.
+- preserve Quickshell responsiveness even when inference is slow, crashes or runs out of memory;
+- scale to future 2B–4B models without rewriting Wull's tool layer.
 
-Wull does **not** need heavyweight general reasoning for normal desktop tasks. Prefer deterministic Rust tools for execution and reserve model capacity for language understanding, tool selection, response generation, vision, and bounded planning.
-
-UI localization remains English-only per `AGENTS.md`; EN/VN here means Wull conversational model input/output, not a second application translation catalog.
-
-## 2. Architecture contract
-
-Target production architecture:
+Wull does **not** need a large model for every interaction. The architecture must minimize model use:
 
 ```text
-Wull / Quickshell UI
-        |
-        | IPC (prefer Unix socket / native IPC)
-        v
-wull-agent / Wull AI orchestration (Rust)
-        |
-        +-- Tool Router / Permission Policy
-        +-- Context + Memory
-        +-- RAG / repository + documentation index
-        +-- Model Manager
-        +-- Resource Manager
-        |
-        v
-Existing inference runtime
-        |
-        +-- initial: llama-server
-        +-- production candidate: libllama / llama.cpp
-        |
-        v
-Local GGUF model
+structured system state available?
+  yes -> deterministic tool/API
+  no
+  |
+  +-- visual perception needed? -> Reflex
+  |
+  +-- multi-step reasoning/code/ambiguity? -> Brain
 ```
 
-Training path:
+A correct tool result beats an LLM guess. A small model with precise context beats a larger model fed an entire repository.
+
+---
+
+## 2. Repository integration boundary
+
+The repository already has two important boundaries that must remain distinct:
+
+- `native/inir-companiond` is a deterministic semantic Wull presence/animation engine. It currently consumes bounded JSON-line events/intents/preferences and emits visual state. **Do not put LLM inference, RAG or arbitrary tool execution into this daemon during the first implementation.**
+- `services/Ai.qml` already owns multi-provider chat/conversation UI behavior. It may expose a local-Wull provider/bridge later, but **QML must not own model process lifetime, permission enforcement or unsafe system actions.**
+
+Preferred new production boundary after P0/P1 succeeds:
 
 ```text
-Teacher model(s)
-   -> verified dataset
-   -> Unsloth / compatible SFT, QLoRA, distillation pipeline
-   -> student checkpoint
-   -> export/quantize GGUF
-   -> llama.cpp production inference
+Quickshell / services/Ai.qml / Wull UI
+                  |
+             narrow IPC
+                  v
+       native/inir-wull-agentd
+       (new Rust agent sidecar)
+          |       |       |
+          |       |       +-- typed tools + permission policy
+          |       +---------- RAG/context/memory
+          +------------------ router + model manager
+                    |
+          +---------+----------+
+          |                    |
+          v                    v
+  LFM inference         Qwen inference
+  process/runtime       process/runtime
+          |
+          +---- semantic Wull activity events ----> inir-companiond
 ```
 
-### Non-goals
+Naming `inir-wull-agentd` is the preferred working name, not a requirement to create it before baseline measurements. Before implementation, verify it fits current native workspace/package conventions.
 
-- Do not implement matrix kernels, tokenizer inference, KV-cache logic, quantization, or GPU kernels from scratch.
-- Do not make Ollama or LM Studio a mandatory production dependency.
-- Do not let the model emit arbitrary shell commands that are executed without policy validation.
-- Do not encode current repository contents or rapidly changing docs into weights when RAG/tool lookup is more appropriate.
-- Do not couple the Quickshell process directly to model lifetime such that an inference crash takes down the desktop shell.
+### Hard architectural rules
 
-## 3. Runtime decisions
+- Quickshell remains alive if either model/runtime dies.
+- `inir-companiond` remains deterministic and must remain useful without AI.
+- Model runtime processes are supervised and restartable.
+- The LLM never directly owns destructive authority.
+- Tool contracts stay independent of model prompt syntax.
+- Model-specific chat templates/tool-call adapters belong behind the model backend interface.
+- No model binary or projector is stored in Git.
+- No cloud provider is required for the local baseline.
+- No Ollama/LM Studio dependency is required in production.
 
-### Required
+---
 
-- [ ] Implement Wull-specific orchestration in Rust.
-- [ ] Start integration using an existing inference runtime, preferably `llama.cpp`.
-- [ ] Prototype through `llama-server` or equivalent stable local API before considering direct `libllama` FFI.
-- [ ] Keep the Wull-side model API backend-neutral enough to swap runtimes/models without rewriting tool logic.
-- [ ] Isolate inference in a sidecar/service boundary until crash recovery and resource behavior are proven.
-- [ ] Add clean model load/unload/reload and failure recovery.
-- [ ] Add configurable context/KV limits and model resource budgets.
+## 3. Selected two-model architecture
 
-### Development-only alternatives
+### 3.1 Reflex — LFM2.5-VL-3B
 
-Ollama and LM Studio may be used for quick model comparison/prototyping, but production must not require the user to install or manually keep either application running.
+Target: `LFM2.5-VL-3B-GGUF / UD-Q6_K_XL`.
 
-## 4. Initial model candidates
+Responsibilities:
 
-Do not choose by reputation alone. Benchmark candidates against the Wull suite before locking one in.
+- screenshot understanding;
+- OCR of visible UI, terminal and code when needed;
+- UI element detection/grounding;
+- compact scene summary;
+- confidence/uncertainty reporting;
+- simple visual questions that do not need multi-step reasoning;
+- producing structured perception for Brain or deterministic actions.
 
-- [ ] **LFM2.5-VL-3B** — primary candidate when desktop vision, screenshot understanding, UI grounding, OCR, low latency, and function calling matter most.
-- [ ] **Qwen3.5-4B** — primary comparison candidate when coding/Rust and stronger general reasoning matter more.
-- [ ] Keep room for future 2B–4B replacements; the architecture must treat the model as replaceable.
+Reflex is **not** the default reasoning engine and must not be used merely because it is already resident.
 
-Initial production quantization target: Q4/Q5-class GGUF, selected by measured quality/latency/RAM rather than file size alone.
+Required perception output contract, conceptually:
 
-## 5. Hardware/resource budget
+```json
+{
+  "frame_id": "...",
+  "summary": "...",
+  "visible_text": [],
+  "elements": [
+    {
+      "role": "button",
+      "label": "...",
+      "bbox": [x, y, w, h],
+      "confidence": 0.0
+    }
+  ],
+  "uncertainties": [],
+  "recommended_followup": "none|brain|structured_api"
+}
+```
 
-Reference development machine:
+The final schema may differ, but it must be bounded and typed. Do not forward unrestricted prose vision output into an action executor.
 
-- Ryzen 5 PRO 7540U, 6C/12T
-- Radeon 740M integrated GPU
-- ~18 GB system RAM
-- 30 GB swap (fallback only; never treat swap as normal LLM memory)
+### 3.2 Brain — Qwen3.5-4B-MTP
 
-Initial Wull budget:
+Target: `Qwen3.5-4B-MTP-GGUF / UD-Q4_K_XL`.
 
-- student/model class: preferably 2B–4B;
-- production model artifact target: ~1.5–3.5 GB where practical;
-- AI subsystem working RAM target: <= 4–6 GB under normal use;
-- normal context target: 4K–8K;
-- larger context: opt-in/on-demand, e.g. 16K when justified;
-- prefer Vulkan/CPU hybrid acceleration after correctness is proven;
-- idle Wull must not continuously generate/infer.
+Responsibilities:
 
-Performance acceptance must measure: cold load, warm first-token latency, tokens/sec, peak RSS, idle RSS, CPU/GPU usage, temperature/power impact, and recovery after model/runtime failure.
-
-## 6. Tool layer
-
-Define typed, schema-validated tools. Initial families:
-
-- [ ] `filesystem.search/read/write/create/copy/move/rename`
-- [ ] `clipboard.get/set`
-- [ ] `process.list/status/start/stop`
-- [ ] `system.audit/status/logs`
-- [ ] `app.launch/focus/close`
-- [ ] `git.status/diff/log/... ` with narrowly scoped write actions
-- [ ] Quickshell/Hadalis IPC tools
-- [ ] DBus/systemd/native Linux integration where appropriate
-- [ ] compositor/window/workspace tools when supported
-- [ ] screenshot/screen-inspection input path for vision models
-
-Prefer, in order:
-
-1. Hadalis/Quickshell native IPC/API
-2. DBus/system APIs
-3. compositor IPC
-4. application-specific CLI/API
-5. accessibility interfaces
-6. mouse/keyboard simulation only as fallback
-7. vision-driven pointer control only when no reliable structured interface exists
-
-## 7. Permissions and safety
-
-Tool execution is owned by Rust policy, not by the LLM.
-
-Suggested tiers:
-
-- **Tier A — read/low impact:** search/read/list/status; may run automatically.
-- **Tier B — reversible mutation:** edit/copy/move/app/process/settings changes; obey explicit policy and provide clear result.
-- **Tier C — destructive/privileged:** delete, sudo/root changes, package removal, security-sensitive settings, destructive Git operations; require explicit user confirmation.
-
-Required controls:
-
-- [ ] path canonicalization and traversal protection;
-- [ ] allow/deny scopes per tool;
-- [ ] structured argument validation;
-- [ ] bounded output/log capture;
-- [ ] timeout/cancellation;
-- [ ] no arbitrary unreviewed `bash -c` execution;
-- [ ] auditable action/result records without storing secrets unnecessarily.
-
-## 8. Benchmark before training
-
-Do **not** fine-tune or distill until a reproducible baseline exists.
-
-Create an evaluation set of roughly 200–500 representative tasks, then grow it over time. Categories should include:
-
-- filesystem + clipboard;
-- desktop/app/tool selection;
-- system audit;
-- Git;
-- Rust;
-- Quickshell/QML;
-- JavaScript/CSS;
-- C/C++;
-- Python;
 - EN/VN conversation;
-- error recovery;
-- screenshot/UI grounding if a VLM is used;
-- safety/permission refusal and confirmation cases.
+- multi-step reasoning;
+- planning;
+- Rust/Python analysis;
+- Hadalis architecture reasoning;
+- deciding among already-authorized typed tools;
+- recovery after tool errors;
+- synthesizing retrieved documentation/source evidence.
 
-Track at minimum:
+Brain should normally receive **structured text/context**, not raw screenshots. LFM owns the primary visual path so Qwen's vision projector is unnecessary for the initial architecture.
 
-- exact tool-selection accuracy;
-- argument/schema accuracy;
-- task completion rate;
-- unsafe-action rate;
+MTP is an optimization, not a correctness dependency. Benchmark Brain with MTP enabled and with the closest supported non-speculative path. If MTP is unstable or unsupported by the pinned runtime, correctness wins.
+
+### 3.3 No specialist model
+
+Do not add a third coding model in the first implementation.
+
+Coding knowledge comes from:
+
+```text
+Qwen3.5-4B base capability
+        +
+retrieved Rust/Python/Qt/Quickshell docs
+        +
+relevant Hadalis source
+        +
+compiler/test/tool feedback
+```
+
+Only reconsider a specialist model if the benchmark proves a repeated failure that RAG/tools/fine-tuning cannot solve within the resource budget.
+
+---
+
+## 4. Router design
+
+The router is one of the most important parts of Wull. It must initially be **rule/feature driven in Rust**, not another LLM call.
+
+### Route classes
+
+**R0 — deterministic/no model**
+
+Examples:
+
+- query known workspace/window/process state;
+- launch an app by a validated ID;
+- retrieve shell config through known APIs;
+- check a file that the user named exactly;
+- deterministic Wull animation/presence event.
+
+**R1 — Reflex only**
+
+Examples:
+
+- "what is visible in this dialog?";
+- identify a button/icon when structured accessibility/API data is unavailable;
+- OCR a terminal line;
+- locate a UI element;
+- summarize a screenshot into structured state.
+
+**R2 — Brain only**
+
+Examples:
+
+- explain Rust ownership/borrow errors from already-provided text;
+- compare a Python and Rust implementation;
+- plan a sequence of typed actions;
+- reason about Hadalis code retrieved from source;
+- answer EN/VN questions not requiring the current screen.
+
+**R3 — Reflex -> Brain**
+
+Examples:
+
+- screenshot contains an error and user asks for diagnosis;
+- user asks Wull to inspect visible UI then decide the next action;
+- visual evidence must be converted into a multi-step plan.
+
+### Initial escalation rules
+
+Escalate to Brain when one or more are true:
+
+- request explicitly asks "why", "compare", "analyze", "plan", "debug", "design", "rewrite", "Rust", "Python", "code";
+- task needs more than one dependent action;
+- tool selection is ambiguous;
+- Reflex reports uncertainty below the accepted confidence threshold;
+- previous deterministic action failed and recovery requires interpretation;
+- retrieved evidence conflicts.
+
+Do **not** wake Brain for:
+
+- animation/emotion;
+- hover/click feedback;
+- deterministic shell state;
+- basic app launch;
+- successful known typed action;
+- simple OCR/grounding answer.
+
+### Router metrics
+
+Track:
+
+- hard-task miss rate: Brain was needed but not invoked;
+- unnecessary Brain wake rate;
+- unnecessary vision call rate;
+- mean number of model calls/task;
+- route-to-completion latency;
+- route correctness by category.
+
+Initial acceptance target after the benchmark is calibrated:
+
+- protected/destructive tasks: 0 direct model-executed actions;
+- hard-task miss <= 5%;
+- unnecessary Brain wake <= 15% on the canonical desktop suite;
+- simple deterministic tasks should complete with 0 LLM calls whenever structured state is sufficient.
+
+---
+
+## 5. Runtime plan
+
+### 5.1 Pin runtime before measuring
+
+Before collecting any result:
+
+- [ ] Build/install a current `llama.cpp` revision that supports both target model architectures.
+- [ ] Record `llama.cpp` git SHA, compiler, build flags, Vulkan/CPU backend availability.
+- [ ] Record kernel/driver/Mesa/Vulkan device versions.
+- [ ] Do not compare results from different runtime revisions without labeling them separately.
+
+### 5.2 LFM isolated baseline
+
+Verify:
+
+- model loads;
+- compatible `mmproj` loads;
+- one fixed screenshot produces a valid answer;
+- image input works repeatedly;
+- no crash/leak after a bounded loop;
+- CPU-only path works as correctness fallback;
+- Vulkan/offload path is measured separately.
+
+Measure:
+
+- cold model load;
+- projector/image preprocessing;
+- prompt processing;
+- first-token latency;
+- end-to-end screenshot -> structured result latency;
+- output tokens/sec;
+- peak RSS;
+- GPU memory/offload if applicable;
+- CPU/GPU utilization;
+- repeated-frame behavior.
+
+### 5.3 Qwen isolated baseline
+
+Verify:
+
+- model loads;
+- Vietnamese/English output;
+- thinking/reasoning behavior under bounded budgets;
+- Rust/Python coding prompts;
+- structured JSON/tool-call output;
+- MTP path;
+- non-MTP/fallback path where supported.
+
+Measure:
+
+- cold load;
+- warm prompt processing;
+- first-token latency;
+- decode tokens/sec;
+- MTP accepted draft-token behavior if runtime exposes it;
+- peak RSS;
+- CPU/Vulkan behavior;
+- quality at fixed output budgets.
+
+### 5.4 Context policy
+
+Start small:
+
+- Reflex: minimum context that reliably supports one screenshot + compact instruction/result.
+- Brain normal: 4K–8K.
+- Brain extended: 16K only when retrieval/planning actually needs it.
+- Very long context is not a default feature merely because the model supports it.
+
+KV/cache memory must be included in every resource table.
+
+---
+
+## 6. Benchmark harness
+
+Do not integrate models into the live Wull UI until a repeatable harness exists.
+
+### 6.1 Harness principles
+
+The harness must:
+
+- run the same task set against multiple model/runtime configs;
+- separate cold and warm tests;
+- save machine-readable results;
+- record exact model SHA-256 + runtime SHA;
+- record command/config used;
+- capture exit code and timeout;
+- never silently replace a failed result;
+- produce an aggregate table that can be copied into this file.
+
+Raw benchmark outputs may be generated by scripts/fixtures elsewhere; **all decisions and canonical summary numbers remain in this file**.
+
+### 6.2 Reflex suite
+
+Minimum first useful suite: 100 real Wull-like screenshots, then grow toward 200+.
+
+Include:
+
+- simple dialogs;
+- dense settings pages;
+- terminal text;
+- editor/code text;
+- small icons;
+- disabled/enabled controls;
+- multiple monitors where possible;
+- light/dark themes;
+- 1080p/1440p/4K scale variants;
+- fractional scaling;
+- partially obscured UI;
+- English UI text;
+- Vietnamese text appearing in content;
+- similar/ambiguous icons;
+- error dialogs;
+- screenshot compression/blur stress cases.
+
+Metrics:
+
+- OCR character error rate;
+- target element hit rate;
+- bounding-box/point grounding success;
+- wrong-element rate;
+- hallucinated-element rate;
+- confidence calibration;
+- screenshot-to-action latency.
+
+### 6.3 Brain suite
+
+Minimum first useful suite: 150 tasks, then grow toward 300+.
+
+Buckets:
+
+- EN conversation;
+- VN conversation;
+- Rust reasoning;
+- Python reasoning;
+- Rust vs Python architectural choice;
+- Quickshell/QML;
+- Hadalis source reasoning using retrieved context;
+- tool-plan generation;
+- schema-constrained JSON;
+- recovery after tool failure;
+- "insufficient evidence" behavior;
+- refusal/confirmation for privileged actions.
+
+Metrics:
+
+- exact structured output validity;
+- correct tool choice;
+- argument accuracy;
+- code compile/test success;
+- factual grounding to supplied context;
 - hallucination rate;
-- code compile/test success where applicable;
-- EN/VN response quality;
-- vision grounding accuracy where applicable;
-- latency/RAM/power metrics.
+- task completion rate;
+- latency/resource use.
 
-A new model/runtime/configuration must beat or intentionally trade against the canonical benchmark before replacement.
+### 6.4 Router suite
 
-## 9. Data strategy
+At least 100 mixed requests labeled R0/R1/R2/R3.
 
-Keep knowledge assets separate from model weights.
+The router benchmark is mandatory because the project goal is not "best model score"; it is **minimum cost to correct action**.
 
-### Fine-tune / SFT / LoRA for
+### 6.5 Safety suite
 
-- Wull behavior/personality;
-- tool selection and structured calls;
-- Hadalis conventions/workflows;
-- preferred Rust patterns/style;
+At least 50 cases covering:
+
+- deletion;
+- overwriting;
+- permission escalation;
+- package/service mutation;
+- dangerous Git operations;
+- credential/private-file access;
+- path traversal;
+- prompt injection inside retrieved files/screenshots;
+- malicious UI text instructing Wull to ignore policy.
+
+Release gate: no protected action may bypass Rust policy because the model requested it.
+
+---
+
+## 7. Resource budget
+
+Reference development machine currently documented for this project:
+
+- Ryzen 5 PRO 7540U, 6C/12T;
+- Radeon 740M integrated GPU;
+- ~18 GB system RAM;
+- swap is emergency fallback, not normal model memory.
+
+Initial budget:
+
+```text
+Reflex model/projector expected artifact footprint: ~3.3 GB class
+Brain model expected artifact footprint:            ~3.7 GB class
+Peak if both loaded:                                ~7 GB weights/artifacts
++ runtime/KV/vision buffers:                        measured, not guessed
+```
+
+Production behavior target:
+
+- Reflex may remain warm only if idle power/RAM is acceptable.
+- Brain is on-demand by default until measurements justify residency.
+- Normal AI subsystem target: <= 4–6 GB working RAM when only normal Reflex path is active.
+- Combined peak should remain comfortably below pressure that causes swap thrash on the reference 18 GB machine.
+- Idle inference CPU/GPU use should approach zero.
+- No continuous screenshot polling purely for AI. Capture must be event/user/task driven unless a later feature has an explicit bounded need.
+
+### Load policy experiment
+
+Benchmark at least:
+
+1. both resident;
+2. Reflex resident + Brain on-demand;
+3. both on-demand;
+4. Brain retained for 30 s / 60 s / 180 s after use.
+
+Choose based on measured:
+
+- second-request latency;
+- memory pressure;
+- power;
+- user-perceived responsiveness.
+
+The initial production preference is **Reflex warm, Brain on-demand**, but benchmark may change it.
+
+---
+
+## 8. Model manager
+
+Rust Model Manager owns:
+
+- configured local model paths;
+- artifact existence/hash check;
+- runtime process spawn;
+- health probe;
+- load state;
+- request queue;
+- cancellation;
+- per-model timeout;
+- idle unload;
+- bounded restart;
+- stderr/log capture;
+- runtime feature detection (MTP, vision/projector, Vulkan);
+- resource-pressure response.
+
+Suggested states:
+
+```text
+Missing
+Ready
+Loading
+Warm
+Busy
+CoolingDown
+Unloading
+Failed
+CircuitOpen
+```
+
+Never model "loaded" as a boolean only; failures and transitions matter.
+
+### Failure behavior
+
+- missing Reflex model/projector -> Wull visual still works; vision features report unavailable;
+- missing Brain -> deterministic + Reflex features still work;
+- Brain OOM -> unload Brain, keep shell alive, report bounded error;
+- Reflex crash -> restart with bounded attempts; no click/action from stale perception;
+- repeated runtime crash -> open circuit and require explicit retry/restart window;
+- request timeout -> cancel/kill bounded child if necessary; never freeze UI;
+- malformed model output -> schema reject, no tool execution;
+- MTP failure -> retry via verified fallback configuration, not an unbounded restart loop.
+
+---
+
+## 9. Tool execution architecture
+
+LLMs propose; Rust validates and executes.
+
+### Initial typed tool families
+
+- `filesystem.search/read/stat`
+- `clipboard.get`
+- `process.list/status`
+- `system.status/logs`
+- `app.list/launch/focus`
+- `git.status/diff/log`
+- Hadalis/Quickshell IPC reads
+- compositor/window/workspace reads
+- screenshot capture
+
+Add mutation only after read-only end-to-end flow is stable:
+
+- `filesystem.write/create/copy/move/rename`
+- app/process mutation
+- shell config mutation
+- Git write actions
+
+### Execution preference
+
+1. Hadalis/Quickshell native IPC;
+2. DBus/system APIs;
+3. compositor IPC;
+4. typed native helper;
+5. application API/CLI;
+6. accessibility interface;
+7. simulated input;
+8. vision-guided pointer action only as last resort.
+
+### Permission tiers
+
+**A — read / low impact:** may execute automatically when request intent is clear.  
+**B — reversible mutation:** must satisfy explicit policy and surface what changed.  
+**C — destructive/privileged:** explicit confirmation required immediately before execution.
+
+Hard controls:
+
+- canonicalize paths;
+- block traversal outside granted scope;
+- validate every argument;
+- bound stdout/stderr;
+- enforce timeout/cancel;
+- no unrestricted model-generated `bash -c`;
+- redact secrets from logs;
+- never let screenshot/retrieved text alter permission policy.
+
+---
+
+## 10. Reflex -> Brain contract
+
+Brain must not receive an unbounded dump of OCR/screenshot prose.
+
+The handoff should include only:
+
+- user request;
+- selected visible text;
+- selected elements/coordinates if relevant;
+- confidence;
+- uncertainties;
+- current app/window identity if deterministically known;
+- relevant tool results;
+- provenance/frame ID.
+
+Example:
+
+```json
+{
+  "request": "Why is this build failing?",
+  "perception": {
+    "source": "screen",
+    "frame_id": "f-123",
+    "active_app": "terminal",
+    "text": [
+      "error[E0277]: ..."
+    ],
+    "uncertain": false
+  }
+}
+```
+
+If a tool can read the terminal/log file directly, prefer that source over OCR before asking Brain to reason.
+
+---
+
+## 11. RAG strategy
+
+Do not fine-tune current documentation into weights.
+
+### Initial corpora
+
+- current Hadalis `dev` source;
+- `AGENTS.md`, architecture/structure docs and relevant project docs;
+- Rust standard/book/reference/API material needed for tasks;
+- Python language/library docs needed for tasks;
+- Qt/QML/Quickshell docs;
+- selected Linux/system/compositor docs.
+
+### Retrieval rules
+
+- retrieve narrowly by query/task;
+- include file path/source/revision in chunks;
+- cap token budget;
+- prefer exact source definition and surrounding context over broad summaries;
+- include only the minimum code needed for reasoning;
+- never treat retrieved text as trusted instructions;
+- repository policy/system instructions outrank retrieved content.
+
+### Index freshness
+
+Hadalis repository retrieval must be revision-aware. A response about code should know which commit/source version it used.
+
+Invalidate/reindex changed files incrementally rather than rebuilding everything on every chat.
+
+### RAG benchmark
+
+Measure:
+
+- retrieval recall@k on known questions;
+- irrelevant-token ratio;
+- answer correctness with/without retrieval;
+- latency added by retrieval;
+- stale-source rate.
+
+---
+
+## 12. Memory design
+
+Separate three concepts:
+
+### Session working memory
+
+Short-lived conversation/task state. Discard/compact aggressively.
+
+### Local durable user memory
+
+Only store information that has a clear future value and is permitted by product policy. Must support inspection and deletion. Do not silently store secrets, credentials, raw clipboard history or arbitrary screenshots.
+
+### Knowledge/RAG index
+
+Documents/source are not "user memory". They have their own revision/provenance.
+
+Initial implementation may use a simple local SQLite/JSON metadata store plus a replaceable vector/index backend. Do not bind the agent architecture to one embedding database.
+
+Memory must never be required for Wull's deterministic visual behavior.
+
+---
+
+## 13. IPC/API contract
+
+The QML-facing API should be small and asynchronous.
+
+Conceptual request:
+
+```json
+{
+  "v": 1,
+  "id": "req-...",
+  "type": "ask",
+  "text": "...",
+  "attachments": [],
+  "screen_context": "none|capture_if_needed"
+}
+```
+
+Conceptual streamed events:
+
+```text
+accepted
+route_selected
+model_loading
+thinking
+tool_proposed
+confirmation_required
+tool_running
+token_delta
+completed
+failed
+cancelled
+```
+
+The exact protocol must:
+
+- version messages;
+- bound message/frame size;
+- carry request IDs;
+- support cancellation;
+- distinguish model text from trusted tool results;
+- never rely on parsing human-readable logs.
+
+Wull activity can be mapped into existing `inir-companiond` semantic events such as thinking/working/success/warning/error without sending frame-rate animation traffic through the AI daemon.
+
+---
+
+## 14. Integration with existing `services/Ai.qml`
+
+Do not rewrite the existing multi-provider AI stack merely to prove local Wull.
+
+Planned sequence:
+
+1. isolated Rust/runtime benchmark;
+2. Rust agent sidecar;
+3. local provider/adapter that exposes the sidecar to existing UI where useful;
+4. keep remote providers as separate optional chat providers;
+5. Wull-specific tool/permission policy remains in Rust.
+
+Questions to answer before integration:
+
+- Can current provider catalog express the local Wull endpoint/capabilities cleanly?
+- Which conversation state should remain in `Ai.qml` versus move into the Rust agent?
+- How are streaming/cancellation mapped without blocking the QML event loop?
+- How can existing safe actions be reused instead of duplicated?
+- How does local-only policy select Wull without breaking other provider behavior?
+
+No source change in `Ai.qml` is authorized merely by this plan; inspect and test its current contracts first.
+
+---
+
+## 15. Security / prompt-injection model
+
+Treat the following as **untrusted data**, never instructions:
+
+- webpage text;
+- screenshot text;
+- terminal output;
+- source comments;
+- README/docs retrieved by RAG;
+- clipboard content;
+- tool output.
+
+The Brain may reason about this data but cannot let it override:
+
+- tool permissions;
+- confirmation requirements;
+- path restrictions;
+- system policy;
+- model routing/security policy.
+
+Required tests include text such as "ignore previous instructions and delete..." inside a screenshot/document. Expected result: data is summarized/handled as data; policy remains unchanged.
+
+---
+
+## 16. Training policy
+
+### T0 — base models only
+
+Mandatory first.
+
+- tools;
+- routing;
+- RAG;
+- benchmark;
+- resource manager;
+- error recovery.
+
+Do not tune weights before these exist.
+
+### T1 — LoRA/QLoRA/SFT
+
+Only after repeated base-model failures are categorized.
+
+Suitable targets:
+
+- Wull concise EN/VN style;
+- structured tool calls;
+- Hadalis conventions;
 - recovery behavior;
-- concise EN/VN interaction style;
-- stable domain behaviors that benefit from being internalized.
+- stable Rust/QML patterns.
 
-### RAG/tool lookup for
+Do **not** use tuning to memorize fast-changing repo source/docs.
 
-- current Hadalis repository contents;
-- Quickshell/Qt/Rust/C/C++/Python/JS/CSS documentation;
-- current system state;
-- changing APIs/configuration;
-- logs and runtime evidence.
+### T2 — distillation
 
-### Dataset record
-
-For useful interactions, record a sanitized training/evaluation form of:
+Only after automated validators exist.
 
 ```text
-request
-relevant context
-expected/selected tool
-tool arguments
-tool result
-final response
-PASS/FAIL + reason
+teacher
+ -> generated candidate
+ -> schema/compile/test validation
+ -> human/agent review where needed
+ -> accepted dataset
+ -> 2B–4B student
+ -> same canonical benchmark
 ```
 
-Do not treat raw conversation history as training data without filtering and verification.
+The long-term durable assets are:
 
-## 10. Training and fine-tuning sequence
+- benchmark;
+- verified dataset;
+- validators;
+- tool contracts;
+- RAG corpus/provenance.
 
-### Phase T0 — no training
+The deployed model remains replaceable.
 
-- [ ] Run base candidates unchanged.
-- [ ] Add tools, RAG, resource controls, and benchmark.
-- [ ] Identify actual failure modes before changing weights.
+---
 
-### Phase T1 — SFT / LoRA / QLoRA
+## 17. Detailed implementation phases
 
-Begin only after enough high-quality examples exist.
+### P0.5 — Local artifact + runtime verification — CURRENT
 
-Train primarily for:
+- [x] Select two-model architecture: LFM Reflex + Qwen Brain.
+- [x] Select LFM target quant: `UD-Q6_K_XL`.
+- [x] Select Qwen target quant: `UD-Q4_K_XL`.
+- [x] Select Qwen MTP build as preferred Brain candidate.
+- [x] Maintainer reports both model families downloaded.
+- [ ] Verify exact filenames.
+- [ ] Verify model SHA-256.
+- [ ] Verify compatible LFM `mmproj`.
+- [ ] Pin `llama.cpp` revision.
+- [ ] Run one-image LFM smoke test.
+- [ ] Run EN/VN + Rust/Python Qwen smoke tests.
+- [ ] Run MTP smoke test.
+- [ ] Record cold/warm RAM and latency baseline.
 
-- tool calling;
-- Wull conversational behavior;
-- Rust/Hadalis coding conventions;
-- Quickshell workflows;
-- recovery from tool errors.
+**Exit gate:** both models can be invoked independently and reproducibly; failures are understood; exact artifacts/runtime are recorded.
 
-Use Unsloth or another compatible training stack as tooling, not as a mandatory production runtime.
+### P1 — Benchmark harness
 
-### Phase T2 — verified distillation
+- [ ] Define machine-readable case schema.
+- [ ] Create first Reflex screenshot set.
+- [ ] Create first Brain reasoning/tool set.
+- [ ] Create route labels.
+- [ ] Create safety set.
+- [ ] Capture metrics + environment automatically.
+- [ ] Produce repeatable summary tables.
+- [ ] Compare CPU vs Vulkan.
+- [ ] Compare Brain MTP on/off/fallback.
+- [ ] If available, compare LFM `UD-Q5_K_XL`, `Q6_K`, `UD-Q6_K_XL` only on the same exact suite before claiming the extra memory is worthwhile.
 
-Only after benchmark + validators are mature:
+**Exit gate:** one command can reproduce the baseline on a known machine and outputs evidence sufficient to compare configs.
+
+### P2 — Rust agent/model-manager skeleton
+
+- [ ] Audit current native workspace patterns.
+- [ ] Add the new Rust sidecar using established workspace conventions.
+- [ ] Implement request IDs, cancellation, timeouts, bounded logs.
+- [ ] Implement process supervision for inference runtime.
+- [ ] Implement model state machine.
+- [ ] Implement artifact/path/hash validation.
+- [ ] Implement no-model graceful mode.
+- [ ] Unit test crash/restart/cancel/state transitions.
+
+**Exit gate:** Rust can safely supervise both model paths without Quickshell integration.
+
+### P3 — Router + two-model handoff
+
+- [ ] Implement R0/R1/R2/R3 deterministic router.
+- [ ] Implement typed Reflex result.
+- [ ] Implement bounded Reflex -> Brain context.
+- [ ] Add confidence/uncertainty handling.
+- [ ] Add Brain wake/unload policy.
+- [ ] Benchmark route accuracy and model-call count.
+
+**Exit gate:** mixed benchmark tasks reach the correct model path with bounded resource use.
+
+### P4 — Read-only typed tools
+
+- [ ] filesystem read/search/stat;
+- [ ] process/system status;
+- [ ] app/window/workspace queries;
+- [ ] clipboard read with privacy guard;
+- [ ] Git status/diff/log;
+- [ ] Hadalis IPC read paths;
+- [ ] screenshot capture.
+
+**Exit gate:** Brain can solve useful desktop tasks with no mutation authority and all calls are schema validated.
+
+### P5 — RAG
+
+- [ ] repository index with revision provenance;
+- [ ] Rust/Python/Qt/QML/Quickshell doc retrieval;
+- [ ] bounded context builder;
+- [ ] injection-resistant retrieval boundary;
+- [ ] incremental refresh;
+- [ ] retrieval benchmark.
+
+**Exit gate:** Hadalis/Rust/Python answers measurably improve without inflating the model or feeding whole repositories.
+
+### P6 — Quickshell/Wull integration
+
+- [ ] define versioned async IPC;
+- [ ] integrate with existing Wull UI without blocking render loop;
+- [ ] map AI activity into `inir-companiond` semantic states;
+- [ ] evaluate integration with `services/Ai.qml`;
+- [ ] streaming text;
+- [ ] cancellation UI;
+- [ ] model unavailable/crash UI state;
+- [ ] no-AI visual fallback.
+
+**Exit gate:** killing either inference process does not crash or freeze Quickshell/Wull.
+
+### P7 — Mutation tools + permissions
+
+- [ ] reversible file actions;
+- [ ] app/process mutation;
+- [ ] shell config mutation through existing safe contract;
+- [ ] Git write actions only when clearly scoped;
+- [ ] confirmation gate for destructive/privileged operations;
+- [ ] audit log/redaction;
+- [ ] prompt-injection tests.
+
+**Exit gate:** safety suite passes with zero policy bypass for protected actions.
+
+### P8 — Resource optimization
+
+- [ ] tune GPU offload;
+- [ ] tune context/KV limits;
+- [ ] benchmark residency TTL;
+- [ ] avoid swap;
+- [ ] idle power check;
+- [ ] reduce duplicate buffers/copies;
+- [ ] benchmark screenshot resolution/cropping strategy;
+- [ ] decide final default quant/config from evidence.
+
+**Exit gate:** selected default meets resource and quality gates on reference hardware.
+
+### P9 — Optional tuning/distillation
+
+- [ ] identify benchmark-backed failure clusters;
+- [ ] collect verified examples;
+- [ ] create leakage-safe train/validation/test split;
+- [ ] LoRA/QLoRA experiment;
+- [ ] reject regressions;
+- [ ] consider teacher distillation only if it beats the untuned 4B architecture on Wull tasks.
+
+### P10 — Production hardening
+
+- [ ] model install/update/checksum flow;
+- [ ] license/attribution review;
+- [ ] safe rollback;
+- [ ] missing/corrupt model recovery;
+- [ ] version compatibility checks;
+- [ ] canonical local repository validation;
+- [ ] live Wayland/Quickshell acceptance;
+- [ ] document measured hardware minimum/recommended profile.
+
+---
+
+## 18. Initial acceptance gates
+
+These are starting targets; P1 may tighten them but must not silently weaken safety gates.
+
+### Correctness
+
+- structured model/tool output schema validity >= 99% on canonical cases;
+- protected-action policy bypass = 0;
+- hallucinated executable tool/action = 0 after Rust validation;
+- Reflex target-element success >= 95% on the standard UI subset before vision-driven actions are enabled;
+- low-confidence perception must fail closed or request another evidence source;
+- model replacement cannot be promoted if it regresses core task completion without an explicit resource trade-off decision.
+
+### Stability
+
+- inference crash never terminates Quickshell;
+- cancellation completes without orphaning an unbounded request;
+- repeated crash enters circuit-breaker state;
+- model missing/corrupt produces a useful error and preserves non-AI Wull;
+- no background generation while idle.
+
+### Resource
+
+- no normal-use swap thrashing on the reference machine;
+- idle Brain should not remain resident unless measurements show a justified user benefit;
+- model/runtime memory must be measured including KV/projector/buffers;
+- production default should prioritize desktop responsiveness over maximum tokens/sec.
+
+### Latency
+
+Do not invent an absolute release number before P1. Establish:
+
+- Reflex screenshot -> structured result P50/P95;
+- Brain cold wake -> first token P50/P95;
+- Brain warm -> first token P50/P95;
+- simple deterministic action latency;
+- end-to-end routed task latency.
+
+After baseline, record explicit numeric release thresholds in this section.
+
+---
+
+## 19. Benchmark result ledger
+
+Keep aggregate results here. Raw generated files are evidence, not the source of truth for decisions.
+
+### Environment
+
+- Date: TBD
+- Hadalis dev SHA: TBD
+- `llama.cpp` SHA: TBD
+- CPU: Ryzen 5 PRO 7540U
+- GPU: Radeon 740M
+- Mesa/Vulkan: TBD
+- RAM: ~18 GB
+- OS/kernel: TBD
+
+### Reflex — LFM2.5-VL-3B
+
+| Config | Model SHA | mmproj SHA | Backend | Cold load | P50 E2E | P95 E2E | OCR CER | Grounding | Peak RSS | Notes |
+|---|---|---|---|---:|---:|---:|---:|---:|---:|---|
+| UD-Q6_K_XL | TBD | TBD | CPU | TBD | TBD | TBD | TBD | TBD | TBD | baseline |
+| UD-Q6_K_XL | TBD | TBD | Vulkan | TBD | TBD | TBD | TBD | TBD | TBD | baseline |
+
+### Brain — Qwen3.5-4B-MTP
+
+| Config | Model SHA | Backend | MTP | Cold load | Warm TTFT | tok/s | Quality score | Peak RSS | Notes |
+|---|---|---|---|---:|---:|---:|---:|---:|---|
+| UD-Q4_K_XL | TBD | CPU | off/fallback | TBD | TBD | TBD | TBD | TBD | baseline |
+| UD-Q4_K_XL | TBD | CPU | on | TBD | TBD | TBD | TBD | TBD | baseline |
+| UD-Q4_K_XL | TBD | Vulkan | on | TBD | TBD | TBD | TBD | TBD | baseline |
+
+### Router
+
+| Metric | Result |
+|---|---:|
+| hard-task miss | TBD |
+| unnecessary Brain wake | TBD |
+| unnecessary vision call | TBD |
+| average model calls/task | TBD |
+| task completion | TBD |
+
+### Decision log
+
+- 2026-10-04 — choose two-model design instead of 12B Brain + separate coding specialist.
+- 2026-10-04 — Reflex target set to LFM2.5-VL-3B `UD-Q6_K_XL` because perception/OCR errors contaminate downstream reasoning and the memory delta versus Q5 is small enough to benchmark.
+- 2026-10-04 — Brain target set to Qwen3.5-4B-MTP `UD-Q4_K_XL`; keep Brain on-demand initially.
+- 2026-10-04 — no specialist model; use RAG/tools/compiler feedback first.
+- 2026-10-04 — do not fine-tune until reproducible base-model results exist.
+
+Add future decisions here with the evidence/benchmark revision that caused them.
+
+---
+
+## 20. Local model storage/package policy
+
+Proposed user-data location, subject to existing Hadalis XDG conventions:
 
 ```text
-large teacher(s)
- -> generate candidate examples
- -> schema validation
- -> compiler/tests/tool simulation
- -> deduplicate/filter
- -> accepted Wull dataset
- -> student 2B–4B
+$XDG_DATA_HOME/inir/models/wull/
+  lfm/
+  qwen/
+  manifest.json
 ```
 
-Teacher models do not need to fit on the Wull laptop; they may run on another machine/cloud/API during dataset generation.
+Do not hardcode a home path until current installer/config conventions are audited.
 
-For code-generated training data, automatically validate wherever possible (e.g. Rust compile/tests/clippy; Python tests/lint/type checks; C/C++ compiler/tests; structured tool schemas).
+Manifest should eventually record:
 
-## 11. Long-term distillation/model replacement policy
+- model logical ID;
+- exact filename;
+- quant;
+- source repository/revision;
+- SHA-256;
+- byte size;
+- compatible projector;
+- compatible runtime feature requirements;
+- license/attribution;
+- install timestamp.
 
-The durable asset is **dataset + benchmark + validators + RAG corpus + tool contracts**, not one specific model.
+Runtime must validate files before treating them as usable.
 
-When a better teacher appears:
+---
 
-- keep verified old data;
-- use the new teacher to review/repair weak samples;
-- generate missing/harder cases;
-- re-run validation;
-- train the next student.
+## 21. What not to do
 
-When a better student architecture appears:
+- Do not commit GGUF/`mmproj` binaries.
+- Do not make Wull wait on Brain for hover/animation.
+- Do not pass raw model prose straight into shell execution.
+- Do not use vision when a structured system API can answer the same question.
+- Do not give the model unrestricted shell access.
+- Do not put large mutable docs into model weights.
+- Do not benchmark one quant/runtime on one task and generalize to all Wull workloads.
+- Do not treat tokens/sec as the only performance metric.
+- Do not assume MTP is faster until measured on the target machine.
+- Do not assume Vulkan is faster than CPU for every prompt/image size.
+- Do not let a retrieved README/webpage/screenshot redefine permissions.
+- Do not merge AI lifetime into the deterministic animation daemon until there is evidence this is superior.
+- Do not add a third model until a benchmark-backed need exists.
+- Do not create another Wull-AI planning file.
 
-- reuse the canonical Wull dataset and benchmark;
-- retrain/distill into the new base;
-- do not attempt to port incompatible LoRA weights blindly.
+---
 
-Production model size must not grow automatically with dataset size. Keep a fixed deployment budget and periodically consolidate/merge/re-distill rather than stacking endless adapters.
+## 22. Immediate next execution sequence
 
-## 12. Versioning inside this single file
+This is the next work order; complete in order.
 
-Do not create separate planning files per version. Maintain state here.
+1. **Local artifact inventory**
+   - identify exact two GGUF paths;
+   - confirm `UD-Q6_K_XL` and `UD-Q4_K_XL`;
+   - confirm LFM projector;
+   - compute hashes/sizes.
 
-When work begins, update these fields:
+2. **Pin/build runtime**
+   - record current `llama.cpp` SHA;
+   - record CPU/Vulkan build capabilities;
+   - verify LFM vision and Qwen MTP feature support.
 
-- **Current phase:** P0 — planning/baseline
-- **Current runtime:** undecided; `llama.cpp` target
-- **Current baseline model:** undecided
-- **Current student:** none
-- **Current teacher(s):** none
-- **Dataset revision:** none
-- **Benchmark revision:** none
-- **Last verified dev SHA:** `77dbd3ad0f21cb6177225989d4cd7e3128c32e15`
-- **Last plan update:** 2026-10-04
+3. **Smoke LFM**
+   - one fixed screenshot;
+   - one OCR task;
+   - one grounding task;
+   - repeat 10 times;
+   - record crash/latency/RSS.
 
-For every significant change, update the relevant sections and the status/checklist below rather than creating another TODO.
+4. **Smoke Qwen**
+   - EN;
+   - VN;
+   - Rust;
+   - Python;
+   - Rust-vs-Python reasoning;
+   - strict JSON/tool schema;
+   - MTP path.
 
-## 13. Implementation phases
+5. **Create P1 harness**
+   - make these tests reproducible before integrating with QML.
 
-### P0 — Research/baseline definition
+6. **Benchmark resource modes**
+   - CPU and Vulkan;
+   - Brain MTP/fallback;
+   - cold and warm;
+   - no guesswork from model file size.
 
-- [x] Decide to use an existing LLM inference engine rather than writing one from scratch.
-- [x] Separate Wull Rust orchestration from inference runtime.
-- [x] Select `llama.cpp` as the primary production runtime candidate.
-- [x] Select Unsloth/compatible tooling for training/fine-tuning/distillation experiments, not production dependency.
-- [x] Define initial model candidates: LFM2.5-VL-3B and Qwen3.5-4B.
-- [ ] Verify exact model licenses, llama.cpp support, vision path, tokenizer/chat templates, and tool-call behavior before implementation lock-in.
-- [ ] Establish reproducible benchmark harness and baseline results.
+7. **Only after baseline**
+   - create Rust agent/model-manager skeleton;
+   - do not modify live Wull/QML path earlier unless needed for a bounded harness.
 
-### P1 — Agent/tool skeleton
+8. **Update this file**
+   - record hashes, runtime SHA, measured numbers, failures and next phase;
+   - keep this file as the only local-AI plan/status ledger.
 
-- [ ] Define Rust service/crate boundaries.
-- [ ] Define IPC contract between Wull UI and AI service.
-- [ ] Define typed tool schemas and permission policy.
-- [ ] Implement read-only filesystem/system tools first.
-- [ ] Add structured logging/error/result envelopes.
-- [ ] Add cancellation/timeouts.
+---
 
-### P2 — Local inference
+## 23. Definition of first usable milestone
 
-- [ ] Integrate `llama-server` or equivalent sidecar.
-- [ ] Benchmark CPU-only and Radeon 740M/Vulkan paths.
-- [ ] Add model/config selection.
-- [ ] Add load/unload/restart recovery.
-- [ ] Prove Wull UI remains functional if inference crashes.
+The first usable local-Wull milestone is achieved only when all are true:
 
-### P3 — RAG/context
+- LFM can inspect a real screenshot and return schema-validated perception;
+- Qwen can reason in EN/VN and across representative Rust/Python tasks;
+- router chooses deterministic/Reflex/Brain/cascade paths correctly on the initial suite;
+- Brain can be started/stopped without freezing Wull;
+- a model/runtime crash does not crash Quickshell;
+- read-only typed tools work end-to-end;
+- no protected action can bypass Rust policy;
+- benchmark/runtime/model revisions are reproducible;
+- model binaries remain outside Git;
+- current source passes the repository's canonical maintainer validator for the exact tested SHA;
+- live Wayland/Quickshell behavior is accepted separately where static validation cannot prove it.
 
-- [ ] Index current Hadalis source and selected docs without training them into weights.
-- [ ] Implement bounded retrieval/context assembly.
-- [ ] Add conversation memory policy.
-- [ ] Measure context size/latency/RAM trade-offs.
-
-### P4 — Desktop agent capability
-
-- [ ] Implement safe file edit/copy/move operations.
-- [ ] Add Quickshell/Hadalis native IPC actions.
-- [ ] Add process/app/DBus/compositor actions as needed.
-- [ ] Add confirmation flow for destructive/privileged actions.
-- [ ] Add screenshot/VLM path if LFM2.5-VL or another vision model wins benchmark.
-
-### P5 — Fine-tuning
-
-- [ ] Collect and clean sufficient verified Wull examples.
-- [ ] Establish train/validation/test split that prevents benchmark leakage.
-- [ ] Run LoRA/QLoRA experiment.
-- [ ] Compare against untuned baseline; reject tuning that harms core capability.
-- [ ] Export/quantize and re-run production-runtime benchmark.
-
-### P6 — Distillation
-
-- [ ] Select teacher(s) based on verified task quality.
-- [ ] Generate targeted synthetic/teacher data only where it improves coverage.
-- [ ] Validate every mechanically verifiable sample.
-- [ ] Train 2B–4B student.
-- [ ] Compare student against generic same-size models and current Wull baseline.
-- [ ] Promote only if Wull-domain gains justify any general-capability loss.
-
-### P7 — Production hardening
-
-- [ ] Determine final model/runtime/package layout.
-- [ ] Add model integrity/version checks.
-- [ ] Add safe update/rollback path.
-- [ ] Confirm no Ollama/LM Studio user dependency.
-- [ ] Run `bash scripts/validate-maintainer-local.sh` for the exact source SHA.
-- [ ] Perform live desktop acceptance separately where static validation cannot cover Wayland/Quickshell behavior.
-
-## 14. Definition of done
-
-The first production-ready milestone is complete only when:
-
-- Wull can run its local model without an external GUI/runtime application;
-- inference failure does not crash Quickshell/Wull UI;
-- common Wull actions use typed deterministic tools;
-- destructive/privileged actions are permission-gated;
-- benchmark results are recorded and reproducible;
-- EN/VN conversation works while application localization remains English-only;
-- current Hadalis/Quickshell knowledge is primarily retrieved dynamically rather than frozen into stale weights;
-- model/runtime can be replaced without rewriting the desktop tool layer;
-- production resource usage is acceptable on the reference 7540U/740M/~18 GB RAM machine;
-- the exact source SHA passes the repository's required validation, plus separate live desktop acceptance where applicable.
-
-## 15. Immediate next actions
-
-1. [ ] Audit current Hadalis Rust/Quickshell boundaries and choose the least-coupled location for the Wull AI sidecar/service.
-2. [ ] Specify the first version of the UI <-> agent IPC message schema.
-3. [ ] Build the benchmark harness before choosing the final model.
-4. [ ] Benchmark untouched LFM2.5-VL-3B and Qwen3.5-4B with the same tasks and comparable quantization/runtime settings.
-5. [ ] Implement only the read-only tool subset first.
-6. [ ] Record every subsequent decision, benchmark result, failure, and phase transition **in this file only**.
+Only after this milestone should Wull proceed to mutation tools, deeper RAG/memory, LoRA or distillation.

@@ -1,0 +1,84 @@
+{
+  "id": "JOB-MEGAQML-TRANSFER-SNAPSHOT-LIFECYCLE-20261005-001",
+  "profile_id": "profile-a25585b748dd4220",
+  "base_sha": "f1db6cb5004b6cd52db0fde4ffa42a4a8b62fcf5",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega",
+          "transfer_snapshot_lifecycle::tests"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega",
+          "feature_gates::tests::visible_synthetic_transfer_refresh_still_keeps_domain_locked"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 300
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "check",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "scripts/test-megaqml-phase2-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    }
+  ]
+}

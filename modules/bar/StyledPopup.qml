@@ -29,6 +29,31 @@ LazyLoader {
     property var _hostedController: null
     property bool _liquidDismissed: false
     property bool _liquidSemanticHold: false
+    // Wull borrows this exact mature popup. Hover/focus takes the same content
+    // over, and revokes the lease so its later departure cannot close user UI.
+    property var companionLease: null
+    property var _companionAnchor: null
+    function syncCompanionAnchor(): void {
+        if (_companionAnchor === _liquidAnchor) return
+        if (_companionAnchor?.unregisterCompanionPopup)
+            _companionAnchor.unregisterCompanionPopup(root)
+        companionLease = null
+        _companionAnchor = _liquidAnchor
+        if (_companionAnchor?.registerCompanionPopup)
+            _companionAnchor.registerCompanionPopup(root)
+    }
+    on_LiquidAnchorChanged: syncCompanionAnchor()
+    function acquireCompanion(owner): bool {
+        if (!owner || !_anchorReady || !_liquidController || humanVisibleRequest
+                || companionLease || presentationActive) return false
+        _liquidDismissed = false
+        companionLease = owner
+        return true
+    }
+    function releaseCompanion(owner): void {
+        if (companionLease === owner) companionLease = null
+    }
+    on_AnchorReadyChanged: if (!_anchorReady) companionLease = null
     readonly property bool presentationActive: embeddedHost ? embeddedHost.visible
         : _liquidController ? _anchorReady && _liquidController.presented
             && (requestedVisible || _lingerVisible) : active
@@ -42,6 +67,7 @@ LazyLoader {
         _hostedController.presentPopup(root)
     }
     function dismissPresentation(): void {
+        companionLease = null
         _liquidDismissed = true
         _liquidSemanticHold = false
         _bodyHovered = false; _contentHovered = false
@@ -179,11 +205,13 @@ LazyLoader {
     // semantic popup state; `active` includes only the short retract tail. While
     // hover-activated, the body itself also counts as the request so the pointer
     // can travel from the bar through the connected shoulder without collapse.
-    readonly property bool _rawVisibleRequest: root.alternativeVisibleCondition
+    readonly property bool humanVisibleRequest: root.alternativeVisibleCondition
         || (root.hoverActivates && (
             (root.hoverTarget
                 && (root.hoverTarget.containsMouse ?? root.hoverTarget.buttonHovered ?? false))
             || root.popupHovered))
+    onHumanVisibleRequestChanged: if (humanVisibleRequest) companionLease = null
+    readonly property bool _rawVisibleRequest: root.companionLease !== null || root.humanVisibleRequest
     readonly property bool requestedVisible: !root._liquidDismissed && root._rawVisibleRequest
     // Abyss semantic ownership includes only the 90 ms compositor hand-off
     // grace, never the visual retract tail.
@@ -301,6 +329,7 @@ LazyLoader {
 
     onRequestedVisibleChanged: root._syncRequestedVisibility()
     Component.onCompleted: {
+        root.syncCompanionAnchor()
         root.syncEmbeddedContent()
         root._barPopupHoverLeaseId = GlobalStates.allocateBarPopupHoverLease()
         root._syncBarAutoHideLease()
@@ -308,6 +337,8 @@ LazyLoader {
         root.syncLiquidPresentation()
     }
     Component.onDestruction: {
+        if (root._companionAnchor?.unregisterCompanionPopup)
+            root._companionAnchor.unregisterCompanionPopup(root)
         if (root._hostedController) root._hostedController.releasePopup(root, false)
         GlobalStates.setBarPopupHoverLease(root._barPopupHoverLeaseId, "", false)
     }

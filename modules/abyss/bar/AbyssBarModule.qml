@@ -23,6 +23,13 @@ Item {
     property bool compact: false
     property real contentScale: 1
     readonly property var feature: content.item
+    property var companionPopup: null
+    function registerCompanionPopup(popup): void {
+        if (!companionPopup) companionPopup = popup
+    }
+    function unregisterCompanionPopup(popup): void {
+        if (companionPopup === popup) companionPopup = null
+    }
     readonly property real naturalSpan: {
         const item = feature
         if (!item) return 0

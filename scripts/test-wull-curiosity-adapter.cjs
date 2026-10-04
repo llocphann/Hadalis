@@ -21,47 +21,49 @@ state.openSidebarLeft=(output)=>{state.sidebarLeftOpen=true;state.sidebarLeftTar
 state.openSidebarRight=(output)=>{state.sidebarRightOpen=true;state.sidebarRightTargetOutput=output;calls.push('openRight')};
 state.closeSidebarLeft=()=>{state.sidebarLeftOpen=false;calls.push('closeLeft')};
 state.closeSidebarRight=()=>{state.sidebarRightOpen=false;calls.push('closeRight')};
-state.openSettingsSection=(page,section)=>{state.settingsOverlayOpen=true;state.settingsOverlayRequestedPage=page;calls.push(['settings',page,section])};
-window.closeGenericPopup=(kind)=>{if(kind==='media')state.mediaControlsOpen=false;else if(state.abyssPopupKind===kind)state.abyssPopupKind='';calls.push(['closePopup',kind])};
+window.closeGenericPopup=(kind)=>{if(state.abyssPopupKind===kind)state.abyssPopupKind='';calls.push(['closePopup',kind])};
 function reset(){
     for (const key of ['sidebarLeftOpen','sidebarRightOpen','settingsOverlayOpen','overviewOpen','clipboardOpen',
         'dashboardOpen','controlPanelOpen','notificationCenterOpen','widgetEditMode','mediaControlsOpen'])state[key]=false;
-    state.abyssPopupKind='';state.abyssPopupTargetOutput='';state.settingsOverlayRequestedPage=-1;state.settingsOverlayCurrentPage=-1;
-    window.companionCuriosityDockRequested=false;calls.length=0;
+    state.abyssPopupKind='';state.abyssPopupTargetOutput='';calls.length=0;
 }
+function mature(){return {companionLease:null,acquireCompanion(owner){
+    assert.equal(this.companionLease,null);this.companionLease=owner;calls.push('borrow');return true;
+},releaseCompanion(owner){if(this.companionLease===owner){this.companionLease=null;calls.push('release')}}};}
 let cases=0;
-for (const kind of ['clock','resources','battery','weather','media','utilities','leftPanel','rightPanel','dock','settings']) {
+for (const kind of ['clock','resources','battery','weather','media','quickNotes','notificationCenter','utilities','leftPanel','rightPanel']) {
     reset();const feature={kind,edge:'right',along:312,key:kind};
+    if(!['utilities','leftPanel','rightPanel'].includes(kind))feature.popup=mature();
     assert.equal(window.openCompanionFeature(feature),true,kind);
     assert.equal(window.ownsCompanionFeature(feature),true);
-    if(['clock','resources','battery','weather','media','utilities'].includes(kind)){
-        assert.equal(state.abyssPopupTargetOutput,'DP-1');assert.equal(state.abyssPopupEdge,'right');assert.equal(state.abyssPopupAlong,312);
-        assert.equal(state.mediaControlsOpen,kind==='media');assert.equal(state.abyssPopupKind,kind==='media'?'':kind);
-    }
-    if(kind==='settings')assert.deepEqual(calls[0],['settings',37,'Overview']);
+    if(feature.popup){assert.equal(state.abyssPopupKind,'');assert.equal(state.mediaControlsOpen,false);assert.equal(calls[0],'borrow');}
     window.closeCompanionFeature(feature);
     assert.equal(window.ownsCompanionFeature(feature),false,'owned presentation was not closed');cases++;
+}
+for (const kind of ['settings','dashboard','dock','run-command']) {
+    reset();assert.equal(window.openCompanionFeature({kind,popup:mature()}),false);assert.equal(calls.length,0);cases++;
 }
 for (const blocker of ['sidebarLeftOpen','sidebarRightOpen','settingsOverlayOpen','overviewOpen','clipboardOpen',
     'dashboardOpen','controlPanelOpen','notificationCenterOpen','widgetEditMode','mediaControlsOpen','abyssPopupKind']) {
     reset();state[blocker]=blocker==='abyssPopupKind'?'weather':true;
     const before=JSON.stringify(state);
-    assert.equal(window.openCompanionFeature({kind:'clock'}),false);
+    assert.equal(window.openCompanionFeature({kind:'clock',popup:mature()}),false);
     assert.equal(JSON.stringify(state),before,'curiosity replaced existing human UI');cases++;
 }
 for (const [object,key] of [[scope.liquid,'popupsOpen'],[scope.utility,'open'],[scope.barHover,'hovered'],[scope.revealHover,'hovered'],[window,'dockHovered'],[window,'companionOccluded']]){
-    reset();object[key]=true;assert.equal(window.openCompanionFeature({kind:'clock'}),false);object[key]=false;cases++;
+    reset();object[key]=true;assert.equal(window.openCompanionFeature({kind:'clock',popup:mature()}),false);object[key]=false;cases++;
 }
-reset();window.companionPermission=false;assert.equal(window.openCompanionFeature({kind:'clock'}),false);window.companionPermission=true;
-for (const kind of ['clock','media','leftPanel','rightPanel','settings']) {
+reset();window.companionPermission=false;assert.equal(window.openCompanionFeature({kind:'clock',popup:mature()}),false);window.companionPermission=true;
+for (const kind of ['utilities','leftPanel','rightPanel']) {
     reset();const feature={kind,edge:'top',along:200};assert.ok(window.openCompanionFeature(feature));
-    const field=kind==='settings'?'settingsOverlayTargetOutput':kind==='leftPanel'?'sidebarLeftTargetOutput':kind==='rightPanel'?'sidebarRightTargetOutput':'abyssPopupTargetOutput';
+    const field=kind==='leftPanel'?'sidebarLeftTargetOutput':kind==='rightPanel'?'sidebarRightTargetOutput':'abyssPopupTargetOutput';
     state[field]='DP-2';const before=JSON.stringify(state),count=calls.length;
     window.closeCompanionFeature(feature);assert.equal(JSON.stringify(state),before);assert.equal(calls.length,count);cases++;
 }
-reset();const dock={kind:'dock'};assert.ok(window.openCompanionFeature(dock));window.releaseCompanionFeature(dock);
-assert.equal(window.companionCuriosityDockRequested,false,'handoff retained a permanent Dock hold');
-reset();assert.equal(window.openCompanionFeature({kind:'run-command'}),false);assert.equal(calls.length,0);
+reset();const feature={kind:'clock',popup:mature()};assert.ok(window.openCompanionFeature(feature));
+feature.popup.companionLease=null;const count=calls.length;window.closeCompanionFeature(feature);
+assert.equal(calls.length,count,'departure closed a popup already handed to the user');
+assert.equal(window.openCompanionFeature({kind:'clock'}),false,'missing mature popup used a duplicate fallback');
 // Autonomous exploration cannot take keyboard input away from the current
 // application. Pointer hand-off restores the host's existing focus policy.
 const expression=source.match(/WlrLayershell\.keyboardFocus: ([\s\S]*?)\n\s*anchors \{/)[1].trim();

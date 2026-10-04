@@ -38,7 +38,8 @@ Item {
     function yieldToUser(): void { if (busy) finish(false,true) }
     function pointerMoved(x,y): void {
         if (!owned || !feature) return
-        const surface=(scene?.surfaces ?? []).find(s=>s.key===feature.key)
+        const key=adapter?.companionSurfaceKey ? adapter.companionSurfaceKey(feature) : feature.key
+        const surface=(scene?.surfaces ?? []).find(s=>s.key===key)
         const r=surface?.rect
         if (r && x>=r.x-12 && x<=r.x+r.width+12 && y>=r.y-12 && y<=r.y+r.height+12)
             yieldToUser()
@@ -92,7 +93,8 @@ Item {
         if (stage!=="settling" || !owned || actor.presentation<.99) return
         checkOwnership()
         if (!owned) return
-        const points=Scene.surfacePoints(scene).filter(p=>p.key===feature.key)
+        const key=adapter.companionSurfaceKey ? adapter.companionSurfaceKey(feature) : feature.key
+        const points=Scene.surfacePoints(scene).filter(p=>p.key===key)
         if (!points.length) return
         points.sort((a,b)=>Scene.distance(presence.position(),a)-Scene.distance(presence.position(),b))
         stage="visit";deadline.interval=22000;deadline.restart()

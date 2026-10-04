@@ -236,7 +236,6 @@ Scope {
                 controller: liquid
                 allowed: window.companionHostActive
             }
-            property bool companionCuriosityDockRequested: false
             function companionFeaturesIdle(): bool {
                 return window.companionPermission && !window.companionOccluded
                     && !liquid.popupsOpen && !GlobalStates.abyssPopupKind && !GlobalStates.mediaControlsOpen
@@ -255,9 +254,12 @@ Scope {
                     weather:"inspect",media:"wave",utilButtons:"press"}
                 if (bar.visible && panels.includes("abyssPopup")) {
                     for (const record of bar.layoutRecords) {
-                        const kind=bar.placements.find(p=>p.id===record.id)?.kind
-                        if (record.span>0 && gestures[kind]) result.push({
-                            kind:kind==="utilButtons" ? "utilities" : kind,key:"popup",edge:record.edge,
+                        const module=bar.itemForId(record.id)
+                        const kind=module?.kind
+                        const mature=module?.companionPopup ?? null
+                        if (record.span>0 && gestures[kind] && (mature || kind==="utilButtons")) result.push({
+                            kind:kind==="utilButtons" ? "utilities" : kind,
+                            popup:mature,key:kind==="utilButtons" ? "popup" : "",edge:record.edge,
                             along:record.along+record.span/2,openGesture:"press",gesture:gestures[kind]})
                     }
                 }
@@ -269,64 +271,65 @@ Scope {
                         result.push({kind:key,key:key,edge:body.edge,along:body.along+body.span/2,
                             openGesture:"reach",gesture:side==="left" ? "inspect" : "press"})
                 }
-                if (panels.includes("abyssDock") && (Config.options?.dock?.enable ?? true) && !dock.open
-                        && Geometry.targets(window.outputName,Config.options?.dock?.screenList ?? [],Quickshell.screens.map(s=>s.name)))
-                    result.push({kind:"dock",key:"dock",edge:dock.edge,along:dock.along+dock.span/2,
-                        openGesture:"reach",gesture:"wave"})
-                if (!settings.open) result.push({kind:"settings",key:"settings",edge:settings.edge,
-                    along:settings.along+settings.span/2,openGesture:"press",gesture:"inspect"})
+                for (const [kind,available,mature,along] of [
+                        ["quickNotes",corners.notesAvailable,corners.notesPopup,window.nativeInsets.left+80],
+                        ["notificationCenter",corners.centerAvailable,corners.centerPopup,window.width-window.nativeInsets.right-80]]) {
+                    if (available && !mature.presentationActive)
+                        result.push({kind:kind,popup:mature,key:"",edge:"bottom",along:along,
+                            openGesture:"reach",gesture:kind==="quickNotes" ? "inspect" : "wave"})
+                }
                 return result
             }
+            function companionSurfaceKey(feature): string {
+                if (!feature?.popup) return feature?.key ?? ""
+                const slot=liquid._popupSlot(feature.popup)
+                return slot>=0 ? "styledPopup"+slot : ""
+            }
             function openCompanionFeature(feature): bool {
-                if (!companionFeaturesIdle()) return false
+                if (!companionFeaturesIdle() || !feature) return false
+                if (["clock","resources","battery","weather","media","quickNotes","notificationCenter"].includes(feature.kind)) {
+                    // Borrow the module/corner's mature StyledPopup. Its hover
+                    // path and Wull share one slot, one content and one host.
+                    return !!feature.popup && feature.popup.acquireCompanion(window)
+                }
                 if (feature.kind==="leftPanel") GlobalStates.openSidebarLeft(window.outputName,false)
                 else if (feature.kind==="rightPanel") GlobalStates.openSidebarRight(window.outputName,false)
-                else if (feature.kind==="dock") window.companionCuriosityDockRequested=true
-                else if (feature.kind==="settings") {
-                    GlobalStates.openSettingsSection(37,"Overview")
-                    GlobalStates.settingsOverlayTargetOutput=window.outputName
-                } else if (["clock","resources","battery","weather","media","utilities"].includes(feature.kind)) {
+                else if (feature.kind==="utilities") {
                     GlobalStates.abyssPopupTargetOutput=window.outputName
                     GlobalStates.abyssPopupEdge=feature.edge
                     GlobalStates.abyssPopupAlong=feature.along
-                    if (feature.kind==="media") GlobalStates.mediaControlsOpen=true
-                    else GlobalStates.abyssPopupKind=feature.kind
+                    GlobalStates.abyssPopupKind="utilities"
                 } else return false
                 return ownsCompanionFeature(feature)
             }
             function ownsCompanionFeature(feature): bool {
                 if (!feature) return false
+                if (feature.popup) return feature.popup.companionLease===window
                 if (feature.kind==="leftPanel") return GlobalStates.sidebarLeftOpen
                     && GlobalStates.sidebarLeftTargetOutput===window.outputName
                 if (feature.kind==="rightPanel") return GlobalStates.sidebarRightOpen
                     && GlobalStates.sidebarRightTargetOutput===window.outputName
-                if (feature.kind==="dock") return window.companionCuriosityDockRequested
-                if (feature.kind==="settings") return GlobalStates.settingsOverlayOpen
-                    && GlobalStates.settingsOverlayTargetOutput===window.outputName
-                    && (GlobalStates.settingsOverlayRequestedPage===37 || GlobalStates.settingsOverlayCurrentPage===37)
-                return GlobalStates.abyssPopupTargetOutput===window.outputName
-                    && (feature.kind==="media" ? GlobalStates.mediaControlsOpen && !GlobalStates.abyssPopupKind
-                        : GlobalStates.abyssPopupKind===feature.kind && !GlobalStates.mediaControlsOpen)
+                return feature.kind==="utilities" && GlobalStates.abyssPopupTargetOutput===window.outputName
+                    && GlobalStates.abyssPopupKind==="utilities"
             }
             function closeCompanionFeature(feature): void {
                 if (!ownsCompanionFeature(feature)) return
-                if (feature.kind==="leftPanel") GlobalStates.closeSidebarLeft()
+                if (feature.popup) feature.popup.releaseCompanion(window)
+                else if (feature.kind==="leftPanel") GlobalStates.closeSidebarLeft()
                 else if (feature.kind==="rightPanel") GlobalStates.closeSidebarRight()
-                else if (feature.kind==="dock") window.companionCuriosityDockRequested=false
-                else if (feature.kind==="settings") GlobalStates.settingsOverlayOpen=false
-                else window.closeGenericPopup(feature.kind)
+                else if (feature.kind==="utilities") window.closeGenericPopup("utilities")
             }
             function releaseCompanionFeature(feature): void {
-                // Dock resumes its ordinary hover/attachment lifetime when a
-                // human takes over. A Companion lease must never pin it open.
-                if (feature?.kind==="dock") window.companionCuriosityDockRequested=false
+                if (feature?.popup) feature.popup.releaseCompanion(window)
             }
             readonly property string companionFeatureState: [GlobalStates.sidebarLeftOpen,
                 GlobalStates.sidebarLeftTargetOutput,GlobalStates.sidebarRightOpen,GlobalStates.sidebarRightTargetOutput,
-                GlobalStates.settingsOverlayOpen,GlobalStates.settingsOverlayTargetOutput,
-                GlobalStates.settingsOverlayRequestedPage,GlobalStates.settingsOverlayCurrentPage,
-                GlobalStates.abyssPopupKind,GlobalStates.abyssPopupTargetOutput,GlobalStates.mediaControlsOpen].join("|")
+                GlobalStates.abyssPopupKind,GlobalStates.abyssPopupTargetOutput].join("|")
             onCompanionFeatureStateChanged: if (companionCuriosity) companionCuriosity.checkOwnership()
+            Connections {
+                target: companionCuriosity.feature?.popup ?? null
+                function onCompanionLeaseChanged(): void {companionCuriosity.checkOwnership()}
+            }
             WullCuriosity {
                 id: companionCuriosity
                 presence: companionPresence
@@ -943,7 +946,7 @@ Scope {
                         || attachedPopupHold
                         || !liquid.hasPopupOverlapRect(requestedRecord.surface, 10))
                     && (((Config.options?.dock?.pinnedOnStartup ?? false) && !(Config.options?.dock?.hoverToReveal ?? false)) || window.dockHovered
-                        || window.companionDockHeld || window.companionCuriosityDockRequested
+                        || window.companionDockHeld
                         || attachedPopupHold
                         || (contentItem.item?.requestDockShow ?? false)
                         || ((Config.options?.dock?.showOnDesktop ?? true) && !ToplevelManager.activeToplevel?.activated))

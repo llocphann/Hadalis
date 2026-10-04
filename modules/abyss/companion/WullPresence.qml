@@ -30,6 +30,8 @@ Item {
     property bool releasedFlight: false
     property bool peekIntro: false
     property bool peekOnly: false
+    property double fullyPresentSince: 0
+    readonly property int minimumFullVisit: 8000
     property double hiddenUntil: 0
     property int exitAttempts: 0
     property var iceOpening: null
@@ -100,9 +102,9 @@ Item {
     function chooseAppearance(selected): void {
         appearClip="emerge"
         const n=Scene.normal(selected.edge)
-        if (!motionEnabled || !Scene.clearArc(scene,selected,selected,.38*Math.max(scene.hostWidth,scene.hostHeight),n.nx,n.ny)) return
+        if (!motionEnabled || !Scene.clearArc(scene,selected,selected,1.10*Math.max(scene.hostWidth,scene.hostHeight),n.nx,n.ny)) return
         const roll=random()
-        appearClip=roll<.2 ? "launch" : roll<.36 ? "stuckLaunch" : roll<.52 ? "stuckJump" : roll<.7 ? "faceplant" : "riseJump"
+        appearClip=roll<.18 ? "launch" : roll<.32 ? "stuckLaunch" : roll<.46 ? "stuckJump" : roll<.62 ? "faceplant" : roll<.80 ? "buttplant" : "riseJump"
     }
     function position() {
         return actor ? {x:actor.x-(actor.scale-1)*actor.width/2,
@@ -117,6 +119,7 @@ Item {
         peekDeadline.stop(); peekIntro=false
         surfaceDeadline.stop(); surfaceDue=false
         recoveryDeadline.stop();reactionDeadline.stop()
+        fullVisitDeadline.stop();fullyPresentSince=0
         if (actor) {actor.reactionExpression="";actor.stopGesture()}
         dragging=false; retreating=false; visitActive=false; renderedReveal=0
         resetRequested(targetX,targetY,emergenceEdge)
@@ -126,6 +129,7 @@ Item {
         if (!selected.qualified || !Scene.clearAt(scene,selected)) {hideImmediately();return}
         clearMotion()
         recoveryDeadline.stop()
+        fullVisitDeadline.stop();fullyPresentSince=0
         placement=selected; destination=selected
         exitAttempts=0;iceOpening=null;chooseAppearance(selected)
         targetX=selected.x; targetY=selected.y
@@ -148,9 +152,19 @@ Item {
             return
         }
         if (requestedReveal<=0) {
+            // Native visit deadlines may expire during a long entrance or a
+            // late surface reveal. Finish the entrance and grant a real visit.
+            // Policy hides and deliberate peek-only withdrawals remain immediate.
+            if (visitActive && !retreating && !peekOnly && !hiddenUntil && actor) {
+                if (peekIntro) {peekIntro=false;peekDeadline.stop();renderedReveal=1}
+                if (actor.presentation<.99 || !fullyPresentSince) return
+                const remaining=minimumFullVisit-(Date.now()-fullyPresentSince)
+                if (remaining>0) {fullVisitDeadline.interval=Math.ceil(remaining);fullVisitDeadline.restart();return}
+            }
             if (visitActive && !retreating && !dragging) retreat()
             return
         }
+        fullVisitDeadline.stop()
         if (!visitActive || retreating) {appear();return}
         if (requestedReveal<.99) {
             peekDeadline.stop(); peekIntro=false; renderedReveal=peekReveal
@@ -190,11 +204,12 @@ Item {
                 if (motionEnabled && exitAttempts===0 && random()<.14 && actor.perform("ice")) {
                     exitAttempts=1;iceOpening=placement;setReaction("surprised",2200);return
                 }
-                hideClip=random()<.3 ? "sink" : "diveJump"
+                const exitRoll=random()
+                hideClip=exitRoll<.40 ? "sink" : exitRoll<.64 ? "fallVanish" : "diveJump"
                 const n=Scene.normal(placement.edge)
                 if(hideClip==="diveJump" && !Scene.clearArc(scene,placement,placement,.38*Math.max(scene.hostWidth,scene.hostHeight),n.nx,n.ny)) hideClip="sink"
-                if (hideClip==="sink") setReaction("panicked",2500)
-                disturb("dive",placement)
+                if (hideClip==="sink" || hideClip==="fallVanish") setReaction("panicked",hideClip==="sink" ? 5600 : 3100)
+                disturb(hideClip==="sink" ? "sink" : "dive",placement)
                 visitActive=false; renderedReveal=0; surfaceDeadline.stop()
             } else {
                 disturb("land",placement)
@@ -240,13 +255,13 @@ Item {
         const here=position(), support=Scene.supportAt(scene,here)
         let selected
         const roll=random()
-        if (support && roll<.58) {
+        if (support && roll<.85) {
             const horizontal=support.axis==="x",span=horizontal ? scene.hostWidth : scene.hostHeight
             const along=Scene.clamp((horizontal ? here.x : here.y)+(travelFraction-.5)*240*scene.scale,
                 support.from,support.to-span)
             selected=Scene.annotate(scene,horizontal ? {x:along,y:here.y} : {x:here.x,y:along},
                 support.edge,placement.kind,placement.key)
-        } else if (roll<.78) {
+        } else if (roll<.88) {
             // Float upwards into open space; a later drop/landing may walk again.
             selected=Scene.drop(scene,here.x+(travelFraction-.5)*130*scene.scale,
                 here.y-(45+random()*80)*scene.scale,here)
@@ -439,7 +454,15 @@ Item {
     Connections {
         target: root.actor
         function onGestureCompleted(action): void {root.gestureFinished(action)}
+        function onPresentationChanged(): void {
+            if (root.visitActive && !root.peekIntro && !root.peekOnly && root.renderedReveal>.99
+                    && root.actor.presentation>.99 && !root.fullyPresentSince) {
+                root.fullyPresentSince=Date.now()
+                Qt.callLater(root.synchronize)
+            }
+        }
     }
+    Timer {id:fullVisitDeadline;objectName:"wullFullVisitDeadline";repeat:false;onTriggered:root.synchronize()}
     Timer {id:reactionDeadline;interval:3000;onTriggered:if(root.actor) root.actor.reactionExpression=""}
     Timer {
         id: pointerNotice

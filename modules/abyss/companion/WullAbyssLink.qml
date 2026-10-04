@@ -25,7 +25,8 @@ Item {
     readonly property vector4d contact: neck>.001
         ? Qt.vector4d(origin.x,origin.y,origin.scale,neck) : Qt.vector4d(0,0,0,0)
     readonly property vector4d contactNormal: neck>.001
-        ? Qt.vector4d(origin.nx,origin.ny,0,0) : Qt.vector4d(0,0,0,0)
+        ? Qt.vector4d(origin.nx,origin.ny,actor.leaving && actor.hideClip==="sink" ? 1 : 0,
+            actor.leaving ? 1-actor.presentation : actor.presentation) : Qt.vector4d(0,0,0,0)
     readonly property vector4d ripple: enabledPolicy && impact && phase<1
         ? Qt.vector4d(impact.x,impact.y,phase,strength) : Qt.vector4d(0,0,1,0)
     readonly property vector4d rippleNormal: enabledPolicy && impact && phase<1
@@ -35,12 +36,13 @@ Item {
                 || point.scale<=0 || Math.abs(Math.hypot(point.nx,point.ny)-1)>.001) return
         pulse.stop()
         impact=point
-        strength=action==="dive" ? 1 : action==="emerge" ? .85 : action==="peek" ? .5 : .32
+        strength=action==="sink" || action==="dive" ? 1 : action==="emerge" ? .85 : action==="peek" ? .5 : .32
+        pulse.duration=action==="sink" ? 5800 : 1450
         phase=0;eventCount++
         pulse.start()
         // The same circular solver that responds to Popup/Sidebar entry carries
         // a small disturbance through the parent screen edge, if waves are on.
-        const closing=action==="dive" || action==="depart"
+        const closing=action==="sink" || action==="dive" || action==="depart"
         controller?.impulse(point.sourceEdge,point.sourceAlong,point.span,
             (closing ? -.25 : .3)*strength,1,closing ? "close" : "open")
     }

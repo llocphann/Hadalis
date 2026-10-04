@@ -80,8 +80,15 @@ vec2 waterInteraction(vec2 p) {
         float depth=dot(offset,n)/max(0.1,liquidContact.z);
         if(abs(tangent)<72.0 && abs(depth)<48.0) {
             float neck=exp(-tangent*tangent/460.0-depth*depth/550.0)*liquidContact.w;
-            displacement+=16.0*liquidContact.z*neck;
-            light+=neck*.22;
+            if(liquidContactNormal.z>.5) {
+                float radius=length(vec2(tangent,depth*2.2));
+                float swirl=sin(radius*.32-liquidContactNormal.w*36.0);
+                displacement-=liquidContact.z*neck*(14.0+swirl*4.0);
+                light+=neck*(.24+swirl*.12);
+            } else {
+                displacement+=16.0*liquidContact.z*neck;
+                light+=neck*.22;
+            }
         }
     }
     if(liquidRipple.w>0.001 && liquidRipple.z<1.0) {

@@ -10,6 +10,7 @@ Window {
     property bool animate:false
     property bool allowed:true
     property bool watchPointer:false
+    property real wantedReveal:1
     property var popup:null
     readonly property var scene:Scene.fromParticipants({width:width,height:height,hostWidth:112,hostHeight:98,scale:1,
         insets:{top:20,right:20,bottom:20,left:20}},popup ? {popup:{surfaceSettled:false,geometry:{edge:"top",surface:popup}}} : {},[])
@@ -27,7 +28,7 @@ Window {
         onHoveredChanged:if(!hovered)presence.pointerFresh=false
     }
     WullPresence {
-        id:presence;scene:root.scene;actor:actor;permitted:root.allowed;requestedReveal:1;motionEnabled:root.animate
+        id:presence;scene:root.scene;actor:actor;permitted:root.allowed;requestedReveal:root.wantedReveal;motionEnabled:root.animate
         pointerReactionsEnabled:root.watchPointer
         onStopRequested:actor.stopTravel()
         onResetRequested:(x,y,edge)=>actor.resetTo(x,y,edge)
@@ -138,14 +139,30 @@ Window {
                 root.popup=null;root.place(Scene.edgePoint(root.scene,"bottom",.5))
                 presence.hiddenUntil=Date.now()+10000;presence.randomState=2000;presence.retreat();wait(120)
                 check(actor.gesture==="ice" && presence.exitAttempts===1,"icy water did not reject the first dive")
-                wait(600);check(body.eyeOpen<.1,"icy fall did not close Wull's eyes "+JSON.stringify({gesture:actor.gesture,phase:actor.gesturePhase,eye:body.eyeOpen,exit:presence.exitAttempts}))
-                wait(1000);check(presence.traveling && presence.retreating && presence.destination.contact.key!==undefined,"icy Wull did not try another water opening")
-                for(const clip of ["riseJump","launch","stuckJump","stuckLaunch","faceplant","diveJump","sink"]) {
+                tryVerify(()=>body.eyeOpen<.1,1500)
+                check(body.eyeOpen<.1,"icy fall did not close Wull's eyes "+JSON.stringify({gesture:actor.gesture,phase:actor.gesturePhase,eye:body.eyeOpen,exit:presence.exitAttempts}))
+                tryCompare(presence,"traveling",true,2200)
+                check(presence.traveling && presence.retreating && presence.destination.contact.key!==undefined,"icy Wull did not try another water opening")
+                for(const clip of ["riseJump","launch","stuckJump","stuckLaunch","faceplant","buttplant","diveJump","sink","fallVanish"]) {
                     check(Curves.clips[clip] && Curves.clips[clip].tracks.normal,"missing authored transition "+clip)
                     check(Curves.clips[clip].tracks.eyeOpen.some(k=>k[1]===0),"transition lacks closed-eye pose "+clip)
                 }
+                root.animate=false;presence.hideImmediately();presence.hiddenUntil=0
+                root.wantedReveal=1;root.animate=true;presence.appear(Scene.edgePoint(root.scene,"bottom",.5))
+                presence.peekOnly=false;presence.peekIntro=false;presence.renderedReveal=1
+                wait(120);root.wantedReveal=0;wait(150)
+                check(presence.visitActive && !presence.retreating,"native hide cut the entrance short")
+                tryCompare(actor,"presentation",1,4500)
+                check(presence.fullyPresentSince>0 && root.named(presence,"wullFullVisitDeadline").running,"full visit minimum was not armed")
+                wait(120);check(actor.visible && !presence.retreating,"newly appeared actor immediately vanished")
+                presence.fullyPresentSince=Date.now()-presence.minimumFullVisit-10;presence.synchronize()
+                wait(80);check(presence.retreating,"minimum visit never released the hide")
+                check(Curves.clips.sink.duration>=5000,"quicksand remains too fast")
+                check(Curves.sample("launch","normal",.30)<-1 && Curves.sample("riseJump","normal",.36)<-.8,"entrance arc remained ordinary")
+                check(Math.abs(Curves.sample("buttplant","roll",.60))>60 && Curves.sample("buttplant","foot0Z",.60)>14,"backside landing has no visible seated pose")
                 root.allowed=false;wait(40)
-                check(!actor.visible && !gait.active && !root.named(presence,"wullPeekDeadline").running && !notice.running,"policy hide retained clocks")
+                check(!actor.visible && !gait.active && !root.named(presence,"wullPeekDeadline").running && !notice.running
+                    && !root.named(presence,"wullFullVisitDeadline").running,"policy hide retained clocks")
                 console.log("WULL_ALIVE=PASS fourRimOrientation rotatedFaceGaze slowerWalk formerWalkRun popupCarry balanceFall widerClick passiveNotice noticeCooldown leaveCancel chatHold startleEvade annoyance shakeBreak peekOnly icyRetry BlenderTransitions")
             } catch(e) {console.error("WULL_ALIVE=FAIL "+e)}
             shutdown.start()

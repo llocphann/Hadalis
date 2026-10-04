@@ -374,7 +374,8 @@ Scope {
                     acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                     onActiveChanged: if (active) {
                         companionCuriosity.yieldToUser()
-                        companionPresence.nearbyClick(point.scenePosition.x,point.scenePosition.y)
+                        if (!talkCloud.containsScenePoint(point.scenePosition))
+                            companionPresence.nearbyClick(point.scenePosition.x,point.scenePosition.y)
                     }
                 }
             }

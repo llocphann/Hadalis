@@ -25,6 +25,10 @@ Item {
         : Math.min(outputHeight - height - 12, actor.y + actor.height + 18)
     visible: allowed && actor.visible && actor.inputReady && WullMind.text.length > 0
     z: 240
+    function containsScenePoint(point): bool {
+        const local = root.mapFromItem(null, point.x, point.y)
+        return visible && local.x >= 0 && local.x <= width && local.y >= 0 && local.y <= height
+    }
 
     // Observe the existing output item's events, whose bounds stay fixed when
     // the bubble grows upward. The bubble's own input Region stays unchanged.

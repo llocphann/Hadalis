@@ -7,6 +7,11 @@ import qs.modules.settings
 import qs.modules.abyss.companion
 Window {
     id:root;visible:true;width:900;height:750;color:"#061521"
+    property int outsideClicks: 0
+    PointHandler {
+        parent:root.contentItem
+        onActiveChanged: if(active && !cloud.containsScenePoint(point.scenePosition)) root.outsideClicks++
+    }
     function named(item,name) {
         if(item.objectName===name)return item
         for(const child of item.data ?? item.children ?? []){const match=named(child,name);if(match)return match}
@@ -71,6 +76,9 @@ Window {
                 mouseMove(root.contentItem,20,720);wait(80)
                 check(!cloud.controlsVisible && !field.visible && !field.activeFocus && !WullMind.conversationOpen,"hover leave retained input or focus")
                 check(field.text==="saved draft","hover leave lost the draft")
+                check(root.outsideClicks===0,"speech controls counted as nearby disturbance")
+                mouseClick(root.contentItem,20,720);wait(30)
+                check(root.outsideClicks===1,"speech guard blocked clicks outside the cloud")
                 WullMind.dismiss();check(!cloud.visible,"dismiss retained speech input")
                 console.log("WULL_MIND=PASS actualProcess localProbe EnglishReply borderlessCloud hoverInput noHoverFocus iconSend moodEnergyButtons retainedDraft boundedHistory cancel staleReply invalidEndpoint offlineMessage settingsAI noReferenceVault")
             } catch(e) {console.error("WULL_MIND=FAIL "+e)}

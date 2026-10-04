@@ -129,11 +129,7 @@ Singleton {
     function dismiss(): void {conversationOpen=false;checkInStage="";text="";expiry.stop();if(pending?.automatic) cancel()}
     function clearConversation(): void {
         cancel();history=[];historyLoaded=true;historyHasMore=false;text="";userMood="";userEnergy=""
-        historyClearPending=true
-        if (!historyClearWorker.running) {
-            historyClearWorker.startObserved=false
-            historyClearWorker.running=true
-        }
+        historyClearPending=true;historyClearRetry.restart()
     }
     function resolvePendingUser(id = 0, failed = false): void {
         const items=history.slice()
@@ -329,6 +325,12 @@ Singleton {
         && root.proactive==="occasional" && idleMonitor.isIdle && !root.conversationOpen;onTriggered:root.offerAutomatic()}
     Timer {id:expiry;repeat:false;onTriggered:if(!root.conversationOpen){root.text="";root.checkInStage=""}}
     Timer {id:deadline;interval:35000;repeat:false;onTriggered:{root.cancel();root.errorMessage="Local model request timed out.";root.connectionStatus="error"}}
+    Timer {id:historyClearRetry;interval:100;repeat:false;onTriggered:{
+        if(!root.historyClearPending)return
+        if(root.draining || worker.running || historyClearWorker.running){restart();return}
+        historyClearWorker.startObserved=false
+        historyClearWorker.running=true
+    }}
     Process {
         id:historyClearWorker
         running:false;stdinEnabled:true

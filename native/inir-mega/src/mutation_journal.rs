@@ -307,9 +307,12 @@ impl JournalStore {
                 }
             }
             Some(previous) => {
-                if !previous.immutable_eq(next)
-                    || !valid_phase_transition(previous.phase, next.phase)
-                {
+                let transition_ok = if previous.phase == next.phase {
+                    previous == *next
+                } else {
+                    valid_phase_transition(previous.phase, next.phase)
+                };
+                if !previous.immutable_eq(next) || !transition_ok {
                     return Err(JournalError::InvalidTransition);
                 }
             }
@@ -410,14 +413,10 @@ fn validate_private_file(file: &File) -> Result<(), JournalError> {
 fn valid_phase_transition(previous: Phase, next: Phase) -> bool {
     matches!(
         (previous, next),
-        (Phase::Prepared, Phase::Prepared)
-            | (Phase::Prepared, Phase::DispatchStarted)
-            | (Phase::DispatchStarted, Phase::DispatchStarted)
+        (Phase::Prepared, Phase::DispatchStarted)
             | (Phase::DispatchStarted, Phase::Reconciling)
             | (Phase::DispatchStarted, Phase::Terminal)
-            | (Phase::Reconciling, Phase::Reconciling)
             | (Phase::Reconciling, Phase::Terminal)
-            | (Phase::Terminal, Phase::Terminal)
     )
 }
 

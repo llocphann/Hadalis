@@ -121,8 +121,9 @@ fn find_in_path(name: &'static str, path_env: Option<&str>) -> VendorBinary {
 fn static_detection(path_env: Option<&str>) -> Vec<VendorBinary> {
     [
         "mega-cmd",
-        "mega-login",
         "mega-cmd-server",
+        "mega-exec",
+        "mega-login",
         "mega-whoami",
         "mega-version",
     ]
@@ -426,6 +427,7 @@ fn handle_connect_preflight(request: Request, path_env: Option<&str>) -> Respons
     let binaries = static_detection(path_env);
     let shell = binaries.iter().any(|item| item.name == "mega-cmd" && item.executable);
     let server = binaries.iter().any(|item| item.name == "mega-cmd-server" && item.executable);
+    let dispatcher = binaries.iter().any(|item| item.name == "mega-exec" && item.executable);
     Response {
         protocol: PROTOCOL_VERSION,
         request_id: request.request_id,
@@ -438,8 +440,8 @@ fn handle_connect_preflight(request: Request, path_env: Option<&str>) -> Respons
             "connected": false,
             "auth_qualified": false,
             "account_reads_enabled": false,
-            "dependencies_ready": shell && server,
-            "reason": if shell && server {
+            "dependencies_ready": shell && server && dispatcher,
+            "reason": if shell && server && dispatcher {
                 "installed_vendor_not_qualified"
             } else {
                 "dependency_missing"
@@ -503,6 +505,9 @@ fn handle(request: Request) -> Response {
             let server_available = binaries
                 .iter()
                 .any(|item| item.name == "mega-cmd-server" && item.executable);
+            let scriptable_dispatcher_available = binaries
+                .iter()
+                .any(|item| item.name == "mega-exec" && item.executable);
             Response {
                 protocol: PROTOCOL_VERSION,
                 request_id: request.request_id,
@@ -520,6 +525,7 @@ fn handle(request: Request) -> Response {
                     "python_mutation_fallback": false,
                     "interactive_shell_available": interactive_shell_available,
                     "server_available": server_available,
+                    "scriptable_dispatcher_available": scriptable_dispatcher_available,
                     "binaries": binaries
                 }),
                 error: None,
@@ -709,6 +715,7 @@ mod tests {
         let path_value = root.to_string_lossy().into_owned();
         let detected = static_detection(Some(&path_value));
         assert!(detected.iter().any(|item| item.name == "mega-cmd" && item.executable));
+        assert!(detected.iter().any(|item| item.name == "mega-exec" && !item.executable));
         assert!(!marker.exists());
         fs::remove_dir_all(root).unwrap();
     }
@@ -947,13 +954,46 @@ mod tests {
     }
 
     #[test]
+    fn preflight_without_scriptable_dispatcher_is_not_ready() {
+        let root = env::temp_dir().join(format!(
+            "inir-mega-preflight-no-dispatcher-{}-{:?}",
+            std::process::id(), std::thread::current().id()
+        ));
+        fs::create_dir_all(&root).unwrap();
+        for name in ["mega-cmd", "mega-cmd-server"] {
+            let file = root.join(name);
+            fs::write(&file, "#!/bin/sh\nexit 99\n").unwrap();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let mut mode = fs::metadata(&file).unwrap().permissions();
+                mode.set_mode(0o700);
+                fs::set_permissions(&file, mode).unwrap();
+            }
+        }
+        let path = root.to_string_lossy().into_owned();
+        let response = handle_connect_preflight(Request {
+            protocol: PROTOCOL_VERSION,
+            request_id: "preflight-no-dispatcher".into(),
+            operation: Operation::ConnectPreflight,
+            params: json!({}),
+            secret: None,
+        }, Some(&path));
+        assert!(response.ok);
+        assert_eq!(response.result["dependencies_ready"], false);
+        assert_eq!(response.result["reason"], "dependency_missing");
+        assert_eq!(response.result["connection_attempted"], false);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn preflight_present_never_executes_fake_vendor() {
         let root = env::temp_dir().join(format!(
             "inir-mega-preflight-{}-{:?}", std::process::id(), std::thread::current().id()
         ));
         fs::create_dir_all(&root).unwrap();
         let marker = root.join("vendor-executed");
-        for name in ["mega-cmd", "mega-cmd-server"] {
+        for name in ["mega-cmd", "mega-cmd-server", "mega-exec"] {
             let file = root.join(name);
             fs::write(&file, format!("#!/bin/sh\nprintf MARKER > '{}'\n", marker.display())).unwrap();
             #[cfg(unix)]

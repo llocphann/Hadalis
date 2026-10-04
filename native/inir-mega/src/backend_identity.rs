@@ -32,6 +32,7 @@ const CAPABILITY_EPOCH_SCHEMA: &[u8] = b"megaqml-capability-v1";
 const ALLOWED_BINARIES: &[&str] = &[
     "mega-cmd",
     "mega-cmd-server",
+    "mega-exec",
     "mega-login",
     "mega-sync",
     "mega-transfers",
@@ -140,9 +141,10 @@ fn is_sha256_hex(value: &str) -> bool {
 /// Build a static, pre-Connect backend identity without executing MEGAcmd.
 ///
 /// The selected files must be absolute, executable, canonicalizable regular
-/// files from one directory. Both the interactive shell and server must be in
-/// the selection so an accidental mixed-install PATH cannot become a backend
-/// identity. HOME is canonicalized and must belong to the effective user.
+/// files from one directory. The interactive shell, server and scriptable
+/// mega-exec dispatcher must all be present so wrapper commands cannot resolve
+/// through an untracked or mixed-install executable. HOME is canonicalized and
+/// must belong to the effective user.
 #[cfg(unix)]
 pub fn build_static_identity(
     effective_uid: u32,
@@ -199,7 +201,10 @@ pub fn build_static_identity(
         canonical.push((item.name, path, meta));
     }
 
-    if !names.contains("mega-cmd") || !names.contains("mega-cmd-server") {
+    if !names.contains("mega-cmd")
+        || !names.contains("mega-cmd-server")
+        || !names.contains("mega-exec")
+    {
         return Err(IdentityError::BinaryMissing);
     }
     canonical.sort_by(|a, b| a.0.cmp(b.0));
@@ -271,6 +276,7 @@ mod tests {
         bin: PathBuf,
         cmd: PathBuf,
         server: PathBuf,
+        dispatcher: PathBuf,
         sync: PathBuf,
     }
 
@@ -291,10 +297,12 @@ mod tests {
             fs::set_permissions(&home, home_mode).unwrap();
             let cmd = bin.join("mega-cmd");
             let server = bin.join("mega-cmd-server");
+            let dispatcher = bin.join("mega-exec");
             let sync = bin.join("mega-sync");
             for (name, path) in [
                 ("mega-cmd", &cmd),
                 ("mega-cmd-server", &server),
+                ("mega-exec", &dispatcher),
                 ("mega-sync", &sync),
             ] {
                 fs::write(path, format!("#!/bin/sh\n# {name}\n")).unwrap();
@@ -302,13 +310,14 @@ mod tests {
                 mode.set_mode(0o700);
                 fs::set_permissions(path, mode).unwrap();
             }
-            Self { root, home, bin, cmd, server, sync }
+            Self { root, home, bin, cmd, server, dispatcher, sync }
         }
 
         fn selection(&self) -> Vec<SelectedBinary<'_>> {
             vec![
                 SelectedBinary { name: "mega-cmd", path: &self.cmd },
                 SelectedBinary { name: "mega-cmd-server", path: &self.server },
+                SelectedBinary { name: "mega-exec", path: &self.dispatcher },
                 SelectedBinary { name: "mega-sync", path: &self.sync },
             ]
         }
@@ -342,10 +351,10 @@ mod tests {
         assert_ne!(socketed.static_epoch, first.static_epoch);
         assert!(socketed.socket_identity_present);
 
-        fs::write(fx.bin.join("mega-sync"), b"#!/bin/sh\n# changed-size-fixture\n").unwrap();
-        let mut mode = fs::metadata(fx.bin.join("mega-sync")).unwrap().permissions();
+        fs::write(fx.bin.join("mega-exec"), b"#!/bin/sh\n# changed-dispatcher-fixture\n").unwrap();
+        let mut mode = fs::metadata(fx.bin.join("mega-exec")).unwrap().permissions();
         mode.set_mode(0o700);
-        fs::set_permissions(fx.bin.join("mega-sync"), mode).unwrap();
+        fs::set_permissions(fx.bin.join("mega-exec"), mode).unwrap();
         let changed = build_static_identity(uid, &fx.home, None, &fx.selection()).unwrap();
         assert_ne!(changed.static_epoch, first.static_epoch);
     }
@@ -382,7 +391,7 @@ mod tests {
     }
 
     #[test]
-    fn mixed_installation_and_missing_server_are_rejected() {
+    fn mixed_installation_and_missing_core_dependencies_are_rejected() {
         let fx = Fixture::new();
         let uid = unsafe { libc::geteuid() };
         let other = fx.root.join("other-bin");
@@ -396,6 +405,7 @@ mod tests {
         let mixed = [
             SelectedBinary { name: "mega-cmd", path: &fx.cmd },
             SelectedBinary { name: "mega-cmd-server", path: &fx.server },
+            SelectedBinary { name: "mega-exec", path: &fx.dispatcher },
             SelectedBinary { name: "mega-sync", path: &other_sync },
         ];
         assert_eq!(
@@ -403,11 +413,21 @@ mod tests {
             Err(IdentityError::MixedInstallation)
         );
 
-        let missing = [
+        let missing_server = [
             SelectedBinary { name: "mega-cmd", path: &fx.cmd },
+            SelectedBinary { name: "mega-exec", path: &fx.dispatcher },
         ];
         assert_eq!(
-            build_static_identity(uid, &fx.home, None, &missing),
+            build_static_identity(uid, &fx.home, None, &missing_server),
+            Err(IdentityError::BinaryMissing)
+        );
+
+        let missing_dispatcher = [
+            SelectedBinary { name: "mega-cmd", path: &fx.cmd },
+            SelectedBinary { name: "mega-cmd-server", path: &fx.server },
+        ];
+        assert_eq!(
+            build_static_identity(uid, &fx.home, None, &missing_dispatcher),
             Err(IdentityError::BinaryMissing)
         );
     }

@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PATH = ROOT / "scripts/wull-nested-isolation-smoke.py"
 source = PATH.read_text(encoding="utf-8")
 ast.parse(source)
+assert 'background-color "#000000"' in source
+assert 'backdrop-color "#000000"' in source
 for forbidden in (
     "grabToImage", "saveToFile(", "grim ", "git push", "subprocess.Popen("
     "[\"qs\"", "wlrctl", "wdotool", "shell_deploy", "chmod 777"):

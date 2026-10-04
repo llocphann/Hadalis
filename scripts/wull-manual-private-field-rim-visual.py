@@ -26,11 +26,11 @@ import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
 BORROW = "scripts/wull-manual-nested-niri.py"
-BORROW_BLOB = "ff523e66926dd276bef97fb1b0b33872107bca96"
+BORROW_BLOB = "fdee83774d671e8da3023798e9fb2cdb6312203a"
 SHADOW = "scripts/wull-private-field-rim-attachment.py"
 SHADOW_BLOB = "b7c2ac861ab11073540d113df86a1339c7f43e6e"
 PRIOR_VISUAL = "scripts/wull-manual-private-nested-quarter-visual.py"
-PRIOR_VISUAL_BLOB = "fe3bfa0dea0c845f9f570e9f4815320dcf8aaa44"
+PRIOR_VISUAL_BLOB = "24e1a3d354d88a6187d3b08ed786c405ee1c2e6e"
 LAYOUT = "modules/abyss/looks/AbyssLayout.js"
 LAYOUT_BLOB = "f65d9c1922696d236fc0d3bfee735ad8df16924b"
 FIELD = "modules/abyss/looks/AbyssField.frag"
@@ -553,8 +553,10 @@ def main():
         nested_home = private / "nested"
         nested_home.mkdir(mode=0o700)
         cfg = nested_home / "nested.kdl"
-        cfg.write_text('layout {\n    background-color "#000000"\n}\n',
-                       encoding="utf-8")
+        cfg.write_text(
+            'layout {\n    background-color "#000000"\n}\n'
+            'overview {\n    backdrop-color "#000000"\n}\n',
+            encoding="utf-8")
         env = dict(os.environ)
         env.pop("NIRI_SOCKET", None)
         for key in ("config", "cache", "data", "state"):

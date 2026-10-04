@@ -45,6 +45,7 @@ impl PartialEq for LockError {
 impl Eq for LockError {}
 
 #[cfg(unix)]
+#[derive(Debug)]
 pub struct MutationLock {
     file: File,
     path: PathBuf,

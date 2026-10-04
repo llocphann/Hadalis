@@ -97,7 +97,7 @@ def audit(source):
             raise RuntimeError("pointer_dependency_changed_after_review")
     revision = git("log", "--format=%H", BASE + ".." + source,
                    "--", SELF).splitlines()
-    if (len(revision) != 16
+    if (len(revision) != 17
             or git("rev-parse", revision[-1] + ":" + SELF)
             != INITIAL_SELF_BLOB
             or git("rev-parse", revision[0] + ":" + SELF)
@@ -193,8 +193,10 @@ def run_nested(niri, private, host_display, host_ipc, host_outputs, *,
     }
     private.mkdir(mode=0o700, parents=True)
     config = private / "nested.kdl"
-    config.write_text('layout {\n    background-color "#000000"\n}\n',
-                      encoding="utf-8")
+    config.write_text(
+        'layout {\n    background-color "#000000"\n}\n'
+        'overview {\n    backdrop-color "#000000"\n}\n',
+        encoding="utf-8")
     nested_log = private / "nested-niri.private.log"
     child_log = private / "pointer-child.private.log"
     env = dict(os.environ)

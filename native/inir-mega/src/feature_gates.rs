@@ -108,6 +108,50 @@ mod tests {
     }
 
     #[test]
+    fn synthetic_transfer_parse_evidence_never_unlocks_transfers_domain() {
+        use crate::column_fixtures::{
+            CandidateCapture, TransferContext, TransferDirection, TransferPause,
+            TransferSnapshot, TransferSnapshotProfile, TransferSnapshotRow,
+            TransferState, parse_transfer_snapshot_capture,
+        };
+
+        assert_eq!(
+            TransferSnapshotProfile::args(),
+            [
+                "--show-completed",
+                "--show-syncs",
+                "--limit=128",
+                "--output-cols=TYPE,TAG,STATE",
+                "--col-separator=|",
+            ]
+        );
+        let clean = CandidateCapture {
+            stdout: "TYPE|TAG|STATE\n⇓|7|ACTIVE\n".as_bytes(),
+            stderr: b"",
+            exit_code: Some(0),
+            timed_out: false,
+            output_capped: false,
+        };
+        assert_eq!(
+            parse_transfer_snapshot_capture(&clean),
+            Ok(TransferSnapshot {
+                pause: TransferPause::None,
+                rows: vec![TransferSnapshotRow {
+                    direction: TransferDirection::Download,
+                    context: TransferContext::Normal,
+                    tag: 7,
+                    state: TransferState::Active,
+                }],
+            })
+        );
+        let preview = offline_policy_preview();
+        assert_eq!(preview["domains"]["transfers"]["read"], false);
+        assert_eq!(preview["domains"]["transfers"]["write"], false);
+        assert_eq!(preview["account_reads_enabled"], false);
+        assert_eq!(preview["writes_enabled"], false);
+    }
+
+    #[test]
     fn even_a_visible_synthetic_refresh_cannot_authorize_runtime_domains() {
         use crate::column_fixtures::CandidateCapture;
         use crate::snapshot_lifecycle::{Finish, SnapshotRefresh, Start};

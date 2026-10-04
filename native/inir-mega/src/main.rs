@@ -15,6 +15,7 @@ mod column_fixtures;
 mod snapshot_lifecycle;
 mod vendor_process;
 mod sync_read;
+mod transfer_read;
 mod mutation_lock;
 mod mutation_journal;
 mod backend_identity;

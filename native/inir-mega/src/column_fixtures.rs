@@ -386,9 +386,341 @@ pub fn parse_sync_snapshot_capture(
     parse_sync_snapshot(capture.stdout, true).map_err(CaptureError::InvalidTable)
 }
 
+
+/// Direction encoded by the Linux MEGAcmd transfer TYPE column.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TransferDirection {
+    Download,
+    Upload,
+}
+
+/// Transfer provenance encoded as the optional second TYPE glyph.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TransferContext {
+    Normal,
+    Sync,
+    Backup,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TransferState {
+    Queued,
+    Active,
+    Paused,
+    Retrying,
+    Completing,
+    Completed,
+    Cancelled,
+    Failed,
+}
+
+/// Global transfer pause banner emitted by pinned MEGAcmd before the table.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TransferPause {
+    None,
+    Downloads,
+    Uploads,
+    Both,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct TransferSnapshotRow {
+    pub direction: TransferDirection,
+    pub context: TransferContext,
+    pub tag: u32,
+    pub state: TransferState,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct TransferSnapshot {
+    pub pause: TransferPause,
+    pub rows: Vec<TransferSnapshotRow>,
+}
+
+/// Fixed argv for the scriptable mega-transfers client. The wrapper itself
+/// inserts transfers before forwarding these arguments to mega-exec.
+///
+/// Pinned upstream code requests one extra row beyond --limit=128 and emits
+/// a human truncation banner if more rows exist. The strict parser below
+/// rejects that banner, so a successfully parsed non-empty candidate is not a
+/// silently truncated first-page result. Installed-version qualification is
+/// still required before any real account read is allowed.
+pub struct TransferSnapshotProfile;
+
+impl TransferSnapshotProfile {
+    pub fn args() -> [&'static str; 5] {
+        [
+            "--show-completed",
+            "--show-syncs",
+            "--limit=128",
+            "--output-cols=TYPE,TAG,STATE",
+            "--col-separator=|",
+        ]
+    }
+}
+
+fn parse_transfer_type(
+    value: &str,
+) -> Result<(TransferDirection, TransferContext), Error> {
+    match value {
+        "⇓" => Ok((TransferDirection::Download, TransferContext::Normal)),
+        "⇑" => Ok((TransferDirection::Upload, TransferContext::Normal)),
+        "⇓⇵" => Ok((TransferDirection::Download, TransferContext::Sync)),
+        "⇑⇵" => Ok((TransferDirection::Upload, TransferContext::Sync)),
+        "⇓⏫" => Ok((TransferDirection::Download, TransferContext::Backup)),
+        "⇑⏫" => Ok((TransferDirection::Upload, TransferContext::Backup)),
+        _ => Err(Error::InvalidRow),
+    }
+}
+
+fn parse_transfer_state(value: &str) -> Result<TransferState, Error> {
+    match value {
+        "QUEUED" => Ok(TransferState::Queued),
+        "ACTIVE" => Ok(TransferState::Active),
+        "PAUSED" => Ok(TransferState::Paused),
+        "RETRYING" => Ok(TransferState::Retrying),
+        "COMPLETING" => Ok(TransferState::Completing),
+        "COMPLETED" => Ok(TransferState::Completed),
+        "CANCELLED" => Ok(TransferState::Cancelled),
+        "FAILED" => Ok(TransferState::Failed),
+        _ => Err(Error::InvalidRow),
+    }
+}
+
+fn parse_transfer_pause(value: &str) -> Option<TransferPause> {
+    match value {
+        "            DOWNLOADS ARE PAUSED " => Some(TransferPause::Downloads),
+        "            UPLOADS ARE PAUSED " => Some(TransferPause::Uploads),
+        "            DOWNLOADS AND UPLOADS ARE PAUSED " => Some(TransferPause::Both),
+        _ => None,
+    }
+}
+
+/// Parse one complete TYPE|TAG|STATE result from pinned Linux MEGAcmd.
+///
+/// Source-grounded empty behavior is a single blank line because
+/// ColumnDisplayer has no selected field names until at least one row has been
+/// added. A header-only table is therefore rejected instead of being treated
+/// as an empty authoritative result. Arbitrary path/progress text is excluded.
+pub fn parse_transfer_snapshot(
+    raw: &[u8],
+    complete: bool,
+) -> Result<TransferSnapshot, Error> {
+    if !complete { return Err(Error::Incomplete); }
+    if raw.len() > MAX_BYTES { return Err(Error::Oversized); }
+    let text = std::str::from_utf8(raw).map_err(|_| Error::InvalidEncoding)?;
+    if text.is_empty() || !text.ends_with('\n') { return Err(Error::Incomplete); }
+
+    if text == "\n" || text == "\r\n" {
+        return Ok(TransferSnapshot {
+            pause: TransferPause::None,
+            rows: Vec::new(),
+        });
+    }
+
+    if text.chars().any(|ch| {
+        ch == '\0' || ch == '\u{7f}'
+            || (ch.is_control() && ch != '\n' && ch != '\r')
+    }) {
+        return Err(Error::InvalidRow);
+    }
+
+    let mut lines = text.split_terminator('\n')
+        .map(|line| line.strip_suffix('\r').unwrap_or(line));
+    let first = lines.next().ok_or(Error::Incomplete)?;
+    let (pause, header) = if let Some(pause) = parse_transfer_pause(first) {
+        (pause, lines.next().ok_or(Error::InvalidHeader)?)
+    } else {
+        (TransferPause::None, first)
+    };
+    if header != "TYPE|TAG|STATE" {
+        return Err(Error::InvalidHeader);
+    }
+
+    let mut tags = String::from("TAG\n");
+    let mut parsed = Vec::new();
+    for row in lines {
+        if parsed.len() >= 128 || parsed.len() >= MAX_ROWS {
+            return Err(Error::Oversized);
+        }
+        if row.is_empty() || row != row.trim() || row.contains('\r') {
+            return Err(Error::InvalidRow);
+        }
+        let mut fields = row.split('|');
+        let (Some(kind), Some(tag), Some(state), None) =
+            (fields.next(), fields.next(), fields.next(), fields.next()) else {
+                return Err(Error::InvalidRow);
+            };
+        if kind.is_empty() || tag.is_empty() || state.is_empty() {
+            return Err(Error::InvalidRow);
+        }
+        let transfer_type = parse_transfer_type(kind)?;
+        let state = parse_transfer_state(state)?;
+        tags.push_str(tag);
+        tags.push('\n');
+        parsed.push((transfer_type, state));
+    }
+    if parsed.is_empty() {
+        return Err(Error::EmptyRows);
+    }
+
+    let parsed_tags = parse(Column::TransferTag, tags.as_bytes(), true)?;
+    if parsed_tags.len() != parsed.len() {
+        return Err(Error::InvalidRow);
+    }
+
+    let rows = parsed_tags.into_iter().zip(parsed)
+        .map(|(tag, ((direction, context), state))| {
+            let Value::TransferTag(tag) = tag else {
+                return Err(Error::InvalidRow);
+            };
+            Ok(TransferSnapshotRow {
+                direction,
+                context,
+                tag,
+                state,
+            })
+        })
+        .collect::<Result<Vec<_>, Error>>()?;
+
+    Ok(TransferSnapshot { pause, rows })
+}
+
+/// Reject timeout, byte caps, non-zero exit and stderr before table parsing.
+pub fn parse_transfer_snapshot_capture(
+    capture: &CandidateCapture<'_>,
+) -> Result<TransferSnapshot, CaptureError> {
+    check_clean_capture(capture)?;
+    parse_transfer_snapshot(capture.stdout, true).map_err(CaptureError::InvalidTable)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn transfer_snapshot_profile_and_source_grounded_rows() {
+        assert_eq!(
+            TransferSnapshotProfile::args(),
+            [
+                "--show-completed",
+                "--show-syncs",
+                "--limit=128",
+                "--output-cols=TYPE,TAG,STATE",
+                "--col-separator=|",
+            ]
+        );
+        let raw = "TYPE|TAG|STATE\n⇓|7|ACTIVE\n⇑⇵|42|PAUSED\n⇑⏫|99|COMPLETED\n";
+        assert_eq!(
+            parse_transfer_snapshot(raw.as_bytes(), true),
+            Ok(TransferSnapshot {
+                pause: TransferPause::None,
+                rows: vec![
+                    TransferSnapshotRow {
+                        direction: TransferDirection::Download,
+                        context: TransferContext::Normal,
+                        tag: 7,
+                        state: TransferState::Active,
+                    },
+                    TransferSnapshotRow {
+                        direction: TransferDirection::Upload,
+                        context: TransferContext::Sync,
+                        tag: 42,
+                        state: TransferState::Paused,
+                    },
+                    TransferSnapshotRow {
+                        direction: TransferDirection::Upload,
+                        context: TransferContext::Backup,
+                        tag: 99,
+                        state: TransferState::Completed,
+                    },
+                ],
+            })
+        );
+        assert_eq!(
+            parse_transfer_snapshot(b"\n", true),
+            Ok(TransferSnapshot {
+                pause: TransferPause::None,
+                rows: vec![],
+            })
+        );
+        let paused = "            DOWNLOADS AND UPLOADS ARE PAUSED \nTYPE|TAG|STATE\n⇓⏫|8|FAILED\n";
+        assert_eq!(
+            parse_transfer_snapshot(paused.as_bytes(), true),
+            Ok(TransferSnapshot {
+                pause: TransferPause::Both,
+                rows: vec![TransferSnapshotRow {
+                    direction: TransferDirection::Download,
+                    context: TransferContext::Backup,
+                    tag: 8,
+                    state: TransferState::Failed,
+                }],
+            })
+        );
+    }
+
+    #[test]
+    fn transfer_snapshot_fails_closed_on_ambiguous_or_truncated_output() {
+        let invalid: &[(&[u8], Error)] = &[
+            (b"", Error::Incomplete),
+            (b"TYPE|TAG|STATE\n", Error::EmptyRows),
+            (b"TAG|TYPE|STATE\n7|x|ACTIVE\n", Error::InvalidHeader),
+            ("TYPE|TAG|STATE\nx|7|ACTIVE\n".as_bytes(), Error::InvalidRow),
+            ("TYPE|TAG|STATE\n⇓|0|ACTIVE\n".as_bytes(), Error::InvalidRow),
+            ("TYPE|TAG|STATE\n⇓|07|ACTIVE\n".as_bytes(), Error::InvalidRow),
+            ("TYPE|TAG|STATE\n⇓|7|UNKNOWN\n".as_bytes(), Error::InvalidRow),
+            ("TYPE|TAG|STATE\n⇓|7|ACTIVE\n⇑|7|PAUSED\n".as_bytes(), Error::DuplicateIdentifier),
+            (" ...  Showing first 128 transfers ...\nTYPE|TAG|STATE\n⇓|7|ACTIVE\n".as_bytes(), Error::InvalidHeader),
+        ];
+        for (raw, expected) in invalid {
+            assert_eq!(parse_transfer_snapshot(raw, true), Err(*expected));
+        }
+        assert_eq!(
+            parse_transfer_snapshot("TYPE|TAG|STATE\n⇓|7|ACTIVE".as_bytes(), true),
+            Err(Error::Incomplete)
+        );
+        assert_eq!(
+            parse_transfer_snapshot(
+                "TYPE|TAG|STATE\n⇓|7|ACTIVE\n".as_bytes(),
+                false,
+            ),
+            Err(Error::Incomplete)
+        );
+    }
+
+    #[test]
+    fn transfer_capture_requires_clean_process_result() {
+        let clean = CandidateCapture {
+            stdout: "TYPE|TAG|STATE\n⇑|11|QUEUED\n".as_bytes(),
+            stderr: b"",
+            exit_code: Some(0),
+            timed_out: false,
+            output_capped: false,
+        };
+        assert!(parse_transfer_snapshot_capture(&clean).is_ok());
+        assert_eq!(
+            parse_transfer_snapshot_capture(&CandidateCapture {
+                stderr: b"PRIVATE_FAKE_DIAGNOSTIC",
+                ..clean
+            }),
+            Err(CaptureError::StandardErrorPresent)
+        );
+        assert_eq!(
+            parse_transfer_snapshot_capture(&CandidateCapture {
+                output_capped: true,
+                ..clean
+            }),
+            Err(CaptureError::OutputCapped)
+        );
+        assert_eq!(
+            parse_transfer_snapshot_capture(&CandidateCapture {
+                exit_code: Some(1),
+                ..clean
+            }),
+            Err(CaptureError::AbnormalExit)
+        );
+    }
+
 
     #[test]
     fn triple_sync_snapshot_profile_and_finite_row_examples() {

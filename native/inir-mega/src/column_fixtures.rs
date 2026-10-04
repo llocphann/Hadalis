@@ -223,19 +223,21 @@ pub fn parse_sync_pair(
 }
 
 
-/// Strict *candidate* argv allowlist. These fixed constants are NOT executable
-/// dispatch rights, a vetted executable path, session proof or authorization.
+/// Strict *candidate* argv allowlist for the scriptable `mega-sync` client.
+/// The wrapper inserts `sync`; callers must not duplicate that command token.
+/// These fixed constants are NOT executable dispatch rights, a vetted
+/// executable path, session proof or authorization.
 /// No user-controlled path, column expression, delimiter or mutation operand.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SyncReadProfile { RunState, Status }
 
 impl SyncReadProfile {
-    pub fn args(self) -> [&'static str; 3] {
+    pub fn args(self) -> [&'static str; 2] {
         match self {
             Self::RunState =>
-                ["sync", "--output-cols=ID,RUN_STATE", "--col-separator=|"],
+                ["--output-cols=ID,RUN_STATE", "--col-separator=|"],
             Self::Status =>
-                ["sync", "--output-cols=ID,STATUS", "--col-separator=|"],
+                ["--output-cols=ID,STATUS", "--col-separator=|"],
         }
     }
 
@@ -296,13 +298,15 @@ pub struct SyncSnapshotRow {
     pub status: Status,
 }
 
-/// Fixed profile only; a future separately qualified runner must attest
-/// its own executable, environment, server, session and capture lifecycle.
+/// Fixed argv for the scriptable `mega-sync` client. The wrapper itself
+/// inserts the `sync` command before forwarding these arguments to `mega-exec`.
+/// A future separately qualified runner must still attest its executable,
+/// environment, server, session and capture lifecycle.
 pub struct SyncSnapshotProfile;
 
 impl SyncSnapshotProfile {
-    pub fn args() -> [&'static str; 3] {
-        ["sync", "--output-cols=ID,RUN_STATE,STATUS", "--col-separator=|"]
+    pub fn args() -> [&'static str; 2] {
+        ["--output-cols=ID,RUN_STATE,STATUS", "--col-separator=|"]
     }
 }
 
@@ -390,7 +394,7 @@ mod tests {
     fn triple_sync_snapshot_profile_and_finite_row_examples() {
         assert_eq!(
             SyncSnapshotProfile::args(),
-            ["sync", "--output-cols=ID,RUN_STATE,STATUS", "--col-separator=|"]
+            ["--output-cols=ID,RUN_STATE,STATUS", "--col-separator=|"]
         );
         let raw = b"ID|RUN_STATE|STATUS\nAbcDef12_-x|Running|Synced\nZyxWvu98_-p|Suspended|Pending\n";
         assert_eq!(
@@ -535,16 +539,15 @@ mod tests {
     fn fixed_profile_argv_never_accepts_mutation_or_variable_columns() {
         assert_eq!(
             SyncReadProfile::RunState.args(),
-            ["sync", "--output-cols=ID,RUN_STATE", "--col-separator=|"]
+            ["--output-cols=ID,RUN_STATE", "--col-separator=|"]
         );
         assert_eq!(
             SyncReadProfile::Status.args(),
-            ["sync", "--output-cols=ID,STATUS", "--col-separator=|"]
+            ["--output-cols=ID,STATUS", "--col-separator=|"]
         );
         for profile in [SyncReadProfile::RunState, SyncReadProfile::Status] {
             let args = profile.args();
-            assert_eq!(args.len(), 3);
-            assert_eq!(args[0], "sync");
+            assert_eq!(args.len(), 2);
             assert!(!args.iter().any(|arg| {
                 arg.starts_with('-') && !arg.starts_with("--output-cols=")
                     && !arg.starts_with("--col-separator=")

@@ -15,6 +15,8 @@ Item {
     required property real outputHeight
     property bool allowed: false
     readonly property bool controlsVisible: visible && cloudHover.hovered
+        && cloudHover.point.position.x >= x && cloudHover.point.position.x <= x + width
+        && cloudHover.point.position.y >= y && cloudHover.point.position.y <= y + height
     readonly property bool editing: controlsVisible && WullMind.conversationOpen
     width: Math.min(310, Math.max(190, outputWidth - 32))
     height: content.implicitHeight + 24
@@ -24,7 +26,9 @@ Item {
     visible: allowed && actor.visible && actor.inputReady && WullMind.text.length > 0
     z: 240
 
-    HoverHandler { id: cloudHover }
+    // Observe the existing output item's events, whose bounds stay fixed when
+    // the bubble grows upward. The bubble's own input Region stays unchanged.
+    HoverHandler { id: cloudHover; objectName: "wullCloudHoverTracker"; parent: root.parent; enabled: root.visible }
     Rectangle {
         objectName: "wullCloudBackground"
         anchors.fill: parent

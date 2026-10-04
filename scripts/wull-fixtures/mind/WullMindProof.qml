@@ -40,7 +40,7 @@ Window {
                 check(WullMind.testConnection(),"probe rejected")
                 tryCompare(WullMind,"busy",false,6000)
                 check(WullMind.connectionStatus==="ready" && WullMind.models.length===1,"local probe not ready")
-                WullMind.openChat();wait(100)
+                WullMind.openChat();mouseMove(cloud,cloud.width/2,14);wait(100)
                 check(cloud.editing,"explicit chat did not open editor")
                 field.text="Hello Wull!"
                 mouseClick(root.named(cloud,"wullChatSend"));wait(20)

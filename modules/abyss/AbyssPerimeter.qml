@@ -218,7 +218,7 @@ Scope {
                         x:companion.x,y:companion.y}}
             }
             readonly property bool companionHoverHeld: window.companionHostActive
-                && companion.interactive && (companion.hovered || companion.dragging)
+                && companion.interactive && (companion.hovered || companion.dragging || talkCloud.controlsVisible)
             onCompanionHoverHeldChanged: if (root.companionTargetOutput===window.outputName && companionBridge.ready)
                 companionBridge.sendEvent("hover",window.companionHoverHeld)
             WullPresence {
@@ -229,7 +229,7 @@ Scope {
                 requestedReveal: companionBridge.visibility==="present" ? 1
                     : companionBridge.visibility==="peeking" ? .46 : 0
                 motionEnabled: root.companionPreferences.animationsEnabled && AbyssStyle.motionEnabled
-                interactionHeld: companionBridge.activity!=="idle"
+                interactionHeld: companionBridge.activity!=="idle" || talkCloud.controlsVisible || WullMind.conversationOpen
                 personality: root.companionPreferences.personality
                 travelId: companionBridge.travelId
                 travelFraction: companionBridge.travelTarget
@@ -638,6 +638,7 @@ Scope {
                 id:talkCloud;actor:companion
                 outputWidth:window.width;outputHeight:window.height
                 allowed:window.companionHostActive && root.companionInteractive
+                onControlsVisibleChanged: if (controlsVisible) companionCuriosity.yieldToUser()
             }
             Item {
                 id: revealTrigger

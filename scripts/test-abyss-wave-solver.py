@@ -5,7 +5,9 @@ import subprocess
 root = Path(__file__).resolve().parents[1]
 program = (root / "modules/abyss/looks/AbyssWave.js").read_text() + r"""
 const assert=require('node:assert/strict');
-const p=parameters({preset:'balanced'});
+// Mechanical fixtures have explicit settings; named preset tuning is checked
+// independently below and must not silently change this stress workload.
+const p=parameters({preset:'custom',...customDefaults});
 assert.equal(bodyStrength({small:.4,large:1.7,dock:.3,notifications:.2}),1.7);
 assert.equal(bodyStrength({strength:2,large:4}),2);
 assert.equal(arc('top',100,1920,1200),100);
@@ -49,7 +51,7 @@ for(const preset of Object.keys(presets)) {
     for(let i=0;i<360;i++) { advance(sample,1/120);peak=Math.max(peak,...sample.displacement.map(Math.abs)); }
     peaks.push(peak);
 }
-assert(peaks[1]>peaks[0]*2 && peaks[2]>peaks[1]*1.5 && peaks[3]>peaks[2]*1.3,'presets have distinct measured wave heights');
+assert(peaks.every((peak,i)=>i===0 || peak>peaks[i-1]*1.2),'restrained presets retain distinct, increasing wave heights');
 const custom=parameters({preset:'custom',amplitude:9,decay:-1});
 assert.equal(custom.amplitude,4);assert.equal(custom.decay,0);
 const travelParameters=parameters({preset:'deep'});
@@ -112,7 +114,7 @@ for(const bad of [[Infinity,-2,NaN],[0,0,0],[]]) {
     assert(s.displacement.every(v=>Number.isFinite(v) && Math.abs(v)<=heightLimit(s)+.001),'malformed and extreme audio stays bounded');
 }
 
-const visual=create(256,1920,1200,parameters({preset:'deep'}));
+const visual=create(256,1920,1200,parameters({preset:'custom',amplitude:4,propagation:1,speed:.3,decay:.6,tension:.15,viscosity:.45,rebound:.9,corner:1}));
 for(let i=0;i<visual.count;i++) {
     visual.displacement[i]=80*Math.exp(-Math.pow((i-80)/5,2))-40*Math.exp(-Math.pow((i-150)/8,2));
     visual.velocity[i]=180;
@@ -138,4 +140,4 @@ assert(visual.crestPeak<visual.displacement[80] && visual.crests[79]>0 && visual
 console.log('PASS: signed interference, finite stability/sleep, compact positive crests and bounded crest-only whitewater');
 
 """
-subprocess.run(["node","-e",program],cwd=root,check=True)
+raise SystemExit(subprocess.run(["node","-e",program],cwd=root).returncode)

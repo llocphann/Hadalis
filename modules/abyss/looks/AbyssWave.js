@@ -1,10 +1,12 @@
 // A damped spring string on one closed output perimeter, in logical pixels.
 var presets = {
-    calm:{amplitude:.12,propagation:.35,speed:.3,decay:.85,tension:.8,viscosity:.85,rebound:.2,corner:.4},
-    balanced:{amplitude:.8,propagation:.8,speed:.55,decay:.55,tension:.5,viscosity:.55,rebound:.6,corner:.8},
-    fluid:{amplitude:2,propagation:1,speed:.8,decay:.45,tension:.3,viscosity:.25,rebound:.85,corner:1},
-    deep:{amplitude:4,propagation:1,speed:.3,decay:.6,tension:.15,viscosity:.45,rebound:.9,corner:1}
+    calm:{amplitude:.035,propagation:.2,speed:.2,decay:.94,tension:.9,viscosity:.94,rebound:.08,corner:.25},
+    balanced:{amplitude:.12,propagation:.35,speed:.3,decay:.85,tension:.8,viscosity:.85,rebound:.2,corner:.4},
+    fluid:{amplitude:.32,propagation:.65,speed:.45,decay:.75,tension:.6,viscosity:.7,rebound:.35,corner:.65},
+    deep:{amplitude:.65,propagation:1,speed:.3,decay:.78,tension:.4,viscosity:.65,rebound:.45,corner:.8}
 };
+// Named presets can be tuned without resetting existing custom wave controls.
+var customDefaults = {amplitude:.8,propagation:.8,speed:.55,decay:.55,tension:.5,viscosity:.55,rebound:.6,corner:.8};
 function bounded(value, fallback, maximum) {
     return Number.isFinite(Number(value)) ? Math.max(0,Math.min(maximum,Number(value))) : fallback;
 }
@@ -23,7 +25,7 @@ function unit(value, fallback) {
     return Number.isFinite(Number(value)) ? Math.max(0,Math.min(1,Number(value))) : fallback;
 }
 function parameters(options) {
-    var base = presets[options?.preset] || presets.balanced;
+    var base = options?.preset === "custom" ? customDefaults : presets[options?.preset] || presets.balanced;
     var result = {};
     Object.keys(base).forEach(function(key) { result[key] = options?.preset === "custom" ? bounded(options[key],base[key],key === "amplitude" ? 4 : 1) : base[key]; });
     ["hover","press","open","close","drag"].forEach(function(key) { result[key] = unit(options?.[key],1); });

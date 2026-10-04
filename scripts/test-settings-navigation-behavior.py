@@ -12,6 +12,9 @@ const merged=arrange(JSON.stringify({groups:[{label:' System ',pages:[1]},{label
 assert.deepEqual(merged.groups.find(g=>g.label==='System').pages,[1,2]);
 assert.deepEqual(merged.groups.find(g=>g.label==='Appearance').pages,[3,4]);
 assert.equal(merged.groups.length,3,'every duplicate heading is merged, with the first position and label preserved');
+const lower=arrange(JSON.stringify([{label:' system ',pages:[1]}]),[{label:'Home',pages:[0]},{label:'System',pages:[1,2,3,4]}],5,[]);
+assert.equal(lower.groups.filter(g=>g.label.toLowerCase()==='system').length,1,'restoring unassigned tabs cannot recreate a duplicate heading');
+assert.deepEqual(lower.groups.find(g=>g.label==='system').pages,[1,2,3,4]);
 assert.equal(state.groups.filter(g=>g.label==='Abyss').length,1);
 assert.equal(state.groups.filter(g=>g.label==='More').length,1);
 assert.equal(state.groups.flatMap(g=>g.pages).length,5);

@@ -21,7 +21,7 @@ function arrange(raw, defaults, pageCount, retired) {
     for(var index=0;index<pageCount;index++) {
         if (seen.has(index)) continue;
         var home=defaults.find(g=>g.pages.indexOf(index)>=0);
-        var label=home?.label || "More",target=out.find(g=>g.label===label);
+        var label=home?.label || "More",target=out.find(g=>g.label.toLowerCase()===label.toLowerCase());
         if (!target) { target={label:label,pages:[]};out.push(target); }
         target.pages.push(index);seen.add(index);
     }

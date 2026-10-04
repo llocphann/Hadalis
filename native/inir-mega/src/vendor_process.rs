@@ -428,7 +428,7 @@ mod tests {
     #[test]
     fn concurrent_pipe_drain_caps_bytes_without_deadlock() {
         let result = run_bounded(&shell(
-            "i=0; while [ "$i" -lt 5000 ]; do printf '0123456789abcdef0123456789abcdef\\n'; printf 'fedcba9876543210fedcba9876543210\\n' >&2; i=$((i+1)); done",
+            r#"i=0; while [ "$i" -lt 5000 ]; do printf '0123456789abcdef0123456789abcdef\\n'; printf 'fedcba9876543210fedcba9876543210\\n' >&2; i=$((i+1)); done"#,
             Duration::from_secs(3),
             1024,
             1536,
@@ -449,7 +449,7 @@ mod tests {
             std::process::id()
         ));
         let _ = fs::remove_file(&marker);
-        let script = "(sleep 0.25; printf late > "$1") & wait";
+        let script = r#"(sleep 0.25; printf late > "$1") & wait"#;
         let mut spec = shell(script, Duration::from_millis(50), 1024, 1024);
         spec.args.push(OsString::from("fixture-sh"));
         spec.args.push(marker.as_os_str().to_os_string());

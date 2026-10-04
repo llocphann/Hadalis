@@ -1,0 +1,84 @@
+{
+  "id": "JOB-MEGAQML-SYNC-WRAPPER-ARGV-20261005-001",
+  "profile_id": "profile-a25585b748dd4220",
+  "base_sha": "8d4ac05fed289de4cdb04b865612c00b70b025d6",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega",
+          "sync_read::tests"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega",
+          "column_fixtures::tests"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 300
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "check",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "scripts/test-megaqml-phase2-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    }
+  ]
+}

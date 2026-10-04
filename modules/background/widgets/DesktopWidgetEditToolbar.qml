@@ -56,8 +56,15 @@ Item {
         screenY: editControlsBar.y
     }
     MouseArea { anchors.fill:parent; z:-1; acceptedButtons:Qt.AllButtons }
-    Item {
+    Flickable {
         id: rail
+        objectName: "desktopWidgetEditorRail"
+        contentWidth: Math.max(width,editBarRow.implicitWidth+16)
+        contentHeight: 52
+        clip: true
+        interactive: contentWidth > width
+        boundsBehavior: Flickable.StopAtBounds
+        flickableDirection: Flickable.HorizontalFlick
         width: editControlsBar.railExtent
         height: 52
         x: editControlsBar.vertical ? editControlsBar.width : 0
@@ -150,7 +157,7 @@ Item {
         
             StyledText {
                 anchors.verticalCenter: parent.verticalCenter
-                visible: !editControlsBar.vertical && editControlsBar.width >= 760
+                visible: !editControlsBar.vertical && (editControlsBar.hosted ? editControlsBar.width >= 760 : safeBounds.safeWidth >= 900)
                 text: Translation.tr("Widgets")
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 font.weight: Font.Medium
@@ -170,7 +177,7 @@ Item {
                 contentItem: MaterialSymbol {
                     rotation: editControlsBar.vertical ? -90 : 0
                     anchors.centerIn: parent
-                    text: "chevron_left"
+                    text: editControlsBar.vertical ? "expand_less" : "chevron_left"
                     iconSize: 18
                     color: Appearance.colors.colOnLayer2
                 }
@@ -180,7 +187,9 @@ Item {
             Flickable {
                 id: widgetToggleRail
                 width: Math.max(72, Math.min(420,
-                    editControlsBar.railExtent - (editControlsBar.vertical ? 300 : editControlsBar.width >= 860 ? 485 : editControlsBar.width >= 760 ? 395 : 340),
+                    (editControlsBar.hosted
+                    ? editControlsBar.railExtent - (editControlsBar.vertical ? 300 : editControlsBar.width >= 860 ? 485 : editControlsBar.width >= 760 ? 395 : 340)
+                    : safeBounds.safeWidth - 530),
                     widgetToggleRow.implicitWidth))
                 height: 36
                 contentWidth: widgetToggleRow.implicitWidth
@@ -306,7 +315,7 @@ Item {
                 contentItem: MaterialSymbol {
                     rotation: editControlsBar.vertical ? -90 : 0
                     anchors.centerIn: parent
-                    text: "chevron_right"
+                    text: editControlsBar.vertical ? "expand_more" : "chevron_right"
                     iconSize: 18
                     color: Appearance.colors.colOnLayer2
                 }
@@ -349,7 +358,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     StyledText {
-                        visible: !editControlsBar.vertical && editControlsBar.width >= 860
+                        visible: !editControlsBar.vertical && (editControlsBar.hosted ? editControlsBar.width >= 860 : safeBounds.safeWidth >= 1000)
                         text: Translation.tr("Manage widgets")
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         font.weight: Font.Medium

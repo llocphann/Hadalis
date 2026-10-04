@@ -2,6 +2,7 @@
 """Use the production toolbar and field host in an isolated Qt/Quickshell output."""
 from pathlib import Path
 import os
+import json
 import shutil
 import subprocess
 import tempfile
@@ -21,7 +22,6 @@ with tempfile.TemporaryDirectory(prefix="hadalis-widget-editor-") as folder:
     config = root / "config/illogical-impulse"
     config.mkdir(parents=True)
     shutil.copy(repo / "defaults/config.json", config / "config.json")
-    import json
     qml = r'''
 import QtQuick
 import Quickshell
@@ -34,6 +34,7 @@ ShellRoot {
  id:root
  property int step:0
  property bool failed:false
+ property bool capturing:false
  function check(ok,message): bool {
   if(ok) return true
   console.error("WIDGET_EDITOR_FAIL",message);root.failed=true;Qt.quit();return false
@@ -42,6 +43,16 @@ ShellRoot {
   if(predicate(item)) return item
   for(const child of item.children ?? []) { const found=find(child,predicate);if(found)return found }
   return null
+ }
+ function captureThen(name,action) {
+  const directory=CAPTURE_PATH
+  if(!directory) {action();return}
+  root.capturing=true
+  const accepted=painting.grabToImage(result=>{
+   if(!root.check(result.saveToFile(directory+"/"+name+".png"),"capture saved"))return
+   root.capturing=false;action()
+  })
+  root.check(accepted,"capture request accepted")
  }
  QtObject {
   id:context
@@ -58,8 +69,10 @@ ShellRoot {
   property bool presented:true
   property var nativeInsets:({left:16,top:48,right:16,bottom:16})
   function bodyInsets(edge,along,span) { return nativeInsets }
+  Item { id:painting;anchors.fill:parent
   Item {
    id:home;anchors.fill:parent
+   property var abyssHost:null
    property real safeLeft:16;property real safeTop:48
    property real safeRight:window.width-16;property real safeBottom:window.height-16
    property real safeWidth:safeRight-safeLeft
@@ -69,11 +82,12 @@ ShellRoot {
   }
   AbyssField { id:field;anchors.fill:parent;z:-1;edgeInsets:window.nativeInsets;records:liquid.records }
   HOST
+  }
  }
  Timer {
   interval:250;running:!root.failed;repeat:true
   onTriggered: {
-   if(!Config.ready || !field.ready) return
+   if(!Config.ready || !field.ready || root.capturing) return
    if(root.step===0) {
     Config.setNestedValue("panelFamily","abyss")
     Config.setNestedValue("performance.reduceAnimations",true)
@@ -87,10 +101,10 @@ ShellRoot {
     const before=Config.getNestedValue("background.widgets.editGrid.snap",true)
     grid.downAction()
     if(!root.check(Config.getNestedValue("background.widgets.editGrid.snap",true)!==before,"grid control still changes the original setting"))return
-    toolbar.obstacles=[{x:0,y:window.height-120,width:window.width,height:120}]
+    root.captureThen("bottom",()=>toolbar.obstacles=[{x:0,y:window.height-120,width:window.width,height:120}])
    } else if(root.step===2) {
     if(!root.check(widgetEditorBody.edge==="top" && !toolbar.vertical,"top avoids lower widgets"))return
-    toolbar.obstacles=[{x:0,y:window.height-120,width:window.width,height:120},{x:0,y:0,width:window.width,height:130}]
+    root.captureThen("top",()=>toolbar.obstacles=[{x:0,y:window.height-120,width:window.width,height:120},{x:0,y:0,width:window.width,height:130}])
    } else if(root.step===3) {
     if(!root.check(widgetEditorBody.edge==="left" && toolbar.vertical && toolbar.width===52,"left rail with fixed control dimensions"))return
     const rect=widgetEditorBody.record.content
@@ -99,17 +113,28 @@ ShellRoot {
     if(!root.check(manage!==null,"manager control retains its context"))return
     manage.releaseAction()
     if(!root.check(managerState.shown,"manager action still opens the original manager"))return
-    const capture=CAPTURE_PATH
-    if(capture) window.contentItem.grabToImage(result=>result.saveToFile(capture+"/left.png"))
-    toolbar.obstacles=toolbar.obstacles.concat([{x:0,y:0,width:110,height:window.height}])
+    root.captureThen("left",()=>toolbar.obstacles=toolbar.obstacles.concat([{x:0,y:0,width:110,height:window.height}]))
    } else if(root.step===4) {
     if(!root.check(widgetEditorBody.edge==="right" && widgetEditorBody.inputBounds.height>400,"right rail avoids occupied left edge"))return
-    GlobalStates.setWidgetEditMode(false)
-    if(!root.check(widgetEditorBody.inputBounds.width===0 && !toolbar.enabled,"semantic close releases input immediately"))return
+    root.captureThen("right",()=>{
+     GlobalStates.setWidgetEditMode(false)
+     root.check(widgetEditorBody.inputBounds.width===0 && !toolbar.enabled,"semantic close releases input immediately")
+    })
    } else if(root.step===5) {
     GlobalStates.setWidgetEditMode(true)
-    Config.setNestedValue("panelFamily","waffle")
+    toolbar.obstacles=[]
+    window.nativeInsets=({left:16,top:48,right:window.width-400,bottom:16})
    } else if(root.step===6) {
+    const rail=root.find(toolbar,i=>i.objectName==="desktopWidgetEditorRail")
+    if(!root.check(rail!==null && rail.contentWidth>rail.width && rail.interactive,"narrow outputs keep every control reachable by scrolling"))return
+    rail.contentX=rail.contentWidth-rail.width
+    const done=root.find(toolbar,i=>typeof i.downAction==="function" && i.contentItem?.text==="check")
+    const point=done.mapToItem(rail,0,0)
+    if(!root.check(point.x>=0 && point.x+done.width<=rail.width+1,"Done remains reachable on narrow output"))return
+    done.downAction()
+    GlobalStates.setWidgetEditMode(true)
+    Config.setNestedValue("panelFamily","waffle")
+   } else if(root.step===7) {
     if(!root.check(!toolbar.hosted && toolbar.parent===home && toolbar.height===52,"Waffle restores existing horizontal controls"))return
     GlobalStates.registerDesktopWidgetEditor("A",home)
     GlobalStates.unregisterDesktopWidgetEditor("A",toolbar)

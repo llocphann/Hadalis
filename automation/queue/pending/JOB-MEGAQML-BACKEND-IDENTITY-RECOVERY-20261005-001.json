@@ -1,0 +1,67 @@
+{
+  "id": "JOB-MEGAQML-BACKEND-IDENTITY-RECOVERY-20261005-001",
+  "profile_id": "profile-a25585b748dd4220",
+  "base_sha": "0213219daedb285cc0aaca8604c9cf3e17d1bbce",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega",
+          "backend_identity::tests"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 300
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "check",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "scripts/test-megaqml-phase2-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    }
+  ]
+}

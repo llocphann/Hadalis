@@ -104,11 +104,29 @@ The maintainer added these outcomes and requested continued bug finding and
 lossless optimization. Automation exclusion and the single-agent dev workflow
 remain in effect.
 
-- [ ] Present Niri Reloaded through the same notification placement/stack;
-  retain reload debounce, cooldown and Game Mode suppression.
+- [x] Present Niri Reloaded through the same notification placement/stack;
+  retain reload debounce, cooldown and Game Mode suppression. Committed
+  `159c4f79203c352f53d09747c75896b75975a143`, pushed; native ingress,
+  shared hover/expiry, transient removal, silence and error-path checks passed.
 - [ ] Move Edit Dashboard Layout controls outside the Dashboard canvas into
   an Abyss popup above it. Preserve actual widget/workspace dimensions, draft
   commit/cancel, hidden-widget controls, clipping/input and output lifecycle.
 - [ ] Find and repair related runtime defects; promote further lossless work
   only with behavior/read/dependency parity evidence and bounded validation.
 - [ ] Validate a new exact committed SHA; retain desktop acceptance separately.
+
+
+### Maintainer stop checkpoint — 2026-10-05
+
+**STOPPED AT MAINTAINER REQUEST / NOT_COMPLETE.** Stop implementation and wait
+for a new maintainer instruction. Niri Reloaded is committed/pushed. The
+Dashboard popup draft is archived with exact base/file hashes; unfinished
+runtime changes are not installed in the source tree.
+
+Remaining work is detailed with the failed composed fixture, focused passes and
+resume precautions in the [saved checkpoint](../../docs/evidence/abyss-product/20261005-dashboard-editor-draft/README.md).
+Finish the actual field/narrow-output checks, inspect rendering, qualify output
+and search/task-view lifecycle, then commit and validate a new exact SHA. Further
+related bug finding/lossless work and owner-session acceptance remain pending.
+The earlier 415/0/11 canonical result applies only to its recorded source SHA.
+Keep automation excluded and preserve concurrent owner work.

@@ -151,3 +151,25 @@ suspend, scaling, fullscreen and input/focus remains **HOLD / NOT_COMPLETE**.
 No automation files, jobs, state, profiles or services were changed or controlled.
 Concurrent Wull work and unrelated MEGA evidence were preserved. The active
 entry point remains [to-do/cloud-bot/OPTIMIZATION.md](../../to-do/cloud-bot/OPTIMIZATION.md).
+
+
+## Maintainer stop checkpoint — 2026-10-05
+
+The maintainer stopped implementation and requested a pushed repository note.
+Niri/Quickshell reload success now uses normal Notifications at source commit
+`159c4f79203c352f53d09747c75896b75975a143`; focused native ingress/hover/expiry,
+transient removal, silent reload and error-path checks passed. It was pushed
+through `069d148f799f795281f3d37614a49e5fe6893a71`. Its new canonical run is pending.
+
+The external Dashboard editor is **NOT_COMPLETE**. Its fourteen-file draft,
+exact base/file hashes, partial native passes and failed composed fixture are
+preserved in the [stop checkpoint](../evidence/abyss-product/20261005-dashboard-editor-draft/README.md).
+The draft was archived out of the runtime source tree. Resume only after a new
+maintainer instruction, refetch/reconcile current `dev`, finish field/narrow
+input/lifecycle and rendering checks, and validate a new committed SHA.
+Further related bug finding/lossless work and desktop acceptance remain pending.
+The prior canonical PASS above does not qualify this later candidate.
+
+No automation source or jobs were authored or controlled by this continuation.
+Concurrent owner automation and Cloud Storage commits were integrated intact;
+this integration is separate from product changes described here.

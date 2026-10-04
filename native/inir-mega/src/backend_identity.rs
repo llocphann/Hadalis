@@ -269,6 +269,9 @@ mod tests {
         root: PathBuf,
         home: PathBuf,
         bin: PathBuf,
+        cmd: PathBuf,
+        server: PathBuf,
+        sync: PathBuf,
     }
 
     impl Fixture {
@@ -286,21 +289,27 @@ mod tests {
             let mut home_mode = fs::metadata(&home).unwrap().permissions();
             home_mode.set_mode(0o700);
             fs::set_permissions(&home, home_mode).unwrap();
-            for name in ["mega-cmd", "mega-cmd-server", "mega-sync"] {
-                let path = bin.join(name);
-                fs::write(&path, format!("#!/bin/sh\n# {name}\n")).unwrap();
-                let mut mode = fs::metadata(&path).unwrap().permissions();
+            let cmd = bin.join("mega-cmd");
+            let server = bin.join("mega-cmd-server");
+            let sync = bin.join("mega-sync");
+            for (name, path) in [
+                ("mega-cmd", &cmd),
+                ("mega-cmd-server", &server),
+                ("mega-sync", &sync),
+            ] {
+                fs::write(path, format!("#!/bin/sh\n# {name}\n")).unwrap();
+                let mut mode = fs::metadata(path).unwrap().permissions();
                 mode.set_mode(0o700);
                 fs::set_permissions(path, mode).unwrap();
             }
-            Self { root, home, bin }
+            Self { root, home, bin, cmd, server, sync }
         }
 
         fn selection(&self) -> Vec<SelectedBinary<'_>> {
             vec![
-                SelectedBinary { name: "mega-cmd", path: &self.bin.join("mega-cmd") },
-                SelectedBinary { name: "mega-cmd-server", path: &self.bin.join("mega-cmd-server") },
-                SelectedBinary { name: "mega-sync", path: &self.bin.join("mega-sync") },
+                SelectedBinary { name: "mega-cmd", path: &self.cmd },
+                SelectedBinary { name: "mega-cmd-server", path: &self.server },
+                SelectedBinary { name: "mega-sync", path: &self.sync },
             ]
         }
     }
@@ -385,8 +394,8 @@ mod tests {
         fs::set_permissions(&other_sync, mode).unwrap();
 
         let mixed = [
-            SelectedBinary { name: "mega-cmd", path: &fx.bin.join("mega-cmd") },
-            SelectedBinary { name: "mega-cmd-server", path: &fx.bin.join("mega-cmd-server") },
+            SelectedBinary { name: "mega-cmd", path: &fx.cmd },
+            SelectedBinary { name: "mega-cmd-server", path: &fx.server },
             SelectedBinary { name: "mega-sync", path: &other_sync },
         ];
         assert_eq!(
@@ -395,7 +404,7 @@ mod tests {
         );
 
         let missing = [
-            SelectedBinary { name: "mega-cmd", path: &fx.bin.join("mega-cmd") },
+            SelectedBinary { name: "mega-cmd", path: &fx.cmd },
         ];
         assert_eq!(
             build_static_identity(uid, &fx.home, None, &missing),

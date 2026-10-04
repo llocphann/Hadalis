@@ -56,12 +56,9 @@ MouseArea { // Notification group area
     }
 
     hoverEnabled: true
-    onContainsMouseChanged: {
-        if (!root.popup) return;
-        if (root.containsMouse) root.notifications.forEach(notif => {
-            Notifications.cancelTimeout(notif.notificationId);
-        });
-        // Don't restart timeout on mouse leave - let them stay visible
+    NotificationTimeoutHold {
+        notifications: root.notifications
+        active: root.popup && root.containsMouse
     }
 
     SequentialAnimation { // Drag finish animation

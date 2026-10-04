@@ -69,20 +69,17 @@ Item {
         }
     }
 
-    // Cancel timeout on hover
+    // Suspend the remaining lifetime while any output is hovered.
     MouseArea {
+        id: timeoutHover
         anchors.fill: parent
         hoverEnabled: true
         acceptedButtons: Qt.NoButton
         
-        onContainsMouseChanged: {
-            if (containsMouse) {
-                const notifs = root.notifications
-                for (let i = 0; i < notifs.length; i++) {
-                    Notifications.cancelTimeout(notifs[i].notificationId)
-                }
-            }
-        }
+    }
+    NotificationTimeoutHold {
+        notifications: root.notifications
+        active: timeoutHover.containsMouse
     }
 
     // Swipe progress indicator - hidden for cleaner look

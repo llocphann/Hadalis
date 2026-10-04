@@ -85,6 +85,7 @@ NotificationActionButton 1.0 NotificationActionButton.qml
 NotificationAppIcon 1.0 NotificationAppIcon.qml
 NotificationGroupExpandButton 1.0 NotificationGroupExpandButton.qml
 NotificationGroup 1.0 NotificationGroup.qml
+NotificationTimeoutHold 1.0 NotificationTimeoutHold.qml
 NotificationItem 1.0 NotificationItem.qml
 NotificationListView 1.0 NotificationListView.qml
 OptionalMaterialSymbol 1.0 OptionalMaterialSymbol.qml

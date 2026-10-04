@@ -80,6 +80,26 @@ Singleton {
         required property int notificationId
         interval: 7000
         running: true
+        property double deadline: Date.now() + interval
+        property real remainingMs: interval
+        property var hoverOwners: []
+        onRunningChanged: if (running) deadline = Date.now() + interval
+        function pauseFor(owner): void {
+            if (!owner || hoverOwners.includes(owner)) return
+            if (hoverOwners.length === 0) {
+                remainingMs = Math.min(interval, Math.max(1, deadline - Date.now()))
+                stop()
+            }
+            hoverOwners = hoverOwners.concat([owner])
+        }
+        function resumeFor(owner): void {
+            if (!hoverOwners.includes(owner)) return
+            hoverOwners = hoverOwners.filter(candidate => candidate !== owner)
+            if (hoverOwners.length === 0) {
+                interval = Math.max(1, remainingMs)
+                start()
+            }
+        }
         onTriggered: () => {
             const index = root.list.findIndex((notif) => notif.notificationId === notificationId);
             if (index === -1) {
@@ -91,7 +111,6 @@ Singleton {
             root._log("[Notifications] Timer triggered for ID: " + notificationId + ", transient: " + notifObject.isTransient);
             if (notifObject.isTransient) root.discardNotification(notificationId);
             else root.timeoutNotification(notificationId);
-            destroy()
         }
     }
 
@@ -465,6 +484,7 @@ Singleton {
             // New mode: mark all popup notifications as read by removing popup flag
             root.list.forEach((notif) => {
                 if (notif.popup) {
+                    root.cancelTimeout(notif.notificationId);
                     notif.popup = false;
                 }
             });
@@ -531,8 +551,17 @@ Singleton {
         }
     }
 
+    function pauseTimeout(id, owner): void {
+        root.list.find(notif => notif.notificationId === id)?.timer?.pauseFor(owner)
+    }
+
+    function resumeTimeout(id, owner): void {
+        root.list.find(notif => notif.notificationId === id)?.timer?.resumeFor(owner)
+    }
+
     function timeoutNotification(id) {
         const index = root.list.findIndex((notif) => notif.notificationId === id);
+        root.cancelTimeout(id);
         if (root.list[index] != null)
             root.list[index].popup = false;
         triggerListChange();
@@ -541,6 +570,7 @@ Singleton {
 
     function timeoutAll() {
         root.popupList.forEach((notif) => {
+            root.cancelTimeout(notif.notificationId);
             root.timeout(notif.notificationId);
         })
         root.popupList.forEach((notif) => {

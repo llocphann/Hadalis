@@ -18,6 +18,8 @@ child_text = (ROOT / "scripts/wull-manual-pointer-child.py").read_text()
 relay_text = (ROOT / "scripts/wull-fixtures/pointer-underlay/companion-relay.py").read_text()
 for source in (parent_text, child_text, relay_text):
     ast.parse(source)
+assert 'background-color "#000000"' in parent_text
+assert 'backdrop-color "#000000"' in parent_text
 
 for marker in (
     '"--acknowledge-nested-pointer"',

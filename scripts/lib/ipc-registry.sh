@@ -3,7 +3,7 @@
 # Do not edit manually.
 # Regenerate: python3 scripts/lib/generate-ipc-registry.py
 # IPC.md metadata: docs/IPC.md
-# Targets: 59
+# Targets: 60
 
 declare -gA IPC_TARGET_DESC=(
   [abyss]="Edit the Abyss module layout on the focused output. The editor uses a draft: Done saves its changes; Cancel or Escape restores the saved layout. These methods apply while Abyss is active."
@@ -62,6 +62,7 @@ declare -gA IPC_TARGET_DESC=(
   [wbar]="Waffle taskbar visibility."
   [widgetpower]="Desktop-widget power management (pauses widget rendering on game mode, fullscreen, present windows, or edit mode). Service: \`services/WidgetPowerManager.qml\`."
   [wnotificationCenter]="Waffle notification center."
+  [wull]="Read-only Companion diagnostics while the Abyss perimeter is loaded. The bounded JSON includes visibility policy, native bridge readiness, field/scene gates, placement and actor state for each output. Reading it never enables Wull, changes preferences or starts its backend."
   [wwidgets]="Waffle widgets panel."
   [ytmusic]="Direct YtMusic player control. Use these if you want to control YtMusic specifically, regardless of what other players are active."
   [zoom]="Screen zoom. Accessibility feature, or for reading tiny UI without pretending your monitor is the problem."
@@ -124,6 +125,7 @@ declare -gA IPC_TARGET_FAMILY=(
   [wbar]="waffle"
   [widgetpower]="waffle"
   [wnotificationCenter]="waffle"
+  [wull]="shared"
   [wwidgets]="waffle"
   [ytmusic]="shared"
   [zoom]="shared"
@@ -186,6 +188,7 @@ declare -gA IPC_TARGET_FUNCTIONS=(
   [wbar]="toggle close open"
   [widgetpower]="status"
   [wnotificationCenter]="toggle close open"
+  [wull]="status"
   [wwidgets]="toggle close open"
   [ytmusic]="playPause next previous stop"
   [zoom]="zoomIn zoomOut"
@@ -425,6 +428,7 @@ declare -gA IPC_FUNCTION_DESC=(
   ["wnotificationCenter:toggle"]="Open/close notification center"
   ["wnotificationCenter:close"]="Close notification center"
   ["wnotificationCenter:open"]="Open notification center"
+  ["wull:status"]="Return bounded JSON explaining Wull visibility and placement on each output"
   ["wwidgets:toggle"]="Open/close widgets"
   ["wwidgets:close"]="Close widgets"
   ["wwidgets:open"]="Open widgets"
@@ -512,8 +516,8 @@ bind "Ctrl+Alt+A" { spawn "inir" "wallpaperSelector" "openLauncher" "animated"; 
   [ytmusic]='bind "Mod+M+Space" { spawn "inir" "ytmusic" "playPause"; }'
 )
 
-IPC_ALL_TARGETS=(abyss ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wwidgets ytmusic zoom)
-IPC_SHARED_TARGETS=(abyss ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily region session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector ytmusic zoom)
+IPC_ALL_TARGETS=(abyss ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wull wwidgets ytmusic zoom)
+IPC_SHARED_TARGETS=(abyss ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily region session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector wull ytmusic zoom)
 IPC_II_TARGETS=()
 IPC_WAFFLE_TARGETS=(autostart customWidgets recordingOsd search wactionCenter waffleAltSwitcher wbar widgetpower wnotificationCenter wwidgets)
 

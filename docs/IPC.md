@@ -803,6 +803,23 @@ inir abyss cancelEdit
 
 ---
 
+### wull
+
+Read-only Companion diagnostics while the Abyss perimeter is loaded. The bounded
+JSON includes visibility policy, native bridge readiness, field/scene gates,
+placement and actor state for each output. Reading it never enables Wull,
+changes preferences or starts its backend.
+
+| Function | Description |
+|----------|-------------|
+| `status` | Return bounded JSON explaining Wull visibility and placement on each output |
+
+```bash
+inir wull status
+```
+
+---
+
 ## Waffle-Specific Targets
 
 These targets only work when using the Waffle (Windows 11) panel style.

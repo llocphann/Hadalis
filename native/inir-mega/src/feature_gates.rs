@@ -51,7 +51,7 @@ mod tests {
 
         assert_eq!(
             SyncSnapshotProfile::args(),
-            ["sync", "--output-cols=ID,RUN_STATE,STATUS", "--col-separator=|"]
+            ["--output-cols=ID,RUN_STATE,STATUS", "--col-separator=|"]
         );
         let clean = CandidateCapture {
             stdout: b"ID|RUN_STATE|STATUS\nAbcDef12_-x|Running|Synced\n",

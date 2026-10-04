@@ -1,0 +1,101 @@
+{
+  "id": "JOB-MEGAQML-DISPATCHER-IDENTITY-20261005-001",
+  "profile_id": "profile-a25585b748dd4220",
+  "base_sha": "fad27f90586cbfca72b1066836d39a1b1f7a6d22",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega",
+          "backend_identity::tests"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega",
+          "tests::preflight_without_scriptable_dispatcher_is_not_ready"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega",
+          "tests::preflight_present_never_executes_fake_vendor"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 300
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "check",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "scripts/test-megaqml-phase2-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    }
+  ]
+}

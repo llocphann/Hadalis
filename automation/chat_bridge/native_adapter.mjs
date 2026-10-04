@@ -258,7 +258,8 @@ export async function diagnoseNativeRenderer() {
           renderer_found:true, modules_loaded:false, static_api_valid:false,
           safe_get_exports:"zero", stream_post_exports:"zero",
           combined_api_exports:"zero", stream_definition_exports:"zero",
-          stream_transport_matches:"zero", stream_definition_valid:false,
+          stream_active_definitions:"zero", stream_transport_matches:"zero",
+          stream_definition_valid:false,
           react_root_found:false, scope_found:false, transport_valid:false
         };
         let shared, initial;
@@ -286,9 +287,9 @@ export async function diagnoseNativeRenderer() {
           ? [initial[contract.stream]]
           : Object.values(initial).filter(value =>
               typeof value?.resolve === "function" && value?.scope?.id != null);
-        const definitions=[...new Set(definitionCandidates.filter(Boolean))].slice(0,65);
+        const definitions=[...new Set(definitionCandidates.filter(Boolean))];
         result.stream_definition_exports=bucket(definitions);
-        result.stream_definition_valid=definitions.length > 0 && definitions.length <= 64;
+        result.stream_definition_valid=definitions.length > 0 && definitions.length <= 16384;
         if (!result.stream_definition_valid) return result;
         const todo=Array.from(document.body.children).flatMap(el =>
           Object.keys(el).filter(k => k.startsWith("__reactContainer$")).map(k => el[k]));
@@ -305,12 +306,23 @@ export async function diagnoseNativeRenderer() {
           }
           todo.push(node.child,node.sibling,node.alternate,node.current);
         }
+        const activeIds=new Set();
+        let keyVisits=0;
+        for(const chain of chains) {
+          for(const key of chain.keys()) {
+            activeIds.add(key);
+            if(++keyVisits > 100000) return result;
+          }
+        }
+        const activeDefinitions=definitions.filter(definition =>
+          activeIds.has(definition.scope.id));
+        result.stream_active_definitions=bucket(activeDefinitions);
+        result.scope_found=activeDefinitions.length > 0;
+        if(!result.scope_found) return result;
         const transports=[];
-        let scopeFound=false;
-        for(const definition of definitions) {
+        for(const definition of activeDefinitions) {
           for(const chain of chains) {
             if(!chain.has(definition.scope.id)) continue;
-            scopeFound=true;
             try {
               const scoped=chain.get(definition.scope.id);
               const transport=scoped?.store?.get?.(definition.resolve(scoped,chain));
@@ -320,7 +332,6 @@ export async function diagnoseNativeRenderer() {
             } catch {}
           }
         }
-        result.scope_found=scopeFound;
         result.stream_transport_matches=bucket(transports);
         result.transport_valid=transports.length === 1;
         return result;
@@ -372,11 +383,13 @@ export async function connectNative() {
     const definitions=[...new Set(definitionCandidates.filter(Boolean))];
     if (typeof api?.safeGet !== "function" ||
         typeof api?.streamPost !== "function" ||
-        definitions.length < 1 || definitions.length > 64)
+        definitions.length < 1 || definitions.length > 16384)
       throw new Error("Desktop capabilities unavailable");
-    // Read the app-wide scope, never the selected chat/composer. A changed
-    // minifier may expose several resolve()+scope definitions, so disambiguate
-    // by the actual transport capability rather than by export order/name.
+    // Read the app-wide scope, never the selected chat/composer. Modern builds
+    // can export thousands of resolve()+scope definitions, so first intersect
+    // their scope IDs with the live app-wide React maps. Only active definitions
+    // may attempt transport resolution; the final transport identity must still
+    // be unique.
     const todo = Array.from(document.body.children).flatMap(el => Object.keys(el)
       .filter(k => k.startsWith("__reactContainer$")).map(k => el[k]));
     const seen = new Set(), chains=[];
@@ -391,12 +404,21 @@ export async function connectNative() {
       }
       todo.push(node.child, node.sibling, node.alternate, node.current);
     }
+    const activeIds=new Set();
+    let keyVisits=0;
+    for(const chain of chains) {
+      for(const key of chain.keys()) {
+        activeIds.add(key);
+        if(++keyVisits > 100000) throw new Error("Desktop app scope unavailable");
+      }
+    }
+    const activeDefinitions=definitions.filter(definition =>
+      activeIds.has(definition.scope.id));
+    if (!activeDefinitions.length) throw new Error("Desktop app scope unavailable");
     const transports=[];
-    let scopeFound=false;
-    for(const definition of definitions) {
+    for(const definition of activeDefinitions) {
       for(const chain of chains) {
         if(!chain.has(definition.scope.id)) continue;
-        scopeFound=true;
         try {
           const scoped=chain.get(definition.scope.id);
           const candidate=scoped?.store?.get?.(definition.resolve(scoped,chain));
@@ -406,7 +428,6 @@ export async function connectNative() {
         } catch {}
       }
     }
-    if (!scopeFound) throw new Error("Desktop app scope unavailable");
     if (transports.length !== 1) throw new Error("unsupported Desktop transport");
     const transport=transports[0];
     window.__hadalisNative = { api, transport, fingerprint: contract.fingerprint,

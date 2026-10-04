@@ -1,0 +1,91 @@
+{
+  "id": "JOB-HADALIS-CAPABILITY-FINAL-20261004-01",
+  "base_sha": "04f30fab7886ba872919cfadb4da1077cf2f2c4e",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "--check",
+          "automation/chat_bridge/native_adapter.mjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "scripts/test-hadalis-native-contract.mjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "scripts/test-hadalis-native-session.mjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "scripts/test-hadalis-native-branch.mjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-hadalis-automation-transport.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "--input-type=module",
+          "-e",
+          "import {diagnoseNativeRenderer} from \"./automation/chat_bridge/native_adapter.mjs\";\nconst r=await diagnoseNativeRenderer();\nif(r.contract_supported!==true) process.exit(21);\nif(r.renderer_found!==true) process.exit(22);\nif(r.modules_loaded!==true) process.exit(23);\nif(r.stream_definition_valid!==true) process.exit(24);\nif(r.scope_found!==true) process.exit(25);\nif(r.transport_valid!==true) process.exit(26);\nprocess.exit(0);"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "printf '%s\\n' '{\"op\":\"probe\",\"error_observation\":true}' | node automation/chat_bridge/native_cli.mjs >/dev/null"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "printf '%s\\n' '{\"op\":\"project\",\"name\":\"Hadalis Cloud\",\"error_observation\":true}' | node automation/chat_bridge/native_cli.mjs >/dev/null"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    }
+  ]
+}

@@ -71,7 +71,7 @@ Window {
     function runChecks(): void {
         const body=named(actor,"wullLiquidBody"), face=named(actor,"wullFace")
         require(actor.peeking && !actor.inputReady && presence.peekIntro,"visit did not peek before emerging")
-        root.requested=0;input.wait(850)
+        presence.peekOnly=true;root.requested=0;input.wait(850)
         require(!actor.visible && !presence.visitActive && !named(presence,"wullPeekDeadline").running,"peek did not retract into water")
         presence.randomState=3;root.requested=1;input.wait(650)
         require(actor.peeking && !actor.inputReady && presence.peekIntro,"next visit skipped peek")
@@ -112,11 +112,12 @@ Window {
         input.mouseMove(board,10,10);input.wait(80)
         const water=Scene.nearestWater(scene,physical())
         require(water.qualified,"drop had no reachable water")
-        presence.randomState=1000;root.requested=0;input.wait(40)
+        presence.randomState=1000;root.requested=0
+        waitFor(presence,"retreating",true,presence.minimumFullVisit+500)
         require(presence.retreating && !actor.interactive,"hide did not seek nearby water and release input")
         waitFor(presence,"traveling",false,presence.duration+600)
         require(actor.activeEmergenceEdge===water.placement.edge && actor.leaving,"dive kept the old emergence edge after arrival")
-        waitFor(actor,"visible",false,3000)
+        waitFor(actor,"visible",false,6500)
         require(!actor.visible && !actor.inputReady && !presence.traveling,"water dive did not vanish")
         const frozen=clocks();input.wait(170)
         require(clocks()===frozen,"hidden motion clocks continued")

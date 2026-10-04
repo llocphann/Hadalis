@@ -94,6 +94,6 @@ scope.settings.presented=false;scope.leftPanel.presented=true;assert.equal(focus
 scope.companionCuriosity.owned=true;assert.equal(focus(),0);
 scope.companionCuriosity.owned=false;window.overviewDragging=true;assert.equal(focus(),0);
 window.overviewDragging=false;scope.leftPanel.presented=false;
-scope.talkCloud.editing=true;assert.equal(focus(),1,'explicit Wull chat uses the existing on-demand keyboard policy');
+scope.talkCloud.editing=true;assert.equal(focus(),2,'the explicit shortcut gives Wull chat immediate keyboard focus');
 scope.talkCloud.editing=false;assert.equal(focus(),0,'automatic Wull speech must never take keyboard focus');
 console.log(`WULL_PRODUCTION_CURIOSITY_UI_OWNERSHIP_PASS cases=${cases}`);

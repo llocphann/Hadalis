@@ -1,0 +1,30 @@
+{
+  "actions": [
+    {
+      "cancelled": false,
+      "command_sha256": "c1262f78cf7d150b9b5aecbbc8211691f2f7720a5a50d2488be8934f7543c8eb",
+      "evidence_id": "JOB-MEGAQML-SYNC-WRAPPER-COMPILE-DIAG-20261005-001:0",
+      "exit_code": 23,
+      "index": 0,
+      "kind": "exec",
+      "observed_at_unix": 1791136076,
+      "source_sha": "72c814fa64caced9323d965454836b46b7a36789",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_truncated": false,
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "d5d1e1f524f46a2836f486d119087cbd3292c97e",
+  "evidence_location": "Private local evidence; raw output is not published",
+  "finished_at_unix": 1791136076,
+  "input_sha256": "f6d9483de163855602dc7d4ee8566620ddf2f0ad57e9024cfe31f351fe66875c",
+  "job": "JOB-MEGAQML-SYNC-WRAPPER-COMPILE-DIAG-20261005-001",
+  "job_commit": "72c814fa64caced9323d965454836b46b7a36789",
+  "profile_id": "profile-a25585b748dd4220",
+  "started_at_unix": 1791136061,
+  "status": "failed"
+}

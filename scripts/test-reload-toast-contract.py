@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Source contract for reload-toast dismissal semantics."""
+"""Compatibility toast dismissal and error-action contracts.
+
+Reload success delivery is exercised through real private D-Bus ingress by
+test-reload-notification-runtime.py.
+"""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,8 +25,6 @@ for token in (
 for token in (
     '"Quickshell reloaded"',
     '"Niri Reloaded"',
-    '2000,',
-    '"reload",',
     '"Quickshell reload failed"',
     '"Niri config reload failed"',
     '"error",',

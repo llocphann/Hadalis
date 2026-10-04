@@ -448,7 +448,8 @@ Singleton {
             root.list = [...root.list, newNotifObject];
 
             // Optional notification sound
-            if ((Config.options?.sounds?.notifications ?? true) && !root.silent) {
+            if ((Config.options?.sounds?.notifications ?? true) && !root.silent
+                    && notification.hints?.["suppress-sound"] !== true) {
                 Audio.playEvent(notification.urgency === NotificationUrgency.Critical
                     ? "notificationCritical" : "notification");
             }

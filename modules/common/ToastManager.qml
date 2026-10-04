@@ -194,7 +194,18 @@ Scope {
         surfaceRetractTimer.restart()
     }
     
-    // Show the pending reload toast
+    // Reload success is a transient notification, sharing its placement,
+    // output selection, DND, timeout and hover lifetime with ordinary popups.
+    // Error toasts retain their copy/dismiss actions in this manager.
+    function sendReloadNotification(title, appName, icon): void {
+        Quickshell.execDetached([
+            "notify-send", "-a", appName, "-i", icon, "-t", "2000",
+            "-h", "boolean:transient:true",
+            "-h", "boolean:suppress-sound:true", title
+        ])
+    }
+
+    // Show the single pending reload notification.
     function _showReloadToast() {
         if (!root._pendingReloadSource) return
         if (!root.shouldShowReloadToast()) {
@@ -214,25 +225,11 @@ Scope {
         root._pendingReloadSource = ""
         
         if (source === "quickshell") {
-            root.addToast(
-                "Quickshell reloaded",
-                "",
-                "refresh",
-                false,
-                2000,
-                "reload",
-                Appearance.colors.colPrimary
-            )
+            root.sendReloadNotification(
+                "Quickshell reloaded", "Quickshell", "view-refresh")
         } else if (source === "niri") {
-            root.addToast(
-                "Niri Reloaded",
-                "",
-                "settings",
-                false,
-                2000,
-                "reload",
-                Appearance.colors.colTertiary
-            )
+            root.sendReloadNotification(
+                "Niri Reloaded", "Niri", "preferences-system")
         }
     }
     

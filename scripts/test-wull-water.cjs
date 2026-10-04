@@ -5,6 +5,29 @@ function load(name,imports={}){const c=vm.createContext(imports);vm.runInContext
 const api=load('WullScene',{Slots:load('WullSurfacePlacement')});
 const base={width:1280,height:820,scale:1,hostWidth:112,hostHeight:98,rimRadius:16,insets:{top:20,right:20,bottom:20,left:20}};
 const plain=v=>JSON.parse(JSON.stringify(v));
+// Production tray/Bar layout keeps hidden modules as zero-span records. Their
+// presence must not suppress emergence, while painted neighbours still block.
+for(const edge of ['top','bottom','left','right']) {
+    const modules=[{edge,along:100,span:220},{edge,along:340,span:0},{edge,along:400,span:0}];
+    const scene=api.fromParticipants(base,{},modules);
+    assert.equal(api.valid(scene),true,'collapsed modules must not invalidate the output');
+    assert.equal(scene.records.length,3,'retain validation of every layout record');
+    assert.equal(scene.blockers.length,1,'only painted area blocks Wull');
+    for(const scale of [.65,1,1.6]) {
+        const scaled=api.fromParticipants({...base,scale,hostWidth:112*scale,hostHeight:98*scale},{},modules);
+        for(let i=0;i<4;i++) {
+            const p=api.appearance(scaled,.8,(i+.1)/4,.5);
+            assert.equal(p.qualified,true);assert.equal(api.clearAt(scaled,p),true);
+        }
+    }
+    for(const span of [-1,NaN,Infinity])
+        assert.equal(api.valid(api.fromParticipants(base,{},[{edge,along:340,span}])),false,
+            'malformed spans still fail closed');
+    assert.equal(api.valid(api.fromParticipants(base,{},[{edge,along:NaN,span:0}])),false,
+        'an empty record cannot bypass validation');
+    const noDepth=api.fromParticipants({...base,insets:{...base.insets,[edge]:0}}, {},modules);
+    assert.equal(api.valid(noDepth),true);assert.equal(noDepth.blockers.length,0);
+}
 let contacts=0;
 for(const key of ['dock','settings','leftPanel','rightPanel','styledPopup0','popup','aux','clipboard','controls','dashboard','utility','notification','toast','osd','futureIpcBody']){
     for(const edge of ['top','bottom','left','right']){

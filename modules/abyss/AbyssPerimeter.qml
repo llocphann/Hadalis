@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import qs
 import qs.services
@@ -51,6 +52,24 @@ Scope {
         useNativeDispatcher: root.companionEnabled
         personality: root.companionPreferences.personality
         appearanceFrequency: root.companionPreferences.appearanceFrequency
+    }
+    // Read the existing gates on demand; no polling, state mutation or backend
+    // activation. This also explains why an enabled companion stays hidden.
+    IpcHandler {
+        target: "wull"
+        function status(): string {
+            const outputs=[]
+            for (let i=0;i<outputWindows.instances.length;i++)
+                outputs.push(outputWindows.instances[i].companionStatus())
+            return JSON.stringify({enabled:root.companionEnabled,
+                sessionVisible:root.companionSessionVisible,
+                targetOutput:root.companionTargetOutput,
+                backend:{ready:companionBridge.ready,
+                    requestedVisible:companionBridge.requestedVisible,
+                    visibility:companionBridge.visibility,
+                    sequence:companionBridge.inboundSeq,
+                    restartAttempts:companionBridge.restartAttempts},outputs:outputs})
+        }
     }
     // Match the mature ScreenCorners keyboard lease: hover previews may exist on
     // several outputs, but only one Quick Notes editor may own keyboard focus.
@@ -131,6 +150,7 @@ Scope {
         root.syncCompanionVisibility()
     }
     Variants {
+        id: outputWindows
         model: Quickshell.screens
         PanelWindow {
             id: window
@@ -161,6 +181,27 @@ Scope {
                 && !window.companionOccluded
                 && liquid.records.length<=field.capacity
             readonly property bool companionHostActive: window.companionPermission && companionPresence.qualified
+            function companionStatus() {
+                const scene=window.companionScene
+                return {output:outputName,presented:window.presented,
+                    occluded:window.companionOccluded,permission:window.companionPermission,
+                    active:window.companionHostActive,
+                    field:{ready:field.ready,framePresented:field.framePresented,
+                        diagnostic:String(field.diagnostic).slice(0,512),
+                        records:liquid.records.length,capacity:field.capacity},
+                    scene:{valid:WullScene.valid(scene),width:scene.width,height:scene.height,
+                        hostWidth:scene.hostWidth,hostHeight:scene.hostHeight,insets:scene.insets,
+                        records:scene.records?.slice(0,256),blockers:scene.blockers?.slice(0,128),
+                        surfaces:scene.surfaces?.slice(0,40)},
+                    presence:{qualified:companionPresence.qualified,
+                        visitActive:companionPresence.visitActive,
+                        requestedReveal:companionPresence.requestedReveal,
+                        renderedReveal:companionPresence.renderedReveal,
+                        placement:companionPresence.placement},
+                    actor:{visible:companion.visible,inputReady:companion.inputReady,
+                        presentation:companion.presentation,opacity:companion.opacity,
+                        x:companion.x,y:companion.y}}
+            }
             readonly property bool companionHoverHeld: window.companionHostActive
                 && companion.interactive && (companion.hovered || companion.dragging)
             onCompanionHoverHeldChanged: if (root.companionTargetOutput===window.outputName && companionBridge.ready)

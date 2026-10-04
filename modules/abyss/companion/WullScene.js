@@ -27,6 +27,10 @@ function fromParticipants(base, participants, modules) {
     for (const record of records) {
         const horizontal=record.edge==="top" || record.edge==="bottom"
         const depth=Number(base.insets?.[record.edge])
+        // Hidden Bar modules retain a zero span in the live layout. They have
+        // no painted area; keep their records validated, without an empty
+        // collision rectangle invalidating every possible Wull placement.
+        if (record.span===0 || depth===0) continue
         blockers.push(horizontal
             ? {x:record.along,y:record.edge==="top" ? 0 : base.height-depth,width:record.span,height:depth}
             : {x:record.edge==="left" ? 0 : base.width-depth,y:record.along,width:depth,height:record.span})

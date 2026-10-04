@@ -152,6 +152,42 @@ mod tests {
     }
 
     #[test]
+    fn visible_synthetic_transfer_refresh_still_keeps_domain_locked() {
+        use crate::column_fixtures::CandidateCapture;
+        use crate::transfer_snapshot_lifecycle::{
+            TransferFinish, TransferSnapshotRefresh, TransferStart,
+        };
+
+        let mut candidate = TransferSnapshotRefresh::default();
+        assert!(candidate.activate());
+        let TransferStart::Started(request) = candidate.request() else {
+            panic!("expected isolated fake transfer refresh token");
+        };
+        let capture = CandidateCapture {
+            stdout: "TYPE|TAG|STATE\n⇓|7|ACTIVE\n".as_bytes(),
+            stderr: b"",
+            exit_code: Some(0),
+            timed_out: false,
+            output_capped: false,
+        };
+        assert_eq!(
+            candidate.finish(request, &capture),
+            TransferFinish::Applied(1)
+        );
+        assert_eq!(candidate.ready().unwrap().rows.len(), 1);
+
+        let preview = offline_policy_preview();
+        assert_eq!(preview["domains"]["transfers"]["read"], false);
+        assert_eq!(preview["domains"]["transfers"]["write"], false);
+        assert_eq!(preview["account_reads_enabled"], false);
+        assert_eq!(preview["writes_enabled"], false);
+
+        candidate.close();
+        assert!(candidate.ready().is_none());
+        assert_eq!(offline_policy_preview(), preview);
+    }
+
+    #[test]
     fn even_a_visible_synthetic_refresh_cannot_authorize_runtime_domains() {
         use crate::column_fixtures::CandidateCapture;
         use crate::snapshot_lifecycle::{Finish, SnapshotRefresh, Start};

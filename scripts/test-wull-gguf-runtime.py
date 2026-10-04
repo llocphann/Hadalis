@@ -18,10 +18,13 @@ import local_models
 import gguf_runtime
 
 FAKE='''#!/usr/bin/python3
-import http.server,json,os,socket,socketserver,sys,time
+import http.server,json,os,socket,socketserver,subprocess,sys,time
 from pathlib import Path
 record=Path(os.environ['INIR_TEST_GGUF_RECORD'])
 record.write_text(json.dumps({'pid':os.getpid(),'argv':sys.argv[1:]}))
+if os.environ.get('INIR_TEST_GGUF_CHILD')=='1':
+ child=subprocess.Popen([sys.executable,'-c','import time;time.sleep(60)'])
+ record.with_suffix('.child').write_text(str(child.pid))
 class Handler(http.server.BaseHTTPRequestHandler):
  def log_message(self,*args):pass
  def do_GET(self):
@@ -29,6 +32,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
  def do_POST(self):
   payload=json.loads(self.rfile.read(int(self.headers['Content-Length'])))
   record.with_suffix('.payload').write_text(json.dumps(payload))
+  if os.environ.get('INIR_TEST_GGUF_CRASH')=='1':os._exit(17)
   time.sleep(float(os.environ.get('INIR_TEST_GGUF_DELAY','0')))
   content=json.dumps({'text':'Splish!','expression':'happy'}) if 'response_format' in payload else 'Tiny fixture reply.'
   self.send_response(200);self.end_headers();self.wfile.write(json.dumps({'choices':[{'message':{'content':content},'finish_reason':'stop'}],'usage':{'completion_tokens':8}}).encode())
@@ -48,9 +52,15 @@ class Tests(unittest.TestCase):
         self.env=patch.dict(os.environ,{'XDG_RUNTIME_DIR':str(self.root),'INIR_TEST_GGUF_RECORD':str(self.record),'INIR_GGUF_ROOTS':json.dumps([str(self.root)])})
         self.env.start()
     def tearDown(self):self.env.stop();self.temp.cleanup()
-    def assertStopped(self):
-        pid=json.loads(self.record.read_text())['pid']
+    def assertPidStopped(self,pid):
+        until=time.monotonic()+3
+        while time.monotonic()<until:
+            try:os.kill(pid,0)
+            except ProcessLookupError:return
+            time.sleep(.03)
         with self.assertRaises(ProcessLookupError):os.kill(pid,0)
+    def assertStopped(self):
+        self.assertPidStopped(json.loads(self.record.read_text())['pid'])
     def test_inventory_deduplicates_and_excludes_projectors(self):
         (self.root/'Duplicate.gguf').symlink_to(self.model)
         (self.root/'mmproj-F16.gguf').symlink_to(self.model)
@@ -85,6 +95,16 @@ class Tests(unittest.TestCase):
             self.assertTrue(result['text']);self.assertStopped()
         finally:
             if helper.poll() is None:helper.kill();helper.wait(timeout=3)
+    def test_crashed_server_leader_reaps_surviving_process_group(self):
+        with patch.dict(os.environ,{'INIR_TEST_GGUF_CHILD':'1','INIR_TEST_GGUF_CRASH':'1'}):
+            with self.assertRaises(gguf_runtime.RuntimeErrorLocal):
+                gguf_runtime.complete(str(self.model),[{'role':'user','content':'crash'}],server_path=str(self.server))
+        child=int(self.record.with_suffix('.child').read_text())
+        self.assertStopped();self.assertPidStopped(child)
+        self.assertFalse(list(gguf_runtime.private_dir().glob('r-*')))
+        result=gguf_runtime.complete(str(self.model),[{'role':'user','content':'recovered'}],server_path=str(self.server))
+        self.assertEqual(result['text'],'Tiny fixture reply.');self.assertStopped()
+
     def test_invalid_model_and_nontext_do_not_spawn(self):
         with self.assertRaises(gguf_runtime.RuntimeErrorLocal):gguf_runtime.complete(str(self.root/'missing'),[],server_path=str(self.server))
         with self.assertRaises(gguf_runtime.RuntimeErrorLocal):gguf_runtime.complete(str(self.model),[{'role':'user','content':[{'type':'image_url'}]}],server_path=str(self.server))

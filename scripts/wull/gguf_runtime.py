@@ -47,16 +47,32 @@ def private_dir():
         raise RuntimeErrorLocal('Wull runtime directory is not private')
     return folder
 
-def stop(process):
-    if process is None:return
-    if process.poll() is None:
-        try:os.killpg(process.pid,signal.SIGTERM)
+def group_alive(pgid):
+    if not pgid:return False
+    try:os.killpg(pgid,0);return True
+    except ProcessLookupError:return False
+    except PermissionError:return True
+
+def stop(process,pgid=None):
+    if process is None and not pgid:return
+    group=pgid or process.pid
+    try:os.killpg(group,signal.SIGTERM)
+    except ProcessLookupError:pass
+    deadline=time.monotonic()+3
+    while group_alive(group) and time.monotonic()<deadline:
+        if process is not None and process.poll() is None:
+            try:process.wait(timeout=.05)
+            except subprocess.TimeoutExpired:pass
+        else:time.sleep(.05)
+    if group_alive(group):
+        try:os.killpg(group,signal.SIGKILL)
         except ProcessLookupError:pass
-        try:process.wait(timeout=3)
-        except subprocess.TimeoutExpired:
-            try:os.killpg(process.pid,signal.SIGKILL)
-            except ProcessLookupError:pass
-            process.wait(timeout=3)
+        deadline=time.monotonic()+3
+        while group_alive(group) and time.monotonic()<deadline:time.sleep(.05)
+    if process is not None and process.poll() is None:
+        try:process.wait(timeout=.2)
+        except subprocess.TimeoutExpired:pass
+    if group_alive(group):raise RuntimeErrorLocal('Local model process group did not stop')
 
 def complete(model_path,messages,reply_format=None,server_path=None):
     model=Path(model_path).expanduser()
@@ -78,7 +94,7 @@ def complete(model_path,messages,reply_format=None,server_path=None):
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:raise RuntimeErrorLocal('The local model is answering another request')
         with tempfile.TemporaryDirectory(prefix='r-',dir=folder) as temp:
-            sock=Path(temp)/'api.sock';process=None
+            sock=Path(temp)/'api.sock';process=None;process_group=None
             original=signal.getsignal(signal.SIGTERM)
             def cancelled(signum,frame):raise RuntimeErrorLocal('Local request cancelled')
             signal.signal(signal.SIGTERM,cancelled)
@@ -93,6 +109,7 @@ def complete(model_path,messages,reply_format=None,server_path=None):
                     '-ngl','0','--reasoning','off','--poll','0','--jinja']
                 process=subprocess.Popen(command,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,start_new_session=True,preexec_fn=child_setup,env=env)
+                process_group=process.pid
                 deadline=time.monotonic()+70
                 while time.monotonic()<deadline-15:
                     if process.poll() is not None:raise RuntimeErrorLocal('llama.cpp could not load this GGUF')
@@ -110,10 +127,10 @@ def complete(model_path,messages,reply_format=None,server_path=None):
                 text=choice.get('message',{}).get('content','')
                 if not isinstance(text,str) or not text.strip():raise RuntimeErrorLocal('Local model returned no text')
                 return {'text':text[:6000],'usage':result.get('usage',{}),'finishReason':choice.get('finish_reason','')}
-            except (OSError,ValueError,KeyError,IndexError) as exc:raise RuntimeErrorLocal('Local model request failed') from exc
+            except (OSError,http.client.HTTPException,ValueError,KeyError,IndexError) as exc:raise RuntimeErrorLocal('Local model request failed') from exc
             finally:
                 signal.signal(signal.SIGTERM,original)
-                stop(process)
+                stop(process,process_group)
 
 if __name__=='__main__':
     try:

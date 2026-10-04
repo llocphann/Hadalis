@@ -27,8 +27,16 @@ Window {
             try {
                 tryCompare(Config,"ready",true,4000)
                 Config.setNestedValues({"abyss.companionMind.aiEnabled":true,"abyss.companionMind.proactive":"manual",
-                    "abyss.companionMind.endpoint":Quickshell.env("WULL_TEST_ENDPOINT"),"abyss.companionMind.model":"tiny:local"})
+                    "abyss.companionMind.endpoint":Quickshell.env("WULL_TEST_ENDPOINT"),"abyss.companionMind.model":"tiny:local",
+                    "abyss.companionMind.obsidianEnabled":false})
                 wait(80)
+                const syntheticNow=new Date(2026,9,5,9,0,0)
+                const reminderRows=WullMind.reminderRows(syntheticNow,
+                    [{done:false,sourceDate:"2026-10-05",startTime:"09:05",content:"Todo reminder"}],
+                    [{allDay:false,startDate:new Date(2026,9,5,9,7,0),summary:"Agenda reminder"}])
+                check(reminderRows.some(row=>row.kind==="task" && row.title==="Todo reminder")
+                    && reminderRows.some(row=>row.kind==="agenda" && row.title==="Agenda reminder"),
+                    "Todo/Agenda reminders incorrectly require Obsidian")
                 WullMind.hostVisible=true;WullMind.hostIdle=true
                 check(!WullMind.busy && WullMind.history.length===0,"opening Settings started inference")
                 WullMind.askCheckIn("mood");wait(80)
@@ -63,6 +71,9 @@ Window {
                 tryCompare(WullMind,"busy",false,3000)
                 check(WullMind.history.length===2 && WullMind.history[0].role==="user"
                     && WullMind.history[1].role==="assistant","persisted quick-chat history did not reload")
+                WullMind.closeChat();WullMind.conversationIdleTimeout=160;WullMind.openChat();wait(260)
+                check(!WullMind.conversationOpen,"idle quick chat kept proactive reminders blocked")
+                WullMind.conversationIdleTimeout=120000
                 WullMind.clearConversation();check(WullMind.history.length===0,"clear retained history")
                 tryCompare(WullMind,"historyClearPending",false,3000);tryCompare(WullMind,"busy",false,3000)
                 check(WullMind.sendMessage("slow reply"),"cancellation request rejected")
@@ -107,7 +118,7 @@ Window {
                 mouseClick(root.contentItem,20,720);wait(30)
                 check(root.outsideClicks===1,"speech guard blocked clicks outside the cloud")
                 WullMind.dismiss();check(!cloud.visible,"dismiss retained speech input")
-                console.log("WULL_MIND=PASS actualProcess localProbe EnglishReply borderlessCloud noCheckInInput separateQuestions journalWrites explicitChatFocus enterSend sendOnlyControl persistentHistory retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint offlineMessage settingsAI noReferenceVault")
+                console.log("WULL_MIND=PASS actualProcess localProbe EnglishReply borderlessCloud noCheckInInput separateQuestions journalWrites explicitChatFocus enterSend sendOnlyControl persistentHistory reminderSources idleChatRelease retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint offlineMessage settingsAI noReferenceVault")
             } catch(e) {console.error("WULL_MIND=FAIL "+e)}
             shutdown.start()
         }

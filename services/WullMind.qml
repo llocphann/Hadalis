@@ -42,6 +42,8 @@ Singleton {
     property var pending: null
     property double startedAt: Date.now()
     property double lastContext: 0
+    property double lastContextAttempt: 0
+    property int conversationIdleTimeout: 120000
     property double lastCheckIn: 0
     property string userMood: ""
     property string userEnergy: ""
@@ -96,10 +98,16 @@ Singleton {
         Config.setNestedValue("abyss.companionMind.model",preferred.id)
     }
     function refreshJournal(automatic = false): bool {return dispatch("context",null,automatic)}
+    function touchConversation(): void {
+        if (!conversationOpen) return
+        conversationExpiry.interval=Math.max(100,conversationIdleTimeout)
+        conversationExpiry.restart()
+    }
     function say(value, from = "built-in"): void {
         if (!talkEnabled || !String(value).trim()) return
         text=String(value).slice(0,420);source=from
-        expiry.interval=conversationOpen ? 120000 : 18000;expiry.restart()
+        if (conversationOpen) touchConversation()
+        else {expiry.interval=18000;expiry.restart()}
     }
     function oldestHistoryId(): double {
         for (const entry of history) {
@@ -122,11 +130,17 @@ Singleton {
     function openChat(): void {
         if (!talkEnabled) return
         checkInStage=""
-        conversationOpen=true;expiry.stop();text=""
+        conversationOpen=true;expiry.stop();text="";touchConversation()
         if (!historyLoaded) loadHistory(false)
     }
-    function closeChat(): void {conversationOpen=false;expiry.interval=18000;expiry.restart()}
-    function dismiss(): void {conversationOpen=false;checkInStage="";text="";expiry.stop();if(pending?.automatic) cancel()}
+    function closeChat(): void {
+        conversationOpen=false;conversationExpiry.stop()
+        if (text) {expiry.interval=18000;expiry.restart()}
+    }
+    function dismiss(): void {
+        conversationOpen=false;conversationExpiry.stop();checkInStage="";text="";expiry.stop()
+        if(pending?.automatic) cancel()
+    }
     function clearConversation(): void {
         cancel();history=[];historyLoaded=true;historyHasMore=false;text="";userMood="";userEnergy=""
         historyClearPending=true;historyClearRetry.restart()
@@ -148,14 +162,14 @@ Singleton {
             const offline="My local model is taking a nap. Choose one in Companion > AI, then we can chat!"
             history=history.concat([{id:0,role:"user",content:prompt,ephemeral:true},
                 {id:0,role:"assistant",content:offline,ephemeral:true}]).slice(-2000)
-            historyLoaded=true;say(offline,"built-in")
+            historyLoaded=true;say(offline,"built-in");touchConversation()
             return true
         }
         if (historyClearPending) return false
         const accepted=dispatch("chat",{prompt:prompt,history:history.slice(-12),persistHistory:true})
         if (accepted) {
             history=history.concat([{id:0,role:"user",content:prompt,pending:true}]).slice(-2000)
-            historyLoaded=true
+            historyLoaded=true;touchConversation()
         }
         return accepted
     }
@@ -192,24 +206,33 @@ Singleton {
     function openJournal(): void {
         if (journal.journalPath) Quickshell.execDetached(["xdg-open",journal.journalPath])
     }
+    function reminderRows(now, todoRows = null, calendarRows = null): var {
+        const rows=obsidianEnabled ? (journal.schedule ?? []).slice() : []
+        const todayDate=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0")
+        for(const task of ((todoRows ?? Todo.list) ?? []).slice(0,128)) {
+            if(task.done || task.sourceDate!==todayDate || !/^\d{1,2}:\d{2}$/.test(task.startTime ?? ""))continue
+            const time=task.startTime.split(":")
+            rows.push({start:Number(time[0])*60+Number(time[1]),title:String(task.content).slice(0,180),kind:"task"})
+        }
+        for(const event of ((calendarRows ?? CalendarSync.getEventsForDate(now)) ?? []).slice(0,32)) {
+            if(event.allDay)continue
+            const start=new Date(event.startDate)
+            if(Number.isFinite(start.getTime()))
+                rows.push({start:start.getHours()*60+start.getMinutes(),title:String(event.summary ?? event.title ?? "").slice(0,180),kind:"agenda"})
+        }
+        rows.sort((a,b)=>a.start-b.start)
+        return rows
+    }
     function offerAutomatic(): void {
         if (!hostVisible || !hostIdle || !idleMonitor.isIdle || !talkEnabled || proactive!=="occasional"
                 || conversationOpen || busy || Date.now()-startedAt<90000 || text) return
-        if (obsidianEnabled && Date.now()-lastContext>120000) {refreshJournal(true);return}
-        const now=new Date(),minute=now.getHours()*60+now.getMinutes()
-        const todayDate=today(),rows=(journal.schedule ?? []).slice()
-        if(obsidianEnabled) {
-            for(const task of (Todo.list ?? []).slice(0,128)) {
-                if(task.done || task.sourceDate!==todayDate || !/^\d{1,2}:\d{2}$/.test(task.startTime ?? ""))continue
-                const time=task.startTime.split(":");rows.push({start:Number(time[0])*60+Number(time[1]),title:String(task.content).slice(0,180),kind:"task"})
-            }
-            for(const event of CalendarSync.getEventsForDate(now).slice(0,32)) {
-                if(event.allDay)continue
-                const start=new Date(event.startDate)
-                if(Number.isFinite(start.getTime()))rows.push({start:start.getHours()*60+start.getMinutes(),title:String(event.summary ?? event.title ?? "").slice(0,180),kind:"agenda"})
-            }
+        const nowMs=Date.now()
+        if (obsidianEnabled && nowMs-lastContext>120000 && nowMs-lastContextAttempt>120000) {
+            lastContextAttempt=nowMs
+            if(refreshJournal(true))return
         }
-        rows.sort((a,b)=>a.start-b.start)
+        const now=new Date(),minute=now.getHours()*60+now.getMinutes()
+        const todayDate=today(),rows=reminderRows(now)
         const next=rows.find(s=>s.start>=minute-10 && s.start-minute<=10
             && !reminded.includes(todayDate+":"+s.start+":"+s.title))
         const key=next ? todayDate+":"+next.start+":"+next.title : ""
@@ -255,6 +278,10 @@ Singleton {
                 historyLoaded=true;historyHasMore=false;historyLoadingOlder=false
                 return
             }
+            if (job.action==="context" && job.automatic) {
+                Qt.callLater(root.offerAutomatic)
+                return
+            }
             if (job.action==="history_clear") {
                 historyClearPending=false
                 return
@@ -291,7 +318,7 @@ Singleton {
         } else if (job.action==="history_clear") {
             historyClearPending=false;history=[];historyLoaded=true;historyHasMore=false
         } else if (job.action==="context") {
-            journal=result;lastContext=Date.now()
+            journal=result;lastContext=Date.now();lastContextAttempt=lastContext
             if (job.automatic) Qt.callLater(root.offerAutomatic)
         } else if (job.action==="check_in") {
             if(result.saved===true && result.date===checkInDate) {
@@ -315,7 +342,7 @@ Singleton {
         : models.some(m=>m.name===model) ? "ready" : "disconnected"}
     Component.onCompleted: if(aiEnabled)LocalModels.ensureInitialized()
     Connections {target:LocalModels;function onUpdated():void{root.selectDownloaded()}}
-    onContextKeyChanged: {if(pending) cancel();journal=({schedule:[],mood:"",energy:"",journalPath:""});lastContext=0}
+    onContextKeyChanged: {if(pending) cancel();journal=({schedule:[],mood:"",energy:"",journalPath:""});lastContext=0;lastContextAttempt=0}
     onProactiveChanged: if(proactive!=="occasional" && pending?.automatic)cancel()
     onHostVisibleChanged: if (!hostVisible) {if(pending?.automatic) cancel();if(!conversationOpen){text="";checkInStage=""}}
     onHostIdleChanged: if(!hostIdle && pending?.automatic)cancel()
@@ -324,6 +351,7 @@ Singleton {
     Timer {interval:60000;repeat:true;running:root.hostVisible && root.hostIdle && root.talkEnabled
         && root.proactive==="occasional" && idleMonitor.isIdle && !root.conversationOpen;onTriggered:root.offerAutomatic()}
     Timer {id:expiry;repeat:false;onTriggered:if(!root.conversationOpen){root.text="";root.checkInStage=""}}
+    Timer {id:conversationExpiry;repeat:false;interval:root.conversationIdleTimeout;onTriggered:root.closeChat()}
     Timer {id:deadline;interval:35000;repeat:false;onTriggered:{root.cancel();root.errorMessage="Local model request timed out.";root.connectionStatus="error"}}
     Timer {id:historyClearRetry;interval:100;repeat:false;onTriggered:{
         if(!root.historyClearPending)return

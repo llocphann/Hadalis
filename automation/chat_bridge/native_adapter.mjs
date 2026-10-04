@@ -202,8 +202,7 @@ export function installedContract() {
 // Read-only, finite diagnosis of a changing installed renderer.
 // Never emit module contents, export names, app identifiers or request data.
 export async function diagnoseNativeRenderer() {
-  const contract = installedContract();
-  const url = process.env.HADALIS_CHATGPT_CDP_URL ?? "http://127.0.0.1:9222";
+  // Diagnostics must survive the failure they are intended to explain.\n  // installedContract() deliberately throws when the installed Desktop bundle\n  // drifts, so inspect first and expose only fixed boolean capability checks.\n  // Never emit asset names, export symbols, source, fingerprint or archive path.\n  let inspected;\n  try { inspected = inspectInstalledContract(); }\n  catch {\n    return {contract_inspected:false, contract_supported:false};\n  }\n  const checks = inspected.checks ?? {};\n  const contractDiagnosis = {\n    contract_inspected:true,\n    contract_supported:!!inspected.contract,\n    contract_initial_asset:checks.initial_asset === true,\n    contract_shared_asset:checks.shared_asset === true,\n    contract_conversation_stream_hook:checks.conversation_stream_hook === true,\n    contract_api_import:checks.api_import === true,\n    contract_stream_scope:checks.stream_scope === true,\n    contract_stream_method:checks.stream_method === true,\n    contract_api_export:checks.api_export === true,\n    contract_stream_export:checks.stream_export === true,\n    contract_api_exact_binding:checks.api_exact_binding === true,\n    contract_api_exact_export:checks.api_exact_export === true,\n    contract_api_runtime_link:checks.api_runtime_link === true\n  };\n  if (!inspected.contract) return contractDiagnosis;\n  const contract = inspected.contract;\n  const url = process.env.HADALIS_CHATGPT_CDP_URL ?? "http://127.0.0.1:9222";
   const parsed = new URL(url);
   if (parsed.protocol !== "http:" ||
       !["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname))
@@ -215,8 +214,8 @@ export async function diagnoseNativeRenderer() {
   try {
     const page = browser.contexts().flatMap(c => c.pages())
       .find(p => p.url() === "app://-/index.html");
-    if (!page) return {renderer_found:false};
-    return await Promise.race([
+    if (!page) return {...contractDiagnosis, renderer_found:false};
+    const rendererDiagnosis = await Promise.race([
       page.evaluate(async contract => {
         const result = {
           renderer_found:true, modules_loaded:false, static_api_valid:false,
@@ -278,6 +277,7 @@ export async function diagnoseNativeRenderer() {
         timer=setTimeout(() => reject(new Error("DESKTOP_OPERATION_TIMEOUT")), 12000);
       })
     ]);
+    return {...contractDiagnosis, ...rendererDiagnosis};
   } finally {
     clearTimeout(timer);
     await Promise.race([browser.close().catch(()=>{}),

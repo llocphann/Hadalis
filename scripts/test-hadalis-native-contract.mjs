@@ -131,8 +131,16 @@ try {
       HADALIS_PLAYWRIGHT_MODULE:"file:///nonexistent/playwright.mjs"}
   });
   assert.equal(diagnostic.error,undefined);
-  assert.equal(diagnostic.status,1);
-  assert.equal(JSON.parse(diagnostic.stderr.trim()).code,"DESKTOP_CAPABILITY_UNAVAILABLE");
+  assert.equal(diagnostic.status,0);
+  const diagnosed = JSON.parse(diagnostic.stdout.trim());
+  assert.equal(diagnosed.contract_inspected,true);
+  assert.equal(diagnosed.contract_supported,false);
+  assert.equal(diagnosed.contract_stream_method,false);
+  assert.equal(diagnosed.contract_initial_asset,true);
+  assert.equal(diagnosed.contract_shared_asset,true);
+  assert.equal("renderer_found" in diagnosed,false);
+  assert.equal(JSON.stringify(diagnosed).includes(temp),false);
+  assert.equal(JSON.stringify(diagnosed).includes("missingMethod"),false);
 } finally {
   fs.rmSync(temp,{recursive:true,force:true});
 }

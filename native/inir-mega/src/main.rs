@@ -14,6 +14,7 @@ mod feature_gates;
 mod column_fixtures;
 mod snapshot_lifecycle;
 mod vendor_process;
+mod sync_read;
 
 const PROTOCOL_VERSION: u32 = 1;
 // Upper bound for one typed stdin envelope, including escaped credential bytes.

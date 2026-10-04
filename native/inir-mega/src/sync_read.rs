@@ -155,10 +155,9 @@ mod tests {
     fn fixed_read_runs_exact_candidate_argv_with_null_stdin_and_parses_rows() {
         let fx = fixture(
             r#"
-[ "$#" -eq 3 ] || exit 90
-[ "$1" = "sync" ] || exit 91
-[ "$2" = "--output-cols=ID,RUN_STATE,STATUS" ] || exit 92
-[ "$3" = "--col-separator=|" ] || exit 93
+[ "$#" -eq 2 ] || exit 90
+[ "$1" = "--output-cols=ID,RUN_STATE,STATUS" ] || exit 91
+[ "$2" = "--col-separator=|" ] || exit 92
 if IFS= read -r unexpected; then exit 94; fi
 [ -z "${MEGACMD_DO_NOT_REDACT_LINES+x}" ] || exit 95
 [ -z "${PRIVATE_TEST_SECRET+x}" ] || exit 96

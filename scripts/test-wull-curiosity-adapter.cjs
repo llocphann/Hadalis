@@ -62,4 +62,19 @@ for (const kind of ['clock','media','leftPanel','rightPanel','settings']) {
 reset();const dock={kind:'dock'};assert.ok(window.openCompanionFeature(dock));window.releaseCompanionFeature(dock);
 assert.equal(window.companionCuriosityDockRequested,false,'handoff retained a permanent Dock hold');
 reset();assert.equal(window.openCompanionFeature({kind:'run-command'}),false);assert.equal(calls.length,0);
+// Autonomous exploration cannot take keyboard input away from the current
+// application. Pointer hand-off restores the host's existing focus policy.
+const expression=source.match(/WlrLayershell\.keyboardFocus: ([\s\S]*?)\n\s*anchors \{/)[1].trim();
+scope.WlrKeyboardFocus={None:0,OnDemand:1,Exclusive:2};
+scope.field={ready:true};scope.PolkitService={active:false};scope.companionCuriosity={owned:false};
+window.presented=true;window.overviewDragging=false;window.editorOpen=false;
+for (const id of ['popup','dialogBody','aux','clipboardBody','settings','dashboardBody','controls','leftPanel','rightPanel','notification'])
+    scope[id]={presented:false,ready:true,open:false,contentItem:{item:{keyboardFocus:false}}};
+const focus=()=>vm.runInContext(expression,scope);
+scope.settings.presented=true;assert.equal(focus(),2);
+scope.companionCuriosity.owned=true;assert.equal(focus(),0);
+scope.companionCuriosity.owned=false;assert.equal(focus(),2);
+scope.settings.presented=false;scope.leftPanel.presented=true;assert.equal(focus(),1);
+scope.companionCuriosity.owned=true;assert.equal(focus(),0);
+scope.companionCuriosity.owned=false;window.overviewDragging=true;assert.equal(focus(),0);
 console.log(`WULL_PRODUCTION_CURIOSITY_UI_OWNERSHIP_PASS cases=${cases}`);

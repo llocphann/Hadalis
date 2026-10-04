@@ -25,7 +25,7 @@ import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
 BORROW = "scripts/wull-manual-nested-niri.py"
-BORROW_BLOB = "ff523e66926dd276bef97fb1b0b33872107bca96"
+BORROW_BLOB = "fdee83774d671e8da3023798e9fb2cdb6312203a"
 SHADOW = "scripts/wull-private-panel-quarter-shadow.py"
 SHADOW_BLOB = "dd62b2b834e86d41856730547bca8ea4d73aaca8"
 PREFLIGHT = "scripts/wull-private-nested-visual-prerequisites.py"
@@ -532,8 +532,10 @@ def main():
         nested_home = private / "nested"
         nested_home.mkdir(mode=0o700)
         cfg = nested_home / "nested.kdl"
-        cfg.write_text('layout {\n    background-color "#000000"\n}\n',
-                       encoding="utf-8")
+        cfg.write_text(
+            'layout {\n    background-color "#000000"\n}\n'
+            'overview {\n    backdrop-color "#000000"\n}\n',
+            encoding="utf-8")
         env = dict(os.environ)
         env.pop("NIRI_SOCKET", None)
         for key in ("config", "cache", "data", "state"):

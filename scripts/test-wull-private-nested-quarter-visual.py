@@ -27,13 +27,13 @@ RELAY = ROOT / "scripts/wull-fixtures/pointer-underlay/companion-relay.py"
 DEFAULTS = ROOT / "defaults/config.json"
 
 EXPECTED = {
-    RUNNER: "fe3bfa0dea0c845f9f570e9f4815320dcf8aaa44",
+    RUNNER: "24e1a3d354d88a6187d3b08ed786c405ee1c2e6e",
     SHADOW: "dd62b2b834e86d41856730547bca8ea4d73aaca8",
     PREFLIGHT: "83367598877fa61804cdb84ef500fce744fbbb99",
     ORIGINAL: "b5b01835a282458eba0d0268396ae2c350d919d2",
     PERIMETER: "a3cd2a7bfbdf32dac2c7e42057a1dfaaeea214ac",
     FIXTURE: "e16b6dcada26a27fd71cc670e30c55135401bcef",
-    NESTED: "ff523e66926dd276bef97fb1b0b33872107bca96",
+    NESTED: "fdee83774d671e8da3023798e9fb2cdb6312203a",
     RELAY: "7e450db1db23e3c250859b0271a655d6325f0bc8",
     DEFAULTS: "e10d98c0f26d3e47c51cb8452bcd0d2cea735501",
 }
@@ -78,6 +78,7 @@ assert runner["MAX_LOG"] <= 1024 * 1024
 assert runner["MAX_IMAGE"] <= 24 * 1024 * 1024
 assert runner["TIMEOUT_SCREENSHOT"] <= 16
 assert 'background-color "#000000"' in script
+assert 'backdrop-color "#000000"' in script
 
 # Absolute screenshot authority is always the separately verified nested
 # socket. No inherited WAYLAND_SOCKET FD or screenshot fallback to host.

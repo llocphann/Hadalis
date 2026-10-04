@@ -1,0 +1,67 @@
+{
+  "id": "JOB-MEGAQML-DIAGNOSTIC-SANITIZER-20261005-001",
+  "profile_id": "profile-a25585b748dd4220",
+  "base_sha": "7fead6d4dda6afbe5f9429a465369f7a17d0ee34",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega",
+          "diagnostic_sanitizer::tests"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 300
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "cargo",
+          "check",
+          "--locked",
+          "--offline",
+          "--manifest-path",
+          "native/Cargo.toml",
+          "-p",
+          "inir-mega"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "scripts/test-megaqml-phase2-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    }
+  ]
+}

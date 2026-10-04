@@ -61,7 +61,7 @@ Item {
     property real avoidY: 0
     property string appearClip: "emerge"
     property string hideClip: "dive"
-    readonly property real peekReveal: .72
+    readonly property real peekReveal: .64
     readonly property bool peeking: renderedReveal>0 && renderedReveal<.99
     property string mode: "fly"
     property int duration: 1000

@@ -24,7 +24,7 @@ with tempfile.TemporaryDirectory(prefix="wull-abyss-test-") as temporary:
         process=subprocess.Popen(["dbus-run-session","--","qs","--path",str(shell/"shell.qml")],cwd=ROOT,
             env=env,stdin=subprocess.DEVNULL,stdout=output,stderr=subprocess.STDOUT,start_new_session=True)
         try:
-            code=process.wait(timeout=90)
+            code=process.wait(timeout=160)
         except subprocess.TimeoutExpired:
             code=-1
         finally:

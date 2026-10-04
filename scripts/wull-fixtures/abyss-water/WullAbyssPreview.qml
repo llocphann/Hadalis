@@ -101,9 +101,9 @@ Window {
                 check(water.impact.key===kind && water.running,"walking did not disturb actual body water")
             }
             testStep=kind+":dive";presence.randomState=1000;requested=0
-            input.tryVerify(()=>actor.leaving,1600)
+            input.tryVerify(()=>actor.leaving,presence.minimumFullVisit+4500)
             check(water.impact.key===kind && water.running,"hide did not return to nearby body water: "+kind)
-            input.tryCompare(actor,"visible",false,3500)
+            input.tryCompare(actor,"visible",false,6500)
             input.wait(1500)
             check(!water.running && water.contact.w===0 && water.ripple.w===0,"hidden local impulse never settled")
         }

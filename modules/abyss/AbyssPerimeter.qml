@@ -22,6 +22,15 @@ Scope {
     readonly property var companionOptions: Config.options?.abyss?.companion
     readonly property var companionPreferences: WullPreferences.normalize(companionOptions)
     readonly property bool companionEnabled: Config.ready && companionPreferences.enabled
+    Binding {target:WullMind;property:"hostVisible";value:root.companionSessionVisible && companionBridge.ready && companionBridge.visibility==="present"}
+    Binding {target:WullMind;property:"hostIdle";value:companionBridge.activity==="idle"}
+    Connections {
+        target:WullMind
+        function onReactionRequested(expression): void {
+            if(root.companionSessionVisible && companionBridge.visibility==="present")
+                companionBridge.sendIntent(expression,.5,3000)
+        }
+    }
     readonly property string companionTargetOutput: GlobalStates.resolveOutputName(
         "", Config.options?.bar?.screenList ?? [])
     readonly property string companionEdge: root.barEdge
@@ -382,11 +391,11 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
-            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || talkCloud.editing || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
             WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging || companionCuriosity.owned
                 ? WlrKeyboardFocus.None
                 : (window.editorOpen || (utility.presented && utility.ready) || liquid.popupExclusiveFocus || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (clipboardBody.presented && clipboardBody.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive
-                : (liquid.popupOnDemandFocus || (leftPanel.presented && leftPanel.ready) || (rightPanel.presented && rightPanel.ready) || (popup.presented && popup.ready) || (notification.presented && notification.ready && notification.contentKind === "center"))
+                : (talkCloud.editing || liquid.popupOnDemandFocus || (leftPanel.presented && leftPanel.ready) || (rightPanel.presented && rightPanel.ready) || (popup.presented && popup.ready) || (notification.presented && notification.ready && notification.contentKind === "center"))
                     ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             anchors { top: true; bottom: true; left: true; right: true }
             Item { id: emptyInput; width: 0; height: 0 }
@@ -424,6 +433,7 @@ Scope {
                 Region { x: liquid.popupInputBounds[3]?.x ?? 0; y: liquid.popupInputBounds[3]?.y ?? 0; width: window.presented && field.ready ? (liquid.popupInputBounds[3]?.width ?? 0) : 0; height: liquid.popupInputBounds[3]?.height ?? 0 }
                 Region { x: popup.inputBounds.x; y: popup.inputBounds.y; width: window.presented && field.ready ? popup.inputBounds.width : 0; height: popup.inputBounds.height }
                 Region { x: dock.inputBounds.x; y: dock.inputBounds.y; width: window.presented && field.ready ? dock.inputBounds.width : 0; height: dock.inputBounds.height }
+                Region { item:talkCloud.visible ? talkCloud : emptyInput }
                 Region { item:corners.notesAvailable ? corners.notesAnchor : emptyInput }
                 Region { item:corners.centerAvailable ? corners.centerAnchor : emptyInput }
                 Region { regions:corners.sidebarRegions }
@@ -621,7 +631,13 @@ Scope {
                     py-(root.companionScale-1)*implicitHeight/2)
                 onDragEnded: companionPresence.endDrag()
                 onActivated: {companionWater.tap();companionBridge.sendEvent("click")}
+                onChatRequested: {companionCuriosity.yieldToUser();WullMind.openChat()}
                 onSettingsRequested: GlobalStates.openSettingsSection(37,"Overview")
+            }
+            WullTalkCloud {
+                id:talkCloud;actor:companion
+                outputWidth:window.width;outputHeight:window.height
+                allowed:window.companionHostActive && root.companionInteractive
             }
             Item {
                 id: revealTrigger

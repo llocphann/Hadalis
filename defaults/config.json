@@ -2072,6 +2072,15 @@
         "sidebars": {
             "hoverEnabled": true
         },
+        "companionMind": {
+            "talkEnabled": true,
+            "aiEnabled": false,
+            "endpoint": "http://127.0.0.1:11434",
+            "model": "",
+            "proactive": "occasional",
+            "obsidianEnabled": false,
+            "referenceVault": ""
+        },
         "companion": {
             "enabled": false,
             "output": "",

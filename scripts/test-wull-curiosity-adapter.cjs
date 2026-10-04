@@ -69,6 +69,7 @@ assert.equal(window.openCompanionFeature({kind:'clock'}),false,'missing mature p
 const expression=source.match(/WlrLayershell\.keyboardFocus: ([\s\S]*?)\n\s*anchors \{/)[1].trim();
 scope.WlrKeyboardFocus={None:0,OnDemand:1,Exclusive:2};
 scope.field={ready:true};scope.PolkitService={active:false};scope.companionCuriosity={owned:false};
+scope.talkCloud={editing:false};
 window.presented=true;window.overviewDragging=false;window.editorOpen=false;
 for (const id of ['popup','dialogBody','aux','clipboardBody','settings','dashboardBody','controls','leftPanel','rightPanel','notification'])
     scope[id]={presented:false,ready:true,open:false,contentItem:{item:{keyboardFocus:false}}};
@@ -79,4 +80,7 @@ scope.companionCuriosity.owned=false;assert.equal(focus(),2);
 scope.settings.presented=false;scope.leftPanel.presented=true;assert.equal(focus(),1);
 scope.companionCuriosity.owned=true;assert.equal(focus(),0);
 scope.companionCuriosity.owned=false;window.overviewDragging=true;assert.equal(focus(),0);
+window.overviewDragging=false;scope.leftPanel.presented=false;
+scope.talkCloud.editing=true;assert.equal(focus(),1,'explicit Wull chat uses the existing on-demand keyboard policy');
+scope.talkCloud.editing=false;assert.equal(focus(),0,'automatic Wull speech must never take keyboard focus');
 console.log(`WULL_PRODUCTION_CURIOSITY_UI_OWNERSHIP_PASS cases=${cases}`);

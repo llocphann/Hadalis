@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--section", choices=("overview", "behavior", "rendering"), default="behavior")
+    parser.add_argument("--section", choices=("overview", "behavior", "rendering", "ai"), default="behavior")
     parser.add_argument("--quality", choices=("performance", "balanced", "quality"), default="quality")
     parser.add_argument("--width", type=int, default=1040)
     parser.add_argument("--height", type=int, default=960)

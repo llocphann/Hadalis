@@ -102,6 +102,7 @@ Item {
         : Curves.sample(peeking ? "emerge" : appearClip, "normal", presentation)
     readonly property bool verticalEdge: !upright && (edge === "left" || edge === "right")
     readonly property bool hovered: droplet.hovered
+    signal chatRequested()
     signal activated()
     signal settingsRequested()
     signal travelCompleted()
@@ -338,6 +339,7 @@ Item {
             // compositor input-mask changes as a separate qualification gate.
             transformOrigin: Item.Center
             anchors.centerIn: parent
+            onChatRequested: root.chatRequested()
             onPressed: root.activated()
             onSettingsRequested: root.settingsRequested()
         }

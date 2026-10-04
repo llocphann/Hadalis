@@ -312,6 +312,7 @@ Singleton {
         {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Rendering"),label:Translation.tr("Companion size"),description:Translation.tr("Keep Wull small or give it a little more room."),keywords:["wull","companion","size","liquid"]},
         {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Behavior"),label:Translation.tr("Personality"),description:Translation.tr("Appearance frequency"),keywords:["wull","companion","calm","balanced","energetic","hyperactive","frequency","visits","animations","reflection","bubbles"]},
         {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Rendering"),label:Translation.tr("Rendering quality"),description:Translation.tr("Bubbles and floor reflections"),keywords:["wull","companion","rendering","performance","balanced","quality","glass","liquid","refraction","reflection","transparency"]},
+        {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("AI"),label:Translation.tr("Enable local AI"),description:Translation.tr("Check-ins and reminders"),keywords:["wull","companion","ai","local","llm","ollama","chat","obsidian","mood","energy","schedule"]},
         {pageIndex:36,pageName:root.pages[36].name,section:Translation.tr("Overview"),label:Translation.tr("Cloud Storage dependency status"),description:Translation.tr("MEGAcmd dependency status"),keywords:["mega","cloud","sync","drive","transfers","backup"]},
         {
             pageIndex: 35, pageName: root.pages[35].name,

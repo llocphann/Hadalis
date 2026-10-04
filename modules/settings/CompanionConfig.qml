@@ -219,7 +219,8 @@ ContentPage {
         options: [
             { displayName: Translation.tr("Overview"), icon: "water_drop", value: "overview" },
             { displayName: Translation.tr("Behavior"), icon: "sentiment_satisfied", value: "behavior" },
-            { displayName: Translation.tr("Rendering"), icon: "diamond", value: "rendering" }
+            { displayName: Translation.tr("Rendering"), icon: "diamond", value: "rendering" },
+            { displayName: Translation.tr("AI"), icon: "chat", value: "ai" }
         ]
     }
 
@@ -349,4 +350,83 @@ ContentPage {
         buttonText: Translation.tr("Reset Companion settings")
         onClicked: root.resetPreferences()
     }
+    SettingsCardSection {
+        settingsTaskSection:"ai"
+        visible:root.activeSection==="ai"
+        title:Translation.tr("AI")
+        icon:"chat"
+        SettingsGroup {
+            SettingsSwitch {
+                text:Translation.tr("Talk clouds")
+                description:Translation.tr("Double-click Wull to chat. Occasional messages appear while you are idle.")
+                autoToggle:false;checked:WullMind.talkEnabled
+                onToggledByUser:checked=>Config.setNestedValue("abyss.companionMind.talkEnabled",checked)
+            }
+            ChoiceRow {
+                label:Translation.tr("Check-ins and reminders")
+                options:[{displayName:Translation.tr("Occasionally while idle"),value:"occasional"},{displayName:Translation.tr("Only when I chat"),value:"manual"}]
+                currentValue:WullMind.proactive
+                onSelected:value=>Config.setNestedValue("abyss.companionMind.proactive",value)
+            }
+            SettingsSwitch {
+                text:Translation.tr("Enable local AI")
+                description:Translation.tr("Use an installed Ollama model. Wull keeps moving when the model is unavailable.")
+                autoToggle:false;checked:WullMind.aiEnabled
+                onToggledByUser:checked=>Config.setNestedValue("abyss.companionMind.aiEnabled",checked)
+            }
+            StyledText {text:Translation.tr("Connection: Local LLM (Ollama)");Layout.fillWidth:true}
+            MaterialTextField {
+                objectName:"wullLocalEndpoint";Layout.fillWidth:true
+                placeholderText:Translation.tr("Local endpoint")
+                text:WullMind.endpoint
+                onEditingFinished:Config.setNestedValue("abyss.companionMind.endpoint",text.trim())
+            }
+            MaterialTextField {
+                objectName:"wullLocalModel";Layout.fillWidth:true
+                placeholderText:Translation.tr("Installed model name")
+                text:WullMind.model
+                onEditingFinished:Config.setNestedValue("abyss.companionMind.model",text.trim())
+            }
+            StyledText {
+                Layout.fillWidth:true;wrapMode:Text.WordWrap
+                text:Translation.tr("Status")+": "+WullMind.connectionStatus+(WullMind.errorMessage ? " · "+WullMind.errorMessage : "")
+                color:Appearance.colors.colSubtext
+            }
+            RowLayout {
+                DialogButton {buttonText:Translation.tr("Test connection");enabled:!WullMind.busy;onClicked:WullMind.testConnection()}
+                DialogButton {buttonText:Translation.tr("Chat with Wull");enabled:root.preferences.enabled;onClicked:WullMind.openChat()}
+                DialogButton {buttonText:Translation.tr("Clear conversation");onClicked:WullMind.clearConversation()}
+            }
+            Repeater {
+                model:WullMind.models
+                DialogButton {
+                    required property var modelData
+                    buttonText:modelData.name
+                    onClicked:Config.setNestedValue("abyss.companionMind.model",modelData.name)
+                }
+            }
+            SettingsSwitch {
+                text:Translation.tr("Connect Obsidian")
+                description:Translation.tr("Read mood, energy and upcoming times from your shared Todo vault. Journals stay unchanged.")
+                autoToggle:false;checked:WullMind.obsidianEnabled
+                onToggledByUser:checked=>Config.setNestedValue("abyss.companionMind.obsidianEnabled",checked)
+            }
+            StyledText {Layout.fillWidth:true;wrapMode:Text.WordWrap
+                text:Translation.tr("Obsidian vault")+": "+(Todo.sharedVaultPath || Translation.tr("Not configured"))}
+            MaterialTextField {
+                objectName:"wullReferenceVault";Layout.fillWidth:true
+                placeholderText:Translation.tr("Reference vault (optional)")
+                text:WullMind.options.referenceVault ?? ""
+                onEditingFinished:Config.setNestedValue("abyss.companionMind.referenceVault",text.trim())
+            }
+            RowLayout {
+                DialogButton {buttonText:Translation.tr("Read today's context");enabled:WullMind.obsidianEnabled && !WullMind.busy;onClicked:WullMind.refreshJournal()}
+                DialogButton {buttonText:Translation.tr("Open journal");enabled:!!WullMind.journal.journalPath;onClicked:WullMind.openJournal()}
+            }
+            StyledText {Layout.fillWidth:true;wrapMode:Text.WordWrap
+                text:Translation.tr("Session memory only. Model requests run on demand, with one request at a time.")
+                color:Appearance.colors.colSubtext;font.pixelSize:Appearance.font.pixelSize.smaller}
+        }
+    }
+
 }

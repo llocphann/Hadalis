@@ -480,6 +480,15 @@ Singleton {
                 property JsonObject sidebars: JsonObject {
                     property bool hoverEnabled: true
                 }
+                property JsonObject companionMind: JsonObject {
+                    property bool talkEnabled: true
+                    property bool aiEnabled: false
+                    property string endpoint: "http://127.0.0.1:11434"
+                    property string model: ""
+                    property string proactive: "occasional"
+                    property bool obsidianEnabled: false
+                    property string referenceVault: ""
+                }
                 property JsonObject companion: JsonObject {
                     property bool enabled: false
                     property string output: ""

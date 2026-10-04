@@ -84,7 +84,9 @@ Window {
                 mouseMove(cloud,cloud.width/2,14);wait(80)
                 mouseClick(root.named(cloud,"wullmood-good"));wait(30)
                 tryCompare(WullMind,"busy",false,6000)
-                check(WullMind.userMood==="good" && WullMind.userEnergy==="","mood button invented an energy value")
+                check(WullMind.userMood==="good" && WullMind.userEnergy==="",
+                    "mood save/session mismatch "+JSON.stringify({mood:WullMind.userMood,energy:WullMind.userEnergy,
+                        stage:WullMind.checkInStage,busy:WullMind.busy,pending:WullMind.pending?.action ?? ""}))
                 check(WullMind.checkInStage==="energy" && !root.named(cloud,"wullmood-good").visible
                     && root.named(cloud,"wullenergy-high").visible && !field.visible,"next question did not show energy alone")
                 mouseMove(cloud,cloud.width/2,14);wait(50)

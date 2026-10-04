@@ -129,7 +129,11 @@ Singleton {
     function dismiss(): void {conversationOpen=false;checkInStage="";text="";expiry.stop();if(pending?.automatic) cancel()}
     function clearConversation(): void {
         cancel();history=[];historyLoaded=true;historyHasMore=false;text="";userMood="";userEnergy=""
-        historyClearPending=true;historyClearRetry.restart()
+        historyClearPending=true
+        if (!historyClearWorker.running) {
+            historyClearWorker.startObserved=false
+            historyClearWorker.running=true
+        }
     }
     function resolvePendingUser(id = 0, failed = false): void {
         const items=history.slice()
@@ -151,6 +155,7 @@ Singleton {
             historyLoaded=true;say(offline,"built-in")
             return true
         }
+        if (historyClearPending) return false
         const accepted=dispatch("chat",{prompt:prompt,history:history.slice(-12),persistHistory:true})
         if (accepted) {
             history=history.concat([{id:0,role:"user",content:prompt,pending:true}]).slice(-2000)
@@ -324,11 +329,31 @@ Singleton {
         && root.proactive==="occasional" && idleMonitor.isIdle && !root.conversationOpen;onTriggered:root.offerAutomatic()}
     Timer {id:expiry;repeat:false;onTriggered:if(!root.conversationOpen){root.text="";root.checkInStage=""}}
     Timer {id:deadline;interval:35000;repeat:false;onTriggered:{root.cancel();root.errorMessage="Local model request timed out.";root.connectionStatus="error"}}
-    Timer {id:historyClearRetry;interval:100;repeat:false;onTriggered:{
-        if(!root.historyClearPending)return
-        if(root.busy || root.draining || worker.running){restart();return}
-        if(!root.dispatch("history_clear")){restart();return}
-    }}
+    Process {
+        id:historyClearWorker
+        running:false;stdinEnabled:true
+        property bool startObserved:false
+        command:["/usr/bin/python3",Quickshell.shellPath("scripts/wull/local_mind.py")]
+        stdout:StdioCollector {id:historyClearReply}
+        onStarted:{
+            startObserved=true
+            write(JSON.stringify(root.payload("history_clear"))+"\n")
+        }
+        onRunningChanged:if(!running && !startObserved && root.historyClearPending) {
+            root.historyClearPending=false
+            root.errorMessage="Wull chat history could not be cleared."
+        }
+        onExited:(code,status)=>{
+            let cleared=false
+            try {
+                const envelope=JSON.parse(String(historyClearReply.text ?? ""))
+                cleared=code===0 && envelope.ok===true && envelope.result?.cleared===true
+            } catch(e) {}
+            startObserved=false
+            root.historyClearPending=false
+            if(!cleared)root.errorMessage="Wull chat history could not be cleared."
+        }
+    }
     Process {
         id:worker
         running:false;stdinEnabled:true

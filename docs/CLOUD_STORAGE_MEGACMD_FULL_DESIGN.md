@@ -1,5 +1,7 @@
 # Hadalis Cloud Storage — detailed MEGAcmd → Rust → QML design
 
+<!-- hadalis-doc-kind: research -->
+
 > **Final research freeze round 7 (2026-09-30):** [CLOUD_STORAGE_MEGACMD_FINAL_IMPLEMENTATION_READINESS.md](CLOUD_STORAGE_MEGACMD_FINAL_IMPLEMENTATION_READINESS.md) freezes the production architecture and v1 scope, corrects MEGAcmd 2.6.0 HTTPS/WebDAV-cache assumptions, defines parser/capability tiers, and separates implementation-ready ID-based surfaces from evidence-gated or withheld functionality. Use it as the implementation entry point.
 
 > **Last-mile reliability research round 6 (2026-09-30):** [CLOUD_STORAGE_MEGACMD_LAST_MILE_EDGE_CASE_AUDIT.md](CLOUD_STORAGE_MEGACMD_LAST_MILE_EDGE_CASE_AUDIT.md) audits the smallest process, environment, ID, Unicode, multi-Settings, suspend, journal, clipboard/privacy and upgrade races that can otherwise undermine the larger design. Treat its must-not-ship checklist as part of implementation acceptance.

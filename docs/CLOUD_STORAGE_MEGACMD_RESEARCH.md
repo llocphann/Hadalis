@@ -1,5 +1,7 @@
 # Cloud Storage / MEGAcmd Settings — research only
 
+<!-- hadalis-doc-kind: research -->
+
 > **Research update (2026-09-30):** The complete 76-command MEGAcmd inventory, ten-section QML UI, Rust + JSON architecture, security gates and staged design are now specified in **[CLOUD_STORAGE_MEGACMD_FULL_DESIGN.md](CLOUD_STORAGE_MEGACMD_FULL_DESIGN.md)**. This file remains the original feasibility snapshot only. In particular, its provisional Python helper suggestion is superseded by the full design's Rust workspace preference. Neither document authorizes runtime changes.
 
 

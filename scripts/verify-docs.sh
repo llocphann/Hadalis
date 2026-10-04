@@ -39,7 +39,15 @@ while read -r p; do
   b=$(basename "$p")
   find . -name "$b" -not -path './.git/*' -print -quit 2>/dev/null | grep -q . \
     || note "docs reference '$p' but no file named '$b' exists"
-done < <(grep -rhoP '`\K[a-zA-Z0-9_./-]+\.qml(?=`)' docs/*.md 2>/dev/null | sort -u)
+done < <(
+  for doc in docs/*.md; do
+    # Research snapshots cite other repositories, deleted historical components
+    # and proposed source paths. Keep their evidence literal; active manuals
+    # still require every quoted QML path to resolve in the current tree.
+    head -n 5 "$doc" | grep -q '^<!-- hadalis-doc-kind: research -->$' && continue
+    grep -hoP '`\K[a-zA-Z0-9_./-]+\.qml(?=`)' "$doc" 2>/dev/null
+  done | sort -u
+)
 
 # 4. Relative Markdown links in README/docs must resolve to repository content.
 #    GitHub Wiki exports docs/index.md as Home.md and conventionally links pages

@@ -1,5 +1,7 @@
 # Cross-repo optimization handoff — Hadalis ⇄ iNiR prerelease
 
+<!-- hadalis-doc-kind: research -->
+
 > Scope: **optimization only**. This document exists so a future chat/agent can continue improving Hadalis by studying proven patterns from iNiR or other repositories without re-auditing everything from zero.
 >
 > This is **not** a feature-parity roadmap, a visual redesign plan, or an instruction to blindly merge upstream.

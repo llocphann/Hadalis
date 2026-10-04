@@ -1,0 +1,19 @@
+{
+  "id": "JOB-MEGAQML-SYNC-WRAPPER-COMPILE-DIAG-20261005-001",
+  "profile_id": "profile-a25585b748dd4220",
+  "base_sha": "d5d1e1f524f46a2836f486d119087cbd3292c97e",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-B",
+          "-c",
+          "import subprocess, sys\ncmd=['cargo','test','--locked','--offline','--manifest-path','native/Cargo.toml','-p','inir-mega','sync_read::tests']\ntry:\n    p=subprocess.run(cmd,cwd='.',capture_output=True,text=True,timeout=160)\nexcept subprocess.TimeoutExpired:\n    raise SystemExit(25)\nblob=(p.stdout or '')+'\\n'+(p.stderr or '')\nif p.returncode == 0: raise SystemExit(0)\nif 'feature_gates.rs' in blob and '--output-cols=ID,RUN_STATE,STATUS' in blob and 'mismatched types' in blob: raise SystemExit(21)\nif 'mismatched types' in blob: raise SystemExit(22)\nif 'could not compile' in blob or 'error[E' in blob: raise SystemExit(23)\nraise SystemExit(24)"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    }
+  ]
+}

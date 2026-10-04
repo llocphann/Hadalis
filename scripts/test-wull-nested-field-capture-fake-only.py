@@ -11,6 +11,8 @@ ROOT = Path(__file__).resolve().parents[1]
 P = ROOT / "scripts/wull-manual-nested-field-capture.py"
 SOURCE = P.read_text(encoding="utf-8")
 ast.parse(SOURCE)
+assert 'background-color "#000000"' in SOURCE
+assert 'backdrop-color "#000000"' in SOURCE
 FIXTURE = (ROOT / "scripts/wull-fixtures/real-field-canary/shell.qml").read_text()
 assert "id: sheet\n            // The compositor owns FloatingWindow sizing" in FIXTURE
 assert "width: 512\n            height: 512" in FIXTURE

@@ -174,7 +174,8 @@ def smoke():
                 paths[part] = directory / part
                 paths[part].mkdir(mode=0o700)
             config, logfile = directory / "nested.kdl", directory / "nested.private.log"
-            config.write_text("", encoding="utf-8")
+            config.write_text('layout {\n    background-color "#000000"\n}\n',
+                              encoding="utf-8")
             nested_env = env.copy()
             nested_env.pop("NIRI_SOCKET", None)
             nested_env.update({

@@ -4,7 +4,7 @@
 >
 > Repository: `llocphann/Hadalis`  
 > Working branch: `dev` only; never mutate `stable`.  
-> Last pre-write repository audit HEAD: `e2e23fba59866f1b2e649370f215fd03fb96afb9`.
+> Last pre-write repository audit HEAD: `5653fa24fb8c9e948afc3337826581da190e6325`.
 >
 > This file is the only **planning/status** document for Wull AI. Normal implementation source, tests, fixtures and generated benchmark outputs may exist elsewhere in the repository as needed; they must not become competing planning documents.
 >
@@ -12,7 +12,7 @@
 
 ## 0. Current decision snapshot
 
-**Current phase:** P0.5 — downloaded-model verification + isolated runtime baseline  
+**Current phase:** P0.5 — verified downloaded artifacts + integrated text-only local baseline; P1 agent/vision benchmark remains open
 **Runtime target:** `llama.cpp`; start with process-isolated CLI/server APIs, consider direct `libllama` only after the process boundary is proven  
 **Reflex model target:** `unsloth/LFM2.5-VL-3B-GGUF` — `UD-Q6_K_XL`  
 **Reflex vision projector target:** `mmproj-F16.gguf` or the exact compatible projector shipped for that model revision  
@@ -26,10 +26,10 @@ Maintainer status reported on 2026-10-04:
 
 - [x] LFM2.5-VL-3B family downloaded from Unsloth.
 - [x] Qwen3.5-4B family downloaded from Unsloth.
-- [ ] Verify the exact local GGUF filenames/quantizations actually downloaded.
-- [ ] Record SHA-256 for each local model artifact in benchmark evidence.
-- [ ] Verify the LFM-compatible `mmproj` file is present.
-- [ ] Pin the exact `llama.cpp` revision/build used for all baseline numbers.
+- [x] Verify actual downloaded GGUF filenames/quantizations: LFM `UD-Q6_K_XL`, Qwen `UD-Q5_K_XL` (different from the planned Q4/MTP target).
+- [x] Record SHA-256 for both models and both present projectors in generated artifact evidence; this does not qualify a P1 benchmark.
+- [x] Verify the same-revision LFM `mmproj-F16.gguf` is present. Vision loading/correctness remains unqualified.
+- [x] Pin the text-smoke runtime: Unsloth llama.cpp `0.5.0-dev`, build `11160`, commit `a3c12db9d`, Clang 23.0.0. P1 numbers do not exist yet.
 
 Expected deployment intent, subject to measurement:
 
@@ -47,6 +47,35 @@ Qwen3.5-4B-MTP UD-Q4_K_XL
 ```
 
 Do not assume the size shown by a download UI is equal to resident RAM. Measure model mapping, KV cache, projector, runtime allocations and GPU offload separately.
+
+### 0.1 Integrated text baseline — 2026-10-04
+
+The maintainer explicitly resumed local conversation and permitted a better implementation than the initial plan. Runtime feature `fa84b0e20db145c5f302a358f9a8fed8281467b6` integrates bounded downloaded-GGUF discovery, the existing AI model catalog, Companion selection and one supervised local request. Current installed/test source is `8b2a0067ed1612770121d8896f46aa5b6db2216d`; its later changes are visual 3D motion plus focused test repairs. This is a **text-only P0.5 baseline**, not the full Rust agent/router/vision/tool implementation.
+
+`LocalModels` shares one finite inventory with AI settings and Wull: Hugging Face snapshots, Unsloth exports/library, Models, Downloads and the local shell-model directory. It validates GGUF headers, deduplicates resolved artifacts and excludes projectors/vocabulary from chat choices. Startup/manual Refresh scans neither download nor load models. Both installed models are now discovered; Wull selects a downloaded model only when AI is enabled and its model preference is empty, preserving an existing selection. The maintainer's current LFM selection remains unchanged.
+
+The chosen early process boundary is an external Python supervisor (`scripts/wull/gguf_runtime.py`), reached by narrow JSON requests from QML. It owns a private Unix socket and cross-client model lock, one slot, CPU at most four threads, context 2,048 and output at most 180 tokens. Deadlines, cancellation, parent-death signaling and bounded TERM/KILL/reap cleanup prevent a resident orphan. There is no TCP listener, cloud fallback, model download, web UI or model execution in `inir-companiond`. General AI chat and Wull share this same supervisor/lock. The optional Ollama loopback adapter remains compatible, but downloaded GGUF execution requires no Ollama dependency. See the official [llama.cpp server contract](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md). A native Rust agent manager remains future P1 work, not something supplied by this baseline.
+
+Verified artifacts, with stable metadata before/after hashing:
+
+| Artifact | Bytes | SHA-256 |
+| --- | ---: | --- |
+| LFM2.5-VL-3B-UD-Q6_K_XL.gguf | 2,403,953,024 | `f3ae8a9b2565d829396cd84b6d7bc62541aeee9b17d0e1796feb5bd0e64efe1a` |
+| LFM mmproj-F16.gguf | 853,994,080 | `234ce26278f7dbc2339e55614a28cf787424aae205711e5a143ce7ee5e1e0654` |
+| Qwen3.5-4B-UD-Q5_K_XL.gguf | 3,304,827,200 | `d76bf69a16f1d59f8d6c74a7373c41e43e14dc7ab47901cc2504c7ad647c6ba6` |
+| Qwen mmproj-F16.gguf | 672,423,488 | `d63b1a847fe9cd52e8e1525008cd33703821299f5a9eae40b2865426208767e7` |
+
+LFM snapshot revision is `22f063714556bd4daa81c40dc1ff15ca37ae92ea`; Qwen snapshot revision is `86835bf9949e4d14d6860f7910b1340ad4f271a9`. [Generated artifact receipt](../../docs/evidence/wull-ai/artifacts-20261004.json) records actual GGUF version/header counts and identities, without committing binaries or private paths. Qwen became discoverable during this run after the earlier inventory contained only LFM. This downloaded Q5 artifact supersedes the assumption that the planned Q4/MTP artifact was already verified. No MTP path or projector is enabled by the text baseline.
+
+Two generic installed-source integration requests used no Obsidian data. [LFM smoke](../../docs/evidence/wull-ai/lfm-smoke-20261004.json) returned a cute English JSON reply in 9.886 s, with child maximum RSS 2,842,724 KiB; [Qwen smoke](../../docs/evidence/wull-ai/qwen-smoke-20261004.json) returned a cute English JSON reply in 23.090 s. Both processes were reaped and all request sockets removed. These are **one request per model**, on CPU during other validation work, not throughput/latency/residency/resource-saving or ten-run P1 benchmarks. Runtime version and installed-helper digests are pinned in each receipt.
+
+The speech UI now has one Mood question/choice row followed by one Energy question/choice row, no automatic prompt input or extra action buttons. `Super + Alt + Comma` opens explicit chat and focuses its input; Enter sends and Escape cancels/dismisses. The explicit choice helper writes only the selected scalar into **today's existing Todo-resolved journal**, checks the date and field whitelist, preserves BOM/CRLF/mode and unrelated bytes, replaces only against unchanged source bytes and verifies readback. The UI advances only after successful persistence; missing/malformed/conflicting notes produce an error rather than a fabricated success. User choices authorize these writes. Tests use owned journals; no mood/energy was invented or written into the maintainer's actual journal during validation. Actual read-only context resolves the configured daily journal successfully.
+
+Occasional idle check-ins/reminders use the maintainer's requested policy. Funny built-in English lines remain available offline, with occasional bounded local generation when configured. Timed journal Day Planner/Agenda/Schedule/Tasks entries, current-date unchecked Todo tasks, recurring weekday schedules and existing calendar events feed deduplicated due reminders; calisthenics/cardio receive specific playful wording. Only date/mood/energy/timed semantic rows reach optional local conversation. Other journal/reflection text is excluded. Vault contents are untrusted data, never instructions. Deterministic choices/reminders run independently of the visual reflex engine and do not enable arbitrary tools or vault writes from generated text.
+
+Focused validation passes for actual owned Qt choice clicks + helper-written journal/readback, separate questions/no check-in input, explicit keyboard focus/Enter/Escape, stale/cancel drain, model catalog/selection/shared Unix supervisor, discovery, bounded arguments, invalid inputs and cancel/reap. The preceding canonical run on `fa84b0e20db145c5f302a358f9a8fed8281467b6` was **FAIL: 414 PASS / three FAIL / eleven SKIP**: two stale explicit-focus expectations and a presence fixture that ignored the new minimum visit duration. Those fixtures were corrected forward in `1bead8100`; production behavior was retained. Final canonical validation is **PASS on exactly installed source `8b2a0067ed1612770121d8896f46aa5b6db2216d`: 418 PASS / zero FAIL / eleven SKIP**, including all 89 Wull Python checks, Qt 6.11.2 parser and a clean validator source tree. [Exact-source receipt](../../docs/wull-visual/spatial-20261004/validation.json) records that result; the later evidence/documentation commit is not relabeled as the tested SHA. [Live integration receipt](../../docs/evidence/wull-ai/live-readback-20261004.json) records two discovered models, the preserved selection and read-only journal resolution, without note contents/event titles/user configuration.
+
+P1 remains open: repeatable cold/warm/offload/resource measurements, compatible projector loading + visual/OCR/grounding correctness, planned Qwen MTP qualification, native Rust agent supervision/router, typed tools and permission decisions, RAG, multi-step EN/VN/coding quality and multi-output/lifecycle acceptance. Fine-tuning and distillation remain blocked on those benchmarks. No full desktop agent, vision support, automatic model residency, measured optimization or product-wide AI acceptance is claimed.
 
 ---
 

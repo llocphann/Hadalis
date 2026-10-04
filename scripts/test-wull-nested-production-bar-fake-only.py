@@ -15,6 +15,7 @@ runner=SCRIPT.read_text(encoding="utf-8")
 qml=QML.read_text(encoding="utf-8")
 ast.parse(runner)
 assert 'background-color "#000000"' in runner
+assert 'backdrop-color "#000000"' in runner
 for required in (
     "NESTED_PREREQUISITES_PRESENT_NOT_ISOLATION_PASS",
     "display != host_display and ipc != host_ipc",

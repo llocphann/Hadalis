@@ -901,6 +901,11 @@ The deployed model remains replaceable.
 - [ ] Produce repeatable summary tables.
 - [ ] Compare CPU vs Vulkan.
 - [ ] Compare Brain MTP on/off/fallback.
+- [ ] Compare llama.cpp multi-model router vs two independent server processes.
+- [ ] Compare Brain reasoning controls/budgets at fixed task quality.
+- [ ] Compare Reflex full-screen vs downscaled vs active-window/ROI capture.
+- [ ] Compare LFM warm fast-text path vs waking Qwen for simple non-reasoning text.
+- [ ] Verify Vulkan output correctness across practical batch/ubatch values, not throughput alone.
 - [ ] If available, compare LFM `UD-Q5_K_XL`, `Q6_K`, `UD-Q6_K_XL` only on the same exact suite before claiming the extra memory is worthwhile.
 
 **Exit gate:** one command can reproduce the baseline on a known machine and outputs evidence sufficient to compare configs.
@@ -911,6 +916,8 @@ The deployed model remains replaceable.
 - [ ] Add the new Rust sidecar using established workspace conventions.
 - [ ] Implement request IDs, cancellation, timeouts, bounded logs.
 - [ ] Implement process supervision for inference runtime.
+- [ ] Prefer llama.cpp router load/unload/sleep/status APIs where they prove stable; do not duplicate working lifecycle machinery in Rust.
+- [ ] Keep dual-server supervision as a tested fallback topology.
 - [ ] Implement model state machine.
 - [ ] Implement artifact/path/hash validation.
 - [ ] Implement no-model graceful mode.
@@ -1102,7 +1109,7 @@ Keep aggregate results here. Raw generated files are evidence, not the source of
 - 2026-10-04 — no specialist model; use RAG/tools/compiler feedback first.
 - 2026-10-04 — do not fine-tune until reproducible base-model results exist.
 - 2026-10-04 — do not assume 4K–8K Brain context is sufficient: benchmark 8K/32K/64K/128K because Qwen recommends >=128K when preserving strongest thinking behavior matters.
-- 2026-10-04 — initial llama.cpp deployment should use two isolated single-model server processes, one per Reflex/Brain, hidden behind the Rust agent; do not expose them as two user-facing assistants.
+- 2026-10-04 — **superseded by later upstream audit:** current llama.cpp has a real multi-model router. Primary candidate is now one private llama-server router with two model presets/instances; benchmark against dual-server fallback before locking topology.
 - 2026-10-04 — bind local inference servers to private Unix sockets where practical, disable llama.cpp WebUI/server tools/agent/MCP, and keep all executable tool authority in Rust.
 - 2026-10-04 — Vulkan is a benchmark candidate, not an assumption: Qwen3.5 Gated DeltaNet Vulkan support exists upstream, but AMD performance remains architecture/driver/build sensitive.
 
@@ -1135,8 +1142,20 @@ Manifest should eventually record:
 - compatible runtime feature requirements;
 - license/attribution;
 - install timestamp.
+- upstream license identifier/text/NOTICE requirements;
+- commercial-use constraint metadata when the model is not Apache/MIT-like.
 
 Runtime must validate files before treating them as usable.
+
+Refined XDG layout candidate after repository audit:
+
+~~~text
+$XDG_DATA_HOME/inir/models/wull/       # large immutable-ish model artifacts
+$XDG_RUNTIME_DIR/inir/wull/            # private live sockets/temp runtime state
+$XDG_STATE_HOME/inir/wull/             # durable manifests/benchmark summaries/log metadata
+~~~
+
+Create the runtime directory as private user state (target mode 0700) and model/agent sockets as user-only (target mode 0600). Reuse the repository's established XDG conventions rather than inventing fixed home-directory paths.
 
 ---
 
@@ -1261,31 +1280,60 @@ Therefore older rough UI-derived values such as "~3.7 GB Brain" must **not** be 
 
 **Action:** P0.5 must record actual local byte size + SHA-256 rather than copying website/UI size estimates into acceptance calculations.
 
-### 24.3 Use two llama-server processes, not one
+### 24.3 Runtime topology correction: test llama.cpp router mode first
 
-Current llama-server exposes a single loaded model from /v1/models in ordinary single-model mode. Wull's two simultaneously distinct roles therefore map cleanly to two supervised processes:
+A newer/current upstream audit changes the earlier two-process recommendation. Current `llama-server` has a **multi-model router mode**: launch the server without a single `-m`, provide `--models-dir` and/or `--models-preset`, and the router starts/forwards to model instances by the request's `model` field.
+
+Model presets support ordinary per-model llama.cpp arguments plus router-only controls including:
+
+- `load-on-startup`;
+- `stop-timeout`;
+- model-specific context/backend/mmproj/speculative-decoding settings.
+
+Router APIs include:
+
+- `GET /models` for state/config/capability information;
+- `POST /models/load`;
+- `POST /models/unload`;
+- `GET /models/sse` for real-time loading/status events, including `text_model`, `spec_model`, and `mmproj_model` stages.
+
+The server also supports `--sleep-idle-seconds` in multi-model mode: idle model memory, including KV cache, is unloaded and a later task wakes/reloads it automatically.
+
+This maps unusually well to Wull:
 
 ~~~text
+Quickshell
+   |
+   v
 inir-wull-agentd
-  |
-  +-- reflex.sock -> llama-server -> LFM + mmproj
-  |
-  +-- brain.sock  -> llama-server -> Qwen MTP
+   |
+   | private HTTP over Unix socket
+   v
+llama-server router
+   |
+   +-- preset: wull-reflex
+   |      LFM2.5-VL-3B + mmproj
+   |      load-on-startup = true (candidate)
+   |
+   +-- preset: wull-brain
+          Qwen3.5-4B-MTP
+          load-on-startup = false
+          sleep after measured idle TTL
 ~~~
 
-This is preferable to trying to switch one process between models because Reflex can remain warm while Brain is absent, Brain cold-start/unload is measurable independently, one runtime crash does not automatically take down both roles, per-model context/cache/backend flags remain independent, and model replacement becomes a process configuration change instead of an agent rewrite.
+**Primary candidate:** one supervised router parent with two named presets/instances.
 
-Current llama.cpp supports binding --host to a path ending in .sock. Prefer private Unix sockets over public TCP ports for the internal Wull path on Linux.
+**Fallback:** two independently supervised `llama-server` processes remain valid if the router introduces unacceptable failure coupling, memory residue, MTP/mmproj configuration limitations, or reload latency.
 
-Recommended baseline security posture:
+P0.5/P1 must benchmark **router mode vs dual-server mode** before production lock-in. Compare peak/idle RSS, cold wake, restart isolation, stale worker processes, MTP behavior, mmproj behavior and recovery after intentionally killing one model worker.
 
-- --host <private-runtime-dir>/wull-*.sock;
-- --no-webui;
-- single slot (--parallel 1) for initial measurements;
-- **do not enable** llama.cpp --tools, --agent or MCP;
-- only the Rust sidecar connects to these sockets.
+Keep the server private:
 
-llama.cpp now has its own file tools/agent/MCP facilities. They are intentionally **not** part of Wull's architecture because enabling a second execution-policy layer would bypass or duplicate Hadalis' Rust permission model.
+- Unix socket under a private `$XDG_RUNTIME_DIR/inir/wull/` directory where supported;
+- `--no-webui`;
+- single slot initially;
+- do **not** enable llama.cpp server tools/agent/MCP;
+- executable tool authority remains in Rust.
 
 ### 24.4 llama-server already provides useful protocol primitives
 
@@ -1393,3 +1441,302 @@ Before P1 implementation, collect these exact comparisons locally.
 - llama.cpp current Qwen3.5 model implementation and Gated DeltaNet/Vulkan issue/discussion history.
 
 Upstream pages are moving targets. The **pinned llama.cpp SHA + local benchmark** remains authoritative for Wull.
+
+
+---
+
+## 25. Research pass — multi-model router, Unix IPC, licensing and fast paths (2026-10-04)
+
+This pass continues P0.5. It changes the preferred runtime topology, but does not claim local acceptance until the maintainer's machine produces measurements.
+
+### 25.1 llama.cpp can own model residency without owning Wull policy
+
+The current llama.cpp router is more capable than assumed in the previous pass. In addition to model-specific presets, it exposes explicit load/unload and status APIs and can sleep idle models.
+
+That means `inir-wull-agentd` does **not** need to reimplement a full model loader state machine from scratch. Rust should still own the product-level state and recovery policy, but it can delegate low-level residency to the router:
+
+~~~text
+Rust state              llama.cpp router state
+-----------             ----------------------
+Ready          <----->  unloaded
+Loading        <----->  loading
+Warm/Busy      <----->  loaded
+CoolingDown    <----->  loaded / idle timer
+Sleeping       <----->  sleeping
+Failed         <----->  failure / worker exit
+~~~
+
+Rust remains responsible for request routing, timeouts, user cancellation, retry limits, policy, RAG, typed tools and deciding when a server failure is terminal. llama.cpp owns the actual model instance lifecycle only while it behaves correctly.
+
+Important caveat: sleep unloads model memory but current router workers may remain alive. Therefore benchmark **RSS/VRAM after sleep**, not merely reported status.
+
+### 25.2 Quickshell can use a native Unix socket to the Rust agent
+
+Quickshell's `Quickshell.Io.Socket` provides a Unix socket client with path/connected/write/flush plus stream parsers. `SocketServer` also exists.
+
+Preferred UI transport therefore becomes:
+
+~~~text
+services/Ai.qml / Wull QML
+        |
+        | versioned bounded JSONL
+        v
+$XDG_RUNTIME_DIR/inir/wull/agent.sock
+        |
+        v
+inir-wull-agentd (Rust)
+        |
+        | HTTP over Unix socket
+        v
+$XDG_RUNTIME_DIR/inir/wull/llama.sock
+        |
+        v
+llama-server router
+~~~
+
+This avoids exposing a local TCP port for the normal Linux path.
+
+Implementation requirements:
+
+- verify the packaged Quickshell build has socket support before depending on it;
+- private runtime directory, owned by effective UID;
+- socket mode 0600;
+- Rust should verify same-UID peers with `SO_PEERCRED` where practical;
+- bounded frame/message sizes;
+- versioned protocol;
+- request IDs;
+- cancellation message;
+- QML never receives a raw model-server socket or permission token.
+
+If a supported Quickshell build lacks socket support, a long-lived bounded stdio `Process` bridge is a fallback, not the first design.
+
+### 25.3 Rust can call llama-server over Unix socket directly
+
+Current reqwest on Unix supports `ClientBuilder::unix_socket(...)`. Therefore the Rust sidecar does not need curl or a localhost proxy to call llama.cpp.
+
+This keeps the internal path:
+
+- local-only;
+- dependency-light at runtime;
+- easy to supervise;
+- independent from user firewall/port conflicts.
+
+The Rust HTTP client should use explicit connect/read/request timeouts and bounded response bodies even on a Unix socket.
+
+### 25.4 Qwen thinking should be dynamically budgeted, not simply ON/OFF
+
+Current llama.cpp exposes several reasoning controls:
+
+- server-level `--reasoning on|off|auto`;
+- `reasoning_effort` in chat requests/templates;
+- `--reasoning-budget N`, where 0 ends immediately and positive N is a token budget;
+- `reasoning_control` with a live `reasoning_end` control action for an in-flight completion.
+
+Qwen's own model card warns that long context helps preserve thinking capability, while its chat behavior does not use the old Qwen3 slash-command convention as the architectural control point.
+
+Wull should therefore benchmark three practical Brain modes:
+
+| Mode | Use | Candidate control |
+|---|---|---|
+| Fast | short direct text / obvious tool plan | reasoning off or budget 0 |
+| Normal | common debugging/planning | bounded budget |
+| Deep | difficult code/system reasoning | larger bounded budget + larger context if needed |
+
+Do not map "high" to a fixed quality claim until the pinned template/runtime shows that it actually honors that effort level. The more reliable release metric is **task success at a measured reasoning-token budget**.
+
+### 25.5 Consider LFM as a fast text path, but only after benchmark
+
+LFM is already intended to be warm for vision, supports Vietnamese/function calling, and Liquid explicitly positions it as a non-reasoning low-latency model. This creates a possible extra optimization:
+
+~~~text
+simple text, no reasoning
+      |
+      +--> warm LFM -> short response
+      |
+complex/ambiguous/code
+      |
+      +--> wake Qwen -> reasoning
+~~~
+
+Candidate LFM-fast tasks:
+
+- greeting/acknowledgement;
+- short UI explanation from already-structured state;
+- simple rewrite/translation;
+- short confirmation;
+- simple single-step intent classification.
+
+This is **not** enabled by assumption. Add a fast-text suite and compare:
+
+- LFM quality/latency while already warm;
+- Qwen with reasoning disabled;
+- Qwen cold wake;
+- Qwen warm.
+
+Only route text to LFM if quality remains acceptable and it measurably avoids Brain wakes.
+
+### 25.6 Screenshot resolution/cropping may matter more than another quant step
+
+LFM uses a dynamic vision path that can split large images into 512×512 regions plus a global view. A 4K desktop can therefore cost far more visual work than an active-window or target-region capture.
+
+Hadalis already ships/uses `grim` and has existing targeted `grim -g` capture patterns. Reuse that infrastructure.
+
+Benchmark:
+
+1. full native-resolution output;
+2. downscaled full output;
+3. active-window crop;
+4. semantic region-of-interest crop;
+5. second-pass crop after coarse grounding.
+
+For each, record:
+
+- preprocessing time;
+- prompt/vision token count if available;
+- OCR CER;
+- grounding success;
+- end-to-end latency.
+
+Preferred future policy if accuracy holds:
+
+~~~text
+structured API knows target/window -> crop directly
+unknown screen target              -> coarse/full perception
+coarse target found                -> optional high-res ROI second pass
+~~~
+
+This can improve both speed and accuracy because small UI text is not forced to compete with unrelated pixels.
+
+### 25.7 Vulkan benchmarking must include correctness across batch settings
+
+Recent upstream reports show Qwen3.5/Vulkan behavior can be sensitive to device, driver and batch/ubatch configuration. A throughput number is invalid if output quality corrupts.
+
+For every GPU profile, the harness must first run deterministic sanity prompts and compare against the CPU baseline before recording performance.
+
+Test at least:
+
+- runtime default batch/ubatch;
+- ubatch 512;
+- ubatch 1024 where memory allows;
+- practical GPU-layer/offload choices.
+
+Reject any profile that produces NaNs, garbage, schema failures or reproducible answer corruption, even if tokens/sec is higher.
+
+### 25.8 Cache/checkpoint memory needs explicit control
+
+Current llama.cpp defaults include a large prompt cache budget and recurrent/hybrid context checkpoints. For Wull's single-user desktop workload, blindly accepting those defaults can consume more RAM than the weights themselves justify.
+
+Benchmark:
+
+- `cache-ram = 0` (disabled baseline);
+- a small bounded cache;
+- default cache;
+- lower vs default context checkpoint counts.
+
+Measure after:
+
+- startup;
+- one short request;
+- repeated same-prefix requests;
+- long RAG request;
+- idle/sleep;
+- model wake.
+
+A cache setting is justified only by repeated-task latency saved per GiB retained.
+
+### 25.9 KV-cache quantization is experimental, not a default
+
+Because Qwen3.5 is hybrid rather than all-attention, quantized KV may offer useful savings, but community results are not enough to call it lossless.
+
+If P0.5 memory pressure makes this worthwhile, benchmark in order:
+
+1. F16/reference cache;
+2. Q8-class cache;
+3. Q4-class only as an experimental profile.
+
+Run the full hard reasoning/schema suite after every cache-format change. Do not promote a memory optimization that silently changes reasoning/tool output.
+
+### 25.10 LFM licensing must remain separate from Hadalis GPL code
+
+Qwen3.5-4B is Apache-2.0. LFM2.5-VL-3B is distributed under Liquid AI's **LFM Open License v1.0**, which is Apache-derived but adds a commercial-use condition: free commercial rights end for entities at/above the stated **USD 10 million annual revenue** threshold, after which a separate commercial license is required. Redistribution also requires retaining the applicable license/attribution/NOTICE material.
+
+Consequences for Hadalis packaging:
+
+- never describe the LFM weights as GPL merely because Hadalis source is GPL;
+- keep model files as separately licensed artifacts;
+- prefer opt-in/downloaded model installation under XDG data rather than embedding multi-GB weights in the source repository;
+- store/display source + license metadata in the Wull model manifest;
+- preserve required attribution/license text when redistributing model artifacts;
+- keep the Reflex interface replaceable so an organization that cannot accept the LFM license can select another compatible VLM.
+
+This is a packaging/license compatibility concern, not a reason to reject LFM for ordinary eligible users.
+
+### 25.11 Revised topology to benchmark
+
+The leading candidate is now:
+
+~~~text
+Quickshell / Ai.qml / Wull UI
+         |
+         | Unix socket
+         v
+   inir-wull-agentd
+         |
+         +-- deterministic router / RAG / tools / policy
+         |
+         | HTTP over Unix socket
+         v
+   llama-server router
+      |             |
+      v             v
+  wull-reflex    wull-brain
+  LFM + mmproj   Qwen + MTP
+~~~
+
+Benchmark against the fallback:
+
+~~~text
+inir-wull-agentd
+   |            |
+   v            v
+reflex server  brain server
+~~~
+
+Promotion criteria for router mode:
+
+- no quality difference;
+- model-specific LFM mmproj and Qwen MTP settings work simultaneously;
+- worker failure recovery is bounded;
+- sleeping Brain actually releases enough memory;
+- router overhead is negligible;
+- no meaningful reliability loss relative to two servers.
+
+### 25.12 Immediate research-derived local tests
+
+Add these to the first local test run once exact paths are known:
+
+- router preset can load LFM + mmproj;
+- router preset can load Qwen + MTP;
+- both appear distinctly in `GET /models`;
+- Reflex can be `load-on-startup` while Brain starts unloaded;
+- Brain auto-load / explicit load works;
+- Brain sleep releases RAM/VRAM;
+- Brain wake latency after sleep;
+- kill Brain worker and verify Reflex remains usable;
+- kill router and verify Wull UI/companion remain usable;
+- QML ↔ Rust Unix-socket reconnect after agent restart;
+- reasoning budget 0 / bounded / deeper budget;
+- full-screen vs ROI capture;
+- Vulkan correctness before throughput;
+- cache disabled/small/default memory sweep.
+
+### 25.13 Upstream references used in this pass
+
+- llama.cpp current `tools/server/README.md` and router endpoints.
+- Quickshell `Quickshell.Io.Socket` / `SocketServer` documentation.
+- reqwest current `ClientBuilder::unix_socket` documentation.
+- Liquid AI LFM Open License v1.0 and official LFM2.5-VL-3B release notes.
+- Qwen Qwen3.5-4B official model card.
+- current llama.cpp reasoning/cache/router documentation and recent issue history.
+
+As before, upstream behavior is not a production contract until pinned by SHA and reproduced locally.

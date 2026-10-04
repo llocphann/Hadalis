@@ -18,6 +18,7 @@ mod sync_read;
 mod mutation_lock;
 mod mutation_journal;
 mod backend_identity;
+mod diagnostic_sanitizer;
 
 const PROTOCOL_VERSION: u32 = 1;
 // Upper bound for one typed stdin envelope, including escaped credential bytes.

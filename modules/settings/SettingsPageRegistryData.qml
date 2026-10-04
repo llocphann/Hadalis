@@ -104,7 +104,7 @@ Singleton {
         },
         {
             key: "modules",
-            name: Translation.tr("Modules"),
+            name: "Shell & interface",
             icon: "extension",
             desc: Translation.tr("Enable/disable panels, scaling"),
             essential: false,
@@ -266,7 +266,7 @@ Singleton {
         {key:"_retired-31",name:"",icon:"settings",component:"modules/settings/InterfaceConfig.qml",devNavigationHidden:true},
         {key:"abyss-waves",name:"Waves & Audio",icon:"waves",desc:"Waves, spectrum and interaction",component:"modules/settings/AbyssWavesConfig.qml"},
         {key:"abyss-popups",name:"Popups",icon:"chat_bubble",desc:"Popup and indicator placement",component:"modules/settings/AbyssPopupsConfig.qml"},
-        {key:"abyss-modules",name:"Modules",icon:"widgets",desc:"Edge modules and behavior",component:"modules/settings/AbyssModulesConfig.qml"},
+        {key:"abyss-modules",name:"Bar modules",icon:"widgets",desc:"Edge modules and behavior",component:"modules/settings/AbyssModulesConfig.qml"},
         {key:"automation",name:Translation.tr("Automation"),icon:"smart_toy",desc:Translation.tr("ChatGPT sessions and service health"),component:"modules/settings/AutomationConfig.qml"},
         {key:"cloud-storage",name:Translation.tr("Cloud Storage"),icon:"cloud",desc:Translation.tr("MEGAcmd status"),component:"modules/settings/CloudStorageConfig.qml"},
         {key:"companion",name:Translation.tr("Companion"),icon:"water_drop",desc:Translation.tr("Wull appearance, personality and movement"),essential:true,component:"modules/settings/CompanionConfig.qml"}

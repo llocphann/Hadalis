@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs.services
+import qs.modules.settings
 import "../common/PanelFamilyPolicy.js" as FamilyPolicy
 import qs.modules.common
 import qs.modules.common.widgets
@@ -9,7 +10,7 @@ import qs.modules.common.widgets
 ContentPage {
     id: modulesPage
     settingsPageIndex: 10
-    settingsPageName: Translation.tr("Modules")
+    settingsPageName: "Shell & interface"
 
     readonly property bool isIi: (Config.options?.panelFamily ?? "abyss") === "ii"
     readonly property bool isAbyss: Config.options?.panelFamily === "abyss"
@@ -78,7 +79,7 @@ ContentPage {
 
     SettingsTaskNavigator {
         icon: "extension"
-        title: Translation.tr("Modules")
+        title: "Shell & interface"
         description: Translation.tr("Choose which shell modules run, pick your default terminal and tune interface behavior in focused views.")
         summary: Translation.tr("Panels · Terminal · Modules · Interface")
         currentValue: modulesPage.activeSection
@@ -841,6 +842,22 @@ ContentPage {
                 checked: false
                 enabled: false
                 StyledToolTip { text: Translation.tr("Gaming crosshair overlay") }
+            }
+        }
+    }
+
+    SettingsCardSection {
+        settingsTaskSection: "modules"
+        visible: modulesPage.isAbyss && modulesPage.activeSection === "modules"
+        expanded: true
+        icon: "widgets"
+        title: "Bar modules"
+        SettingsGroup {
+            RippleButtonWithIcon {
+                Layout.fillWidth: true
+                materialIcon: "open_in_new"
+                mainText: "Configure Bar modules"
+                onClicked: SettingsPageRegistry.navigateToKey("abyss-modules", "modules")
             }
         }
     }

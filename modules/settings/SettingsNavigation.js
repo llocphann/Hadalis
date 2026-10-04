@@ -9,9 +9,10 @@ function arrange(raw, defaults, pageCount, retired) {
     var seen=new Set(retired.concat(hidden)),out=[];
     groups.forEach(function(group) {
         if (!group || typeof group.label !== "string") return;
-        var target=(group.label === "Abyss" || group.label === "More")
-            ? out.find(g=>g.label === group.label) : null;
-        if (!target) { target={label:group.label,pages:[]};out.push(target); }
+        var label=group.label.trim();
+        if (!label) return;
+        var target=out.find(g=>g.label.toLowerCase() === label.toLowerCase());
+        if (!target) { target={label:label,pages:[]};out.push(target); }
         Array.from(group.pages || []).forEach(function(index) {
             if (!Number.isInteger(index) || index<0 || index>=pageCount || seen.has(index)) return;
             target.pages.push(index);seen.add(index);

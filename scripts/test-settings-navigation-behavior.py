@@ -8,6 +8,10 @@ program=(root/"modules/settings/SettingsNavigation.js").read_text()+r"""
 const assert=require('node:assert/strict');
 const defaults=[{label:'Home',pages:[0]},{label:'Abyss',pages:[2,3,4]},{label:'System',pages:[1]}];
 let state=arrange(JSON.stringify({groups:[{label:'Abyss',pages:[2,2]},{label:'Abyss',pages:[3]},{label:'More',pages:[4]},{label:'More',pages:[]}]}),defaults,5,[]);
+const merged=arrange(JSON.stringify({groups:[{label:' System ',pages:[1]},{label:'system',pages:[2]},{label:'Appearance',pages:[3]},{label:'Appearance',pages:[4]}]}),defaults,5,[]);
+assert.deepEqual(merged.groups.find(g=>g.label==='System').pages,[1,2]);
+assert.deepEqual(merged.groups.find(g=>g.label==='Appearance').pages,[3,4]);
+assert.equal(merged.groups.length,3,'every duplicate heading is merged, with the first position and label preserved');
 assert.equal(state.groups.filter(g=>g.label==='Abyss').length,1);
 assert.equal(state.groups.filter(g=>g.label==='More').length,1);
 assert.equal(state.groups.flatMap(g=>g.pages).length,5);

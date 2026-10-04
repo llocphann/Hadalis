@@ -165,6 +165,11 @@ export function inspectContractAssets(archive) {
   const api = exported(shared, apiImport), stream = exported(initial, atom);
   checks.api_export = Boolean(api);
   checks.stream_export = Boolean(stream);
+  // Static stream-symbol discovery is preferred but not required. Minifiers
+  // may legitimately change the factory expression while preserving the exact
+  // exported runtime capability. In that case the renderer must discover a
+  // unique definition exposing resolve()+scope.id before any transport use.
+  checks.stream_runtime_discovery = checks.stream_method && !checks.stream_export;
   const exactBinding = exactSharedImport(initial, sharedNames[0], apiLocal);
   checks.api_exact_binding = Boolean(exactBinding);
   checks.api_exact_export = publicExportExists(shared, exactBinding);
@@ -174,13 +179,17 @@ export function inspectContractAssets(archive) {
   // capability-checked export of this *exact* shared module in the renderer.
   checks.api_runtime_link = initial.includes(sharedNames[0]);
   const structural = ["initial_asset", "shared_asset", "conversation_stream_hook",
-    "stream_scope", "stream_method", "stream_export"];
+    "stream_method"];
   if (structural.some(key => !checks[key])) return {checks, contract:null};
   const staticApi = checks.api_exact_binding && checks.api_exact_export;
   if (!staticApi && !checks.api_runtime_link) return {checks, contract:null};
+  const staticStream = checks.stream_scope && checks.stream_export;
+  if (!staticStream && !checks.stream_runtime_discovery) return {checks, contract:null};
   return {checks, contract:{
     shared:sharedNames[0], initial:initialNames[0], api:staticApi ? exactBinding : null,
-    api_resolution:staticApi ? "static_export" : "unique_runtime_export", stream,
+    api_resolution:staticApi ? "static_export" : "unique_runtime_export",
+    stream:staticStream ? stream : null,
+    stream_resolution:staticStream ? "static_export" : "unique_runtime_export",
     serverStreamStatus:initial.includes("/conversation/{conversation_id}/stream_status"),
     fingerprint:crypto.createHash("sha256").update(initial).update(shared).digest("hex")
   }};
@@ -223,6 +232,7 @@ export async function diagnoseNativeRenderer() {
     contract_stream_method:checks.stream_method === true,
     contract_api_export:checks.api_export === true,
     contract_stream_export:checks.stream_export === true,
+    contract_stream_runtime_discovery:checks.stream_runtime_discovery === true,
     contract_api_exact_binding:checks.api_exact_binding === true,
     contract_api_exact_export:checks.api_exact_export === true,
     contract_api_runtime_link:checks.api_runtime_link === true
@@ -247,7 +257,9 @@ export async function diagnoseNativeRenderer() {
         const result = {
           renderer_found:true, modules_loaded:false, static_api_valid:false,
           safe_get_exports:"zero", stream_post_exports:"zero",
-          combined_api_exports:"zero", stream_definition_valid:false,
+          combined_api_exports:"zero", stream_definition_exports:"zero",
+          stream_active_definitions:"zero", stream_transport_matches:"zero",
+          stream_definition_valid:false,
           react_root_found:false, scope_found:false, transport_valid:false
         };
         let shared, initial;
@@ -271,33 +283,57 @@ export async function diagnoseNativeRenderer() {
         const staticApi = contract.api && shared[contract.api];
         result.static_api_valid=typeof staticApi?.safeGet === "function" &&
           typeof staticApi?.streamPost === "function";
-        const definition=initial[contract.stream];
-        result.stream_definition_valid=typeof definition?.resolve === "function" &&
-          definition?.scope?.id != null;
+        const definitionCandidates = contract.stream_resolution === "static_export"
+          ? [initial[contract.stream]]
+          : Object.values(initial).filter(value =>
+              typeof value?.resolve === "function" && value?.scope?.id != null);
+        const definitions=[...new Set(definitionCandidates.filter(Boolean))];
+        result.stream_definition_exports=bucket(definitions);
+        result.stream_definition_valid=definitions.length > 0 && definitions.length <= 16384;
         if (!result.stream_definition_valid) return result;
         const todo=Array.from(document.body.children).flatMap(el =>
           Object.keys(el).filter(k => k.startsWith("__reactContainer$")).map(k => el[k]));
         result.react_root_found=todo.length>0;
-        let chain;
-        const seen=new Set();
+        const seen=new Set(), chains=[];
         for(let i=0;i<30000 && todo.length;i++) {
           const node=todo.pop();
           if(!node || seen.has(node)) continue;
           seen.add(node);
           const value=node.memoizedProps?.value;
-          if(value instanceof Map && value.has(definition.scope.id)) {
-            chain=value; break;
+          if(value instanceof Map && !chains.includes(value)) {
+            chains.push(value);
+            if(chains.length > 1024) return result;
           }
           todo.push(node.child,node.sibling,node.alternate,node.current);
         }
-        result.scope_found=!!chain;
-        if(!chain) return result;
-        try {
-          const scoped=chain.get(definition.scope.id);
-          const transport=scoped.store.get(definition.resolve(scoped,chain));
-          result.transport_valid=typeof transport?.prepareCompletionStream==="function" &&
-            typeof transport?.startCompletionStream==="function";
-        } catch {}
+        const activeIds=new Set();
+        let keyVisits=0;
+        for(const chain of chains) {
+          for(const key of chain.keys()) {
+            activeIds.add(key);
+            if(++keyVisits > 100000) return result;
+          }
+        }
+        const activeDefinitions=definitions.filter(definition =>
+          activeIds.has(definition.scope.id));
+        result.stream_active_definitions=bucket(activeDefinitions);
+        result.scope_found=activeDefinitions.length > 0;
+        if(!result.scope_found) return result;
+        const transports=[];
+        for(const definition of activeDefinitions) {
+          for(const chain of chains) {
+            if(!chain.has(definition.scope.id)) continue;
+            try {
+              const scoped=chain.get(definition.scope.id);
+              const transport=scoped?.store?.get?.(definition.resolve(scoped,chain));
+              if(typeof transport?.prepareCompletionStream==="function" &&
+                  typeof transport?.startCompletionStream==="function" &&
+                  !transports.includes(transport)) transports.push(transport);
+            } catch {}
+          }
+        }
+        result.stream_transport_matches=bucket(transports);
+        result.transport_valid=transports.length === 1;
         return result;
       },contract),
       new Promise((_,reject) => {
@@ -340,30 +376,60 @@ export async function connectNative() {
     // one exported client exposing both methods used by the Desktop.
     const api = contract.api_resolution === "static_export"
       ? shared[contract.api] : uniqueCandidates.length === 1 ? uniqueCandidates[0] : null;
-    const definition = initial[contract.stream];
+    const definitionCandidates = contract.stream_resolution === "static_export"
+      ? [initial[contract.stream]]
+      : Object.values(initial).filter(value =>
+          typeof value?.resolve === "function" && value?.scope?.id != null);
+    const definitions=[...new Set(definitionCandidates.filter(Boolean))];
     if (typeof api?.safeGet !== "function" ||
         typeof api?.streamPost !== "function" ||
-        typeof definition?.resolve !== "function")
+        definitions.length < 1 || definitions.length > 16384)
       throw new Error("Desktop capabilities unavailable");
-    // Read the app-wide scope, never the selected chat/composer. This is
-    // bounded and capability checked; navigation does not change identities.
-    let chain;
+    // Read the app-wide scope, never the selected chat/composer. Modern builds
+    // can export thousands of resolve()+scope definitions, so first intersect
+    // their scope IDs with the live app-wide React maps. Only active definitions
+    // may attempt transport resolution; the final transport identity must still
+    // be unique.
     const todo = Array.from(document.body.children).flatMap(el => Object.keys(el)
       .filter(k => k.startsWith("__reactContainer$")).map(k => el[k]));
-    const seen = new Set();
+    const seen = new Set(), chains=[];
     for (let i = 0; i < 30000 && todo.length; i++) {
       const node = todo.pop();
       if (!node || seen.has(node)) continue;
       seen.add(node);
       const value = node.memoizedProps?.value;
-      if (value instanceof Map && value.has(definition.scope.id)) { chain = value; break; }
+      if (value instanceof Map && !chains.includes(value)) {
+        chains.push(value);
+        if (chains.length > 1024) throw new Error("Desktop app scope unavailable");
+      }
       todo.push(node.child, node.sibling, node.alternate, node.current);
     }
-    if (!chain) throw new Error("Desktop app scope unavailable");
-    const node = chain.get(definition.scope.id);
-    const transport = node.store.get(definition.resolve(node, chain));
-    if (typeof transport?.prepareCompletionStream !== "function" ||
-        typeof transport?.startCompletionStream !== "function") throw new Error("unsupported Desktop transport");
+    const activeIds=new Set();
+    let keyVisits=0;
+    for(const chain of chains) {
+      for(const key of chain.keys()) {
+        activeIds.add(key);
+        if(++keyVisits > 100000) throw new Error("Desktop app scope unavailable");
+      }
+    }
+    const activeDefinitions=definitions.filter(definition =>
+      activeIds.has(definition.scope.id));
+    if (!activeDefinitions.length) throw new Error("Desktop app scope unavailable");
+    const transports=[];
+    for(const definition of activeDefinitions) {
+      for(const chain of chains) {
+        if(!chain.has(definition.scope.id)) continue;
+        try {
+          const scoped=chain.get(definition.scope.id);
+          const candidate=scoped?.store?.get?.(definition.resolve(scoped,chain));
+          if(typeof candidate?.prepareCompletionStream==="function" &&
+              typeof candidate?.startCompletionStream==="function" &&
+              !transports.includes(candidate)) transports.push(candidate);
+        } catch {}
+      }
+    }
+    if (transports.length !== 1) throw new Error("unsupported Desktop transport");
+    const transport=transports[0];
     window.__hadalisNative = { api, transport, fingerprint: contract.fingerprint,
       serverStreamStatus: contract.serverStreamStatus };
     window.__hadalisReceipts ??= new Map();

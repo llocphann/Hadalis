@@ -1,0 +1,18 @@
+{
+  "id": "JOB-HADALIS-STREAM-ACTIVE-TRANSPORT-20261004-01",
+  "base_sha": "cd7018bd5a61288cfc6fe045b5ec555751504220",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "--input-type=module",
+          "-e",
+          "import {inspectInstalledContract} from \"./automation/chat_bridge/native_adapter.mjs\";\nconst x=inspectInstalledContract(); if(!x.contract) process.exit(21);\nconst url=process.env.HADALIS_CHATGPT_CDP_URL ?? \"http://127.0.0.1:9222\";\nconst {chromium}=await import(process.env.HADALIS_PLAYWRIGHT_MODULE ?? \"file:///usr/lib/chatgpt/resources/cua_node/lib/node_modules/playwright-core/index.mjs\");\nconst b=await chromium.connectOverCDP(url,{timeout:10000});\ntry {\n const p=b.contexts().flatMap(c=>c.pages()).find(p=>p.url()===\"app://-/index.html\"); if(!p) process.exit(22);\n const code=await p.evaluate(async c=>{\n  const initial=await import(\"./assets/\"+c.initial);\n  const defs=[...new Set(Object.values(initial).filter(v=>typeof v?.resolve===\"function\"&&v?.scope?.id!=null))];\n  const todo=Array.from(document.body.children).flatMap(el=>Object.keys(el).filter(k=>k.startsWith(\"__reactContainer$\")).map(k=>el[k]));\n  const seen=new Set(),chains=[];\n  for(let i=0;i<30000&&todo.length;i++){const n=todo.pop();if(!n||seen.has(n))continue;seen.add(n);const v=n.memoizedProps?.value;if(v instanceof Map&&!chains.includes(v)){chains.push(v);if(chains.length>1024)return 60;}todo.push(n.child,n.sibling,n.alternate,n.current);}\n  const activeIds=new Set();let keyVisits=0;\n  for(const chain of chains){for(const key of chain.keys()){activeIds.add(key);if(++keyVisits>100000)return 61;}}\n  const active=defs.filter(d=>activeIds.has(d.scope.id)); if(active.length===0)return 62;\n  const transports=[];\n  for(const d of active){for(const chain of chains){if(!chain.has(d.scope.id))continue;try{const scoped=chain.get(d.scope.id);const t=scoped?.store?.get?.(d.resolve(scoped,chain));if(typeof t?.prepareCompletionStream===\"function\"&&typeof t?.startCompletionStream===\"function\"&&!transports.includes(t))transports.push(t);}catch{}}}\n  if(transports.length===0)return 63;if(transports.length===1)return 0;return 64;\n },x.contract);\n process.exit(code);\n} finally { await Promise.race([b.close().catch(()=>{}),new Promise(r=>setTimeout(r,1500))]); }"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 60
+      }
+    }
+  ]
+}

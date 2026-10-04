@@ -31,6 +31,8 @@ assert.equal(result.checks.api_import,true);
 assert.equal(result.checks.api_export,false);
 assert.equal(result.contract.api,"apiClient");
 assert.equal(result.contract.stream,"exportedScope");
+assert.equal(result.contract.stream_resolution,"static_export");
+assert.equal(result.checks.stream_runtime_discovery,false);
 const direct = initial.replace("import{apiClient as client}", "import{apiClient}")
   .replace("client.streamPost", "apiClient.streamPost");
 assert.equal(inspectContractAssets(fake(direct)).contract.api,"apiClient");
@@ -78,13 +80,28 @@ assert.equal(noMethod.checks.stream_method,false);
 const noHook = inspectContractAssets(fake(initial.replace("streamPost","someOtherCall")));
 assert.equal(noHook.contract,null);
 assert.equal(noHook.checks.conversation_stream_hook,false);
+const changedStreamShape=inspectContractAssets(fake(initial
+  .replace("scoped=wrap($,({scope:e})=>new Carrier(e))",
+    "scoped=makeScope({scope:e=>new Carrier(e)})")
+));
+assert.ok(changedStreamShape.contract);
+assert.equal(changedStreamShape.checks.stream_scope,false);
+assert.equal(changedStreamShape.checks.stream_export,false);
+assert.equal(changedStreamShape.checks.stream_runtime_discovery,true);
+assert.equal(changedStreamShape.contract.stream,null);
+assert.equal(changedStreamShape.contract.stream_resolution,"unique_runtime_export");
+
+// Multiple static-looking scope atoms are no longer guessed at build time.
+// Runtime must find exactly one exported resolve()+scope.id definition or fail.
 const ambiguous=inspectContractAssets(fake(initial
   .replace("other=1,scoped=", "other=1,extra=wrap($,({scope:e})=>new Else(e)),scoped=")
   .replace("export{scoped as exportedScope}",
     "export{scoped as exportedScope,extra as exportedOther}")
 ));
-assert.equal(ambiguous.contract,null);
+assert.ok(ambiguous.contract);
 assert.equal(ambiguous.checks.stream_scope,false);
+assert.equal(ambiguous.checks.stream_runtime_discovery,true);
+assert.equal(ambiguous.contract.stream_resolution,"unique_runtime_export");
 assert.equal(inspectContractAssets({files:[],read(){throw Error("unexpected read")}}).checks.initial_asset,false);
 assert.equal(operationErrorCode(new Error("unsupported Desktop stream contract [stream_scope]")),"DESKTOP_CAPABILITY_UNAVAILABLE");
 assert.equal(typeof installedContract,"function");

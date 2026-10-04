@@ -45,7 +45,9 @@ bottom_marker = (
 # Historical pre-integration body stays SHA-pinned; current production is
 # intentionally evolving beyond the old one-line private cradle experiment.
 assert original_body.count(bottom_marker) == 1
-assert 'orientationAngle: root.upright ? 0 : root.edge === "left" ? 90' in body
+# Four-rim standing orientation and transformed face/gaze are exercised on
+# the real actor by test-wull-alive-reactions.py. The former upright=0 source
+# spelling would reject the supported top/side standing behavior.
 assert 'rotation: root.edge === "left" ? 90' not in body
 assert body.count("WaterDropletBody {") == 1
 assert "anchors.centerIn: parent" in body

@@ -27,7 +27,8 @@ for category in ("WINDOW_NOT_BACKING", "SHEET_DIMENSIONS_INVALID",
     assert category in fixture and category in runner_text
 
 assert "AbyssField.frag.qsb" in actual_field
-assert 'orientationAngle: root.upright ? 0 : root.edge === "left" ? 90' in actual_host
+# This inert canary checks capture scope, not standing orientation. The real
+# four-rim actor/face/gaze contract lives in test-wull-alive-reactions.py.
 for marker in (
     'QT_QPA_PLATFORM": "offscreen"',
     '"QSG_RHI_BACKEND": "opengl"',

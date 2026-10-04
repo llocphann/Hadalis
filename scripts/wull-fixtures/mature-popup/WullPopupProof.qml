@@ -52,8 +52,12 @@ FloatingWindow {
         function check(value,message): void {if(!value) {console.error("WULL_POPUP=FAIL "+message);Qt.quit();throw new Error(message)}}
         function exercisePopup(): void {
             tryCompare(Config,"ready",true,4000)
+            check(Config.ready,"config not ready")
+            tryCompare(root,"backingWindowVisible",true,4000)
+            check(root.backingWindowVisible,"owned window not exposed")
             mouseMove(scene,900,700);wait(120)
             tryVerify(()=>module.companionPopup && module.companionPopup._anchorReady,4000)
+            check(module.companionPopup && module.companionPopup._anchorReady,"mature anchor not ready")
             const popup=module.companionPopup
             check(popup.acquireCompanion(root.borrower),"mature clock refused lease")
             wait(400)
@@ -61,7 +65,10 @@ FloatingWindow {
             check(!popup.active && popup.presentationWindow===root,"curiosity created a native window")
             root.retained=popup.contentItem
             const slot=controller._popupSlot(popup), parent=popup.contentItem.parent
-            mouseMove(module,110,16);wait(250)
+            // Send a real Qt hover to the mature control after its owning
+            // window is exposed; await delivery rather than a fixed sleep.
+            mouseMove(popup.hoverTarget,popup.hoverTarget.width/2,popup.hoverTarget.height/2)
+            tryVerify(()=>popup.humanVisibleRequest && popup.companionLease===null,1500)
             check(popup.humanVisibleRequest && popup.companionLease===null,"hover did not hand off ownership")
             check(controller.activePopups.length===1 && controller._popupSlot(popup)===slot,"hover stacked a duplicate host")
             check(popup.contentItem===root.retained && popup.contentItem.parent===parent,"hover replaced mature content")

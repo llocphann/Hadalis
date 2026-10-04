@@ -247,6 +247,7 @@ Singleton {
 
     function modelCanRun(model): bool {
         if (!model) return false
+        if(model.api_format==="gguf" && !model.runtime_path)return false
         if ((Config.options?.policies?.ai ?? 0) === 2 && !model.local) return false
         return !model.requires_key || root.credentialForModel(model).length > 0
     }
@@ -770,6 +771,7 @@ Singleton {
 
     property var apiStrategies: {
         "openai": openaiApiStrategy.createObject(this),
+        "gguf": openaiApiStrategy.createObject(this),
         "openai-response": openaiResponseApiStrategy.createObject(this),
         "gemini": geminiApiStrategy.createObject(this),
         "mistral": mistralApiStrategy.createObject(this),
@@ -779,6 +781,22 @@ Singleton {
 
     property var _loadedExtraModelIds: []
     property var _loadedCatalogModelIds: []
+    property var _loadedLocalModelIds: []
+    function syncDownloadedModels(): void {
+        const next=Object.assign({},root.models)
+        for(const id of root._loadedLocalModelIds){next[id]?.destroy();delete next[id]}
+        root.models=next;root._loadedLocalModelIds=[]
+        for(const found of LocalModels.models) {
+            root.addModel(found.id,{name:found.name,model:found.id,icon:"computer",requires_key:false,
+                local:true,free:true,provider_id:"local-gguf",api_format:"gguf",gguf_path:found.path,
+                runtime_path:LocalModels.runtimePath,endpoint:"",input_modalities:["text"],context_tokens:2048,
+                max_output_tokens:180,catalog_source:found.source,catalog_status:LocalModels.runtimePath ? "available" : "runtime-unavailable",
+                capabilities:{chat:"supported",vision:"unsupported",toolCalling:"unsupported",webSearch:"unsupported",structuredOutput:"supported"}})
+            root._loadedLocalModelIds.push(found.id)
+        }
+        root.modelList=Object.keys(root.models);root._syncCurrentModel()
+    }
+    Connections {target:LocalModels;function onUpdated():void{if(root._initialized)root.syncDownloadedModels()}}
     property string _extraModelsSignature: ""
 
     readonly property var profileDefinitions: [
@@ -965,6 +983,8 @@ Singleton {
         root._initialized = true;
 
         root._syncExtraModels()
+        LocalModels.ensureInitialized()
+        root.syncDownloadedModels()
         AiProviderCatalog.ensureInitialized()
         root._syncCatalogModels()
         getDefaultPrompts.running = true
@@ -1277,6 +1297,9 @@ Singleton {
 
     Process {
         id: requester
+        stdinEnabled: true
+        property var localPayload: null
+        onStarted: if(localPayload) {requester.write(JSON.stringify(localPayload)+"\n");localRequestDeadline.restart()}
         property list<string> baseCommand: ["/usr/bin/bash"]
         property AiMessageData message
         property ApiStrategy currentStrategy
@@ -1368,6 +1391,14 @@ Singleton {
             const id = idForMessage(requester.message);
             root.messageIDs = [...root.messageIDs, id];
             root.messageByID[id] = requester.message;
+            if(model.api_format==="gguf") {
+                requester.localPayload={modelPath:model.gguf_path,runtimePath:model.runtime_path,messages:data.messages}
+                root.pendingFilePath=""
+                requester.command=["/usr/bin/python3",Quickshell.shellPath("scripts/wull/gguf_runtime.py")]
+                Qt.callLater(()=>{requester.running=true})
+                return
+            }
+            requester.localPayload=null
 
             /* Build header string for curl */ 
             let headerString = Object.entries(requestHeaders)
@@ -1458,6 +1489,7 @@ Singleton {
         }
 
         onExited: (exitCode, exitStatus) => {
+            localRequestDeadline.stop()
             const finishedMessage = requester.message;
             const result = requester.currentStrategy.onRequestFinished(finishedMessage);
 
@@ -1539,6 +1571,7 @@ Singleton {
     }
 
     // Whether a response is currently being generated (UI: stop button)
+    Timer {id:localRequestDeadline;interval:80000;onTriggered:if(requester.running)requester.signal(15)}
     readonly property bool busy: requester.running
 
     function stopRequest() {

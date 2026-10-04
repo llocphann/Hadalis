@@ -47,6 +47,7 @@ ContentPage {
 
     Component.onCompleted: {
         Ai.ensureInitialized()
+        LocalModels.ensureInitialized()
         VoiceSearch.ensureInitialized()
     }
 
@@ -124,7 +125,7 @@ ContentPage {
                 label: localFound
                     ? Translation.tr("Local models detected")
                     : Translation.tr("No local models")
-                detail: localFound ? Translation.tr("%1 local model(s) available").arg(AiProviderCatalog.localModelCount)
+                detail: localFound ? Translation.tr("%1 local model(s) available").arg(AiProviderCatalog.localModelCount+LocalModels.models.length)
                     : Translation.tr("Start Ollama or LM Studio to chat privately without an account or key")
             }
 
@@ -172,6 +173,48 @@ ContentPage {
                 }
             }
 
+        }
+    }
+
+    SettingsCardSection {
+        visible:root.activeSection==="setup" || root.activeSection==="providers"
+        title:Translation.tr("Downloaded local models")
+        icon:"computer"
+        SettingsGroup {
+            RowLayout {
+                Layout.fillWidth:true
+                StyledText {
+                    Layout.fillWidth:true;wrapMode:Text.WordWrap
+                    text:LocalModels.refreshing ? Translation.tr("Scanning model folders…")
+                        : LocalModels.models.length ? Translation.tr("%1 local model(s) available").arg(LocalModels.models.length)
+                        : Translation.tr("No downloaded GGUF models found")
+                }
+                DialogButton {buttonText:Translation.tr("Refresh");enabled:!LocalModels.refreshing;onClicked:LocalModels.refresh()}
+            }
+            Repeater {
+                model:LocalModels.models
+                RowLayout {
+                    required property var modelData
+                    Layout.fillWidth:true
+                    DialogButton {
+                        Layout.fillWidth:true
+                        buttonText:modelData.name
+                        toggled:Ai.currentModelId===modelData.id
+                        enabled:LocalModels.runtimePath.length>0
+                        onClicked:Ai.setModel(modelData.id)
+                    }
+                    DialogButton {
+                        buttonText:Translation.tr("Use in Wull")
+                        toggled:WullMind.model===modelData.id
+                        onClicked:Config.setNestedValues({"abyss.companionMind.model":modelData.id,"abyss.companionMind.aiEnabled":true})
+                    }
+                }
+            }
+            StyledText {
+                visible:LocalModels.models.length>0 && !LocalModels.runtimePath
+                text:Translation.tr("llama.cpp runtime not found")
+                color:Appearance.colors.colSubtext
+            }
         }
     }
 

@@ -23,6 +23,8 @@ QtObject {
     property string homepage
     property string endpoint
     property string model
+    property string gguf_path: ""
+    property string runtime_path: ""
     property bool requires_key: true
     property string key_id
     property string key_get_link

@@ -29,6 +29,8 @@ Singleton {
     property string connectionStatus: "disconnected"
     property string errorMessage: ""
     property var models: []
+    readonly property var downloadedModel: LocalModels.modelFor(model)
+    readonly property var selectableModels: LocalModels.models.map(m=>({name:m.id,label:m.name,size:m.size})).concat(models)
     property var history: []
     property var journal: ({schedule:[],mood:"",energy:"",journalPath:""})
     property var reminded: []
@@ -39,17 +41,24 @@ Singleton {
     property double lastCheckIn: 0
     property string userMood: ""
     property string userEnergy: ""
-    readonly property bool available: aiEnabled && model.length>0 && connectionStatus==="ready"
+    property string checkInStage: ""
+    property string checkInDate: ""
+    property double lastPlayful: Date.now()
+    property int playfulIndex: -1
+    readonly property bool available: aiEnabled && model.length>0 && (connectionStatus==="ready"
+        || (downloadedModel && LocalModels.runtimePath.length>0))
     signal reactionRequested(string expression)
 
     function payload(action): var {
         const todo=Config.options?.todo?.obsidian ?? ({})
         return {action:action,endpoint:endpoint,model:model,
+            modelPath:downloadedModel?.path ?? "",runtimePath:LocalModels.runtimePath,
             vault:obsidianEnabled ? String(todo.vaultPath || Config.options?.notes?.zettelkasten?.vaultPath || "") : "",
             referenceVault:obsidianEnabled ? String(options.referenceVault ?? "") : "",
             dailyFolder:String(todo.dailyNote?.folder ?? "00_Capture/01_Journal"),
             dailyFormat:String(todo.dailyNote?.format ?? "YYYY/MMMM/DD-MM-YYYY-dddd"),
             plannerHeading:String(todo.dailyNote?.plannerHeading ?? "Day Planner"),
+            todoNotePath:String(todo.notePath ?? ""),
             shareObsidian:obsidianEnabled}
     }
     function cancel(): void {
@@ -69,7 +78,16 @@ Singleton {
         worker.startObserved=false;worker.running=true
         return true
     }
-    function testConnection(): bool {return dispatch("probe")}
+    function testConnection(): bool {
+        LocalModels.ensureInitialized()
+        if(downloadedModel){connectionStatus=LocalModels.runtimePath ? "available" : "runtime-unavailable";return true}
+        return dispatch("probe")
+    }
+    function selectDownloaded(): void {
+        if(!aiEnabled || model || !LocalModels.models.length)return
+        const preferred=LocalModels.models.find(m=>m.name.toLowerCase().includes("qwen")) ?? LocalModels.models[0]
+        Config.setNestedValue("abyss.companionMind.model",preferred.id)
+    }
     function refreshJournal(automatic = false): bool {return dispatch("context",null,automatic)}
     function say(value, from = "built-in"): void {
         if (!talkEnabled || !String(value).trim()) return
@@ -78,11 +96,12 @@ Singleton {
     }
     function openChat(): void {
         if (!talkEnabled) return
+        checkInStage=""
         conversationOpen=true;expiry.stop()
-        if (!text) say("Hi hi! How are your mood and energy today?", "built-in")
+        say("Splish! What's on your mind?", "built-in")
     }
     function closeChat(): void {conversationOpen=false;expiry.interval=18000;expiry.restart()}
-    function dismiss(): void {conversationOpen=false;text="";expiry.stop();if(pending?.automatic) cancel()}
+    function dismiss(): void {conversationOpen=false;checkInStage="";text="";expiry.stop();if(pending?.automatic) cancel()}
     function clearConversation(): void {cancel();history=[];text="";userMood="";userEnergy=""}
     function sendMessage(message): bool {
         const prompt=String(message).trim().slice(0,1200)
@@ -93,20 +112,34 @@ Singleton {
         }
         return dispatch("chat",{prompt:prompt,history:history})
     }
-    function checkIn(mood, energy): void {
-        userMood=String(mood).slice(0,40);userEnergy=String(energy).slice(0,40)
-        lastCheckIn=Date.now()
-        if (available) dispatch("chat",{prompt:"My mood is "+userMood+" and my energy is "+userEnergy+". Give me a tiny friendly check-in.",history:history})
-        else say("Thank you for telling me! I'll keep you a little company.","built-in")
+    function today(): string {
+        const now=new Date()
+        return now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0")
+    }
+    function askCheckIn(field = "mood"): void {
+        if (busy || !talkEnabled) return
+        conversationOpen=false;checkInDate=today();checkInStage=field
+        say(field==="energy" ? "And how's your energy? Tiny spark or full splash?" : "Tiny check-in! How are you feeling today?")
+        expiry.interval=45000;expiry.restart()
+    }
+    function choiceSaved(field, value): void {
+        if (field==="mood") userMood=value
+        else userEnergy=value
+        journal=Object.assign({},journal,{[field]:value})
+        if (checkInStage!==field) return
+        if (field==="mood") askCheckIn("energy")
+        else {
+            checkInStage="";lastCheckIn=Date.now()
+            say("Noted, little human. I'll bring the bubbles; you bring you!")
+            reactionRequested("happy")
+        }
     }
     function setCheckInChoice(field, value): bool {
         const values = field === "mood" ? ["terrible", "bad", "okay", "good", "great"]
             : field === "energy" ? ["drained", "low", "medium", "high", "peak"] : []
-        if (!values.includes(value)) return false
-        if (field === "mood") userMood = value
-        else userEnergy = value
-        // A single choice never invents the other half of the answer.
-        if (userMood && userEnergy) checkIn(userMood, userEnergy)
+        if (!values.includes(value) || field!==checkInStage || busy) return false
+        if (obsidianEnabled) return dispatch("check_in",{field:field,value:value,date:checkInDate})
+        choiceSaved(field,value)
         return true
     }
     function openJournal(): void {
@@ -117,16 +150,45 @@ Singleton {
                 || conversationOpen || busy || Date.now()-startedAt<90000 || text) return
         if (obsidianEnabled && Date.now()-lastContext>120000) {refreshJournal(true);return}
         const now=new Date(),minute=now.getHours()*60+now.getMinutes()
-        const next=(journal.schedule ?? []).find(s=>s.start>=minute && s.start-minute<=10)
-        const key=next ? journal.date+":"+next.start+":"+next.title : ""
+        const todayDate=today(),rows=(journal.schedule ?? []).slice()
+        if(obsidianEnabled) {
+            for(const task of (Todo.list ?? []).slice(0,128)) {
+                if(task.done || task.sourceDate!==todayDate || !/^\d{1,2}:\d{2}$/.test(task.startTime ?? ""))continue
+                const time=task.startTime.split(":");rows.push({start:Number(time[0])*60+Number(time[1]),title:String(task.content).slice(0,180),kind:"task"})
+            }
+            for(const event of CalendarSync.getEventsForDate(now).slice(0,32)) {
+                if(event.allDay)continue
+                const start=new Date(event.startDate)
+                if(Number.isFinite(start.getTime()))rows.push({start:start.getHours()*60+start.getMinutes(),title:String(event.summary ?? event.title ?? "").slice(0,180),kind:"agenda"})
+            }
+        }
+        rows.sort((a,b)=>a.start-b.start)
+        const next=rows.find(s=>s.start>=minute-10 && s.start-minute<=10
+            && !reminded.includes(todayDate+":"+s.start+":"+s.title))
+        const key=next ? todayDate+":"+next.start+":"+next.title : ""
         if (next && !reminded.includes(key)) {
             reminded=reminded.slice(-31).concat([key])
-            say("Psst! "+next.title+" starts at "+String(Math.floor(next.start/60)).padStart(2,"0")+":"+String(next.start%60).padStart(2,"0")+". I'll cheer you on!","schedule")
+            const cheer=next.kind==="calisthenics" ? "Time for calisthenics! Tiny arms cheering for yours."
+                : next.kind==="cardio" ? "Cardio time! You run; I'll provide emotional splashes."
+                : "Psst! "+next.title
+            say(cheer+" · "+String(Math.floor(next.start/60)).padStart(2,"0")+":"+String(next.start%60).padStart(2,"0"),"schedule")
             reactionRequested("happy")
         } else if (Date.now()-lastCheckIn>2400000) {
             lastCheckIn=Date.now()
-            if (available) dispatch("chat",{prompt:"Ask gently about my mood and energy today. One cute short question, in English.",history:[]},true)
-            else say("Tiny check-in! How are your mood and energy today?","built-in")
+            askCheckIn("mood")
+        } else if (Date.now()-lastPlayful>1200000) {
+            lastPlayful=Date.now()
+            const lines=["I tried counting my bubbles. One escaped. Suspicious.",
+                "Important announcement: I am approximately one sip tall.",
+                "If I sit very still, do I become a puddle with opinions?",
+                "My cardio today: three laps around this tiny corner.",
+                "I have two feet and absolutely no shoes budget.",
+                "Your cursor looks busy. Mine would probably just be a fish.",
+                "I asked the edge for advice. It said: go with the flow.",
+                "Tiny water break? I mean you. I'm already excellent at being water."]
+            playfulIndex=(playfulIndex+1+Math.floor(Math.random()*(lines.length-1)))%lines.length
+            if(available)dispatch("chat",{prompt:"Make one cute silly observation as a tiny water droplet. No questions, reminders or claims about my activity.",history:[]},true)
+            else say(lines[playfulIndex])
         }
     }
     function completed(raw, exitCode, serial = epoch): void {
@@ -142,7 +204,8 @@ Singleton {
         catch(e) {envelope={ok:false,error:{message:"Wull's local helper did not return a valid reply."}}}
         if (!envelope.ok) {
             errorMessage=String(envelope.error?.message ?? "Local model is unavailable.")
-            if (job.action!=="context") connectionStatus="error"
+            if (job.action==="probe" || job.action==="chat") connectionStatus="error"
+            if (job.action==="check_in") say("I couldn't save that to your journal. "+errorMessage)
             if (job.action==="chat" && !job.automatic) say("My local model couldn't answer just now. We can try again in a little bit.","built-in")
             return
         }
@@ -157,6 +220,11 @@ Singleton {
         } else if (job.action==="context") {
             journal=result;lastContext=Date.now()
             if (job.automatic) Qt.callLater(root.offerAutomatic)
+        } else if (job.action==="check_in") {
+            if(result.saved===true && result.date===checkInDate) {
+                journal=Object.assign({},journal,{journalPath:result.journalPath,date:result.date})
+                choiceSaved(result.field,result.value)
+            }
         } else if (job.action==="chat") {
             connectionStatus="ready"
             history=history.slice(-4).concat([{role:"user",content:job.request.prompt},{role:"assistant",content:result.text}])
@@ -164,18 +232,21 @@ Singleton {
             if (hostVisible) reactionRequested(result.expression)
         }
     }
-    onAiEnabledChanged: {cancel();connectionStatus="disconnected"}
+    onAiEnabledChanged: {cancel();connectionStatus="disconnected";if(aiEnabled){LocalModels.ensureInitialized();selectDownloaded()}}
     onEndpointChanged: {cancel();models=[];connectionStatus="disconnected"}
-    onModelChanged: {cancel();connectionStatus=models.some(m=>m.name===model) ? "ready" : "disconnected"}
+    onModelChanged: {cancel();connectionStatus=downloadedModel ? LocalModels.runtimePath ? "available" : "runtime-unavailable"
+        : models.some(m=>m.name===model) ? "ready" : "disconnected"}
+    Component.onCompleted: if(aiEnabled)LocalModels.ensureInitialized()
+    Connections {target:LocalModels;function onUpdated():void{root.selectDownloaded()}}
     onContextKeyChanged: {if(pending) cancel();journal=({schedule:[],mood:"",energy:"",journalPath:""});lastContext=0}
     onProactiveChanged: if(proactive!=="occasional" && pending?.automatic)cancel()
-    onHostVisibleChanged: if (!hostVisible) {if(pending?.automatic) cancel();if(!conversationOpen)text=""}
+    onHostVisibleChanged: if (!hostVisible) {if(pending?.automatic) cancel();if(!conversationOpen){text="";checkInStage=""}}
     onHostIdleChanged: if(!hostIdle && pending?.automatic)cancel()
     onTalkEnabledChanged: if(!talkEnabled) {cancel();dismiss()}
     IdleMonitor {id:idleMonitor;enabled:root.hostVisible && root.talkEnabled && root.proactive==="occasional";timeout:60;respectInhibitors:true}
     Timer {interval:60000;repeat:true;running:root.hostVisible && root.hostIdle && root.talkEnabled
         && root.proactive==="occasional" && idleMonitor.isIdle && !root.conversationOpen;onTriggered:root.offerAutomatic()}
-    Timer {id:expiry;repeat:false;onTriggered:if(!root.conversationOpen)root.text=""}
+    Timer {id:expiry;repeat:false;onTriggered:if(!root.conversationOpen){root.text="";root.checkInStage=""}}
     Timer {id:deadline;interval:35000;repeat:false;onTriggered:{root.cancel();root.errorMessage="Local model request timed out.";root.connectionStatus="error"}}
     Process {
         id:worker
@@ -184,7 +255,7 @@ Singleton {
         property double serial:0
         command:["/usr/bin/python3",Quickshell.shellPath("scripts/wull/local_mind.py")]
         stdout:StdioCollector {id:reply}
-        onStarted:{worker.startObserved=true;worker.serial=root.pending?.serial ?? -1;if(root.pending)worker.write(JSON.stringify(root.pending.request)+"\n");deadline.restart()}
+        onStarted:{worker.startObserved=true;worker.serial=root.pending?.serial ?? -1;if(root.pending)worker.write(JSON.stringify(root.pending.request)+"\n");deadline.interval=root.pending?.request?.modelPath ? 80000 : 35000;deadline.restart()}
         onRunningChanged:if(!running && !startObserved && root.pending)root.completed("",-1,root.pending.serial)
         onExited:(code,status)=>{
             if(root.draining){root.draining=false;return}

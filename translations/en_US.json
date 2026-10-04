@@ -5582,5 +5582,11 @@
   "Great": "Great",
   "Drained": "Drained",
   "Mid": "Mid",
-  "Peak": "Peak"
+  "Peak": "Peak",
+  "Connection: Local LLM (llama.cpp)": "Connection: Local LLM (llama.cpp)",
+  "Downloaded local models": "Downloaded local models",
+  "Scanning model folders…": "Scanning model folders…",
+  "No downloaded GGUF models found": "No downloaded GGUF models found",
+  "Use in Wull": "Use in Wull",
+  "llama.cpp runtime not found": "llama.cpp runtime not found"
 }

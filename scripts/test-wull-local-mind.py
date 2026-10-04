@@ -105,4 +105,26 @@ class Tests(unittest.TestCase):
         self.assertEqual(mind.context({})['schedule'],[])
         with self.assertRaises(mind.MindError):mind.dispatch({'action':'write_note'})
 
+    def test_explicit_checkin_preserves_journal(self):
+        with tempfile.TemporaryDirectory() as t:
+            note=Path(t)/'journal/2026/10/04.md';note.parent.mkdir(parents=True)
+            raw=b'\xef\xbb\xbf---\r\nmood:\r\nenergy:\r\nprivate: KEEP\r\n---\r\nBody unchanged.\r\n'
+            note.write_bytes(raw);note.chmod(0o640)
+            options={'vault':t,'dailyFolder':'journal','dailyFormat':'YYYY/MM/DD','date':'2026-10-04','field':'mood','value':'good'}
+            saved=mind.check_in(options,datetime(2026,10,4));self.assertTrue(saved['saved'])
+            self.assertEqual(note.read_bytes(),raw.replace(b'mood:',b'mood: good'))
+            self.assertEqual(note.stat().st_mode&0o777,0o640)
+            options.update(field='energy',value='high');mind.check_in(options,datetime(2026,10,4))
+            self.assertEqual(note.read_bytes(),raw.replace(b'mood:',b'mood: good').replace(b'energy:',b'energy: high'))
+            before=note.read_bytes()
+            for patch in [{'date':'2026-10-03'},{'field':'reflection'},{'value':'invented'},{'dailyFolder':'../escape'}]:
+                with self.assertRaises((mind.MindError,mind.core.TodoError)):mind.check_in(dict(options,**patch),datetime(2026,10,4))
+                self.assertEqual(note.read_bytes(),before)
+
+    def test_timed_agenda_and_exercise_schedule(self):
+        rows=mind.schedule_rows(['- [ ] 14:30 Write outline','- [x] 15:00 Finished','- 16:00 Meet',
+            '| **05:30 - 06:45** | **Calisthenics** |','| 6:45 | Cardio |'],'fixture')
+        self.assertEqual([r['start'] for r in rows],[870,960,330,405])
+        self.assertEqual([r['kind'] for r in rows][-2:],['calisthenics','cardio'])
+
 if __name__=='__main__':unittest.main()

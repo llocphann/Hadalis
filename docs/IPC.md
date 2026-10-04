@@ -805,13 +805,15 @@ inir abyss cancelEdit
 
 ### wull
 
-Read-only Companion diagnostics while the Abyss perimeter is loaded. The bounded
-JSON includes visibility policy, native bridge readiness, field/scene gates,
-placement and actor state for each output. Reading it never enables Wull,
-changes preferences or starts its backend.
+Companion chat and diagnostics while the Abyss perimeter is loaded. `chat`
+toggles the speech editor and requests keyboard focus on the permitted output.
+`status` reports bounded visibility, bridge, field/scene and placement state
+without changing preferences. Super + Alt + Comma opens or closes chat; Enter
+sends and Escape closes it.
 
 | Function | Description |
 |----------|-------------|
+| `chat` | Toggle Wull's chat editor (Super+Alt+Comma) |
 | `status` | Return bounded JSON explaining Wull visibility and placement on each output |
 
 ```bash

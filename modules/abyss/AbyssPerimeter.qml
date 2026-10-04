@@ -66,6 +66,14 @@ Scope {
     // activation. This also explains why an enabled companion stays hidden.
     IpcHandler {
         target: "wull"
+        function chat(): void {
+            if (!root.companionSessionVisible || !root.companionInteractive || !WullMind.talkEnabled) return
+            if (WullMind.conversationOpen) {WullMind.cancel();WullMind.dismiss();return}
+            companionBridge.show()
+            companionBridge.sendEvent("hover",true)
+            for (const window of outputWindows.instances)
+                if(window.outputName===root.companionTargetOutput)window.requestCompanionChat()
+        }
         function status(): string {
             const outputs=[]
             for (let i=0;i<outputWindows.instances.length;i++)
@@ -190,6 +198,14 @@ Scope {
                 && !window.companionOccluded
                 && liquid.records.length<=field.capacity
             readonly property bool companionHostActive: window.companionPermission && companionPresence.qualified
+            function requestCompanionChat(): void {
+                if(!window.companionPermission) return
+                companionCuriosity.interrupt()
+                companionPresence.hiddenUntil=0
+                if(!companionPresence.visitActive || companionPresence.retreating)companionPresence.appear()
+                companionPresence.peekOnly=false;companionPresence.peekIntro=false;companionPresence.renderedReveal=1
+                WullMind.openChat()
+            }
             function companionStatus() {
                 const scene=window.companionScene
                 return {output:outputName,presented:window.presented,
@@ -218,7 +234,7 @@ Scope {
                         x:companion.x,y:companion.y}}
             }
             readonly property bool companionHoverHeld: window.companionHostActive
-                && companion.interactive && (companion.hovered || companion.dragging || talkCloud.controlsVisible)
+                && companion.interactive && (companion.hovered || companion.dragging || talkCloud.controlsVisible || WullMind.conversationOpen)
             onCompanionHoverHeldChanged: if (root.companionTargetOutput===window.outputName && companionBridge.ready)
                 companionBridge.sendEvent("hover",window.companionHoverHeld)
             WullPresence {
@@ -408,7 +424,7 @@ Scope {
             WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || talkCloud.editing || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
             WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging || companionCuriosity.owned
                 ? WlrKeyboardFocus.None
-                : (window.editorOpen || (utility.presented && utility.ready) || liquid.popupExclusiveFocus || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (clipboardBody.presented && clipboardBody.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive
+                : (talkCloud.editing || window.editorOpen || (utility.presented && utility.ready) || liquid.popupExclusiveFocus || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (clipboardBody.presented && clipboardBody.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive
                 : (talkCloud.editing || liquid.popupOnDemandFocus || (leftPanel.presented && leftPanel.ready) || (rightPanel.presented && rightPanel.ready) || (popup.presented && popup.ready) || (notification.presented && notification.ready && notification.contentKind === "center"))
                     ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             anchors { top: true; bottom: true; left: true; right: true }

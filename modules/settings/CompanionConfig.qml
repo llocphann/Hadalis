@@ -372,15 +372,17 @@ ContentPage {
                 autoToggle:false;checked:WullMind.aiEnabled
                 onToggledByUser:checked=>Config.setNestedValue("abyss.companionMind.aiEnabled",checked)
             }
-            StyledText {text:Translation.tr("Connection: Local LLM (Ollama)");Layout.fillWidth:true}
+            StyledText {text:WullMind.downloadedModel ? Translation.tr("Connection: Local LLM (llama.cpp)") : Translation.tr("Connection: Local LLM (Ollama)");Layout.fillWidth:true}
             MaterialTextField {
                 objectName:"wullLocalEndpoint";Layout.fillWidth:true
+                visible:!WullMind.downloadedModel
                 placeholderText:Translation.tr("Local endpoint")
                 text:WullMind.endpoint
                 onEditingFinished:Config.setNestedValue("abyss.companionMind.endpoint",text.trim())
             }
             MaterialTextField {
                 objectName:"wullLocalModel";Layout.fillWidth:true
+                visible:!WullMind.downloadedModel
                 placeholderText:Translation.tr("Installed model name")
                 text:WullMind.model
                 onEditingFinished:Config.setNestedValue("abyss.companionMind.model",text.trim())
@@ -396,10 +398,11 @@ ContentPage {
                 DialogButton {buttonText:Translation.tr("Clear conversation");onClicked:WullMind.clearConversation()}
             }
             Repeater {
-                model:WullMind.models
+                model:WullMind.selectableModels
                 DialogButton {
                     required property var modelData
-                    buttonText:modelData.name
+                    buttonText:modelData.label ?? modelData.name
+                    toggled:WullMind.model===modelData.name
                     onClicked:Config.setNestedValue("abyss.companionMind.model",modelData.name)
                 }
             }

@@ -40,6 +40,7 @@ singleton MemoryPressureService 1.0 MemoryPressureService.qml
 singleton MinimizedWindows 1.0 MinimizedWindows.qml
 singleton MprisController 1.0 MprisController.qml
 singleton LocalMusic 1.0 LocalMusic.qml
+singleton LocalModels 1.0 LocalModels.qml
 singleton Network 1.0 Network.qml
 singleton NiriService 1.0 NiriService.qml
 singleton Notepad 1.0 Notepad.qml

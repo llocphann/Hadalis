@@ -12,7 +12,7 @@ import json
 ROOT=Path(__file__).resolve().parents[1]
 core=runpy.run_path(str(ROOT/'scripts/wull-manual-visual-matrix.py'))
 fake=runpy.run_path(str(ROOT/'scripts/test-wull-gguf-runtime.py'))['FAKE']
-with tempfile.TemporaryDirectory(prefix='wgg-') as temporary:
+with tempfile.TemporaryDirectory(prefix='wgg-',ignore_cleanup_errors=True) as temporary:
     private=Path(temporary);shell,xdg=core['staged'](private)
     models=private/'models';models.mkdir()
     with (models/'Tiny-UD-Q6_K_XL.gguf').open('wb') as f:

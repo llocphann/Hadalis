@@ -230,6 +230,11 @@ Scope {
                     : companionBridge.visibility==="peeking" ? .46 : 0
                 motionEnabled: root.companionPreferences.animationsEnabled && AbyssStyle.motionEnabled
                 interactionHeld: companionBridge.activity!=="idle" || talkCloud.controlsVisible || WullMind.conversationOpen
+                pointerFresh: window.companionPointerFresh
+                pointerX: window.companionPointerX
+                pointerY: window.companionPointerY
+                pointerReactionsEnabled: root.companionInteractive && !talkCloud.controlsVisible
+                    && !WullMind.conversationOpen
                 personality: root.companionPreferences.personality
                 travelId: companionBridge.travelId
                 travelFraction: companionBridge.travelTarget
@@ -330,6 +335,12 @@ Scope {
             }
             function releaseCompanionFeature(feature): void {
                 if (feature?.popup) feature.popup.releaseCompanion(window)
+                else if (ownsCompanionFeature(feature)) {
+                    // A sidebar visited by Wull becomes an ordinary transient
+                    // hover surface after a real user hand-off, not a sticky IPC open.
+                    if (feature.kind==="leftPanel") GlobalStates.sidebarLeftTransient=true
+                    else if (feature.kind==="rightPanel") GlobalStates.sidebarRightTransient=true
+                }
             }
             readonly property string companionFeatureState: [GlobalStates.sidebarLeftOpen,
                 GlobalStates.sidebarLeftTargetOutput,GlobalStates.sidebarRightOpen,GlobalStates.sidebarRightTargetOutput,
@@ -373,7 +384,9 @@ Scope {
                     enabled: window.companionHostActive && root.companionInteractive
                     acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                     onActiveChanged: if (active) {
-                        companionCuriosity.yieldToUser()
+                        if (companionCuriosity.containsPoint(point.scenePosition.x,point.scenePosition.y))
+                            companionCuriosity.yieldToUser()
+                        else companionCuriosity.interrupt()
                         if (!talkCloud.containsScenePoint(point.scenePosition))
                             companionPresence.nearbyClick(point.scenePosition.x,point.scenePosition.y)
                     }
@@ -415,11 +428,24 @@ Scope {
                     height: utility.inputBounds.height
                 }
                 Region { regions: [window.companionInputMask] }
+                Region { regions: [window.companionRimInputMask] }
             }
             readonly property Region companionInputMask: Region { item: WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible && companion.inputReady) ? companion : emptyInput }
+            readonly property bool companionRimInputActive: window.presented && field.ready
+                && WullHostPolicy.acceptsInput(window.companionHostActive,companion.interactive,companion.visible && companion.inputReady)
+            readonly property real companionRimThickness: Math.min(AbyssStyle.perimeterThickness,window.width/2,window.height/2)
+            // Observe Wull's surrounding water on all four painted rims. The
+            // interior desktop retains its existing pass-through/input owners.
+            readonly property Region companionRimInputMask: Region {
+                Region { x:0; y:0; width:window.companionRimInputActive ? window.width : 0; height:window.companionRimThickness }
+                Region { x:0; y:window.height-window.companionRimThickness; width:window.companionRimInputActive ? window.width : 0; height:window.companionRimThickness }
+                Region { x:0; y:0; width:window.companionRimInputActive ? window.companionRimThickness : 0; height:window.height }
+                Region { x:window.width-window.companionRimThickness; y:0; width:window.companionRimInputActive ? window.companionRimThickness : 0; height:window.height }
+            }
             readonly property Region nativeInputMask: Region {
                 Region { regions: window.presented && field.ready && bar.visible ? bar.inputRegions : [] }
                 Region { regions: [window.companionInputMask] }
+                Region { regions: [window.companionRimInputMask] }
                 Region { regions: window.presented && field.ready && editor.visible ? editor.regions : [] }
                 Region { item: window.presented && revealTrigger.visible ? revealTrigger : emptyInput }
                 Region { item: window.presented && dockTrigger.visible ? dockTrigger : emptyInput }
@@ -606,7 +632,7 @@ Scope {
                 connectedWater: true
                 reveal: companionPresence.renderedReveal
                 pointerFresh: window.companionPointerFresh
-                    && Math.hypot(window.companionPointerX-(x+width/2),window.companionPointerY-(y+height/2))<320*scale
+                    && Math.hypot(window.companionPointerX-(x+width/2),window.companionPointerY-(y+height/2))<companionPresence.pointerNoticeRadius
                 pointerX: (window.companionPointerX-(x+width/2))/(140*scale)
                 pointerY: (window.companionPointerY-(y+height/2))/(140*scale)
                 gazeX: companionBridge.gazeX
@@ -632,14 +658,14 @@ Scope {
                     py-(root.companionScale-1)*implicitHeight/2)
                 onDragEnded: companionPresence.endDrag()
                 onActivated: {companionWater.tap();companionBridge.sendEvent("click")}
-                onChatRequested: {companionCuriosity.yieldToUser();WullMind.openChat()}
+                onChatRequested: {companionCuriosity.interrupt();WullMind.openChat()}
                 onSettingsRequested: GlobalStates.openSettingsSection(37,"Overview")
             }
             WullTalkCloud {
                 id:talkCloud;actor:companion
                 outputWidth:window.width;outputHeight:window.height
                 allowed:window.companionHostActive && root.companionInteractive
-                onControlsVisibleChanged: if (controlsVisible) companionCuriosity.yieldToUser()
+                onControlsVisibleChanged: if (controlsVisible) companionCuriosity.interrupt()
             }
             Item {
                 id: revealTrigger
@@ -840,6 +866,9 @@ Scope {
                     GlobalStates.abyssPopupEdge || root.barEdge
                 requestedAlongCenter: GlobalStates.abyssPopupAlong
                 hoverKind: window.transientPopupHoverKind
+                companionVisitActive: companionCuriosity.owned
+                    && companionCuriosity.feature?.kind==="utilities"
+                    && window.ownsCompanionFeature(companionCuriosity.feature)
                 bodyInsetsResolver: (edge,along,span) =>
                     window.bodyInsets(edge,along,span)
 

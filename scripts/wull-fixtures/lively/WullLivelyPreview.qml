@@ -14,6 +14,8 @@ Window {
     property int opens: 0
     property int closes: 0
     property int handoffs: 0
+    property real closeGap: 0
+    property string testPhase: "motion"
     readonly property var scene: Scene.fromParticipants({width:width,height:height,
         hostWidth:112,hostHeight:98,scale:1,insets:{top:20,right:20,bottom:20,left:20}},
         featureOpen ? {popup:{surfaceSettled:true,geometry:{edge:"top",surface:{x:430,y:160,width:280,height:220}}}} : {}, [])
@@ -25,7 +27,13 @@ Window {
     function companionFeaturesIdle(): bool {return featureIdle && !featureOpen}
     function openCompanionFeature(feature): bool {if(!companionFeaturesIdle())return false;opens++;featureOpen=true;return true}
     function ownsCompanionFeature(feature): bool {return featureOpen && featureIdle}
-    function closeCompanionFeature(feature): void {if(ownsCompanionFeature(feature)){closes++;featureOpen=false}}
+    function closeCompanionFeature(feature): void {
+        if (!ownsCompanionFeature(feature)) return
+        const r=scene.surfaces.find(s=>s.key===feature.key)?.rect, p=presence.position()
+        closeGap=r ? Math.hypot(Math.max(r.x-p.x-scene.hostWidth,p.x-r.x-r.width,0),
+            Math.max(r.y-p.y-scene.hostHeight,p.y-r.y-r.height,0)) : -1
+        closes++;featureOpen=false
+    }
     function releaseCompanionFeature(feature): void {handoffs++}
     function place(x,y): void {
         curiosity.finish(true)
@@ -114,22 +122,37 @@ Window {
                 const frozen=JSON.stringify([actor.x,actor.y,gait.phase,gait.weight]);wait(120)
                 check(frozen===JSON.stringify([actor.x,actor.y,gait.phase,gait.weight]),"disabled clocks did not freeze")
                 root.place(280,40)
+                root.testPhase="initial curiosity"
                 curiosity.lastVisit=0;presence.randomState=2000
                 check(curiosity.offer(),"curiosity offer rejected")
                 tryCompare(root,"featureOpen",true,6000)
                 tryCompare(curiosity,"stage","hold",7000)
                 check(root.opens===1 && actor.visible,"owned feature was not explored")
+                tryCompare(curiosity,"reachedFeature",true,1000)
+                // Cancel the autonomous hold with a real departure route. The
+                // borrowed surface closes as Wull leaves, not at a later timeout.
+                actor.stopGesture();presence.directed=false
+                root.testPhase="distance departure"
+                check(presence.moveTo(Scene.edgePoint(root.scene,"bottom",.08),false,"fly"),"departure route rejected")
+                tryCompare(root,"featureOpen",false,6000)
+                check(root.closes===1 && !curiosity.busy && presence.traveling && root.closeGap>140,
+                    "distance close interrupted or preceded the departure animation "+root.closeGap)
+                tryCompare(presence,"traveling",false,presence.duration+800)
+                root.place(280,40)
+                root.testPhase="return close"
+                curiosity.lastVisit=0;presence.randomState=2000;check(curiosity.offer(),"return-close curiosity offer rejected")
+                tryCompare(curiosity,"stage","hold",9000)
                 const deadline=root.named(curiosity,"wullCuriosityDeadline")
                 deadline.interval=40;deadline.restart()
                 tryCompare(curiosity,"busy",false,6500)
-                check(!root.featureOpen && root.closes===1,"owned feature was not closed after return")
+                check(!root.featureOpen && root.closes===2,"owned feature was not closed after return")
                 check(!deadline.running && !presence.directed,"finished curiosity retained a deadline/hold")
                 root.place(280,40)
                 curiosity.lastVisit=0;presence.randomState=2000
                 check(curiosity.offer(),"second curiosity offer rejected")
                 tryCompare(root,"featureOpen",true,6000)
                 curiosity.pointerMoved(500,220)
-                check(!curiosity.busy && root.featureOpen && root.closes===1 && root.handoffs===1,
+                check(!curiosity.busy && root.featureOpen && root.closes===2 && root.handoffs===1,
                     "pointer handoff closed a human-owned feature")
                 curiosity.lastVisit=0;check(!curiosity.offer(),"existing human UI was replaced")
                 root.featureOpen=false;root.place(280,40)
@@ -137,8 +160,11 @@ Window {
                 root.allowed=false;wait(40)
                 check(!curiosity.busy && !actor.visible && !deadline.running && !presence.directed,
                     "policy hide did not cancel curiosity")
-                console.log("WULL_LIVELY=PASS run jump fly acceleratingFall regrab alternateTakeoff reducedMotion curiosityGesture ownedClose userHandoff policyHide")
-            } catch(error) {console.error("WULL_LIVELY=FAIL "+error)}
+                console.log("WULL_LIVELY=PASS run jump fly acceleratingFall regrab alternateTakeoff reducedMotion curiosityGesture distanceClose continuedDeparture ownedClose userHandoff policyHide")
+            } catch(error) {console.error("WULL_LIVELY=FAIL "+error+" "+JSON.stringify({phase:root.testPhase,
+                stage:curiosity.stage,owned:curiosity.owned,near:curiosity.nearFeature,reached:curiosity.reachedFeature,
+                featureOpen:root.featureOpen,closes:root.closes,traveling:presence.traveling,mode:presence.mode,
+                here:presence.position(),target:presence.destination}))}
             shutdown.start()
         }
     }

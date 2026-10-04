@@ -13,8 +13,11 @@ FloatingWindow {
     visible: true
     implicitWidth: 1100; implicitHeight: 780
     property bool done: false
+    property string testPhase: "initialize"
     property var retained: null
     property var borrower: QtObject {}
+    property bool utilitiesOpen: false
+    property bool utilitiesVisit: false
     Item {
         id: scene
         anchors.fill: parent
@@ -23,6 +26,14 @@ FloatingWindow {
             x: 390; y: 12; width: 220; height: 32
             kind: "clock"; outputName: root.screen.name
             liquidController: controller
+        }
+        AbyssGenericPopupPresenter {
+            id: utilities;anchors.fill:parent;controller:controller
+            outputName:root.screen.name;outputWidth:scene.width;outputHeight:scene.height
+            requestedKind:"utilities";requestedOpen:root.utilitiesOpen
+            requestedAlongCenter:700;presentationInsets:controller.edgeInsets
+            companionVisitActive:root.utilitiesVisit
+            onCloseRequested:root.utilitiesOpen=false
         }
         Repeater {
             model: controller.popupCapacity
@@ -59,6 +70,7 @@ FloatingWindow {
             tryVerify(()=>module.companionPopup && module.companionPopup._anchorReady,4000)
             check(module.companionPopup && module.companionPopup._anchorReady,"mature anchor not ready")
             const popup=module.companionPopup
+            root.testPhase="borrow"
             check(popup.acquireCompanion(root.borrower),"mature clock refused lease")
             wait(400)
             check(controller.activePopups.length===1 && controller.activePopup===popup,"curiosity created another popup")
@@ -68,22 +80,47 @@ FloatingWindow {
             // Send a real Qt hover to the mature control after its owning
             // window is exposed; await delivery rather than a fixed sleep.
             mouseMove(popup.hoverTarget,popup.hoverTarget.width/2,popup.hoverTarget.height/2)
+            root.testPhase="handoff"
             tryVerify(()=>popup.humanVisibleRequest && popup.companionLease===null,1500)
             check(popup.humanVisibleRequest && popup.companionLease===null,"hover did not hand off ownership")
             check(controller.activePopups.length===1 && controller._popupSlot(popup)===slot,"hover stacked a duplicate host")
             check(popup.contentItem===root.retained && popup.contentItem.parent===parent,"hover replaced mature content")
-            popup.releaseCompanion(root.borrower);wait(150)
+            check(popup.requestedVisible,"human hover was not semantically visible")
+            popup.releaseCompanion(root.borrower)
             check(popup.presentationActive && popup.requestedVisible,"Wull departure closed human popup")
-            mouseMove(scene,900,700);wait(500)
+            // Qt's synthetic hover does not move the compositor's physical
+            // cursor. Refresh the owned input before testing ongoing hover.
+            mouseMove(popup.hoverTarget,popup.hoverTarget.width/2+1,popup.hoverTarget.height/2)
+            tryVerify(()=>popup.humanVisibleRequest && popup.presentationActive,1500)
+            check(popup.humanVisibleRequest && popup.presentationActive,"human hover lost the mature popup")
+            mouseMove(scene,900,700)
+            root.testPhase="hover leave"
+            tryVerify(()=>controller.activePopups.length===0,2500)
             check(controller.activePopups.length===0,"hover leave did not retract mature popup")
             check(popup.acquireCompanion(root.borrower),"second lease failed")
-            wait(100);popup.releaseCompanion(root.borrower);wait(500)
+            root.testPhase="second release"
+            wait(100);popup.releaseCompanion(root.borrower)
+            tryVerify(()=>!popup.presentationActive && controller.activePopups.length===0,2500)
             check(!popup.presentationActive && controller.activePopups.length===0,"owned close retained popup")
-            console.log("WULL_POPUP=PASS oneMatureContent stableSlot realHover handoff ownedClose noNativeDuplicate")
+            GlobalStates.deferredPanelsReady=true
+            root.utilitiesVisit=true;root.utilitiesOpen=true
+            root.testPhase="utilities ready"
+            tryCompare(utilities,"ready",true,3500)
+            check(utilities.ready,"owned utilities did not construct")
+            wait(1000)
+            check(root.utilitiesOpen && utilities.open,"idle timer closed utilities during companion visit")
+            root.utilitiesVisit=false
+            root.testPhase="utilities release"
+            tryCompare(root,"utilitiesOpen",false,2500)
+            check(!root.utilitiesOpen,"released utilities retained idle popup")
+            console.log("WULL_POPUP=PASS oneMatureContent stableSlot realHover handoff ownedClose noNativeDuplicate utilitiesVisitHold releasedIdleClose")
             root.done=true
         }
     }
     Timer {interval:200;running:Config.ready;repeat:false;onTriggered:input.exercisePopup()}
     Timer {interval:100;running:root.done;onTriggered:Qt.quit()}
-    Timer {interval:12000;running:true;onTriggered:{console.error("WULL_POPUP=FAIL timeout");Qt.quit()}}
+    Timer {interval:16000;running:true;onTriggered:{console.error("WULL_POPUP=FAIL timeout "+JSON.stringify({phase:root.testPhase,
+        utilitiesOpen:root.utilitiesOpen,utilitiesReady:utilities.ready,utilitiesResident:utilities.open,
+        utilityKind:utilities.activeKind,popupHovered:module.companionPopup?.humanVisibleRequest,
+        popupRequested:module.companionPopup?.requestedVisible,popups:controller.activePopups.length}));Qt.quit()}}
 }

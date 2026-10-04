@@ -36,6 +36,20 @@ Item {
     property int annoyance: 0
     property double lastDisturbance: 0
     property double lastBalance: 0
+    property bool pointerFresh: false
+    property bool pointerReactionsEnabled: true
+    property real pointerX: 0
+    property real pointerY: 0
+    property double nextPointerNotice: 0
+    readonly property real pointerNoticeRadius: 420*(scene?.scale ?? 1)
+    readonly property real nearbyClickRadius: 460*(scene?.scale ?? 1)
+    readonly property bool pointerNearby: pointerFresh && pointerReactionsEnabled
+        && permitted && visitActive && motionEnabled && !interactionHeld
+        && !dragging && !retreating && !traveling && !directed
+        && actor && !actor.gesturing && actor.reactionExpression!=="angry"
+        && actor.presentation>.99 && requestedReveal>.99
+        && Math.hypot(pointerX-actor.x+(actor.scale-1)*actor.width/2-(scene?.hostWidth ?? 0)/2,
+            pointerY-actor.y+(actor.scale-1)*actor.height/2-(scene?.hostHeight ?? 0)/2)<=pointerNoticeRadius
     property real dragVelocityX: 0
     property real dragVelocityY: 0
     property double dragSampleTime: 0
@@ -355,7 +369,7 @@ Item {
     function nearbyClick(x,y): void {
         if (!permitted || !visitActive || dragging || !motionEnabled || actor.presentation<.2) return
         const here=position()
-        if (Math.hypot(x-here.x-scene.hostWidth/2,y-here.y-scene.hostHeight/2)>190*scene.scale) return
+        if (Math.hypot(x-here.x-scene.hostWidth/2,y-here.y-scene.hostHeight/2)>nearbyClickRadius) return
         const now=Date.now();annoyance=now-lastDisturbance<4500 ? annoyance+1 : 1;lastDisturbance=now
         avoidX=x;avoidY=y;pause(true)
         if (annoyance>=5) {
@@ -364,6 +378,26 @@ Item {
         } else if (random()<.5) {
             setReaction("surprised",2400);pendingReaction="evade";actor.perform("startle")
         } else {setReaction("happy",2500);pendingReaction="";actor.perform("delight")}
+    }
+    function offerPointerNotice(): void {
+        pointerNotice.stop()
+        if (!pointerNearby || Date.now()<nextPointerNotice) return
+        pointerNotice.interval=650+Math.floor(random()*500)
+        pointerNotice.start()
+    }
+    function noticePointer(): void {
+        if (!pointerNearby || Date.now()<nextPointerNotice) return
+        const now=Date.now(), chance=personality==="energetic" ? .6 : personality==="calm" ? .25 : .4
+        nextPointerNotice=now+12000+Math.floor(random()*13000)
+        // Passive presence is not a disturbance. Only explicit clicks and
+        // shaking accumulate annoyance; movement/working keep their attention.
+        if (random()>chance) return
+        const response=random()
+        if (response<.22) {
+            avoidX=pointerX;avoidY=pointerY;pendingReaction="evade"
+            setReaction("surprised",2400);actor.perform("startle")
+        } else if (response<.65) {setReaction("happy",2400);actor.perform("wave")}
+        else {setReaction("thinking",2200);actor.perform("inspect")}
     }
     function balance(): void {
         if (!motionEnabled || dragging || !visitActive || Date.now()-lastBalance<5500 || !grounded) return
@@ -385,6 +419,7 @@ Item {
         }
     }
     onPermittedChanged: Qt.callLater(root.synchronize)
+    onPointerNearbyChanged: root.offerPointerNotice()
     onRequestedRevealChanged: Qt.callLater(root.synchronize)
     onSceneChanged: Qt.callLater(root.reconcileScene)
     onSurfaceKeyChanged: root.scheduleSurface()
@@ -406,6 +441,12 @@ Item {
         function onGestureCompleted(action): void {root.gestureFinished(action)}
     }
     Timer {id:reactionDeadline;interval:3000;onTriggered:if(root.actor) root.actor.reactionExpression=""}
+    Timer {
+        id: pointerNotice
+        objectName: "wullPointerNoticeDeadline"
+        repeat: false
+        onTriggered: root.noticePointer()
+    }
     Timer {id:recoveryDeadline;interval:20000;onTriggered:{
         root.hiddenUntil=0
         if(root.permitted && root.requestedReveal>0) root.appear()

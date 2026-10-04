@@ -9,6 +9,7 @@ Window {
     visible:true;width:1200;height:820;color:"#051521"
     property bool animate:false
     property bool allowed:true
+    property bool watchPointer:false
     property var popup:null
     readonly property var scene:Scene.fromParticipants({width:width,height:height,hostWidth:112,hostHeight:98,scale:1,
         insets:{top:20,right:20,bottom:20,left:20}},popup ? {popup:{surfaceSettled:false,geometry:{edge:"top",surface:popup}}} : {},[])
@@ -18,8 +19,16 @@ Window {
         return null
     }
     function place(point):void {animate=false;presence.hiddenUntil=0;presence.appear(point);input.wait(30);animate=true;input.wait(30)}
+    HoverHandler {
+        parent:root.contentItem;target:null;blocking:false
+        onPointChanged: if (hovered) {
+            presence.pointerX=point.scenePosition.x;presence.pointerY=point.scenePosition.y;presence.pointerFresh=true
+        }
+        onHoveredChanged:if(!hovered)presence.pointerFresh=false
+    }
     WullPresence {
         id:presence;scene:root.scene;actor:actor;permitted:root.allowed;requestedReveal:1;motionEnabled:root.animate
+        pointerReactionsEnabled:root.watchPointer
         onStopRequested:actor.stopTravel()
         onResetRequested:(x,y,edge)=>actor.resetTo(x,y,edge)
     }
@@ -73,6 +82,36 @@ Window {
                 tryCompare(presence,"traveling",false,presence.duration+500)
                 check(presence.grounded && presence.placement.support.key==="bottom","balance fall did not reach lower edge")
                 root.popup=null;root.place(Scene.edgePoint(root.scene,"bottom",.5))
+                const notice=root.named(presence,"wullPointerNoticeDeadline"),noticePoint=presence.position()
+                presence.pointerFresh=false;presence.annoyance=0;presence.nextPointerNotice=0;presence.randomState=15
+                root.watchPointer=true
+                mouseMove(root.contentItem,noticePoint.x+scene.hostWidth/2+350,noticePoint.y+scene.hostHeight/2)
+                wait(30)
+                check(presence.pointerNearby && notice.running,"350px passive pointer did not arm notice")
+                tryCompare(actor,"gesture","wave",1500)
+                check(actor.reactionExpression==="happy" && presence.annoyance===0,"passive pointer needed a click or accumulated annoyance")
+                const cooldown=presence.nextPointerNotice
+                actor.stopGesture();presence.offerPointerNotice();wait(40)
+                check(!notice.running && presence.nextPointerNotice===cooldown,"passive notice repeated during cooldown")
+                presence.pointerFresh=false;presence.nextPointerNotice=0;presence.randomState=15;wait(20)
+                presence.pointerFresh=true;wait(20);check(notice.running,"second pointer approach did not arm")
+                mouseMove(root.contentItem,20,200);wait(30)
+                check(!presence.pointerNearby && !notice.running,"leaving proximity retained notice deadline")
+                presence.pointerFresh=false;presence.interactionHeld=true
+                mouseMove(root.contentItem,noticePoint.x+scene.hostWidth/2+350,noticePoint.y+scene.hostHeight/2);wait(30)
+                check(!notice.running,"chat/working hold armed a reaction")
+                presence.interactionHeld=false;wait(20);check(notice.running,"idle pointer was not reconsidered "+JSON.stringify({
+                    nearby:presence.pointerNearby,fresh:presence.pointerFresh,held:presence.interactionHeld,directed:presence.directed,
+                    gesture:actor.gesture,presentation:actor.presentation,traveling:presence.traveling,next:presence.nextPointerNotice,
+                    pointer:[presence.pointerX,presence.pointerY],position:presence.position()}))
+                root.watchPointer=false;wait(20);check(!notice.running,"disabled pointer reactions retained a deadline")
+                actor.stopGesture();presence.annoyance=0
+                presence.nearbyClick(noticePoint.x+scene.hostWidth/2+461,noticePoint.y+scene.hostHeight/2)
+                check(presence.annoyance===0,"distant click disturbed Wull")
+                presence.randomState=0
+                presence.nearbyClick(noticePoint.x+scene.hostWidth/2+350,noticePoint.y+scene.hostHeight/2)
+                check(presence.annoyance===1 && actor.gesture==="startle","350px nearby click was ignored")
+                actor.stopGesture();presence.pendingReaction="";presence.annoyance=0
                 const point=presence.position();presence.randomState=0;presence.nearbyClick(point.x+120,point.y+45)
                 check(actor.gesture==="startle" && actor.reactionExpression==="surprised","near click did not startle")
                 wait(1000);check(presence.traveling && presence.mode==="run","startled Wull did not evade")
@@ -106,8 +145,8 @@ Window {
                     check(Curves.clips[clip].tracks.eyeOpen.some(k=>k[1]===0),"transition lacks closed-eye pose "+clip)
                 }
                 root.allowed=false;wait(40)
-                check(!actor.visible && !gait.active && !root.named(presence,"wullPeekDeadline").running,"policy hide retained clocks")
-                console.log("WULL_ALIVE=PASS fourRimOrientation rotatedFaceGaze slowerWalk formerWalkRun popupCarry balanceFall startleEvade annoyance shakeBreak peekOnly icyRetry BlenderTransitions")
+                check(!actor.visible && !gait.active && !root.named(presence,"wullPeekDeadline").running && !notice.running,"policy hide retained clocks")
+                console.log("WULL_ALIVE=PASS fourRimOrientation rotatedFaceGaze slowerWalk formerWalkRun popupCarry balanceFall widerClick passiveNotice noticeCooldown leaveCancel chatHold startleEvade annoyance shakeBreak peekOnly icyRetry BlenderTransitions")
             } catch(e) {console.error("WULL_ALIVE=FAIL "+e)}
             shutdown.start()
         }

@@ -29,6 +29,7 @@ Item {
     property string requestedFallbackEdge: "top"
     property real requestedAlongCenter: 0
     property string hoverKind: ""
+    property bool companionVisitActive: false
 
     property string activeKind: ""
     property var activePosition: ({})
@@ -192,10 +193,10 @@ Item {
         obstacles: root.obstacles
         contentKind: root.activeKind
         property bool triggerHovered:
-            root.activeKind === "dockAppMenu"
+            (root.companionVisitActive && root.activeKind === "utilities") || (root.activeKind === "dockAppMenu"
                 ? GlobalStates.abyssDockMenuTriggerHovered
                 : ["wifi","bluetooth","utilities"].includes(root.activeKind)
-                    && root.hoverKind === root.activeKind
+                    && root.hoverKind === root.activeKind)
         source: "content/AbyssPopupContent.qml"
 
         open: root.resident

@@ -26,6 +26,7 @@ function reset(){
     for (const key of ['sidebarLeftOpen','sidebarRightOpen','settingsOverlayOpen','overviewOpen','clipboardOpen',
         'dashboardOpen','controlPanelOpen','notificationCenterOpen','widgetEditMode','mediaControlsOpen'])state[key]=false;
     state.abyssPopupKind='';state.abyssPopupTargetOutput='';calls.length=0;
+    state.sidebarLeftTransient=false;state.sidebarRightTransient=false;
 }
 function mature(){return {companionLease:null,acquireCompanion(owner){
     assert.equal(this.companionLease,null);this.companionLease=owner;calls.push('borrow');return true;
@@ -64,6 +65,18 @@ reset();const feature={kind:'clock',popup:mature()};assert.ok(window.openCompani
 feature.popup.companionLease=null;const count=calls.length;window.closeCompanionFeature(feature);
 assert.equal(calls.length,count,'departure closed a popup already handed to the user');
 assert.equal(window.openCompanionFeature({kind:'clock'}),false,'missing mature popup used a duplicate fallback');
+for (const kind of ['leftPanel','rightPanel']) {
+    reset();const sidebar={kind};assert.ok(window.openCompanionFeature(sidebar));
+    const open=kind==='leftPanel'?'sidebarLeftOpen':'sidebarRightOpen';
+    const transient=kind==='leftPanel'?'sidebarLeftTransient':'sidebarRightTransient';
+    window.releaseCompanionFeature(sidebar);
+    assert.equal(state[open],true,'handoff immediately closed the hovered sidebar');
+    assert.equal(state[transient],true,'handoff left a sticky companion sidebar');cases++;
+    state[transient]=false;
+    state[kind==='leftPanel'?'sidebarLeftTargetOutput':'sidebarRightTargetOutput']='DP-2';
+    window.releaseCompanionFeature(sidebar);
+    assert.equal(state[transient],false,'stale handoff mutated another output');cases++;
+}
 // Autonomous exploration cannot take keyboard input away from the current
 // application. Pointer hand-off restores the host's existing focus policy.
 const expression=source.match(/WlrLayershell\.keyboardFocus: ([\s\S]*?)\n\s*anchors \{/)[1].trim();

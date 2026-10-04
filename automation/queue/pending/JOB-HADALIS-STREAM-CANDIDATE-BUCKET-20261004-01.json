@@ -1,0 +1,18 @@
+{
+  "id": "JOB-HADALIS-STREAM-CANDIDATE-BUCKET-20261004-01",
+  "base_sha": "d34d17c582e6d366ded76ff975b02293e2cf7d8e",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "--input-type=module",
+          "-e",
+          "import {inspectInstalledContract} from \"./automation/chat_bridge/native_adapter.mjs\";\nconst x=inspectInstalledContract(); if(!x.contract) process.exit(21);\nconst url=process.env.HADALIS_CHATGPT_CDP_URL ?? \"http://127.0.0.1:9222\";\nconst {chromium}=await import(process.env.HADALIS_PLAYWRIGHT_MODULE ?? \"file:///usr/lib/chatgpt/resources/cua_node/lib/node_modules/playwright-core/index.mjs\");\nconst b=await chromium.connectOverCDP(url,{timeout:10000});\ntry {\n const p=b.contexts().flatMap(c=>c.pages()).find(p=>p.url()===\"app://-/index.html\"); if(!p) process.exit(22);\n const n=await p.evaluate(async c=>{const m=await import(\"./assets/\"+c.initial);return Object.values(m).filter(v=>typeof v?.resolve===\"function\"&&v?.scope?.id!=null).length;},x.contract);\n if(n===0) process.exit(30); if(n<=64) process.exit(31); if(n<=128) process.exit(32); if(n<=256) process.exit(33); if(n<=512) process.exit(34); if(n<=1024) process.exit(35); process.exit(36);\n} finally { await Promise.race([b.close().catch(()=>{}),new Promise(r=>setTimeout(r,1500))]); }"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 60
+      }
+    }
+  ]
+}

@@ -68,7 +68,7 @@ def audit(target):
     for path in (SELF, CONTRACT):
         changes = git("log", "--format=%H", BASE + ".." + target,
                       "--", path).splitlines()
-        expected = 2 if path == SELF else 0
+        expected = 3 if path == SELF else 0
         if len(changes) != expected:
             raise RuntimeError("Nested observer changed outside reviewed revisions")
         if expected and (
@@ -161,8 +161,10 @@ def run_nested(niri, folder, host_display, host_ipc, host_outputs):
     }
     folder.mkdir(mode=0o700)
     config = folder / "nested.kdl"
-    config.write_text('layout {\n    background-color "#000000"\n}\n',
-                      encoding="utf-8")
+    config.write_text(
+        'layout {\n    background-color "#000000"\n}\n'
+        'overview {\n    backdrop-color "#000000"\n}\n',
+        encoding="utf-8")
     nested_log = folder / "nested-niri.private.log"
     child_log = folder / "production-child.private.log"
     env = dict(os.environ)

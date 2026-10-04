@@ -28,7 +28,7 @@ Rectangle {
         toolbarTitle.implicitWidth,
         root.toolbarRowNaturalWidth)
         + root.horizontalPadding * 2)
-    implicitHeight: toolbarColumn.implicitHeight + 14
+    implicitHeight: toolbarColumn.implicitHeight + root.horizontalPadding * 2
     visible: root.editing
     radius: Appearance.rounding.large
     topLeftRadius: radius

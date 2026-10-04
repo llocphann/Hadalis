@@ -68,7 +68,7 @@ ShellRoot {
                 root.toolbar=root.find(body.contentItem.item,item=>item.canvasController===root.canvas && item.editing!==undefined)
                 if(!root.check(root.toolbar!==null && root.toolbar.visible && root.toolbar.width>200 && root.toolbar.height>20,"editing toolbar has usable dimensions")) return
                 const p=root.toolbar.mapToItem(body.contentItem,0,0)
-                if(!root.check(p.x>=0 && p.y>=0 && p.x+root.toolbar.width<=body.contentItem.width+.5 && p.y+root.toolbar.height<=body.contentItem.height+.5,"toolbar stays inside field content/input clip")) return
+                if(!root.check(p.x>=0 && p.y>=0 && p.x+root.toolbar.width<=body.contentItem.width+.5 && p.y+root.toolbar.height<=body.contentItem.height+.5,"toolbar stays inside field content/input clip: "+JSON.stringify([p.x,p.y,root.toolbar.width,root.toolbar.height,body.contentItem.width,body.contentItem.height]))) return
                 root.before=root.canvas._rectPixels("notes")
                 const end={x:root.before.x+root.before.width,y:root.before.y+root.before.height}
                 root.canvas.beginResize("notes","se",end)
@@ -89,7 +89,9 @@ ShellRoot {
             else if(root.step===11) {
                 if(!root.check(root.canvas.visibleIds.includes("notes") && root.canvas.geometryFor("notes").visible,"hidden module restores through same controller")) return
                 const packed=root.canvas.defaultEntries().map(p=>Object.assign({},p,{visible:p.id==="notes",x:0,y:0,w:1,h:1}))
+                root.canvas.commitEditMode()
                 Config.setNestedValue("dashboard.canvas.widgets",packed)
+                root.canvas.beginEditMode()
             }
             else if(root.step===13) {
                 const before=JSON.stringify(Config.options.dashboard.canvas.widgets)

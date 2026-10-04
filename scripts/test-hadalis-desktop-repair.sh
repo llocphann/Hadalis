@@ -106,8 +106,9 @@ if not run("NATIVE_PROBE", {"op":"probe"}):
         "contract_api_runtime_link",
         "renderer_found", "modules_loaded", "static_api_valid",
         "safe_get_exports", "stream_post_exports", "combined_api_exports",
-        "stream_definition_exports", "stream_transport_matches",
-        "stream_definition_valid", "react_root_found", "scope_found",
+        "stream_definition_exports", "stream_active_definitions",
+        "stream_transport_matches", "stream_definition_valid",
+        "react_root_found", "scope_found",
         "transport_valid",
     }
     try:

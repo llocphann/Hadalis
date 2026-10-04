@@ -194,13 +194,13 @@ def main() -> None:
     for token in (
         "required property var canvasController",
         "visible: root.editing",
-        "bottomLeftRadius: 0",
-        "bottomRightRadius: 0",
+        "bottomLeftRadius: root.abyssMode ? radius : 0",
+        "bottomRightRadius: root.abyssMode ? radius : 0",
         'Translation.tr("Edit widgets")',
         "id: editActions",
         "horizontalAlignment: Text.AlignHCenter",
         "focusPolicy: Qt.StrongFocus",
-        '"dashboard.canvas.autoAdjustSize"',
+        "root.canvasController.toggleAutoAdjustSize()",
         "border.width: tool.visualFocus ? 2 : (tool.toggled ? 1 : 0)",
         "id: toolbarRow",
         "id: editActions",
@@ -215,7 +215,7 @@ def main() -> None:
         "implicitWidth: Math.ceil(Math.max(",
         "toolbarTitle.implicitWidth",
         "root.toolbarRowNaturalWidth",
-        "readonly property real horizontalPadding: 7",
+        "readonly property real horizontalPadding: root.abyssMode",
     ):
         require(toolbar, token, "DashboardEditToolbar.qml")
     forbid(toolbar, "Flow {", "DashboardEditToolbar.qml")

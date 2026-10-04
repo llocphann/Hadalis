@@ -10,7 +10,7 @@ for needle in [
     'const preview = raw.replace(/^\\s*\\d+(?:\\t|\\s+)/, "").trim()',
     'binary data\\b',
     'png|jpe?g|webp|gif|bmp|tiff?|avif|heic|heif',
-    '\\d{1,6}x\\d{1,6}',
+    '\\d{1,6}\\s*[x×]\\s*\\d{1,6}',
 ]:
     assert needle in service, needle
 

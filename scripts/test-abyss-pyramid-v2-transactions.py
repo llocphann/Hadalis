@@ -72,7 +72,7 @@ def main() -> None:
     # Source-level guards for the runtime ordering rules.
     assert "includeClosings = true" in coord
     assert "root._pyramidGroupCandidates(" in coord
-    assert "identity,request,false" in coord
+    assert "identity,request,true" in coord  # visual-only closing peers remain available as entry origins
     assert "function _pyramidDescriptorsRelated(a,b): bool" in coord
     assert "tangentStart" in coord and "tangentEnd" in coord
     assert "root._lowerPeer(identity,request,placement)" in coord

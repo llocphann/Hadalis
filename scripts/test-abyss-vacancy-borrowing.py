@@ -45,9 +45,9 @@ function run(ms){const ps=Object.fromEntries(ms.map(x=>[x.request.id,x.placement
 function borrowers(o){return Object.entries(o).filter(([_,p])=>p.vacancyBorrowed).map(([id])=>id).sort();}
 function collide(a,b,g=G){return a.x<b.x+b.width+g&&a.x+a.width+g>b.x&&a.y<b.y+b.height+g&&a.y+a.height+g>b.y;}
 
-const feature=m("leftPanel","featureSidebar","left",31,{visible:true,along:70,inward:20,span:780,depth:394,content:{x:50,y:84,width:360,height:752}});
+const feature=m("leftPanel","featureSidebar","left",31,{visible:true,along:70,inward:20,span:780,depth:394,content:{x:50,y:84,width:366,height:752}});
 const notes=m("styledPopup0","quickNotes","bottom",32,{visible:true,along:456,inward:0,span:368,depth:344,content:{x:470,y:642,width:340,height:316}});
-const system=m("rightPanel","systemSidebar","right",33,{visible:true,along:70,inward:20,span:780,depth:394,content:{x:1340,y:84,width:360,height:752}});
+const system=m("rightPanel","systemSidebar","right",33,{visible:true,along:70,inward:20,span:780,depth:394,content:{x:1340,y:84,width:366,height:752}});
 const center=m("styledPopup1","notificationCenter","top",34,{visible:true,along:916,inward:0,span:368,depth:344,content:{x:930,y:64,width:340,height:316}});
 
 // Exact live failure: four surfaces on two sides keep both independent automatic owners.
@@ -124,7 +124,7 @@ assert.equal(r.out.centerByLeftControls?.content.height,
     centerByLeftControls.placement.content.height);
 
 // No vacancy is strict identity no-op.
-const blocked=m("styledPopup0","quickNotes","left",99,{visible:true,along:70,inward:20,span:780,depth:394,content:{x:50,y:84,width:360,height:752}});
+const blocked=m("styledPopup0","quickNotes","left",99,{visible:true,along:70,inward:20,span:780,depth:394,content:{x:50,y:84,width:366,height:752}});
 r=run([feature,blocked]);assert.strictEqual(r.out,r.base);
 
 // Resolved content is the rendered geometry truth.

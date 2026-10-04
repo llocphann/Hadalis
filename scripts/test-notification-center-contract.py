@@ -109,13 +109,12 @@ for token in (
 ):
     require(content, token, "shared history content contract missing")
 
-# A single ScreenCorners owner arbitrates bottom-right input. Orbit wins, then
-# the Notification Center, then the legacy sidebar trigger.
+# A single ScreenCorners owner arbitrates bottom-right input. Native Niri
+# Overview wins, followed by Notification Center and the sidebar trigger.
 for token in (
     "readonly property bool shouldShowNotificationCenterCorner:",
     "cornerPanelWindow.isBottomRight",
-    "!cornerPanelWindow.shouldShowOrbitHotCorner",
-    "!cornerPanelWindow.orbitConflictsWithNiriOverview",
+    "!cornerPanelWindow.niriOverviewOwnsCorner",
     "id: notificationCenterCornerLoader",
     "id: notificationCenterDwellTimer",
     "Config.options?.notificationCenter?.hoverDelayMs ?? 220",

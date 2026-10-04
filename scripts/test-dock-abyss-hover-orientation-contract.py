@@ -39,7 +39,7 @@ for token in (
     assert token not in apps
 assert "pointerDragAxis" not in ripple
 assert "drag.axis: Drag.XAndYAxis" in ripple
-assert "Drag to reorder" not in settings
+# Settings owns drag ordering; the runtime Dock must not own a second drag path.
 assert "enableDragReorder" not in apps
 assert "enableDragReorder" not in settings
 assert "function commitPinnedDrop(): void" in settings

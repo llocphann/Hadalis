@@ -23,7 +23,7 @@ grep -Fq 'signal connectivityHoverChanged(string kind, bool hovered)' "$repo_roo
     || { printf 'FAIL: connectivity trigger hover state is not exported\n' >&2; exit 1; }
 grep -Fq 'triggerHovered: root.participant?.triggerHovered ?? false' "$repo_root/modules/abyss/content/AbyssPopupContent.qml" \
     || { printf 'FAIL: popup host hover state is not bound into network content\n' >&2; exit 1; }
-grep -Fq '["wifi","bluetooth","utilities"].includes(root.kind)' "$repo_root/modules/abyss/content/AbyssPopupContent.qml" \
+grep -Fq '["wifi","bluetooth","utilities","launcher","dockAppMenu"].includes(root.kind)' "$repo_root/modules/abyss/content/AbyssPopupContent.qml" \
     || { printf 'FAIL: network popup no longer shares the generic hover/focus dismissal lease\n' >&2; exit 1; }
 grep -Fq 'showEmbeddedFooter: false' "$repo_root/modules/abyss/content/AbyssNetworkPopup.qml" \
     || { printf 'FAIL: System Tray network popup still exposes mature footer actions\n' >&2; exit 1; }
@@ -31,7 +31,7 @@ grep -Fq 'glyph: "settings"' "$repo_root/modules/abyss/content/AbyssNetworkPopup
     || { printf 'FAIL: network Details action was not promoted to a compact header icon\n' >&2; exit 1; }
 grep -Fq 'visible:Presentation.canJoin(root.kind)' "$repo_root/modules/abyss/settings/AbyssPositionSettings.qml" \
     || { printf 'FAIL: Wi-Fi/Bluetooth Join Edge option is not exposed in Edit Abyss Layout\n' >&2; exit 1; }
-grep -Fq 'joinedEdge: window.presentation(contentKind).joinCorner===true' "$repo_root/modules/abyss/AbyssPerimeter.qml" \
+grep -Fq 'joinedEdge: Presentation.joinedEdge(root.activeKind,' "$repo_root/modules/abyss/AbyssGenericPopupPresenter.qml" \
     || { printf 'FAIL: connected Wi-Fi/Bluetooth host does not consume Join Edge position state\n' >&2; exit 1; }
 
 migration_tmp="$(mktemp -d)"

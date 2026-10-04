@@ -33,7 +33,7 @@ for token in \
         || { printf 'FAIL: Abyss Utilities hover routing missing: %s\n' "$token" >&2; exit 1; }
 done
 for token in \
-    '["wifi","bluetooth","utilities"].includes(root.kind)' \
+    '["wifi","bluetooth","utilities","launcher","dockAppMenu"].includes(root.kind)' \
     'property bool autoDismissOnIdle: true' \
     'id: idleDismiss'; do
     grep -Fq "$token" "$popup_content" \
@@ -73,7 +73,7 @@ grep -Fq '"utilities"' "$layout" && {
     printf 'FAIL: Utilities remains a standalone Abyss Edge module\n' >&2
     exit 1
 }
-grep -Fq 'showUtilitiesLauncher: true' "$module" \
+grep -Fq 'Config.options?.bar?.utilButtons?.showUtilitiesLauncher ?? true' "$module" \
     || { printf 'FAIL: Abyss Quick Actions does not enable the Utilities launcher\n' >&2; exit 1; }
 grep -Fq 'signal utilitiesRequested()' "$quick_actions" \
     || { printf 'FAIL: shared Quick Actions lacks the opt-in Utilities launcher contract\n' >&2; exit 1; }

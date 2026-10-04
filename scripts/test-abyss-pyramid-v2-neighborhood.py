@@ -78,6 +78,7 @@ assert not related(a,side)
 c=D("top",620,850)
 assert related(b,c)
 assert not related(a,c)
-assert component(a,[b,c,far]) == [b,c]
+assert component(a,[b,c,far]) == [b,c,far]  # far is linked indirectly through b
+assert component(a,[b,c,D("top",900,1100)]) == [b,c]
 
 print("Pyramid Popup v2 tangent-neighborhood contract: ok")

@@ -14,7 +14,8 @@ assert "openAbyssContextMenu" in apps
 assert "root.appListRoot?.openAbyssContextMenu(snapshot, root)" in btn
 assert 'GlobalStates.abyssPopupKind = "dockAppMenu"' in dock
 assert 'root.kind === "dockAppMenu" ? dockAppMenu' in popup
-assert 'contentKind === "dockAppMenu"' in per
+presenter=(r/"modules/abyss/AbyssGenericPopupPresenter.qml").read_text()
+assert 'root.activeKind === "dockAppMenu"' in presenter
 assert "property var abyssDockMenuModel: []" in gs
 assert "GlobalStates.abyssDockMenuModel" in menu
 # Dock application menus follow their longest visible action instead of

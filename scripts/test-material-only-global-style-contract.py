@@ -1117,10 +1117,10 @@ def main() -> None:
         forbid(context_menu, token, "ContextMenu.qml")
     for token in (
         "property real sourceEdgeMargin: -implicitHeight",
-        'fallbackColor: Config.options?.panelFamily === "abyss" ? Qt.alpha(Appearance.colors.colLayer2Base,.92) : Appearance.colors.colSurfaceContainer',
-        "radius: Appearance.rounding.normal",
-        'border.width: Config.options?.panelFamily === "abyss" ? 0 : 1',
-        "border.color: Appearance.colors.colSurfaceContainerHighest",
+        'fallbackColor: root.panelFallbackColor',
+        "radius: root.panelRadius",
+        "border.width: root.panelBorderWidth",
+        "border.color: root.panelBorderColor",
         "buttonRadius: Appearance.rounding.small",
         "color: Appearance.colors.colOnSurface",
         "Appearance.motion.popupReveal.enterBezierCurve",

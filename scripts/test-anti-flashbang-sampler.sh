@@ -31,6 +31,15 @@ ShellRoot {
         console.error("ANTI_CAPTURE_FAIL",message,"stage",stage,"samples",sampler.successes,"errors",sampler.failures,"lightness",sampler.lastLightness)
         finished=true;return false
     }
+    function captureFixture(nextStage): void {
+        // A floating test window need not cover the live output: other desktop
+        // work can occlude it. Capture its real Qt pixels for the white/dark
+        // sensitivity oracle, while retaining the production grim probe first.
+        surface.grabToImage(result => {
+            if(!root.check(result.saveToFile(Quickshell.shellPath("fixture.png")),"controlled framebuffer capture saved")) return
+            root.stage=nextStage;sampler.active=true
+        })
+    }
     FloatingWindow {
         id: win;visible: true;implicitWidth: 1000;implicitHeight: 700
         Rectangle { id: surface;anchors.fill: parent;color: "white" }
@@ -48,8 +57,15 @@ ShellRoot {
                 sampler.timeoutMs=1200;sampler.active=true;root.stage=1
             } else if(root.stage===1 && sampler.successes>=2) {
                 if(!root.check(Number.isFinite(sampler.lastLightness)&&sampler.lastLightness>0,"real reduced-resolution captures are finite")) return
+                sampler.active=false;root.oldSuccesses=sampler.successes;root.stage=10
+                sampler.captureCommand=["/bin/bash","-o","pipefail","-c",
+                    "magick \"$1\" -resize 10% -colorspace Gray -format '%[fx:mean*100]' info:",
+                    "_",Quickshell.shellPath("fixture.png")]
+                root.captureFixture(11)
+            } else if(root.stage===11 && sampler.successes>=root.oldSuccesses+2) {
+                if(!root.check(sampler.lastLightness>98,"controlled white frame is measured")) return
                 root.bright=sampler.lastLightness;root.oldSuccesses=sampler.successes
-                surface.color="#080808";root.stage=2
+                sampler.active=false;root.stage=10;surface.color="#080808";root.captureFixture(2)
             } else if(root.stage===2 && sampler.successes>=root.oldSuccesses+2) {
                 if(!root.check(sampler.lastLightness<root.bright-1,"periodic sampling follows in-app content without a focus event")) return
                 sampler.active=false;root.oldSuccesses=sampler.successes;root.ticks=0;root.stage=3
@@ -98,4 +114,4 @@ if [[ "$status" != 124 ]] || ! rg -q ANTI_CAPTURE_PASS "$sampler_test_root/runti
         || rg -q 'ANTI_CAPTURE_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign|is not a type' "$sampler_test_root/runtime.log"; then
     cat "$sampler_test_root/runtime.log";exit 1
 fi
-printf 'PASS: real periodic small captures, content sensitivity, invalid output, coalescing/cancellation and watchdog\n'
+printf 'PASS: production screencopy probe, controlled white/dark Qt pixel captures, periodic sensitivity, cancellation and watchdog\n'

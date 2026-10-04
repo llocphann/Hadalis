@@ -45,7 +45,7 @@ ShellRoot {
             } else if(root.step>=3 && root.step<=7) {
                 body.progress=[.1,.4,1,.7,.15][root.step-3]
                 if(!root.check(body.contentItem.item===root.original && body.contentItem.height===body.targetRecord.content.height && body.contentItem.width===body.targetRecord.content.width,"opening/closing/reversal keeps content size and identity")) return
-                if(!root.check(body.inputBounds.height===body.record.content.height && body.contentParent.clip,"input and paint remain inside the animated reveal")) return
+                if(!root.check(body.inputBounds.height===body.record.content.height && body.contentParent.parent.clip,"input and paint remain inside the animated reveal")) return
             } else if(root.step===8) {
                 body.edge="right";body.progress=.2
                 if(!root.check(body.contentItem.width===body.targetRecord.content.width && body.contentItem.item===root.original,"vertical Dock keeps stable dimensions too")) return

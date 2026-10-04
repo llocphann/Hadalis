@@ -2,13 +2,13 @@
 from pathlib import Path
 t=(Path(__file__).resolve().parents[1]/"modules/dashboard/DashboardCanvas.qml").read_text()
 for needle in [
-    "preferredWidth:320, maxWidth:370",
-    "preferredWidth:420, maxWidth:510",
-    "preferredWidth:520, maxWidth:640",
-    "preferredHeights:{media:455,weather:245}",
-    'growPriority:["calendar","todo","notifications","agenda"]',
+    "preferredWidth:360, maxWidth:420",
+    "preferredWidth:430, maxWidth:500",
+    "preferredWidth:400, maxWidth:460",
+    "preferredHeights:{media:330,weather:250}",
+    'growPriority:["notifications","todo","agenda","calendar"]',
     "Preserve breathing room on tall dashboards",
-    "const growOrder=[2,1,0]",
+    "const growOrder=[1,0,2]",
 ]:
     assert needle in t, needle
 assert "extraHeight * (weights[index] / weightTotal)" not in t

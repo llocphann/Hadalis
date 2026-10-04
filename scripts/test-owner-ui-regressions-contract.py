@@ -9,7 +9,7 @@ for n in ["function actionLabel(id): string","function actionIcon(id): string",
           "root.actionIcon(slot.actionId)","root.actionLabel(slot.actionId)",
           "Appearance.colors.colOnLayer1"]:
     assert n in q,n
-assert "useParentHover: false" in l and "externalHoverState: statusHover.hovered" in l
+assert "id: statusHover" in l and "root.abyssControlsHoverChanged(hovered)" in l
 assert 'const committed = Config.options?.dashboard?.canvas?.widgets ?? []' in d
 assert "committed.length > 0 ? committed : root.defaultEntries()" in d
 print("quick action identity + launcher popup + dashboard baseline contract: ok")

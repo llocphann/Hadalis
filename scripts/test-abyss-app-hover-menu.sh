@@ -19,6 +19,16 @@ ShellRoot {
     function check(ok,message): bool { if(ok)return true;console.error("APP_HOVER_FAIL",message);finished=true;return false }
     QtObject {
         id:owner
+        signal closeAllContextMenus(var exceptOwner)
+        function setAbyssContextMenuHover(button, hovered) {}
+        property bool contextMenuOpen:false
+        property bool dragActive:false
+        property bool buttonHovered:false
+        property var lastHoveredButton:null
+        property var toplevelsByUniqueId:({})
+    }
+    QtObject {
+        id:barOwner
         signal closeAllContextMenus()
         property bool contextMenuOpen:false
         property bool dragActive:false
@@ -29,7 +39,7 @@ ShellRoot {
     FloatingWindow {
         visible:true;implicitWidth:800;implicitHeight:600
         DockAppButton { id:dock;x:220;y:400;width:50;height:50;appListRoot:owner;appToplevel:({appId:"org.quickshell",originalAppId:"org.quickshell",uniqueId:"qa",toplevels:[]}) }
-        BarTaskbarButton { id:bar;x:340;y:80;width:50;height:40;taskbarRoot:owner;appEntry:({appId:"org.quickshell",originalAppId:"org.quickshell",toplevels:[]}) }
+        BarTaskbarButton { id:bar;x:340;y:80;width:50;height:40;taskbarRoot:barOwner;appEntry:({appId:"org.quickshell",originalAppId:"org.quickshell",toplevels:[]}) }
     }
     Timer {
         interval:180;running:!root.finished;repeat:true
@@ -47,13 +57,13 @@ ShellRoot {
                 if(!root.check(!owner.contextMenuOpen && GlobalStates.activeContextMenuCount===0,"Dock menu closes after its hover handoff grace")) return
                 bar.buttonHovered=true
             } else if(root.step===11) {
-                if(!root.check(owner.contextMenuOpen && GlobalStates.activeContextMenu?.model?.length>0,"hover opens mature taskbar actions")) return
+                if(!root.check(barOwner.contextMenuOpen && GlobalStates.activeContextMenu?.model?.length>0,"hover opens mature taskbar actions")) return
                 bar.buttonHovered=false
-                owner.closeAllContextMenus()
+                barOwner.closeAllContextMenus()
                 Config.setNestedValue("panelFamily","waffle")
                 dock.buttonHovered=true
             } else if(root.step===14) {
-                if(!root.check(!owner.contextMenuOpen && GlobalStates.activeContextMenuCount===0,"Waffle keeps its prior hover contract")) return
+                if(!root.check(owner.contextMenuOpen && !barOwner.contextMenuOpen && GlobalStates.activeContextMenu?.model?.length>0,"configured Dock keeps its one app-actions hover contract with Waffle family")) return
                 console.info("APP_HOVER_PASS");root.finished=true
             }
             root.step++
@@ -64,4 +74,4 @@ QML
 status=0
 env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST QT_QPA_PLATFORM=wayland XDG_CONFIG_HOME="$menu_test_root/config" XDG_STATE_HOME="$menu_test_root/state" XDG_CACHE_HOME="$menu_test_root/cache" timeout 12s qs -p "$menu_test_root" --no-color > "$menu_test_root/runtime.log" 2>&1 || status=$?
 if [[ "$status" != 124 ]] || ! rg -q APP_HOVER_PASS "$menu_test_root/runtime.log" || rg -q 'APP_HOVER_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign|Cannot anchor|is not a type' "$menu_test_root/runtime.log";then cat "$menu_test_root/runtime.log";exit 1;fi
-printf 'PASS: Dock/taskbar hover exposes actionable app menus, pointer-exit grace closes them, Waffle stays unchanged\n'
+printf 'PASS: Dock/taskbar hover exposes actionable app menus, pointer-exit grace closes them, configured Dock keeps the same actionable hover under Waffle\n'

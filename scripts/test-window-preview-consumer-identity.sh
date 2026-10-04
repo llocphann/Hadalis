@@ -7,13 +7,13 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const rootDir = process.argv[2];
 const consumers = [
-    ['modules/dock/DockWindowPreview.qml', 'previewArea'],
     ['modules/bar/BarTaskbarWindowPreview.qml', 'previewArea'],
     ['modules/waffle/taskview/WindowThumbnail.qml', 'previewArea'],
     ['modules/waffle/bar/tasks/WindowPreview.qml', 'root'],
     ['modules/altSwitcher/AltSwitcher.qml', 'modelData'],
     ['modules/waffle/altSwitcher/WaffleAltSwitcherContent.qml', 'modelData']
 ];
+assert.ok(!fs.existsSync(path.join(rootDir,'modules/dock/DockWindowPreview.qml')), 'retired Dock preview stays absent; Taskbar and Waffle previews remain supported');
 for (const [file, owner] of consumers) {
     const content = fs.readFileSync(path.join(rootDir, file), 'utf8');
     const marker = 'readonly property string previewUrl: {';

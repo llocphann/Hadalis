@@ -31,17 +31,23 @@ for token in \
     '!root.niriOverviewOwnsCorner(corner.cornerName)'; do
     grep -Fq "$token" "$corners" || { printf 'FAIL: Abyss corner Niri Overview priority missing: %s\n' "$token" >&2; exit 1; }
 done
-for token in \
-    'var cornerJoinKinds = ["osd","quickNotes","notificationCenter","notifications","wifi","bluetooth"].concat(osds);' \
-    'function canJoin(kind)' ; do
-    grep -Fq "$token" "$presentation" || { printf 'FAIL: corner popup join capability missing: %s\n' "$token" >&2; exit 1; }
-done
+# Check capabilities rather than freezing the spelling/order of the catalog.
+node - "$presentation" <<'JS'
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const policy=vm.createContext({});vm.runInContext(fs.readFileSync(process.argv[2],'utf8'),policy);
+for(const kind of ['osd','volume','brightness','mic','mediaOsd','keyboardLayout','voiceSearch',
+                    'quickNotes','notificationCenter','notifications','wifi','bluetooth','launcher'])
+  assert.equal(policy.canJoin(kind),true,'corner join capability: '+kind);
+assert.equal(policy.canJoin('utilities'),false,'Utilities is an input utility surface, not a corner owner');
+assert.equal(policy.canJoin('media'),false,'media popup is distinct from media OSD');
+assert.equal(policy.canJoin('unknown'),false);
+JS
 grep -Fq 'visible:Presentation.canJoin(root.kind)' "$positions" \
     || { printf 'FAIL: popup position editor does not expose Join nearby corner for corner/network kinds\n' >&2; exit 1; }
-for token in '"quickNotes","notificationCenter","notifications"' 'joinedEdge:Presentation.canJoin(root.previewKind)'; do
+for token in '"quickNotes","notificationCenter","notifications"' 'joinedEdge:Presentation.joinedEdge(root.previewKind,'; do
     grep -Fq "$token" "$editor" || { printf 'FAIL: live editor corner join preview missing: %s\n' "$token" >&2; exit 1; }
 done
-for token in 'readonly property string configuredJoinedEdge:' 'configuredPresentation.joinCorner===true'; do
+for token in 'readonly property string configuredJoinedEdge:' 'Presentation.joinedEdge(presentationKind,'; do
     grep -Fq "$token" "$perimeter" || { printf 'FAIL: mature StyledPopup join routing missing: %s\n' "$token" >&2; exit 1; }
 done
 if ! command -v qs >/dev/null || [[ -z "${WAYLAND_DISPLAY:-}" ]]; then printf 'SKIP: Abyss corner content runtime (source lease + Niri hot-corner + Join Edge contracts passed; Quickshell/Wayland unavailable)\n';exit 0;fi
@@ -56,6 +62,7 @@ import Quickshell
 import qs
 import qs.modules.common
 import qs.modules.abyss
+import qs.services
 ShellRoot {
     id: root
     property int step: 0
@@ -127,6 +134,14 @@ ShellRoot {
                 Config.setNestedValue("sidebar.cornerOpen.enable",true)
                 Config.setNestedValue("sidebar.cornerOpen.cornerRegionWidth",180)
                 Config.setNestedValue("sidebar.cornerOpen.cornerRegionHeight",12)
+                // The fixture owns its service instance, not the compositor's
+                // config. Exercise both priority states explicitly instead of
+                // assuming the owner's top-left hot corner is disabled.
+                if (CompositorService.isNiri) {
+                    NiriService.overviewHotCornersByOutput = {[corners.outputName]:["topLeft"]}
+                    if(!root.check(!corners.leftSidebarCorner.available,"Niri Overview owns its configured physical corner")) return
+                    NiriService.overviewHotCornersByOutput = {[corners.outputName]:[]}
+                }
                 if(!root.check(corners.leftSidebarCorner.available && corners.leftSidebarCorner.width===180 && corners.leftSidebarCorner.height===12,"Sidebar corners inherit mature size settings")) return
                 corners.leftSidebarCorner.activate()
                 if(!root.check(GlobalStates.sidebarLeftOpen,"mature corner action opens the Sidebar")) return

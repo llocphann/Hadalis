@@ -871,8 +871,8 @@ def main() -> None:
           and "x: Math.round(dashContainer.x" in dashboard
           and "y: root.embeddedSurface ? 0 : Math.round(dashContainer.y - height + 1)" in dashboard,
           "Dashboard edit toolbar must stay centered and attached above the Dashboard canvas")
-    check("bottomLeftRadius: 0" in dashboard_toolbar
-          and "bottomRightRadius: 0" in dashboard_toolbar,
+    check("bottomLeftRadius: root.abyssMode ? radius : 0" in dashboard_toolbar
+          and "bottomRightRadius: root.abyssMode ? radius : 0" in dashboard_toolbar,
           "Dashboard edit toolbar must visually join the Dashboard top edge")
     overview_runtime = read("modules/overview/Overview.qml")
     check("readonly property bool applicationsPresentationMode:" in overview_runtime
@@ -1245,7 +1245,8 @@ def main() -> None:
               f"Retired Dock style component must stay absent: {retired_dock_component}")
     dock_app_button = read("modules/dock/DockAppButton.qml")
     dock_button = read("modules/dock/DockButton.qml")
-    dock_window_preview = read("modules/dock/DockWindowPreview.qml")
+    check(not (ROOT / "modules/dock/DockWindowPreview.qml").exists(),
+          "Dock hover uses app actions; retired window preview must stay absent")
     dock_qmldir = read("modules/dock/qmldir")
     check(not (ROOT / "modules/dock/DockSeparator.qml").exists()
           and "DockSeparator" not in dock_qmldir,
@@ -1255,20 +1256,6 @@ def main() -> None:
           "Dock buttons must not retain the unused position API while DockApps keeps preview placement")
     check("property alias hoverTimer:" not in dock_app_button,
           "Dock app buttons must not export an unused hover timer alias")
-    for dead_preview_api in ("previewWidthConstraint", "previewHeightConstraint"):
-        check(dead_preview_api not in dock_window_preview,
-              f"Dock window preview must not retain unused constraint API: {dead_preview_api}")
-    for retired_preview_style in (
-        "Appearance.regaliaEverywhere",
-        "Appearance.inirEverywhere",
-        "Appearance.zzzEverywhere",
-        "Appearance.regalia.",
-        "Appearance.inir.",
-        "Appearance.zzz.",
-        "RegaliaControlFace",
-    ):
-        check(retired_preview_style not in dock_window_preview,
-              f"Dock window preview must use Material chrome directly: {retired_preview_style}")
     for retired_dock_token in (
         "pillStyle",
         "macosStyle",

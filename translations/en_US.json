@@ -5574,5 +5574,13 @@
   "Add floating bubbles, sparkle and the liquid reflection beneath Wull. Performance uses a simpler floor effect. Respects the shell effects setting.": "Add floating bubbles, sparkle and the liquid reflection beneath Wull. Performance uses a simpler floor effect. Respects the shell effects setting.",
   "Highlight on hover, react to clicks, and drag Wull around your screen.": "Highlight on hover, react to clicks, and drag Wull around your screen.",
   "Walk on surfaces, float through open space, and react naturally. Respects the shell motion setting.": "Walk on surfaces, float through open space, and react naturally. Respects the shell motion setting.",
-  "Wull appearance, personality and movement": "Wull appearance, personality and movement"
+  "Wull appearance, personality and movement": "Wull appearance, personality and movement",
+  "Mood": "Mood",
+  "Energy": "Energy",
+  "Awful": "Awful",
+  "Okay": "Okay",
+  "Great": "Great",
+  "Drained": "Drained",
+  "Mid": "Mid",
+  "Peak": "Peak"
 }

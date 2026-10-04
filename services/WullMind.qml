@@ -99,6 +99,16 @@ Singleton {
         if (available) dispatch("chat",{prompt:"My mood is "+userMood+" and my energy is "+userEnergy+". Give me a tiny friendly check-in.",history:history})
         else say("Thank you for telling me! I'll keep you a little company.","built-in")
     }
+    function setCheckInChoice(field, value): bool {
+        const values = field === "mood" ? ["terrible", "bad", "okay", "good", "great"]
+            : field === "energy" ? ["drained", "low", "medium", "high", "peak"] : []
+        if (!values.includes(value)) return false
+        if (field === "mood") userMood = value
+        else userEnergy = value
+        // A single choice never invents the other half of the answer.
+        if (userMood && userEnergy) checkIn(userMood, userEnergy)
+        return true
+    }
     function openJournal(): void {
         if (journal.journalPath) Quickshell.execDetached(["xdg-open",journal.journalPath])
     }

@@ -358,7 +358,6 @@ ContentPage {
         SettingsGroup {
             SettingsSwitch {
                 text:Translation.tr("Talk clouds")
-                description:Translation.tr("Double-click Wull to chat. Occasional messages appear while you are idle.")
                 autoToggle:false;checked:WullMind.talkEnabled
                 onToggledByUser:checked=>Config.setNestedValue("abyss.companionMind.talkEnabled",checked)
             }
@@ -370,7 +369,6 @@ ContentPage {
             }
             SettingsSwitch {
                 text:Translation.tr("Enable local AI")
-                description:Translation.tr("Use an installed Ollama model. Wull keeps moving when the model is unavailable.")
                 autoToggle:false;checked:WullMind.aiEnabled
                 onToggledByUser:checked=>Config.setNestedValue("abyss.companionMind.aiEnabled",checked)
             }
@@ -407,25 +405,15 @@ ContentPage {
             }
             SettingsSwitch {
                 text:Translation.tr("Connect Obsidian")
-                description:Translation.tr("Read mood, energy and upcoming times from your shared Todo vault. Journals stay unchanged.")
                 autoToggle:false;checked:WullMind.obsidianEnabled
                 onToggledByUser:checked=>Config.setNestedValue("abyss.companionMind.obsidianEnabled",checked)
             }
             StyledText {Layout.fillWidth:true;wrapMode:Text.WordWrap
                 text:Translation.tr("Obsidian vault")+": "+(Todo.sharedVaultPath || Translation.tr("Not configured"))}
-            MaterialTextField {
-                objectName:"wullReferenceVault";Layout.fillWidth:true
-                placeholderText:Translation.tr("Reference vault (optional)")
-                text:WullMind.options.referenceVault ?? ""
-                onEditingFinished:Config.setNestedValue("abyss.companionMind.referenceVault",text.trim())
-            }
             RowLayout {
                 DialogButton {buttonText:Translation.tr("Read today's context");enabled:WullMind.obsidianEnabled && !WullMind.busy;onClicked:WullMind.refreshJournal()}
                 DialogButton {buttonText:Translation.tr("Open journal");enabled:!!WullMind.journal.journalPath;onClicked:WullMind.openJournal()}
             }
-            StyledText {Layout.fillWidth:true;wrapMode:Text.WordWrap
-                text:Translation.tr("Session memory only. Model requests run on demand, with one request at a time.")
-                color:Appearance.colors.colSubtext;font.pixelSize:Appearance.font.pixelSize.smaller}
         }
     }
 

@@ -350,14 +350,22 @@ Measure:
 
 ### 5.4 Context policy
 
-Start small:
+Do **not** lock Brain to 4K–8K merely to save memory. Qwen's official Qwen3.5-4B guidance says the model is native to 262,144 tokens and advises at least 128K when preserving its strongest thinking behavior matters. That recommendation was made for the model generally, not for this 18 GB desktop target, so Wull must measure the quality/resource curve rather than blindly following either extreme.
 
-- Reflex: minimum context that reliably supports one screenshot + compact instruction/result.
-- Brain normal: 4K–8K.
-- Brain extended: 16K only when retrieval/planning actually needs it.
-- Very long context is not a default feature merely because the model supports it.
+Benchmark four Brain context profiles on the same reasoning suite:
 
-KV/cache memory must be included in every resource table.
+- **8K** — minimum-memory / simple desktop tasks;
+- **32K** — likely everyday RAG + code working set;
+- **64K** — deeper repository/debug tasks;
+- **128K** — reference deep-thinking profile to quantify whether the quality gain is worth the memory/latency cost on the target machine.
+
+Reflex uses LFM2.5-VL-3B's native 32K context as an upper capability bound, but ordinary screen perception should use only the tokens needed for the current image/task.
+
+Qwen3.5 is a hybrid Gated DeltaNet/full-attention architecture, so its long-context memory behavior is not identical to a conventional all-attention transformer. Measure KV cache, recurrent-state memory, prompt/context checkpoint RAM, compute buffers, model weights, and server overhead separately.
+
+Use one Brain slot during the first implementation. Large default prompt-cache/checkpoint allocations can hide the true cost of the model; explicitly benchmark bounded/disabled prompt caching before deciding production defaults.
+
+No context profile is promoted solely because the model supports it. Production context is chosen by measured Wull task quality per GiB and latency.
 
 ---
 
@@ -1093,6 +1101,10 @@ Keep aggregate results here. Raw generated files are evidence, not the source of
 - 2026-10-04 — Brain target set to Qwen3.5-4B-MTP `UD-Q4_K_XL`; keep Brain on-demand initially.
 - 2026-10-04 — no specialist model; use RAG/tools/compiler feedback first.
 - 2026-10-04 — do not fine-tune until reproducible base-model results exist.
+- 2026-10-04 — do not assume 4K–8K Brain context is sufficient: benchmark 8K/32K/64K/128K because Qwen recommends >=128K when preserving strongest thinking behavior matters.
+- 2026-10-04 — initial llama.cpp deployment should use two isolated single-model server processes, one per Reflex/Brain, hidden behind the Rust agent; do not expose them as two user-facing assistants.
+- 2026-10-04 — bind local inference servers to private Unix sockets where practical, disable llama.cpp WebUI/server tools/agent/MCP, and keep all executable tool authority in Rust.
+- 2026-10-04 — Vulkan is a benchmark candidate, not an assumption: Qwen3.5 Gated DeltaNet Vulkan support exists upstream, but AMD performance remains architecture/driver/build sensitive.
 
 Add future decisions here with the evidence/benchmark revision that caused them.
 
@@ -1214,3 +1226,170 @@ The first usable local-Wull milestone is achieved only when all are true:
 - live Wayland/Quickshell behavior is accepted separately where static validation cannot prove it.
 
 Only after this milestone should Wull proceed to mutation tools, deeper RAG/memory, LoRA or distillation.
+
+
+---
+
+## 24. Research pass — runtime/API/backend findings (2026-10-04)
+
+This pass validates and sharpens the two-model design against current upstream model/runtime behavior. It does **not** advance the phase beyond P0.5 because no measurements from the maintainer's machine have been collected yet.
+
+### 24.1 The Reflex/Brain split is benchmark-supported
+
+Liquid AI's LFM2.5-VL-3B release data makes the model unusually well matched to the Reflex role:
+
+- ScreenSpot-v2 average: **80.7**;
+- RefCOCO grounding macro P@1: **87.9**;
+- ToolSandbox: **59.5**;
+- it is explicitly a **non-reasoning** model intended for low-latency direct answers;
+- the published model supports Vietnamese and has a 32K context window.
+
+In the same Liquid AI comparison, Qwen3.5-4B scores **78.5** on ScreenSpot-v2 average and **86.6** on RefCOCO, so the smaller LFM is competitive/slightly stronger on the two screen/grounding metrics most important to Reflex. Qwen3.5-4B is substantially stronger on instruction following/tool benchmarks in that table, which supports keeping Qwen as Brain instead of asking LFM to perform deep planning.
+
+**Decision:** keep the two models specialized by role; do not collapse to one model before local end-to-end measurements.
+
+### 24.2 Exact artifact footprint clarification
+
+Current Unsloth repository metadata reports:
+
+- LFM2.5-VL-3B UD-Q6_K_XL: about **2.40 GB**;
+- LFM mmproj-F16.gguf: about **854 MB**;
+- combined Reflex artifacts: about **3.25 GB** before runtime/cache overhead;
+- Qwen3.5-4B-MTP UD-Q4_K_XL: about **2.99 GB** in current repository metadata.
+
+Therefore older rough UI-derived values such as "~3.7 GB Brain" must **not** be treated as authoritative. File size, mapped RSS, GPU-visible memory and total process memory are separate measurements.
+
+**Action:** P0.5 must record actual local byte size + SHA-256 rather than copying website/UI size estimates into acceptance calculations.
+
+### 24.3 Use two llama-server processes, not one
+
+Current llama-server exposes a single loaded model from /v1/models in ordinary single-model mode. Wull's two simultaneously distinct roles therefore map cleanly to two supervised processes:
+
+~~~text
+inir-wull-agentd
+  |
+  +-- reflex.sock -> llama-server -> LFM + mmproj
+  |
+  +-- brain.sock  -> llama-server -> Qwen MTP
+~~~
+
+This is preferable to trying to switch one process between models because Reflex can remain warm while Brain is absent, Brain cold-start/unload is measurable independently, one runtime crash does not automatically take down both roles, per-model context/cache/backend flags remain independent, and model replacement becomes a process configuration change instead of an agent rewrite.
+
+Current llama.cpp supports binding --host to a path ending in .sock. Prefer private Unix sockets over public TCP ports for the internal Wull path on Linux.
+
+Recommended baseline security posture:
+
+- --host <private-runtime-dir>/wull-*.sock;
+- --no-webui;
+- single slot (--parallel 1) for initial measurements;
+- **do not enable** llama.cpp --tools, --agent or MCP;
+- only the Rust sidecar connects to these sockets.
+
+llama.cpp now has its own file tools/agent/MCP facilities. They are intentionally **not** part of Wull's architecture because enabling a second execution-policy layer would bypass or duplicate Hadalis' Rust permission model.
+
+### 24.4 llama-server already provides useful protocol primitives
+
+Current server APIs can remove custom plumbing from the first implementation:
+
+- OpenAI-compatible /v1/chat/completions;
+- streaming responses;
+- multimodal image_url input when an mmproj is loaded;
+- schema-constrained JSON via response_format;
+- tool-call parsing support;
+- reasoning controls/template kwargs;
+- model capability metadata from /v1/models.
+
+Use **schema-constrained JSON** for the Reflex perception contract before inventing a custom text parser.
+
+For multimodal requests, treat llama.cpp support as experimental and pin the exact runtime revision. Prefer passing captured image bytes/base64 from the Rust sidecar; if local file URLs are used, restrict --media-path to a dedicated temporary capture directory, never the user's home directory.
+
+### 24.5 Qwen MTP is usable upstream but needs a hard fallback
+
+Unsloth documents Qwen3.5 MTP support in mainline llama.cpp after the May 2026 merge. Current recommended flags include:
+
+~~~text
+--spec-type draft-mtp
+--spec-draft-n-max 6
+--parallel 1
+~~~
+
+Unsloth also documents two limitations relevant to architecture: MTP does not support --mmproj in that path, and -np > 1 is not supported for the documented MTP configuration.
+
+These are compatible with Wull because Brain is text/reasoning only and the initial agent is single-user/single-slot.
+
+There are still active/very recent llama.cpp edge-case reports around Qwen3.5 MTP, including compact draft-vocabulary handling. This is not evidence that the selected Unsloth integrated MTP GGUF is broken, but it is enough to require an MTP-on benchmark, a non-MTP baseline, automatic configuration fallback after a verified MTP initialization failure, and the exact llama.cpp SHA in every result.
+
+MTP is a latency optimization, never a dependency for correctness.
+
+### 24.6 AMD/Vulkan is promising but cannot be assumed on Radeon 740M
+
+Qwen3.5 uses Gated DeltaNet recurrent layers plus periodic full-attention layers. llama.cpp now has Vulkan support for the Gated DeltaNet operator, and recent hardware reports show it can run correctly on AMD Vulkan. However, current reports also show highly variable decode performance across Radeon generations/drivers and Qwen3.5 configurations.
+
+A published Qwen3.5-4B Vulkan result on a much faster discrete Radeon shows Qwen3.5 can be materially slower than Qwen3-4B despite stronger model quality. Other integrated-Radeon reports show Vulkan often beats CPU generation, but performance is strongly affected by memory bandwidth, power limits and driver/build revision.
+
+There is no trustworthy benchmark found for the exact **Ryzen 5 PRO 7540U / Radeon 740M** target running these exact two models.
+
+**Decision:** keep all three baseline modes where available: CPU, Vulkan with maximum practical offload, and partial/hybrid offload if full offload is worse or unstable.
+
+Do not spend time building ROCm-specific production logic until it beats Vulkan/CPU on the target machine.
+
+### 24.7 Qwen context length is now a first-class benchmark variable
+
+Qwen's official Qwen3.5-4B model card states native context **262,144** and advises at least **128K** when preserving strongest thinking behavior matters.
+
+This conflicts with the earlier tentative Wull assumption that normal Brain context should simply be 4K–8K. On a desktop companion, 128K may still be too expensive, but shrinking context can change capability, not only memory use.
+
+Because only 8 of Qwen3.5-4B's 32 layers are full-attention under its documented 3-linear/1-attention layout, cache scaling is different from an all-attention transformer. llama.cpp also stores recurrent state/checkpoints for hybrid models, so ordinary KV-only estimates are incomplete.
+
+**Benchmark requirement added:** evaluate 8K/32K/64K/128K with the same hard Brain suite and record quality, TTFT, prompt processing, RSS and cache/checkpoint memory. The production default is the smallest profile that preserves the required Wull capability.
+
+Also benchmark --ctx-checkpoints / --cache-ram behavior. Recent llama.cpp reports show recurrent-model prompt checkpoints can consume substantial host RAM when many checkpoints are retained. Wull is single-user and does not need a huge prompt cache by default.
+
+### 24.8 Existing Hadalis AI stack can be reused as UI adapter
+
+Repository audit at dev HEAD 6787666cba0c282ec30295c01ccc198a781c21b1 found:
+
+- services/Ai.qml already owns multi-provider conversation behavior and typed safe shell-action integration;
+- services/ai/AiProviderCatalog.qml already discovers local/remote OpenAI-compatible catalogs and tracks provider health;
+- modules/common/AiProviderPresets.qml already has local Ollama and LM Studio presets;
+- no direct llama.cpp/Wull provider preset currently exists.
+
+Because llama-server is OpenAI-compatible, a future **single Wull local provider** can fit the existing UI/provider model without exposing LFM and Qwen as two separate assistants.
+
+Preferred integration:
+
+~~~text
+Ai.qml
+  -> one local "Wull" provider
+  -> inir-wull-agentd
+  -> internal router
+       -> Reflex server
+       -> Brain server
+~~~
+
+Do not point Ai.qml independently at both llama-server processes. The router, permissions, RAG and model lifecycle belong behind the Rust Wull provider.
+
+The existing safe action registry is also evidence that the project should reuse/extend current typed actions rather than create an unrelated second execution system.
+
+### 24.9 New P0.5 experiments produced by this research
+
+Before P1 implementation, collect these exact comparisons locally.
+
+**Brain context sweep:** 8K, 32K, 64K, 128K at identical prompts/sampling, with MTP off first, then MTP on for the winning practical profiles.
+
+**Brain backend sweep:** CPU, Vulkan, and Vulkan with relevant flash-attention settings. Measure both prompt processing and decode; a backend can win one and lose the other.
+
+**Server-memory sweep:** default prompt cache/checkpoints, bounded cache/checkpoints, prompt cache disabled. Measure idle + post-request RSS because hybrid-model checkpoints can survive beyond generation.
+
+**Reflex input sweep:** full screenshot, downscaled screenshot, cropped target region. Measure grounding/OCR accuracy against end-to-end latency. For Wull, reducing vision tokens before inference may save more latency than changing quantization.
+
+### 24.10 Upstream references used in this pass
+
+- Liquid AI, LFM2.5-VL-3B release post, 2026-08-12.
+- Unsloth LFM2.5-VL-3B-GGUF model card/files.
+- Qwen Qwen3.5-4B official model card.
+- Unsloth Qwen3.5-4B-MTP-GGUF model card/MTP instructions.
+- llama.cpp tools/server/README.md and tools/mtmd/README.md.
+- llama.cpp current Qwen3.5 model implementation and Gated DeltaNet/Vulkan issue/discussion history.
+
+Upstream pages are moving targets. The **pinned llama.cpp SHA + local benchmark** remains authoritative for Wull.

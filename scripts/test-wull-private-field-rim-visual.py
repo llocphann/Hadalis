@@ -14,8 +14,8 @@ PREVIOUS = ROOT / "scripts/wull-manual-private-nested-quarter-visual.py"
 CURRENT = ROOT / "scripts/wull-manual-private-field-rim-visual.py"
 HELPER = ROOT / "scripts/wull-private-field-rim-attachment.py"
 EXPECTED = {
-    PREVIOUS: "b719f2b0a6c6e0121f9f2c0467f8d4e7a28cfa9f",
-    CURRENT: "61e1da5c6811bfb70c1d442efaad4ef11962eb34",
+    PREVIOUS: "24e1a3d354d88a6187d3b08ed786c405ee1c2e6e",
+    CURRENT: "045a8e1573d098f8a407a95ca8b02b4e785a6ca3",
     HELPER: "b7c2ac861ab11073540d113df86a1339c7f43e6e",
 }
 
@@ -29,6 +29,8 @@ for path, expected in EXPECTED.items():
     ast.parse(path.read_text(encoding="utf-8"))
 
 current = CURRENT.read_text(encoding="utf-8")
+assert 'background-color "#000000"' in current
+assert 'backdrop-color "#000000"' in current
 prior = PREVIOUS.read_text(encoding="utf-8")
 reverse = (
     (
@@ -44,7 +46,7 @@ reverse = (
         'SHADOW = "scripts/wull-private-field-rim-attachment.py"\n'
         'SHADOW_BLOB = "b7c2ac861ab11073540d113df86a1339c7f43e6e"\n'
         'PRIOR_VISUAL = "scripts/wull-manual-private-nested-quarter-visual.py"\n'
-        'PRIOR_VISUAL_BLOB = "b719f2b0a6c6e0121f9f2c0467f8d4e7a28cfa9f"\n'
+        'PRIOR_VISUAL_BLOB = "24e1a3d354d88a6187d3b08ed786c405ee1c2e6e"\n'
         'LAYOUT = "modules/abyss/looks/AbyssLayout.js"\n'
         'LAYOUT_BLOB = "f65d9c1922696d236fc0d3bfee735ad8df16924b"\n'
         'FIELD = "modules/abyss/looks/AbyssField.frag"\n'

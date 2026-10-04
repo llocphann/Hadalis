@@ -183,15 +183,18 @@ function clearSegment(scene, from, to) {
     if (!clearAt(scene,from) || !clearAt(scene,to)) return false
     const dx=to.x-from.x, dy=to.y-from.y
     for (const b of scene.blockers) {
-        const lo=[b.x-scene.hostWidth-1.5,b.y-scene.hostHeight-1.5]
-        const hi=[b.x+b.width+1.5,b.y+b.height+1.5]
+        // Preserve all four geometry reads before either axis test. These
+        // bounds are private scalar values; two staging arrays per obstacle
+        // are unnecessary even when an early axis exit is taken.
+        const loX=b.x-scene.hostWidth-1.5, loY=b.y-scene.hostHeight-1.5
+        const hiX=b.x+b.width+1.5, hiY=b.y+b.height+1.5
         let enter=0, exit=1, hit=true
         for (let axis=0;axis<2;axis++) {
             const start=axis ? from.y : from.x, delta=axis ? dy : dx
             if (Math.abs(delta)<1e-9) {
-                if (start<=lo[axis] || start>=hi[axis]) {hit=false;break}
+                if (start<=(axis ? loY : loX) || start>=(axis ? hiY : hiX)) {hit=false;break}
             } else {
-                const a=(lo[axis]-start)/delta, z=(hi[axis]-start)/delta
+                const a=((axis ? loY : loX)-start)/delta, z=((axis ? hiY : hiX)-start)/delta
                 enter=Math.max(enter,Math.min(a,z)); exit=Math.min(exit,Math.max(a,z))
                 if (enter>=exit-1e-9) {hit=false;break}
             }

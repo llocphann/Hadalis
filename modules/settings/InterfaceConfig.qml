@@ -7,6 +7,7 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.abyss.settings
 
 ContentPage {
     id: root
@@ -612,6 +613,16 @@ ContentPage {
             }
 
             ConfigSwitch {
+                buttonIcon: "timer"
+                text: Translation.tr("Ignore app timeout")
+                checked: Config.options?.notifications?.ignoreAppTimeout ?? false
+                onCheckedChanged: Config.setNestedValue("notifications.ignoreAppTimeout", checked)
+                StyledToolTip {
+                    text: Translation.tr("Always use your timeout settings instead of app-defined ones")
+                }
+            }
+
+            ConfigSwitch {
                 buttonIcon: "pinch"
                 text: Translation.tr("Scale on hover")
                 checked: Config.options?.notifications?.scaleOnHover ?? false
@@ -677,6 +688,7 @@ ContentPage {
             }
             ConfigSpinBox {
                 icon: "vertical_align_top"
+                visible: Config.options?.panelFamily !== "abyss"
                 text: Translation.tr("Margin (px)")
                 value: Config.options?.notifications?.edgeMargin ?? 4
                 from: 0
@@ -704,6 +716,7 @@ ContentPage {
 
             ContentSubsection {
                 title: Translation.tr("Anchor")
+                visible: Config.options?.panelFamily !== "abyss"
 
                 ConfigSelectionArray {
                     currentValue: Config.options?.notifications?.position ?? "topRight"
@@ -716,6 +729,15 @@ ContentPage {
                         { displayName: Translation.tr("Bottom Right"), icon: "south_east", value: "bottomRight" },
                         { displayName: Translation.tr("Bottom Left"), icon: "south_west", value: "bottomLeft" }
                     ]
+                }
+            }
+
+            ContentSubsection {
+                title: Translation.tr("Notification position")
+                visible: Config.options?.panelFamily === "abyss"
+                AbyssPositionSettings {
+                    kind: "notifications"
+                    allowedKinds: ["notifications"]
                 }
             }
 

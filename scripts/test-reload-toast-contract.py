@@ -31,8 +31,10 @@ for token in (
 ):
     require(MANAGER, token, "reload/error ToastManager routing changed")
 
-if '"Niri Reloaded"' in MANAGER or '_pendingReloadSource = "niri"' in MANAGER:
-    raise SystemExit("FAIL: successful Niri reloads must remain silent")
+for retired in ('"Niri Reloaded"', '_pendingReloadSource = "niri"',
+                '_qsReloadInProgress', 'qsReloadClearTimer'):
+    if retired in MANAGER:
+        raise SystemExit(f"FAIL: successful Niri reloads must remain silent ({retired})")
 
 require(TOAST, 'visible: root.isError && root.message !== ""',
         "error copy action must remain available")

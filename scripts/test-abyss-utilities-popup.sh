@@ -83,18 +83,17 @@ done
 for token in \
     'visible: !root.embeddedPresentation' \
     'id: nightLightPrimaryToggles' \
-    'text: Translation.tr("Enable")' \
-    'Layout.preferredWidth: Math.max(160, protectionContent.width - 64)' \
+    'columns: root.embeddedPresentation ? 2 : 1' \
+    '? Translation.tr("Enable")' \
+    ': Translation.tr("Enable now")' \
+    'Layout.fillWidth: !root.embeddedPresentation' \
+    'Math.max(160, protectionContent.width - 64)' \
     'Layout.alignment: Qt.AlignHCenter'; do
     grep -Fq "$token" "$night_light_dialog" \
         || { printf 'FAIL: embedded Eye protection layout contract missing: %s\n' "$token" >&2; exit 1; }
 done
-if grep -Fq 'Translation.tr("Enable now")' "$night_light_dialog"; then
-    printf 'FAIL: embedded Eye protection still says Enable now\n' >&2
-    exit 1
-fi
-if [[ "$(grep -Fc 'Layout.preferredWidth: Math.max(160, protectionContent.width - 64)' "$night_light_dialog")" -ne 3 ]]; then
-    printf 'FAIL: Eye protection separators are not consistently shortened\n' >&2
+if [[ "$(grep -Fc 'Math.max(160, protectionContent.width - 64)' "$night_light_dialog")" -ne 3 ]]; then
+    printf 'FAIL: Eye protection separators are not consistently shortened in embedded mode\n' >&2
     exit 1
 fi
 

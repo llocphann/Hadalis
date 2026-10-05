@@ -1,0 +1,17 @@
+{
+  "id": "JOB-C2F353CC-CANONICAL-OPT-20261005-1648",
+  "base_sha": "1e9723d9bf7a487545028aefb9db16ac22214f00",
+  "profile_id": "profile-c2f353cc8d1c4c1f",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "scripts/validate-maintainer-local.sh"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1800
+      }
+    }
+  ]
+}

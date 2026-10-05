@@ -172,7 +172,7 @@ Singleton {
     // We detect fullscreen by comparing window_size to the output's logical
     // resolution (via workspace → output mapping). A small tolerance (2px)
     // accounts for sub-pixel rounding differences.
-    function isWindowFullscreen(window) {
+    function _isWindowFullscreenWithWorkspace(window, workspace, workspaceResolved) {
         if (!window) return false
         if (!CompositorService.isNiri) return false
 
@@ -183,20 +183,40 @@ Singleton {
         const winSize = window.layout?.window_size
         if (!winSize || winSize.length < 2) return false
 
-        const ws = NiriService.workspaces[window.workspace_id]
+        const ws = workspaceResolved
+            ? workspace
+            : NiriService.workspaces[window.workspace_id]
         let output = ws ? NiriService.outputs[ws.output] : null
         // Niri can deliver WindowLayoutsChanged before the matching workspace
         // snapshot reaches the service. On a single-output session the target
         // is unambiguous, so do not miss that fullscreen transition.
         if (!output) {
-            const availableOutputs = Object.values(NiriService.outputs ?? {})
-            if (availableOutputs.length === 1) output = availableOutputs[0]
+            const outputs = NiriService.outputs ?? {}
+            let onlyOutput = null
+            let outputCount = 0
+            for (const key in outputs) {
+                if (!Object.prototype.hasOwnProperty.call(outputs, key))
+                    continue
+                outputCount++
+                if (outputCount === 1)
+                    onlyOutput = outputs[key]
+                else {
+                    onlyOutput = null
+                    break
+                }
+            }
+            if (outputCount === 1)
+                output = onlyOutput
         }
         if (!output?.logical) return false
 
         const tolerance = 2
         return Math.abs(winSize[0] - output.logical.width) <= tolerance
             && Math.abs(winSize[1] - output.logical.height) <= tolerance
+    }
+
+    function isWindowFullscreen(window) {
+        return root._isWindowFullscreenWithWorkspace(window, null, false)
     }
     
     // True when a fullscreen window covers the given output (empty name = any
@@ -215,7 +235,7 @@ Singleton {
             const ws = NiriService.workspaces?.[w.workspace_id]
             if (!(ws?.is_active ?? false)) continue
             if (outputName.length > 0 && ws.output !== outputName) continue
-            if (isWindowFullscreen(w)) return true
+            if (root._isWindowFullscreenWithWorkspace(w, ws, true)) return true
         }
         return false
     }

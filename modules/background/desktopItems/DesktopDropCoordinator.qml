@@ -65,7 +65,17 @@ Item {
     }
 
     function _enqueue(urls, x, y): void {
-        root._queue = Array.from(urls ?? []).map(url => String(url ?? "")).filter(url => url.length > 0)
+        const queue = Array.from(urls ?? [])
+        for (let i = 0; i < queue.length; i++)
+            queue[i] = String(queue[i] ?? "")
+        let writeCount = 0
+        for (let i = 0; i < queue.length; i++) {
+            const url = queue[i]
+            if (url.length > 0)
+                queue[writeCount++] = url
+        }
+        queue.length = writeCount
+        root._queue = queue
         root._queueIndex = 0
         root._firstCreatedId = ""
         root._dropX = x
@@ -85,8 +95,16 @@ Item {
     }
 
     function requestImageChoice(urls, x, y): void {
-        const paths = Array.from(urls ?? []).map(url => root._pathFromDropUrl(url))
-            .filter(path => path.length > 0 && root._isImage(path))
+        const paths = Array.from(urls ?? [])
+        for (let i = 0; i < paths.length; i++)
+            paths[i] = root._pathFromDropUrl(paths[i])
+        let writeCount = 0
+        for (let i = 0; i < paths.length; i++) {
+            const path = paths[i]
+            if (path.length > 0 && root._isImage(path))
+                paths[writeCount++] = path
+        }
+        paths.length = writeCount
         if (paths.length === 0)
             return
         root.imageChoiceRequested(paths, x, y)

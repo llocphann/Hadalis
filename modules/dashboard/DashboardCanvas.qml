@@ -771,56 +771,52 @@ Item {
 
         let bestX = null
         let bestY = null
-        const activeXs = [
-            rect.x,
-            rect.x + rect.width / 2,
-            rect.x + rect.width
-        ]
-        const activeYs = [
-            rect.y,
-            rect.y + rect.height / 2,
-            rect.y + rect.height
-        ]
+        const activeX0 = rect.x
+        const activeX1 = rect.x + rect.width / 2
+        const activeX2 = rect.x + rect.width
+        const activeY0 = rect.y
+        const activeY1 = rect.y + rect.height / 2
+        const activeY2 = rect.y + rect.height
 
         for (let i = 0; i < others.length; ++i) {
             const other = others[i].rect
-            const otherXs = [
-                other.x,
-                other.x + other.width / 2,
-                other.x + other.width
-            ]
-            const otherYs = [
-                other.y,
-                other.y + other.height / 2,
-                other.y + other.height
-            ]
+            const otherX0 = other.x
+            const otherX1 = other.x + other.width / 2
+            const otherX2 = other.x + other.width
+            const otherY0 = other.y
+            const otherY1 = other.y + other.height / 2
+            const otherY2 = other.y + other.height
 
-            for (let ai = 0; ai < activeXs.length; ++ai) {
-                for (let oi = 0; oi < otherXs.length; ++oi) {
-                    const delta = otherXs[oi] - activeXs[ai]
+            for (let ai = 0; ai < 3; ++ai) {
+                const activeX = ai === 0 ? activeX0 : (ai === 1 ? activeX1 : activeX2)
+                for (let oi = 0; oi < 3; ++oi) {
+                    const otherX = oi === 0 ? otherX0 : (oi === 1 ? otherX1 : otherX2)
+                    const delta = otherX - activeX
                     const distance = Math.abs(delta)
                     if (distance <= threshold
                             && (!bestX || distance < bestX.distance)) {
                         bestX = {
                             distance: distance,
                             delta: delta,
-                            pos: otherXs[oi],
+                            pos: otherX,
                             other: other
                         }
                     }
                 }
             }
 
-            for (let ai = 0; ai < activeYs.length; ++ai) {
-                for (let oi = 0; oi < otherYs.length; ++oi) {
-                    const delta = otherYs[oi] - activeYs[ai]
+            for (let ai = 0; ai < 3; ++ai) {
+                const activeY = ai === 0 ? activeY0 : (ai === 1 ? activeY1 : activeY2)
+                for (let oi = 0; oi < 3; ++oi) {
+                    const otherY = oi === 0 ? otherY0 : (oi === 1 ? otherY1 : otherY2)
+                    const delta = otherY - activeY
                     const distance = Math.abs(delta)
                     if (distance <= threshold
                             && (!bestY || distance < bestY.distance)) {
                         bestY = {
                             distance: distance,
                             delta: delta,
-                            pos: otherYs[oi],
+                            pos: otherY,
                             other: other
                         }
                     }
@@ -1015,15 +1011,23 @@ Item {
         let bestVertical = null
         let bestHorizontal = null
 
-        if (resizeEdge.indexOf("w") >= 0
-                || resizeEdge.indexOf("e") >= 0) {
-            const activeX = resizeEdge.indexOf("w") >= 0
-                ? rect.x : rect.x + rect.width
-            for (let i = 0; i < others.length; ++i) {
-                const other = others[i].rect
-                const targets = [other.x, other.x + other.width]
-                for (let t = 0; t < targets.length; ++t) {
-                    const delta = targets[t] - activeX
+        const resizeX = resizeEdge.indexOf("w") >= 0
+            || resizeEdge.indexOf("e") >= 0
+        const resizeY = resizeEdge.indexOf("n") >= 0
+            || resizeEdge.indexOf("s") >= 0
+        const activeX = resizeX
+            ? (resizeEdge.indexOf("w") >= 0 ? rect.x : rect.x + rect.width)
+            : 0
+        const activeY = resizeY
+            ? (resizeEdge.indexOf("n") >= 0 ? rect.y : rect.y + rect.height)
+            : 0
+
+        for (let i = 0; i < others.length; ++i) {
+            const other = others[i].rect
+            if (resizeX) {
+                for (let t = 0; t < 2; ++t) {
+                    const target = t === 0 ? other.x : other.x + other.width
+                    const delta = target - activeX
                     const distance = Math.abs(delta)
                     if (distance <= threshold
                             && (!bestVertical
@@ -1031,23 +1035,17 @@ Item {
                         bestVertical = {
                             distance: distance,
                             delta: delta,
-                            pos: targets[t],
+                            pos: target,
                             other: other
                         }
                     }
                 }
             }
-        }
 
-        if (resizeEdge.indexOf("n") >= 0
-                || resizeEdge.indexOf("s") >= 0) {
-            const activeY = resizeEdge.indexOf("n") >= 0
-                ? rect.y : rect.y + rect.height
-            for (let i = 0; i < others.length; ++i) {
-                const other = others[i].rect
-                const targets = [other.y, other.y + other.height]
-                for (let t = 0; t < targets.length; ++t) {
-                    const delta = targets[t] - activeY
+            if (resizeY) {
+                for (let t = 0; t < 2; ++t) {
+                    const target = t === 0 ? other.y : other.y + other.height
+                    const delta = target - activeY
                     const distance = Math.abs(delta)
                     if (distance <= threshold
                             && (!bestHorizontal
@@ -1055,7 +1053,7 @@ Item {
                         bestHorizontal = {
                             distance: distance,
                             delta: delta,
-                            pos: targets[t],
+                            pos: target,
                             other: other
                         }
                     }
@@ -1170,14 +1168,17 @@ Item {
         }
     }
 
-    function _candidateScore(candidate, base, obstacles) {
+    function _candidateScore(candidate, base, obstacles,
+            knownNoOverlap) {
         if (!candidate)
             return Number.POSITIVE_INFINITY
         let overlaps = 0
-        for (let i = 0; i < obstacles.length; ++i) {
-            if (root._rectsOverlap(candidate, obstacles[i],
-                    root.collisionGap))
-                overlaps++
+        if (!knownNoOverlap) {
+            for (let i = 0; i < obstacles.length; ++i) {
+                if (root._rectsOverlap(candidate, obstacles[i],
+                        root.collisionGap))
+                    overlaps++
+            }
         }
         const dx = candidate.x - base.x
         const dy = candidate.y - base.y
@@ -1265,7 +1266,7 @@ Item {
                         if (blocked)
                             continue
                         const score = root._candidateScore(
-                            candidate, base, obstacles)
+                            candidate, base, obstacles, true)
                         if (score < bestScore) {
                             bestScore = score
                             best = candidate

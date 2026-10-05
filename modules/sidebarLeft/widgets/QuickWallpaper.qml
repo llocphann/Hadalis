@@ -49,13 +49,27 @@ Item {
             splitMarker: ""
             onRead: data => {
                 const lines = data.trim().split("\n").filter(l => l.length > 0)
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i]
+                    const firstTab = line.indexOf("\t")
+                    const secondTab = firstTab >= 0 ? line.indexOf("\t", firstTab + 1) : -1
+                    const timeToken = firstTab >= 0 ? line.slice(0, firstTab) : line
+                    const path = firstTab < 0
+                        ? undefined
+                        : secondTab >= 0
+                            ? line.slice(firstTab + 1, secondTab)
+                            : line.slice(firstTab + 1)
+                    lines[i] = { time: parseFloat(timeToken), path: path }
+                }
                 // Sort by ctime (newest first)
-                lines.sort((a, b) => {
-                    const timeA = parseFloat(a.split("\t")[0])
-                    const timeB = parseFloat(b.split("\t")[0])
-                    return timeB - timeA
-                })
-                root.wallpapersList = lines.map(l => l.split("\t")[1]).filter(p => p && p.length > 0)
+                lines.sort((a, b) => b.time - a.time)
+                const paths = []
+                for (let i = 0; i < lines.length; i++) {
+                    const path = lines[i].path
+                    if (path && path.length > 0)
+                        paths.push(path)
+                }
+                root.wallpapersList = paths
             }
         }
     }

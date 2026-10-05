@@ -84,11 +84,17 @@ Singleton {
         function catalog(query: string): string {
             root.ensureInitialized()
             const normalizedQuery = String(query ?? "").trim().toLowerCase()
-            const matches = (AiProviderCatalog.models ?? []).filter(model => {
-                if (!normalizedQuery) return true
-                return `${model.providerId} ${model.remoteId} ${model.displayName}`
-                    .toLowerCase().includes(normalizedQuery)
-            }).slice(0, 100)
+            const matches = []
+            const models = AiProviderCatalog.models ?? []
+            for (const model of models) {
+                let matchesQuery = true
+                if (normalizedQuery) {
+                    matchesQuery = `${model.providerId} ${model.remoteId} ${model.displayName}`
+                        .toLowerCase().includes(normalizedQuery)
+                }
+                if (matchesQuery && matches.length < 100)
+                    matches.push(model)
+            }
             return JSON.stringify(matches.map(model => ({
                 providerId: model.providerId,
                 remoteId: model.remoteId,

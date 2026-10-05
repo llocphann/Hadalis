@@ -82,12 +82,17 @@ BodyRectangle {
         root._eventsTrigger
         root._externalTrigger
         if (!root.selectedDate) return []
-        const localEvents = Events.getAllEventsForDate(root.selectedDate).map(e => Object.assign({}, e, {
-            source: "local",
-            startDate: e.dateTime
-        }))
+        const all = []
+        const localEvents = Events.getAllEventsForDate(root.selectedDate)
+        for (const e of localEvents) {
+            all.push(Object.assign({}, e, {
+                source: "local",
+                startDate: e.dateTime
+            }))
+        }
         const externalEvents = CalendarSync.getEventsForDate(root.selectedDate) || []
-        const all = localEvents.concat(externalEvents)
+        for (const e of externalEvents)
+            all.push(e)
         all.sort((a, b) => {
             if (a.allDay && !b.allDay) return -1
             if (!a.allDay && b.allDay) return 1
@@ -108,15 +113,18 @@ BodyRectangle {
             const date = new Date(now)
             date.setDate(date.getDate() + dayOffset)
 
-            const localEvents = Events.getEventsForDate(date).map(e => Object.assign({}, e, {
-                source: "local",
-                startDate: e.dateTime,
-                _dayOffset: dayOffset
-            }))
-            const externalEvents = (CalendarSync.getEventsForDate(date) || []).map(e => Object.assign({}, e, {
-                _dayOffset: dayOffset
-            }))
-            const dayEvents = localEvents.concat(externalEvents)
+            const dayEvents = []
+            const localEvents = Events.getEventsForDate(date)
+            for (const e of localEvents) {
+                dayEvents.push(Object.assign({}, e, {
+                    source: "local",
+                    startDate: e.dateTime,
+                    _dayOffset: dayOffset
+                }))
+            }
+            const externalEvents = CalendarSync.getEventsForDate(date) || []
+            for (const e of externalEvents)
+                dayEvents.push(Object.assign({}, e, { _dayOffset: dayOffset }))
             dayEvents.sort((a, b) => {
                 if (a.allDay && !b.allDay) return -1
                 if (!a.allDay && b.allDay) return 1

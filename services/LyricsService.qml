@@ -333,13 +333,29 @@ Singleton {
                     return;
                 }
 
-                const lines = (payload.lines ?? [])
-                    .filter(line => typeof line.t === "number")
-                    .map(line => ({
-                        time: line.t,
-                        text: line.text ?? ""
-                    }))
-                    .sort((a, b) => a.time - b.time);
+                const sourceLines = payload.lines ?? [];
+                let lines;
+                if (Array.isArray(sourceLines)) {
+                    lines = [];
+                    for (const line of sourceLines) {
+                        const time = line.t;
+                        if (typeof time !== "number")
+                            continue;
+                        lines.push({
+                            time: time,
+                            text: line.text ?? ""
+                        });
+                    }
+                    lines.sort((a, b) => a.time - b.time);
+                } else {
+                    lines = sourceLines
+                        .filter(line => typeof line.t === "number")
+                        .map(line => ({
+                            time: line.t,
+                            text: line.text ?? ""
+                        }))
+                        .sort((a, b) => a.time - b.time);
+                }
 
                 if (lines.length === 0) {
                     root._publishFailure(requestId, "not_found");

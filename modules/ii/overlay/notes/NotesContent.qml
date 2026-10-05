@@ -114,25 +114,29 @@ OverlayBackground {
         const rangeStart = Math.min(selectionStart, selectionEnd);
         const rangeEnd = Math.max(selectionStart, selectionEnd);
 
-        const entries = parsedCopylistLines.map(line => {
+        const entries = [];
+        for (let i = 0; i < parsedCopylistLines.length; i++) {
+            if (!(i in parsedCopylistLines))
+                continue;
+            const line = parsedCopylistLines[i];
             // Don't show copy button if line is (partially) selected
             const caretIntersects = rangeEnd > line.start && rangeStart <= line.end;
             if (caretIntersects)
-                return null;
+                continue;
             const startRect = textInput.positionToRectangle(line.start);
             let endRect = textInput.positionToRectangle(line.end);
             if (!isFinite(startRect.y))
-                return null;
+                continue;
             if (!isFinite(endRect.y))
                 endRect = startRect;
             const lineBottom = endRect.y + endRect.height;
             const rectHeight = Math.max(lineBottom - startRect.y, textInput.font.pixelSize + 8);
-            return {
+            entries.push({
                 content: line.content,
                 y: startRect.y,
                 height: rectHeight
-            };
-        }).filter(entry => entry !== null);
+            });
+        }
 
         root.copyListEntries = entries;
     }

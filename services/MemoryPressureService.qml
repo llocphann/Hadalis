@@ -84,13 +84,21 @@ Singleton {
     function _applyMapsText(rawText: string): void {
         let deleted = 0
         let total = 0
-        const lines = String(rawText ?? "").split("\n")
-        for (const line of lines) {
-            if (!line.includes("JSGCHeap"))
-                continue
-            total++
-            if (line.includes("deleted"))
-                deleted++
+        const text = String(rawText ?? "")
+        let start = 0
+        while (start <= text.length) {
+            const newline = text.indexOf("\n", start)
+            const end = newline >= 0 ? newline : text.length
+            const heap = text.indexOf("JSGCHeap", start)
+            if (heap >= 0 && heap < end) {
+                total++
+                const deletedMarker = text.indexOf("deleted", start)
+                if (deletedMarker >= 0 && deletedMarker < end)
+                    deleted++
+            }
+            if (newline < 0)
+                break
+            start = newline + 1
         }
 
         root.currentDeletedMappings = deleted

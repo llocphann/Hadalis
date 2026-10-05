@@ -223,6 +223,9 @@ WSettingsPage {
             icon: String(root.selectedCategory?.waffleIcon ?? "settings")
             collapsible: true
             expanded: true
+            readonly property var groupSettings: TlpSettingsService._array(groupCard.modelData?.settings)
+            readonly property bool compactProfileRows: TlpSettingsService._settingsUseCompactProfileRows(groupCard.groupSettings)
+            readonly property bool singleSettingGroup: groupCard.groupSettings.length === 1
 
             WText {
                 visible: root.conciseGroupDescription(groupCard.modelData).length > 0
@@ -239,13 +242,13 @@ WSettingsPage {
             }
 
             Repeater {
-                model: TlpSettingsService._array(groupCard.modelData?.settings)
+                model: groupCard.groupSettings
 
                 delegate: WTlpSettingRow {
                     required property var modelData
                     definition: modelData
-                    compactProfileRows: TlpSettingsService.groupUsesCompactProfileRows(groupCard.modelData)
-                    singleSettingGroup: TlpSettingsService._array(groupCard.modelData?.settings).length === 1
+                    compactProfileRows: groupCard.compactProfileRows
+                    singleSettingGroup: groupCard.singleSettingGroup
                 }
             }
         }

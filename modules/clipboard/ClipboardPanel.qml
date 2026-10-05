@@ -116,6 +116,8 @@ Scope {
         const hasSearch = trimmedSearch.length > 0
         const filterEntries = hasSearch ? Cliphist.filterEntries() : []
         let matches = 0
+        let outputIndex = 0
+        let firstMatchIndex = -1
 
         // Pinned entries always lead the list, in both filter and navigate mode.
         const pins = Cliphist.pinned
@@ -123,8 +125,12 @@ Scope {
             const preview = Cliphist.pinPreview(pins[i])
             const hit = !hasSearch || preview.toLowerCase().includes(trimmedSearch)
             if (hasSearch && hit) matches++
-            if (hit || navigateMode)
+            if (hit || navigateMode) {
+                if (hasSearch && navigateMode && hit && firstMatchIndex < 0)
+                    firstMatchIndex = outputIndex
                 filteredClipboardModel.append({ "rawEntry": "", "pinText": pins[i], "isPin": true, "isMatch": hit })
+                outputIndex++
+            }
         }
 
         if (hasSearch && navigateMode) {
@@ -133,8 +139,13 @@ Scope {
                 const entry = entries[i]
                 const content = filterEntries[i]?.iiKey ?? formatCliphistName(entry).toLowerCase()
                 const hit = content.includes(trimmedSearch)
-                if (hit) matches++
+                if (hit) {
+                    matches++
+                    if (firstMatchIndex < 0)
+                        firstMatchIndex = outputIndex
+                }
                 filteredClipboardModel.append({ "rawEntry": entry, "pinText": "", "isPin": false, "isMatch": hit })
+                outputIndex++
             }
         } else {
             // Filter mode: only include matching entries
@@ -142,10 +153,12 @@ Scope {
                 const entry = entries[i]
                 if (!hasSearch) {
                     filteredClipboardModel.append({ "rawEntry": entry, "pinText": "", "isPin": false, "isMatch": true })
+                    outputIndex++
                 } else {
                     const content = filterEntries[i]?.iiKey ?? formatCliphistName(entry).toLowerCase()
                     if (content.includes(trimmedSearch)) {
                         filteredClipboardModel.append({ "rawEntry": entry, "pinText": "", "isPin": false, "isMatch": true })
+                        outputIndex++
                         matches++
                     }
                 }
@@ -157,13 +170,8 @@ Scope {
 
         if (hasSearch && navigateMode && matches > 0) {
             // Auto-scroll to first match
-            for (let i = 0; i < filteredClipboardModel.count; i++) {
-                if (filteredClipboardModel.get(i).isMatch) {
-                    listView.currentIndex = i
-                    listView.positionViewAtIndex(i, ListView.Center)
-                    break
-                }
-            }
+            listView.currentIndex = firstMatchIndex
+            listView.positionViewAtIndex(firstMatchIndex, ListView.Center)
         } else if (totalCount > 0 && typeof listView !== "undefined" && listView) {
             listView.currentIndex = 0
         }

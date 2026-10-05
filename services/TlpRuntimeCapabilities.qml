@@ -42,11 +42,10 @@ Singleton {
     ]
 
     function _tokens(text: string): var {
-        return String(text ?? "")
+        const cleaned = String(text ?? "")
             .replace(/[\[\]]/g, "")
             .trim()
-            .split(/\s+/)
-            .filter(token => token.length > 0)
+        return cleaned.length > 0 ? cleaned.split(/\s+/) : []
     }
 
     function _setValues(keys, entries): void {

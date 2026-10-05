@@ -277,6 +277,48 @@ Singleton {
         })
     }
 
+    function _getEventBucketsForDates(dates: var): var {
+        const targetTimes = []
+        const buckets = []
+        for (let i = 0; i < dates.length; i++) {
+            const target = new Date(dates[i])
+            target.setHours(0, 0, 0, 0)
+            targetTimes.push(target.getTime())
+            buckets.push([])
+        }
+
+        for (const event of root.events) {
+            if (event.allDay) {
+                const start = new Date(event.startDate)
+                start.setHours(0, 0, 0, 0)
+                const end = event.endDate ? new Date(event.endDate) : new Date(start)
+                end.setHours(0, 0, 0, 0)
+                const startTime = start.getTime()
+                const endTime = end.getTime()
+                for (let i = 0; i < targetTimes.length; i++) {
+                    const targetTime = targetTimes[i]
+                    if (endTime <= startTime) {
+                        if (targetTime === startTime)
+                            buckets[i].push(event)
+                    } else if (targetTime >= startTime && targetTime < endTime) {
+                        buckets[i].push(event)
+                    }
+                }
+                continue
+            }
+
+            const evtDate = new Date(event.startDate)
+            evtDate.setHours(0, 0, 0, 0)
+            const eventTime = evtDate.getTime()
+            for (let i = 0; i < targetTimes.length; i++) {
+                if (eventTime === targetTimes[i])
+                    buckets[i].push(event)
+            }
+        }
+
+        return buckets
+    }
+
     // Query: get all events in a date range (for upcoming view)
     function getUpcomingEvents(days: int): var {
         const now = new Date()
@@ -284,10 +326,12 @@ Singleton {
         today.setHours(0, 0, 0, 0)
         const future = new Date()
         future.setDate(future.getDate() + (days || 7))
+        const startTimes = new Map()
 
         return root.events.filter(event => {
             if (event.allDay) {
                 const start = new Date(event.startDate)
+                startTimes.set(event, start.getTime())
                 start.setHours(0, 0, 0, 0)
                 const end = event.endDate ? new Date(event.endDate) : new Date(start)
                 end.setHours(0, 0, 0, 0)
@@ -300,8 +344,9 @@ Singleton {
                 return start <= future && end > today
             }
             const evtDate = new Date(event.startDate)
+            startTimes.set(event, evtDate.getTime())
             return evtDate >= now && evtDate <= future
-        }).sort((a, b) => new Date(a.startDate) - new Date(b.startDate))
+        }).sort((a, b) => startTimes.get(a) - startTimes.get(b))
     }
 
     // Query: distinct source colors for events on a given date

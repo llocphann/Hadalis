@@ -292,10 +292,22 @@ def _require_hashes(
 
 
 def _find_task(doc: dict[str, Any], task_id: str, default_duration: int) -> dict[str, Any]:
-    matches = [task for task in _tasks(doc, default_duration) if task["id"] == task_id]
-    if len(matches) != 1:
+    first_match: dict[str, Any] | None = None
+    match_count = 0
+    group = ""
+    for index in range(doc["startIndex"] + 1, doc["endIndex"]):
+        label = _group_label(doc["lines"][index].rstrip("\r\n"))
+        if label:
+            group = label
+            continue
+        task = _task_from_line(doc, index, group, default_duration)
+        if task is not None and task["id"] == task_id:
+            match_count += 1
+            if first_match is None:
+                first_match = task
+    if match_count != 1 or first_match is None:
         raise core.TodoError("conflict", "task reference is stale or ambiguous")
-    return matches[0]
+    return first_match
 
 
 def _preferred_newline(doc: dict[str, Any]) -> str:

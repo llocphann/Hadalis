@@ -41,12 +41,21 @@ DashCard {
                 // 26 weeks. Keep the headline total on the exact same window
                 // so the number and heatmap always describe one period.
                 const recentDays = days.slice(Math.max(0, days.length - 26 * 7))
-                root.total = recentDays.reduce(
-                    (acc, d) => acc + (d.count ?? 0), 0)
+                let total = 0
                 const wk = []
-                for (let i = 0; i < recentDays.length; i += 7) {
-                    wk.push(recentDays.slice(i, i + 7).map(d => d.level ?? 0))
+                let week = []
+                for (let i = 0; i < recentDays.length; i++) {
+                    const day = recentDays[i]
+                    total += day.count ?? 0
+                    week.push(day.level ?? 0)
+                    if (week.length === 7) {
+                        wk.push(week)
+                        week = []
+                    }
                 }
+                if (week.length > 0)
+                    wk.push(week)
+                root.total = total
                 root.weeks = wk
                 root._lastFetch = Date.now()
                 heatmap.requestPaint()

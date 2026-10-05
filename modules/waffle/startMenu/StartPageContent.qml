@@ -138,8 +138,10 @@ WPanelPageColumn {
         const recent = []
         const windowList = CompositorService.isNiri ? (NiriService.windows ?? []) : []
         for (const w of windowList) {
+            if (recent.length >= 4)
+                break
             const appId = w.app_id ?? ""
-            if (appId && !seen.has(appId) && recent.length < 4) {
+            if (appId && !seen.has(appId)) {
                 seen.add(appId)
                 const entry = DesktopEntries.heuristicLookup(appId)
                 recent.push({ appId: appId, name: entry?.name ?? appId })

@@ -36,8 +36,15 @@ Singleton {
         if (!value || typeof value === "string"
                 || !Number.isInteger(value.length) || value.length < 0)
             return []
-        return Array.from(value, item => String(item ?? "").trim())
-            .filter(item => item.length > 0)
+        const result = Array.from(value, item => String(item ?? "").trim())
+        let writeCount = 0
+        for (let i = 0; i < result.length; i++) {
+            const item = result[i]
+            if (item.length > 0)
+                result[writeCount++] = item
+        }
+        result.length = writeCount
+        return result
     }
 
     function _compileRegexes(patterns): var {

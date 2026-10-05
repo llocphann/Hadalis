@@ -899,15 +899,24 @@ Singleton {
     // ── Merge All Providers ─────────────────────────────────────────────
     function _rebuildActions(): list<var> {
         const cfg = Config.options?.search?.globalActions
-        let result = []
-        if (cfg?.enableSystem ?? true)     result = result.concat(_systemActions)
-        if (cfg?.enableAppearance ?? true) result = result.concat(_appearanceActions)
-        if (cfg?.enableTools ?? true)      result = result.concat(_toolActions)
-        if (cfg?.enableMedia ?? true)      result = result.concat(_mediaActions)
-        if (cfg?.enableSettings ?? true)   result = result.concat(_settingsActions)
-        if (cfg?.enablePackages ?? true)   result = result.concat(_packageActions)
-        if (cfg?.enableSetup ?? true)      result = result.concat(_setupActions)
-        if (cfg?.enableCustom ?? true)     result = result.concat(_userScriptActions)
+        const result = []
+        function append(provider) {
+            const n = provider.length
+            const offset = result.length
+            result.length = offset + n
+            for (let i = 0; i < n; i++) {
+                if (i in provider)
+                    result[offset + i] = provider[i]
+            }
+        }
+        if (cfg?.enableSystem ?? true)     append(_systemActions)
+        if (cfg?.enableAppearance ?? true) append(_appearanceActions)
+        if (cfg?.enableTools ?? true)      append(_toolActions)
+        if (cfg?.enableMedia ?? true)      append(_mediaActions)
+        if (cfg?.enableSettings ?? true)   append(_settingsActions)
+        if (cfg?.enablePackages ?? true)   append(_packageActions)
+        if (cfg?.enableSetup ?? true)      append(_setupActions)
+        if (cfg?.enableCustom ?? true)     append(_userScriptActions)
         return result
     }
 

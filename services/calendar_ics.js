@@ -190,22 +190,37 @@ function _expandRecurrence(baseEvent, rrule) {
     const results = []
     let current = new Date(startDate)
     let count = 0
+    const nowTime = now.getTime()
 
     // Generate up to maxCount occurrences within the horizon
     while (count < maxCount - 1) { // -1 because base event is already counted
-        current = _advanceDate(current, freq)
+        switch (freq) {
+            case "daily":
+                current.setDate(current.getDate() + 1)
+                break
+            case "weekly":
+                current.setDate(current.getDate() + 7)
+                break
+            case "monthly":
+                current.setMonth(current.getMonth() + 1)
+                break
+            case "yearly":
+                current.setFullYear(current.getFullYear() + 1)
+                break
+        }
         count++
 
         if (untilDate && current > untilDate) break
         if (current > horizon) break
 
         // Skip past events
-        const occurrenceEnd = new Date(current.getTime() + duration)
-        if (occurrenceEnd < now) continue
+        const currentTime = current.getTime()
+        const occurrenceEndTime = currentTime + duration
+        if (occurrenceEndTime < nowTime) continue
 
         results.push(Object.assign({}, baseEvent, {
             startDate: current.toISOString(),
-            endDate: new Date(current.getTime() + duration).toISOString(),
+            endDate: new Date(occurrenceEndTime).toISOString(),
             uid: baseEvent.uid + "_recur_" + count
         }))
     }

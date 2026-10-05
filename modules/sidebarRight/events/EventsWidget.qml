@@ -70,22 +70,30 @@ Item {
 
     function _buildMergedEvents(): var {
         const now = new Date()
-        const local = Events.getUpcomingEvents(30).map(e => Object.assign({}, e, {
-            _source: "local"
-        }))
+        const all = []
+        const localEvents = Events.getUpcomingEvents(30)
+        for (const e of localEvents) {
+            all.push(Object.assign({}, e, {
+                _source: "local"
+            }))
+        }
 
         // Get external events for the next 30 days, skip past ones
         const startDay = new Date(now)
         startDay.setHours(0, 0, 0, 0)
-        const externalAll = []
+        const dates = []
         for (let i = 0; i < 30; i++) {
             const d = new Date(startDay)
             d.setDate(d.getDate() + i)
-            const dayEvents = CalendarSync.getEventsForDate(d) || []
+            dates.push(d)
+        }
+        const externalBuckets = CalendarSync._getEventBucketsForDates(dates)
+        for (let i = 0; i < externalBuckets.length; i++) {
+            const dayEvents = externalBuckets[i] || []
             for (const e of dayEvents) {
                 const evtTime = new Date(e.startDate || e.dateTime)
                 if (evtTime < now && !(e.allDay && evtTime >= startDay)) continue
-                externalAll.push(Object.assign({}, e, {
+                all.push(Object.assign({}, e, {
                     _source: "external",
                     dateTime: e.startDate || e.dateTime,
                     category: "general",
@@ -94,7 +102,6 @@ Item {
             }
         }
 
-        const all = local.concat(externalAll)
         all.sort((a, b) => {
             const da = new Date(a.dateTime || a.startDate)
             const db = new Date(b.dateTime || b.startDate)

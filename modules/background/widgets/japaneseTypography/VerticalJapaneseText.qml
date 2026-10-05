@@ -31,23 +31,24 @@ Item {
 
     function _characters(value: string): var {
         const points = Array.from(String(value ?? "").replace(/\r/g, ""));
-        let graphemes = [];
+        let writeCount = 0;
         for (let i = 0; i < points.length; i++) {
             const point = points[i];
             const code = point.codePointAt(0);
-            const joinsPrevious = graphemes.length > 0 && (
-                point === "\u200D" || graphemes[graphemes.length - 1].endsWith("\u200D")
+            const joinsPrevious = writeCount > 0 && (
+                point === "\u200D" || points[writeCount - 1].endsWith("\u200D")
                 || code === 0xFE0E || code === 0xFE0F
                 || (code >= 0x0300 && code <= 0x036F)
                 || code === 0x3099 || code === 0x309A
                 || (code >= 0x1F3FB && code <= 0x1F3FF)
             );
             if (joinsPrevious)
-                graphemes[graphemes.length - 1] += point;
+                points[writeCount - 1] += point;
             else
-                graphemes.push(point);
+                points[writeCount++] = point;
         }
-        return graphemes;
+        points.length = writeCount;
+        return points;
     }
 
     function _allColumns(): var {
@@ -69,7 +70,21 @@ Item {
     }
 
     function _allColumnCount(): int {
-        return root._allColumns().length;
+        const lines = String(root.text ?? "").replace(/\r/g, "").split("\n");
+        const rows = root.rowsPerColumn;
+        let count = 0;
+
+        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            const chars = root._characters(lines[lineIndex]);
+            if (chars.length === 0) {
+                if (lines.length > 1)
+                    count++;
+                continue;
+            }
+            for (let offset = 0; offset < chars.length; offset += rows)
+                count++;
+        }
+        return count;
     }
 
     function _buildColumns(): var {

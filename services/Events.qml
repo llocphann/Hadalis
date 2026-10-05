@@ -66,14 +66,18 @@ Singleton {
             }
             try {
                 const data = JSON.parse(fileContents)
-                const events = Array.isArray(data?.events)
-                    ? data.events.filter(event => event && typeof event === "object" && !Array.isArray(event))
-                    : []
+                const events = []
                 let maxId = 0
-                for (const event of events) {
-                    const id = Number(event.id)
-                    if (Number.isInteger(id) && id > maxId)
-                        maxId = id
+                if (Array.isArray(data?.events)) {
+                    for (let i = 0; i < data.events.length; i++) {
+                        const event = data.events[i]
+                        if (!(event && typeof event === "object" && !Array.isArray(event)))
+                            continue
+                        events.push(event)
+                        const id = Number(event.id)
+                        if (Number.isInteger(id) && id > maxId)
+                            maxId = id
+                    }
                 }
                 const storedNextId = Number(data?.nextId)
                 root.list = events
@@ -335,9 +339,11 @@ Singleton {
         const now = new Date()
         const future = new Date()
         future.setDate(future.getDate() + (days || 7))
+        const startTimes = new Map()
         
         return root.list.filter(event => {
             const eventDate = new Date(event.startDate || event.dateTime)
+            startTimes.set(event, eventDate.getTime())
             if (event.allDay === true) {
                 const end = event.endDate
                     ? new Date(event.endDate)
@@ -345,8 +351,7 @@ Singleton {
                 return end > now && eventDate <= future
             }
             return eventDate >= now && eventDate <= future && !event.notified
-        }).sort((a, b) => new Date(a.startDate || a.dateTime)
-            - new Date(b.startDate || b.dateTime))
+        }).sort((a, b) => startTimes.get(a) - startTimes.get(b))
     }
 
     function markAsNotified(id) {

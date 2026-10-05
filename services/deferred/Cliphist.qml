@@ -242,12 +242,31 @@ Singleton {
 
     function superpaste(count, isImage = false) {
         // Find entries
-        const targetEntries = entries.filter(entry => {
-            if (!isImage) return true;
-            return entryIsImage(entry);
-        }).slice(0, count)
-        const pasteCommands = [...targetEntries].reverse().map(entry =>
-            `${root.wlCopyCommand(entry)}\n/usr/bin/sleep ${root.pasteDelay}\n${root.pressPasteCommand}`)
+        let targetEntries
+        if (Number.isInteger(count) && count >= 0) {
+            targetEntries = []
+            if (count > 0) {
+                for (const entry of entries) {
+                    if (isImage && !entryIsImage(entry))
+                        continue
+                    targetEntries.push(entry)
+                    if (targetEntries.length >= count)
+                        break
+                }
+            }
+        } else {
+            targetEntries = entries.filter(entry => {
+                if (!isImage) return true;
+                return entryIsImage(entry);
+            }).slice(0, count)
+        }
+
+        const pasteCommands = []
+        for (let i = targetEntries.length - 1; i >= 0; i--) {
+            const entry = targetEntries[i]
+            pasteCommands.push(
+                `${root.wlCopyCommand(entry)}\n/usr/bin/sleep ${root.pasteDelay}\n${root.pressPasteCommand}`)
+        }
         // Act
         Quickshell.execDetached(["/usr/bin/bash", "-c", pasteCommands.join(`\n/usr/bin/sleep ${root.pasteDelay}\n`)]);
     }
@@ -304,8 +323,19 @@ Singleton {
     }
 
     function pinPreview(text): string {
-        const firstLine = String(text ?? "").split("\n").find(l => l.trim().length > 0) ?? ""
-        return firstLine.trim()
+        const value = String(text ?? "")
+        let start = 0
+        while (start <= value.length) {
+            const newline = value.indexOf("\n", start)
+            const end = newline >= 0 ? newline : value.length
+            const line = value.slice(start, end)
+            if (line.trim().length > 0)
+                return line.trim()
+            if (newline < 0)
+                break
+            start = newline + 1
+        }
+        return ""
     }
 
     function isPinned(text): bool {

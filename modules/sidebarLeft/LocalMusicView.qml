@@ -53,11 +53,21 @@ Item {
     readonly property string query: searchField.text.trim().toLowerCase()
     readonly property var filteredTracks: {
         if (!root.query) return LocalMusic.libraryTracks
-        return LocalMusic.libraryTracks.filter(track => {
-            const haystack = [track?.title, track?.artist, track?.album, track?.folder]
-                .map(value => String(value ?? "").toLowerCase()).join(" ")
-            return haystack.includes(root.query)
-        })
+        const result = []
+        for (const track of LocalMusic.libraryTracks) {
+            const rawTitle = track?.title
+            const rawArtist = track?.artist
+            const rawAlbum = track?.album
+            const rawFolder = track?.folder
+            const title = String(rawTitle ?? "").toLowerCase()
+            const artist = String(rawArtist ?? "").toLowerCase()
+            const album = String(rawAlbum ?? "").toLowerCase()
+            const folder = String(rawFolder ?? "").toLowerCase()
+            const haystack = title + " " + artist + " " + album + " " + folder
+            if (haystack.includes(root.query))
+                result.push(track)
+        }
+        return result
     }
     readonly property var songEntries: root.buildSongEntries()
     readonly property var selectedTracks: root.resolveSelectedTracks()
@@ -185,16 +195,22 @@ Item {
         const to = Math.max(root.selectionAnchorIndex, entryIndex)
         const tracks = additive ? root.selectedTrackKeys.slice() : []
         const folders = additive ? root.selectedFolderPaths.slice() : []
+        const trackSet = new Set(tracks)
+        const folderSet = new Set(folders)
 
         for (const entry of root.songEntries.slice(from, to + 1)) {
             if (entry?.entryType === "folder") {
                 const path = root.normalizedFolder(entry?.path)
-                if (path.length > 0 && !folders.includes(path))
+                if (path.length > 0 && !folderSet.has(path)) {
                     folders.push(path)
+                    folderSet.add(path)
+                }
             } else if (entry?.entryType === "track") {
                 const key = root.trackKey(entry)
-                if (key.length > 0 && !tracks.includes(key))
+                if (key.length > 0 && !trackSet.has(key)) {
                     tracks.push(key)
+                    trackSet.add(key)
+                }
             }
         }
 

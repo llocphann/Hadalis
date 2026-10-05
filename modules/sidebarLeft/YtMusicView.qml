@@ -1005,8 +1005,10 @@ Item {
                             YtMusic.createPlaylist(saveQueueName.text)
                             // Add all queue items to the new playlist
                             const newIdx = YtMusic.playlists.length - 1
+                            const acceptedVideoIds = new Set()
                             for (let i = 0; i < YtMusic.queue.length; i++) {
-                                YtMusic.addToPlaylist(newIdx, YtMusic.queue[i])
+                                YtMusic._addToPlaylistWithMembership(
+                                    newIdx, YtMusic.queue[i], acceptedVideoIds)
                             }
                             saveQueueName.text = ""
                             saveQueuePopup.close()

@@ -144,20 +144,25 @@ Singleton {
 
     function settingsForCategory(category): var {
         const settings = root._array(category?.settings)
-        return settings
-            .filter(setting => root.settingAvailable(setting))
-            .map(setting => {
-                const multipleFrom = String(setting?.multipleFromVersion ?? "")
-                if (!multipleFrom)
-                    return setting
-                const currentMinor = root._versionMinor(root.tlpVersion)
-                const requiredMinor = root._versionMinor(multipleFrom)
-                if (currentMinor < requiredMinor)
-                    return setting
-                const adapted = root._clone(setting)
-                adapted.type = "list"
-                return adapted
-            })
+        let write = 0
+        for (let read = 0; read < settings.length; read++) {
+            const setting = settings[read]
+            if (root.settingAvailable(setting))
+                settings[write++] = setting
+        }
+        settings.length = write
+        return settings.map(setting => {
+            const multipleFrom = String(setting?.multipleFromVersion ?? "")
+            if (!multipleFrom)
+                return setting
+            const currentMinor = root._versionMinor(root.tlpVersion)
+            const requiredMinor = root._versionMinor(multipleFrom)
+            if (currentMinor < requiredMinor)
+                return setting
+            const adapted = root._clone(setting)
+            adapted.type = "list"
+            return adapted
+        })
     }
 
     function categoryLabel(category): string {
@@ -200,11 +205,16 @@ Singleton {
             if (groupId === "TLP_PROFILE")
                 continue
             const group = grouped[groupId]
-            const profiled = group.settings.filter(setting => {
+            let profiledCount = 0
+            for (const setting of group.settings) {
                 const profile = String(setting?.profile ?? "")
-                return profile === "AC" || profile === "BAT" || profile === "SAV"
-            })
-            if (profiled.length < 2)
+                if (profile === "AC" || profile === "BAT" || profile === "SAV") {
+                    profiledCount++
+                    if (profiledCount >= 2)
+                        break
+                }
+            }
+            if (profiledCount < 2)
                 continue
             const guidance = "When overriding this group, set every shown profile together to avoid values spilling between TLP profiles."
             group.description = group.description.length > 0
@@ -213,7 +223,7 @@ Singleton {
         }
 
         const query = String(filterText ?? "").trim().toLowerCase()
-        return orderedIds.map(groupId => {
+        const groups = orderedIds.map(groupId => {
             const group = grouped[groupId]
             if (!query)
                 return group
@@ -230,7 +240,15 @@ Singleton {
                 || String(setting?.description ?? "").toLowerCase().includes(query)
                 || root.settingLabel(setting).toLowerCase().includes(query))
             return adapted
-        }).filter(group => group.settings.length > 0)
+        })
+        let write = 0
+        for (let read = 0; read < groups.length; read++) {
+            const group = groups[read]
+            if (group.settings.length > 0)
+                groups[write++] = group
+        }
+        groups.length = write
+        return groups
     }
 
     function settingLabel(definition): string {
@@ -331,8 +349,7 @@ Singleton {
         return generated.length > 0 ? generated : String(fallbackTitle ?? "")
     }
 
-    function groupUsesCompactProfileRows(group): bool {
-        const settings = root._array(group?.settings)
+    function _settingsUseCompactProfileRows(settings): bool {
         if (settings.length < 2)
             return false
         const firstLabel = root.settingLabel(settings[0])
@@ -341,6 +358,10 @@ Singleton {
         return settings.every(setting =>
             String(setting?.profile ?? "").length > 0
             && root.settingLabel(setting) === firstLabel)
+    }
+
+    function groupUsesCompactProfileRows(group): bool {
+        return root._settingsUseCompactProfileRows(root._array(group?.settings))
     }
 
     function exampleValue(definition): string {

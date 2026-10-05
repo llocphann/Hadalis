@@ -191,7 +191,13 @@ def normalize_state(raw: dict, config: dict) -> dict:
     events = raw.get("events", [])
     if not isinstance(events, list):
         events = []
-    events = [event for event in events[-EVENT_LIMIT:] if isinstance(event, dict)]
+    event_start = max(0, len(events) - EVENT_LIMIT)
+    normalized_events = []
+    for index in range(event_start, len(events)):
+        event_item = events[index]
+        if isinstance(event_item, dict):
+            normalized_events.append(event_item)
+    events = normalized_events
     heartbeat = raw.get("manager_heartbeat_at_unix")
     if type(heartbeat) is not int or heartbeat < 0:
         heartbeat = None
@@ -213,10 +219,17 @@ def normalize_state(raw: dict, config: dict) -> dict:
 
 
 def event(state: dict, profile_id: str | None, kind: str, detail: str = "") -> None:
-    state["events"] = (state["events"] + [{
+    current = state["events"]
+    new_event = {
         "at_unix": int(time.time()), "profile_id": profile_id,
         "kind": kind[:64], "detail": detail[:4000],
-    }])[-EVENT_LIMIT:]
+    }
+    start = max(0, len(current) - (EVENT_LIMIT - 1))
+    next_events = []
+    for index in range(start, len(current)):
+        next_events.append(current[index])
+    next_events.append(new_event)
+    state["events"] = next_events
 
 
 def archive_removed_profile(profile: dict, item: dict) -> Path:

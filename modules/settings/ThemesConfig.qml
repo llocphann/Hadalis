@@ -170,9 +170,10 @@ ContentPage {
                     result.push(preset)
                 }
                 // Sort: favorites first
+                const favoriteSet = new Set(favorites)
                 result.sort((a, b) => {
-                    const aFav = favorites.includes(a.id) ? 0 : 1
-                    const bFav = favorites.includes(b.id) ? 0 : 1
+                    const aFav = favoriteSet.has(a.id) ? 0 : 1
+                    const bFav = favoriteSet.has(b.id) ? 0 : 1
                     return aFav - bFav
                 })
                 return result
@@ -421,9 +422,16 @@ ContentPage {
                     }
 
                     // Map to presets
-                    let result = []
+                    const result = []
+                    if (ids.length === 0)
+                        return result
+                    const presetById = new Map()
+                    for (const preset of ThemePresets.presets) {
+                        if (!presetById.has(preset.id))
+                            presetById.set(preset.id, preset)
+                    }
                     for (let i = 0; i < ids.length; i++) {
-                        const preset = ThemePresets.presets.find(p => p.id === ids[i])
+                        const preset = presetById.get(ids[i])
                         if (preset) result.push(preset)
                     }
                     return result

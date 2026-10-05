@@ -1009,6 +1009,25 @@ Singleton {
         }
     }
 
+    function _addToPlaylistWithMembership(playlistIndex, item, acceptedVideoIds): void {
+        if (playlistIndex < 0 || playlistIndex >= root.playlists.length) return
+        if (!item?.videoId) return
+
+        let p = [...root.playlists]
+        if (acceptedVideoIds.has(item.videoId))
+            return
+        p[playlistIndex].items = [...p[playlistIndex].items, {
+            videoId: item.videoId,
+            title: item.title,
+            artist: item.artist,
+            duration: item.duration,
+            thumbnail: _getThumbnailUrl(item.videoId)
+        }]
+        root.playlists = p
+        _persistPlaylists()
+        acceptedVideoIds.add(item.videoId)
+    }
+
     function removeFromPlaylist(playlistIndex, itemIndex): void {
         if (playlistIndex < 0 || playlistIndex >= root.playlists.length) return
         let p = [...root.playlists]

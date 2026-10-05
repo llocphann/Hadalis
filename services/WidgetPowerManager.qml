@@ -50,15 +50,21 @@ Singleton {
         try {
             if (!CompositorService.isNiri || !Array.isArray(NiriService.windows))
                 return false;
-            const allWorkspaces = Object.values(NiriService.workspaces ?? {});
-            const activeWorkspaces = allWorkspaces.filter(workspace =>
-                workspace?.is_active
-                    && (outputName.length === 0 || workspace.output === outputName));
-            if (activeWorkspaces.length === 0)
+            const activeWorkspaceIds = new Set();
+            const workspaces = NiriService.workspaces ?? {};
+            for (const key in workspaces) {
+                if (!Object.prototype.hasOwnProperty.call(workspaces, key))
+                    continue;
+                const workspace = workspaces[key];
+                if (workspace?.is_active
+                        && (outputName.length === 0 || workspace.output === outputName))
+                    activeWorkspaceIds.add(workspace.id);
+            }
+            if (activeWorkspaceIds.size === 0)
                 return false;
             return NiriService.windows.some(window =>
                 !window?.is_minimized
-                    && activeWorkspaces.some(workspace => workspace.id === window.workspace_id));
+                    && activeWorkspaceIds.has(window.workspace_id));
         } catch (e) {
             return false;
         }

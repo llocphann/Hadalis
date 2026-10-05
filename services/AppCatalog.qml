@@ -196,18 +196,33 @@ Singleton {
             const raw = root._installedRaw
             const installedSet = new Set()
 
-            // Split native and flatpak sections
-            const parts = raw.split("---FLATPAK---")
-            const nativeLines = (parts[0] ?? "").split("\n")
-            const flatpakLines = (parts[1] ?? "").split("\n")
+            const marker = "---FLATPAK---"
+            const firstMarker = raw.indexOf(marker)
+            const nativeEnd = firstMarker >= 0 ? firstMarker : raw.length
 
-            for (const line of nativeLines) {
-                const pkg = line.trim()
+            let lineStart = 0
+            while (lineStart <= nativeEnd) {
+                const newline = raw.indexOf("\n", lineStart)
+                const lineEnd = newline < 0 || newline > nativeEnd ? nativeEnd : newline
+                const pkg = raw.slice(lineStart, lineEnd).trim()
                 if (pkg.length > 0) installedSet.add(pkg)
+                if (lineEnd === nativeEnd) break
+                lineStart = newline + 1
             }
-            for (const line of flatpakLines) {
-                const pkg = line.trim()
-                if (pkg.length > 0) installedSet.add(pkg)
+
+            if (firstMarker >= 0) {
+                const flatpakStart = firstMarker + marker.length
+                const secondMarker = raw.indexOf(marker, flatpakStart)
+                const flatpakEnd = secondMarker >= 0 ? secondMarker : raw.length
+                lineStart = flatpakStart
+                while (lineStart <= flatpakEnd) {
+                    const newline = raw.indexOf("\n", lineStart)
+                    const lineEnd = newline < 0 || newline > flatpakEnd ? flatpakEnd : newline
+                    const pkg = raw.slice(lineStart, lineEnd).trim()
+                    if (pkg.length > 0) installedSet.add(pkg)
+                    if (lineEnd === flatpakEnd) break
+                    lineStart = newline + 1
+                }
             }
 
             // Build installed map from catalog entries

@@ -1562,9 +1562,15 @@ ContentPage {
                 function filteredTimezones() {
                     const q = tzInput.text.toLowerCase().trim().replace(/ /g, "_")
                     const current = Config.options?.sidebar?.widgets?.worldClock_settings?.timezones ?? []
-                    return timezoneCatalog
-                        .filter(e => !current.includes(e.tz) && e.tz.toLowerCase().includes(q))
-                        .slice(0, 10)
+                    const result = []
+                    for (const e of timezoneCatalog) {
+                        if (!current.includes(e.tz) && e.tz.toLowerCase().includes(q)) {
+                            result.push(e)
+                            if (result.length >= 10)
+                                break
+                        }
+                    }
+                    return result
                 }
 
                 // ── System timezone + suggestion materialization ──────────

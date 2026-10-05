@@ -455,10 +455,17 @@ def _require_hashes(
 
 
 def _find_task(doc: dict[str, Any], task_id: str) -> dict[str, Any]:
-    matches = [task for task in _tasks(doc) if task["id"] == task_id]
-    if len(matches) != 1:
+    first_match: dict[str, Any] | None = None
+    match_count = 0
+    for index in range(doc["startIndex"] + 1, doc["endIndex"]):
+        task = _task_from_line(doc, index)
+        if task is not None and task["id"] == task_id:
+            match_count += 1
+            if first_match is None:
+                first_match = task
+    if match_count != 1 or first_match is None:
         raise TodoError("conflict", "task reference is stale or ambiguous")
-    return matches[0]
+    return first_match
 
 
 def _line_ending(physical: str) -> str:

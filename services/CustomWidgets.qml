@@ -166,15 +166,18 @@ Singleton {
         if (!Config.ready || !Config.customWidgetDataSynced || !root._scanDone || root.widgets.length === 0)
             return;
         let updates = {};
+        let hasUpdates = false;
         for (let i = 0; i < root.widgets.length; i++) {
             const widget = root.widgets[i];
             const defaults = root._widgetDefaults(widget, i);
             for (const key in defaults) {
-                if (root._readCustomConfig(widget.id, key) === undefined)
+                if (root._readCustomConfig(widget.id, key) === undefined) {
                     updates["background.widgets.custom." + widget.id + "." + key] = defaults[key];
+                    hasUpdates = true;
+                }
             }
         }
-        if (Object.keys(updates).length > 0)
+        if (hasUpdates)
             Config.setNestedValues(updates);
     }
 

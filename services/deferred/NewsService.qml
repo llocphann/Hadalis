@@ -103,13 +103,17 @@ Singleton {
     function _parseRss(xml) {
         const items = []
         const itemRe = /<item>([\s\S]*?)<\/item>/g
+        const titleRe = /<title[^>]*>([\s\S]*?)<\/title>/
+        const linkRe = /<link[^>]*>([\s\S]*?)<\/link>/
+        const pubDateRe = /<pubDate[^>]*>([\s\S]*?)<\/pubDate>/
+        const sourceRe = /<source[^>]*>([\s\S]*?)<\/source>/
         let m
         while ((m = itemRe.exec(xml)) !== null && items.length < 30) {
             const block = m[1]
-            const title = root._decodeHtml(root._tag(block, "title"))
-            const link = root._tag(block, "link")
-            const pubDate = root._tag(block, "pubDate")
-            const source = root._decodeHtml(root._tag(block, "source"))
+            const title = root._decodeHtml(root._tagWithRegex(block, titleRe))
+            const link = root._tagWithRegex(block, linkRe)
+            const pubDate = root._tagWithRegex(block, pubDateRe)
+            const source = root._decodeHtml(root._tagWithRegex(block, sourceRe))
             if (!title || !link)
                 continue
             // Google News titles end in " - Source"; strip when source is known.
@@ -123,6 +127,13 @@ Singleton {
             })
         }
         return items
+    }
+
+    function _tagWithRegex(block, regex) {
+        const m = block.match(regex)
+        if (!m)
+            return ""
+        return m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/, "$1").trim()
     }
 
     function _tag(block, name) {

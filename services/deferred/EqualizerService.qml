@@ -191,7 +191,20 @@ Singleton {
         return result
     }
 
-    function _applyState(gains, presetName) {
+    function _normalizeGainsInPlace(values) {
+        if (!values || values.length !== root.dspFrequencies.length)
+            return null
+        for (let i = 0; i < values.length; ++i) {
+            const value = Number(values[i])
+            if (!isFinite(value))
+                return null
+            values[i] = Math.max(root.dspMinimumBandGain,
+                Math.min(root.dspMaximumBandGain, value))
+        }
+        return values
+    }
+
+    function _applyStateInternal(gains, presetName, normalizeInPlace) {
         if (!root.enabled) {
             root.error = "feature-disabled"
             return false
@@ -213,7 +226,9 @@ Singleton {
             return false
         }
 
-        const normalized = root._normalizeGains(gains)
+        const normalized = normalizeInPlace
+            ? root._normalizeGainsInPlace(gains)
+            : root._normalizeGains(gains)
         if (!normalized) {
             root.error = "invalid-dsp-state"
             return false
@@ -245,6 +260,10 @@ Singleton {
         return true
     }
 
+    function _applyState(gains, presetName) {
+        return root._applyStateInternal(gains, presetName, false)
+    }
+
     function setDspBandGain(index, gain) {
         const dspIndex = Number(index)
         const requestedGain = Number(gain)
@@ -261,7 +280,7 @@ Singleton {
         const next = root._dspGains.slice()
         next[dspIndex] = Math.max(root.dspMinimumBandGain,
             Math.min(root.dspMaximumBandGain, requestedGain))
-        return root._applyState(next, "Custom")
+        return root._applyStateInternal(next, "Custom", true)
     }
 
     function applyDspPreset(name) {

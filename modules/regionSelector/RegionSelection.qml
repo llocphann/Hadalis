@@ -515,10 +515,12 @@ PanelWindow {
                 else if (root.selectionMode === RegionSelection.SelectionMode.Circle) {
                     const padding = (Config.options?.regionSelector?.circle?.padding ?? 10) + (Config.options?.regionSelector?.circle?.strokeWidth ?? 2) / 2;
                     const dragPoints = (root.points.length > 0) ? root.points : [{ x: mouseArea.mouseX, y: mouseArea.mouseY }];
-                    const maxX = Math.max(...dragPoints.map(p => p.x));
-                    const minX = Math.min(...dragPoints.map(p => p.x));
-                    const maxY = Math.max(...dragPoints.map(p => p.y));
-                    const minY = Math.min(...dragPoints.map(p => p.y));
+                    const xValues = dragPoints.map(p => p.x);
+                    const maxX = Math.max(...xValues);
+                    const minX = Math.min(...xValues);
+                    const yValues = dragPoints.map(p => p.y);
+                    const maxY = Math.max(...yValues);
+                    const minY = Math.min(...yValues);
                     root.regionX = minX - padding;
                     root.regionY = minY - padding;
                     root.regionWidth = maxX - minX + padding * 2;

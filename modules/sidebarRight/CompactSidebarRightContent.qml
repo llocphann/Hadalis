@@ -317,19 +317,26 @@ Item {
                         const _t = _eventsTrigger
                         const _t2 = _externalTrigger
                         const now = new Date()
-                        const local = Events.getUpcomingEvents(14).map(e => Object.assign({}, e, { _source: "local" }))
+                        const all = []
+                        const local = Events.getUpcomingEvents(14)
+                        for (const e of local)
+                            all.push(Object.assign({}, e, { _source: "local" }))
+
                         const startDay = new Date(now); startDay.setHours(0,0,0,0)
-                        const ext = []
+                        const dates = []
                         for (let i = 0; i < 14; i++) {
                             const d = new Date(startDay); d.setDate(d.getDate() + i)
-                            const dayEvts = CalendarSync.getEventsForDate(d) || []
+                            dates.push(d)
+                        }
+                        const externalBuckets = CalendarSync._getEventBucketsForDates(dates)
+                        for (let i = 0; i < externalBuckets.length; i++) {
+                            const dayEvts = externalBuckets[i] || []
                             for (const e of dayEvts) {
                                 const evtTime = new Date(e.startDate || e.dateTime)
                                 if (evtTime >= now || (e.allDay && evtTime >= startDay))
-                                    ext.push(Object.assign({}, e, { _source: "external", dateTime: e.startDate || e.dateTime, category: "general", priority: "normal" }))
+                                    all.push(Object.assign({}, e, { _source: "external", dateTime: e.startDate || e.dateTime, category: "general", priority: "normal" }))
                             }
                         }
-                        const all = local.concat(ext)
                         all.sort((a,b) => new Date(a.dateTime || a.startDate) - new Date(b.dateTime || b.startDate))
                         return all
                     }

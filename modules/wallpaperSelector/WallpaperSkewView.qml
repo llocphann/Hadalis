@@ -159,16 +159,44 @@ Item {
 
         // Sort
         if (sortMode === "color" && _colorsLoaded) {
+            const fileNameCache = new Map()
+            const hueCache = new Map()
+            const saturationCache = new Map()
+
+            function fileNameFor(index) {
+                if (fileNameCache.has(index))
+                    return fileNameCache.get(index)
+                const value = folderModel.get(index, "fileName") ?? ""
+                fileNameCache.set(index, value)
+                return value
+            }
+
+            function hueFor(index, fileName) {
+                if (hueCache.has(index))
+                    return hueCache.get(index)
+                const value = _getHueBucket(fileName)
+                hueCache.set(index, value)
+                return value
+            }
+
+            function saturationFor(index, fileName) {
+                if (saturationCache.has(index))
+                    return saturationCache.get(index)
+                const value = _getSaturation(fileName)
+                saturationCache.set(index, value)
+                return value
+            }
+
             imgMap.sort((a, b) => {
-                const fnA = folderModel.get(a, "fileName") ?? ""
-                const fnB = folderModel.get(b, "fileName") ?? ""
-                const hueA = _getHueBucket(fnA)
-                const hueB = _getHueBucket(fnB)
+                const fnA = fileNameFor(a)
+                const fnB = fileNameFor(b)
+                const hueA = hueFor(a, fnA)
+                const hueB = hueFor(b, fnB)
                 // Achromatic (99) sorts last
                 const sortA = hueA === 99 ? 100 : (hueA < 0 ? 101 : hueA)
                 const sortB = hueB === 99 ? 100 : (hueB < 0 ? 101 : hueB)
                 if (sortA !== sortB) return sortA - sortB
-                return _getSaturation(fnB) - _getSaturation(fnA)
+                return saturationFor(b, fnB) - saturationFor(a, fnA)
             })
         } else {
             // Date sort: FolderListModel.Time with sortReversed=false yields oldest-first.

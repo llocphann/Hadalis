@@ -63,9 +63,15 @@ Item {
 
         Repeater {
             model: ScriptModel {
-                values: Persistent.states.overlay.open.map(identifier => {
-                    return OverlayContext.availableWidgets.find(w => w.identifier === identifier);
-                }).filter(w => w !== undefined && w !== null)
+                values: {
+                    const result = []
+                    for (const identifier of Persistent.states.overlay.open) {
+                        const widget = OverlayContext.availableWidgets.find(w => w.identifier === identifier)
+                        if (widget !== undefined && widget !== null)
+                            result.push(widget)
+                    }
+                    return result
+                }
                 objectProp: "identifier"
             }
             delegate: OverlayWidgetDelegateChooser {

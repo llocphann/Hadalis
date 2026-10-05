@@ -299,9 +299,8 @@ Singleton {
             const d = new Date(cursor)
             const hour = d.getHours()
             // Milliseconds until the next hour boundary
-            const next = new Date(cursor)
-            next.setMinutes(60, 0, 0)
-            const boundary = Math.min(next.getTime(), endMs)
+            d.setMinutes(60, 0, 0)
+            const boundary = Math.min(d.getTime(), endMs)
             const secs = Math.round((boundary - cursor) / 1000)
             if (secs > 0)
                 result[hour] = (result[hour] || 0) + secs
@@ -385,8 +384,8 @@ Singleton {
     }
 
     function _humanizeAppId(id: string): string {
-        const parts = id.split(".")
-        const name = parts.length > 1 ? parts[parts.length - 1] : id
+        const dot = id.lastIndexOf(".")
+        const name = dot >= 0 ? id.slice(dot + 1) : id
         return name.replace(/[-_]/g, " ").replace(/\b\w/g, function(c) { return c.toUpperCase() }).trim()
     }
 

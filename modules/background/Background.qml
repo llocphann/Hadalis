@@ -403,7 +403,14 @@ Scope {
         }
 
         function _routeImageConversion(paths, x, y): void {
-            const valid = Array.from(paths ?? []).filter(path => Images.isValidImageByName(String(path)))
+            const valid = Array.from(paths ?? [])
+            let writeCount = 0
+            for (let i = 0; i < valid.length; i++) {
+                const path = valid[i]
+                if (Images.isValidImageByName(String(path)))
+                    valid[writeCount++] = path
+            }
+            valid.length = writeCount
             if (valid.length === 0)
                 return
             bgRoot._conversionPlacement = { x: x, y: y }

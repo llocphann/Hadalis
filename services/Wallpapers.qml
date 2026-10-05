@@ -344,14 +344,15 @@ Singleton {
         // JS encodeURIComponent encodes everything except A-Za-z0-9-_.!~*'()
         // We need to match Python's behavior for strict path encoding
         const parts = cleanPath.split("/")
-        const encodedParts = parts.map(p => {
+        for (let i = 0; i < parts.length; i++) {
+            const p = parts[i]
             // Manual encoding for characters that encodeURIComponent misses or handles differently if needed
             // But standard encodeURIComponent is usually close enough for file paths
-            return encodeURIComponent(p).replace(/[!'()*]/g, function(c) {
+            parts[i] = encodeURIComponent(p).replace(/[!'()*]/g, function(c) {
                 return '%' + c.charCodeAt(0).toString(16);
             });
-        })
-        const url = "file://" + encodedParts.join("/")
+        }
+        const url = "file://" + parts.join("/")
         
         const md5Hash = MD5.hash(url)
         const cacheDir = Quickshell.env("HOME") + "/.cache/thumbnails/" + size
@@ -928,7 +929,13 @@ Singleton {
                 if (root.extensions.includes(ext)) return [`*.${ext}`]
             }
             // Normal search: apply query to all extensions
-            const searchParts = query.split(" ").filter(s => s.length > 0).map(s => `*${s}*`).join("")
+            const parts = query.split(" ")
+            let searchParts = ""
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i]
+                if (part.length > 0)
+                    searchParts += `*${part}*`
+            }
             return root.extensions.map(ext => `*${searchParts}*.${ext}`)
         }
         showDirs: true
@@ -972,7 +979,7 @@ Singleton {
     property var _singleThumbQueue: []
     
     function generateThumbnail(size: string) {
-        if (!["normal", "large", "x-large", "xx-large"].includes(size)) throw new Error("Invalid thumbnail size")
+        if (!(size === "normal" || size === "large" || size === "x-large" || size === "xx-large")) throw new Error("Invalid thumbnail size")
         root._pendingThumbnailSize = size
         root._pendingThumbnailDir = FileUtils.trimFileProtocol(root.directory)
         thumbgenDebounce.restart()
@@ -1008,7 +1015,7 @@ Singleton {
     function ensureThumbnailForPath(filePath: string, size = "large") {
         const normalizedPath = FileUtils.trimFileProtocol(String(filePath ?? ""))
         if (!normalizedPath || normalizedPath.length === 0) return
-        if (!["normal", "large", "x-large", "xx-large"].includes(size)) return
+        if (!(size === "normal" || size === "large" || size === "x-large" || size === "xx-large")) return
 
         const outputPath = root.getExpectedThumbnailPath(normalizedPath, size)
         if (!outputPath || outputPath.length === 0) return

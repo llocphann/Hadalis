@@ -247,7 +247,6 @@ Item {
         if (bounded === currentIndex) return
         currentIndex = bounded
         showKeyboardGuide = false
-        _prefetchAroundIndex(currentIndex)
         if (Appearance.animationsEnabled)
             focusPulseAnim.restart()
     }

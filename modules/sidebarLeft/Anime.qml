@@ -438,12 +438,17 @@ Item {
                         }
                         if(tagInputField.text.startsWith(root.commandPrefix)) {
                             root.suggestionQuery = tagInputField.text
-                            root.suggestionList = root.allCommands.filter(cmd => cmd.name.startsWith(tagInputField.text.substring(1))).map(cmd => {
-                                return {
-                                    name: `${root.commandPrefix}${cmd.name}`,
-                                    description: `${cmd.description}`,
+                            const suggestions = []
+                            const commandQuery = tagInputField.text.substring(1)
+                            for (const cmd of root.allCommands) {
+                                if (cmd.name.startsWith(commandQuery)) {
+                                    suggestions.push({
+                                        name: `${root.commandPrefix}${cmd.name}`,
+                                        description: `${cmd.description}`,
+                                    })
                                 }
-                            })
+                            }
+                            root.suggestionList = suggestions
                             searchTimer.stop();
                             return
                         }

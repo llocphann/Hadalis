@@ -113,9 +113,22 @@ Menu {
                 bottomMargin: root.downDirection ? root.margins : root.sourceEdgeMargin
             }
             implicitHeight: contentHeight
-            implicitWidth: Array.from({
-                length: count
-            }, (_, i) => itemAtIndex(i)?.implicitWidth ?? 0).reduce((a, b) => a > b ? a : b)
+            implicitWidth: {
+                const n = count
+                if (n === 0) {
+                    return Array.from({
+                        length: n
+                    }, (_, i) => itemAtIndex(i)?.implicitWidth ?? 0)
+                        .reduce((a, b) => a > b ? a : b)
+                }
+
+                let maximum = itemAtIndex(0)?.implicitWidth ?? 0
+                for (let i = 1; i < n; i++) {
+                    const width = itemAtIndex(i)?.implicitWidth ?? 0
+                    maximum = maximum > width ? maximum : width
+                }
+                return maximum
+            }
 
             model: root.contentModel
         }

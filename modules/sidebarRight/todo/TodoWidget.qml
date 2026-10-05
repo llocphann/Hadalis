@@ -139,9 +139,16 @@ Item {
                     ? Todo.errorMessage
                     : Translation.tr("Nothing here!")
                 emptyMascotPose: "todo-done"
-                taskList: Todo.list
-                    .map(function(item, i) { return Object.assign({}, item, {originalIndex: i}); })
-                    .filter(function(item) { return !item.done; })
+                taskList: {
+                    const result = []
+                    const items = Todo.list
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items[i]
+                        if (!item.done)
+                            result.push(Object.assign({}, item, {originalIndex: i}))
+                    }
+                    return result
+                }
             }
             TaskList {
                 listBottomPadding: root.fabSize + root.fabMargins * 2
@@ -150,9 +157,16 @@ Item {
                     ? Todo.errorMessage
                     : Translation.tr("Finished tasks will go here")
                 emptyMascotPose: "success-celebrate"
-                taskList: Todo.list
-                    .map(function(item, i) { return Object.assign({}, item, {originalIndex: i}); })
-                    .filter(function(item) { return item.done; })
+                taskList: {
+                    const result = []
+                    const items = Todo.list
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items[i]
+                        if (item.done)
+                            result.push(Object.assign({}, item, {originalIndex: i}))
+                    }
+                    return result
+                }
             }
 
         }

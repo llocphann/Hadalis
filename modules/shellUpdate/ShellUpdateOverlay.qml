@@ -71,15 +71,21 @@ Scope {
     // Parse commit log lines: "hash|subject|relative_date|author"
     function parseCommits(raw) {
         if (!raw || raw.length === 0) return []
-        return raw.split("\n").filter(l => l.length > 0).map(line => {
+        const lines = raw.split("\n")
+        const result = []
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i]
+            if (line.length === 0)
+                continue
             const parts = line.split("|")
-            return {
+            result.push({
                 hash: parts[0] ?? "",
                 subject: parts[1] ?? "",
                 date: parts[2] ?? "",
                 author: parts[3] ?? ""
-            }
-        })
+            })
+        }
+        return result
     }
 
     // Extract only new changelog sections (between remote and local version)

@@ -30,7 +30,7 @@ ContentPage {
     property bool showDiagnostics: false
     property string secretInput: ""
     readonly property bool tokenSaved: root.snapshot?.credentials?.github?.[root.selectedProfileId] ?? false
-    readonly property var activityEvents: (root.snapshot?.runtime?.events ?? []).filter(e => !root.selectedProfileId || e.profile_id === root.selectedProfileId || e.profile_id === null).slice().reverse()
+    readonly property var activityEvents: (root.snapshot?.runtime?.events ?? []).filter(e => !root.selectedProfileId || e.profile_id === root.selectedProfileId || e.profile_id === null).reverse()
     readonly property string activityText: root.activityEvents.map(e => {
         const name = root.profiles.find(p => p.id === e.profile_id)?.name ?? Translation.tr("System")
         const time = Qt.formatDateTime(new Date(e.at_unix * 1000), "MM-dd HH:mm:ss")

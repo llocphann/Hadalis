@@ -369,6 +369,9 @@ ColumnLayout {
             collapsible: true
             icon: String(root.selectedCategory?.icon ?? "tune")
             title: Translation.tr(String(modelData?.title ?? ""))
+            readonly property var groupSettings: TlpSettingsService._array(groupCard.modelData?.settings)
+            readonly property bool compactProfileRows: TlpSettingsService._settingsUseCompactProfileRows(groupCard.groupSettings)
+            readonly property bool singleSettingGroup: groupCard.groupSettings.length === 1
 
             SettingsGroup {
                 StyledText {
@@ -385,14 +388,14 @@ ColumnLayout {
                 }
 
                 Repeater {
-                    model: TlpSettingsService._array(groupCard.modelData?.settings)
+                    model: groupCard.groupSettings
 
                     delegate: TlpSettingRow {
                         required property var modelData
                         definition: modelData
                         groupDescription: root.conciseGroupDescription(groupCard.modelData)
-                        compactProfileRows: TlpSettingsService.groupUsesCompactProfileRows(groupCard.modelData)
-                        singleSettingGroup: TlpSettingsService._array(groupCard.modelData?.settings).length === 1
+                        compactProfileRows: groupCard.compactProfileRows
+                        singleSettingGroup: groupCard.singleSettingGroup
                     }
                 }
             }

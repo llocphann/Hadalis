@@ -114,7 +114,20 @@ ColumnLayout {
         property list<real> textLineOpacities: []
         model: ScriptModel {
             // Split by either double newlines or single newlines in a list
-            values: root.fadeChunkSplitting ? root.shownText.split(/\n\n(?= {0,2})|\n(?= {0,2}[-\*])/g).filter(line => line.trim() !== "") : [root.shownText]
+            values: {
+                if (!root.fadeChunkSplitting)
+                    return [root.shownText]
+
+                const chunks = root.shownText.split(/\n\n(?= {0,2})|\n(?= {0,2}[-\*])/g)
+                let writeCount = 0
+                for (let i = 0; i < chunks.length; i++) {
+                    const line = chunks[i]
+                    if (line.trim() !== "")
+                        chunks[writeCount++] = line
+                }
+                chunks.length = writeCount
+                return chunks
+            }
             onValuesChanged: {
                 while (textLinesRepeater.textLineOpacities.length < values.length) {
                     textLinesRepeater.textLineOpacities.push(root.messageData.done ? 1 : 0);

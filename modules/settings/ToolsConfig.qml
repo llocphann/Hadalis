@@ -236,9 +236,10 @@ ContentPage {
 
     function availableSystemAudioSourceOptions() {
         let options = [{ value: "", displayName: systemAudioSourceDisplayName("") }]
-        options = options.concat(detectedAudioSources
-            .filter(source => String(source).endsWith(".monitor"))
-            .map(source => ({ value: source, displayName: systemAudioSourceDisplayName(source) })))
+        for (const source of detectedAudioSources) {
+            if (String(source).endsWith(".monitor"))
+                options.push({ value: source, displayName: systemAudioSourceDisplayName(source) })
+        }
         const configured = RecorderStatus.configuredSystemAudioSource
         options = ensureOption(options, configured, `${Translation.tr("Configured source")}: ${configured}`)
         return options
@@ -246,9 +247,10 @@ ContentPage {
 
     function availableMicrophoneSourceOptions() {
         let options = [{ value: "", displayName: microphoneSourceDisplayName("") }]
-        options = options.concat(detectedAudioSources
-            .filter(source => !String(source).endsWith(".monitor"))
-            .map(source => ({ value: source, displayName: microphoneSourceDisplayName(source) })))
+        for (const source of detectedAudioSources) {
+            if (!String(source).endsWith(".monitor"))
+                options.push({ value: source, displayName: microphoneSourceDisplayName(source) })
+        }
         const configured = RecorderStatus.configuredMicrophoneSource
         options = ensureOption(options, configured, `${Translation.tr("Configured source")}: ${configured}`)
         return options

@@ -746,15 +746,19 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                                 all: true,
                                 key: "name"
                             });
-                            root.suggestionList = modelResults.map(model => {
+                            const needsPrefix = messageInputField.text.trim().split(" ").length == 1
+                            const suggestions = []
+                            for (const model of modelResults) {
                                 const resolvedModel = Ai.models[model.target]
-                                if (!resolvedModel) return null
-                                return {
-                                    name: `${messageInputField.text.trim().split(" ").length == 1 ? (root.commandPrefix + "model ") : ""}${model.target}`,
+                                if (!resolvedModel)
+                                    continue
+                                suggestions.push({
+                                    name: `${needsPrefix ? (root.commandPrefix + "model ") : ""}${model.target}`,
                                     displayName: resolvedModel.name ?? model.target,
                                     description: resolvedModel.description ?? ""
-                                };
-                            }).filter(model => model !== null)
+                                })
+                            }
+                            root.suggestionList = suggestions
                         } else if (messageInputField.text.startsWith(`${root.commandPrefix}prompt`)) {
                             root.suggestionQuery = messageInputField.text.split(" ")[1] ?? "";
                             const promptFileResults = Fuzzy.go(root.suggestionQuery, Ai.promptFiles.map(file => {
@@ -766,9 +770,10 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                                 all: true,
                                 key: "name"
                             });
+                            const needsPrefix = messageInputField.text.trim().split(" ").length == 1
                             root.suggestionList = promptFileResults.map(file => {
                                 return {
-                                    name: `${messageInputField.text.trim().split(" ").length == 1 ? (root.commandPrefix + "prompt ") : ""}${file.target}`,
+                                    name: `${needsPrefix ? (root.commandPrefix + "prompt ") : ""}${file.target}`,
                                     displayName: `${FileUtils.trimFileExt(FileUtils.fileNameForPath(file.target))}`,
                                     description: Translation.tr("Load prompt from %1").arg(file.target)
                                 };
@@ -784,10 +789,11 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                                 all: true,
                                 key: "name"
                             });
+                            const needsPrefix = messageInputField.text.trim().split(" ").length == 1
                             root.suggestionList = promptFileResults.map(file => {
                                 const chatName = FileUtils.trimFileExt(FileUtils.fileNameForPath(file.target)).trim();
                                 return {
-                                    name: `${messageInputField.text.trim().split(" ").length == 1 ? (root.commandPrefix + "save ") : ""}${chatName}`,
+                                    name: `${needsPrefix ? (root.commandPrefix + "save ") : ""}${chatName}`,
                                     displayName: `${chatName}`,
                                     description: Translation.tr("Save chat to %1").arg(chatName)
                                 };
@@ -803,10 +809,11 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                                 all: true,
                                 key: "name"
                             });
+                            const needsPrefix = messageInputField.text.trim().split(" ").length == 1
                             root.suggestionList = promptFileResults.map(file => {
                                 const chatName = FileUtils.trimFileExt(FileUtils.fileNameForPath(file.target)).trim();
                                 return {
-                                    name: `${messageInputField.text.trim().split(" ").length == 1 ? (root.commandPrefix + "load ") : ""}${chatName}`,
+                                    name: `${needsPrefix ? (root.commandPrefix + "load ") : ""}${chatName}`,
                                     displayName: `${chatName}`,
                                     description: Translation.tr(`Load chat from %1`).arg(file.target)
                                 };
@@ -822,22 +829,28 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                                 all: true,
                                 key: "name"
                             });
+                            const needsPrefix = messageInputField.text.trim().split(" ").length == 1
                             root.suggestionList = toolResults.map(tool => {
                                 const toolName = tool.target;
                                 return {
-                                    name: `${messageInputField.text.trim().split(" ").length == 1 ? (root.commandPrefix + "tool ") : ""}${tool.target}`,
+                                    name: `${needsPrefix ? (root.commandPrefix + "tool ") : ""}${tool.target}`,
                                     displayName: toolName,
                                     description: Ai.toolDescriptions[toolName]
                                 };
                             });
                         } else if (messageInputField.text.startsWith(root.commandPrefix)) {
                             root.suggestionQuery = messageInputField.text;
-                            root.suggestionList = root.allCommands.filter(cmd => cmd.name.startsWith(messageInputField.text.substring(1))).map(cmd => {
-                                return {
-                                    name: `${root.commandPrefix}${cmd.name}`,
-                                    description: `${cmd.description}`
-                                };
-                            });
+                            const suggestions = []
+                            const commandQuery = messageInputField.text.substring(1)
+                            for (const cmd of root.allCommands) {
+                                if (cmd.name.startsWith(commandQuery)) {
+                                    suggestions.push({
+                                        name: `${root.commandPrefix}${cmd.name}`,
+                                        description: `${cmd.description}`
+                                    })
+                                }
+                            }
+                            root.suggestionList = suggestions
                         }
                     }
 

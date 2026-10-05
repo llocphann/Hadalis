@@ -208,14 +208,38 @@ Singleton {
             }
             
             const now = Date.now() / 1000
-            const filtered = (data.Page?.media ?? []).filter(anime => {
-                if (!anime.nextAiringEpisode) return false
-                const airingDate = new Date(anime.nextAiringEpisode.airingAt * 1000)
-                const airingDay = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"][airingDate.getDay()]
-                return airingDay === targetDay
-            })
+            const media = data.Page?.media ?? []
+            let normalized
+            if (Array.isArray(media)) {
+                normalized = []
+                for (const anime of media) {
+                    if (!anime.nextAiringEpisode)
+                        continue
+                    const airingDate = new Date(anime.nextAiringEpisode.airingAt * 1000)
+                    let airingDay
+                    switch (airingDate.getDay()) {
+                    case 0: airingDay = "sunday"; break
+                    case 1: airingDay = "monday"; break
+                    case 2: airingDay = "tuesday"; break
+                    case 3: airingDay = "wednesday"; break
+                    case 4: airingDay = "thursday"; break
+                    case 5: airingDay = "friday"; break
+                    case 6: airingDay = "saturday"; break
+                    default: airingDay = undefined
+                    }
+                    if (airingDay === targetDay)
+                        normalized.push(root._normalizeAnime(anime))
+                }
+            } else {
+                const filtered = media.filter(anime => {
+                    if (!anime.nextAiringEpisode) return false
+                    const airingDate = new Date(anime.nextAiringEpisode.airingAt * 1000)
+                    const airingDay = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"][airingDate.getDay()]
+                    return airingDay === targetDay
+                })
+                normalized = filtered.map(anime => root._normalizeAnime(anime))
+            }
             
-            const normalized = filtered.map(anime => root._normalizeAnime(anime))
             root._scheduleCache[targetDay] = normalized
             root.schedule = normalized
             root._updateCache(cacheKey)

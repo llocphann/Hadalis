@@ -306,10 +306,19 @@ Singleton {
         const paths = kind === "caps" ? root.capsLockPaths : root.numLockPaths;
         const states = kind === "caps" ? root._capsLockStates : root._numLockStates;
 
-        if (paths.length > 0 && !root._hasKnownState(paths, states))
+        let hasKnownState = paths.length === 0;
+        let nextValue = false;
+        for (let i = 0; i < paths.length; i++) {
+            const value = states[paths[i]];
+            if (value !== null && value !== undefined)
+                hasKnownState = true;
+            if (value === true) {
+                nextValue = true;
+                break;
+            }
+        }
+        if (!hasKnownState)
             return;
-
-        const nextValue = paths.some(path => states[path] === true);
 
         if (kind === "caps") {
             root._setCapsLockValue(nextValue, allowPopup);

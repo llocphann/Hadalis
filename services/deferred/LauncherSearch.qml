@@ -109,7 +109,7 @@ Singleton {
                     iconType: LauncherSearchResult.IconType.Material,
                     execute: () => Cliphist.copy(entry)
                 })
-            }).filter(Boolean)
+            })
         }
 
         // Emoji search
@@ -126,7 +126,7 @@ Singleton {
                     type: Translation.tr("Emoji"),
                     execute: () => { Quickshell.clipboardText = emoji }
                 })
-            }).filter(Boolean)
+            })
         }
 
         // Start math calculation
@@ -227,21 +227,22 @@ Singleton {
         result = result.concat(appResults)
 
         // Actions (built-in + user scripts)
-        const actionResults = root.allActions.map(action => {
-            const actionStr = `${actionPrefix}${action.action}`
-            if (actionStr.startsWith(q) || q.startsWith(actionStr)) {
-                return ({
-                    name: q.startsWith(actionStr) ? q : actionStr,
-                    verb: Translation.tr("Run"),
-                    type: Translation.tr("Action"),
-                    iconName: "settings_suggest",
-                    iconType: LauncherSearchResult.IconType.Material,
-                    execute: () => action.execute(q.split(" ").slice(1).join(" "))
-                })
+        const actions = root.allActions
+        if (q.startsWith(actionPrefix) || actionPrefix.startsWith(q)) {
+            for (const action of actions) {
+                const actionStr = `${actionPrefix}${action.action}`
+                if (actionStr.startsWith(q) || q.startsWith(actionStr)) {
+                    result.push({
+                        name: q.startsWith(actionStr) ? q : actionStr,
+                        verb: Translation.tr("Run"),
+                        type: Translation.tr("Action"),
+                        iconName: "settings_suggest",
+                        iconType: LauncherSearchResult.IconType.Material,
+                        execute: () => action.execute(q.split(" ").slice(1).join(" "))
+                    })
+                }
             }
-            return null
-        }).filter(Boolean)
-        result = result.concat(actionResults)
+        }
 
         // Add fallbacks if not prefix-specific
         const showDefaults = Config.options?.search?.prefix?.showDefaultActionsWithoutPrefix ?? true

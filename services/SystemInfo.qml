@@ -49,6 +49,63 @@ Singleton {
         return ""
     }
 
+    function _parseOsReleaseValues(text: string): var {
+        const lines = String(text ?? "").split("\n")
+        let prettyName
+        let name
+        let id
+        let homeUrlValue
+        let documentationUrlValue
+        let supportUrlValue
+        let bugReportUrlValue
+        let privacyPolicyUrlValue
+        let logoValue
+
+        function normalizedValue(line, prefixLength) {
+            let value = line.slice(prefixLength).trim()
+            if (value.length >= 2) {
+                const quote = value[0]
+                if ((quote === "\"" || quote === "'") && value[value.length - 1] === quote)
+                    value = value.slice(1, -1)
+            }
+            return value
+        }
+
+        for (let i = 0; i < lines.length; ++i) {
+            const line = lines[i]
+            if (prettyName === undefined && line.startsWith("PRETTY_NAME="))
+                prettyName = normalizedValue(line, 12)
+            else if (name === undefined && line.startsWith("NAME="))
+                name = normalizedValue(line, 5)
+            else if (id === undefined && line.startsWith("ID="))
+                id = normalizedValue(line, 3)
+            else if (homeUrlValue === undefined && line.startsWith("HOME_URL="))
+                homeUrlValue = normalizedValue(line, 9)
+            else if (documentationUrlValue === undefined && line.startsWith("DOCUMENTATION_URL="))
+                documentationUrlValue = normalizedValue(line, 18)
+            else if (supportUrlValue === undefined && line.startsWith("SUPPORT_URL="))
+                supportUrlValue = normalizedValue(line, 12)
+            else if (bugReportUrlValue === undefined && line.startsWith("BUG_REPORT_URL="))
+                bugReportUrlValue = normalizedValue(line, 15)
+            else if (privacyPolicyUrlValue === undefined && line.startsWith("PRIVACY_POLICY_URL="))
+                privacyPolicyUrlValue = normalizedValue(line, 19)
+            else if (logoValue === undefined && line.startsWith("LOGO="))
+                logoValue = normalizedValue(line, 5)
+        }
+
+        return {
+            prettyName: prettyName ?? "",
+            name: name ?? "",
+            id: id ?? "",
+            homeUrl: homeUrlValue ?? "",
+            documentationUrl: documentationUrlValue ?? "",
+            supportUrl: supportUrlValue ?? "",
+            bugReportUrl: bugReportUrlValue ?? "",
+            privacyPolicyUrl: privacyPolicyUrlValue ?? "",
+            logo: logoValue ?? ""
+        }
+    }
+
     function refreshIdentity(): void {
         if (getUsername.running || getDisplayName.running)
             return
@@ -80,21 +137,22 @@ Singleton {
             // os-release permits both quoted and unquoted values. Parse the
             // assignment first so valid entries such as NAME=Arch Linux do not
             // silently fall back to Unknown.
-            const prettyName = root._osReleaseValue(textOsRelease, "PRETTY_NAME")
-            const name = root._osReleaseValue(textOsRelease, "NAME")
+            const osRelease = root._parseOsReleaseValues(textOsRelease)
+            const prettyName = osRelease.prettyName
+            const name = osRelease.name
             distroName = prettyName.length > 0
                 ? prettyName
                 : (name.length > 0 ? name.replace(/Linux/i, "").trim() : "Unknown")
 
-            const parsedId = root._osReleaseValue(textOsRelease, "ID")
+            const parsedId = osRelease.id
             distroId = parsedId.length > 0 ? parsedId : "unknown"
 
-            homeUrl = root._osReleaseValue(textOsRelease, "HOME_URL")
-            documentationUrl = root._osReleaseValue(textOsRelease, "DOCUMENTATION_URL")
-            supportUrl = root._osReleaseValue(textOsRelease, "SUPPORT_URL")
-            bugReportUrl = root._osReleaseValue(textOsRelease, "BUG_REPORT_URL")
-            privacyPolicyUrl = root._osReleaseValue(textOsRelease, "PRIVACY_POLICY_URL")
-            logo = root._osReleaseValue(textOsRelease, "LOGO")
+            homeUrl = osRelease.homeUrl
+            documentationUrl = osRelease.documentationUrl
+            supportUrl = osRelease.supportUrl
+            bugReportUrl = osRelease.bugReportUrl
+            privacyPolicyUrl = osRelease.privacyPolicyUrl
+            logo = osRelease.logo
 
             // Update the distroIcon property based on distroId
             switch (distroId) {

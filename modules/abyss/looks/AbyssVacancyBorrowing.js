@@ -236,26 +236,21 @@ function _vacancyBestCandidate(owner,peer,placements,width,height,insets,gap,pai
         if (peerGap < .5) continue;
         var max=Math.min(peerGap,_vacancySafeExtent(panel,bounds,dir));
         if (max < .5) continue;
+        var baseCollision=false;
         for (var id in placements) {
             if (String(id) === String(owner.id)
                     || (parallel && String(id) === String(peer.id))) continue;
             var p=placements[id];
             if (!p || p.visible === false || !p.content) continue;
-            max=Math.min(max,_vacancyBlockerExtent(content,_vacancyRect(p.content),dir,gap));
+            var blocker=_vacancyRect(p.content);
+            max=Math.min(max,_vacancyBlockerExtent(content,blocker,dir,gap));
             if (max < .5) break;
+            if (!baseCollision
+                    && _vacancyCollides(content,blocker,gap-.01))
+                baseCollision=true;
         }
-        if (max < .5) continue;
-        var grown=_vacancyGrow(content,dir,max), collision=false;
-        for (var blockerId in placements) {
-            if (String(blockerId) === String(owner.id)
-                    || (parallel && String(blockerId) === String(peer.id))) continue;
-            var bp=placements[blockerId];
-            if (!bp || bp.visible === false || !bp.content) continue;
-            if (_vacancyCollides(grown,_vacancyRect(bp.content),gap-.01)) {
-                collision=true; break;
-            }
-        }
-        if (collision) continue;
+        if (max < .5 || baseCollision) continue;
+        var grown=_vacancyGrow(content,dir,max);
         var gain=max*((dir === "top" || dir === "bottom") ? content.width : content.height);
         // The vacancy between semantic peers is their nearest separated side.
         // For diagonal layouts, prefer that nearest side; only use area gain as
@@ -285,10 +280,39 @@ function resolve(requests,metadata,placements,width,height,insets,gap) {
             requestById[String(req.id)]=req;
     });
 
+    var winners={
+        featureSidebar:null,
+        quickNotes:null,
+        systemSidebar:null,
+        notificationCenter:null,
+        connectivityDialog:null
+    };
+    metadata.forEach(function(item) {
+        var role=String(item?.role ?? "");
+        if (!Object.prototype.hasOwnProperty.call(winners,role)) return;
+        var id=String(item?.id ?? "");
+        var req=requestById[id], p=placements?.[id];
+        if (!(req?.open === true && p && p.visible !== false && p.content)) return;
+        var order=_vacancyNumber(req.order,0);
+        var current=winners[role];
+        if (!current || order > current.order
+                || (order === current.order
+                    && id.localeCompare(current.id) < 0))
+            winners[role]={id:id,meta:item,request:req,placement:p,order:order};
+    });
+
     var plans=[];
     _vacancyPairs.forEach(function(pair) {
-        var first=_vacancyMemberForRole(pair.role,metadata,requestById,placements);
-        var second=_vacancyMemberForRole(pair.peer,metadata,requestById,placements);
+        var firstWinner=winners[pair.role];
+        var secondWinner=winners[pair.peer];
+        var first=firstWinner ? {
+            id:firstWinner.id,role:pair.role,meta:firstWinner.meta,
+            request:firstWinner.request,placement:firstWinner.placement
+        } : null;
+        var second=secondWinner ? {
+            id:secondWinner.id,role:pair.peer,meta:secondWinner.meta,
+            request:secondWinner.request,placement:secondWinner.placement
+        } : null;
         if (!first || !second) return;
 
         var choices=[first,second].map(function(owner) {

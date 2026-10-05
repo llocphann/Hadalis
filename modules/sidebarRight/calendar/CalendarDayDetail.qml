@@ -73,12 +73,17 @@ Item {
         if (!root.selectedDate) return []
 
         // Merge local + external
-        const localEvents = Events.getAllEventsForDate(root.selectedDate).map(e => Object.assign({}, e, {
-            source: "local",
-            startDate: e.dateTime
-        }))
+        const allEvents = []
+        const localEvents = Events.getAllEventsForDate(root.selectedDate)
+        for (const e of localEvents) {
+            allEvents.push(Object.assign({}, e, {
+                source: "local",
+                startDate: e.dateTime
+            }))
+        }
         const externalEvents = CalendarSync.getEventsForDate(root.selectedDate) || []
-        const allEvents = localEvents.concat(externalEvents)
+        for (const e of externalEvents)
+            allEvents.push(e)
 
         // Categorize by time of day
         const allDay = []

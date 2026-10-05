@@ -58,6 +58,27 @@ done
 grep -Fq 'focus: false' "$utility_popup" \
     || { printf 'FAIL: hover-owned Utilities pre-focuses and can retain its dismissal lease\n' >&2; exit 1; }
 
+for token in \
+    'font.pixelSize: Appearance.font.pixelSize.small' \
+    'font.pixelSize: Appearance.font.pixelSize.smaller' \
+    'font.pixelSize: Appearance.font.pixelSize.smallest' \
+    'visible: !DisplayMode.mirrorAvailable' \
+    'text: "Install wl-mirror"'; do
+    grep -Fq "$token" "$utility_popup" \
+        || { printf 'FAIL: Utilities compact Weather-like typography missing: %s\n' "$token" >&2; exit 1; }
+done
+for redundant in \
+    'Choose active displays.' \
+    'wl-mirror ready' \
+    'Mirror via wl-mirror.' \
+    'text: "Output device"' \
+    'text: "Input device"'; do
+    if grep -Fq "$redundant" "$utility_popup"; then
+        printf 'FAIL: Utilities retains redundant copy: %s\n' "$redundant" >&2
+        exit 1
+    fi
+done
+
 grep -Fq 'SwipeView {' "$utility_popup" \
     || { printf 'FAIL: Utilities horizontal page slider missing\n' >&2; exit 1; }
 grep -Fq 'interactive: true' "$utility_popup" \

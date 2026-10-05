@@ -14,6 +14,7 @@ Item {
     required property real outputWidth
     required property real outputHeight
     property bool allowed: false
+    property bool profileOpen: false
     readonly property bool editing: visible && WullMind.conversationOpen
     readonly property bool controlsVisible: visible && (editing || WullMind.checkInStage.length>0)
     width: Math.min(380, Math.max(220, outputWidth - 32))
@@ -181,6 +182,108 @@ Item {
             RowLayout {
                 visible: root.editing
                 Layout.fillWidth: true
+                RippleButton {
+                    objectName: "wullModelEffort"
+                    Layout.preferredWidth: Math.min(250, root.width - 24)
+                    Layout.preferredHeight: 30
+                    implicitHeight: 30
+                    enabled: !WullMind.busy && WullMind.selectableModels.length > 0
+                    buttonRadius: 15
+                    onClicked: root.profileOpen = !root.profileOpen
+                    contentItem: RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 8
+                        spacing: 5
+                        MaterialSymbol {
+                            text: WullMind.thinkingSupported ? "psychology" : "bolt"
+                            iconSize: 16
+                            color: Appearance.colors.colPrimary
+                        }
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: WullMind.profileLabel
+                            elide: Text.ElideRight
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                        }
+                        MaterialSymbol {
+                            text: root.profileOpen ? "expand_less" : "expand_more"
+                            iconSize: 16
+                            color: Appearance.colors.colSubtext
+                        }
+                    }
+                }
+                Item { Layout.fillWidth: true }
+            }
+            Rectangle {
+                visible: root.editing && root.profileOpen
+                Layout.fillWidth: true
+                implicitHeight: profilePanel.implicitHeight + 16
+                radius: 14
+                color: Qt.alpha(AbyssStyle.surfaceRaised, .82)
+                ColumnLayout {
+                    id: profilePanel
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    spacing: 5
+                    StyledText {
+                        text: "Model"
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        color: Appearance.colors.colSubtext
+                    }
+                    Repeater {
+                        model: WullMind.selectableModels
+                        DialogButton {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            buttonText: modelData.label ?? modelData.name
+                            toggled: WullMind.model === modelData.name
+                            enabled: !WullMind.busy
+                            onClicked: WullMind.selectModel(modelData)
+                        }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: "Thinking effort"
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            color: Appearance.colors.colSubtext
+                        }
+                        StyledText {
+                            text: WullMind.thinkingEffortLabel
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            color: Appearance.colors.colPrimary
+                        }
+                    }
+                    StyledSlider {
+                        objectName: "wullThinkingEffort"
+                        Layout.fillWidth: true
+                        enableSettingsSearch: false
+                        from: 0
+                        to: 3
+                        stepSize: 1
+                        value: Math.max(0, WullMind.thinkingLevels.findIndex(level => level.value === WullMind.effectiveThinkingEffort))
+                        enabled: WullMind.thinkingSupported && !WullMind.busy
+                        tooltipContent: WullMind.thinkingEffortLabel
+                        onMoved: {
+                            const levels = ["off", "low", "medium", "high"]
+                            WullMind.setThinkingEffort(levels[Math.max(0, Math.min(3, Math.round(value)))])
+                        }
+                    }
+                    StyledText {
+                        visible: !WullMind.thinkingSupported
+                        Layout.fillWidth: true
+                        text: "This model uses instant mode. Choose a reasoning-capable model to set effort."
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        color: Appearance.colors.colSubtext
+                    }
+                }
+            }
+            RowLayout {
+                visible: root.editing
+                Layout.fillWidth: true
                 spacing: 6
                 MaterialTextField {
                     id: message
@@ -222,8 +325,12 @@ Item {
     function submit(): void {
         if (WullMind.sendMessage(message.text)) message.text=""
     }
-    onEditingChanged: if (editing) Qt.callLater(() => { if (root.editing) message.forceActiveFocus() })
+    onEditingChanged: {
+        if (editing) Qt.callLater(() => { if (root.editing) message.forceActiveFocus() })
+        else root.profileOpen = false
+    }
     onControlsVisibleChanged: if (!controlsVisible) {
+        root.profileOpen = false
         message.focus = false
     }
     Shape {

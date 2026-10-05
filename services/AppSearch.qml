@@ -359,10 +359,10 @@ Singleton {
                 return top.map(item => root._decorateEntry(item.entry))
             }
 
-            const results = []
-            const count = _cachedList.length
+            const entries = _cachedList
+            const count = entries.length
+            const scores = new Array(count)
             for (let index = 0; index < count; ++index) {
-                const obj = _cachedList[index]
                 const nameLower = _cachedNameLowers[index] ?? ""
                 let score = Levendist.computeScore(nameLower, searchLower)
 
@@ -373,9 +373,17 @@ Singleton {
                 else if (nameLower.includes(searchLower))
                     score += 0.1
 
-                score = Math.min(1.0, score)
+                scores[index] = Math.min(1.0, score)
+            }
+
+            // Keep threshold reads in the same second phase as the original
+            // map(...).filter(...), while avoiding score-record objects for
+            // entries that will be discarded.
+            const results = []
+            for (let index = 0; index < count; ++index) {
+                const score = scores[index]
                 if (score > root.scoreThreshold)
-                    results.push({ entry: obj, score: score })
+                    results.push({ entry: entries[index], score: score })
             }
             results.sort((a, b) => b.score - a.score)
 

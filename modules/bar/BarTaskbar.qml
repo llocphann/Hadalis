@@ -86,8 +86,12 @@ Item {
         // but never drop the focused item.
         let result
         if (keep.length >= maxFit) {
-            const focused = keep.filter(it => it.focused === true)
-            const rest = keep.filter(it => it.focused !== true)
+            const focused = []
+            const rest = []
+            for (const it of keep) {
+                if (it.focused === true) focused.push(it)
+                else rest.push(it)
+            }
             result = focused.concat(rest).slice(0, maxFit)
         } else {
             const room = maxFit - keep.length
@@ -95,14 +99,13 @@ Item {
         }
         // Re-sort kept items back into their original model order so the bar
         // doesn't reorder visually (focus only affects WHICH items show).
-        const orderOf = new Map(items.map((it, i) => [it.uniqueId, i]))
+        const orderOf = new Map()
+        for (let i = 0; i < items.length; i++)
+            orderOf.set(items[i].uniqueId, i)
         result.sort((a, b) => orderOf.get(a.uniqueId) - orderOf.get(b.uniqueId))
-        // Drop a now-orphaned leading/trailing separator.
-        return result.filter((it, i) => {
-            if (it.section !== "separator") return true
-            const prev = result[i - 1], next = result[i + 1]
-            return prev && next && prev.section !== "separator" && next.section !== "separator"
-        })
+        // Separators were removed before keep/droppable were built, so none can
+        // reach the overflow result.
+        return result
     }
 
     readonly property bool separatePinnedFromRunning: Config.options?.dock?.separatePinnedFromRunning ?? true

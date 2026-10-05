@@ -1,0 +1,58 @@
+{
+  "id": "JOB-C2F353CC-SIDEBAR62-R47-20261005",
+  "base_sha": "91c71bc9fb5d9daa51d8a0c37356159f178862f3",
+  "profile_id": "profile-c2f353cc8d1c4c1f",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "scripts/test-sidebar-widget-index-parity.cjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-settings-information-architecture.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-shell-surface-contracts.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "scripts/test-performance-lifecycle.sh"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1200
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "scripts/validate-maintainer-local.sh",
+          "--current-repo"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1800
+      }
+    }
+  ]
+}

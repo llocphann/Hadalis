@@ -133,7 +133,16 @@ Singleton {
         }
     }
 
+    function _beginLocalMutation(): void {
+        // A reload queued by our previous save can still be waiting when the
+        // user changes another setting. Letting that stale reload win would
+        // momentarily restore the old disk snapshot and erase the new value.
+        fileReloadTimer.stop();
+        root._pendingReload = false;
+    }
+
     function setNestedValue(nestedKey, value) {
+        _beginLocalMutation();
         _applyNestedKey(nestedKey, value);
         _applyToMirror(nestedKey, value);
         fileWriteTimer.restart();
@@ -145,6 +154,8 @@ Singleton {
         if (!updates || typeof updates !== "object")
             return;
         const paths = Object.keys(updates);
+        if (paths.length > 0)
+            _beginLocalMutation();
         for (let i = 0; i < paths.length; ++i) {
             _applyNestedKey(paths[i], updates[paths[i]]);
             _applyToMirror(paths[i], updates[paths[i]]);

@@ -126,6 +126,7 @@ Window {
                     "journal bridge did not adopt configured vault "+JSON.stringify({
                         enabled:WullMind.obsidianEnabled,vault:WullMind.payload("check_in").vault,
                         configuredVault:String(Config.options?.todo?.obsidian?.vaultPath ?? "")}))
+                const journalContextKey=WullMind.contextKey
                 WullMind.askCheckIn("mood")
                 mouseMove(cloud,cloud.width/2,14);wait(80)
                 mouseClick(root.named(cloud,"wullmood-good"));wait(30)
@@ -133,13 +134,27 @@ Window {
                 check(WullMind.userMood==="good" && WullMind.userEnergy==="",
                     "mood save/session mismatch "+JSON.stringify({mood:WullMind.userMood,energy:WullMind.userEnergy,
                         stage:WullMind.checkInStage,busy:WullMind.busy,pending:WullMind.pending?.action ?? ""}))
+                check(WullMind.contextKey===journalContextKey,
+                    "journal context identity changed after mood save "+JSON.stringify({
+                        before:journalContextKey,after:WullMind.contextKey}))
                 check(WullMind.checkInStage==="energy" && !root.named(cloud,"wullmood-good").visible
                     && root.named(cloud,"wullenergy-high").visible && !field.visible,"next question did not show energy alone")
                 mouseMove(cloud,cloud.width/2,14);wait(50)
                 mouseClick(root.named(cloud,"wullenergy-high"));wait(30)
                 tryCompare(WullMind,"busy",false,6000)
                 check(WullMind.userMood==="good" && WullMind.userEnergy==="high","Obsidian-style choice buttons did not set the session")
-                check(WullMind.journal.journalPath.startsWith(Quickshell.env("WULL_TEST_VAULT")),"choices were not persisted through the helper")
+                check(WullMind.contextKey===journalContextKey,
+                    "journal context identity changed after energy save "+JSON.stringify({
+                        before:journalContextKey,after:WullMind.contextKey}))
+                tryVerify(()=>String(WullMind.journal.journalPath ?? "").startsWith(testVault),3000)
+                check(String(WullMind.journal.journalPath ?? "").startsWith(testVault),
+                    "choices were not persisted through the helper "+JSON.stringify({
+                        journalPath:String(WullMind.journal.journalPath ?? ""),
+                        enabled:WullMind.obsidianEnabled,
+                        vault:WullMind.payload("check_in").vault,
+                        contextKey:WullMind.contextKey,
+                        expectedContextKey:journalContextKey,
+                        error:WullMind.errorMessage}))
                 check(WullMind.checkInStage==="" && !root.named(cloud,"wullenergy-high").visible,"completed check-in retained choices")
                 check(!WullMind.setCheckInChoice("energy","anything"),"invalid choice accepted")
                 field.text="saved draft"
@@ -153,7 +168,7 @@ Window {
                 mouseClick(root.contentItem,20,720);wait(30)
                 check(root.outsideClicks===1,"speech guard blocked clicks outside the cloud")
                 WullMind.dismiss();check(!cloud.visible,"dismiss retained speech input")
-                console.log("WULL_MIND=PASS actualProcess localProbe EnglishReply borderlessCloud noCheckInInput separateQuestions journalWrites explicitChatFocus modelEffortSelector compactEffortRow activeModelContrast stagedEffortModelPicker enterSend sendOnlyControl persistentHistory reminderSources idleChatRelease retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint offlineMessage settingsAI noReferenceVault")
+                console.log("WULL_MIND=PASS actualProcess localProbe EnglishReply borderlessCloud noCheckInInput separateQuestions journalWrites stableJournalContext explicitChatFocus modelEffortSelector compactEffortRow activeModelContrast stagedEffortModelPicker enterSend sendOnlyControl persistentHistory reminderSources idleChatRelease retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint offlineMessage settingsAI noReferenceVault")
             } catch(e) {console.error("WULL_MIND=FAIL "+e)}
             shutdown.start()
         }

@@ -86,6 +86,16 @@ Persistence is intentionally split from inference context. `scripts/wull/history
 
 The previously observed post-crash GPU 99% state is no longer reproducible after the maintainer rebooted, so no causal GPU/backend claim is recorded from the later snapshot. The text baseline still invokes `llama-server` with `-ngl 0`; no GPU/offload policy was changed from that observation. Source commit `0941b08e88f0717bdbcaf2fb7b7b5b0acd3f29ec` only hardens lifecycle cleanup: the supervisor records the process-group ID, sends TERM/KILL to the whole group even when the llama server leader has already exited, treats abrupt HTTP disconnects as bounded local-runtime failures, and adds a fixture where a crashed server leaves a child behind. Local execution of that regression is now qualified at exact SHA `f80c1e05cd44baa96f4b6a8f11c4f806c6e7f1cb`: `test-wull-gguf-runtime.py`, `test-wull-gguf-ui.py`, `test-wull-local-mind.py`, and `test-wull-mind-ui.py` all PASS, and the full maintainer validator reports 419 passed, 0 failed, 12 skipped out of 420 checks.
 
+### 0.3 Model + thinking-effort selector — 2026-10-05
+
+Maintainer direction: Wull model selection should use a compact ChatGPT-like control rather than a separate large “Use in Wull” action. The quick-chat surface now exposes one compact `model · effort` pill; opening it shows the locally available models and the bounded effort control while preserving exactly one message action, Send. AI Settings and Companion → AI expose the same Wull model/effort state with compact selectors.
+
+The persisted effort values are `off`, `low`, `medium`, and `high`; UI labels present `off` as **Instant**. Capability is not fabricated: detected Qwen3-class/GPT-OSS/DeepSeek-R1 names advertise reasoning support, while non-reasoning models such as the current LFM baseline remain effective **Instant** with the effort slider disabled. Changing models and effort updates the existing `abyss.companionMind` configuration, and opening quick chat performs only bounded local model discovery.
+
+For the current llama.cpp GGUF path, the server stays one-shot, CPU-only (`-ngl 0`), one-slot and bounded-context. It now starts with reasoning auto-detection so per-request hybrid reasoning can be selected. Wull maps Low/Medium/High to deliberately small per-request thinking budgets (96/256/512 tokens) with bounded total output ceilings (320/512/832 tokens); Instant uses budget 0 and disables template thinking. These are Wull policy levels, not a claim that Qwen3.5 was trained with native OpenAI-style reasoning-effort tiers. The Ollama path mirrors the same user intent with `think` plus bounded `num_predict`. No model is kept resident and no cloud fallback is introduced.
+
+Implementation starts at `c9ee3b78fc57d6fbf612db753ad58861f92e8af8` and is completed through the current model/effort UI/config follow-up. New focused regressions cover capability detection, bounded effort payloads, invalid effort rejection, typed persistence, and the quick-chat selector. These changes are **source-complete but not yet maintainer-qualified**; run the focused Wull tests and canonical validator before relabeling this checkpoint PASS.
+
 
 ---
 

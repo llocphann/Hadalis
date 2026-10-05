@@ -133,7 +133,6 @@ def complete(model_path,messages,reply_format=None,server_path=None,thinking_eff
                     'max_tokens':effort_profile['max_tokens'],'temperature':.7,
                     'thinking_budget_tokens':effort_profile['budget'],
                     'chat_template_kwargs':{'enable_thinking':effort!='off'}}
-                if effort=='off':payload['reasoning_effort']='none'
                 if reply_format is not None:payload['response_format']=reply_format
                 result=request(sock,'/v1/chat/completions',payload,timeout=max(1,deadline-time.monotonic()))
                 choice=result.get('choices',[{}])[0]

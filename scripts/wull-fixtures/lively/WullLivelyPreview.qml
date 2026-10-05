@@ -207,7 +207,11 @@ Window {
                 check(!curiosity.busy && root.featureOpen && root.closes===2 && root.handoffs===1,
                     "pointer handoff closed a human-owned feature")
                 curiosity.lastVisit=0;check(!curiosity.offer(),"existing human UI was replaced")
-                root.featureOpen=false;root.place(280,40)
+                root.featureOpen=false
+                // Closing the human-owned popup changes the scene. Let the queued
+                // reconciliation consume that old scene before starting the next
+                // independent visit/reset case.
+                wait(80);root.place(280,40)
                 root.testPhase="surface disappearance recovery"
                 curiosity.lastVisit=0;presence.randomState=2000
                 check(curiosity.offer(),"surface-loss curiosity offer rejected")

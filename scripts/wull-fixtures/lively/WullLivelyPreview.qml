@@ -113,9 +113,23 @@ Window {
                 presence.beginDrag();presence.randomState=1000;presence.endDrag()
                 wait(90)
                 check(presence.mode==="fall" && !presence.releasedFlight,
-                    "release reintroduced free-floating flight")
+                    "slow release reintroduced free-floating flight")
                 tryCompare(presence,"traveling",false,presence.duration+600)
                 check(presence.grounded,"surface-bound release did not return to a support")
+                root.place(360,600)
+                presence.beginDrag();wait(16)
+                presence.dragTo(520,430)
+                check(Math.hypot(presence.dragVelocityX,presence.dragVelocityY)>presence.throwThreshold,
+                    "fast pointer motion did not cross throw threshold")
+                presence.endDrag();wait(35)
+                check(presence.releasedFlight && presence.traveling && presence.mode==="fly"
+                    && presence.destination?.grounded===true,
+                    "fast drag did not become a bounded throw to grounded geometry")
+                const throwDestination=JSON.stringify([presence.destination.x,presence.destination.y])
+                tryCompare(presence,"traveling",false,presence.duration+1000)
+                check(presence.grounded && !presence.releasedFlight
+                    && throwDestination===JSON.stringify([presence.placement.x,presence.placement.y]),
+                    "throw did not settle at its verified grounded destination")
                 root.animate=false;wait(30)
                 check(!actor.moving && !gait.active,"motion-off left a travel clock running")
                 const frozen=JSON.stringify([actor.x,actor.y,gait.phase,gait.weight]);wait(120)
@@ -159,7 +173,7 @@ Window {
                 root.allowed=false;wait(40)
                 check(!curiosity.busy && !actor.visible && !deadline.running && !presence.directed,
                     "policy hide did not cancel curiosity")
-                console.log("WULL_LIVELY=PASS run jump surfaceBoundRelease acceleratingFall regrab reducedMotion curiosityGesture distanceClose continuedDeparture ownedClose userHandoff policyHide")
+                console.log("WULL_LIVELY=PASS run jump surfaceBoundRelease velocityThrow groundedLanding acceleratingFall regrab reducedMotion curiosityGesture distanceClose continuedDeparture ownedClose userHandoff policyHide")
             } catch(error) {console.error("WULL_LIVELY=FAIL "+error+" "+JSON.stringify({phase:root.testPhase,
                 stage:curiosity.stage,owned:curiosity.owned,near:curiosity.nearFeature,reached:curiosity.reachedFeature,
                 featureOpen:root.featureOpen,closes:root.closes,traveling:presence.traveling,mode:presence.mode,

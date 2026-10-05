@@ -74,9 +74,11 @@ companion_item = perimeter.split("AbyssCompanion {", 1)[1].split(
     "onActivated:", 1
 )[0]
 assert "opacity: companionBridge.ready ? 1 : 0" in companion_item
-assert "dragEnabled: false" in companion_item
+assert "dragEnabled: interactive" in companion_item
 presence = (ROOT / "modules/abyss/companion/WullPresence.qml").read_text()
 assert "readonly property bool surfaceBound: true" in presence
+assert "function tryThrow(vx, vy): bool" in presence
+assert "candidate.grounded" in presence
 assert "WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible && companion.inputReady)" in perimeter
 assert "companionPreferences.edge" not in perimeter
 assert "reveal: companionPresence.renderedReveal" in perimeter

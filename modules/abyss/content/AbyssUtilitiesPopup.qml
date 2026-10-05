@@ -86,7 +86,7 @@ Item {
 
             AbyssLabel {
                 text: root.pageTitles[pages.currentIndex] ?? "Utilities"
-                font.pixelSize: AbyssStyle.fontSize * 1.12
+                font.pixelSize: Appearance.font.pixelSize.small
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true
             }
@@ -192,6 +192,7 @@ Item {
                 horizontalAlignment: Text.AlignHCenter
                 text: "Niri only."
                 color: AbyssStyle.textColorMuted
+                font.pixelSize: Appearance.font.pixelSize.smaller
             }
         }
     }
@@ -204,12 +205,6 @@ Item {
                 anchors.fill: parent
                 spacing: 12
 
-                AbyssLabel {
-                    Layout.fillWidth: true
-                    text: "Choose active displays."
-                    color: AbyssStyle.textColorMuted
-                }
-
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
@@ -218,6 +213,7 @@ Item {
                         Layout.fillWidth: true
                         glyph: "view_week"
                         text: "Extend"
+                        font.pixelSize: Appearance.font.pixelSize.small
                         checked: DisplayMode.currentMode === "extend"
                         enabled: CompositorService.isNiri && !DisplayMode.applying
                         onClicked: DisplayMode.apply("extend")
@@ -226,6 +222,7 @@ Item {
                         Layout.fillWidth: true
                         glyph: "laptop"
                         text: "Primary only"
+                        font.pixelSize: Appearance.font.pixelSize.small
                         checked: DisplayMode.currentMode === "primary-only"
                         enabled: CompositorService.isNiri && !DisplayMode.applying
                         onClicked: DisplayMode.apply("primary-only")
@@ -239,7 +236,11 @@ Item {
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 4
-                        AbyssLabel { text: "Second screen" }
+                        AbyssLabel {
+                            text: "Second screen"
+                            color: AbyssStyle.textColorMuted
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                        }
                         StyledComboBox {
                             Layout.fillWidth: true
                             enableSettingsSearch: false
@@ -255,6 +256,7 @@ Item {
                         Layout.alignment: Qt.AlignBottom
                         glyph: "desktop_windows"
                         text: "Second screen only"
+                        font.pixelSize: Appearance.font.pixelSize.small
                         checked: DisplayMode.currentMode === "second-only"
                         enabled: CompositorService.isNiri && !DisplayMode.applying
                             && DisplayMode.selectedSecondary.length > 0
@@ -282,13 +284,15 @@ Item {
                             Layout.fillWidth: true
                             AbyssLabel {
                                 text: "Mirror"
+                                font.pixelSize: Appearance.font.pixelSize.small
                                 font.weight: Font.DemiBold
                                 Layout.fillWidth: true
                             }
                             AbyssLabel {
-                                text: DisplayMode.mirrorAvailable ? "wl-mirror ready" : "wl-mirror unavailable"
-                                color: DisplayMode.mirrorAvailable
-                                    ? AbyssStyle.textColorMuted : Appearance.colors.colError
+                                visible: !DisplayMode.mirrorAvailable
+                                text: "Install wl-mirror"
+                                color: Appearance.colors.colError
+                                font.pixelSize: Appearance.font.pixelSize.smallest
                             }
                         }
 
@@ -299,7 +303,11 @@ Item {
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 4
-                                AbyssLabel { text: "Source" }
+                                AbyssLabel {
+                                    text: "Source"
+                                    color: AbyssStyle.textColorMuted
+                                    font.pixelSize: Appearance.font.pixelSize.smaller
+                                }
                                 StyledComboBox {
                                     Layout.fillWidth: true
                                     enableSettingsSearch: false
@@ -313,7 +321,11 @@ Item {
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 4
-                                AbyssLabel { text: "Target" }
+                                AbyssLabel {
+                                    text: "Target"
+                                    color: AbyssStyle.textColorMuted
+                                    font.pixelSize: Appearance.font.pixelSize.smaller
+                                }
                                 StyledComboBox {
                                     Layout.fillWidth: true
                                     enableSettingsSearch: false
@@ -328,16 +340,11 @@ Item {
 
                         RowLayout {
                             Layout.fillWidth: true
-                            AbyssLabel {
-                                Layout.fillWidth: true
-                                text: DisplayMode.mirrorAvailable
-                                    ? "Mirror via wl-mirror."
-                                    : "Install wl-mirror."
-                                color: AbyssStyle.textColorMuted
-                            }
+                            Item { Layout.fillWidth: true }
                             AbyssButton {
                                 glyph: DisplayMode.currentMode === "mirror" ? "stop_screen_share" : "screen_share"
                                 text: DisplayMode.currentMode === "mirror" ? "Stop mirror" : "Mirror"
+                                font.pixelSize: Appearance.font.pixelSize.small
                                 enabled: DisplayMode.mirrorAvailable && !DisplayMode.applying
                                     && DisplayMode.mirrorSource.length > 0
                                     && DisplayMode.mirrorTarget.length > 0
@@ -359,6 +366,7 @@ Item {
                         ? DisplayMode.lastError : DisplayMode.statusMessage
                     color: DisplayMode.lastError.length > 0
                         ? Appearance.colors.colError : AbyssStyle.textColorMuted
+                    font.pixelSize: Appearance.font.pixelSize.smallest
                 }
             }
         }
@@ -376,6 +384,7 @@ Item {
                     Layout.fillWidth: true
                     text: Audio.sink ? "Output · " + Audio.friendlyDeviceName(Audio.sink)
                         : "No active audio output"
+                    font.pixelSize: Appearance.font.pixelSize.small
                     font.weight: Font.DemiBold
                 }
 
@@ -402,11 +411,6 @@ Item {
                     }
                 }
 
-                AbyssLabel {
-                    text: "Output device"
-                    color: AbyssStyle.textColorMuted
-                }
-
                 StyledComboBox {
                     Layout.fillWidth: true
                     enableSettingsSearch: false
@@ -431,6 +435,7 @@ Item {
                     Layout.fillWidth: true
                     text: Audio.source ? "Input · " + Audio.friendlyDeviceName(Audio.source)
                         : "No active audio input"
+                    font.pixelSize: Appearance.font.pixelSize.small
                     font.weight: Font.DemiBold
                 }
 
@@ -457,11 +462,6 @@ Item {
                     }
                 }
 
-                AbyssLabel {
-                    text: "Input device"
-                    color: AbyssStyle.textColorMuted
-                }
-
                 StyledComboBox {
                     Layout.fillWidth: true
                     enableSettingsSearch: false
@@ -485,6 +485,7 @@ Item {
                             ? "No PipeWire output devices are available."
                             : "No PipeWire input devices are available."
                     color: AbyssStyle.textColorMuted
+                    font.pixelSize: Appearance.font.pixelSize.smallest
                 }
 
                 Item { Layout.fillHeight: true }

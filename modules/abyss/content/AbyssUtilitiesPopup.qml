@@ -22,45 +22,13 @@ Item {
     readonly property var pageTitles: [
         "Monitor arrangement", "Display mode", "Sound", "Eye protection"
     ]
-    readonly property var pageWidths: [620, 540, 480, 460]
-    readonly property var pageHeights: [430, 390, 430, 500]
-    // SwipeView changes currentIndex before its horizontal motion has fully
-    // settled. Keep the viewport geometry latched to the previously settled
-    // page until that motion ends so the page distance cannot change mid-slide.
-    property int geometryPage: 0
-    property int pendingGeometryPage: 0
+    // All Utilities pages share one fixed viewport so horizontal travel stays
+    // identical across tabs and the popup never retargets its size mid-swipe.
+    readonly property int panelWidth: 620
+    readonly property int panelHeight: 500
 
-    implicitWidth: pageWidths[Math.max(0, Math.min(geometryPage, pageWidths.length - 1))]
-    implicitHeight: pageHeights[Math.max(0, Math.min(geometryPage, pageHeights.length - 1))]
-
-    function commitPageGeometry(): void {
-        const view = pages.contentItem
-        if (view && (view.moving || view.dragging || view.flicking)) {
-            geometrySettleTimer.interval = 16
-            geometrySettleTimer.restart()
-            return
-        }
-
-        geometrySettleTimer.stop()
-        root.geometryPage = root.pendingGeometryPage
-
-        // A width change re-lays out SwipeView delegates. Re-pin the current
-        // page immediately so geometry settlement never starts a second slide.
-        if (view?.positionViewAtIndex)
-            Qt.callLater(() => view.positionViewAtIndex(
-                pages.currentIndex, ListView.Beginning))
-    }
-
-    function queuePageGeometry(index: int): void {
-        root.pendingGeometryPage = index
-
-        // SwipeView owns this motion independently of AbyssStyle. Keep the
-        // geometry latch active for both programmatic and pointer-driven page
-        // changes so the viewport cannot retarget while the ListView is moving.
-        geometrySettleTimer.interval = Math.max(16,
-            Number(pages.contentItem?.highlightMoveDuration ?? 250) + 16)
-        geometrySettleTimer.restart()
-    }
+    implicitWidth: panelWidth
+    implicitHeight: panelHeight
 
     // Interactive descendants acquire focus on demand. Pre-focusing this
     // hover-owned surface would hold the shared dismissal lease forever.
@@ -99,7 +67,6 @@ Item {
             Layout.fillHeight: true
             clip: true
             interactive: true
-            onCurrentIndexChanged: root.queuePageGeometry(currentIndex)
 
             Loader {
                 id: monitorLoader
@@ -151,24 +118,6 @@ Item {
                     }
                 }
             }
-        }
-    }
-
-    Timer {
-        id: geometrySettleTimer
-        interval: 266
-        repeat: false
-        onTriggered: root.commitPageGeometry()
-    }
-
-    Connections {
-        target: pages.contentItem
-        ignoreUnknownSignals: true
-        function onMovementEnded(): void {
-            root.commitPageGeometry()
-        }
-        function onFlickEnded(): void {
-            root.commitPageGeometry()
         }
     }
 

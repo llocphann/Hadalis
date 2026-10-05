@@ -22,10 +22,11 @@ Item {
     readonly property var pageTitles: [
         "Monitor arrangement", "Display mode", "Sound", "Eye protection"
     ]
-    // All Utilities pages share one fixed viewport so horizontal travel stays
-    // identical across tabs and the popup never retargets its size mid-swipe.
+    // All Utilities pages share one compact fixed viewport. The 400 px height
+    // still fits the monitor-arrangement canvas while avoiding empty lower space
+    // on Display, Sound and Eye protection.
     readonly property int panelWidth: 620
-    readonly property int panelHeight: 500
+    readonly property int panelHeight: 400
 
     implicitWidth: panelWidth
     implicitHeight: panelHeight

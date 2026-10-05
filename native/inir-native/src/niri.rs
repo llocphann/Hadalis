@@ -593,24 +593,16 @@ fn outputs() -> Result<Outcome> {
         bail!("invalid_niri_outputs_json");
     };
     for (name, output) in outputs {
-        let modes = output
-            .get("modes")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default();
+        let modes = output.get("modes").and_then(Value::as_array);
         let current_index = output
             .get("current_mode")
             .and_then(Value::as_u64)
             .unwrap_or(0) as usize;
-        let logical = output
-            .get("logical")
-            .and_then(Value::as_object)
-            .cloned()
-            .unwrap_or_default();
+        let logical = output.get("logical").and_then(Value::as_object);
 
         let mut resolution_map: BTreeMap<String, usize> = BTreeMap::new();
         let mut resolutions = Vec::new();
-        for (index, mode) in modes.iter().enumerate() {
+        for (index, mode) in modes.into_iter().flatten().enumerate() {
             let width = mode.get("width").and_then(Value::as_i64).unwrap_or(0);
             let height = mode.get("height").and_then(Value::as_i64).unwrap_or(0);
             let refresh = mode
@@ -655,7 +647,7 @@ fn outputs() -> Result<Outcome> {
             }
         }
 
-        let current_mode = modes.get(current_index);
+        let current_mode = modes.and_then(|modes| modes.get(current_index));
         let current_width = current_mode
             .and_then(|mode| mode.get("width"))
             .and_then(Value::as_i64)
@@ -688,11 +680,11 @@ fn outputs() -> Result<Outcome> {
             "current_resolution": current_resolution,
             "current_rate": current_rate,
             "current_rate_string": if current_mode.is_some() { format!("{current_rate:.3}") } else { String::new() },
-            "scale": logical.get("scale").cloned().unwrap_or(json!(1.0)),
-            "transform": logical.get("transform").cloned().unwrap_or(json!("Normal")),
+            "scale": logical.and_then(|value| value.get("scale")).cloned().unwrap_or(json!(1.0)),
+            "transform": logical.and_then(|value| value.get("transform")).cloned().unwrap_or(json!("Normal")),
             "position": {
-                "x": logical.get("x").cloned().unwrap_or(json!(0)),
-                "y": logical.get("y").cloned().unwrap_or(json!(0)),
+                "x": logical.and_then(|value| value.get("x")).cloned().unwrap_or(json!(0)),
+                "y": logical.and_then(|value| value.get("y")).cloned().unwrap_or(json!(0)),
             },
             "vrr_supported": output.get("vrr_supported").cloned().unwrap_or(json!(false)),
             "vrr_enabled": vrr_enabled,

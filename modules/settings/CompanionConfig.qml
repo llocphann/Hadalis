@@ -397,14 +397,45 @@ ContentPage {
                 DialogButton {buttonText:Translation.tr("Chat with Wull");enabled:root.preferences.enabled;onClicked:WullMind.openChat()}
                 DialogButton {buttonText:Translation.tr("Clear conversation");onClicked:WullMind.clearConversation()}
             }
-            Repeater {
+            StyledText {
+                Layout.fillWidth:true
+                text:"Model"
+                color:Appearance.colors.colSubtext
+            }
+            StyledComboBox {
+                objectName:"wullCompanionModelSelector"
+                Layout.fillWidth:true
                 model:WullMind.selectableModels
-                DialogButton {
-                    required property var modelData
-                    buttonText:modelData.label ?? modelData.name
-                    toggled:WullMind.model===modelData.name
-                    onClicked:Config.setNestedValue("abyss.companionMind.model",modelData.name)
+                textRole:"label"
+                currentIndex:WullMind.selectableModels.findIndex(item=>item.name===WullMind.model)
+                displayText:currentIndex>=0 ? (WullMind.selectableModels[currentIndex].label ?? WullMind.selectableModels[currentIndex].name) : "Choose a local model"
+                onActivated:index=>{
+                    const item=WullMind.selectableModels[index]
+                    if(item)WullMind.selectModel(item)
                 }
+            }
+            RowLayout {
+                Layout.fillWidth:true
+                StyledText {Layout.fillWidth:true;text:"Thinking effort";color:Appearance.colors.colSubtext}
+                StyledText {text:WullMind.thinkingEffortLabel;color:Appearance.colors.colPrimary}
+            }
+            StyledSlider {
+                objectName:"wullCompanionThinkingEffort"
+                Layout.fillWidth:true
+                from:0;to:3;stepSize:1
+                value:Math.max(0,WullMind.thinkingLevels.findIndex(level=>level.value===WullMind.effectiveThinkingEffort))
+                enabled:WullMind.thinkingSupported && !WullMind.busy
+                tooltipContent:WullMind.thinkingEffortLabel
+                onMoved:{
+                    const levels=["off","low","medium","high"]
+                    WullMind.setThinkingEffort(levels[Math.max(0,Math.min(3,Math.round(value)))])
+                }
+            }
+            StyledText {
+                visible:WullMind.model.length>0 && !WullMind.thinkingSupported
+                Layout.fillWidth:true;wrapMode:Text.WordWrap
+                text:"This model uses instant mode. Choose a reasoning-capable model to set effort."
+                color:Appearance.colors.colSubtext
             }
             SettingsSwitch {
                 text:Translation.tr("Connect Obsidian")

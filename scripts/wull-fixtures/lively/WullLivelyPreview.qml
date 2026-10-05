@@ -169,11 +169,26 @@ Window {
                     "pointer handoff closed a human-owned feature")
                 curiosity.lastVisit=0;check(!curiosity.offer(),"existing human UI was replaced")
                 root.featureOpen=false;root.place(280,40)
+                root.testPhase="surface disappearance recovery"
+                curiosity.lastVisit=0;presence.randomState=2000
+                check(curiosity.offer(),"surface-loss curiosity offer rejected")
+                tryCompare(root,"featureOpen",true,6000)
+                tryCompare(curiosity,"stage","hold",9000)
+                tryCompare(curiosity,"reachedFeature",true,1000)
+                root.featureOpen=false
+                wait(60)
+                check(presence.traveling && presence.mode==="fall" && !presence.grounded,
+                    "closed module left Wull floating instead of starting a grounded recovery")
+                tryCompare(presence,"traveling",false,presence.duration+1200)
+                check(presence.grounded && Scene.supportAt(root.scene,presence.position())!==null,
+                    "Wull did not land on verified support after its module disappeared")
+                tryCompare(curiosity,"busy",false,1200)
+                root.place(280,40)
                 curiosity.lastVisit=0;presence.randomState=2000;check(curiosity.offer(),"policy case offer rejected")
                 root.allowed=false;wait(40)
                 check(!curiosity.busy && !actor.visible && !deadline.running && !presence.directed,
                     "policy hide did not cancel curiosity")
-                console.log("WULL_LIVELY=PASS run jump surfaceBoundRelease velocityThrow groundedLanding acceleratingFall regrab reducedMotion curiosityGesture distanceClose continuedDeparture ownedClose userHandoff policyHide")
+                console.log("WULL_LIVELY=PASS run jump surfaceBoundRelease velocityThrow groundedLanding acceleratingFall regrab reducedMotion curiosityGesture distanceClose continuedDeparture ownedClose userHandoff surfaceLossFall groundedAfterSurfaceLoss policyHide")
             } catch(error) {console.error("WULL_LIVELY=FAIL "+error+" "+JSON.stringify({phase:root.testPhase,
                 stage:curiosity.stage,owned:curiosity.owned,near:curiosity.nearFeature,reached:curiosity.reachedFeature,
                 featureOpen:root.featureOpen,closes:root.closes,traveling:presence.traveling,mode:presence.mode,

@@ -221,8 +221,8 @@ ShellRoot {
                 Config.setNestedValue("panelFamily","abyss")
             } else if (root.step === 1) {
                 if (!root.check(utility !== null, "Utilities feature loads through AbyssPopupContent")) return
-                if (!root.check(popup.desiredWidth <= 640 && popup.desiredHeight <= 450,
-                    "Monitor utility uses a content-sized footprint")) return
+                if (!root.check(utility.implicitWidth === 620 && utility.implicitHeight === 500,
+                    "Utilities feature uses the shared 620x500 viewport")) return
                 root.monitorWidth = popup.desiredWidth
                 root.monitorHeight = popup.desiredHeight
                 if (!root.check(utility.currentPage === 0 && utility.loadedPageCount > 0
@@ -239,8 +239,14 @@ ShellRoot {
                     "Sound page loads without changing the default sink/source")) return
                 if (!root.check(utility.loadedPageCount <= 3,
                     "lazy page window remains bounded while swiping")) return
-                utility.closeRequested()
+                utility.currentPage = 3
             } else if (root.step === 4) {
+                if (!root.check(utility.currentPage === 3 && utility.currentFeature !== null,
+                    "Eye protection page participates in horizontal navigation")) return
+                if (!root.check(popup.desiredWidth === root.monitorWidth && popup.desiredHeight === root.monitorHeight,
+                    "Utilities footprint stays fixed through Eye protection")) return
+                utility.closeRequested()
+            } else if (root.step === 5) {
                 if (!root.check(root.dismissed === 1, "Utilities close request propagates through popup content")) return
                 console.info("UTILITIES_POPUP_PASS")
                 root.finished = true

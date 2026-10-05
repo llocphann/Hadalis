@@ -360,7 +360,7 @@ Singleton {
         interval: root.readWriteDelay
         repeat: false
         onTriggered: {
-            if (root._writeInFlight || customInjectTimer.running) {
+            if (root._writeInFlight || fileWriteTimer.running || customInjectTimer.running) {
                 root._pendingReload = true;
                 return;
             }
@@ -433,7 +433,10 @@ Singleton {
         watchChanges: true
         blockWrites: root.blockWrites
         onFileChanged: {
-            if (root._writeInFlight) {
+            // A save from the previous mutation can signal FileChanged after
+            // onSaved while the next debounced local write is already queued.
+            // Never reload that older disk snapshot ahead of the queued write.
+            if (root._writeInFlight || fileWriteTimer.running || customInjectTimer.running) {
                 root._pendingReload = true;
                 return;
             }

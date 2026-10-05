@@ -53,15 +53,10 @@ Item {
 
     function queuePageGeometry(index: int): void {
         root.pendingGeometryPage = index
-        if (!AbyssStyle.motionEnabled) {
-            geometrySettleTimer.stop()
-            root.geometryPage = index
-            return
-        }
 
-        // Material SwipeView animates programmatic index changes through its
-        // ListView highlight duration. Use the live value rather than copying a
-        // magic duration so this remains correct if Qt changes the style.
+        // SwipeView owns this motion independently of AbyssStyle. Keep the
+        // geometry latch active for both programmatic and pointer-driven page
+        // changes so the viewport cannot retarget while the ListView is moving.
         geometrySettleTimer.interval = Math.max(16,
             Number(pages.contentItem?.highlightMoveDuration ?? 250) + 16)
         geometrySettleTimer.restart()

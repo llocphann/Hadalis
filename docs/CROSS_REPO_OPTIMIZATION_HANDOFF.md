@@ -25940,3 +25940,76 @@ output parsing and MPD result serialization. Re-fetch current `dev`, reject
 ALREADY/CLOSED/SUPERSEDED/DISPROVEN findings, then inspect a distinct
 high-frequency service/backend or interaction path. Live compositor/session
 acceptance remains separate from this canonical local/static PASS.
+
+
+### 110.13 Notification history serialization confirmed; canonical recovery PASS (2026-10-05)
+
+A distinct notification-history allocation candidate is now **CONFIRMED and implemented**
+on current `dev`. In `services/Notifications.qml::stringifyList()`, commit
+`8373b35e99e9340b5ea01f512b1826754e60c475`
+(`perf(notifications): serialize history in one pass`) replaces the
+`map(...).filter(...)` staging pipeline with one fresh `records` array filled
+during a single `forEach()`.
+
+Strict-lossless boundary:
+
+- `notifToJSON()` is still called exactly once for every visited list slot/value
+  in the same Array iteration order;
+- sparse-array behavior is preserved because both `Array.map()` and
+  `Array.forEach()` skip holes;
+- null/undefined/falsy notification values still enter `notifToJSON()` at the
+  same visited positions and null conversion results are omitted;
+- notification field getter/read order inside `notifToJSON()` is unchanged;
+- retained records keep source order and duplicates;
+- the published JSON text still comes from
+  `JSON.stringify(records, null, 2)`;
+- one fresh ordinary result array is still created per call; no cache or QML
+  dependency/publication boundary was introduced.
+
+Structural reduction per serialization:
+
+- intermediate arrays: **2 -> 1**;
+- full result-array staging passes after conversion: **map + filter -> one
+  forEach construction**;
+- `notifToJSON()` call count and retained record count/order: unchanged.
+
+The pre-implementation parity oracle
+`JOB-C2F353CC-NOTIFSER-ORACLE-R36-20261005:0` exited 0 at source
+`450dd89ee6d4a438d7db5cf52532d275cb7a5097`, observed Unix
+`1791209949`. It covered empty, sparse, null/undefined/falsy and 50,000
+deterministic mixed cases while comparing JSON text and getter/call traces.
+
+Post-implementation job `JOB-C2F353CC-NOTIFSER-IMPL-R37-20261005` used
+base `8373b35e99e9340b5ea01f512b1826754e60c475`. Its focused production
+parity action `:0` and notification-center contract `:1` both exited 0 at
+source `1a2835c93c144c6c590faaa91ab2392f75f8fa48`, observed Unix
+`1791210149`. Its canonical action `:2` was cancelled with exit -15 at
+observed Unix `1791211101`; that cancellation was not treated as a product
+failure or root-cause signal.
+
+A distinct recovery validation was therefore dispatched rather than reusing or
+re-executing R37. `JOB-C2F353CC-CANONICAL-R38-20261005` used base
+`28d11edb7a48e5fc87861a9cdb8161d2241f2841`, job/source SHA
+`bb81b199ef8f67c96ecd0dd7df36db83d4b33879`, profile
+`profile-c2f353cc8d1c4c1f`. The canonical
+`bash scripts/validate-maintainer-local.sh --current-repo` action
+`JOB-C2F353CC-CANONICAL-R38-20261005:0` exited **0**, without timeout or
+cancellation, observed Unix `1791212557`. The later descendant
+`477bc3865d82f8f752377de13e66027b4649f2af` only publishes that receipt and
+does not change product source.
+
+Therefore the Notification serialization optimization and the preceding
+post-§110.8 batch are canonically validated at exact source
+`bb81b199ef8f67c96ecd0dd7df36db83d4b33879`. Live compositor/session,
+visual, hardware and input acceptance remain separate.
+
+The previously researched Japanese Typography §107.1/§107.2 directions are
+**ALREADY** on current `dev`: `VerticalJapaneseText.qml` already performs
+in-place grapheme compaction and direct allocation-free column counting, so they
+must not be recounted or reimplemented.
+
+Next round should diversify away from Dashboard, Dock, native Niri, MPD,
+Weather, Notification serialization and Japanese Typography. Re-fetch current
+`dev`, search existing ownership first, then inspect a distinct high-frequency
+service/backend or reactive UI path for a material unresolved strict-lossless
+candidate.

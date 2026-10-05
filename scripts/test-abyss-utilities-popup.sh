@@ -67,6 +67,20 @@ if grep -Fq 'Behavior on implicitWidth' "$utility_popup" \
     printf 'FAIL: Utilities tab changes still layer popup resize motion over the horizontal slide\n' >&2
     exit 1
 fi
+for token in \
+    'property int geometryPage: 0' \
+    'onCurrentIndexChanged: root.queuePageGeometry(currentIndex)' \
+    'function onMovementEnded(): void' \
+    'view.positionViewAtIndex(' \
+    'pages.currentIndex, ListView.Beginning'; do
+    grep -Fq "$token" "$utility_popup" \
+        || { printf 'FAIL: Utilities stable swipe geometry contract missing: %s\n' "$token" >&2; exit 1; }
+done
+if grep -Fq 'implicitWidth: pageWidths[Math.max(0, Math.min(currentPage' "$utility_popup" \
+        || grep -Fq 'implicitHeight: pageHeights[Math.max(0, Math.min(currentPage' "$utility_popup"; then
+    printf 'FAIL: Utilities viewport geometry still follows currentIndex during horizontal motion\n' >&2
+    exit 1
+fi
 grep -Fq 'readonly property bool arrangementChromeVisible: !embeddedArrangementOnly' "$monitor_config" \
     || { printf 'FAIL: embedded Monitor Arrangement chrome gate missing\n' >&2; exit 1; }
 grep -Fq 'showHeader: root.arrangementChromeVisible' "$monitor_config" \

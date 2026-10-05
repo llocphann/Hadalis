@@ -323,11 +323,16 @@ ContentPage {
                     _log(`[RightSidebar] Current widgets:`, JSON.stringify(current))
 
                     const index = current.indexOf(widgetId)
-                    if (active && index === -1) {
+                    // includes() uses SameValueZero while indexOf() uses strict
+                    // equality. Preserve the old malformed NaN behavior without
+                    // repeating a full membership scan for normal widget ids.
+                    const included = index !== -1
+                        || (widgetId !== widgetId && current.includes(widgetId))
+                    if (active && !included) {
                         current.push(widgetId)
                         _log(`[RightSidebar] Adding ${widgetId}, new array:`, JSON.stringify(current))
                         Config.setNestedValue("sidebar.right.enabledWidgets", current)
-                    } else if (!active && index !== -1) {
+                    } else if (!active && included) {
                         current.splice(index, 1)
                         _log(`[RightSidebar] Removing ${widgetId}, new array:`, JSON.stringify(current))
                         Config.setNestedValue("sidebar.right.enabledWidgets", current)

@@ -97,12 +97,9 @@ Scope {
     
     // Unified reload tracking - only show ONE toast per reload event
     property real _lastReloadToastTime: 0
-    property string _pendingReloadSource: ""  // "quickshell", "niri", or ""
+    property string _pendingReloadSource: ""  // "quickshell" or ""
     readonly property int _reloadDebounceMs: 800   // Wait this long to coalesce events
     readonly property int _reloadCooldownMs: 2500  // Minimum time between reload toasts
-    
-    // Track if we're in the middle of a QS reload (suppresses Niri toast)
-    property bool _qsReloadInProgress: false
     
     // Check if reload toasts should be shown
     function shouldShowReloadToast(): bool {
@@ -223,13 +220,10 @@ Scope {
         root._lastReloadToastTime = now
         const source = root._pendingReloadSource
         root._pendingReloadSource = ""
-        
+
         if (source === "quickshell") {
             root.sendReloadNotification(
                 "Quickshell reloaded", "Quickshell", "view-refresh")
-        } else if (source === "niri") {
-            root.sendReloadNotification(
-                "Niri Reloaded", "Niri", "preferences-system")
         }
     }
     
@@ -243,31 +237,16 @@ Scope {
         }
     }
     
-    // Timer to clear QS reload flag after a longer period
-    Timer {
-        id: qsReloadClearTimer
-        interval: 2000  // 2 seconds after QS reload, allow Niri toasts again
-        onTriggered: {
-            root._qsReloadInProgress = false
-        }
-    }
-
     // Quickshell reload signals
     Connections {
         target: Quickshell
         
         function onReloadCompleted() {
-            // Mark that QS is reloading - this suppresses Niri toasts
-            root._qsReloadInProgress = true
-            qsReloadClearTimer.restart()
-            
-            // Quickshell reload takes priority
             root._pendingReloadSource = "quickshell"
             reloadDebounce.restart()
         }
         
         function onReloadFailed(error) {
-            root._qsReloadInProgress = false
             root.addToast(
                 "Quickshell reload failed",
                 error,
@@ -285,19 +264,10 @@ Scope {
         target: NiriService
         
         function onConfigLoadFinished(ok, error) {
-            if (ok) {
-                // If QS just reloaded, ignore Niri's ConfigLoaded (it's from reconnection)
-                if (root._qsReloadInProgress) {
-                    return
-                }
-                
-                // Only set pending if not already set to quickshell
-                if (root._pendingReloadSource !== "quickshell") {
-                    root._pendingReloadSource = "niri"
-                    reloadDebounce.restart()
-                }
-            } else {
-                // Errors always show immediately
+            // Successful Niri config reloads are intentionally silent. The
+            // maintainer does not want a popup/notification for this routine
+            // event; only failures remain actionable.
+            if (!ok) {
                 root.addToast(
                     "Niri config reload failed",
                     error || "Run 'niri validate' for details",

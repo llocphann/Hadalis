@@ -1415,6 +1415,74 @@ Item {
         return false
     }
 
+    function _isFiniteOverlapRect(rect) {
+        return !!rect
+            && typeof rect.x === "number" && Number.isFinite(rect.x)
+            && typeof rect.y === "number" && Number.isFinite(rect.y)
+            && typeof rect.width === "number" && Number.isFinite(rect.width)
+            && typeof rect.height === "number" && Number.isFinite(rect.height)
+    }
+
+    function _responsiveLayoutHasOverlap(rects, baselineRects, activeId,
+            plainSnapshot) {
+        // Responsive edit probes are shallow copies of the captured plain
+        // baseline with only the active rectangle replaced. Guard that exact
+        // provenance before skipping unchanged other-other collision pairs.
+        // Any malformed or unproven state falls back to the generic routine.
+        if (plainSnapshot !== true || typeof activeId !== "string"
+                || !baselineRects)
+            return root._layoutHasOverlap(rects, baselineRects)
+
+        const gap = root.collisionGap
+        if (typeof gap !== "number" || !Number.isFinite(gap))
+            return root._layoutHasOverlap(rects, baselineRects)
+
+        const ids = []
+        const seen = Object.create(null)
+        let activeIndex = -1
+        for (let i = 0; i < root.visibleIds.length; ++i) {
+            const id = String(root.visibleIds[i])
+            const rect = rects[id]
+            if (!rect)
+                continue
+            if (Object.prototype.hasOwnProperty.call(seen, id))
+                return root._layoutHasOverlap(rects, baselineRects)
+            seen[id] = true
+
+            const base = baselineRects[id]
+            if (!root._isFiniteOverlapRect(rect)
+                    || !root._isFiniteOverlapRect(base)
+                    || (id !== activeId && rect !== base))
+                return root._layoutHasOverlap(rects, baselineRects)
+            if (id === activeId)
+                activeIndex = ids.length
+            ids.push(id)
+        }
+        if (activeIndex < 0)
+            return root._layoutHasOverlap(rects, baselineRects)
+
+        const active = ids[activeIndex]
+        for (let i = 0; i < activeIndex; ++i) {
+            const left = ids[i]
+            if (!root._rectsOverlap(rects[left], rects[active], gap))
+                continue
+            if (root._sameRect(rects[left], baselineRects[left])
+                    && root._sameRect(rects[active], baselineRects[active]))
+                continue
+            return true
+        }
+        for (let j = activeIndex + 1; j < ids.length; ++j) {
+            const right = ids[j]
+            if (!root._rectsOverlap(rects[active], rects[right], gap))
+                continue
+            if (root._sameRect(rects[active], baselineRects[active])
+                    && root._sameRect(rects[right], baselineRects[right]))
+                continue
+            return true
+        }
+        return false
+    }
+
     function _interpolateRect(from, to, t) {
         return {
             x: from.x + (to.x - from.x) * t,
@@ -1431,13 +1499,15 @@ Item {
             // after an edit. Clamp only the active card to a feasible point.
             const fixed = Object.assign({}, baselineRects)
             fixed[activeId] = root._fitRectToCanvas(desiredRect, root._minimumSizeForCanvas(activeId))
-            if (!root._layoutHasOverlap(fixed, baselineRects)) return fixed
+            if (!root._responsiveLayoutHasOverlap(
+                    fixed, baselineRects, activeId, true)) return fixed
             let safe = Object.assign({}, baselineRects), low = 0, high = 1
             for (let i = 0; i < 12; ++i) {
                 const mid = (low + high) / 2
                 const probe = Object.assign({}, baselineRects)
                 probe[activeId] = root._fitRectToCanvas(root._interpolateRect(startRect, desiredRect, mid), root._minimumSizeForCanvas(activeId))
-                if (root._layoutHasOverlap(probe, baselineRects)) high = mid
+                if (root._responsiveLayoutHasOverlap(
+                        probe, baselineRects, activeId, true)) high = mid
                 else { low = mid; safe = probe }
             }
             return safe

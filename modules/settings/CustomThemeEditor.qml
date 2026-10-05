@@ -873,11 +873,16 @@ ColumnLayout {
         const tempDelta = temperatureSlider.value / 100  // -0.5 to 0.5
 
         // Apply to all color keys
-        const colorKeys = Object.keys(originalColors).filter(k => k.startsWith("m3") && typeof originalColors[k] === "string" && originalColors[k].startsWith("#"))
+        const colorKeys = Object.keys(originalColors)
 
         const updates = ({})
         for (const key of colorKeys) {
-            let c = Qt.color(originalColors[key])
+            if (!key.startsWith("m3"))
+                continue
+            const original = originalColors[key]
+            if (typeof original !== "string" || !original.startsWith("#"))
+                continue
+            let c = Qt.color(original)
             // Adjust saturation
             let newSat = Math.min(1, Math.max(0, c.hslSaturation * satFactor))
             // Adjust brightness (lightness)

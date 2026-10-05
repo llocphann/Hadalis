@@ -24,103 +24,99 @@ jobs:
 
       - name: Generate strict-lossless candidates
         run: |
-          python3 - <<'PY'
+          cat > /tmp/make_candidates.py <<'PY'
           from pathlib import Path
           out = Path("_shader_artifact")
           out.mkdir(exist_ok=True)
-
+          
           contact_path = Path("modules/abyss/companion/WaterDropletContact.frag")
           contact = contact_path.read_text()
           old = """    vec4 reflection=texture(surfaceSource,reflectedUV)*0.50;
-    vec2 softness=rendering.x>1.5 ? vec2(0.004,0.010) : vec2(0.008,0.018);
-    reflection+=texture(surfaceSource,reflectedUV+softness)*0.25;
-    reflection+=texture(surfaceSource,reflectedUV-softness)*0.25;
-    reflection*=step(0.0,reflectedUV.x)*step(reflectedUV.x,1.0)
-        *step(0.0,reflectedUV.y)*step(reflectedUV.y,1.0);
-"""
+              vec2 softness=rendering.x>1.5 ? vec2(0.004,0.010) : vec2(0.008,0.018);
+              reflection+=texture(surfaceSource,reflectedUV+softness)*0.25;
+              reflection+=texture(surfaceSource,reflectedUV-softness)*0.25;
+              reflection*=step(0.0,reflectedUV.x)*step(reflectedUV.x,1.0)
+                  *step(0.0,reflectedUV.y)*step(reflectedUV.y,1.0);
+          """
           new = """    float reflectionMask=step(0.0,reflectedUV.x)*step(reflectedUV.x,1.0)
-        *step(0.0,reflectedUV.y)*step(reflectedUV.y,1.0);
-    vec4 reflection=vec4(0.0);
-    if(reflectionMask>0.5) {
-        reflection=texture(surfaceSource,reflectedUV)*0.50;
-        vec2 softness=rendering.x>1.5 ? vec2(0.004,0.010) : vec2(0.008,0.018);
-        reflection+=texture(surfaceSource,reflectedUV+softness)*0.25;
-        reflection+=texture(surfaceSource,reflectedUV-softness)*0.25;
-        reflection*=reflectionMask;
-    }
-"""
+                  *step(0.0,reflectedUV.y)*step(reflectedUV.y,1.0);
+              vec4 reflection=vec4(0.0);
+              if(reflectionMask>0.5) {
+                  reflection=texture(surfaceSource,reflectedUV)*0.50;
+                  vec2 softness=rendering.x>1.5 ? vec2(0.004,0.010) : vec2(0.008,0.018);
+                  reflection+=texture(surfaceSource,reflectedUV+softness)*0.25;
+                  reflection+=texture(surfaceSource,reflectedUV-softness)*0.25;
+                  reflection*=reflectionMask;
+              }
+          """
           if contact.count(old) != 1:
               raise SystemExit("unexpected WaterDropletContact source")
-          contact = contact.replace(old, new)
-          (out / "WaterDropletContact.frag").write_text(contact)
-
+          (out / "WaterDropletContact.frag").write_text(contact.replace(old, new))
+          
           field_path = Path("modules/abyss/looks/AbyssField.frag")
           field = field_path.read_text()
-          marker = "    vec4 rect36; vec4 rect37; vec4 rect38; vec4 rect39;\n};"
-          replacement = "    vec4 rect36; vec4 rect37; vec4 rect38; vec4 rect39;\n    float recordCount;\n};"
+          marker = "    vec4 rect36; vec4 rect37; vec4 rect38; vec4 rect39;\\n};"
+          replacement = "    vec4 rect36; vec4 rect37; vec4 rect38; vec4 rect39;\\n    float recordCount;\\n};"
           if field.count(marker) != 1:
               raise SystemExit("unexpected AbyssField uniform block")
           field = field.replace(marker, replacement)
-
+          
           start = field.index("float field(vec2 p) {")
           end = field.index("void main() {", start)
           field_fn = """float field(vec2 p) {
-    vec4 hole=vec4(insets.xy,viewport.xy-insets.xy-insets.zw);
-    float d=-roundedBox(p,hole,material.x);
-    if(recordCount>0.5) {
-        d=record(d,p,rect0); d=record(d,p,rect1); d=record(d,p,rect2); d=record(d,p,rect3);
-    }
-    if(recordCount>4.5) {
-        d=record(d,p,rect4); d=record(d,p,rect5); d=record(d,p,rect6); d=record(d,p,rect7);
-    }
-    if(recordCount>8.5) {
-        d=record(d,p,rect8); d=record(d,p,rect9); d=record(d,p,rect10); d=record(d,p,rect11);
-    }
-    if(recordCount>12.5) {
-        d=record(d,p,rect12); d=record(d,p,rect13); d=record(d,p,rect14); d=record(d,p,rect15);
-    }
-    if(recordCount>16.5) {
-        d=record(d,p,rect16); d=record(d,p,rect17); d=record(d,p,rect18); d=record(d,p,rect19);
-    }
-    if(recordCount>20.5) {
-        d=record(d,p,rect20); d=record(d,p,rect21); d=record(d,p,rect22); d=record(d,p,rect23);
-    }
-    if(recordCount>24.5) {
-        d=record(d,p,rect24); d=record(d,p,rect25); d=record(d,p,rect26); d=record(d,p,rect27);
-    }
-    if(recordCount>28.5) {
-        d=record(d,p,rect28); d=record(d,p,rect29); d=record(d,p,rect30); d=record(d,p,rect31);
-    }
-    if(recordCount>32.5) {
-        d=record(d,p,rect32); d=record(d,p,rect33); d=record(d,p,rect34); d=record(d,p,rect35);
-    }
-    if(recordCount>36.5) {
-        d=record(d,p,rect36); d=record(d,p,rect37); d=record(d,p,rect38); d=record(d,p,rect39);
-    }
-    return d;
-}
-"""
+              vec4 hole=vec4(insets.xy,viewport.xy-insets.xy-insets.zw);
+              float d=-roundedBox(p,hole,material.x);
+              if(recordCount>0.5) {
+                  d=record(d,p,rect0); d=record(d,p,rect1); d=record(d,p,rect2); d=record(d,p,rect3);
+              }
+              if(recordCount>4.5) {
+                  d=record(d,p,rect4); d=record(d,p,rect5); d=record(d,p,rect6); d=record(d,p,rect7);
+              }
+              if(recordCount>8.5) {
+                  d=record(d,p,rect8); d=record(d,p,rect9); d=record(d,p,rect10); d=record(d,p,rect11);
+              }
+              if(recordCount>12.5) {
+                  d=record(d,p,rect12); d=record(d,p,rect13); d=record(d,p,rect14); d=record(d,p,rect15);
+              }
+              if(recordCount>16.5) {
+                  d=record(d,p,rect16); d=record(d,p,rect17); d=record(d,p,rect18); d=record(d,p,rect19);
+              }
+              if(recordCount>20.5) {
+                  d=record(d,p,rect20); d=record(d,p,rect21); d=record(d,p,rect22); d=record(d,p,rect23);
+              }
+              if(recordCount>24.5) {
+                  d=record(d,p,rect24); d=record(d,p,rect25); d=record(d,p,rect26); d=record(d,p,rect27);
+              }
+              if(recordCount>28.5) {
+                  d=record(d,p,rect28); d=record(d,p,rect29); d=record(d,p,rect30); d=record(d,p,rect31);
+              }
+              if(recordCount>32.5) {
+                  d=record(d,p,rect32); d=record(d,p,rect33); d=record(d,p,rect34); d=record(d,p,rect35);
+              }
+              if(recordCount>36.5) {
+                  d=record(d,p,rect36); d=record(d,p,rect37); d=record(d,p,rect38); d=record(d,p,rect39);
+              }
+              return d;
+          }
+          """
           field = field[:start] + field_fn + field[end:]
-
+          
           old_norm = """    if(effects.z>0.5 && coverage>0.0) {
-        vec2 normal=gradient/max(0.0001,length(gradient));
-"""
+                  vec2 normal=gradient/max(0.0001,length(gradient));
+          """
           if field.count(old_norm) != 1:
               raise SystemExit("unexpected AbyssField normal block")
           field = field.replace(old_norm, """    vec2 normal=gradient/max(0.0001,length(gradient));
-    if(effects.z>0.5 && coverage>0.0) {
-""")
-          duplicate = "    vec2 normal=gradient/max(0.0001,length(gradient));\n    float facing="
+              if(effects.z>0.5 && coverage>0.0) {
+          """)
+          duplicate = "    vec2 normal=gradient/max(0.0001,length(gradient));\\n    float facing="
           if field.count(duplicate) != 1:
               raise SystemExit("unexpected AbyssField duplicate normal")
           field = field.replace(duplicate, "    float facing=", 1)
           (out / "AbyssField.frag").write_text(field)
-
-          (out / "SOURCE_BASE.txt").write_text(
-              contact_path.read_text()[:0] +
-              "WaterDropletContact source candidate generated from " + str(contact_path) + "\n" +
-              "AbyssField source candidate generated from " + str(field_path) + "\n")
+          
           PY
+          python3 /tmp/make_candidates.py
 
       - name: Bake Qt shader packs
         run: |

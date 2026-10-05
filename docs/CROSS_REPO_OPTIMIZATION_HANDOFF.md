@@ -26342,3 +26342,85 @@ Next round should diversify again. Re-fetch current `dev`, reject
 ALREADY/CLOSED/SUPERSEDED/DISPROVEN owners, then inspect a distinct
 service/backend/model-update path. Prefer an unresolved CONFIRMED historical
 finding before inventing a new candidate.
+
+
+### 110.19 Niri window-event scan reductions confirmed; canonical PASS (2026-10-05)
+
+Round 41 §41.1 and §41.2 are now **CONFIRMED and implemented** on current
+`dev`.
+
+Runtime commit
+`db48c7e7d5b2dabe3afd7add640d03087950f8f1`
+(`perf(niri): reduce window event lookup scans`) changes two Niri event
+handlers while preserving their publication/lifecycle behavior.
+
+#### WindowLayoutsChanged (§41.1)
+
+The handler still:
+
+1. chooses the same freshest source list (`_pendingWindows` when dirty,
+   otherwise `windows`);
+2. clones that list before mutation;
+3. applies layout changes in event order;
+4. clones the first matching window object before replacing its `layout`;
+5. calls `scheduleWindowsUpdate()` only when at least one change matched.
+
+The repeated `findIndex()` lookup is replaced with one invocation-local
+`windowId -> first index` map built from the cloned list. Only the first index
+for duplicate IDs is retained, matching prior `findIndex()` semantics.
+Repeated changes for the same ID still update the same first window in event
+order.
+
+For N windows and C layout changes, the ID-lookup phase changes from roughly
+**C×N -> N+C** instead of repeated linear search.
+
+#### WindowClosed (§41.2)
+
+The handler now visits the current list once, retaining the first matching
+window object for `workspace_id` and directly collecting all nonmatching
+windows into the replacement array.
+
+It preserves:
+
+- first matching duplicate ID as the source of `closedWsId`;
+- removal of every matching duplicate ID from the published list;
+- original order and object identity of every retained window;
+- one fresh replacement array and the same `scheduleWindowsUpdate()` call;
+- MRU filtering and single-window scheduling behavior.
+
+Window-list visits in this phase change from approximately **2N -> N**.
+
+The event stream itself parses each Niri line with `JSON.parse(line)` before
+dispatch, so the audited window/layout objects are plain JSON data rather than
+objects with getter side effects.
+
+Regression
+`scripts/test-niri-window-event-scan-parity.cjs` at
+`45ebe689fbedd2521379e7d21f9b46eb8f6d57fe` covers 50,000 deterministic
+randomized cases including duplicate IDs, repeated layout changes, missing IDs,
+fresh-array behavior and retained reference identity.
+
+Validation job `JOB-C2F353CC-NIRIEVENT41-R46-20261005` used base
+`45ebe689fbedd2521379e7d21f9b46eb8f6d57fe`, job/source SHA
+`edf79a3c9993fa56907a827e4da6504b1ea4e384`, profile
+`profile-c2f353cc8d1c4c1f`. Every action exited 0 without timeout or
+cancellation:
+
+- Niri 50,000-case event parity — `:0`, observed Unix `1791216827`;
+- Overview/Niri drag contract — `:1`, observed `1791216828`;
+- shell-surface contract — `:2`, observed `1791216828`;
+- performance lifecycle contract — `:3`, observed `1791216828`;
+- canonical `bash scripts/validate-maintainer-local.sh --current-repo` —
+  `:4`, observed `1791217942`.
+
+Current descendant `c20d6984eaafd89404f2c39b348398c7da2f46ad` only publishes
+the R46 result receipt after the job commit and does not modify runtime source.
+
+The historical §55.3 AI model partition remains **HIGH CONFIDENCE**, not
+auto-implementable under the current strict profile: merging two independent
+public readonly QML bindings can change dependency/changed-signal topology even
+when the final runnable/locked arrays are complementary. Require a reactive
+signal/dependency-order oracle before promotion.
+
+Next round should prefer another function-local CONFIRMED service/backend
+candidate with no unresolved reactive/publication contract.

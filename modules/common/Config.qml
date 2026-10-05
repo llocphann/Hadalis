@@ -485,6 +485,7 @@ Singleton {
                     property bool aiEnabled: false
                     property string endpoint: "http://127.0.0.1:11434"
                     property string model: ""
+                    property string thinkingEffort: "off"
                     property string proactive: "occasional"
                     property bool obsidianEnabled: false
                     property string referenceVault: ""

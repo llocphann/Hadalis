@@ -1,0 +1,48 @@
+{
+  "id": "JOB-C2F353CC-SHELLEXEC62-R42-20261005",
+  "base_sha": "dfb174a86bf1f2bf52798abe8ff1edf5311415ae",
+  "profile_id": "profile-c2f353cc8d1c4c1f",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "-e",
+          "\nconst fs=require(\"fs\");\nconst src=fs.readFileSync(\"modules/common/functions/ShellExec.qml\",\"utf8\");\nconst start=src.indexOf(\"function execDetachedArgs\");\nconst end=src.indexOf(\"function openDirectory\",start);\nif(start<0||end<0) process.exit(90);\nconst block=src.slice(start,end);\nif(!block.includes(\"const argv = Array.from(args ?? [])\")) process.exit(91);\nif(!block.includes('argv[index] = String(argv[index] ?? \"\")')) process.exit(92);\nif(!block.includes(\"argv.length = writeIndex\")) process.exit(93);\nif(block.includes(\".map(arg => String(arg ?? \\\"\\\")).filter(\")) process.exit(94);\n\nfunction oldNorm(args,stringFn=String){\n  return Array.from(args ?? []).map(arg=>stringFn(arg ?? \"\")).filter(arg=>arg.length>0);\n}\nfunction newNorm(args,stringFn=String){\n  const argv=Array.from(args ?? []);\n  for(let i=0;i<argv.length;i++) argv[i]=stringFn(argv[i] ?? \"\");\n  let w=0;\n  for(let r=0;r<argv.length;r++){\n    const normalized=argv[r];\n    if(normalized.length>0) argv[w++]=normalized;\n  }\n  argv.length=w;\n  return argv;\n}\nfunction same(a,b){\n  return JSON.stringify(a)===JSON.stringify(b);\n}\nconst primitives=[\n  [],\n  [null,undefined,\"\",\"a\",0,false,true,NaN,Infinity,-0,42n],\n  [\"a\",\"\",\"b\",\"\",\"c\"],\n  new Array(4)\n];\nfor(const x of primitives){\n  const a=oldNorm(x), b=newNorm(x);\n  if(!same(a,b)) process.exit(10);\n}\n\nfunction makeIterable(throwAt=-1){\n  const trace=[];\n  const values=[\"a\",\"\",0,false,null,\"z\"];\n  const iterable={\n    [Symbol.iterator](){\n      trace.push(\"iterator\");\n      let i=0;\n      return {\n        next(){\n          trace.push(\"next:\"+i);\n          if(i>=values.length) return {done:true};\n          const idx=i++;\n          const value={\n            toString(){\n              trace.push(\"toString:\"+idx);\n              if(idx===throwAt) throw new Error(\"boom-\"+idx);\n              return String(values[idx] ?? \"\");\n            }\n          };\n          return {done:false,value};\n        }\n      };\n    }\n  };\n  return {iterable,trace};\n}\nfor(let throwAt=-1;throwAt<6;throwAt++){\n  const a=makeIterable(throwAt), b=makeIterable(throwAt);\n  let ao,bo,ae=\"\",be=\"\";\n  try{ao=oldNorm(a.iterable);}catch(e){ae=e.message;}\n  try{bo=newNorm(b.iterable);}catch(e){be=e.message;}\n  if(!same(ao,bo)||ae!==be||!same(a.trace,b.trace)) process.exit(11);\n}\n\nfunction makeArrayLike(throwAt=-1){\n  const trace=[];\n  const obj={length:5};\n  for(let i=0;i<5;i++){\n    Object.defineProperty(obj,i,{\n      enumerable:true,\n      get(){\n        trace.push(\"get:\"+i);\n        if(i===throwAt) throw new Error(\"getboom-\"+i);\n        return i%2 ? \"\" : \"v\"+i;\n      }\n    });\n  }\n  return {obj,trace};\n}\nfor(let throwAt=-1;throwAt<5;throwAt++){\n  const a=makeArrayLike(throwAt),b=makeArrayLike(throwAt);\n  let ao,bo,ae=\"\",be=\"\";\n  try{ao=oldNorm(a.obj);}catch(e){ae=e.message;}\n  try{bo=newNorm(b.obj);}catch(e){be=e.message;}\n  if(!same(ao,bo)||ae!==be||!same(a.trace,b.trace)) process.exit(12);\n}\n\n// Stronger phase oracle: a custom String-like function returns objects whose\n// length getter is observable. Both algorithms must finish every conversion\n// before the first length read.\nfunction makeStringFn(trace){\n  return value=>{\n    trace.push(\"string:\"+String(value));\n    const text=String(value);\n    return {\n      text,\n      get length(){trace.push(\"length:\"+text);return text.length;},\n      toJSON(){return text;}\n    };\n  };\n}\nfor(let c=0;c<10000;c++){\n  const source=[String(c),\"\",c%3?String(c+1):\"\",null,false];\n  const ta=[],tb=[];\n  const a=oldNorm(source,makeStringFn(ta));\n  const b=newNorm(source,makeStringFn(tb));\n  if(!same(a,b)||!same(ta,tb)) process.exit(13);\n}\nprocess.exit(0);\n"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-fcitx5-settings-integration.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-shell-surface-contracts.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "scripts/test-performance-lifecycle.sh"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1200
+      }
+    }
+  ]
+}

@@ -26144,3 +26144,68 @@ the R41 result receipt after the job commit and does not modify runtime source.
 Next round should diversify away from Overview/AppSearch search-result work.
 Re-fetch current `dev`, reject existing ownership, then inspect a distinct
 broad service/backend or high-frequency reactive path.
+
+
+### 110.16 ShellExec launch-argv compaction confirmed (2026-10-05)
+
+Round 62 §62.1 is now **CONFIRMED and implemented** on current `dev`.
+`modules/common/functions/ShellExec.qml::execDetachedArgs()` still begins with
+the exact `Array.from(args ?? [])` conversion required for JS iterables,
+array-like values and QML sequence/list bridges, but no longer allocates
+separate map-result and filter-result arrays.
+
+The first implementation commit
+`cfdc6745d0167e5f47e00a2484a1bb663e07f4c2` fused conversion/filtering into
+one loop. Before validation, this was tightened further because the original
+`map(...).filter(...)` has an observable phase boundary: every `String()`
+conversion completes before the first filtered string `.length` read.
+
+Final fix-forward commit
+`dfb174a86bf1f2bf52798abe8ff1edf5311415ae`
+(`fix(shell): preserve argv normalization phase`) therefore uses the same
+fresh `Array.from` result for two ordered phases:
+
+1. normalize every element in place with `String(argv[index] ?? "")`;
+2. compact non-empty normalized strings with read/write indices and truncate
+   the same fresh array.
+
+Strict-lossless boundary:
+
+- `Array.from` conversion remains first and retains iterator/array-like/QML
+  sequence behavior and failure ordering;
+- nullish-to-empty conversion and `String()` call count/order are unchanged;
+- all conversions complete before any `.length` filtering, matching the old
+  map/filter phase boundary;
+- retained argv order and duplicate behavior are unchanged;
+- malformed iterable/array-like getter and `toString()` throw behavior is
+  unchanged within the covered oracle;
+- empty-command early return, description/working-directory normalization,
+  environment reconstruction, systemd-run scope logic and fallback execution
+  are untouched.
+
+Local structural reduction per `execDetachedArgs()` call:
+
+- fresh `Array.from` array: unchanged, **1**;
+- map-result array: **1 -> 0**;
+- filter-result array: **1 -> 0**;
+- normalization/filter element visits remain two ordered phases; no CPU or
+  launch-latency percentage is claimed.
+
+Validation job `JOB-C2F353CC-SHELLEXEC62-R42-20261005` used base
+`dfb174a86bf1f2bf52798abe8ff1edf5311415ae`, job/source SHA
+`8810f47cf991f37615ec132847e62e33cae6ac01`, profile
+`profile-c2f353cc8d1c4c1f`. All actions exited 0 without timeout or
+cancellation:
+
+- production-shape + primitive/iterable/array-like/getter/toString/throw and
+  phase-order parity oracle — `:0`, observed Unix `1791213927`;
+- Fcitx Settings integration contract — `:1`, observed `1791213927`;
+- shell-surface contract — `:2`, observed `1791213927`;
+- performance lifecycle contract — `:3`, observed `1791213928`.
+
+Current descendant `6a5398642b05c5bf81e30449f7e5cbb2c32dc953` only publishes
+the R42 result receipt after the job commit and does not modify runtime source.
+
+Next round should diversify away from search and shared launch normalization.
+Re-fetch current `dev`, reject existing ownership, then inspect a distinct
+reactive service/backend or media/settings path.

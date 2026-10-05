@@ -210,6 +210,12 @@ Scope {
                 // workspace at the four inverted rounded corners.
                 blurMax: Math.max(1, root.physicalShadowSize)
                 shadowBlur: 1.0
+                // The locked Shape already spans the complete output and its
+                // outer contour extends 50 px past the window. Automatic
+                // padding would only enlarge the offscreen layer beyond pixels
+                // the compositor can present; the visible inward shadow stays
+                // inside the output item.
+                autoPaddingEnabled: false
                 shadowHorizontalOffset: 0
                 shadowVerticalOffset: 0
                 shadowColor: Qt.alpha(

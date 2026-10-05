@@ -287,27 +287,6 @@ Item {
         ctx.closePath()
     }
 
-    function traceClosedReverse(ctx, points): void {
-        if (!points || points.length < 3)
-            return
-        const count = points.length
-        ctx.moveTo(points[count - 1].x, points[count - 1].y)
-        for (let i = 0; i < count; ++i) {
-            const p1Index = count - 1 - i
-            const p0 = points[(p1Index + 1) % count]
-            const p1 = points[p1Index]
-            const p2 = points[(p1Index + count - 1) % count]
-            const p3 = points[(p1Index + count - 2) % count]
-            ctx.bezierCurveTo(
-                p1.x + (p2.x - p0.x) / 6,
-                p1.y + (p2.y - p0.y) / 6,
-                p2.x - (p3.x - p1.x) / 6,
-                p2.y - (p3.y - p1.y) / 6,
-                p2.x, p2.y)
-        }
-        ctx.closePath()
-    }
-
     function traceOpen(ctx, points): void {
         if (!points || points.length < 2)
             return
@@ -395,7 +374,7 @@ Item {
             ctx.fillStyle = fillGradient
             ctx.beginPath()
             root.traceClosed(ctx, outer)
-            root.traceClosedReverse(ctx, inner)
+            root.traceClosed(ctx, inner.slice().reverse())
             ctx.fill()
 
             // Two translucent moving sheets overlap inside the same annulus.
@@ -427,7 +406,7 @@ Item {
                 ctx.fillStyle = sheet === 0 ? root.sheetColorA : root.sheetColorB
                 ctx.beginPath()
                 root.traceClosed(ctx, sheetOuter)
-                root.traceClosedReverse(ctx, sheetInner)
+                root.traceClosed(ctx, sheetInner.slice().reverse())
                 ctx.fill()
             }
 

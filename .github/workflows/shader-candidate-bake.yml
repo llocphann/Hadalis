@@ -33,40 +33,7 @@ jobs:
       - name: Generate strict-lossless Wull material candidate
         run: |
           mkdir -p _shader_artifact
-          python3 - <<'PY'
-          from pathlib import Path
-
-          src = Path("modules/abyss/companion/WaterDropletMaterial.frag")
-          text = src.read_text()
-          old = """            float along=dot(bubble-surface,internal);
-            float offset=length(surface+internal*along-bubble);
-            float radius=0.007+hash(vec2(index,4.0))*0.018;
-            float edge=exp(-abs(offset-radius)*170.0)*step(0.0,along)*step(along,travel);
-            float attenuation=exp(-along*0.70);
-            color+=mix(waterLight,white,0.25)*edge*0.30*attenuation;
-            float glint=exp(-offset*offset/(radius*radius*0.08))
-                *step(0.0,along)*step(along,travel);
-            color+=mix(waterLight,white,0.20)*glint*0.50*attenuation;
-"""
-          new = """            float along=dot(bubble-surface,internal);
-            // Both old bubble contributions are multiplied by
-            // step(0,along)*step(along,travel). Outside that closed segment
-            // they are exactly zero, so skip the expensive distance/hash/exp
-            // path without changing either boundary case.
-            if(along<0.0 || along>travel) continue;
-            float offset=length(surface+internal*along-bubble);
-            float radius=0.007+hash(vec2(index,4.0))*0.018;
-            float edge=exp(-abs(offset-radius)*170.0);
-            float attenuation=exp(-along*0.70);
-            color+=mix(waterLight,white,0.25)*edge*0.30*attenuation;
-            float glint=exp(-offset*offset/(radius*radius*0.08));
-            color+=mix(waterLight,white,0.20)*glint*0.50*attenuation;
-"""
-          if text.count(old) != 1:
-              raise SystemExit("unexpected WaterDropletMaterial bubble block")
-          candidate = text.replace(old, new)
-          (Path("_shader_artifact") / "WaterDropletMaterial.frag").write_text(candidate)
-          PY
+          python3 scripts/build-wull-material-candidate.py _shader_artifact/WaterDropletMaterial.frag
 
       - name: Bake candidate shader pack
         run: |

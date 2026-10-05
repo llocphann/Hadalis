@@ -257,20 +257,46 @@ Item {
                         }
                         Repeater {
                             model: WullMind.selectableModels
-                            DialogButton {
+                            RippleButton {
+                                id: modelOption
                                 required property var modelData
                                 objectName: "wullModelOption-" + String(modelData.name)
                                 Layout.fillWidth: true
+                                implicitHeight: 36
                                 buttonText: modelData.label ?? modelData.name
                                 toggled: WullMind.model === modelData.name
                                 enabled: !WullMind.busy
-                                colBackgroundToggled: Appearance.colors.colPrimary
-                                colBackgroundToggledHover: Appearance.colors.colPrimaryHover
-                                colEnabled: toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colPrimary
+                                buttonRadius: 12
+                                colBackground: "transparent"
+                                colBackgroundHover: Qt.alpha(AbyssStyle.accent, .10)
+                                colBackgroundToggled: Appearance.colors.colPrimaryContainer
+                                colBackgroundToggledHover: Appearance.colors.colPrimaryContainerHover
                                 onClicked: {
                                     WullMind.selectModel(modelData)
                                     root.profileStage = 0
                                     Qt.callLater(() => { if (root.editing) message.forceActiveFocus() })
+                                }
+                                contentItem: RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 10
+                                    anchors.rightMargin: 10
+                                    spacing: 8
+                                    StyledText {
+                                        objectName: "wullModelLabel-" + String(modelOption.modelData.name)
+                                        Layout.fillWidth: true
+                                        text: modelOption.buttonText
+                                        elide: Text.ElideRight
+                                        font.pixelSize: Appearance.font.pixelSize.small
+                                        color: modelOption.toggled
+                                            ? Appearance.colors.colOnPrimaryContainer
+                                            : Appearance.colors.colOnLayer1
+                                    }
+                                    MaterialSymbol {
+                                        visible: modelOption.toggled
+                                        text: "check"
+                                        iconSize: 17
+                                        color: Appearance.colors.colOnPrimaryContainer
+                                    }
                                 }
                             }
                         }

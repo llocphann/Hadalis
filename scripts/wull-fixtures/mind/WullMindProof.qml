@@ -78,8 +78,10 @@ Window {
                 check(cloud.profileStage===2 && modelPicker.visible && !effortSlider.visible,
                     "second selector click did not switch to model picker")
                 const activeModelButton=root.named(cloud,"wullModelOption-tiny:local")
-                check(!!activeModelButton && activeModelButton.visible
-                    && activeModelButton.colText===Appearance.colors.colOnPrimary,
+                const activeModelLabel=root.named(cloud,"wullModelLabel-tiny:local")
+                check(!!activeModelButton && activeModelButton.visible && activeModelButton.toggled
+                    && !!activeModelLabel && activeModelLabel.visible && activeModelLabel.text.length>0
+                    && activeModelLabel.color===Appearance.colors.colOnPrimaryContainer,
                     "active model text lost contrast on selected background")
                 mouseClick(profileButton);wait(30)
                 check(cloud.profileStage===0 && field.activeFocus,

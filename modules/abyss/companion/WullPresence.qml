@@ -327,7 +327,20 @@ Item {
             }
         } else {
             const support=Scene.supportAt(scene,from)
-            placement=Scene.annotate(scene,from,placement.edge,placement.kind,placement.key)
+            if (support) {
+                placement=Scene.annotate(scene,from,placement.edge,placement.kind,placement.key)
+                return
+            }
+            // A popup/module can disappear while Wull is standing on its rim.
+            // The old coordinates may still be collision-free, but they are no
+            // longer a support. Never re-annotate that airborne point as a
+            // resting placement: fall to verified geometry, route to water, or
+            // hide if no safe landing exists.
+            const floor=Scene.landingBelow(scene,from)
+            if (floor.qualified && moveTo(floor,false,"fall")) return
+            const water=Scene.nearestWater(scene,from)
+            if (water.qualified && moveTo(water.placement,false)) return
+            hideImmediately()
         }
     }
     function beginDrag(): void {

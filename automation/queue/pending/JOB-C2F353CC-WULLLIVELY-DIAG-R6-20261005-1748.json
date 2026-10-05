@@ -1,0 +1,38 @@
+{
+  "id": "JOB-C2F353CC-WULLLIVELY-DIAG-R6-20261005-1748",
+  "base_sha": "041501dcb8f1272dd0b99b89c3ab534a07ddff4b",
+  "profile_id": "profile-c2f353cc8d1c4c1f",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "scripts/test-wull-airborne.cjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "scripts/test-wull-curiosity-adapter.cjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-c",
+          "import contextlib,io,re\nfrom pathlib import Path\np=Path(\"scripts/test-wull-lively-motion.py\");q=Path(\"scripts/wull-fixtures/lively/WullLivelyPreview.qml\")\norig=q.read_text();needle='function check(value,message): void {if(!value)throw new Error(message)}';inst='property int checkIndex:0\\n        function check(value,message): void {checkIndex++;if(!value)throw new Error(\"CHECK_\"+checkIndex+\" \"+message)}'\nif needle not in orig: raise SystemExit(11)\nq.write_text(orig.replace(needle,inst))\nsrc=p.read_text();src=\"\\n\".join(l for l in src.splitlines() if 'subprocess.run([\"node\",\"scripts/test-wull-' not in l)\nbuf=io.StringIO();rc=0\ntry:\n    with contextlib.redirect_stdout(buf): exec(compile(src,str(p),\"exec\"),{\"__file__\":str(p.resolve()),\"__name__\":\"__main__\"})\nexcept SystemExit as e: rc=e.code if isinstance(e.code,int) else 1\nexcept Exception: rc=1\nfinally: q.write_text(orig)\nif rc==0: raise SystemExit(0)\nm=re.search(r\"CHECK_(\\d+)\",buf.getvalue());raise SystemExit(20+int(m.group(1)) if m else 99)"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    }
+  ]
+}

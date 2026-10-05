@@ -81,6 +81,25 @@ Window {
         function check(value,message): void {if(!value)throw new Error(message)}
         function runChecks() {
             try {
+                root.testPhase="arc entrance"
+                const appearanceSource=Scene.edgePoint(root.scene,"bottom",.42)
+                check(appearanceSource.qualified && appearanceSource.grounded,
+                    "appearance source is not a grounded water opening")
+                presence.randomState=2000
+                presence.appear(appearanceSource)
+                wait(60)
+                check(presence.appearClip!=="emerge"
+                    && Math.hypot(presence.appearanceOffsetX,presence.appearanceOffsetY)>40
+                    && Scene.distance(appearanceSource,presence.placement)>40
+                    && presence.placement.grounded,
+                    "jump entrance did not choose a distinct grounded landing")
+                check(actor.appearanceArcActive
+                    && Math.abs(actor.appearanceOffsetX-presence.appearanceOffsetX)<.1
+                    && Math.abs(actor.appearanceOffsetY-presence.appearanceOffsetY)<.1,
+                    "jump entrance did not render the water-to-landing arc")
+                tryCompare(actor,"presentation",1,3500)
+                check(!actor.appearanceArcActive && presence.grounded,
+                    "jump entrance did not finish grounded at its new landing")
                 root.place(480,600)
                 check(actor.inputReady && presence.surfaceBound,"actor did not reset into surface-bound mode")
                 const body=root.named(actor,"wullLiquidBody"), gait=root.named(actor,"wullLocomotion")
@@ -192,7 +211,7 @@ Window {
                 root.allowed=false;wait(40)
                 check(!curiosity.busy && !actor.visible && !deadline.running && !presence.directed,
                     "policy hide did not cancel curiosity")
-                console.log("WULL_LIVELY=PASS run jump surfaceBoundRelease velocityThrow groundedLanding acceleratingFall regrab reducedMotion curiosityGesture distanceClose continuedDeparture ownedClose userHandoff surfaceLossFall ownershipRaceSafe groundedAfterSurfaceLoss policyHide")
+                console.log("WULL_LIVELY=PASS arcEntrance distinctLanding run jump surfaceBoundRelease velocityThrow groundedLanding acceleratingFall regrab reducedMotion curiosityGesture distanceClose continuedDeparture ownedClose userHandoff surfaceLossFall ownershipRaceSafe groundedAfterSurfaceLoss policyHide")
             } catch(error) {console.error("WULL_LIVELY=FAIL "+error+" "+JSON.stringify({phase:root.testPhase,
                 stage:curiosity.stage,owned:curiosity.owned,near:curiosity.nearFeature,reached:curiosity.reachedFeature,
                 featureOpen:root.featureOpen,closes:root.closes,traveling:presence.traveling,mode:presence.mode,

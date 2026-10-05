@@ -28,6 +28,7 @@ player_base = read("modules/mediaControls/components/PlayerBase.qml")
 player_progress = read("modules/mediaControls/components/PlayerProgress.qml")
 string_utils = read("modules/common/functions/StringUtils.qml")
 compact = read("modules/sidebarRight/CompactMediaPlayer.qml")
+compact_sidebar = read("modules/sidebarRight/CompactSidebarRightContent.qml")
 dash = read("modules/dashboard/DashMedia.qml")
 control_panel = read("modules/controlPanel/MediaSection.qml")
 left_widget = read("modules/sidebarLeft/widgets/MediaPlayerWidget.qml")
@@ -133,6 +134,35 @@ for source, name in (
 ):
     forbid(source, "CavaProcess {", f"{name} must not run duplicate CAVA.")
     forbid(source, "WaveVisualizer {", f"{name} must not render a decorative CAVA wave.")
+
+forbid(
+    compact,
+    "GlobalStates.mediaControlsOpen",
+    "Compact right-sidebar media must not launch the standalone MediaControls surface.",
+)
+forbid(
+    compact,
+    "playerInfoMA",
+    "Compact right-sidebar metadata must not keep the retired expansion hit target.",
+)
+
+forbid(
+    compact_sidebar,
+    'headerText: Translation.tr("Controls")',
+    "Compact Sidebar Right must not duplicate the Controls heading inside its content.",
+)
+forbid(
+    compact_sidebar,
+    "id: controlsVScroll",
+    "Compact Sidebar Right must not reserve width for a visible controls scrollbar.",
+)
+require(
+    compact_sidebar,
+    'icon: root.layoutEditMode ? "check" : "reorder"',
+    "Compact Sidebar Right reorder action must live in the lower left action rail.",
+)
+if compact_sidebar.count("policy: ScrollBar.AlwaysOff") < 2:
+    raise SystemExit("Compact Sidebar Right must hide its visible vertical scrollbars.")
 
 for token in (
     "MprisController.shuffleSupportedForPlayer(playerBase.player)",

@@ -125,7 +125,7 @@ Scope {
                 || root.revealedBars[name]
                 || GlobalStates.barPopupHoverHeld(name)
                 || (GlobalStates.superDown && (Config.options?.bar?.autoHide?.showWhenPressingSuper ?? true))
-                || ((GlobalStates.abyssPopupKind.length > 0 || GlobalStates.mediaControlsOpen)
+                || (GlobalStates.abyssPopupKind.length > 0
                     && GlobalStates.resolveOutputName(GlobalStates.abyssPopupTargetOutput,[]) === name))
             && Geometry.targets(name, Config.options?.bar?.screenList ?? [], Quickshell.screens.map(s => s.name))
     }
@@ -268,7 +268,7 @@ Scope {
             }
             function companionFeaturesIdle(): bool {
                 return window.companionPermission && !window.companionOccluded
-                    && !liquid.popupsOpen && !GlobalStates.abyssPopupKind && !GlobalStates.mediaControlsOpen
+                    && !liquid.popupsOpen && !GlobalStates.abyssPopupKind
                     && !GlobalStates.sidebarLeftOpen && !GlobalStates.sidebarRightOpen
                     && !GlobalStates.settingsOverlayOpen && !GlobalStates.overviewOpen
                     && !GlobalStates.clipboardOpen && !GlobalStates.dashboardOpen
@@ -490,16 +490,7 @@ Scope {
                 Region { x: clipboardBody.inputBounds.x; y: clipboardBody.inputBounds.y; width: window.presented && field.ready ? clipboardBody.inputBounds.width : 0; height: clipboardBody.inputBounds.height }
             }
             function closeGenericPopup(expectedKind = ""): void {
-                // Media shares this physical host but owns a separate semantic
-                // state. Never compare a Media close request against
-                // abyssPopupKind; doing so leaves stale Media state underneath
-                // another generic popup.
                 const expected = String(expectedKind ?? "")
-                if (expected === "media") {
-                    if (GlobalStates.mediaControlsOpen)
-                        GlobalStates.mediaControlsOpen = false
-                    return
-                }
 
                 // Hover-owned generic surfaces (Wi-Fi/Bluetooth/Utilities/etc.)
                 // must never dismiss a newer mature StyledPopup. A stale idle
@@ -519,7 +510,6 @@ Scope {
                 // and explicit global transitions.
                 liquid.dismissPopups()
                 window.closeGenericPopup()
-                GlobalStates.mediaControlsOpen = false
             }
             Item {
                 anchors.fill: parent
@@ -562,34 +552,18 @@ Scope {
                 onInteraction: (edge,along,span,strength) => liquid.impulse(edge,along,span,strength)
                 onPopupRequested: (kind,edge,along) => {
                     companionCuriosity.yieldToUser()
-                    const same = (GlobalStates.abyssPopupKind === kind || (kind === "media" && GlobalStates.mediaControlsOpen))
+                    const same = GlobalStates.abyssPopupKind === kind
                         && GlobalStates.abyssPopupTargetOutput === window.outputName
                     // Utilities is hover-owned. A click while it is already open
                     // is an idempotent keep-open action, not a surprising toggle-close.
                     if (kind === "utilities" && same)
                         return
-                    if (kind === "media") {
-                        // Explicit media toggle still owns the legacy global
-                        // media state, but unrelated StyledPopups are not torn
-                        // down just because a generic popup changes.
-                        window.closeGenericPopup()
-                    } else {
-                        window.closeGenericPopup()
-                    }
+                    window.closeGenericPopup()
                     if (!same) {
                         GlobalStates.abyssPopupTargetOutput = window.outputName
                         GlobalStates.abyssPopupAlong = along
                         GlobalStates.abyssPopupEdge = edge
-                        if (kind === "media") {
-                            GlobalStates.abyssPopupKind = ""
-                            GlobalStates.mediaControlsOpen = true
-                        } else {
-                            // One semantic owner per shared host. Do not leave a
-                            // hidden Media request waiting underneath a generic
-                            // popup and resurfacing when that popup closes.
-                            GlobalStates.mediaControlsOpen = false
-                            GlobalStates.abyssPopupKind = kind
-                        }
+                        GlobalStates.abyssPopupKind = kind
                     }
                 }
                 onPopupHoveredRequested: (kind,edge,along) => {
@@ -602,7 +576,6 @@ Scope {
                     GlobalStates.abyssPopupTargetOutput = window.outputName
                     GlobalStates.abyssPopupAlong = along
                     GlobalStates.abyssPopupEdge = edge
-                    GlobalStates.mediaControlsOpen = false
                     GlobalStates.abyssPopupKind = kind
                 }
                 onPopupHoverStateChanged: (kind,edge,along,hovered) => {
@@ -873,9 +846,7 @@ Scope {
                 presentationInsets: window.nativeInsets
                 obstacles: window.sideObstacles
 
-                requestedKind: GlobalStates.abyssPopupKind.length > 0
-                    ? GlobalStates.abyssPopupKind
-                    : (GlobalStates.mediaControlsOpen ? "media" : "")
+                requestedKind: GlobalStates.abyssPopupKind
                 requestedOpen: window.presented && field.ready
                     && (Config.options?.enabledPanels ?? []).includes("abyssPopup")
                     && requestedKind.length > 0

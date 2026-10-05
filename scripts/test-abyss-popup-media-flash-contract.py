@@ -12,8 +12,8 @@ assert "property string activeKind" in presenter
 assert "contentKind: root.activeKind" in presenter
 assert "root.activeKind = String(kind)" in presenter
 assert "root.activeKind = \"\"" in presenter
-assert 'GlobalStates.mediaControlsOpen ? "media" : ""' in per
+assert "requestedKind: GlobalStates.abyssPopupKind" in per
+assert "GlobalStates.mediaControlsOpen" not in per
 assert 'GlobalStates.abyssPopupKind || "media"' not in per
-assert 'if (expected === "media")' in per
-assert 'GlobalStates.mediaControlsOpen = false' in per
+assert 'if (expected === "media")' not in per
 print("Abyss popup Media-flash regression contract: ok")

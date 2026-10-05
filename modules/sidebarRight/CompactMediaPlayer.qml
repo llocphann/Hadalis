@@ -441,26 +441,9 @@ Item {
                                 animateTitle: true
                             }
 
-                            MouseArea {
-                                id: playerInfoMA
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: GlobalStates.mediaControlsOpen = true
-                            }
-
-                            MaterialSymbol {
-                                anchors.top: parent.top
-                                anchors.right: parent.right
-                                text: "open_in_full"
-                                iconSize: 12
-                                color: root.colTextSecondary
-                                opacity: playerInfoMA.containsMouse ? 0.72 : 0
-                                Behavior on opacity {
-                                    enabled: Appearance.animationsEnabled
-                                    NumberAnimation { duration: Appearance.animation.elementMoveFast.duration }
-                                }
-                            }
+                            // Metadata stays informational: this compact card
+                            // owns its media controls in-place and never launches
+                            // the retired standalone MediaControls surface.
                         }
 
                         Revealer {

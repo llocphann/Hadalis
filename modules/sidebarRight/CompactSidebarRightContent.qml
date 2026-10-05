@@ -366,7 +366,7 @@ Item {
                             contentHeight: upcomingCol.implicitHeight
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
-                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOff }
 
                             ColumnLayout {
                                 id: upcomingCol
@@ -1039,14 +1039,29 @@ Item {
 
                     // ── System action buttons ────────────────────
                     Repeater {
-                        model: [
-                            { icon: "restart_alt",       label: Translation.tr("Reload Quickshell"),
-                              action: function() { doReload() } },
-                            { icon: "settings",          label: Translation.tr("Settings"),
-                              action: function() { doSettings() } },
-                            { icon: "power_settings_new",label: Translation.tr("Session"),
-                              action: function() { GlobalStates.sessionOpen = true } },
-                        ]
+                        model: {
+                            const actions = [
+                                { icon: root.layoutEditMode ? "check" : "reorder",
+                                  label: root.layoutEditMode ? Translation.tr("Done editing") : Translation.tr("Reorder sections"),
+                                  action: function() { root.layoutEditMode = !root.layoutEditMode } },
+                            ]
+                            if ((Config.options?.sidebar?.quickToggles?.style ?? "classic") === "android") {
+                                actions.push({
+                                    icon: root.editMode ? "check" : "edit",
+                                    label: Translation.tr("Edit quick toggles"),
+                                    action: function() { root.editMode = !root.editMode }
+                                })
+                            }
+                            actions.push(
+                                { icon: "restart_alt", label: Translation.tr("Reload Quickshell"),
+                                  action: function() { doReload() } },
+                                { icon: "settings", label: Translation.tr("Settings"),
+                                  action: function() { doSettings() } },
+                                { icon: "power_settings_new", label: Translation.tr("Session"),
+                                  action: function() { GlobalStates.sessionOpen = true } }
+                            )
+                            return actions
+                        }
                         delegate: Item {
                             id: sysItem
                             required property int index
@@ -1232,33 +1247,19 @@ Item {
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
 
+                // Preserve wheel/touch scrolling without painting a competing
+                // scrollbar beside the compact Sidebar Right content.
                 ScrollBar.vertical: ScrollBar {
-                    id: controlsVScroll
-                    policy: controlsFlickable.contentHeight > controlsFlickable.height
-                        ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
+                    policy: ScrollBar.AlwaysOff
                 }
 
                 ColumnLayout {
                     id: controlsColumn
-                    width: controlsFlickable.width - (controlsVScroll.visible ? controlsVScroll.width + controlsRoot.controlsInlineGap : 0)
+                    width: controlsFlickable.width
                     spacing: controlsRoot.controlsGap
 
-                    // Section header
-                    SectionHeader {
-                        Layout.fillWidth: true
-                        headerText: Translation.tr("Controls")
-                        headerIcon: "tune"
-                        // Layout edit button
-                        showAction: true
-                        actionIcon: root.layoutEditMode ? "check" : "reorder"
-                        actionTooltip: root.layoutEditMode ? Translation.tr("Done editing") : Translation.tr("Reorder sections")
-                        onActionClicked: root.layoutEditMode = !root.layoutEditMode
-                        // Quick toggles edit (only for android style)
-                        showSecondaryAction: (Config.options?.sidebar?.quickToggles?.style ?? "classic") === "android"
-                        secondaryActionIcon: root.editMode ? "check" : "edit"
-                        secondaryActionTooltip: Translation.tr("Edit quick toggles")
-                        onSecondaryActionClicked: root.editMode = !root.editMode
-                    }
+                    // Controls identity is already represented by the selected
+                    // icon in the left rail; do not duplicate a content heading.
 
                     // ═══════════════════════════════════════════════════════
                     // REORDERABLE CONTROLS SECTIONS

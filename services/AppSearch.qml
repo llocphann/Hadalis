@@ -359,7 +359,10 @@ Singleton {
                 return top.map(item => root._decorateEntry(item.entry))
             }
 
-            const results = _cachedList.map((obj, index) => {
+            const results = []
+            const count = _cachedList.length
+            for (let index = 0; index < count; ++index) {
+                const obj = _cachedList[index]
                 const nameLower = _cachedNameLowers[index] ?? ""
                 let score = Levendist.computeScore(nameLower, searchLower)
 
@@ -370,9 +373,11 @@ Singleton {
                 else if (nameLower.includes(searchLower))
                     score += 0.1
 
-                return { entry: obj, score: Math.min(1.0, score) }
-            }).filter(item => item.score > root.scoreThreshold)
-              .sort((a, b) => b.score - a.score)
+                score = Math.min(1.0, score)
+                if (score > root.scoreThreshold)
+                    results.push({ entry: obj, score: score })
+            }
+            results.sort((a, b) => b.score - a.score)
 
             return results.map(item => root._decorateEntry(item.entry))
         }

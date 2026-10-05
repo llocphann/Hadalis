@@ -24,6 +24,13 @@ Item {
     property color accent: AbyssStyle.accent
     property bool motionEnabled: true
     property int qualityLevel: 1
+    // Both corneas consume the same animated view/material uniforms. Keep one
+    // set of bindings so gaze/yaw updates do not duplicate JS/vector work.
+    readonly property real viewYawSin: Math.sin(viewYaw * Math.PI / 180)
+    readonly property color corneaSpecular: ColorUtils.colorWithLightness(accent, 0.85)
+    readonly property vector4d corneaOpticsUniform: Qt.vector4d(0, 2, pupilX, pupilY)
+    readonly property vector4d corneaRenderingUniform: Qt.vector4d(qualityLevel, 0, 0, 0)
+    readonly property vector4d zeroShaderUniform: Qt.vector4d(0, 0, 0, 0)
     readonly property var profile: Expressions.profile(expression)
     readonly property real unit: width / 76
     readonly property color ink: Qt.hsla(Math.max(0, accent.hslHue), accent.hslSaturation * 0.78, 0.065, 1)
@@ -36,7 +43,7 @@ Item {
             y: 46 * root.unit
             width: 14 * root.unit; height: 16 * root.unit
             rotation: root.profile.angry ? (index === 0 ? -15 : 15) : root.profile.worried ? (index === 0 ? 13 : -13) : 0
-            scale: root.profile.eyeScale * 0.83 * (1 + (index === 0 ? 1 : -1) * Math.sin(root.viewYaw * Math.PI / 180) * 0.25)
+            scale: root.profile.eyeScale * 0.83 * (1 + (index === 0 ? 1 : -1) * root.viewYawSin * 0.25)
             Behavior on scale { enabled: root.motionEnabled; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
             Shape {
                 visible: root.profile.angry
@@ -61,11 +68,11 @@ Item {
                     anchors.fill: parent; anchors.margins: -root.unit
                     visible: GraphicsInfo.api !== GraphicsInfo.Software && status !== ShaderEffect.Error
                     property color accent: root.accent
-                    property color specular: ColorUtils.colorWithLightness(root.accent, 0.85)
-                    property vector4d motion: Qt.vector4d(0, 0, 0, 0)
-                    property vector4d optics: Qt.vector4d(0, 2, root.pupilX, root.pupilY)
-                    property vector4d rendering: Qt.vector4d(root.qualityLevel, 0, 0, 0)
-                    property vector4d pose:Qt.vector4d(0,0,0,0)
+                    property color specular: root.corneaSpecular
+                    property vector4d motion: root.zeroShaderUniform
+                    property vector4d optics: root.corneaOpticsUniform
+                    property vector4d rendering: root.corneaRenderingUniform
+                    property vector4d pose: root.zeroShaderUniform
                     fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
                 }
                 Item {

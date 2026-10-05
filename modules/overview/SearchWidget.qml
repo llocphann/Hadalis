@@ -198,7 +198,7 @@ Item { // Wrapper
                     blurImage: shouldBlurImage,
                     blurImageText: Translation.tr("Work safety")
                 };
-            }).filter(Boolean);
+            });
             return;
         }
         
@@ -216,7 +216,7 @@ Item { // Wrapper
                     type: "Emoji",
                     execute: () => { Quickshell.clipboardText = entry.match(/^\s*(\S+)/)?.[1]; }
                 };
-            }).filter(Boolean);
+            });
             return;
         }
 

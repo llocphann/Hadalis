@@ -25637,3 +25637,67 @@ Next safe action after re-fetching current `dev`:
 The four Round-96 optimization groups remain individually narrow-test PASS as
 recorded in §§110.1–110.5; canonical batch PASS has **not** been achieved.
 
+
+### 110.8 Canonical recovery resolved; frozen Weather optimization disproven (2026-10-05)
+
+The §110.7 canonical blocker chain is now resolved on current `dev` without
+changing the four Round-96 optimization runtime paths.
+
+Wull regression repair:
+
+- diagnostics eventually isolated a stale presence fixture assertion that still
+  expected every full visit to enter the pre-arc short-peek state;
+- current product history intentionally uses the arc entrance for full visits,
+  while simple `emerge` retains the short-peek contract;
+- `scripts/wull-fixtures/presence/WullPresencePreview.qml` was updated at
+  `a65c1ce88f6b3688114a2fc65565b6584c59e808` to cover both contracts;
+- narrow validation then passed presence interaction, lively motion and alive
+  reactions at source `9ce1a160ac1c90aa377efc0df2f63045629bd9b6`:
+  `JOB-C2F353CC-WULLPRESENCE-FIX-R16-20261005:0`, `:1`, and `:2`.
+
+A later canonical diagnostic found a distinct Weather failure in
+`scripts/test-weather-orbital-visual-lock.sh`. The semantic renderer/fallback
+contract passed, but the exact approved visual blob lock failed only for
+`modules/bar/weather/LiquidOrbitalField.qml`:
+
+- semantic contract: `JOB-C2F353CC-WEATHER-LOCK-R19-20261005:0`, exit 0;
+- exact visual map: `JOB-C2F353CC-WEATHER-LOCK-R19-20261005:1`, exit 40,
+  mapping to the first locked file, `LiquidOrbitalField.qml`;
+- repository history showed the drift came from commit
+  `932cf8d2041b3bad97d27d138fc3c10b61438fa6`, which replaced two
+  `slice().reverse()` calls with `traceClosedReverse()` to avoid temporary
+  arrays;
+- the Weather visual lock explicitly forbids re-baselining for refactor or
+  optimization without maintainer visual approval. Therefore this Weather
+  allocation candidate is **DISPROVEN for strict-lossless automation**, even
+  though its semantic renderer contract passed;
+- fix-forward commit `8f958bc284f9cb6d054935793b838b2b2f446098`
+  restored the exact approved Weather blob
+  `1883b6877a02f6013fcacc7e30142e5f522b6165` and did not touch other
+  Round-96 optimizations.
+
+Recovery validation job `JOB-C2F353CC-WEATHER-RECOVER-R20-20261005` used
+base `8f958bc284f9cb6d054935793b838b2b2f446098`, job/source SHA
+`b40246e4d181d842242f83dafdda812028c44042`, profile
+`profile-c2f353cc8d1c4c1f`. All actions exited 0 without timeout/cancellation:
+
+- Weather exact visual lock — `:0`, observed Unix `1791202835`;
+- remaining shell regressions after the prior blocker — `:1`, observed
+  `1791202836`;
+- Make/package/clean-tree contracts — `:2`, observed `1791202993`;
+- full canonical `bash scripts/validate-maintainer-local.sh --current-repo` —
+  `:3`, observed `1791204050`.
+
+Therefore the substantial Round-96 batch is canonically validated at exact
+source `b40246e4d181d842242f83dafdda812028c44042`, with the frozen Weather
+candidate excluded/reverted. Live Niri/Quickshell visual and hardware/session
+acceptance remain separate from this local/static PASS.
+
+Current `dev` before this checkpoint write:
+`f7eda7ec6b8d804175b7c704c4a82db89fc95bd9`
+(`automation: record JOB-C2F353CC-WEATHER-RECOVER-R20-20261005 result`).
+
+Next optimization round must re-fetch current `dev`, avoid the frozen Weather
+renderer path, and select a distinct current production hot path that is not
+already ALREADY/CLOSED/SUPERSEDED/DISPROVEN in this handoff. Canonical
+validation is no longer the active blocker.

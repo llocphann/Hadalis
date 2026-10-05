@@ -18,6 +18,7 @@ WindowDialog {
     backgroundHeight: Math.max(360, Math.min(860, (root.screen?.height ?? 1080) - 96))
 
     WindowDialogTitle {
+        visible: !root.embeddedPresentation
         text: Translation.tr("Eye protection")
     }
 
@@ -35,6 +36,9 @@ WindowDialog {
             }
 
             WindowDialogSeparator {
+                Layout.fillWidth: false
+                Layout.preferredWidth: Math.max(160, protectionContent.width - 64)
+                Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: -22
                 Layout.leftMargin: 0
                 Layout.rightMargin: 0
@@ -45,30 +49,30 @@ WindowDialog {
                 Layout.topMargin: -16
                 Layout.fillWidth: true
 
-                ConfigSwitch {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                    }
-                    iconSize: Appearance.font.pixelSize.larger
-                    buttonIcon: "lightbulb"
-                    text: Translation.tr("Enable now")
-                    autoToggle: false
-                    checked: Hyprsunset.active
-                    onToggledByUser: checked => Hyprsunset.toggle(checked)
-                }
+                RowLayout {
+                    id: nightLightPrimaryToggles
+                    width: parent.width
+                    spacing: 8
 
-                ConfigSwitch {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
+                    ConfigSwitch {
+                        Layout.fillWidth: true
+                        iconSize: Appearance.font.pixelSize.larger
+                        buttonIcon: "lightbulb"
+                        text: Translation.tr("Enable")
+                        autoToggle: false
+                        checked: Hyprsunset.active
+                        onToggledByUser: checked => Hyprsunset.toggle(checked)
                     }
-                    iconSize: Appearance.font.pixelSize.larger
-                    buttonIcon: "night_sight_auto"
-                    text: Translation.tr("Automatic")
-                    autoToggle: false
-                    checked: Config.options?.light?.night?.automatic ?? false
-                    onToggledByUser: checked => Config.setNestedValue("light.night.automatic", checked)
+
+                    ConfigSwitch {
+                        Layout.fillWidth: true
+                        iconSize: Appearance.font.pixelSize.larger
+                        buttonIcon: "night_sight_auto"
+                        text: Translation.tr("Automatic")
+                        autoToggle: false
+                        checked: Config.options?.light?.night?.automatic ?? false
+                        onToggledByUser: checked => Config.setNestedValue("light.night.automatic", checked)
+                    }
                 }
 
                 // Schedule settings (only visible when automatic is enabled)
@@ -136,6 +140,9 @@ WindowDialog {
             }
 
             WindowDialogSeparator {
+                Layout.fillWidth: false
+                Layout.preferredWidth: Math.max(160, protectionContent.width - 64)
+                Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: -22
                 Layout.leftMargin: 0
                 Layout.rightMargin: 0
@@ -201,6 +208,9 @@ WindowDialog {
             }
 
             WindowDialogSeparator {
+                Layout.fillWidth: false
+                Layout.preferredWidth: Math.max(160, protectionContent.width - 64)
+                Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: -22
                 Layout.leftMargin: 0
                 Layout.rightMargin: 0

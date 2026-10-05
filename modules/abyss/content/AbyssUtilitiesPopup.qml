@@ -24,14 +24,48 @@ Item {
     ]
     readonly property var pageWidths: [620, 540, 480, 460]
     readonly property var pageHeights: [430, 390, 430, 500]
+    // SwipeView changes currentIndex before its horizontal motion has fully
+    // settled. Keep the viewport geometry latched to the previously settled
+    // page until that motion ends so the page distance cannot change mid-slide.
+    property int geometryPage: 0
+    property int pendingGeometryPage: 0
 
-    // Size the connected body to the active page instead of reserving the old
-    // 760×620 maximum for every utility.
-    implicitWidth: pageWidths[Math.max(0, Math.min(currentPage, pageWidths.length - 1))]
-    implicitHeight: pageHeights[Math.max(0, Math.min(currentPage, pageHeights.length - 1))]
+    implicitWidth: pageWidths[Math.max(0, Math.min(geometryPage, pageWidths.length - 1))]
+    implicitHeight: pageHeights[Math.max(0, Math.min(geometryPage, pageHeights.length - 1))]
 
-    // SwipeView owns tab motion. Keep page-sized geometry discrete so changing
-    // tabs does not layer a second resize motion on top of the horizontal slide.
+    function commitPageGeometry(): void {
+        const view = pages.contentItem
+        if (view && (view.moving || view.dragging || view.flicking)) {
+            geometrySettleTimer.interval = 16
+            geometrySettleTimer.restart()
+            return
+        }
+
+        geometrySettleTimer.stop()
+        root.geometryPage = root.pendingGeometryPage
+
+        // A width change re-lays out SwipeView delegates. Re-pin the current
+        // page immediately so geometry settlement never starts a second slide.
+        if (view?.positionViewAtIndex)
+            Qt.callLater(() => view.positionViewAtIndex(
+                pages.currentIndex, ListView.Beginning))
+    }
+
+    function queuePageGeometry(index: int): void {
+        root.pendingGeometryPage = index
+        if (!AbyssStyle.motionEnabled) {
+            geometrySettleTimer.stop()
+            root.geometryPage = index
+            return
+        }
+
+        // Material SwipeView animates programmatic index changes through its
+        // ListView highlight duration. Use the live value rather than copying a
+        // magic duration so this remains correct if Qt changes the style.
+        geometrySettleTimer.interval = Math.max(16,
+            Number(pages.contentItem?.highlightMoveDuration ?? 250) + 16)
+        geometrySettleTimer.restart()
+    }
 
     // Interactive descendants acquire focus on demand. Pre-focusing this
     // hover-owned surface would hold the shared dismissal lease forever.
@@ -70,6 +104,7 @@ Item {
             Layout.fillHeight: true
             clip: true
             interactive: true
+            onCurrentIndexChanged: root.queuePageGeometry(currentIndex)
 
             Loader {
                 id: monitorLoader
@@ -121,6 +156,24 @@ Item {
                     }
                 }
             }
+        }
+    }
+
+    Timer {
+        id: geometrySettleTimer
+        interval: 266
+        repeat: false
+        onTriggered: root.commitPageGeometry()
+    }
+
+    Connections {
+        target: pages.contentItem
+        ignoreUnknownSignals: true
+        function onMovementEnded(): void {
+            root.commitPageGeometry()
+        }
+        function onFlickEnded(): void {
+            root.commitPageGeometry()
         }
     }
 

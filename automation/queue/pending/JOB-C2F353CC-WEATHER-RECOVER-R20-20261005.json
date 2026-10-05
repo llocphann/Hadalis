@@ -1,0 +1,50 @@
+{
+  "id": "JOB-C2F353CC-WEATHER-RECOVER-R20-20261005",
+  "base_sha": "8f958bc284f9cb6d054935793b838b2b2f446098",
+  "profile_id": "profile-c2f353cc8d1c4c1f",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "scripts/test-weather-orbital-visual-lock.sh"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 180
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "set -uo pipefail\nn=0\nlocal_i=0\nwhile IFS= read -r -d '' f; do\n  case \"$f\" in\n    test-nix-*.sh|*/test-nix-*.sh|*/nix/*|scripts/test-megaqml-phase2-local.sh|scripts/test-megaqml-ui-loader-local.sh|scripts/test-megaqml-quickshell-smoke.sh|scripts/test-hadalis-desktop-repair.sh) continue ;;\n  esac\n  if (( n >= 107 )); then\n    first_line=\"$(head -n1 \"$f\" 2>/dev/null || true)\"\n    if [[ \"$first_line\" =~ (^|/)(sh)([[:space:]]|$) ]] && [[ \"$first_line\" != *bash* ]]; then interpreter=sh; else interpreter=bash; fi\n    \"$interpreter\" \"$f\" >/dev/null 2>&1 || exit $((20 + local_i))\n    local_i=$((local_i + 1))\n  fi\n  n=$((n + 1))\ndone < <(git ls-files -z -- ':(glob)**/test-*.sh' 'test-*.sh' | sort -z -u)\nexit 0"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "set -uo pipefail\nbash -o errexit -o nounset -o pipefail -c 'make \"$1\" SHELL=/bin/bash .SHELLFLAGS=\"-eu -o pipefail -c\"' _ test-prefix-install >/dev/null 2>&1 || exit 30\nbash -o errexit -o nounset -o pipefail -c 'make \"$1\" SHELL=/bin/bash .SHELLFLAGS=\"-eu -o pipefail -c\"' _ test-package-metadata >/dev/null 2>&1 || exit 31\nbash -o errexit -o nounset -o pipefail -c 'make \"$1\" SHELL=/bin/bash .SHELLFLAGS=\"-eu -o pipefail -c\"' _ test-package-hooks >/dev/null 2>&1 || exit 32\ngit diff --exit-code -- . >/dev/null 2>&1 || exit 33\n[[ -z \"$(git status --porcelain=v1 --untracked-files=all)\" ]] || exit 34\nexit 0"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1200
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "scripts/validate-maintainer-local.sh",
+          "--current-repo"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1800
+      }
+    }
+  ]
+}

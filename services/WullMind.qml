@@ -162,6 +162,7 @@ Singleton {
     }
     function openChat(): void {
         if (!talkEnabled) return
+        LocalModels.ensureInitialized()
         checkInStage=""
         conversationOpen=true;expiry.stop();text="";touchConversation()
         if (!historyLoaded) loadHistory(false)

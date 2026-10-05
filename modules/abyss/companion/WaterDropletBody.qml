@@ -40,12 +40,15 @@ Item {
     property real stateTip: 0
     property real orientationAngle: 0
     property real viewYaw: -15
-    readonly property real yawRadians: viewYaw * Math.PI / 180
-    readonly property real yawCos: Math.cos(yawRadians)
-    readonly property real yawSin: Math.sin(yawRadians)
     property real viewPitch: 0
     readonly property real modelYaw: viewYaw+gait.yaw
     readonly property real modelPitch: viewPitch+gait.pitch
+    // These three angles feed five ShaderEffect instances (torso + four
+    // limbs). Convert each shared pose angle once per pose revision instead of
+    // repeating identical degree-to-radian work in every consumer.
+    readonly property real modelYawRadians: modelYaw * Math.PI / 180
+    readonly property real modelPitchRadians: modelPitch * Math.PI / 180
+    readonly property real modelRollRadians: gait.roll * Math.PI / 180
     readonly property var poseRotation: Pose.rotation(modelYaw,modelPitch,gait.roll)
     readonly property real poseScaleX: gait.scaleX
     readonly property real poseScaleY: gait.scaleY
@@ -218,7 +221,7 @@ Item {
                 readonly property string zTrack: (hand ? "arm"+index : "foot"+(index-2)) + "Z"
                 readonly property real stepX: gait.footX(xTrack)
                 readonly property real stepZ: gait.footZ(zTrack)
-                readonly property real yaw: root.modelYaw*Math.PI/180
+                readonly property real yaw: root.modelYawRadians
                 readonly property var spatial: root.project(side*(hand ? 34 : 19)+stepX,
                     46.14-(hand ? 53.3 : 75.9)+stepZ,8)
                 readonly property real depth: spatial.z
@@ -235,7 +238,7 @@ Item {
                     property vector4d motion: Qt.vector4d(root.shimmer, 0, root.pulse, root.effectsEnabled ? 1 : 0)
                     property vector4d optics: Qt.vector4d(waterFoot.yaw, 3, 0, 0)
                     property vector4d rendering: Qt.vector4d(root.qualityLevel, root.translucency, 0, 0)
-                    property vector4d pose:Qt.vector4d(root.modelPitch*Math.PI/180,gait.roll*Math.PI/180,0,0)
+                    property vector4d pose:Qt.vector4d(root.modelPitchRadians,root.modelRollRadians,0,0)
                     fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
                 }
                 Shape {
@@ -297,9 +300,9 @@ Item {
                 property color specular: root.reflectionColor
                 property vector4d motion: Qt.vector4d(root.shimmer, root.stateTip + root.sway * 0.25,
                     Math.max(root.pulse,root.tapPulse*.65) + root.hoverAmount*.16, root.effectsEnabled ? 1 : 0)
-                property vector4d optics: Qt.vector4d(root.modelYaw * Math.PI / 180, 0, 0, 0)
+                property vector4d optics: Qt.vector4d(root.modelYawRadians, 0, 0, 0)
                 property vector4d rendering: Qt.vector4d(root.qualityLevel, root.translucency, 0, 0)
-                property vector4d pose:Qt.vector4d(root.modelPitch*Math.PI/180,gait.roll*Math.PI/180,root.poseScaleX-1,root.poseScaleY-1)
+                property vector4d pose:Qt.vector4d(root.modelPitchRadians,root.modelRollRadians,root.poseScaleX-1,root.poseScaleY-1)
                 fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
             }
             // Decorative droplets fit the enclosing host; the body hitbox stays 76x92.

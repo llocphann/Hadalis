@@ -16,7 +16,10 @@ Text {
     }
     transform: root.animateChange ? [slideTransform] : []
 
-    renderType: Text.NativeRendering
+    // QtRendering keeps glyph antialiasing inside the scene graph. Native
+    // platform text can leave dark subpixel fringes when the texture is later
+    // composited over translucent Screen Edge / layer-shell surfaces.
+    renderType: Text.QtRendering
     verticalAlignment: Text.AlignVCenter
     property bool shouldUseNumberFont: /^\d+$/.test(root.text)
     property var defaultFont: shouldUseNumberFont ? Appearance.font.family.numbers : Appearance.font.family.main
@@ -26,9 +29,6 @@ Text {
         family: defaultFont
         pixelSize: Appearance?.font.pixelSize.small ?? 15
         variableAxes: shouldUseNumberFont ? ({}) : Appearance.font.variableAxes.main
-        // ZZZ poster crispness: a small global letter-spacing under the zzz style
-        // (token-driven, absolute px). Numbers stay untracked so digit columns
-        // don't drift. Other styles unaffected (0).
         letterSpacing: (Appearance?.zzzEverywhere && !root.shouldUseNumberFont)
             ? (Appearance?.zzz.tracking ?? 0)
             : (Appearance?.regaliaEverywhere && !root.shouldUseNumberFont) ? 0.12 : 0
@@ -66,7 +66,7 @@ Text {
                     easing.type: Easing.InSine
                 }
             }
-            PropertyAction {} // Tie the text update to this point (we don't want it to happen during the first slide+fade)
+            PropertyAction {}
             PropertyAction {
                 target: root
                 property: "_slideX"

@@ -86,12 +86,15 @@ for token in \
     'columns: root.embeddedPresentation ? 2 : 1' \
     '? Translation.tr("Enable")' \
     ': Translation.tr("Enable now")' \
-    'id: embeddedBrightnessRow' \
-    'id: embeddedBrightnessSlider' \
-    'visible: root.embeddedPresentation' \
-    'Layout.preferredWidth: 48'; do
+    'component EmbeddedSliderRow: RowLayout' \
+    'Layout.preferredWidth: 190' \
+    'id: embeddedSliderControl' \
+    'id: embeddedSliderValue' \
+    'label: Translation.tr("Intensity")' \
+    'label: Translation.tr(parent.modelData.label)' \
+    'label: Translation.tr("Brightness")'; do
     grep -Fq "$token" "$night_light_dialog" \
-        || { printf 'FAIL: embedded Eye protection compact contract missing: %s\n' "$token" >&2; exit 1; }
+        || { printf 'FAIL: embedded Eye protection inline-slider contract missing: %s\n' "$token" >&2; exit 1; }
 done
 if [[ "$(grep -Fc 'WindowDialogSeparator {' "$night_light_dialog")" -ne 3 ]]; then
     printf 'FAIL: Eye protection separator structure changed unexpectedly\n' >&2
@@ -103,6 +106,15 @@ if [[ "$(grep -Fc 'visible: !root.embeddedPresentation' "$night_light_dialog")" 
 fi
 if grep -Fq 'Math.max(160, protectionContent.width - 64)' "$night_light_dialog"; then
     printf 'FAIL: Eye protection still carries embedded separator-width styling\n' >&2
+    exit 1
+fi
+if grep -Fq 'id: embeddedBrightnessRow' "$night_light_dialog" \
+        || grep -Fq 'id: embeddedBrightnessSlider' "$night_light_dialog"; then
+    printf 'FAIL: Eye protection still carries the one-off Brightness slider row\n' >&2
+    exit 1
+fi
+if [[ "$(grep -Fc 'EmbeddedSliderRow {' "$night_light_dialog")" -lt 3 ]]; then
+    printf 'FAIL: Eye protection sliders are not consistently using the shared inline row\n' >&2
     exit 1
 fi
 
@@ -275,4 +287,4 @@ if [[ "$status" != 124 ]] || ! rg -q 'UTILITIES_POPUP_PASS' "$test_root/runtime.
     cat "$test_root/runtime.log"
     exit 1
 fi
-printf 'PASS: Utilities uses a compact shared viewport and streamlined Eye protection controls\n'
+printf 'PASS: Utilities uses a compact shared viewport and inline Eye protection sliders\n'

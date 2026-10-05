@@ -36,8 +36,10 @@ WindowDialog {
             }
 
             WindowDialogSeparator {
-                Layout.fillWidth: false
-                Layout.preferredWidth: Math.max(160, protectionContent.width - 64)
+                Layout.fillWidth: !root.embeddedPresentation
+                Layout.preferredWidth: root.embeddedPresentation
+                    ? Math.max(160, protectionContent.width - 64)
+                    : protectionContent.width
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: -22
                 Layout.leftMargin: 0
@@ -49,16 +51,20 @@ WindowDialog {
                 Layout.topMargin: -16
                 Layout.fillWidth: true
 
-                RowLayout {
+                GridLayout {
                     id: nightLightPrimaryToggles
                     width: parent.width
-                    spacing: 8
+                    columns: root.embeddedPresentation ? 2 : 1
+                    columnSpacing: root.embeddedPresentation ? 8 : 0
+                    rowSpacing: 0
 
                     ConfigSwitch {
                         Layout.fillWidth: true
                         iconSize: Appearance.font.pixelSize.larger
                         buttonIcon: "lightbulb"
-                        text: Translation.tr("Enable")
+                        text: root.embeddedPresentation
+                            ? Translation.tr("Enable")
+                            : Translation.tr("Enable now")
                         autoToggle: false
                         checked: Hyprsunset.active
                         onToggledByUser: checked => Hyprsunset.toggle(checked)
@@ -140,8 +146,10 @@ WindowDialog {
             }
 
             WindowDialogSeparator {
-                Layout.fillWidth: false
-                Layout.preferredWidth: Math.max(160, protectionContent.width - 64)
+                Layout.fillWidth: !root.embeddedPresentation
+                Layout.preferredWidth: root.embeddedPresentation
+                    ? Math.max(160, protectionContent.width - 64)
+                    : protectionContent.width
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: -22
                 Layout.leftMargin: 0
@@ -208,8 +216,10 @@ WindowDialog {
             }
 
             WindowDialogSeparator {
-                Layout.fillWidth: false
-                Layout.preferredWidth: Math.max(160, protectionContent.width - 64)
+                Layout.fillWidth: !root.embeddedPresentation
+                Layout.preferredWidth: root.embeddedPresentation
+                    ? Math.max(160, protectionContent.width - 64)
+                    : protectionContent.width
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: -22
                 Layout.leftMargin: 0

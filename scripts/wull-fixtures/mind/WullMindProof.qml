@@ -59,12 +59,21 @@ Window {
                 tryCompare(WullMind,"busy",false,3000)
                 const profileButton=root.named(cloud,"wullModelEffort")
                 const effortSlider=root.named(cloud,"wullThinkingEffort")
-                check(!!profileButton && profileButton.visible,"chat model/effort selector missing")
+                const modelPicker=root.named(cloud,"wullModelPicker")
+                const composer=root.named(cloud,"wullChatComposer")
+                check(!!composer && composer.visible && !!profileButton && profileButton.visible,
+                    "chat composer/model effort selector missing")
                 mouseClick(profileButton);wait(50)
-                check(!!effortSlider && effortSlider.visible && !effortSlider.enabled
-                    && WullMind.effectiveThinkingEffort==="off","instant model exposed fake thinking effort")
+                check(cloud.profileStage===1 && !!effortSlider && effortSlider.visible
+                    && !!modelPicker && !modelPicker.visible && !effortSlider.enabled
+                    && WullMind.effectiveThinkingEffort==="off",
+                    "first selector click did not show effort-only stage")
+                mouseClick(profileButton);wait(50)
+                check(cloud.profileStage===2 && modelPicker.visible && !effortSlider.visible,
+                    "second selector click did not switch to model picker")
                 mouseClick(profileButton);wait(30)
-                check(field.activeFocus,"closing model/effort selector did not return focus to composer")
+                check(cloud.profileStage===0 && field.activeFocus,
+                    "third selector click did not close picker and return focus to composer")
                 field.text="Hello Wull!"
                 keyClick(Qt.Key_Return);wait(20)
                 check(field.text==="","Enter did not submit the input")
@@ -126,7 +135,7 @@ Window {
                 mouseClick(root.contentItem,20,720);wait(30)
                 check(root.outsideClicks===1,"speech guard blocked clicks outside the cloud")
                 WullMind.dismiss();check(!cloud.visible,"dismiss retained speech input")
-                console.log("WULL_MIND=PASS actualProcess localProbe EnglishReply borderlessCloud noCheckInInput separateQuestions journalWrites explicitChatFocus modelEffortSelector enterSend sendOnlyControl persistentHistory reminderSources idleChatRelease retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint offlineMessage settingsAI noReferenceVault")
+                console.log("WULL_MIND=PASS actualProcess localProbe EnglishReply borderlessCloud noCheckInInput separateQuestions journalWrites explicitChatFocus modelEffortSelector stagedEffortModelPicker enterSend sendOnlyControl persistentHistory reminderSources idleChatRelease retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint offlineMessage settingsAI noReferenceVault")
             } catch(e) {console.error("WULL_MIND=FAIL "+e)}
             shutdown.start()
         }

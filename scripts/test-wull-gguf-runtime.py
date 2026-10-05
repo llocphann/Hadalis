@@ -77,7 +77,7 @@ class Tests(unittest.TestCase):
         self.assertEqual(result['text'],'Tiny fixture reply.');self.assertStopped()
         request=json.loads(self.record.with_suffix('.payload').read_text())
         self.assertEqual(request['max_tokens'],180);self.assertEqual(request['thinking_budget_tokens'],0)
-        self.assertFalse(request['chat_template_kwargs']['enable_thinking']);self.assertEqual(request['reasoning_effort'],'none')
+        self.assertFalse(request['chat_template_kwargs']['enable_thinking']);self.assertNotIn('reasoning_effort',request)
         self.assertFalse(request['stream']);self.assertEqual(len(request['messages']),7)
         self.assertEqual(len(request['messages'][0]['content']),3500)
         args=json.loads(self.record.read_text())['argv']

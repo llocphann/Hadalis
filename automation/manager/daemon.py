@@ -124,8 +124,9 @@ def migrate_runtime(config: dict, state: dict) -> None:
     event(state, None, "sessions_migrated", "Legacy state retained privately; profiles now progress independently")
 
 
-def _claim(config: dict, state: dict, now: int, profile_id: str) -> bool:
-    item, profile = state["profiles"][profile_id], _profile(config, profile_id)
+def _claim(state: dict, now: int, profile: dict) -> bool:
+    profile_id = profile["id"]
+    item = state["profiles"][profile_id]
     if item["run_active"]:
         return True
     if not profile["enabled"] or item["desired"] != "run" or now < (item["next_run_at_unix"] or 0):
@@ -943,7 +944,7 @@ def tick(now: int | None = None, executor: ThreadPoolExecutor | None = None) -> 
         _recover_dispatched_restart(s)
         _heartbeat(s,now)
         for p in c["profiles"]:
-            _claim(c,s,now,p["id"])
+            _claim(s,now,p)
             # This state-only check runs even when next_run is in the future
             # due to a shared 429 cooldown. Do not change an in-flight call.
             if p["id"] not in _INFLIGHT:

@@ -1,0 +1,27 @@
+{
+  "id": "JOB-C2F353CC-THEME-P59-20261005-1638",
+  "base_sha": "fc38bd13d6ee044e3d5b675846d8a331ec5288a9",
+  "profile_id": "profile-c2f353cc8d1c4c1f",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-custom-theme-quick-adjustments-parity.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 300
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-material-only-settings-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 300
+      }
+    }
+  ]
+}

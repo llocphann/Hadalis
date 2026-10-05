@@ -21,6 +21,8 @@ Window {
     property bool leftOpen: false
     property bool rightOpen: false
     property bool popupOpen: false
+    property bool peekPlatformOpen: false
+    readonly property var peekPlatform: ({x:360,y:400,width:112*actorScale,height:40})
     property int taps: 0
     property real actorScale: testMode ? 1 : 1.6
     property int frameIndex: 0
@@ -39,8 +41,10 @@ Window {
         if (leftOpen) surfaces.push({key:"leftPanel",edge:"left",rect:{x:20,y:138,width:200,height:350}})
         if (rightOpen) surfaces.push({key:"rightPanel",edge:"right",rect:{x:880,y:138,width:200,height:350}})
         if (popupOpen) surfaces.push({key:"popup",edge:"top",rect:{x:480,y:245,width:250,height:215}})
+        const blockers=surfaces.map(s=>s.rect)
+        if (peekPlatformOpen) blockers.push(peekPlatform)
         return {width:1100,height:720,scale:actorScale,hostWidth:112*actorScale,hostHeight:98*actorScale,
-            insets:{top:20,right:20,bottom:20,left:20},records:[],blockers:surfaces.map(s=>s.rect),surfaces:surfaces}
+            insets:{top:20,right:20,bottom:20,left:20},records:[],blockers:blockers,surfaces:surfaces}
     }
     function named(item,name) {
         if (item.objectName===name) return item
@@ -70,13 +74,32 @@ Window {
     }
     function runChecks(): void {
         const body=named(actor,"wullLiquidBody"), face=named(actor,"wullFace")
-        require(actor.peeking && !actor.inputReady && presence.peekIntro,"visit did not peek before emerging")
-        presence.peekOnly=true;root.requested=0;input.wait(850)
-        require(!actor.visible && !presence.visitActive && !named(presence,"wullPeekDeadline").running,"peek did not retract into water")
-        presence.randomState=3;root.requested=1;input.wait(650)
-        require(actor.peeking && !actor.inputReady && presence.peekIntro,"next visit skipped peek")
+        require(presence.appearClip!=="emerge" && !presence.peekIntro && !actor.peeking,
+            "full visit did not use the current arc entrance")
         waitFor(actor,"inputReady",true,4000)
-        require(actor.inputReady && presence.grounded,"initial visit did not land on the lower water rim")
+        require(actor.inputReady && presence.grounded,"arc visit did not land on the lower water rim")
+
+        // Keep the simple-emerge short-peek contract covered on a deliberately
+        // narrow walkable rim where no distinct arc landing can fit.
+        presence.hideImmediately();input.wait(80)
+        root.peekPlatformOpen=true
+        const peekSource=Scene.annotate(scene,
+            {x:peekPlatform.x,y:peekPlatform.y-scene.hostHeight-2},"bottom","edge","peekPlatform")
+        require(peekSource.qualified && peekSource.grounded,"peek fixture did not create a grounded narrow rim")
+        presence.randomState=3;presence.appear(peekSource)
+        waitFor(actor,"peeking",true,1000)
+        require(presence.appearClip==="emerge" && !actor.inputReady && presence.peekIntro,
+            "simple emerge did not enter the short-peek state")
+        presence.peekOnly=true;root.requested=0;input.wait(850)
+        require(!actor.visible && !presence.visitActive && !named(presence,"wullPeekDeadline").running,
+            "peek did not retract into water")
+
+        root.peekPlatformOpen=false
+        presence.randomState=3;root.requested=1;input.wait(60)
+        require(presence.appearClip!=="emerge" && !presence.peekIntro,
+            "next full visit did not restore the arc entrance")
+        waitFor(actor,"inputReady",true,4000)
+        require(actor.inputReady && presence.grounded,"post-peek arc visit did not land on the lower water rim")
         const normal=body.liquidAccent.hslLightness
         input.mouseMove(body,38,49);input.wait(220)
         require(body.hovered && body.liquidAccent.hslLightness>normal+.01,"real hover did not highlight material")
@@ -135,7 +158,7 @@ Window {
         require(!presence.traveling && presence.placement.kind==="surface","popup visit did not settle")
         root.allowed=false;input.wait(40)
         require(!deadline.running && !named(presence,"wullPeekDeadline").running,"hidden presence left a deadline running")
-        console.log("WULL_PRESENCE_CHECK=PASS "+JSON.stringify({peek:true,peekRetraction:true,hover:true,hoverInterruptsWalk:true,click:true,gaze:true,walk:true,floatUp:true,drag:true,nearbyWaterDive:true,hiddenClocks:true,policyHide:true,sustainedPopup:true,qtLocalEvents:true,nativeDesktopAcceptance:false}))
+        console.log("WULL_PRESENCE_CHECK=PASS "+JSON.stringify({arcEntrance:true,peek:true,peekRetraction:true,hover:true,hoverInterruptsWalk:true,click:true,gaze:true,walk:true,floatUp:true,drag:true,nearbyWaterDive:true,hiddenClocks:true,policyHide:true,sustainedPopup:true,qtLocalEvents:true,nativeDesktopAcceptance:false}))
         Qt.quit()
     }
     Rectangle {

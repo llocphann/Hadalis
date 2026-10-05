@@ -25913,17 +25913,30 @@ timeout/cancellation:
 
 The earlier workspace-wide fmt failure was independently isolated by
 `JOB-C2F353CC-MPDFMT-SCOPE-R32-20261005:0`: exit bitmask `8` identifies
-only workspace member `inir-mega`; the `inir-mpdd` bit is clear. Therefore
-the MPD candidate is complete, while canonical whole-repository validation for
-the post-§110.8 batch remains pending until the unrelated current
-`inir-mega` rustfmt drift is reconciled.
+only workspace member `inir-mega`; the `inir-mpdd` bit is clear.
+`JOB-C2F353CC-MEGAFMT-FILES-R34-20261005:0` then showed the current formatter
+would rewrite all 13 enumerated `inir-mega/src` Rust files. Since the repository
+does not pin a Rust toolchain/rustfmt configuration, `inir-mega` is unchanged
+from the last canonical product baseline, and the canonical validator does not
+run rustfmt, this crate-wide style drift was kept separate instead of rewriting
+unrelated product source.
+
+Canonical validation is now **PASS** for the post-§110.8 optimization batch.
+`JOB-C2F353CC-CANONICAL-R35-20261005` used base
+`20e491f814b8262b228d878257946c74a02a4db7`, job/source SHA
+`f7204874283294a5755b609ddd0618b52cd2c53b`, profile
+`profile-c2f353cc8d1c4c1f`. The authoritative
+`bash scripts/validate-maintainer-local.sh --current-repo` action exited 0,
+observed Unix `1791209542`, without timeout/cancellation. The current descendant
+after publishing the receipt only adds automation evidence and does not change
+product source.
 
 Current `dev` before this checkpoint write:
-`66cd46b865f7f0e3892e52d70d624e68f827372d`
-(`automation: record JOB-C2F353CC-MPDRESULT-NARROW-R33-20261005 result`).
+`f02adbea362f76a2178070644a6cfff8028edc13`
+(`automation: record JOB-C2F353CC-CANONICAL-R35-20261005 result`).
 
-Next safe action: re-fetch current `dev`, diagnose the exact
-`inir-mega` rustfmt-only drift without changing behavior, fix it forward if
-the formatter delta is purely syntactic, then run canonical
-`bash scripts/validate-maintainer-local.sh` on the exact descendant SHA before
-starting another runtime optimization round.
+Next optimization round should diversify away from Dashboard, Dock, native Niri
+output parsing and MPD result serialization. Re-fetch current `dev`, reject
+ALREADY/CLOSED/SUPERSEDED/DISPROVEN findings, then inspect a distinct
+high-frequency service/backend or interaction path. Live compositor/session
+acceptance remains separate from this canonical local/static PASS.

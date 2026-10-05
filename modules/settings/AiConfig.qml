@@ -191,23 +191,71 @@ ContentPage {
                 }
                 DialogButton {buttonText:Translation.tr("Refresh");enabled:!LocalModels.refreshing;onClicked:LocalModels.refresh()}
             }
+            ColumnLayout {
+                visible:LocalModels.models.length>0
+                Layout.fillWidth:true
+                spacing:5
+                StyledText {
+                    text:"Wull model"
+                    font.pixelSize:Appearance.font.pixelSize.smaller
+                    color:Appearance.colors.colSubtext
+                }
+                StyledComboBox {
+                    objectName:"wullDownloadedModelSelector"
+                    Layout.fillWidth:true
+                    model:LocalModels.models
+                    textRole:"name"
+                    currentIndex:LocalModels.models.findIndex(item=>item.id===WullMind.model)
+                    displayText:currentIndex>=0 ? LocalModels.models[currentIndex].name : "Choose a downloaded model for Wull"
+                    onActivated:index=>{
+                        const item=LocalModels.models[index]
+                        if(item)WullMind.selectModel({name:item.id,label:item.name,thinking:item.thinking===true,downloaded:true})
+                    }
+                }
+                RowLayout {
+                    Layout.fillWidth:true
+                    StyledText {
+                        Layout.fillWidth:true
+                        text:"Thinking effort"
+                        color:Appearance.colors.colSubtext
+                        font.pixelSize:Appearance.font.pixelSize.smaller
+                    }
+                    StyledText {
+                        text:WullMind.thinkingEffortLabel
+                        color:Appearance.colors.colPrimary
+                        font.pixelSize:Appearance.font.pixelSize.smaller
+                    }
+                }
+                StyledSlider {
+                    objectName:"wullDownloadedThinkingEffort"
+                    Layout.fillWidth:true
+                    from:0;to:3;stepSize:1
+                    value:Math.max(0,WullMind.thinkingLevels.findIndex(level=>level.value===WullMind.effectiveThinkingEffort))
+                    enabled:WullMind.thinkingSupported && !WullMind.busy
+                    tooltipContent:WullMind.thinkingEffortLabel
+                    onMoved:{
+                        const levels=["off","low","medium","high"]
+                        WullMind.setThinkingEffort(levels[Math.max(0,Math.min(3,Math.round(value)))])
+                    }
+                }
+                StyledText {
+                    visible:WullMind.model.length>0 && !WullMind.thinkingSupported
+                    Layout.fillWidth:true
+                    text:"The selected Wull model uses instant mode; choose Qwen3-class reasoning to set effort."
+                    wrapMode:Text.WordWrap
+                    font.pixelSize:Appearance.font.pixelSize.smallest
+                    color:Appearance.colors.colSubtext
+                }
+            }
             Repeater {
                 model:LocalModels.models
-                RowLayout {
+                DialogButton {
                     required property var modelData
                     Layout.fillWidth:true
-                    DialogButton {
-                        Layout.fillWidth:true
-                        buttonText:modelData.name
-                        toggled:Ai.currentModelId===modelData.id
-                        enabled:LocalModels.runtimePath.length>0
-                        onClicked:Ai.setModel(modelData.id)
-                    }
-                    DialogButton {
-                        buttonText:Translation.tr("Use in Wull")
-                        toggled:WullMind.model===modelData.id
-                        onClicked:Config.setNestedValues({"abyss.companionMind.model":modelData.id,"abyss.companionMind.aiEnabled":true})
-                    }
+                    buttonText:modelData.name
+                    toggled:Ai.currentModelId===modelData.id
+                    enabled:LocalModels.runtimePath.length>0
+                    onClicked:Ai.setModel(modelData.id)
                 }
             }
             StyledText {

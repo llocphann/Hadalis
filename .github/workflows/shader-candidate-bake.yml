@@ -55,8 +55,8 @@ jobs:
           
           field_path = Path("modules/abyss/looks/AbyssField.frag")
           field = field_path.read_text()
-          marker = "    vec4 rect36; vec4 rect37; vec4 rect38; vec4 rect39;\\n};"
-          replacement = "    vec4 rect36; vec4 rect37; vec4 rect38; vec4 rect39;\\n    float recordCount;\\n};"
+          marker = "    vec4 rect36; vec4 rect37; vec4 rect38; vec4 rect39;\n};"
+          replacement = "    vec4 rect36; vec4 rect37; vec4 rect38; vec4 rect39;\n    float recordCount;\n};"
           if field.count(marker) != 1:
               raise SystemExit("unexpected AbyssField uniform block")
           field = field.replace(marker, replacement)
@@ -109,7 +109,7 @@ jobs:
           field = field.replace(old_norm, """    vec2 normal=gradient/max(0.0001,length(gradient));
               if(effects.z>0.5 && coverage>0.0) {
           """)
-          duplicate = "    vec2 normal=gradient/max(0.0001,length(gradient));\\n    float facing="
+          duplicate = "    vec2 normal=gradient/max(0.0001,length(gradient));\n    float facing="
           if field.count(duplicate) != 1:
               raise SystemExit("unexpected AbyssField duplicate normal")
           field = field.replace(duplicate, "    float facing=", 1)

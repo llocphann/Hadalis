@@ -25863,3 +25863,67 @@ Dock running-order rebuilds. Re-fetch current `dev`, reject
 ALREADY/CLOSED/SUPERSEDED/DISPROVEN findings, then inspect a distinct
 high-frequency service/backend or interaction path for a material lossless
 reduction.
+
+
+### 110.12 MPD daemon result borrowing confirmed; canonical formatting blocker isolated (2026-10-05)
+
+The native MPD result-serialization candidate is now **CONFIRMED and implemented**
+on current `dev`. In `native/inir-mpdd/src/main.rs::run_client_compat()`,
+commit `9b8798d84277cdd77205880157683c85befd6853` removes the owned
+`response["result"]` clone before JSON serialization and serializes a borrowed
+`serde_json::Value` instead. The follow-up rustfmt-only commit
+`7580b25a3239a5f023f15d6d83083f81c97846fe` removes one blank line in the
+test module; it does not change runtime behavior.
+
+Strict-lossless boundary:
+
+- daemon response parsing, `ok`/error handling, endpoint mismatch behavior,
+  stdout/stderr publication and return codes are unchanged;
+- present `result` values are serialized directly from the same parsed JSON
+  tree; missing `result` still serializes JSON `null`;
+- no mutation occurs while the borrowed result reference is live;
+- output text is still produced by the same `serde_json::to_string` path;
+- the parity oracle covers missing/null/scalar/array/nested result shapes,
+  including a 256-track nested queue fixture;
+- the isolated MPD parity suite also covers status/current/queue serialization,
+  queue replacement, playback index/order, playlist ordering/dedup/trim,
+  play/pause/seek and ACK error propagation against independent loopback fake
+  MPD servers.
+
+Structural reduction: every successful daemon response that contains a
+`result` avoids one deep clone of that complete JSON value before
+serialization. Missing-result behavior does not gain a clone reduction. This is
+a local copy/allocation reduction proportional to the result JSON size, not a
+measured CPU/RAM/latency percentage.
+
+Validation job `JOB-C2F353CC-MPDRESULT-NARROW-R33-20261005` used base
+`a0697b79ae03a1ddfcce074c7bc5a3d3ec65c874`, job/source SHA
+`c92cfccbc6eae1c64a595ce3dc6f8c871b41b399`, profile
+`profile-c2f353cc8d1c4c1f`. All actions exited 0 without
+timeout/cancellation:
+
+- `cargo fmt --package inir-mpdd -- --check` — `:0`, observed Unix
+  `1791208007`;
+- focused borrow serialization oracle — `:1`, observed `1791208023`;
+- full `cargo test --locked -p inir-mpdd` — `:2`, observed `1791208024`;
+- `cargo check --locked -p inir-mpdd` — `:3`, observed `1791208029`;
+- `cargo build --locked -p inir-mpdd` — `:4`, observed `1791208032`;
+- isolated MPD mutation/status parity with
+  `native/target/debug/inir-mpdd` — `:5`, observed `1791208032`.
+
+The earlier workspace-wide fmt failure was independently isolated by
+`JOB-C2F353CC-MPDFMT-SCOPE-R32-20261005:0`: exit bitmask `8` identifies
+only workspace member `inir-mega`; the `inir-mpdd` bit is clear. Therefore
+the MPD candidate is complete, while canonical whole-repository validation for
+the post-§110.8 batch remains pending until the unrelated current
+`inir-mega` rustfmt drift is reconciled.
+
+Current `dev` before this checkpoint write:
+`66cd46b865f7f0e3892e52d70d624e68f827372d`
+(`automation: record JOB-C2F353CC-MPDRESULT-NARROW-R33-20261005 result`).
+
+Next safe action: re-fetch current `dev`, diagnose the exact
+`inir-mega` rustfmt-only drift without changing behavior, fix it forward if
+the formatter delta is purely syntactic, then run canonical
+`bash scripts/validate-maintainer-local.sh` on the exact descendant SHA before
+starting another runtime optimization round.

@@ -351,8 +351,8 @@ AbstractWidget {
 
     // Fullscreen and window-presence triggers are scoped to this widget's output.
     // Manual GameMode remains intentionally global.
-    readonly property bool powerActive: WidgetPowerManager.widgetsActiveForOutput(root.outputName)
     readonly property bool powerReduced: WidgetPowerManager.reducedModeForOutput(root.outputName)
+    readonly property bool powerActive: !root.powerReduced
 
     // Effective animation state: animations enabled AND power active
     readonly property bool animationsActive: Appearance.animationsEnabled && root.powerActive

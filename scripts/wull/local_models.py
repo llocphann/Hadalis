@@ -24,6 +24,10 @@ def runtime():
         if candidate and Path(candidate).is_file() and os.access(candidate,os.X_OK):return str(Path(candidate).resolve())
     return ''
 
+def thinking_capable(name):
+    value=str(name).casefold()
+    return bool(re.search(r'(^|[^a-z0-9])qwen3(?:[.\\-_]|$)',value)) or 'gpt-oss' in value or 'deepseek-r1' in value
+
 def valid_file(path):
     try:
         if path.stat().st_size<20*1024*1024:return False
@@ -55,6 +59,7 @@ def inventory(search_roots=None):
                     'name':link.stem[:160],'path':str(link.absolute()),'size':path.stat().st_size,
                     'quantization':quant[0] if quant else '',
                     'projector':str(projector.absolute()) if projector else '',
+                    'thinking':thinking_capable(link.stem),
                     'source':'Unsloth' if 'unsloth' in str(link).lower() else 'GGUF'})
                 if len(entries)>=32:break
             if len(entries)>=32:break

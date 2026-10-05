@@ -69,18 +69,33 @@ class Tests(unittest.TestCase):
         found=local_models.inventory()['models']
         self.assertEqual(len(found),1);self.assertEqual(found[0]['size'],21*1024*1024)
         self.assertTrue(found[0]['id'].startswith('gguf:'));self.assertTrue(found[0]['projector'])
+        self.assertFalse(found[0]['thinking']);self.assertTrue(local_models.thinking_capable('Qwen3.5-4B-UD-Q5_K_XL'))
         self.assertFalse(local_models.valid_file(self.root/'partial.gguf'))
     def test_supervised_request_is_bounded_and_reaped(self):
         result=gguf_runtime.complete(str(self.model),[{'role':'system','content':'x'*5000}]+
             [{'role':'user','content':'hello'}]*9,server_path=str(self.server))
         self.assertEqual(result['text'],'Tiny fixture reply.');self.assertStopped()
         request=json.loads(self.record.with_suffix('.payload').read_text())
-        self.assertEqual(request['max_tokens'],180);self.assertFalse(request['stream']);self.assertEqual(len(request['messages']),7)
+        self.assertEqual(request['max_tokens'],180);self.assertEqual(request['thinking_budget_tokens'],0)
+        self.assertFalse(request['chat_template_kwargs']['enable_thinking']);self.assertEqual(request['reasoning_effort'],'none')
+        self.assertFalse(request['stream']);self.assertEqual(len(request['messages']),7)
         self.assertEqual(len(request['messages'][0]['content']),3500)
         args=json.loads(self.record.read_text())['argv']
         self.assertIn('--no-webui',args);self.assertEqual(args[args.index('-ngl')+1],'0')
+        self.assertEqual(args[args.index('--reasoning')+1],'auto')
         self.assertEqual(args[args.index('-c')+1],'2048')
         self.assertFalse(list(gguf_runtime.private_dir().glob('r-*')))
+    def test_bounded_high_thinking_budget(self):
+        result=gguf_runtime.complete(str(self.model),[{'role':'user','content':'think'}],
+            server_path=str(self.server),thinking_effort='high')
+        self.assertEqual(result['text'],'Tiny fixture reply.');self.assertStopped()
+        request=json.loads(self.record.with_suffix('.payload').read_text())
+        self.assertEqual(request['thinking_budget_tokens'],512);self.assertEqual(request['max_tokens'],832)
+        self.assertTrue(request['chat_template_kwargs']['enable_thinking']);self.assertNotIn('reasoning_effort',request)
+        with self.assertRaises(gguf_runtime.RuntimeErrorLocal):
+            gguf_runtime.complete(str(self.model),[{'role':'user','content':'x'}],
+                server_path=str(self.server),thinking_effort='extreme')
+
     def test_helper_cancel_reaps_model_and_releases_lease(self):
         env=dict(os.environ,INIR_TEST_GGUF_DELAY='10')
         helper=subprocess.Popen([sys.executable,str(ROOT/'scripts/wull/gguf_runtime.py')],stdin=subprocess.PIPE,stdout=subprocess.PIPE,text=True,env=env)

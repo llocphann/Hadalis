@@ -21,6 +21,13 @@ from local_models import valid_file,runtime
 
 class RuntimeErrorLocal(Exception):pass
 
+EFFORTS={
+    'off':{'budget':0,'max_tokens':180},
+    'low':{'budget':96,'max_tokens':320},
+    'medium':{'budget':256,'max_tokens':512},
+    'high':{'budget':512,'max_tokens':832},
+}
+
 class UnixHTTP(http.client.HTTPConnection):
     def __init__(self,path,timeout):super().__init__('localhost',timeout=timeout);self.path=str(path)
     def connect(self):
@@ -74,7 +81,10 @@ def stop(process,pgid=None):
         except subprocess.TimeoutExpired:pass
     if group_alive(group):raise RuntimeErrorLocal('Local model process group did not stop')
 
-def complete(model_path,messages,reply_format=None,server_path=None):
+def complete(model_path,messages,reply_format=None,server_path=None,thinking_effort='off'):
+    effort=str(thinking_effort or 'off').lower()
+    if effort not in EFFORTS:raise RuntimeErrorLocal('Invalid thinking effort')
+    effort_profile=EFFORTS[effort]
     model=Path(model_path).expanduser()
     if not valid_file(model):raise RuntimeErrorLocal('The selected GGUF is missing or incomplete')
     executable=Path(server_path or runtime())
@@ -106,7 +116,7 @@ def complete(model_path,messages,reply_format=None,server_path=None):
                 env={k:v for k,v in os.environ.items() if not k.startswith('LLAMA_ARG_')}
                 command=[str(executable),'-m',str(model), '--host',str(sock),'--no-webui','--no-webui-mcp-proxy',
                     '--alias','wull-local','-c','2048','-np','1','-t',str(min(4,os.cpu_count() or 1)),
-                    '-ngl','0','--reasoning','off','--poll','0','--jinja']
+                    '-ngl','0','--reasoning','auto','--poll','0','--jinja']
                 process=subprocess.Popen(command,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,start_new_session=True,preexec_fn=child_setup,env=env)
                 process_group=process.pid
@@ -119,8 +129,11 @@ def complete(model_path,messages,reply_format=None,server_path=None):
                         except (OSError,ValueError,RuntimeErrorLocal):pass
                     time.sleep(.15)
                 else:raise RuntimeErrorLocal('Local model startup timed out')
-                payload={'model':'wull-local','messages':bounded,'stream':False,'max_tokens':180,
-                    'temperature':.7,'chat_template_kwargs':{'enable_thinking':False}}
+                payload={'model':'wull-local','messages':bounded,'stream':False,
+                    'max_tokens':effort_profile['max_tokens'],'temperature':.7,
+                    'thinking_budget_tokens':effort_profile['budget'],
+                    'chat_template_kwargs':{'enable_thinking':effort!='off'}}
+                if effort=='off':payload['reasoning_effort']='none'
                 if reply_format is not None:payload['response_format']=reply_format
                 result=request(sock,'/v1/chat/completions',payload,timeout=max(1,deadline-time.monotonic()))
                 choice=result.get('choices',[{}])[0]
@@ -137,7 +150,8 @@ if __name__=='__main__':
         raw=sys.stdin.buffer.readline(65537)
         if len(raw)>65536:raise RuntimeErrorLocal('Local request exceeded the limit')
         data=json.loads(raw)
-        result=complete(data['modelPath'],data['messages'],server_path=data.get('runtimePath'))
+        result=complete(data['modelPath'],data['messages'],server_path=data.get('runtimePath'),
+            thinking_effort=data.get('thinkingEffort','off'))
         print('data: '+json.dumps({'choices':[{'delta':{'content':result['text']},'finish_reason':'stop'}]}))
         print('data: [DONE]')
     except (RuntimeErrorLocal,ValueError,KeyError,TypeError) as exc:

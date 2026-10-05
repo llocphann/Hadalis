@@ -26,6 +26,12 @@ from gguf_runtime import complete as gguf_complete,RuntimeErrorLocal
 import history_store
 
 EXPRESSIONS={'idle','happy','excited','thinking','working','surprised','sleepy','sad','alert'}
+THINKING_EFFORTS={
+    'off':{'think':False,'num_predict':160},
+    'low':{'think':True,'num_predict':320},
+    'medium':{'think':True,'num_predict':512},
+    'high':{'think':True,'num_predict':832},
+}
 MAX_RESPONSE=128*1024
 class MindError(Exception):
     def __init__(self,code,message):self.code=code;super().__init__(message)
@@ -65,11 +71,21 @@ def request_json(base,path,payload=None,timeout=5):
 def local_model(entry):
     return isinstance(entry,dict) and not entry.get('remote_host') and not entry.get('remote_model') and 'cloud' not in str(entry.get('name','')).lower()
 
+def thinking_capable(name):
+    value=str(name).casefold()
+    return bool(re.search(r'(^|[^a-z0-9])qwen3(?:[.\\-_]|$)',value)) or 'gpt-oss' in value or 'deepseek-r1' in value
+
+def thinking_effort(value):
+    effort=str(value or 'off').lower()
+    if effort not in THINKING_EFFORTS:raise MindError('invalid_thinking_effort','Thinking effort must be off, low, medium or high')
+    return effort
+
 def probe(options):
     base=endpoint(options.get('endpoint','http://127.0.0.1:11434'))
     entries=request_json(base,'/api/tags').get('models',[])
     if not isinstance(entries,list):raise MindError('invalid_response','Local model list is invalid')
-    models=[{'name':str(x.get('name',''))[:120],'size':max(0,int(x.get('size',0)))}
+    models=[{'name':str(x.get('name',''))[:120],'size':max(0,int(x.get('size',0))),
+             'thinking':thinking_capable(x.get('name',''))}
             for x in entries[:64] if local_model(x) and isinstance(x.get('name'),str) and x['name']]
     return {'models':models[:32],'ready':bool(models),'endpoint':base}
 
@@ -242,6 +258,10 @@ def chat(options):
             raise MindError('remote_model_blocked','Wull requires a locally installed model')
     prompt=str(options.get('prompt','')).strip()
     if not prompt or len(prompt)>1200:raise MindError('invalid_prompt','Message must contain 1 to 1200 characters')
+    requested_effort=thinking_effort(options.get('thinkingEffort','off'))
+    capability_name=Path(str(options.get('modelPath',''))).name if options.get('modelPath') else model
+    effort=requested_effort if thinking_capable(capability_name) else 'off'
+    effort_profile=THINKING_EFFORTS[effort]
     fallback_history=options.get('history',[])
     if not isinstance(fallback_history,list):fallback_history=[]
     persist_history=options.get('persistHistory') is True
@@ -267,12 +287,14 @@ def chat(options):
         schema={'type':'object','properties':{'text':{'type':'string'},'expression':{'type':'string','enum':sorted(EXPRESSIONS)}},
             'required':['text','expression'],'additionalProperties':False}
         try:
-            reply=gguf_complete(options['modelPath'],messages,{'type':'json_object','schema':schema},options.get('runtimePath'))
+            reply=gguf_complete(options['modelPath'],messages,{'type':'json_object','schema':schema},
+                options.get('runtimePath'),thinking_effort=effort)
         except RuntimeErrorLocal as exc:raise MindError('local_runtime_error',str(exc))
         answer={'done':True,'message':{'content':reply['text']},'eval_count':reply['usage'].get('completion_tokens',0)}
     else:
-        answer=request_json(base,'/api/chat',{'model':model,'messages':messages,'stream':False,'format':'json','think':False,
-            'keep_alive':0,'options':{'num_ctx':2048,'num_predict':160,'temperature':.65}},timeout=30)
+        answer=request_json(base,'/api/chat',{'model':model,'messages':messages,'stream':False,'format':'json',
+            'think':effort_profile['think'],'keep_alive':0,
+            'options':{'num_ctx':2048,'num_predict':effort_profile['num_predict'],'temperature':.65}},timeout=30)
     if answer.get('remote_host') or answer.get('remote_model'):raise MindError('remote_model_blocked','Provider returned a remote model')
     if answer.get('done') is not True:raise MindError('incomplete_reply','Local model returned an incomplete reply')
     message=answer.get('message')
@@ -290,7 +312,7 @@ def chat(options):
         try:user_message_id,assistant_message_id=history_store.append_exchange(prompt,text,model)
         except history_store.HistoryError:history_saved=False
     return {'text':text,'expression':expression if isinstance(expression,str) and expression in EXPRESSIONS else 'idle','source':'local',
-            'model':model,'evalCount':answer.get('eval_count',0),'historySaved':history_saved,
+            'model':model,'thinkingEffort':effort,'evalCount':answer.get('eval_count',0),'historySaved':history_saved,
             'userMessageId':user_message_id,'assistantMessageId':assistant_message_id}
 
 def dispatch(payload):

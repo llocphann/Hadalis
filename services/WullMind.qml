@@ -15,6 +15,8 @@ Singleton {
     readonly property bool obsidianEnabled: options.obsidianEnabled === true
     readonly property string endpoint: String(options.endpoint ?? "http://127.0.0.1:11434")
     readonly property string model: String(options.model ?? "")
+    readonly property string thinkingEffort: ["off","low","medium","high"].includes(String(options.thinkingEffort ?? "off"))
+        ? String(options.thinkingEffort ?? "off") : "off"
     readonly property string referenceVault: String(options.referenceVault ?? "")
     readonly property string proactive: String(options.proactive ?? "occasional")
     readonly property string contextKey: JSON.stringify([obsidianEnabled, referenceVault,
@@ -30,7 +32,26 @@ Singleton {
     property string errorMessage: ""
     property var models: []
     readonly property var downloadedModel: LocalModels.modelFor(model)
-    readonly property var selectableModels: LocalModels.models.map(m=>({name:m.id,label:m.name,size:m.size})).concat(models)
+    readonly property var selectableModels: LocalModels.models.map(m=>({
+        name:m.id,label:m.name,size:m.size,thinking:m.thinking===true,downloaded:true
+    })).concat(models.map(m=>({
+        name:m.name,label:m.label ?? m.name,size:m.size ?? 0,thinking:m.thinking===true,downloaded:false
+    })))
+    readonly property var thinkingLevels: [
+        {value:"off",label:"Instant"},
+        {value:"low",label:"Low"},
+        {value:"medium",label:"Medium"},
+        {value:"high",label:"High"}
+    ]
+    readonly property var currentModelInfo: selectableModels.find(m=>m.name===model) ?? null
+    readonly property bool thinkingSupported: currentModelInfo?.thinking === true
+    readonly property string effectiveThinkingEffort: thinkingSupported ? thinkingEffort : "off"
+    readonly property string thinkingEffortLabel: thinkingLevels.find(e=>e.value===effectiveThinkingEffort)?.label ?? "Instant"
+    readonly property string currentModelLabel: {
+        const value=String(currentModelInfo?.label ?? model ?? "")
+        return value.replace(/-(?:UD-)?(?:IQ|Q|F|BF)\d[\w_]*$/i,"") || "Choose model"
+    }
+    readonly property string profileLabel: currentModelLabel+" · "+thinkingEffortLabel
     property var history: []
     property bool historyLoaded: false
     property bool historyHasMore: false
@@ -58,7 +79,7 @@ Singleton {
 
     function payload(action): var {
         const todo=Config.options?.todo?.obsidian ?? ({})
-        return {action:action,endpoint:endpoint,model:model,
+        return {action:action,endpoint:endpoint,model:model,thinkingEffort:effectiveThinkingEffort,
             modelPath:downloadedModel?.path ?? "",runtimePath:LocalModels.runtimePath,
             vault:obsidianEnabled ? String(todo.vaultPath || Config.options?.notes?.zettelkasten?.vaultPath || "") : "",
             referenceVault:obsidianEnabled ? String(options.referenceVault ?? "") : "",
@@ -95,7 +116,19 @@ Singleton {
     function selectDownloaded(): void {
         if(!aiEnabled || model || !LocalModels.models.length)return
         const preferred=LocalModels.models.find(m=>m.name.toLowerCase().includes("qwen")) ?? LocalModels.models[0]
-        Config.setNestedValue("abyss.companionMind.model",preferred.id)
+        Config.setNestedValues({"abyss.companionMind.model":preferred.id,
+            "abyss.companionMind.thinkingEffort":preferred.thinking===true ? "medium" : "off"})
+    }
+    function selectModel(entry): void {
+        if(!entry?.name)return
+        Config.setNestedValues({"abyss.companionMind.model":String(entry.name),
+            "abyss.companionMind.thinkingEffort":entry.thinking===true ? effectiveThinkingEffort : "off",
+            "abyss.companionMind.aiEnabled":true})
+    }
+    function setThinkingEffort(value): void {
+        const effort=String(value ?? "off")
+        if(!["off","low","medium","high"].includes(effort))return
+        Config.setNestedValue("abyss.companionMind.thinkingEffort",thinkingSupported ? effort : "off")
     }
     function refreshJournal(automatic = false): bool {return dispatch("context",null,automatic)}
     function touchConversation(): void {

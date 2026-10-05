@@ -50,6 +50,7 @@ class Tests(unittest.TestCase):
     def test_probe(self):
         result=mind.probe({'endpoint':self.base})
         self.assertTrue(result['ready']);self.assertEqual([x['name'] for x in result['models']],['tiny:local'])
+        self.assertFalse(result['models'][0]['thinking']);self.assertTrue(mind.thinking_capable('Qwen3.5:4b'))
         self.assertEqual(Handler.calls,[('/api/tags',None)])
     def test_redirect(self):
         Handler.redirect=True
@@ -61,12 +62,24 @@ class Tests(unittest.TestCase):
         self.assertEqual(result['source'],'local');self.assertEqual(result['expression'],'happy')
         self.assertEqual([x[0] for x in Handler.calls],['/api/show','/api/chat'])
         data=Handler.calls[-1][1]
-        self.assertFalse(data['stream']);self.assertEqual(data['keep_alive'],0)
+        self.assertFalse(data['stream']);self.assertEqual(data['keep_alive'],0);self.assertFalse(data['think'])
         self.assertEqual(data['options']['num_ctx'],2048);self.assertEqual(data['options']['num_predict'],160)
         self.assertEqual(len([m for m in data['messages'] if m['role']=='system']),1)
         self.assertLessEqual(len(data['messages']),8)
         self.assertTrue(all(len(m['content'])<=500 for m in data['messages'][1:-1]))
         self.assertNotIn('tools',data)
+    def test_thinking_effort_is_capability_gated_and_bounded(self):
+        result=mind.chat({'endpoint':self.base,'model':'tiny:local','prompt':'Hello','thinkingEffort':'high'})
+        self.assertEqual(result['thinkingEffort'],'off');self.assertFalse(Handler.calls[-1][1]['think'])
+        Handler.calls=[]
+        result=mind.chat({'endpoint':self.base,'model':'qwen3.5:4b','prompt':'Hello','thinkingEffort':'medium'})
+        data=Handler.calls[-1][1]
+        self.assertEqual(result['thinkingEffort'],'medium');self.assertTrue(data['think'])
+        self.assertEqual(data['options']['num_predict'],512)
+        with self.assertRaises(mind.MindError) as ctx:
+            mind.chat({'endpoint':self.base,'model':'qwen3.5:4b','prompt':'Hello','thinkingEffort':'extreme'})
+        self.assertEqual(ctx.exception.code,'invalid_thinking_effort')
+
     def test_persistent_quick_chat_history_is_paged_and_clearable(self):
         with tempfile.TemporaryDirectory(prefix='wull-history-') as temporary, patch.dict(
                 os.environ, {'INIR_WULL_HISTORY_DB':str(Path(temporary)/'chat.sqlite3')}):

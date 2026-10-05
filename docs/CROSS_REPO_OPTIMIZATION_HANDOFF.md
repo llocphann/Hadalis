@@ -25525,3 +25525,115 @@ strict-lossless groups across scheduler, BarTaskbar, Settings quick adjustments
 and Audio tracking. This is a substantial enough committed optimization batch
 to run the canonical maintainer validator before adding another runtime change.
 
+### 110.7 Canonical validation blocker — Wull curiosity adapter isolated (2026-10-05)
+
+After §110.6, the substantial four-group strict-lossless batch was sent through
+the canonical maintainer validator.
+
+Canonical job:
+
+- base SHA: `1e9723d9bf7a487545028aefb9db16ac22214f00`;
+- job commit/source SHA:
+  `52dc382381b82b768b46d8f7cbd36b1eb1539c68`;
+- job: `JOB-C2F353CC-CANONICAL-OPT-20261005-1648`;
+- evidence: `JOB-C2F353CC-CANONICAL-OPT-20261005-1648:0`;
+- observed Unix timestamp: `1791194536`;
+- result: exit **1**, no timeout/cancellation.
+
+The public receipt does not expose the canonical validator's raw log or failed
+check name, so that exit code alone was not used to infer a root cause.
+
+A separate bounded diagnostic job then reproduced canonical ordering without
+publishing raw output:
+
+- base SHA: `ded7246c71d699ab53f0367d393bb7748ce284d3`;
+- job source SHA:
+  `d82e9ee9d603ca331d97240c74504db2d5218c32`;
+- job: `JOB-C2F353CC-CANONDIAG-R1-20261005-1706`.
+
+Observed evidence:
+
+- action 0 — preflight/build/tracked syntax/translations:
+  `JOB-C2F353CC-CANONDIAG-R1-20261005-1706:0`, exit 0,
+  observed `1791194831`;
+- action 1 — first canonical Python regression shard:
+  `JOB-C2F353CC-CANONDIAG-R1-20261005-1706:1`, exit 0,
+  observed `1791194867`;
+- action 2 — second Python shard:
+  `JOB-C2F353CC-CANONDIAG-R1-20261005-1706:2`, exit **66**,
+  observed `1791194973`.
+
+The encoded shard map plus the exact tree at
+`d82e9ee9d603ca331d97240c74504db2d5218c32` maps exit 66 uniquely to
+eligible Python regression index 203:
+
+`scripts/test-wull-alive-reactions.py`.
+
+A second diagnostic split that composite regression into its explicit stages:
+
+- base SHA: `db2c8ff83c1ad6ff8a3e218d1787904efc2b1029`;
+- job source SHA:
+  `c25a68674982d72a24660ae57d9d9bbcd1c2d898`;
+- job: `JOB-C2F353CC-WULLALIVE-DIAG-20261005-1713`.
+
+Observed:
+
+- Wull airborne geometry/curve Node proof:
+  `JOB-C2F353CC-WULLALIVE-DIAG-20261005-1713:0`,
+  exit 0, observed `1791195108`;
+- Wull production curiosity adapter Node proof
+  (`scripts/test-wull-curiosity-adapter.cjs`):
+  `JOB-C2F353CC-WULLALIVE-DIAG-20261005-1713:1`,
+  exit **1**, observed `1791195108`, worker error code
+  `test_failure`;
+- the QML alive-fixture action did **not** execute because the deterministic
+  worker stops after the first failed action.
+
+No more specific assertion/root cause has yet been observed. The private stderr
+must not be inferred or copied into Git.
+
+Repository/source reconciliation:
+
+- current `scripts/test-wull-curiosity-adapter.cjs` blob:
+  `860be3b381fd4288711f13a52a2d7df729289df1`;
+- current `modules/abyss/AbyssPerimeter.qml` blob:
+  `7918d833e60f16a8466686332288dcec3b59cf77`;
+- both blobs are byte-identical to the same files at optimization checkpoint
+  `8b692550cd17f142e6acecc48ff018fd0211e8da`;
+- the current failing Node adapter reads `AbyssPerimeter.qml` directly and
+  executes its extracted curiosity/focus methods against mocks;
+- none of the four Round-96 optimization runtime paths
+  (`automation/manager/daemon.py`, `modules/bar/BarTaskbar.qml`,
+  `modules/settings/CustomThemeEditor.qml`, `services/Audio.qml`) is a
+  source dependency of that Node oracle.
+
+Therefore the observed Wull adapter failure is **not evidence that any of the
+four strict-lossless optimization patches changed that oracle's source inputs**.
+However, canonical validation remains **BLOCKED** until the Wull contract
+failure is explained and either the product or stale oracle is corrected by
+behavioral evidence.
+
+Current `dev` before this rollover checkpoint write:
+`e5b11aad5de86a28e944ffba711c4bfc13242d86`
+(`automation: record JOB-C2F353CC-WULLALIVE-DIAG-20261005-1713 result`).
+
+Next safe action after re-fetching current `dev`:
+
+1. re-read `scripts/test-wull-curiosity-adapter.cjs` and the exact extracted
+   functions in `modules/abyss/AbyssPerimeter.qml`;
+2. create a **new** bounded diagnostic job (new ID) that divides the curiosity
+   adapter assertions into deterministic groups/exit codes, without exposing
+   private stderr;
+3. identify the first failing behavioral assertion;
+4. compare that assertion to the current product contract and recent Wull
+   product history on `dev`;
+5. fix product code only if behavior is actually wrong; otherwise update the
+   stale regression to the current intended contract;
+6. run the narrow Wull regression and then rerun the canonical maintainer
+   validator on the exact corrected descendant SHA;
+7. do not add another optimization runtime change until this canonical blocker
+   is resolved.
+
+The four Round-96 optimization groups remain individually narrow-test PASS as
+recorded in §§110.1–110.5; canonical batch PASS has **not** been achieved.
+

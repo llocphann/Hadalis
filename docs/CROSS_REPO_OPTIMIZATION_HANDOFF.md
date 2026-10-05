@@ -25701,3 +25701,59 @@ Next optimization round must re-fetch current `dev`, avoid the frozen Weather
 renderer path, and select a distinct current production hot path that is not
 already ALREADY/CLOSED/SUPERSEDED/DISPROVEN in this handoff. Canonical
 validation is no longer the active blocker.
+
+
+### 110.9 Dashboard responsive overlap fast path confirmed (2026-10-05)
+
+Round 59 §73.2 is now **CONFIRMED and implemented** on current `dev`.
+The earlier missing malformed-state/read-order oracle was added at
+`212c62281e144af693599e8b897fdf0ad01f4793` and validated by
+`JOB-C2F353CC-DASHOVERLAP-ORACLE-R21-20261005`. The production change then
+landed in `modules/dashboard/DashboardCanvas.qml` at
+`c6bce080a16393a09fca894ca504e5c77577ef3b`, with the parity oracle bound to
+the actual production fast path at
+`a0e896eb8d3812c9ebe8562f2c26fbc902bedd80`.
+
+Strict-lossless boundary:
+
+- only the responsive/Abyss `_resolveFeasibleLayout()` probes use the guarded
+  `_responsiveLayoutHasOverlap()` helper;
+- ordinary finite snapshots created by `_snapshotVisibleRects()` may scan only
+  active-versus-other pairs because each probe is a shallow baseline copy with
+  only `activeId` replaced;
+- malformed, non-finite, duplicate-ID, active-hidden, visibility-drift, or other
+  unproven states fall back to the original generic `_layoutHasOverlap()` path;
+- getter/proxy-style inputs are kept on the generic path, preserving property
+  read order and side effects;
+- the generic nonresponsive solver is unchanged.
+
+Local structural reduction: for a responsive probe with V visible cards, the
+collision candidate set falls from up to `V(V-1)/2` unordered pairs to at most
+`V-1` active-versus-other pairs. The responsive branch performs one initial
+check plus up to twelve bisection probes. This is a local pair-check reduction,
+not a measured CPU/FPS/latency percentage.
+
+Implementation validation job
+`JOB-C2F353CC-DASHOVERLAP-IMPL-R22-20261005` used base
+`a0e896eb8d3812c9ebe8562f2c26fbc902bedd80`, job/source SHA
+`ad2bd4c69088c0dfaee095e6e71464bcceadf08a`, profile
+`profile-c2f353cc8d1c4c1f`. At observed Unix `1791205027`, all four actions
+exited 0 without timeout/cancellation:
+
+- responsive overlap production parity — `:0`;
+- Dashboard freeform contract — `:1`;
+- Dashboard smart-layout contract — `:2`;
+- Dashboard edit-transaction contract — `:3`.
+
+The result receipt was published at current descendant
+`3c67f414fbcb7177c88e387e1aec627c0b31d8d8`. Live owner-session visual/input
+acceptance remains distinct from these deterministic/static contracts.
+
+Current `dev` before this checkpoint write:
+`3c67f414fbcb7177c88e387e1aec627c0b31d8d8`.
+
+Next optimization round should diversify away from Dashboard responsive
+collision handling and the frozen Weather renderer path. Re-fetch current
+`dev`, search existing handoff/TODO/commit ownership first, then inspect a
+distinct high-frequency QML/backend/service path for a material strict-lossless
+candidate.

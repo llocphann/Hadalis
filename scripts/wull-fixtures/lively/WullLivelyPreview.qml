@@ -176,6 +176,10 @@ Window {
                 tryCompare(curiosity,"stage","hold",9000)
                 tryCompare(curiosity,"reachedFeature",true,1000)
                 root.featureOpen=false
+                // Production also checks semantic feature ownership as the
+                // popup closes. That callback must not cancel the fall started
+                // by the disappearing support.
+                curiosity.checkOwnership()
                 wait(60)
                 check(presence.traveling && presence.mode==="fall" && !presence.grounded,
                     "closed module left Wull floating instead of starting a grounded recovery")
@@ -188,7 +192,7 @@ Window {
                 root.allowed=false;wait(40)
                 check(!curiosity.busy && !actor.visible && !deadline.running && !presence.directed,
                     "policy hide did not cancel curiosity")
-                console.log("WULL_LIVELY=PASS run jump surfaceBoundRelease velocityThrow groundedLanding acceleratingFall regrab reducedMotion curiosityGesture distanceClose continuedDeparture ownedClose userHandoff surfaceLossFall groundedAfterSurfaceLoss policyHide")
+                console.log("WULL_LIVELY=PASS run jump surfaceBoundRelease velocityThrow groundedLanding acceleratingFall regrab reducedMotion curiosityGesture distanceClose continuedDeparture ownedClose userHandoff surfaceLossFall ownershipRaceSafe groundedAfterSurfaceLoss policyHide")
             } catch(error) {console.error("WULL_LIVELY=FAIL "+error+" "+JSON.stringify({phase:root.testPhase,
                 stage:curiosity.stage,owned:curiosity.owned,near:curiosity.nearFeature,reached:curiosity.reachedFeature,
                 featureOpen:root.featureOpen,closes:root.closes,traveling:presence.traveling,mode:presence.mode,

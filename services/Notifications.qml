@@ -233,11 +233,13 @@ Singleton {
     }
 
     function stringifyList(list) {
-        return JSON.stringify(
-            list.map((notif) => notifToJSON(notif)).filter(json => json !== null), 
-            null, 
-            2
-        )
+        const records = []
+        list.forEach((notif) => {
+            const json = notifToJSON(notif)
+            if (json !== null)
+                records.push(json)
+        })
+        return JSON.stringify(records, null, 2)
     }
 
     onListChanged: {

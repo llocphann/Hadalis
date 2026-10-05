@@ -2557,4 +2557,45 @@ mod tests {
         assert_eq!(parsed[0]["artist"], vec!["Alpha"]);
         assert_eq!(parsed[1]["artist"], vec!["Beta", "Guest"]);
     }
+    #[test]
+    fn daemon_result_borrow_serialization_matches_owned_clone() {
+        let mut large_tracks = Vec::new();
+        for index in 0..256 {
+            large_tracks.push(json!({
+                "uri": format!("Artist/Album/{index:03}.flac"),
+                "title": format!("Track {index}"),
+                "artist": "Fixture Artist",
+                "duration": 180.25 + index as f64,
+                "tags": ["alpha", "beta", index]
+            }));
+        }
+
+        let fixtures = vec![
+            json!({"ok": true}),
+            json!({"ok": true, "result": null}),
+            json!({"ok": true, "result": true}),
+            json!({"ok": true, "result": 42}),
+            json!({"ok": true, "result": "text"}),
+            json!({"ok": true, "result": [1, "two", null, false]}),
+            json!({
+                "ok": true,
+                "result": {
+                    "connected": true,
+                    "status": {"state": "play", "volume": "72"},
+                    "queue": large_tracks
+                }
+            }),
+        ];
+
+        for response in fixtures {
+            let owned = response.get("result").cloned().unwrap_or(Value::Null);
+            let fallback = Value::Null;
+            let borrowed = response.get("result").unwrap_or(&fallback);
+            assert_eq!(
+                serde_json::to_string(&owned).expect("serialize owned daemon result"),
+                serde_json::to_string(borrowed).expect("serialize borrowed daemon result")
+            );
+        }
+    }
+
 }

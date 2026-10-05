@@ -1677,7 +1677,7 @@ print("")
         function onRunningChanged() {
             if (!_detectBrowsersProc.running && root.available && root.autoConnectEnabled && !root.autoConnectAttempted) {
                 root.autoConnectAttempted = true
-                root._log("[YtMusic] Browser detection done. Detected:", JSON.stringify(root.detectedBrowsers), "Saved browser:", root.googleBrowser)
+                root._log("[YtMusic] Browser detection done. Detected:")
                 // If already connected from persisted state, just verify silently
                 if (root.googleConnected && root._browserArgReady) {
                     root._log("[YtMusic] Already connected (persisted). Verifying silently...")
@@ -1913,7 +1913,7 @@ print("")
             // If browser detection already finished, trigger auto-connect now
             if (root.available && !_detectBrowsersProc.running && root.autoConnectEnabled && !root.autoConnectAttempted) {
                 root.autoConnectAttempted = true
-                root._log("[YtMusic] Deps ready + browsers already detected:", JSON.stringify(root.detectedBrowsers))
+                root._log("[YtMusic] Deps ready + browsers already detected:")
                 // If already connected from persisted state, just verify silently
                 if (root.googleConnected && root._browserArgReady) {
                     root._log("[YtMusic] Already connected (persisted). Verifying silently...")

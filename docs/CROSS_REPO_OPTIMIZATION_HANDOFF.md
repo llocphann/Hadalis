@@ -26260,3 +26260,85 @@ Next round should diversify away from search, ShellExec launch normalization and
 YtMusic logging. Re-fetch current `dev`, reject existing ownership, then
 inspect a distinct reactive service/backend, polling, parsing or model-update
 path.
+
+
+### 110.18 WidgetPower output-eligibility reuse confirmed; integrated canonical PASS (2026-10-05)
+
+Round 40 §40.19 is now **CONFIRMED and implemented** on current `dev`.
+The accepted runtime shape lives in `services/WidgetPowerManager.qml`: for a
+non-empty allowed output, `shouldPauseForOutput()` resolves
+`DesktopWidgetLayout.outputAllowed(scopedOutput)` once, preserves the
+disabled-output early return, then passes the already-resolved eligibility into
+a private trigger builder. The public `_triggersForOutput()` helper remains
+available and still resolves eligibility for its own direct callers.
+
+Strict-lossless boundary:
+
+- disabled outputs still return before fullscreen/window-presence work;
+- enabled/edit-mode short-circuit order is unchanged;
+- GameMode/fullscreen/window-presence reads and short-circuit order are
+  unchanged;
+- `outputDisabled`, final pause value and public trigger-object shape are
+  unchanged;
+- QML dependency capture still includes the same first
+  `DesktopWidgetLayout.outputAllowed()` read for every non-empty output;
+- public `widgetsActive`/`reducedMode` and per-widget
+  `powerActive`/`powerReduced` bindings remain independent exactly as before.
+
+The broader historical §40.18 proposal was **withdrawn from runtime** during
+recovery: sharing one binding result between those public reactive properties
+could change dependency/signal topology even though their final booleans are
+exact inverses. `modules/background/widgets/AbstractBackgroundWidget.qml`
+was restored byte-for-byte to blob
+`16603c04327503fad558fb6886e61a7738295b73`; global public power bindings
+were likewise restored. Do not reintroduce §40.18 without a QML
+changed-signal/dependency-order oracle.
+
+R44 is a terminal **invalid dispatch**, not product evidence. Its inline
+`node -e` argument was 4,275 characters while the worker contract caps each
+argv element at 4,096; no action ran and no evidence ID exists. The recovery
+therefore used a new job ID and a committed regression file rather than
+reusing R44.
+
+Accepted local structural reduction on the non-empty, allowed,
+enabled/non-edit-mode path:
+
+- `DesktopWidgetLayout.outputAllowed(scopedOutput)` evaluations inside one
+  `shouldPauseForOutput()`: **2 -> 1**;
+- the removed second evaluation no longer rebuilds/normalizes configured and
+  connected output membership for that decision;
+- all other trigger evaluations/counts are unchanged. No CPU/frame-time/power
+  percentage is claimed.
+
+Regression
+`scripts/test-widget-power-output-eligibility-parity.cjs` at
+`cca001d8c4d5b98b9b953d2ec3056a17d5d7bcff` covers 1,024 combinations of
+output presence/eligibility, manager enable/edit state and optional trigger
+states while comparing the final value and the complete observable trace after
+removing only the known duplicate eligibility read.
+
+Validation job `JOB-C2F353CC-WIDGETPOWER40-R45-20261005` used base
+`cca001d8c4d5b98b9b953d2ec3056a17d5d7bcff`, job/source SHA
+`613b14e0e64eabdf6b9ca33f9318f9295a42fc5d`, profile
+`profile-c2f353cc8d1c4c1f`. Every action exited 0 without timeout or
+cancellation:
+
+- WidgetPower 1,024-case value/trace parity — `:0`, observed Unix
+  `1791215390`;
+- shell-surface contract — `:1`, observed `1791215390`;
+- media-visualizer lifecycle contract — `:2`, observed `1791215390`;
+- performance lifecycle contract — `:3`, observed `1791215391`;
+- canonical `bash scripts/validate-maintainer-local.sh --current-repo` —
+  `:4`, observed `1791216474`.
+
+Thus the post-R38 optimization batch through Overview §60.3, AppSearch §61.2,
+ShellExec §62.1, YtMusic §62.2 and WidgetPower §40.19 has an integrated
+canonical PASS at exact source
+`613b14e0e64eabdf6b9ca33f9318f9295a42fc5d`. Current descendant
+`a6cdfb1d29bf7b6c4533ab5eff854ecdc8483066` only publishes the R45 receipt
+and does not modify runtime source.
+
+Next round should diversify again. Re-fetch current `dev`, reject
+ALREADY/CLOSED/SUPERSEDED/DISPROVEN owners, then inspect a distinct
+service/backend/model-update path. Prefer an unresolved CONFIRMED historical
+finding before inventing a new candidate.

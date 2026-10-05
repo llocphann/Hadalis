@@ -1,0 +1,39 @@
+{
+  "id": "JOB-C2F353CC-NOTIFSER-IMPL-R37-20261005",
+  "base_sha": "8373b35e99e9340b5ea01f512b1826754e60c475",
+  "profile_id": "profile-c2f353cc8d1c4c1f",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "-e",
+          "\nconst fs=require('fs');\nconst src=fs.readFileSync('services/Notifications.qml','utf8');\nif(src.includes('list.map((notif) => notifToJSON(notif)).filter(json => json !== null)')) process.exit(90);\nfor(const token of ['const records = []','list.forEach((notif) => {','const json = notifToJSON(notif)','records.push(json)','return JSON.stringify(records, null, 2)']) if(!src.includes(token)) process.exit(91);\nconst fields=['notificationId','actions','appIcon','appName','body','image','summary','time','urgency'];\nfunction materialize(spec, trace, label){\n  if(spec.kind!=='obj') return spec.value;\n  const o={};\n  for(const f of fields) Object.defineProperty(o,f,{enumerable:true,get(){trace.push(label+':'+f);return spec[f];}});\n  return o;\n}\nfunction conv(notif,trace,label){\n  trace.push(label+':call');\n  if(!notif){trace.push(label+':null');return null;}\n  return {notificationId:notif.notificationId,actions:notif.actions,appIcon:notif.appIcon,appName:notif.appName,body:notif.body,image:notif.image,summary:notif.summary,time:notif.time,urgency:notif.urgency};\n}\nfunction build(specs,trace){const a=new Array(specs.length);for(let i=0;i<specs.length;i++){const s=specs[i];if(s.kind==='hole')continue;a[i]=materialize(s,trace,'i'+i);}return a;}\nfunction oldSer(specs){const trace=[];const a=build(specs,trace);return {text:JSON.stringify(a.map((n,i)=>conv(n,trace,'i'+i)).filter(j=>j!==null),null,2),trace};}\nfunction newSer(specs){const trace=[];const a=build(specs,trace),out=[];a.forEach((n,i)=>{const j=conv(n,trace,'i'+i);if(j!==null)out.push(j);});return {text:JSON.stringify(out,null,2),trace};}\nfunction eq(specs,code){const a=oldSer(specs),b=newSer(specs);if(a.text!==b.text)process.exit(code);if(JSON.stringify(a.trace)!==JSON.stringify(b.trace))process.exit(code+1);}\nconst obj=id=>({kind:'obj',notificationId:id,actions:[{identifier:'x'+id,text:'Open'}],appIcon:'icon'+id,appName:id%2?'App B':'App-A',body:'Body '+id,image:'',summary:'S'+id,time:id*17.5,urgency:id%3===0?'Critical':'Normal'});\neq([],10);eq([{kind:'hole'},obj(1),{kind:'value',value:null},{kind:'hole'},obj(2)],12);eq([{kind:'value',value:undefined},{kind:'value',value:false},{kind:'value',value:0},{kind:'value',value:''},obj(3)],14);\nlet seed=0x5eed1234>>>0;function rnd(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed;}\nfor(let c=0;c<50000;c++){const n=rnd()%65,specs=new Array(n);for(let i=0;i<n;i++){const r=rnd()%20;if(r<3)specs[i]={kind:'hole'};else if(r===3)specs[i]={kind:'value',value:null};else if(r===4)specs[i]={kind:'value',value:undefined};else specs[i]=obj((rnd()%100000)+1);}eq(specs,20);}\nprocess.exit(0);\n"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-notification-center-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "scripts/validate-maintainer-local.sh",
+          "--current-repo"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1800
+      }
+    }
+  ]
+}

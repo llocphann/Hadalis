@@ -109,7 +109,7 @@ with tempfile.TemporaryDirectory(prefix="hadalis-edge-shadow-") as tmp:
     root=Path(tmp)
     (root/"shell.qml").write_text(QML, encoding="utf-8")
     env=os.environ.copy()
-    env.update(QT_QPA_PLATFORM="wayland", EDGE_OUTPUT=str(root))
+    env.update(QT_QPA_PLATFORM="offscreen", QSG_RHI_BACKEND="opengl", QT_QUICK_BACKEND="rhi", EDGE_OUTPUT=str(root))
     run=subprocess.run(["qs","-p",str(root),"--no-color"],env=env,text=True,
                        stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=15)
     assert run.returncode == 0 and "EDGE_PARITY_CAPTURE_PASS" in run.stdout, run.stdout[-4000:]

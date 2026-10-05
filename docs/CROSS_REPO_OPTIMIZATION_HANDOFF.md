@@ -26067,3 +26067,80 @@ R39 result receipt after the job commit and does not change runtime source.
 Next round must diversify away from Overview prefixed-search result assembly.
 Re-fetch current `dev`, reject ALREADY/CLOSED/SUPERSEDED/DISPROVEN owners,
 then inspect a distinct high-frequency service/backend/UI path.
+
+
+### 110.15 AppSearch sloppy unlimited score-record compaction confirmed (2026-10-05)
+
+Round 61 §61.2 is now **CONFIRMED and implemented** on current `dev`.
+The initial implementation at
+`254777936d422464a57606a81fe31c3cb6275dac` correctly preserved final
+ranking output but was rejected by the first parity run because it interleaved
+`root.scoreThreshold` reads with score computation. Original
+`map(...).filter(...)` semantics finish all score computations first and only
+then begin the threshold/filter phase.
+
+R40 therefore remains a useful **disproven implementation shape**, not an
+acceptance result. `JOB-C2F353CC-APPSEARCH61-R40-20261005:0` exited 11 at
+source `78a30787562b7a17e4cc893718429104f43f8f53`, observed Unix
+`1791213356`. Exit 11 encoded trace-order mismatch while result parity had
+already passed its preceding comparison.
+
+Fix-forward commit
+`104822d18dac7a53ab758b90f7561c3c183ff2e5`
+(`fix(search): preserve sloppy threshold read phase`) retains the original
+two phases:
+
+1. compute every app's exact current Levenshtein/boosted/clamped numeric score
+   into one private dense numeric array;
+2. in the same ascending index order, read `root.scoreThreshold` once per app
+   and allocate a `{entry, score}` record only for entries that pass;
+3. keep the same descending comparator and final decoration pass.
+
+Strict-lossless boundary:
+
+- `_cachedList` is still visited in the same index order;
+- `_cachedNameLowers` and Levendist reads, boost short-circuit order and
+  `Math.min(1.0, score)` are unchanged;
+- every score is computed before the first threshold read, matching the
+  original map/filter phase boundary;
+- threshold is still read once for each app, in the same ascending order;
+- strict `score > threshold` semantics, including NaN/Infinity behavior, are
+  unchanged;
+- retained records reach sort in the same source order, preserving tie input
+  ordering to the existing comparator;
+- bounded `limit > 0` top-K behavior is untouched;
+- Overview remains the real unlimited caller while LauncherSearch remains
+  bounded at 32.
+
+Refined local structural reduction for N cached apps of which K pass the
+threshold:
+
+- score-record object allocations: **N -> K**;
+- discarded score-record objects: **N-K -> 0**;
+- numeric score computations: unchanged, N;
+- threshold reads: unchanged, N;
+- a private N-element numeric score array is retained specifically to preserve
+  the observable phase/read-order contract. No CPU/frame-time percentage is
+  claimed.
+
+Recovery validation
+`JOB-C2F353CC-APPSEARCH61-R41-20261005` used base
+`104822d18dac7a53ab758b90f7561c3c183ff2e5`, job/source SHA
+`111bd3cc0ef7f53e6513e5224a46a1626c959053`, profile
+`profile-c2f353cc8d1c4c1f`. All actions exited 0 without timeout or
+cancellation:
+
+- 50,000 deterministic old/new cases with changing-per-read threshold values
+  and exact score/threshold phase trace parity — `:0`, observed Unix
+  `1791213607`;
+- AppSearch QML binding-cache regression — `:1`, observed
+  `1791213612`;
+- performance lifecycle regression — `:2`, observed `1791213612`;
+- shell-surface regression — `:3`, observed `1791213612`.
+
+Current descendant `36293b11c69abb18d191c9a4ae2d1c0099cea7d1` only publishes
+the R41 result receipt after the job commit and does not modify runtime source.
+
+Next round should diversify away from Overview/AppSearch search-result work.
+Re-fetch current `dev`, reject existing ownership, then inspect a distinct
+broad service/backend or high-frequency reactive path.

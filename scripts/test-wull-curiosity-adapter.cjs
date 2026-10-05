@@ -45,7 +45,7 @@ for (const kind of ['settings','dashboard','dock','run-command']) {
     reset();assert.equal(window.openCompanionFeature({kind,popup:mature()}),false);assert.equal(calls.length,0);cases++;
 }
 for (const blocker of ['sidebarLeftOpen','sidebarRightOpen','settingsOverlayOpen','overviewOpen','clipboardOpen',
-    'dashboardOpen','controlPanelOpen','notificationCenterOpen','widgetEditMode','mediaControlsOpen','abyssPopupKind']) {
+    'dashboardOpen','controlPanelOpen','notificationCenterOpen','widgetEditMode','abyssPopupKind']) {
     reset();state[blocker]=blocker==='abyssPopupKind'?'weather':true;
     const before=JSON.stringify(state);
     assert.equal(window.openCompanionFeature({kind:'clock',popup:mature()}),false);

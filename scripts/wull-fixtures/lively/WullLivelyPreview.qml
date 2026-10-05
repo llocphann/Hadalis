@@ -82,7 +82,7 @@ Window {
         function runChecks() {
             try {
                 root.place(480,600)
-                check(actor.inputReady,"actor did not reset with unchanged reveal")
+                check(actor.inputReady && presence.surfaceBound,"actor did not reset into surface-bound mode")
                 const body=root.named(actor,"wullLiquidBody"), gait=root.named(actor,"wullLocomotion")
                 check(presence.moveTo(Scene.annotate(root.scene,{x:550,y:600},"bottom","edge","bottom"),false,"run"),"run route rejected")
                 wait(170);check(actor.walking && gait.clip==="run","run pose not selected")
@@ -97,11 +97,6 @@ Window {
                 tryCompare(presence,"traveling",false,1400)
                 check(presence.grounded && Math.abs(actor.y-600)<.2,"jump failed to land")
                 tryCompare(actor,"gesturing",false,1000)
-                const air=Scene.drop(root.scene,actor.x,430,presence.position())
-                check(presence.moveTo(air,false),"flight route rejected")
-                wait(180)
-                check(actor.flying && gait.clip==="fly" && gait.footZ("foot0Z")>4,"flight has no propulsion/tuck pose")
-                tryCompare(presence,"traveling",false,2600)
                 root.place(480,190)
                 presence.beginDrag();presence.randomState=0;presence.endDrag()
                 wait(70);check(presence.mode==="fall" && gait.clip==="fall","high release did not fall")
@@ -116,7 +111,11 @@ Window {
                 tryCompare(actor,"gesturing",false,1000)
                 root.place(480,190)
                 presence.beginDrag();presence.randomState=1000;presence.endDrag()
-                wait(90);check(presence.mode==="fly" && actor.flying,"alternate release did not take flight")
+                wait(90)
+                check(presence.mode==="fall" && !presence.releasedFlight,
+                    "release reintroduced free-floating flight")
+                tryCompare(presence,"traveling",false,presence.duration+600)
+                check(presence.grounded,"surface-bound release did not return to a support")
                 root.animate=false;wait(30)
                 check(!actor.moving && !gait.active,"motion-off left a travel clock running")
                 const frozen=JSON.stringify([actor.x,actor.y,gait.phase,gait.weight]);wait(120)
@@ -160,7 +159,7 @@ Window {
                 root.allowed=false;wait(40)
                 check(!curiosity.busy && !actor.visible && !deadline.running && !presence.directed,
                     "policy hide did not cancel curiosity")
-                console.log("WULL_LIVELY=PASS run jump fly acceleratingFall regrab alternateTakeoff reducedMotion curiosityGesture distanceClose continuedDeparture ownedClose userHandoff policyHide")
+                console.log("WULL_LIVELY=PASS run jump surfaceBoundRelease acceleratingFall regrab reducedMotion curiosityGesture distanceClose continuedDeparture ownedClose userHandoff policyHide")
             } catch(error) {console.error("WULL_LIVELY=FAIL "+error+" "+JSON.stringify({phase:root.testPhase,
                 stage:curiosity.stage,owned:curiosity.owned,near:curiosity.nearFeature,reached:curiosity.reachedFeature,
                 featureOpen:root.featureOpen,closes:root.closes,traveling:presence.traveling,mode:presence.mode,

@@ -30,6 +30,15 @@ Window {
                     "abyss.companionMind.endpoint":Quickshell.env("WULL_TEST_ENDPOINT"),"abyss.companionMind.model":"tiny:local",
                     "abyss.companionMind.obsidianEnabled":false})
                 wait(80)
+                const cadences=WullMind.proactiveProfiles
+                check(WullMind.proactive==="manual" && !WullMind.proactiveIdleEnabled
+                    && cadences.rare.checkInMs>cadences.occasional.checkInMs
+                    && cadences.occasional.checkInMs>cadences.regular.checkInMs
+                    && cadences.regular.checkInMs>cadences.often.checkInMs
+                    && cadences.rare.playfulMs>cadences.occasional.playfulMs
+                    && cadences.occasional.playfulMs>cadences.regular.playfulMs
+                    && cadences.regular.playfulMs>cadences.often.playfulMs,
+                    "proactive cadence profiles are not ordered or manual-safe")
                 const syntheticNow=new Date(2026,9,5,9,0,0)
                 const reminderRows=WullMind.reminderRows(syntheticNow,
                     [{done:false,sourceDate:"2026-10-05",startTime:"09:05",content:"Todo reminder"}],
@@ -57,6 +66,17 @@ Window {
                 mouseMove(root.contentItem,20,720);WullMind.openChat();wait(100)
                 check(cloud.editing,"explicit chat did not open editor")
                 tryCompare(WullMind,"busy",false,3000)
+                const cloudGap=()=>Math.min(
+                    Math.abs(cloud.actorVisualTop-(cloud.y+cloud.height)),
+                    Math.abs(cloud.y-cloud.actorVisualBottom))
+                check(cloudGap()<=cloud.anchorGap+.6 && cloud.anchorGap<=10,
+                    "talk cloud is too far from Wull")
+                const originalActorScale=actor.scale
+                actor.scale=1.35;wait(30)
+                check(Math.abs(cloud.actorVisualHeight-actor.height*1.35)<.6
+                    && cloudGap()<=cloud.anchorGap+.6,
+                    "talk cloud did not follow Wull's scaled bounds")
+                actor.scale=originalActorScale;wait(20)
                 const profileButton=root.named(cloud,"wullModelEffort")
                 const effortSlider=root.named(cloud,"wullThinkingEffort")
                 const modelPicker=root.named(cloud,"wullModelPicker")
@@ -168,7 +188,7 @@ Window {
                 mouseClick(root.contentItem,20,720);wait(30)
                 check(root.outsideClicks===1,"speech guard blocked clicks outside the cloud")
                 WullMind.dismiss();check(!cloud.visible,"dismiss retained speech input")
-                console.log("WULL_MIND=PASS actualProcess localProbe EnglishReply borderlessCloud noCheckInInput separateQuestions journalWrites stableJournalContext explicitChatFocus modelEffortSelector compactEffortRow activeModelContrast stagedEffortModelPicker enterSend sendOnlyControl persistentHistory reminderSources idleChatRelease retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint offlineMessage settingsAI noReferenceVault")
+                console.log("WULL_MIND=PASS actualProcess localProbe EnglishReply borderlessCloud noCheckInInput separateQuestions journalWrites stableJournalContext explicitChatFocus modelEffortSelector compactEffortRow activeModelContrast stagedEffortModelPicker enterSend sendOnlyControl persistentHistory reminderSources proactiveCadences scaledTalkCloudAnchor idleChatRelease retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint offlineMessage settingsAI noReferenceVault")
             } catch(e) {console.error("WULL_MIND=FAIL "+e)}
             shutdown.start()
         }

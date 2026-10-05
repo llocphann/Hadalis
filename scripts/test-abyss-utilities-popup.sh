@@ -58,10 +58,15 @@ done
 grep -Fq 'focus: false' "$utility_popup" \
     || { printf 'FAIL: hover-owned Utilities pre-focuses and can retain its dismissal lease\n' >&2; exit 1; }
 
-for token in 'Behavior on implicitWidth' 'Behavior on implicitHeight'; do
-    grep -Fq "$token" "$utility_popup" \
-        || { printf 'FAIL: Utilities popup size motion missing: %s\n' "$token" >&2; exit 1; }
-done
+grep -Fq 'SwipeView {' "$utility_popup" \
+    || { printf 'FAIL: Utilities horizontal page slider missing\n' >&2; exit 1; }
+grep -Fq 'interactive: true' "$utility_popup" \
+    || { printf 'FAIL: Utilities horizontal swipe interaction missing\n' >&2; exit 1; }
+if grep -Fq 'Behavior on implicitWidth' "$utility_popup" \
+        || grep -Fq 'Behavior on implicitHeight' "$utility_popup"; then
+    printf 'FAIL: Utilities tab changes still layer popup resize motion over the horizontal slide\n' >&2
+    exit 1
+fi
 grep -Fq 'readonly property bool arrangementChromeVisible: !embeddedArrangementOnly' "$monitor_config" \
     || { printf 'FAIL: embedded Monitor Arrangement chrome gate missing\n' >&2; exit 1; }
 grep -Fq 'showHeader: root.arrangementChromeVisible' "$monitor_config" \

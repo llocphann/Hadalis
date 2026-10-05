@@ -64,6 +64,7 @@ Window {
                 check(!!effortSlider && effortSlider.visible && !effortSlider.enabled
                     && WullMind.effectiveThinkingEffort==="off","instant model exposed fake thinking effort")
                 mouseClick(profileButton);wait(30)
+                check(field.activeFocus,"closing model/effort selector did not return focus to composer")
                 field.text="Hello Wull!"
                 keyClick(Qt.Key_Return);wait(20)
                 check(field.text==="","Enter did not submit the input")

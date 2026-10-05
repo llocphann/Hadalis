@@ -189,7 +189,11 @@ Item {
                     implicitHeight: 30
                     enabled: !WullMind.busy && WullMind.selectableModels.length > 0
                     buttonRadius: 15
-                    onClicked: root.profileOpen = !root.profileOpen
+                    onClicked: {
+                        root.profileOpen = !root.profileOpen
+                        if (!root.profileOpen)
+                            Qt.callLater(() => { if (root.editing) message.forceActiveFocus() })
+                    }
                     contentItem: RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 10

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Compatibility toast dismissal and error-action contracts.
 
-Reload success delivery is exercised through real private D-Bus ingress by
-test-reload-notification-runtime.py.
+Quickshell reload success delivery is exercised through real private D-Bus
+ingress by test-reload-notification-runtime.py. Successful Niri reloads are
+intentionally silent.
 """
 from pathlib import Path
 
@@ -24,13 +25,15 @@ for token in (
 
 for token in (
     '"Quickshell reloaded"',
-    '"Niri Reloaded"',
     '"Quickshell reload failed"',
     '"Niri config reload failed"',
     '"error",',
 ):
     require(MANAGER, token, "reload/error ToastManager routing changed")
 
+if '"Niri Reloaded"' in MANAGER or '_pendingReloadSource = "niri"' in MANAGER:
+    raise SystemExit("FAIL: successful Niri reloads must remain silent")
+
 require(TOAST, 'visible: root.isError && root.message !== ""',
         "error copy action must remain available")
-print("ok - reload toasts self-dismiss without a close X; error actions remain")
+print("ok - Quickshell reload self-dismisses; Niri success stays silent; error actions remain")

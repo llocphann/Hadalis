@@ -259,10 +259,14 @@ Item {
                             model: WullMind.selectableModels
                             DialogButton {
                                 required property var modelData
+                                objectName: "wullModelOption-" + String(modelData.name)
                                 Layout.fillWidth: true
                                 buttonText: modelData.label ?? modelData.name
                                 toggled: WullMind.model === modelData.name
                                 enabled: !WullMind.busy
+                                colBackgroundToggled: Appearance.colors.colPrimary
+                                colBackgroundToggledHover: Appearance.colors.colPrimaryHover
+                                colEnabled: toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colPrimary
                                 onClicked: {
                                     WullMind.selectModel(modelData)
                                     root.profileStage = 0
@@ -313,8 +317,9 @@ Item {
                         spacing: 6
                         RippleButton {
                             objectName: "wullModelEffort"
-                            Layout.preferredWidth: Math.min(170, root.width - 90)
+                            Layout.preferredWidth: Math.max(68, Math.min(root.width - 90, effortLabel.implicitWidth + 60))
                             Layout.preferredHeight: 30
+                            implicitWidth: Layout.preferredWidth
                             implicitHeight: 30
                             enabled: !WullMind.busy && WullMind.selectableModels.length > 0
                             buttonRadius: 15
@@ -343,7 +348,7 @@ Item {
                                     color: Appearance.colors.colPrimary
                                 }
                                 StyledText {
-                                    Layout.fillWidth: true
+                                    id: effortLabel
                                     text: WullMind.thinkingEffortLabel
                                     elide: Text.ElideRight
                                     font.pixelSize: Appearance.font.pixelSize.smallest

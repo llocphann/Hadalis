@@ -1793,8 +1793,12 @@ fn run_client_compat(args: &[String], socket: &Path) -> i32 {
         return 1;
     }
 
-    let payload = response.get("result").cloned().unwrap_or(Value::Null);
-    match serde_json::to_string(&payload) {
+    let payload = response.get("result");
+    let serialized = match payload {
+        Some(payload) => serde_json::to_string(payload),
+        None => serde_json::to_string(&Value::Null),
+    };
+    match serialized {
         Ok(text) => {
             println!("{text}");
             0
@@ -2589,11 +2593,13 @@ mod tests {
 
         for response in fixtures {
             let owned = response.get("result").cloned().unwrap_or(Value::Null);
-            let fallback = Value::Null;
-            let borrowed = response.get("result").unwrap_or(&fallback);
+            let borrowed = match response.get("result") {
+                Some(payload) => serde_json::to_string(payload),
+                None => serde_json::to_string(&Value::Null),
+            };
             assert_eq!(
                 serde_json::to_string(&owned).expect("serialize owned daemon result"),
-                serde_json::to_string(borrowed).expect("serialize borrowed daemon result")
+                borrowed.expect("serialize borrowed daemon result")
             );
         }
     }

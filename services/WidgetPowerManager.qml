@@ -26,8 +26,9 @@ Singleton {
     // ══════════════════════════════════════════════════════════════════════
 
     // Global summary for settings and callers without an output context.
-    readonly property bool widgetsActive: !root.shouldPauseForOutput("")
+    // reducedMode is the one pause decision; widgetsActive remains its exact inverse.
     readonly property bool reducedMode: root.shouldPauseForOutput("")
+    readonly property bool widgetsActive: !root.reducedMode
 
     // ══════════════════════════════════════════════════════════════════════
     // CONFIGURATION
@@ -77,11 +78,10 @@ Singleton {
         return GameMode.hasFullscreenOnOutput(scopedOutput);
     }
 
-    function _triggersForOutput(outputName: string): var {
+    function _triggersForOutputWithEligibility(outputName: string, outputAllowed: bool): var {
         const scopedOutput = String(outputName ?? "");
         return {
-            outputDisabled: scopedOutput.length > 0
-                && !DesktopWidgetLayout.outputAllowed(scopedOutput),
+            outputDisabled: scopedOutput.length > 0 && !outputAllowed,
             gameMode: root.pauseOnGameMode && GameMode.manuallyActivated,
             fullscreen: root.pauseOnFullscreen && root._fullscreenForOutput(scopedOutput),
             windowsPresent: root.pauseWhenWindowsPresent
@@ -90,14 +90,24 @@ Singleton {
         };
     }
 
+    function _triggersForOutput(outputName: string): var {
+        const scopedOutput = String(outputName ?? "");
+        const outputAllowed = scopedOutput.length === 0
+            || DesktopWidgetLayout.outputAllowed(scopedOutput);
+        return root._triggersForOutputWithEligibility(outputName, outputAllowed);
+    }
+
     function shouldPauseForOutput(outputName: string): bool {
         const scopedOutput = String(outputName ?? "");
-        if (scopedOutput.length > 0
-                && !DesktopWidgetLayout.outputAllowed(scopedOutput))
-            return true;
+        let outputAllowed = true;
+        if (scopedOutput.length > 0) {
+            outputAllowed = DesktopWidgetLayout.outputAllowed(scopedOutput);
+            if (!outputAllowed)
+                return true;
+        }
         if (!root.enabled || GlobalStates.widgetEditMode)
             return false;
-        const triggers = root._triggersForOutput(outputName);
+        const triggers = root._triggersForOutputWithEligibility(outputName, outputAllowed);
         return triggers.outputDisabled || triggers.gameMode
             || triggers.fullscreen || triggers.windowsPresent;
     }

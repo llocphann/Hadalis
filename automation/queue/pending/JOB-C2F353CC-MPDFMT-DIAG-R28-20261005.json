@@ -1,0 +1,18 @@
+{
+  "id": "JOB-C2F353CC-MPDFMT-DIAG-R28-20261005",
+  "base_sha": "cc63b1ca77df60a2f91fb74778818e836c988b5d",
+  "profile_id": "profile-c2f353cc8d1c4c1f",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-c",
+          "from pathlib import Path\nimport subprocess, sys\nroot = Path('.').resolve()\nnative = root / 'native'\nmain = root / 'native/inir-mpdd/src/main.rs'\ndef check(pkg=None):\n    argv = ['cargo','fmt']\n    if pkg: argv += ['--package', pkg]\n    else: argv += ['--all']\n    argv += ['--','--check']\n    return subprocess.run(argv, cwd=native, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode\nmpd = check('inir-mpdd')\nniri = check('inir-native')\nallrc = check(None)\nif allrc == 0:\n    raise SystemExit(0)\nif mpd != 0 and niri != 0:\n    raise SystemExit(44)\nif mpd == 0 and niri != 0:\n    raise SystemExit(51)\nif mpd == 0 and niri == 0:\n    raise SystemExit(52)\nbefore = main.read_text()\nr = subprocess.run(['cargo','fmt','--package','inir-mpdd'], cwd=native, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\nif r.returncode != 0:\n    raise SystemExit(53)\nafter = main.read_text()\nnames = subprocess.run(['git','diff','--name-only'], cwd=root, text=True, capture_output=True, check=True).stdout.splitlines()\nneedle = '                borrowed.expect(\"serialize borrowed daemon result\")\\n            );'\npred1 = before.replace(needle, '                borrowed.expect(\"serialize borrowed daemon result\"),\\n            );', 1)\npred2 = pred1.replace('\\n    }\\n\\n}', '\\n    }\\n}', 1)\nif names == ['native/inir-mpdd/src/main.rs'] and after == pred1:\n    raise SystemExit(41)\nif names == ['native/inir-mpdd/src/main.rs'] and after == pred2:\n    raise SystemExit(42)\nraise SystemExit(43)"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    }
+  ]
+}

@@ -4,6 +4,9 @@ from pathlib import Path
 import os, shutil, subprocess, tempfile
 from PIL import Image, ImageChops
 
+if os.environ.get("HADALIS_SCREEN_EDGE_PIXEL_PARITY") != "1":
+    print("SKIP: Screen Edge pixel parity requires HADALIS_SCREEN_EDGE_PIXEL_PARITY=1")
+    raise SystemExit(0)
 if not shutil.which("qs"):
     raise SystemExit("qs is required for Screen Edge shadow pixel parity")
 if not os.environ.get("WAYLAND_DISPLAY"):

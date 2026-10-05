@@ -26,9 +26,8 @@ Singleton {
     // ══════════════════════════════════════════════════════════════════════
 
     // Global summary for settings and callers without an output context.
-    // Keep the original public property order; reducedMode is the exact inverse.
     readonly property bool widgetsActive: !root.shouldPauseForOutput("")
-    readonly property bool reducedMode: !root.widgetsActive
+    readonly property bool reducedMode: root.shouldPauseForOutput("")
 
     // ══════════════════════════════════════════════════════════════════════
     // CONFIGURATION

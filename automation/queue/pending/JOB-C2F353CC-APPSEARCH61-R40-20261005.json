@@ -1,0 +1,48 @@
+{
+  "id": "JOB-C2F353CC-APPSEARCH61-R40-20261005",
+  "base_sha": "254777936d422464a57606a81fe31c3cb6275dac",
+  "profile_id": "profile-c2f353cc8d1c4c1f",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "-e",
+          "\nconst fs = require(\"fs\");\nconst src = fs.readFileSync(\"services/AppSearch.qml\", \"utf8\");\nconst start = src.indexOf(\"function fuzzyQuery\");\nconst end = src.indexOf(\"function _decorateEntry\", start);\nif (start < 0 || end < 0) process.exit(90);\nconst block = src.slice(start, end);\nif (!block.includes(\"const results = []\")) process.exit(91);\nif (!block.includes(\"results.push({ entry: obj, score: score })\")) process.exit(92);\nif (!block.includes(\"results.sort((a, b) => b.score - a.score)\")) process.exit(93);\nif (block.includes(\"const results = _cachedList.map((obj, index) =>\")) process.exit(94);\n\nfunction scoreFor(nameLower, searchLower, base) {\n  let score = base;\n  if (nameLower.startsWith(searchLower)) score += 0.3;\n  else if (nameLower.includes(\" \" + searchLower) || nameLower.includes(\"-\" + searchLower)) score += 0.15;\n  else if (nameLower.includes(searchLower)) score += 0.1;\n  return Math.min(1.0, score);\n}\nfunction oldCollect(entries, names, searchLower, threshold, bases, trace) {\n  return entries.map((obj, index) => {\n    const nameLower = names[index] ?? \"\";\n    trace.push(\"score:\" + index);\n    const score = scoreFor(nameLower, searchLower, bases[index]);\n    return { entry: obj, score };\n  }).filter(item => {\n    trace.push(\"threshold:\" + item.entry.id);\n    return item.score > threshold;\n  }).sort((a,b)=>b.score-a.score);\n}\nfunction newCollect(entries, names, searchLower, threshold, bases, trace) {\n  const results = [];\n  const count = entries.length;\n  for (let index=0; index<count; ++index) {\n    const obj = entries[index];\n    const nameLower = names[index] ?? \"\";\n    trace.push(\"score:\" + index);\n    const score = scoreFor(nameLower, searchLower, bases[index]);\n    trace.push(\"threshold:\" + obj.id);\n    if (score > threshold) results.push({entry:obj, score});\n  }\n  results.sort((a,b)=>b.score-a.score);\n  return results;\n}\nlet seed=0x61a55eed>>>0;\nfunction rnd(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed;}\nconst words=[\"fire\",\"fox\",\"visual studio\",\"foo-bar\",\"alpha\",\"beta\",\"gamma\",\"\"];\nfor(let c=0;c<50000;c++){\n  const n=rnd()%80;\n  const entries=new Array(n), names=new Array(n), bases=new Array(n);\n  for(let i=0;i<n;i++){\n    entries[i]={id:i, marker:(rnd()%7)};\n    names[i]=words[rnd()%words.length] + String(rnd()%19);\n    const r=rnd()%16;\n    bases[i]=r===0?NaN:r===1?Infinity:r===2?-Infinity:((rnd()%2001)-1000)/1000;\n  }\n  const search=words[rnd()%words.length];\n  const tr=rnd()%12;\n  const threshold=tr===0?NaN:tr===1?Infinity:tr===2?-Infinity:((rnd()%1601)-800)/1000;\n  const ta=[],tb=[];\n  const a=oldCollect(entries,names,search,threshold,bases,ta);\n  const b=newCollect(entries,names,search,threshold,bases,tb);\n  const norm=x=>x.map(v=>({id:v.entry.id,score:Number.isNaN(v.score)?\"NaN\":String(v.score)}));\n  if(JSON.stringify(norm(a))!==JSON.stringify(norm(b))) process.exit(10);\n  if(JSON.stringify(ta)!==JSON.stringify(tb)) process.exit(11);\n}\nprocess.exit(0);\n"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "scripts/test-appsearch-binding-cache.sh"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "scripts/test-performance-lifecycle.sh"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1200
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-shell-surface-contracts.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    }
+  ]
+}

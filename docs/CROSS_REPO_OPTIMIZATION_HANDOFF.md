@@ -26013,3 +26013,57 @@ Weather, Notification serialization and Japanese Typography. Re-fetch current
 `dev`, search existing ownership first, then inspect a distinct high-frequency
 service/backend or reactive UI path for a material unresolved strict-lossless
 candidate.
+
+
+### 110.14 Overview prefixed-search redundant filters removed (2026-10-05)
+
+Round 60 §60.3 is now **CONFIRMED and implemented** on current `dev`.
+Commit `bbb539996547e418e47e630a5d106736d0e056f9`
+(`perf(search): drop redundant prefixed result filters`) removes only the
+trailing `.filter(Boolean)` stages from the Clipboard and Emoji prefixed
+branches in `modules/overview/SearchWidget.qml::updateSearchResults()`.
+
+Strict-lossless boundary:
+
+- both map callbacks still visit the same dense source arrays in the same order
+  and still return one result object for every visited entry;
+- Clipboard neighbor access through the map callback's original
+  `(entry, index, array)` arguments is unchanged;
+- `Cliphist.fuzzyQuery()` returns dense arrays on all current production
+  branches: `property list<string> entries` is populated by push + slice,
+  limited sloppy results are push-built, unlimited sloppy results are compacted
+  before map, and Fuzzy output is mapped densely;
+- `Emojis.fuzzyQuery()` likewise returns dense arrays from the loaded
+  slice/filter/map list, push-built limited results, compacted unlimited sloppy
+  results, or dense Fuzzy-result mapping;
+- each branch still publishes one fresh mapped array to `cachedResults`;
+- object identity/content/order, work-safety neighbor reads and execute
+  closures are unchanged;
+- the separate launcher-action `.filter(Boolean)` remains because that map
+  intentionally returns `null` for nonmatching actions.
+
+Local structural reduction per Clipboard or Emoji prefixed-search evaluation
+with N result rows:
+
+- truthiness-filter visits: **N -> 0**;
+- filter-result temporary arrays: **1 -> 0**;
+- map visits/result-object allocations: unchanged, N.
+
+Validation job `JOB-C2F353CC-OVERVIEWP60-R39-20261005` used base
+`bbb539996547e418e47e630a5d106736d0e056f9`, job/source SHA
+`50abbd9a6cea4e7e9d0812ff210e0207236f2283`, profile
+`profile-c2f353cc8d1c4c1f`. All actions exited 0 without timeout or
+cancellation:
+
+- deterministic 50,000-case old/new collection parity plus production-shape
+  guard — `:0`, observed Unix `1791213069`;
+- Dashboard search/System refinement contract — `:1`, observed
+  `1791213069`;
+- shell-surface contract — `:2`, observed `1791213070`.
+
+Current descendant `af70f7487fed719b2320d49f7a9bcf566c65eee8` only adds the
+R39 result receipt after the job commit and does not change runtime source.
+
+Next round must diversify away from Overview prefixed-search result assembly.
+Re-fetch current `dev`, reject ALREADY/CLOSED/SUPERSEDED/DISPROVEN owners,
+then inspect a distinct high-frequency service/backend/UI path.

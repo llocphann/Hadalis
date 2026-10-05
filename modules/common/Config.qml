@@ -133,16 +133,26 @@ Singleton {
         }
     }
 
+    function _recordReloadMutation(nestedKey, value): void {
+        if (!root._reloadInFlight)
+            return;
+        const path = Array.isArray(nestedKey) ? nestedKey.join(".") : String(nestedKey);
+        let overlay = root._cloneObject(root._reloadOverlay);
+        overlay[path] = value;
+        root._reloadOverlay = overlay;
+    }
+
     function _beginLocalMutation(): void {
-        // A reload queued by our previous save can still be waiting when the
-        // user changes another setting. Letting that stale reload win would
-        // momentarily restore the old disk snapshot and erase the new value.
+        // A queued reload can be cancelled, but a reload() already handed to
+        // FileView is asynchronous. Record mutations made while that read is
+        // in flight so onLoaded can reapply them over its older snapshot.
         fileReloadTimer.stop();
         root._pendingReload = false;
     }
 
     function setNestedValue(nestedKey, value) {
         _beginLocalMutation();
+        _recordReloadMutation(nestedKey, value);
         _applyNestedKey(nestedKey, value);
         _applyToMirror(nestedKey, value);
         fileWriteTimer.restart();
@@ -157,6 +167,7 @@ Singleton {
         if (paths.length > 0)
             _beginLocalMutation();
         for (let i = 0; i < paths.length; ++i) {
+            _recordReloadMutation(paths[i], updates[paths[i]]);
             _applyNestedKey(paths[i], updates[paths[i]]);
             _applyToMirror(paths[i], updates[paths[i]]);
         }
@@ -260,6 +271,8 @@ Singleton {
     property bool _pendingWrite: false
     property bool _pendingCustomInject: false
     property bool _pendingReload: false
+    property bool _reloadInFlight: false
+    property var _reloadOverlay: ({})
     property int _writeRetries: 0
 
     function _endWriteFlight(reason: string): void {
@@ -360,13 +373,13 @@ Singleton {
         interval: root.readWriteDelay
         repeat: false
         onTriggered: {
-            if (root._writeInFlight || fileWriteTimer.running || customInjectTimer.running) {
+            if (root._writeInFlight || fileWriteTimer.running || customInjectTimer.running || root._reloadInFlight) {
                 root._pendingReload = true;
                 return;
             }
+            root._reloadInFlight = true;
+            root._reloadOverlay = ({});
             configFileView.reload();
-            root._syncVarProperties();
-            root.configChanged();
         }
     }
 
@@ -445,12 +458,29 @@ Singleton {
         onSaved: root._endWriteFlight("")
         onSaveFailed: error => root._endWriteFlight(`save failed (${error})`)
         onLoaded: {
+            const wasReload = root._reloadInFlight;
+            const overlay = wasReload ? root._cloneObject(root._reloadOverlay) : ({});
+            root._reloadInFlight = false;
+            root._reloadOverlay = ({});
             try {
                 root._jsonMirror = JSON.parse(configFileView.text());
             } catch (e) {
                 root._jsonMirror = {};
             }
             root._syncVarProperties();
+
+            // reload() may have started before a later local mutation. FileView
+            // applies the loaded adapter before this signal, so restore those
+            // newer local values and make the merged snapshot authoritative.
+            const overlayPaths = Object.keys(overlay);
+            for (let i = 0; i < overlayPaths.length; ++i) {
+                const path = overlayPaths[i];
+                root._applyNestedKey(path, overlay[path]);
+                root._applyToMirror(path, overlay[path]);
+            }
+            if (overlayPaths.length > 0)
+                fileWriteTimer.restart();
+
             const styleMigration = FamilyPolicy.migrateMaterial(root._jsonMirror);
             if (Object.keys(styleMigration).length) {
                 root._styleMigrationWritePending = true;
@@ -458,8 +488,12 @@ Singleton {
             }
             root._bumpRevision();
             root.ready = true;
+            if (wasReload)
+                root.configChanged();
         }
         onLoadFailed: error => {
+            root._reloadInFlight = false;
+            root._reloadOverlay = ({});
             if (error == FileViewError.FileNotFound) {
                 console.log("[Config] File not found, creating new file.");
                 const parentDir = root.filePath.substring(0, root.filePath.lastIndexOf('/'));

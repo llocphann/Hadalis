@@ -40,7 +40,14 @@ Singleton {
     }
 
     function execDetachedArgs(args, description = "", workingDirectory = ""): void {
-        const argv = Array.from(args ?? []).map(arg => String(arg ?? "")).filter(arg => arg.length > 0)
+        const argv = Array.from(args ?? [])
+        let writeIndex = 0
+        for (let readIndex = 0; readIndex < argv.length; ++readIndex) {
+            const normalized = String(argv[readIndex] ?? "")
+            if (normalized.length > 0)
+                argv[writeIndex++] = normalized
+        }
+        argv.length = writeIndex
         if (argv.length === 0) return
 
         const desc = String(description ?? "").trim()

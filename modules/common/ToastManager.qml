@@ -231,10 +231,7 @@ Scope {
     Timer {
         id: reloadDebounce
         interval: root._reloadDebounceMs
-        onTriggered: {
-            root._qsReloadInProgress = false
-            root._showReloadToast()
-        }
+        onTriggered: root._showReloadToast()
     }
     
     // Quickshell reload signals

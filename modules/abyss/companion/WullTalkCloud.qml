@@ -14,7 +14,8 @@ Item {
     required property real outputWidth
     required property real outputHeight
     property bool allowed: false
-    property bool profileOpen: false
+    // 0 = closed, 1 = thinking effort, 2 = model picker.
+    property int profileStage: 0
     readonly property bool editing: visible && WullMind.conversationOpen
     readonly property bool controlsVisible: visible && (editing || WullMind.checkInStage.length>0)
     width: Math.min(380, Math.max(220, outputWidth - 32))
@@ -179,48 +180,9 @@ Item {
                     {value: "peak", label: Translation.tr("Peak")}
                 ]
             }
-            RowLayout {
-                visible: root.editing
-                Layout.fillWidth: true
-                RippleButton {
-                    objectName: "wullModelEffort"
-                    Layout.preferredWidth: Math.min(250, root.width - 24)
-                    Layout.preferredHeight: 30
-                    implicitHeight: 30
-                    enabled: !WullMind.busy && WullMind.selectableModels.length > 0
-                    buttonRadius: 15
-                    onClicked: {
-                        root.profileOpen = !root.profileOpen
-                        if (!root.profileOpen)
-                            Qt.callLater(() => { if (root.editing) message.forceActiveFocus() })
-                    }
-                    contentItem: RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 10
-                        anchors.rightMargin: 8
-                        spacing: 5
-                        MaterialSymbol {
-                            text: WullMind.thinkingSupported ? "psychology" : "bolt"
-                            iconSize: 16
-                            color: Appearance.colors.colPrimary
-                        }
-                        StyledText {
-                            Layout.fillWidth: true
-                            text: WullMind.profileLabel
-                            elide: Text.ElideRight
-                            font.pixelSize: Appearance.font.pixelSize.smallest
-                        }
-                        MaterialSymbol {
-                            text: root.profileOpen ? "expand_less" : "expand_more"
-                            iconSize: 16
-                            color: Appearance.colors.colSubtext
-                        }
-                    }
-                }
-                Item { Layout.fillWidth: true }
-            }
             Rectangle {
-                visible: root.editing && root.profileOpen
+                objectName: "wullProfilePanel"
+                visible: root.editing && root.profileStage > 0
                 Layout.fillWidth: true
                 implicitHeight: profilePanel.implicitHeight + 16
                 radius: 14
@@ -230,97 +192,187 @@ Item {
                     anchors.fill: parent
                     anchors.margins: 8
                     spacing: 5
-                    StyledText {
-                        text: "Model"
-                        font.pixelSize: Appearance.font.pixelSize.smallest
-                        color: Appearance.colors.colSubtext
-                    }
-                    Repeater {
-                        model: WullMind.selectableModels
-                        DialogButton {
-                            required property var modelData
+                    ColumnLayout {
+                        objectName: "wullEffortPanel"
+                        visible: root.profileStage === 1
+                        Layout.fillWidth: true
+                        spacing: 5
+                        RowLayout {
                             Layout.fillWidth: true
-                            buttonText: modelData.label ?? modelData.name
-                            toggled: WullMind.model === modelData.name
-                            enabled: !WullMind.busy
-                            onClicked: WullMind.selectModel(modelData)
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: "Thinking effort"
+                                font.pixelSize: Appearance.font.pixelSize.smallest
+                                color: Appearance.colors.colSubtext
+                            }
+                            StyledText {
+                                text: WullMind.thinkingEffortLabel
+                                font.pixelSize: Appearance.font.pixelSize.smallest
+                                color: Appearance.colors.colPrimary
+                            }
+                        }
+                        StyledSlider {
+                            objectName: "wullThinkingEffort"
+                            Layout.fillWidth: true
+                            enableSettingsSearch: false
+                            from: 0
+                            to: 3
+                            stepSize: 1
+                            value: Math.max(0, WullMind.thinkingLevels.findIndex(level => level.value === WullMind.effectiveThinkingEffort))
+                            enabled: WullMind.thinkingSupported && !WullMind.busy
+                            tooltipContent: WullMind.thinkingEffortLabel
+                            onMoved: {
+                                const levels = ["off", "low", "medium", "high"]
+                                WullMind.setThinkingEffort(levels[Math.max(0, Math.min(3, Math.round(value)))])
+                            }
+                        }
+                        StyledText {
+                            visible: !WullMind.thinkingSupported
+                            Layout.fillWidth: true
+                            text: "This model uses instant mode. Tap the effort control again to choose another model."
+                            wrapMode: Text.WordWrap
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            color: Appearance.colors.colSubtext
+                        }
+                    }
+                    ColumnLayout {
+                        objectName: "wullModelPicker"
+                        visible: root.profileStage === 2
+                        Layout.fillWidth: true
+                        spacing: 4
+                        RowLayout {
+                            Layout.fillWidth: true
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: "Model"
+                                font.pixelSize: Appearance.font.pixelSize.smallest
+                                color: Appearance.colors.colSubtext
+                            }
+                            StyledText {
+                                text: WullMind.currentModelLabel
+                                elide: Text.ElideRight
+                                font.pixelSize: Appearance.font.pixelSize.smallest
+                                color: Appearance.colors.colPrimary
+                            }
+                        }
+                        Repeater {
+                            model: WullMind.selectableModels
+                            DialogButton {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                buttonText: modelData.label ?? modelData.name
+                                toggled: WullMind.model === modelData.name
+                                enabled: !WullMind.busy
+                                onClicked: {
+                                    WullMind.selectModel(modelData)
+                                    root.profileStage = 0
+                                    Qt.callLater(() => { if (root.editing) message.forceActiveFocus() })
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Rectangle {
+                objectName: "wullChatComposer"
+                visible: root.editing
+                Layout.fillWidth: true
+                implicitHeight: composerContent.implicitHeight + 8
+                radius: 18
+                color: Qt.alpha(AbyssStyle.accent, .05)
+                ColumnLayout {
+                    id: composerContent
+                    x: 4
+                    y: 4
+                    width: parent.width - 8
+                    spacing: 2
+                    MaterialTextField {
+                        id: message
+                        objectName: "wullChatInput"
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        maximumLength: 1200
+                        enableSettingsSearch: false
+                        placeholderText: ""
+                        Accessible.name: "Message"
+                        background: Rectangle { color: "transparent"; border.width: 0 }
+                        onAccepted: root.submit()
+                        Keys.onEscapePressed: {
+                            if (root.profileStage > 0) {
+                                root.profileStage = 0
+                                forceActiveFocus()
+                            } else {
+                                focus = false
+                                WullMind.cancel()
+                                WullMind.dismiss()
+                            }
                         }
                     }
                     RowLayout {
                         Layout.fillWidth: true
-                        StyledText {
-                            Layout.fillWidth: true
-                            text: "Thinking effort"
-                            font.pixelSize: Appearance.font.pixelSize.smallest
-                            color: Appearance.colors.colSubtext
+                        spacing: 6
+                        RippleButton {
+                            objectName: "wullModelEffort"
+                            Layout.preferredWidth: Math.min(170, root.width - 90)
+                            Layout.preferredHeight: 30
+                            implicitHeight: 30
+                            enabled: !WullMind.busy && WullMind.selectableModels.length > 0
+                            buttonRadius: 15
+                            onClicked: {
+                                if (root.profileStage === 0)
+                                    root.profileStage = 1
+                                else if (root.profileStage === 1)
+                                    root.profileStage = 2
+                                else {
+                                    root.profileStage = 0
+                                    Qt.callLater(() => { if (root.editing) message.forceActiveFocus() })
+                                }
+                            }
+                            Keys.onEscapePressed: {
+                                root.profileStage = 0
+                                Qt.callLater(() => { if (root.editing) message.forceActiveFocus() })
+                            }
+                            contentItem: RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 10
+                                anchors.rightMargin: 8
+                                spacing: 5
+                                MaterialSymbol {
+                                    text: WullMind.thinkingSupported ? "psychology" : "bolt"
+                                    iconSize: 16
+                                    color: Appearance.colors.colPrimary
+                                }
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    text: WullMind.thinkingEffortLabel
+                                    elide: Text.ElideRight
+                                    font.pixelSize: Appearance.font.pixelSize.smallest
+                                }
+                                MaterialSymbol {
+                                    text: root.profileStage === 2 ? "swap_vert"
+                                        : root.profileStage === 1 ? "expand_more" : "chevron_right"
+                                    iconSize: 16
+                                    color: Appearance.colors.colSubtext
+                                }
+                            }
                         }
-                        StyledText {
-                            text: WullMind.thinkingEffortLabel
-                            font.pixelSize: Appearance.font.pixelSize.smallest
-                            color: Appearance.colors.colPrimary
+                        Item { Layout.fillWidth: true }
+                        RippleButton {
+                            objectName: "wullChatSend"
+                            Layout.preferredWidth: 36
+                            Layout.preferredHeight: 36
+                            implicitWidth: 36
+                            implicitHeight: 36
+                            enabled: !WullMind.busy && message.text.trim().length>0
+                            buttonRadius: 18
+                            onClicked: root.submit()
+                            contentItem: MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "arrow_upward"
+                                iconSize: 20
+                                color: Appearance.colors.colPrimary
+                            }
                         }
-                    }
-                    StyledSlider {
-                        objectName: "wullThinkingEffort"
-                        Layout.fillWidth: true
-                        enableSettingsSearch: false
-                        from: 0
-                        to: 3
-                        stepSize: 1
-                        value: Math.max(0, WullMind.thinkingLevels.findIndex(level => level.value === WullMind.effectiveThinkingEffort))
-                        enabled: WullMind.thinkingSupported && !WullMind.busy
-                        tooltipContent: WullMind.thinkingEffortLabel
-                        onMoved: {
-                            const levels = ["off", "low", "medium", "high"]
-                            WullMind.setThinkingEffort(levels[Math.max(0, Math.min(3, Math.round(value)))])
-                        }
-                    }
-                    StyledText {
-                        visible: !WullMind.thinkingSupported
-                        Layout.fillWidth: true
-                        text: "This model uses instant mode. Choose a reasoning-capable model to set effort."
-                        wrapMode: Text.WordWrap
-                        font.pixelSize: Appearance.font.pixelSize.smallest
-                        color: Appearance.colors.colSubtext
-                    }
-                }
-            }
-            RowLayout {
-                visible: root.editing
-                Layout.fillWidth: true
-                spacing: 6
-                MaterialTextField {
-                    id: message
-                    objectName: "wullChatInput"
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: 0
-                    maximumLength: 1200
-                    enableSettingsSearch: false
-                    placeholderText: ""
-                    Accessible.name: "Message"
-                    background: Rectangle {
-                        implicitHeight: 36
-                        radius: 18
-                        border.width: 0
-                        color: Qt.alpha(AbyssStyle.accent, .05)
-                    }
-                    onAccepted: root.submit()
-                    Keys.onEscapePressed: { focus = false; WullMind.cancel(); WullMind.dismiss() }
-                }
-                RippleButton {
-                    objectName: "wullChatSend"
-                    Layout.preferredWidth: 36
-                    Layout.preferredHeight: 36
-                    implicitWidth: 36
-                    implicitHeight: 36
-                    enabled: !WullMind.busy && message.text.trim().length>0
-                    buttonRadius: 18
-                    onClicked: root.submit()
-                    contentItem: MaterialSymbol {
-                        anchors.centerIn: parent
-                        text: "arrow_upward"
-                        iconSize: 20
-                        color: Appearance.colors.colPrimary
                     }
                 }
             }
@@ -331,10 +383,10 @@ Item {
     }
     onEditingChanged: {
         if (editing) Qt.callLater(() => { if (root.editing) message.forceActiveFocus() })
-        else root.profileOpen = false
+        else root.profileStage = 0
     }
     onControlsVisibleChanged: if (!controlsVisible) {
-        root.profileOpen = false
+        root.profileStage = 0
         message.focus = false
     }
     Shape {

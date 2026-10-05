@@ -25462,3 +25462,66 @@ Both explicit commands exited 0 without timeout/cancellation:
 No whole-shell CPU/frame-time percentage or live visual acceptance is inferred
 from these local/static tests.
 
+### 110.5 Audio PwObjectTracker one-buffer construction — IMPLEMENTED / CONFIRMED
+
+Runtime implementation:
+`e43bc1866db629f5f0de264e14af3e7e6ce56a5d`
+(`perf(audio): compact tracked nodes in one array`).
+
+Behavior-parity regression:
+`61b9e79c2185a468e7507c093fa18452c0e23fb8`
+(`test(audio): cover tracked-node compaction parity`).
+
+Paths:
+
+- `services/Audio.qml`;
+- `scripts/test-audio-tracked-nodes-parity.py`.
+
+The implementation applies the already-confirmed §59.7 reduction only to the
+private `PwObjectTracker.objects` construction. The four public reactive lists
+(`outputAppNodes`, `inputAppNodes`, `outputDevices`, `inputDevices`)
+remain source-identical, preserving the signal/dependency boundary protected by
+§49.11.
+
+The one-buffer path preserves the exact sequence:
+
+1. `rawSink`, `sink`, `source`;
+2. all output app nodes in source order;
+3. all input app nodes in source order;
+4. stable removal of falsy entries.
+
+Duplicates, object identity and final order are unchanged. The binding still
+returns one fresh array on each evaluation.
+
+Local source-derived allocation reduction per evaluation:
+
+- fresh arrays produced by base + two concat stages + filter: **4 -> 1**;
+- tracked node references/order: unchanged;
+- public Audio list publications/signals: unchanged.
+
+Worker validation used base
+`61b9e79c2185a468e7507c093fa18452c0e23fb8`, job commit
+`49e67f3d749925fb8e6bd7df9e43aade76ef3806`, profile
+`profile-c2f353cc8d1c4c1f`.
+
+Observed at Unix timestamp `1791193456`, all explicit actions exited 0 with no
+timeout/cancellation at source
+`49e67f3d749925fb8e6bd7df9e43aade76ef3806`:
+
+- tracked-node parity — `JOB-C2F353CC-AUDIO-P59-20261005-1644:0`;
+- performance/lifecycle contract — `JOB-C2F353CC-AUDIO-P59-20261005-1644:1`;
+- optional Audio dependency contract — `JOB-C2F353CC-AUDIO-P59-20261005-1644:2`.
+
+No whole-shell CPU/RAM/frame-time percentage or live PipeWire/runtime
+acceptance is inferred from these static/local tests.
+
+### 110.6 Batch validation boundary
+
+Current `dev` before this checkpoint write:
+`d697fcf4388bbcb94ac8ce50f08b623ff1fc382c`.
+
+Round 96 has now implemented and narrowly validated four independent
+strict-lossless groups across scheduler, BarTaskbar, Settings quick adjustments
+and Audio tracking. This is a substantial enough committed optimization batch
+to run the canonical maintainer validator before adding another runtime change.
+

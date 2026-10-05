@@ -202,7 +202,18 @@ Scope {
                 root.physicalShadowEnabled
                 && root.physicalShadowSize > 0
                 && root.physicalShadowOpacity > 0
+            // Maintainer-approved perceptual optimization (2026-10-06):
+            // preserve the exact locked geometry and logical shadow radius, but
+            // rasterize the offscreen shadow source at 5/8 resolution. The
+            // default 10 px frame still has 6.25 source texels while the layer
+            // allocates/rasterizes only 39.06% of the former pixels.
+            readonly property real shadowRasterScale: 0.625
             layer.enabled: frameShape.physicalShadowActive
+            layer.textureSize: frameShape.physicalShadowActive
+                ? Qt.size(Math.max(1, Math.ceil(frameShape.width * frameShape.shadowRasterScale)),
+                    Math.max(1, Math.ceil(frameShape.height * frameShape.shadowRasterScale)))
+                : Qt.size(0, 0)
+            layer.smooth: true
             layer.effect: MultiEffect {
                 shadowEnabled: frameShape.physicalShadowActive
                 // blurMax alone only sets the kernel ceiling; without

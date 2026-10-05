@@ -10,6 +10,7 @@ utility_popup="$repo_root/modules/abyss/content/AbyssUtilitiesPopup.qml"
 monitor_config="$repo_root/modules/settings/MonitorVisibilityConfig.qml"
 settings_section="$repo_root/modules/common/widgets/SettingsCardSection.qml"
 popup_content="$repo_root/modules/abyss/content/AbyssPopupContent.qml"
+night_light_dialog="$repo_root/modules/sidebarRight/nightLight/NightLightDialog.qml"
 perimeter="$repo_root/modules/abyss/AbyssPerimeter.qml"
 
 for token in \
@@ -79,6 +80,24 @@ for redundant in \
     fi
 done
 
+for token in \
+    'visible: !root.embeddedPresentation' \
+    'id: nightLightPrimaryToggles' \
+    'text: Translation.tr("Enable")' \
+    'Layout.preferredWidth: Math.max(160, protectionContent.width - 64)' \
+    'Layout.alignment: Qt.AlignHCenter'; do
+    grep -Fq "$token" "$night_light_dialog" \
+        || { printf 'FAIL: embedded Eye protection layout contract missing: %s\n' "$token" >&2; exit 1; }
+done
+if grep -Fq 'Translation.tr("Enable now")' "$night_light_dialog"; then
+    printf 'FAIL: embedded Eye protection still says Enable now\n' >&2
+    exit 1
+fi
+if [[ "$(grep -Fc 'Layout.preferredWidth: Math.max(160, protectionContent.width - 64)' "$night_light_dialog")" -ne 3 ]]; then
+    printf 'FAIL: Eye protection separators are not consistently shortened\n' >&2
+    exit 1
+fi
+
 grep -Fq 'SwipeView {' "$utility_popup" \
     || { printf 'FAIL: Utilities horizontal page slider missing\n' >&2; exit 1; }
 grep -Fq 'interactive: true' "$utility_popup" \
@@ -89,19 +108,23 @@ if grep -Fq 'Behavior on implicitWidth' "$utility_popup" \
     exit 1
 fi
 for token in \
-    'property int geometryPage: 0' \
-    'onCurrentIndexChanged: root.queuePageGeometry(currentIndex)' \
-    'function onMovementEnded(): void' \
-    'view.positionViewAtIndex(' \
-    'pages.currentIndex, ListView.Beginning'; do
+    'readonly property int panelWidth: 620' \
+    'readonly property int panelHeight: 500' \
+    'implicitWidth: panelWidth' \
+    'implicitHeight: panelHeight'; do
     grep -Fq "$token" "$utility_popup" \
-        || { printf 'FAIL: Utilities stable swipe geometry contract missing: %s\n' "$token" >&2; exit 1; }
+        || { printf 'FAIL: Utilities fixed viewport contract missing: %s\n' "$token" >&2; exit 1; }
 done
-if grep -Fq 'implicitWidth: pageWidths[Math.max(0, Math.min(currentPage' "$utility_popup" \
-        || grep -Fq 'implicitHeight: pageHeights[Math.max(0, Math.min(currentPage' "$utility_popup"; then
-    printf 'FAIL: Utilities viewport geometry still follows currentIndex during horizontal motion\n' >&2
-    exit 1
-fi
+for obsolete in \
+    'geometryPage' \
+    'pendingGeometryPage' \
+    'queuePageGeometry' \
+    'geometrySettleTimer'; do
+    if grep -Fq "$obsolete" "$utility_popup"; then
+        printf 'FAIL: Utilities still carries per-tab geometry retargeting: %s\n' "$obsolete" >&2
+        exit 1
+    fi
+done
 grep -Fq 'readonly property bool arrangementChromeVisible: !embeddedArrangementOnly' "$monitor_config" \
     || { printf 'FAIL: embedded Monitor Arrangement chrome gate missing\n' >&2; exit 1; }
 grep -Fq 'showHeader: root.arrangementChromeVisible' "$monitor_config" \
@@ -209,8 +232,8 @@ ShellRoot {
             } else if (root.step === 2) {
                 if (!root.check(utility.currentPage === 1 && utility.currentFeature !== null,
                     "Display mode page participates in horizontal navigation")) return
-                if (!root.check(popup.desiredWidth !== root.monitorWidth || popup.desiredHeight !== root.monitorHeight,
-                    "Utilities footprint follows the active page")) return
+                if (!root.check(popup.desiredWidth === root.monitorWidth && popup.desiredHeight === root.monitorHeight,
+                    "Utilities footprint stays fixed across tabs")) return
                 utility.currentPage = 2
             } else if (root.step === 3) {
                 if (!root.check(utility.currentPage === 2 && utility.currentFeature !== null,
@@ -238,4 +261,4 @@ if [[ "$status" != 124 ]] || ! rg -q 'UTILITIES_POPUP_PASS' "$test_root/runtime.
     cat "$test_root/runtime.log"
     exit 1
 fi
-printf 'PASS: Utilities lives in Quick Actions, migrates old Edge modules and uses content-sized lazy pages\n'
+printf 'PASS: Utilities uses a fixed swipe viewport, compact Eye protection controls and lazy pages\n'

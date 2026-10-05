@@ -194,7 +194,10 @@ Item {
     implicitWidth: verticalEdge ? 98 : 112
     implicitHeight: verticalEdge ? 112 : 98
     visible: presentation > 0.001
-    clip: presentation < 0.999 && emergenceNormal>=0
+    // The actor itself must not crop jump/stumble entrances that travel
+    // sideways beyond its resting footprint. Water-side masking is handled by
+    // the directional emergence viewport below.
+    clip: false
 
     onRevealChanged: if (initialized) {
         if (reveal <= 0) {
@@ -288,12 +291,30 @@ Item {
     }
 
     Item {
-        id: emergenceLayer
-        width: 76; height: 92
-        anchors.centerIn: parent
-        anchors.verticalCenterOffset: root.floorAlignment
-        anchors.horizontalCenterOffset: root.sideAlignment
-        transform: [
+        id: emergenceViewport
+        objectName: "wullEmergenceViewport"
+        readonly property real margin: Math.max(180,
+            Math.abs(root.appearanceOffsetX)+root.width,
+            Math.abs(root.appearanceOffsetY)+root.height)
+        x: root.activeEmergenceEdge === "right" ? -margin
+            : root.activeEmergenceEdge === "top" || root.activeEmergenceEdge === "bottom" ? -margin : 0
+        y: root.activeEmergenceEdge === "bottom" ? -margin
+            : root.activeEmergenceEdge === "left" || root.activeEmergenceEdge === "right" ? -margin : 0
+        width: root.activeEmergenceEdge === "top" || root.activeEmergenceEdge === "bottom"
+            ? root.width+margin*2 : root.width+margin
+        height: root.activeEmergenceEdge === "left" || root.activeEmergenceEdge === "right"
+            ? root.height+margin*2 : root.height+margin
+        // Keep the underwater half hidden, but leave the visible half-plane
+        // and tangent direction large enough for faceplant/buttplant/launch
+        // poses and the full water-to-landing arc.
+        clip: root.presentation < .999 && root.emergenceNormal >= 0
+
+        Item {
+            id: emergenceLayer
+            width: 76; height: 92
+            x: -emergenceViewport.x + (root.width-width)/2 + root.sideAlignment
+            y: -emergenceViewport.y + (root.height-height)/2 + root.floorAlignment
+            transform: [
             Translate {
                 // Jump-style presentation starts at the selected water opening
                 // and travels tangentially while the authored normal track
@@ -355,6 +376,7 @@ Item {
             onChatRequested: root.chatRequested()
             onPressed: root.activated()
             onSettingsRequested: root.settingsRequested()
+        }
         }
     }
 }

@@ -1,0 +1,38 @@
+{
+  "id": "JOB-C2F353CC-OVERVIEWP60-R39-20261005",
+  "base_sha": "bbb539996547e418e47e630a5d106736d0e056f9",
+  "profile_id": "profile-c2f353cc8d1c4c1f",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "-e",
+          "\nconst fs = require(\"fs\");\nconst search = fs.readFileSync(\"modules/overview/SearchWidget.qml\", \"utf8\");\nconst clipStart = search.indexOf(\"// Clipboard search\");\nconst emojiStart = search.indexOf(\"// Emoji search\");\nconst defaultStart = search.indexOf(\"// Default search\");\nif (clipStart < 0 || emojiStart < 0 || defaultStart < 0) process.exit(90);\nif (search.slice(clipStart, emojiStart).includes(\".filter(Boolean)\")) process.exit(91);\nif (search.slice(emojiStart, defaultStart).includes(\".filter(Boolean)\")) process.exit(92);\n\nfunction oldCollect(source, kind, trace) {\n  return source.map((entry, index, array) => {\n    trace.push(kind + \":map:\" + index + \":\" + entry);\n    const previous = index > 0 ? array[index - 1] : undefined;\n    const next = index + 1 < array.length ? array[index + 1] : undefined;\n    return {\n      key: kind + \":\" + entry,\n      entry,\n      index,\n      previous: previous === undefined ? null : previous,\n      next: next === undefined ? null : next\n    };\n  }).filter(Boolean);\n}\nfunction newCollect(source, kind, trace) {\n  return source.map((entry, index, array) => {\n    trace.push(kind + \":map:\" + index + \":\" + entry);\n    const previous = index > 0 ? array[index - 1] : undefined;\n    const next = index + 1 < array.length ? array[index + 1] : undefined;\n    return {\n      key: kind + \":\" + entry,\n      entry,\n      index,\n      previous: previous === undefined ? null : previous,\n      next: next === undefined ? null : next\n    };\n  });\n}\nlet seed = 0x60c1a11d >>> 0;\nfunction rnd() { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed; }\nfor (let c = 0; c < 50000; c++) {\n  const n = rnd() % 65;\n  const source = new Array(n);\n  for (let i = 0; i < n; i++) source[i] = \"row-\" + (rnd() % 100000);\n  for (const kind of [\"clip\", \"emoji\"]) {\n    const aTrace = [], bTrace = [];\n    const a = oldCollect(source, kind, aTrace);\n    const b = newCollect(source, kind, bTrace);\n    if (JSON.stringify(a) !== JSON.stringify(b)) process.exit(10);\n    if (JSON.stringify(aTrace) !== JSON.stringify(bTrace)) process.exit(11);\n    if (b === source) process.exit(12);\n  }\n}\nprocess.exit(0);\n"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-dashboard-search-system-refinement-contract.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-shell-surface-contracts.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    }
+  ]
+}

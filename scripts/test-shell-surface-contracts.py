@@ -320,7 +320,7 @@ def main() -> None:
           and "exitAnim" not in toast_manager,
           "Reload toast must stay slide-only with no fade/scale delegate animation")
     for token in (
-        '"Niri Reloaded"',
+        '"Quickshell reloaded"',
         "ConnectedSurfaceGeometry {",
         "id: toastGeometry",
         'edge: "top"',
@@ -348,8 +348,10 @@ def main() -> None:
     ):
         check(token in toast_manager,
               f"Top-right connected reload toast contract missing: {token}")
-    check('"Niri config reloaded"' not in toast_manager,
-          "Legacy Niri reload toast title must stay retired")
+    check('"Niri config reloaded"' not in toast_manager
+          and '"Niri Reloaded"' not in toast_manager
+          and '_pendingReloadSource = "niri"' not in toast_manager,
+          "Successful Niri config reloads must remain silent")
     check("joinRight: true" not in toast_manager
           and "joinRight: !root.topBarOwnsEdge" in toast_manager,
           "Reload toast must prefer a real top Bar; right Screen Edge welding is fallback-only")

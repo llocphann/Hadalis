@@ -57,6 +57,13 @@ Window {
                 mouseMove(root.contentItem,20,720);WullMind.openChat();wait(100)
                 check(cloud.editing,"explicit chat did not open editor")
                 tryCompare(WullMind,"busy",false,3000)
+                const profileButton=root.named(cloud,"wullModelEffort")
+                const effortSlider=root.named(cloud,"wullThinkingEffort")
+                check(!!profileButton && profileButton.visible,"chat model/effort selector missing")
+                mouseClick(profileButton);wait(50)
+                check(!!effortSlider && effortSlider.visible && !effortSlider.enabled
+                    && WullMind.effectiveThinkingEffort==="off","instant model exposed fake thinking effort")
+                mouseClick(profileButton);wait(30)
                 field.text="Hello Wull!"
                 keyClick(Qt.Key_Return);wait(20)
                 check(field.text==="","Enter did not submit the input")
@@ -118,7 +125,7 @@ Window {
                 mouseClick(root.contentItem,20,720);wait(30)
                 check(root.outsideClicks===1,"speech guard blocked clicks outside the cloud")
                 WullMind.dismiss();check(!cloud.visible,"dismiss retained speech input")
-                console.log("WULL_MIND=PASS actualProcess localProbe EnglishReply borderlessCloud noCheckInInput separateQuestions journalWrites explicitChatFocus enterSend sendOnlyControl persistentHistory reminderSources idleChatRelease retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint offlineMessage settingsAI noReferenceVault")
+                console.log("WULL_MIND=PASS actualProcess localProbe EnglishReply borderlessCloud noCheckInInput separateQuestions journalWrites explicitChatFocus modelEffortSelector enterSend sendOnlyControl persistentHistory reminderSources idleChatRelease retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint offlineMessage settingsAI noReferenceVault")
             } catch(e) {console.error("WULL_MIND=FAIL "+e)}
             shutdown.start()
         }

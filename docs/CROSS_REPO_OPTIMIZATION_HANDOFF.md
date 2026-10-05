@@ -25806,3 +25806,60 @@ Next round should diversify away from both Dashboard collision handling and this
 native Niri getter. Re-fetch current `dev`, reject ALREADY/CLOSED/DISPROVEN
 research first, then inspect a distinct high-frequency service/QML path for a
 material strict-lossless reduction.
+
+
+### 110.11 Dock running-order indexing confirmed (2026-10-05)
+
+Round 37 §37.5 A+B is now **CONFIRMED and implemented** on current `dev`.
+The production change landed in `modules/dock/DockApps.qml` at
+`f3ce54575af5e8323acab213e5b7c9c02c2b034a` after a separate deterministic
+parity oracle was added at `dc86da40e9a2ecb230f4cee61791ca6188a4c68c`.
+Part C (pinned membership) was already present on current `dev` as `pinnedIds`
+and was not duplicated.
+
+Strict-lossless boundary:
+
+- filtering of the persisted `_runningAppOrder` remains unchanged;
+- membership extension replaces repeated `runningOrder.includes()` scans with a
+  `Set` while preserving the same map iteration and append order;
+- sort rank lookup replaces repeated `_runningAppOrder.indexOf()` scans with a
+  first-index `Map` built once from the published order;
+- first-index construction intentionally preserves duplicate/tie semantics of
+  `Array.indexOf()`; no last-write rank map is used;
+- pinned ordering, separator insertion, running-map iteration, toplevel arrays,
+  publication identity checks and QML dependency topology are unchanged.
+
+Structural reduction: extending A current running apps changes repeated linear
+membership work from worst-case O(A²) to O(A). Sort rank lookup changes from
+repeated O(A) scans inside sort comparisons to one O(A) first-index build plus
+O(1) rank lookup per comparison. No CPU/FPS/latency percentage is claimed.
+
+Pre-implementation oracle `JOB-C2F353CC-DOCKORDER-ORACLE-R24-20261005`
+validated 50,000 deterministic cases at source
+`4950d239dbca6f8af44aec4a92e4c2bd39a4bfc7`, evidence `:0`, exit 0.
+
+Implementation validation job
+`JOB-C2F353CC-DOCKORDER-IMPL-R25-20261005` used base
+`f3ce54575af5e8323acab213e5b7c9c02c2b034a`, job/source SHA
+`eb94fa94c82bcc6cf0f6a5f4018a437f08517db9`, profile
+`profile-c2f353cc8d1c4c1f`. At observed Unix `1791206347`, all actions exited
+0 without timeout/cancellation:
+
+- production-mode running-order parity oracle — `:0`;
+- Abyss Dock attached-menu contract — `:1`;
+- Abyss Dock content contract — `:2`;
+- Dock/Abyss hover-orientation contract — `:3`;
+- Abyss Dock resident-content contract — `:4`.
+
+The result receipt is published at descendant
+`92777a608915cc613e177e2e8bb39453a6534723`. Live owner-session visual/input
+acceptance remains separate from these deterministic contracts.
+
+Current `dev` before this checkpoint write:
+`92777a608915cc613e177e2e8bb39453a6534723`.
+
+Next round should diversify away from Dashboard, native Niri output parsing and
+Dock running-order rebuilds. Re-fetch current `dev`, reject
+ALREADY/CLOSED/SUPERSEDED/DISPROVEN findings, then inspect a distinct
+high-frequency service/backend or interaction path for a material lossless
+reduction.

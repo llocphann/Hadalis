@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reload successes use real notification ingress, shared lifetime and silence."""
+"""Quickshell reload success uses notification ingress; Niri success stays silent."""
 from pathlib import Path
 import os
 import shutil
@@ -70,43 +70,37 @@ ShellRoot {
   } else if(root.stage===1 && elapsed>200) {
    manager._pendingReloadSource="niri";manager._showReloadToast()
    root.advance(2)
-  } else if(root.stage===2 && root.find("Niri Reloaded")) {
-   const n=root.find("Niri Reloaded")
-   if(!root.check(n.appName==="Niri" && n.popup && n.isTransient && n.timer?.interval===2000,
-      "Niri is an ordinary transient timed popup"))return
-   if(!root.check(n.notification.hints["suppress-sound"]===true && Audio.played===0,
-      "reload stays silent even with notification sounds enabled"))return
-   if(!root.check(manager.toasts.length===0,"reload creates no parallel toast body"))return
-   root.hovered=[n]
-   manager._pendingReloadSource="niri";manager._showReloadToast()
-   if(!root.check(manager._pendingReloadSource==="","cooldown consumes duplicate request"))return
-   root.advance(3)
-  } else if(root.stage===3 && elapsed>2150) {
-   if(!root.check(root.find("Niri Reloaded")?.popup && Notifications.list.filter(n=>n.summary==="Niri Reloaded").length===1,
-      "shared hover pauses lifetime; cooldown emits one notification"))return
-   root.hovered=[];root.advance(4)
-  } else if(root.stage===4 && !root.find("Niri Reloaded")) {
+  } else if(root.stage===2 && elapsed>250) {
+   if(!root.check(!root.find("Niri Reloaded") && Notifications.list.filter(n=>n.appName==="Niri").length===0,
+      "successful Niri reload remains silent"))return
+   if(!root.check(manager.toasts.length===0 && Audio.played===0,
+      "silent Niri reload creates no parallel toast or sound"))return
    manager._lastReloadToastTime=0
    manager._pendingReloadSource="quickshell";manager._showReloadToast()
-   root.advance(5)
-  } else if(root.stage===5 && root.find("Quickshell reloaded")) {
-   if(!root.check(root.find("Quickshell reloaded").isTransient && manager.toasts.length===0 && Audio.played===0,
-      "Quickshell shares the notification route and silence"))return
-   ordinary.running=true;root.advance(6)
-  } else if(root.stage===6 && root.find("Audible ordinary")) {
+   root.advance(3)
+  } else if(root.stage===3 && root.find("Quickshell reloaded")) {
+   const q=root.find("Quickshell reloaded")
+   if(!root.check(q.isTransient && q.timer?.interval===2000 && q.notification.hints["suppress-sound"]===true,
+      "Quickshell reload remains a transient silent notification"))return
+   if(!root.check(manager.toasts.length===0 && Audio.played===0,
+      "Quickshell reload creates no parallel toast body or sound"))return
+   ordinary.running=true;root.advance(4)
+  } else if(root.stage===4 && root.find("Audible ordinary")) {
    if(!root.check(Audio.played===1,"ordinary notifications keep their sound"))return
    Notifications.discardAllNotifications()
    Config.setNestedValue("reloadToasts.enable",false)
    manager._lastReloadToastTime=0
-   manager._pendingReloadSource="niri";manager._showReloadToast()
-   root.advance(7)
-  } else if(root.stage===7 && elapsed>250) {
-   if(!root.check(!root.find("Niri Reloaded"),"disabled reload notifications stay suppressed"))return
-   manager.addToast("Reload error fixture","copyable error","error",true,6000,"error","red")
-   if(!root.check(manager.toasts.length===1 && manager.toasts[0].isError && manager.toasts[0].message==="copyable error",
-      "errors retain their actionable toast route"))return
+   manager._pendingReloadSource="quickshell";manager._showReloadToast()
+   root.advance(5)
+  } else if(root.stage===5 && elapsed>250) {
+   if(!root.check(!root.find("Quickshell reloaded"),"disabled reload notifications stay suppressed"))return
+   manager.addToast("Niri config reload failed","copyable error","error",true,6000,"error","red")
+   if(!root.check(manager.toasts.length===1 && manager.toasts[0].isError
+      && manager.toasts[0].title==="Niri config reload failed"
+      && manager.toasts[0].message==="copyable error",
+      "Niri failures retain their actionable toast route"))return
    manager.removeToast(manager.toasts[0].id)
-   console.info("RELOAD_NOTIFICATION_PASS native-ingress one-popup cooldown shared-hover transient-expiry silence ordinary-sound errors")
+   console.info("RELOAD_NOTIFICATION_PASS niri-success-silent quickshell-transient-silent ordinary-sound niri-error")
    root.finished=true;Qt.quit()
   }
  }}

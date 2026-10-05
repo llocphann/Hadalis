@@ -1,0 +1,51 @@
+{
+  "id": "JOB-C2F353CC-CANONDIAG-R12-20261005-1820",
+  "base_sha": "5fa01f88a73ddf017fdfb9a5c72216b4751548b2",
+  "profile_id": "profile-c2f353cc8d1c4c1f",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "set -uo pipefail\nn=0\nlocal_i=0\nwhile IFS= read -r -d '' f; do\n  case \"$f\" in\n    scripts/test-wull-manual-perimeter.py|scripts/test-megaqml-host-ui-fixture.py|scripts/test-megaqml-ui-fixture.py|scripts/test-megaqml-qt-diagnostic.py|scripts/test-megaqml-quickshell-classify.py|scripts/test-megaqml-phase2p-history-guard.py) continue ;;\n  esac\n  if (( n >= 147 && n < 190 )); then\n    python3 \"$f\" >/dev/null 2>&1 || exit $((20 + local_i))\n    local_i=$((local_i + 1))\n  fi\n  n=$((n + 1))\ndone < <(git ls-files -z -- ':(glob)**/test-*.py' 'test-*.py' | sort -z -u)\nexit 0"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "set -uo pipefail\nn=0\nlocal_i=0\nwhile IFS= read -r -d '' f; do\n  case \"$f\" in\n    scripts/test-wull-manual-perimeter.py|scripts/test-megaqml-host-ui-fixture.py|scripts/test-megaqml-ui-fixture.py|scripts/test-megaqml-qt-diagnostic.py|scripts/test-megaqml-quickshell-classify.py|scripts/test-megaqml-phase2p-history-guard.py) continue ;;\n  esac\n  if (( n >= 190 && n < 230 )); then\n    python3 \"$f\" >/dev/null 2>&1 || exit $((20 + local_i))\n    local_i=$((local_i + 1))\n  fi\n  n=$((n + 1))\ndone < <(git ls-files -z -- ':(glob)**/test-*.py' 'test-*.py' | sort -z -u)\nexit 0"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "set -uo pipefail\nn=0\nlocal_i=0\nwhile IFS= read -r -d '' f; do\n  case \"$f\" in\n    scripts/test-wull-manual-perimeter.py|scripts/test-megaqml-host-ui-fixture.py|scripts/test-megaqml-ui-fixture.py|scripts/test-megaqml-qt-diagnostic.py|scripts/test-megaqml-quickshell-classify.py|scripts/test-megaqml-phase2p-history-guard.py) continue ;;\n  esac\n  if (( n >= 230 && n < 262 )); then\n    python3 \"$f\" >/dev/null 2>&1 || exit $((20 + local_i))\n    local_i=$((local_i + 1))\n  fi\n  n=$((n + 1))\ndone < <(git ls-files -z -- ':(glob)**/test-*.py' 'test-*.py' | sort -z -u)\nexit 0"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "set -uo pipefail\nn=0\nlocal_i=0\nwhile IFS= read -r -d '' f; do\n  case \"$f\" in\n    scripts/test-wull-manual-perimeter.py|scripts/test-megaqml-host-ui-fixture.py|scripts/test-megaqml-ui-fixture.py|scripts/test-megaqml-qt-diagnostic.py|scripts/test-megaqml-quickshell-classify.py|scripts/test-megaqml-phase2p-history-guard.py) continue ;;\n  esac\n  if (( n >= 262 )); then\n    python3 \"$f\" >/dev/null 2>&1 || exit $((20 + local_i))\n    local_i=$((local_i + 1))\n  fi\n  n=$((n + 1))\ndone < <(git ls-files -z -- ':(glob)**/test-*.py' 'test-*.py' | sort -z -u)\nexit 0"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 600
+      }
+    }
+  ]
+}

@@ -295,6 +295,23 @@ Item {
         if (candidates.length && random()<.62)
             moveTo(candidates[Math.min(candidates.length-1,Math.floor(random()*candidates.length))],false)
     }
+    function recoverSupport(from = position()): bool {
+        if (!Scene.valid(scene) || !Scene.clearAt(scene,from)) {hideImmediately();return false}
+        const support=Scene.supportAt(scene,from,placement.support?.edge ?? placement.edge)
+        if (support) {
+            clearMotion()
+            const safe=Scene.annotate(scene,from,support.edge,placement.kind,placement.key)
+            placement=safe;destination=safe;targetX=safe.x;targetY=safe.y
+            scheduleSurface()
+            return true
+        }
+        const floor=Scene.landingBelow(scene,from)
+        if (floor.qualified && moveTo(floor,false,"fall")) return true
+        const water=Scene.nearestWater(scene,from)
+        if (water.qualified && moveTo(water.placement,false)) return true
+        hideImmediately()
+        return false
+    }
     function reconcileScene(): void {
         if (!permitted || !Scene.valid(scene)) {hideImmediately();return}
         if (!visitActive && requestedReveal>0 && !retreating) {if(Date.now()>=hiddenUntil)appear();return}
@@ -320,27 +337,28 @@ Item {
             hideImmediately();return
         }
         if (traveling) {
+            // A destination copied from the previous scene is not proof that
+            // its support still exists. If the module/rim vanished, abort that
+            // stale route before Wull can arrive at an airborne coordinate.
+            if (destination?.grounded === true
+                    && !Scene.supportAt(scene,destination,destination.support?.edge ?? destination.edge)) {
+                recoverSupport(from)
+                return
+            }
             for (let i=Math.max(0,waypoint-1);i<waypoints.length;i++) {
                 if (!Scene.clearSegment(scene,from,waypoints[i])
-                        || (arc>0 && !Scene.clearArc(scene,from,waypoints[i],arc,normalX,normalY))) {pause(true);return}
+                        || (arc>0 && !Scene.clearArc(scene,from,waypoints[i],arc,normalX,normalY))) {
+                    recoverSupport(from)
+                    return
+                }
                 from=waypoints[i]
             }
         } else {
-            const support=Scene.supportAt(scene,from)
-            if (support) {
-                placement=Scene.annotate(scene,from,placement.edge,placement.kind,placement.key)
-                return
-            }
             // A popup/module can disappear while Wull is standing on its rim.
-            // The old coordinates may still be collision-free, but they are no
-            // longer a support. Never re-annotate that airborne point as a
-            // resting placement: fall to verified geometry, route to water, or
-            // hide if no safe landing exists.
-            const floor=Scene.landingBelow(scene,from)
-            if (floor.qualified && moveTo(floor,false,"fall")) return
-            const water=Scene.nearestWater(scene,from)
-            if (water.qualified && moveTo(water.placement,false)) return
-            hideImmediately()
+            // Coordinates can remain collision-free even though the support is
+            // gone, so recovery must prove a live support rather than merely
+            // re-annotating the old position.
+            recoverSupport(from)
         }
     }
     function beginDrag(): void {

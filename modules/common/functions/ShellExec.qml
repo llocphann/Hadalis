@@ -41,9 +41,12 @@ Singleton {
 
     function execDetachedArgs(args, description = "", workingDirectory = ""): void {
         const argv = Array.from(args ?? [])
+        for (let index = 0; index < argv.length; ++index)
+            argv[index] = String(argv[index] ?? "")
+
         let writeIndex = 0
         for (let readIndex = 0; readIndex < argv.length; ++readIndex) {
-            const normalized = String(argv[readIndex] ?? "")
+            const normalized = argv[readIndex]
             if (normalized.length > 0)
                 argv[writeIndex++] = normalized
         }

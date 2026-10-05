@@ -86,14 +86,23 @@ for token in \
     'columns: root.embeddedPresentation ? 2 : 1' \
     '? Translation.tr("Enable")' \
     ': Translation.tr("Enable now")' \
-    'Layout.fillWidth: !root.embeddedPresentation' \
-    'Math.max(160, protectionContent.width - 64)' \
-    'Layout.alignment: Qt.AlignHCenter'; do
+    'id: embeddedBrightnessRow' \
+    'id: embeddedBrightnessSlider' \
+    'visible: root.embeddedPresentation' \
+    'Layout.preferredWidth: 48'; do
     grep -Fq "$token" "$night_light_dialog" \
-        || { printf 'FAIL: embedded Eye protection layout contract missing: %s\n' "$token" >&2; exit 1; }
+        || { printf 'FAIL: embedded Eye protection compact contract missing: %s\n' "$token" >&2; exit 1; }
 done
-if [[ "$(grep -Fc 'Math.max(160, protectionContent.width - 64)' "$night_light_dialog")" -ne 3 ]]; then
-    printf 'FAIL: Eye protection separators are not consistently shortened in embedded mode\n' >&2
+if [[ "$(grep -Fc 'WindowDialogSeparator {' "$night_light_dialog")" -ne 3 ]]; then
+    printf 'FAIL: Eye protection separator structure changed unexpectedly\n' >&2
+    exit 1
+fi
+if [[ "$(grep -Fc 'visible: !root.embeddedPresentation' "$night_light_dialog")" -lt 4 ]]; then
+    printf 'FAIL: Eye protection separators are still visible in embedded Utilities\n' >&2
+    exit 1
+fi
+if grep -Fq 'Math.max(160, protectionContent.width - 64)' "$night_light_dialog"; then
+    printf 'FAIL: Eye protection still carries embedded separator-width styling\n' >&2
     exit 1
 fi
 
@@ -108,7 +117,7 @@ if grep -Fq 'Behavior on implicitWidth' "$utility_popup" \
 fi
 for token in \
     'readonly property int panelWidth: 620' \
-    'readonly property int panelHeight: 500' \
+    'readonly property int panelHeight: 400' \
     'implicitWidth: panelWidth' \
     'implicitHeight: panelHeight'; do
     grep -Fq "$token" "$utility_popup" \
@@ -221,8 +230,8 @@ ShellRoot {
                 Config.setNestedValue("panelFamily","abyss")
             } else if (root.step === 1) {
                 if (!root.check(utility !== null, "Utilities feature loads through AbyssPopupContent")) return
-                if (!root.check(utility.implicitWidth === 620 && utility.implicitHeight === 500,
-                    "Utilities feature uses the shared 620x500 viewport")) return
+                if (!root.check(utility.implicitWidth === 620 && utility.implicitHeight === 400,
+                    "Utilities feature uses the shared 620x400 viewport")) return
                 root.monitorWidth = popup.desiredWidth
                 root.monitorHeight = popup.desiredHeight
                 if (!root.check(utility.currentPage === 0 && utility.loadedPageCount > 0
@@ -266,4 +275,4 @@ if [[ "$status" != 124 ]] || ! rg -q 'UTILITIES_POPUP_PASS' "$test_root/runtime.
     cat "$test_root/runtime.log"
     exit 1
 fi
-printf 'PASS: Utilities uses a fixed swipe viewport, compact Eye protection controls and lazy pages\n'
+printf 'PASS: Utilities uses a compact shared viewport and streamlined Eye protection controls\n'

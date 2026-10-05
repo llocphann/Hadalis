@@ -25757,3 +25757,52 @@ collision handling and the frozen Weather renderer path. Re-fetch current
 `dev`, search existing handoff/TODO/commit ownership first, then inspect a
 distinct high-frequency QML/backend/service path for a material strict-lossless
 candidate.
+
+
+### 110.10 Native Niri output JSON borrowing confirmed (2026-10-05)
+
+A distinct native Niri allocation candidate is now **CONFIRMED and implemented**
+on current `dev`. In `native/inir-native/src/niri.rs::outputs()`, commit
+`a3f20b3b1d8cb0b92ae0a1f98162f6774ef83f16` replaces deep clones of the parsed
+`modes` array and `logical` object with borrowed views into the already-owned
+`serde_json::Value` tree.
+
+Strict-lossless boundary:
+
+- output iteration order, resolution/rate grouping, duplicate-rate suppression,
+  preferred-mode handling, current-mode lookup and final JSON publication are
+  unchanged;
+- missing or malformed `modes` still behaves as an empty sequence and missing
+  or malformed `logical` still publishes the same defaults;
+- the borrowed JSON is never mutated while those views are live, and the final
+  published fields still clone only the individual values that must be owned by
+  the result object;
+- callers still invoke the same one-shot `NiriCommand::Outputs` path and receive
+  the same serialized public schema and process exit behavior.
+
+Structural reduction: each successfully parsed output avoids one deep clone of
+its complete `modes` JSON array and one deep clone of its complete `logical`
+JSON object. This is a local copy/allocation reduction proportional to the input
+JSON size, not a measured CPU/RAM/latency percentage.
+
+Validation job `JOB-C2F353CC-NIRIOUTPUT-BORROW-R23-20261005` used base
+`a3f20b3b1d8cb0b92ae0a1f98162f6774ef83f16`, job/source SHA
+`45ee761d651bca7cccec8713b03a92c90ccc4c2f`, profile
+`profile-c2f353cc8d1c4c1f`. All actions exited 0 without timeout/cancellation:
+
+- `cargo test --locked -p inir-native` — `:0`, observed Unix `1791205521`;
+- `cargo check --locked -p inir-native` — `:1`, observed Unix `1791205530`;
+- native selector behavior contract — `:2`, observed Unix `1791205530`;
+- native production cutover contract — `:3`, observed Unix `1791205530`.
+
+The worker result receipt is published at descendant
+`5606e0feb4e9e596636381af20ab45a78fedda36`. No live Niri compositor behavior
+was inferred from these deterministic compile/unit/routing contracts.
+
+Current `dev` before this checkpoint write:
+`5606e0feb4e9e596636381af20ab45a78fedda36`.
+
+Next round should diversify away from both Dashboard collision handling and this
+native Niri getter. Re-fetch current `dev`, reject ALREADY/CLOSED/DISPROVEN
+research first, then inspect a distinct high-frequency service/QML path for a
+material strict-lossless reduction.

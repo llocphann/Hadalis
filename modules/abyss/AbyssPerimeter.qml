@@ -623,7 +623,9 @@ Scope {
                 edge: companionPresence.emergenceEdge
                 scale: root.companionScale
                 interactive: root.companionInteractive && window.companionHostActive && !companionPresence.retreating
-                dragEnabled: interactive
+                // Wull stays attached to verified water/surface geometry; pointer
+                // interaction can chat/react, but cannot leave it floating.
+                dragEnabled: false
                 motionEnabled: root.companionPreferences.animationsEnabled && AbyssStyle.motionEnabled
                 effectsEnabled: root.companionPreferences.effectsEnabled && Appearance.effectsEnabled
                     && AbyssStyle.quality!=="performance"

@@ -20,9 +20,19 @@ Item {
     readonly property bool controlsVisible: visible && (editing || WullMind.checkInStage.length>0)
     width: Math.min(380, Math.max(220, outputWidth - 32))
     height: editing ? Math.min(430, Math.max(230, outputHeight - 48)) : content.implicitHeight + 24
-    x: Math.max(12, Math.min(outputWidth - width - 12, actor.x + actor.width / 2 - width / 2))
-    y: actor.y - height - 18 >= 12 ? actor.y - height - 18
-        : Math.min(outputHeight - height - 12, actor.y + actor.height + 18)
+    readonly property real actorVisualScale: Math.max(.1, Number(actor.scale) || 1)
+    readonly property real actorVisualWidth: actor.width * actorVisualScale
+    readonly property real actorVisualHeight: actor.height * actorVisualScale
+    readonly property real actorVisualLeft: actor.x + (actor.width - actorVisualWidth) / 2
+    readonly property real actorVisualTop: actor.y + (actor.height - actorVisualHeight) / 2
+    readonly property real actorVisualRight: actorVisualLeft + actorVisualWidth
+    readonly property real actorVisualBottom: actorVisualTop + actorVisualHeight
+    readonly property real anchorGap: Math.max(6, Math.min(10, actorVisualHeight * .08))
+    x: Math.max(12, Math.min(outputWidth - width - 12,
+        actorVisualLeft + actorVisualWidth / 2 - width / 2))
+    y: actorVisualTop - height - anchorGap >= 12
+        ? actorVisualTop - height - anchorGap
+        : Math.min(outputHeight - height - 12, actorVisualBottom + anchorGap)
     visible: allowed && actor.visible && actor.inputReady && (WullMind.text.length > 0 || WullMind.conversationOpen)
     z: 240
     function containsScenePoint(point): bool {

@@ -28,6 +28,7 @@ Item {
     property bool dragging: false
     property bool retreating: false
     property bool releasedFlight: false
+    readonly property bool surfaceBound: true
     property bool peekIntro: false
     property bool peekOnly: false
     property double fullyPresentSince: 0
@@ -253,22 +254,23 @@ Item {
     function explore(): void {
         if (!canExplore || traveling || directed || travelId===0) return
         const here=position(), support=Scene.supportAt(scene,here)
-        let selected
-        const roll=random()
-        if (support && roll<.85) {
-            const horizontal=support.axis==="x",span=horizontal ? scene.hostWidth : scene.hostHeight
-            const along=Scene.clamp((horizontal ? here.x : here.y)+(travelFraction-.5)*240*scene.scale,
-                support.from,support.to-span)
-            selected=Scene.annotate(scene,horizontal ? {x:along,y:here.y} : {x:here.x,y:along},
-                support.edge,placement.kind,placement.key)
-        } else if (roll<.88) {
-            // Float upwards into open space; a later drop/landing may walk again.
-            selected=Scene.drop(scene,here.x+(travelFraction-.5)*130*scene.scale,
-                here.y-(45+random()*80)*scene.scale,here)
-        } else selected=Scene.appearance(scene,random(),random(),travelFraction)
+        if (!support) {
+            const floor=Scene.landingBelow(scene,here)
+            if (floor.qualified) moveTo(floor,false,"fall")
+            else {
+                const water=Scene.nearestWater(scene,here)
+                if (water.qualified) moveTo(water.placement,false)
+            }
+            return
+        }
+        const horizontal=support.axis==="x",span=horizontal ? scene.hostWidth : scene.hostHeight
+        const along=Scene.clamp((horizontal ? here.x : here.y)+(travelFraction-.5)*240*scene.scale,
+            support.from,support.to-span)
+        const selected=Scene.annotate(scene,horizontal ? {x:along,y:here.y} : {x:here.x,y:along},
+            support.edge,placement.kind,placement.key)
         if (selected.qualified && Scene.distance(here,selected)>10*scene.scale) {
             const gait=random(), length=Scene.distance(here,selected)
-            const movement=support && length>=35*scene.scale && length<=160*scene.scale && gait<.22 ? "jump"
+            const movement=length>=35*scene.scale && length<=160*scene.scale && gait<.22 ? "jump"
                 : personality!=="calm" && gait<(personality==="energetic" ? .78 : .48) ? "run" : "walk"
             moveTo(selected,false,movement)
         }
@@ -349,15 +351,12 @@ Item {
         if (requestedReveal<=0) {retreat();return}
         if (motionEnabled && !placement.grounded) {
             const here=position(), floor=Scene.landingBelow(scene,here)
-            if (floor.qualified && floor.y-here.y>60*scene.scale && random()<.55) {
-                if (moveTo(floor,false,"fall")) return
-            }
-            // A released droplet may propel itself away; never walk in mid-air.
-            const takeoff=Scene.drop(scene,here.x+(random()-.5)*180*scene.scale,
-                here.y-(45+random()*55)*scene.scale,here)
-            if (takeoff.qualified && Scene.distance(here,takeoff)>12*scene.scale
-                    && moveTo(takeoff,false,"fly")) {releasedFlight=true;return}
+            releasedFlight=false
             if (floor.qualified && moveTo(floor,false,"fall")) return
+            const water=Scene.nearestWater(scene,here)
+            if (water.qualified && moveTo(water.placement,false)) return
+            hideImmediately()
+            return
         }
         disturb("land",placement)
         if (placement.grounded && motionEnabled) actor.perform("land")
@@ -378,8 +377,16 @@ Item {
             const horizontal=support.axis==="x",axis=horizontal ? dx : dy,extent=horizontal ? scene.hostWidth : scene.hostHeight
             const along=Scene.clamp((horizontal ? here.x : here.y)+(axis>=0 ? 1 : -1)*100*scene.scale,support.from,support.to-extent)
             next=Scene.annotate(scene,horizontal ? {x:along,y:here.y} : {x:here.x,y:along},emergenceEdge,placement.kind,placement.key)
-        } else next=Scene.drop(scene,here.x+dx/length*110*scene.scale,here.y+dy/length*90*scene.scale,here)
-        if (next.qualified && moveTo(next,false,support ? "run" : "fly")) releasedFlight=true
+        } else {
+            const floor=Scene.landingBelow(scene,here)
+            if (floor.qualified) next=floor
+            else {
+                const water=Scene.nearestWater(scene,here)
+                next=water.qualified ? water.placement : null
+            }
+        }
+        releasedFlight=false
+        if (next?.qualified) moveTo(next,false,support ? "run" : "")
     }
     function nearbyClick(x,y): void {
         if (!permitted || !visitActive || dragging || !motionEnabled || actor.presentation<.2) return

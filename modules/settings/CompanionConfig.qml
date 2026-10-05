@@ -363,8 +363,15 @@ ContentPage {
                 onToggledByUser:checked=>Config.setNestedValue("abyss.companionMind.talkEnabled",checked)
             }
             ChoiceRow {
+                objectName:"wullProactiveFrequency"
                 label:Translation.tr("Check-ins and reminders")
-                options:[{displayName:Translation.tr("Occasionally while idle"),value:"occasional"},{displayName:Translation.tr("Only when I chat"),value:"manual"}]
+                options:[
+                    {displayName:Translation.tr("Rarely while idle"),value:"rare"},
+                    {displayName:Translation.tr("Occasionally while idle"),value:"occasional"},
+                    {displayName:Translation.tr("Regularly while idle"),value:"regular"},
+                    {displayName:Translation.tr("Often while idle"),value:"often"},
+                    {displayName:Translation.tr("Only when I chat"),value:"manual"}
+                ]
                 currentValue:WullMind.proactive
                 onSelected:value=>Config.setNestedValue("abyss.companionMind.proactive",value)
             }

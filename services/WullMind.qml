@@ -18,7 +18,19 @@ Singleton {
     readonly property string thinkingEffort: ["off","low","medium","high"].includes(String(options.thinkingEffort ?? "off"))
         ? String(options.thinkingEffort ?? "off") : "off"
     readonly property string referenceVault: String(options.referenceVault ?? "")
-    readonly property string proactive: String(options.proactive ?? "occasional")
+    readonly property string proactive: {
+        const value=String(options.proactive ?? "occasional")
+        return ["rare","occasional","regular","often","manual"].includes(value) ? value : "occasional"
+    }
+    readonly property var proactiveProfiles: ({
+        rare: {checkInMs: 14400000, playfulMs: 7200000},
+        occasional: {checkInMs: 2400000, playfulMs: 1200000},
+        regular: {checkInMs: 1800000, playfulMs: 900000},
+        often: {checkInMs: 1200000, playfulMs: 600000}
+    })
+    readonly property bool proactiveIdleEnabled: proactiveProfiles[proactive] !== undefined
+    readonly property int proactiveCheckInInterval: proactiveIdleEnabled ? proactiveProfiles[proactive].checkInMs : 0
+    readonly property int proactivePlayfulInterval: proactiveIdleEnabled ? proactiveProfiles[proactive].playfulMs : 0
     readonly property string contextKey: {
         const todo=Config.options?.todo?.obsidian ?? ({})
         const daily=todo.dailyNote ?? ({})
@@ -270,7 +282,7 @@ Singleton {
         return rows
     }
     function offerAutomatic(): void {
-        if (!hostVisible || !hostIdle || !idleMonitor.isIdle || !talkEnabled || proactive!=="occasional"
+        if (!hostVisible || !hostIdle || !idleMonitor.isIdle || !talkEnabled || !proactiveIdleEnabled
                 || conversationOpen || busy || Date.now()-startedAt<90000 || text) return
         const nowMs=Date.now()
         if (obsidianEnabled && nowMs-lastContext>120000 && nowMs-lastContextAttempt>120000) {
@@ -289,10 +301,10 @@ Singleton {
                 : "Psst! "+next.title
             say(cheer+" · "+String(Math.floor(next.start/60)).padStart(2,"0")+":"+String(next.start%60).padStart(2,"0"),"schedule")
             reactionRequested("happy")
-        } else if (Date.now()-lastCheckIn>2400000) {
+        } else if (Date.now()-lastCheckIn>proactiveCheckInInterval) {
             lastCheckIn=Date.now()
             askCheckIn("mood")
-        } else if (Date.now()-lastPlayful>1200000) {
+        } else if (Date.now()-lastPlayful>proactivePlayfulInterval) {
             lastPlayful=Date.now()
             const lines=["I tried counting my bubbles. One escaped. Suspicious.",
                 "Important announcement: I am approximately one sip tall.",
@@ -389,13 +401,13 @@ Singleton {
     Component.onCompleted: if(aiEnabled)LocalModels.ensureInitialized()
     Connections {target:LocalModels;function onUpdated():void{root.selectDownloaded()}}
     onContextKeyChanged: {if(pending) cancel();journal=({schedule:[],mood:"",energy:"",journalPath:""});lastContext=0;lastContextAttempt=0}
-    onProactiveChanged: if(proactive!=="occasional" && pending?.automatic)cancel()
+    onProactiveChanged: if(!proactiveIdleEnabled && pending?.automatic)cancel()
     onHostVisibleChanged: if (!hostVisible) {if(pending?.automatic) cancel();if(!conversationOpen){text="";checkInStage=""}}
     onHostIdleChanged: if(!hostIdle && pending?.automatic)cancel()
     onTalkEnabledChanged: if(!talkEnabled) {cancel();dismiss()}
-    IdleMonitor {id:idleMonitor;enabled:root.hostVisible && root.talkEnabled && root.proactive==="occasional";timeout:60;respectInhibitors:true}
+    IdleMonitor {id:idleMonitor;enabled:root.hostVisible && root.talkEnabled && root.proactiveIdleEnabled;timeout:60;respectInhibitors:true}
     Timer {interval:60000;repeat:true;running:root.hostVisible && root.hostIdle && root.talkEnabled
-        && root.proactive==="occasional" && idleMonitor.isIdle && !root.conversationOpen;onTriggered:root.offerAutomatic()}
+        && root.proactiveIdleEnabled && idleMonitor.isIdle && !root.conversationOpen;onTriggered:root.offerAutomatic()}
     Timer {id:expiry;repeat:false;onTriggered:if(!root.conversationOpen){root.text="";root.checkInStage=""}}
     Timer {id:conversationExpiry;repeat:false;interval:root.conversationIdleTimeout;onTriggered:root.closeChat()}
     Timer {id:deadline;interval:35000;repeat:false;onTriggered:{root.cancel();root.errorMessage="Local model request timed out.";root.connectionStatus="error"}}

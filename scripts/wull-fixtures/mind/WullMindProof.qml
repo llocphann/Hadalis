@@ -118,8 +118,14 @@ Window {
                 WullMind.clearConversation();WullMind.openChat();WullMind.sendMessage("Hi!")
                 check(WullMind.source==="built-in" && !WullMind.busy && WullMind.text.indexOf("local model")>=0,"offline companion pretended inference")
                 WullMind.dismiss()
-                Config.setNestedValues({"abyss.companionMind.obsidianEnabled":true,"todo.obsidian.vaultPath":Quickshell.env("WULL_TEST_VAULT")});wait(80)
-                check(WullMind.obsidianEnabled && WullMind.payload("check_in").vault===Quickshell.env("WULL_TEST_VAULT"),"journal bridge did not adopt configured vault "+JSON.stringify({enabled:WullMind.obsidianEnabled,vault:WullMind.payload("check_in").vault}))
+                const testVault=Quickshell.env("WULL_TEST_VAULT")
+                Config.setNestedValues({"abyss.companionMind.obsidianEnabled":true,"todo.obsidian.vaultPath":testVault})
+                tryCompare(WullMind,"obsidianEnabled",true,3000)
+                tryVerify(()=>WullMind.payload("check_in").vault===testVault,3000)
+                check(WullMind.obsidianEnabled && WullMind.payload("check_in").vault===testVault,
+                    "journal bridge did not adopt configured vault "+JSON.stringify({
+                        enabled:WullMind.obsidianEnabled,vault:WullMind.payload("check_in").vault,
+                        configuredVault:String(Config.options?.todo?.obsidian?.vaultPath ?? "")}))
                 WullMind.askCheckIn("mood")
                 mouseMove(cloud,cloud.width/2,14);wait(80)
                 mouseClick(root.named(cloud,"wullmood-good"));wait(30)

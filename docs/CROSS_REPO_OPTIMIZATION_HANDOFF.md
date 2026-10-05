@@ -26209,3 +26209,54 @@ the R42 result receipt after the job commit and does not modify runtime source.
 Next round should diversify away from search and shared launch normalization.
 Re-fetch current `dev`, reject existing ownership, then inspect a distinct
 reactive service/backend or media/settings path.
+
+
+### 110.17 YtMusic ignored browser-log serialization removed (2026-10-05)
+
+Round 62 §62.2 is now **CONFIRMED and implemented** on current `dev`.
+Commit `88034404ae904cb86749ad83d59af5d8cc6a9b15`
+(`perf(ytmusic): skip ignored browser serialization`) removes two
+`JSON.stringify(root.detectedBrowsers)` expressions that were evaluated only
+as extra arguments to `_log(msg)`.
+
+Strict-lossless boundary:
+
+- `_log` remains a one-parameter function:
+  `function _log(msg) { if (root.verbose) console.log(msg) }`;
+- both affected calls retain their original first string argument byte-for-byte;
+- JavaScript previously evaluated the extra JSON argument before calling
+  `_log`, but `_log` could not observe or print that argument in either
+  verbose state;
+- browser detection, auto-connect decisions, saved-browser reads, connection
+  checks and process lifecycle are untouched.
+
+Local structural reduction per affected auto-connect detection lifecycle:
+
+- full `JSON.stringify(detectedBrowsers)` operations: **up to 2 -> 0**;
+- browser-array traversal and temporary JSON strings attributable only to those
+  ignored arguments are removed;
+- no CPU/RAM/latency percentage is claimed.
+
+Validation job `JOB-C2F353CC-YTMUSIC62-R43-20261005` used base
+`88034404ae904cb86749ad83d59af5d8cc6a9b15`, job/source SHA
+`c6835a047d82395adda0553cac60cfef647d1f21`, profile
+`profile-c2f353cc8d1c4c1f`. All actions exited 0 without timeout or
+cancellation:
+
+- source-shape plus verbose/nonverbose observable-log parity oracle — `:0`,
+  observed Unix `1791214147`;
+- media-surface controls contract — `:1`, observed `1791214147`;
+- loading-presentation contract — `:2`, observed `1791214147`;
+- performance lifecycle contract — `:3`, observed `1791214148`.
+
+Current descendant `1c3a37b8f34988356027cecf27aa814c135f769e` only publishes
+the R43 result receipt after the job commit and does not modify runtime source.
+
+The separate YtMusic Save Queue Set optimization from §69.1 is **ALREADY** on
+current `dev` through `_addToPlaylistWithMembership()`; it must not be
+recounted or reimplemented.
+
+Next round should diversify away from search, ShellExec launch normalization and
+YtMusic logging. Re-fetch current `dev`, reject existing ownership, then
+inspect a distinct reactive service/backend, polling, parsing or model-update
+path.

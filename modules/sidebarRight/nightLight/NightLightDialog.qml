@@ -17,6 +17,52 @@ WindowDialog {
     property var brightnessMonitor: screen ? Brightness.getMonitorForScreen(screen) : null
     backgroundHeight: Math.max(360, Math.min(860, (root.screen?.height ?? 1080) - 96))
 
+    component EmbeddedSliderRow: RowLayout {
+        id: inlineSlider
+
+        property string label: ""
+        property string valueText: ""
+        property alias from: embeddedSliderControl.from
+        property alias to: embeddedSliderControl.to
+        property alias stepSize: embeddedSliderControl.stepSize
+        property alias value: embeddedSliderControl.value
+        property alias stopIndicatorValues: embeddedSliderControl.stopIndicatorValues
+        property alias tooltipContent: embeddedSliderControl.tooltipContent
+        signal moved()
+
+        spacing: 8
+
+        StyledText {
+            Layout.preferredWidth: 190
+            Layout.maximumWidth: 190
+            text: inlineSlider.label
+            color: Appearance.colors.colSubtext
+            font.pixelSize: Appearance.font.pixelSize.smaller
+            elide: Text.ElideRight
+            verticalAlignment: Text.AlignVCenter
+        }
+
+        StyledSlider {
+            id: embeddedSliderControl
+            Layout.fillWidth: true
+            Layout.minimumWidth: 120
+            enableSettingsSearch: false
+            configuration: StyledSlider.Configuration.S
+            Accessible.name: inlineSlider.label
+            onMoved: inlineSlider.moved()
+        }
+
+        StyledText {
+            id: embeddedSliderValue
+            Layout.preferredWidth: 68
+            text: inlineSlider.valueText
+            color: Appearance.colors.colSubtext
+            font.pixelSize: Appearance.font.pixelSize.small
+            horizontalAlignment: Text.AlignRight
+            verticalAlignment: Text.AlignVCenter
+        }
+    }
+
     WindowDialogTitle {
         visible: !root.embeddedPresentation
         text: Translation.tr("Eye protection")
@@ -120,6 +166,7 @@ WindowDialog {
                 }
 
                 WindowDialogSlider {
+                    visible: !root.embeddedPresentation
                     anchors {
                         left: parent.left
                         right: parent.right
@@ -134,6 +181,19 @@ WindowDialog {
                     onMoved: Config.setNestedValue("light.night.colorTemperature", value)
                     valueText: `${Math.round(value)} K`
                     tooltipContent: valueText
+                }
+
+                EmbeddedSliderRow {
+                    visible: root.embeddedPresentation
+                    width: parent.width
+                    label: Translation.tr("Intensity")
+                    from: 6500
+                    to: 1200
+                    stopIndicatorValues: [5000, to]
+                    value: Config.options?.light?.night?.colorTemperature ?? 4500
+                    valueText: `${Math.round(value)} K`
+                    tooltipContent: valueText
+                    onMoved: Config.setNestedValue("light.night.colorTemperature", value)
                 }
             }
 
@@ -188,22 +248,48 @@ WindowDialog {
                             {label:"Response duration",key:"responseMs",fallback:80,from:40,to:500,unit:"ms",scale:1},
                             {label:"Capture scale",key:"sampleScale",fallback:.10,from:.05,to:.50,unit:"%",scale:100}
                         ]
-                        delegate: WindowDialogSlider {
+                        delegate: Column {
                             required property var modelData
                             width: parent.width
-                            text: Translation.tr(modelData.label)
-                            from: modelData.from;to: modelData.to
-                            stepSize: modelData.scale === 100 ? .01 : 10
-                            value: Config.options?.light?.antiFlashbang?.[modelData.key] ?? modelData.fallback
-                            valueText: Math.round(value * modelData.scale) + " " + modelData.unit
-                            tooltipContent: valueText
-                            onMoved: Config.setNestedValue("light.antiFlashbang." + modelData.key, value)
+
+                            WindowDialogSlider {
+                                visible: !root.embeddedPresentation
+                                width: parent.width
+                                text: Translation.tr(parent.modelData.label)
+                                from: parent.modelData.from
+                                to: parent.modelData.to
+                                stepSize: parent.modelData.scale === 100 ? .01 : 10
+                                value: Config.options?.light?.antiFlashbang?.[parent.modelData.key]
+                                    ?? parent.modelData.fallback
+                                valueText: Math.round(value * parent.modelData.scale)
+                                    + " " + parent.modelData.unit
+                                tooltipContent: valueText
+                                onMoved: Config.setNestedValue(
+                                    "light.antiFlashbang." + parent.modelData.key, value)
+                            }
+
+                            EmbeddedSliderRow {
+                                visible: root.embeddedPresentation
+                                width: parent.width
+                                label: Translation.tr(parent.modelData.label)
+                                from: parent.modelData.from
+                                to: parent.modelData.to
+                                stepSize: parent.modelData.scale === 100 ? .01 : 10
+                                value: Config.options?.light?.antiFlashbang?.[parent.modelData.key]
+                                    ?? parent.modelData.fallback
+                                valueText: Math.round(value * parent.modelData.scale)
+                                    + " " + parent.modelData.unit
+                                tooltipContent: valueText
+                                onMoved: Config.setNestedValue(
+                                    "light.antiFlashbang." + parent.modelData.key, value)
+                            }
                         }
                     }
                 }
             }
 
             WindowDialogSectionHeader {
+                visible: !root.embeddedPresentation
                 text: Translation.tr("Brightness")
             }
 
@@ -216,7 +302,7 @@ WindowDialog {
 
             Column {
                 id: brightnessColumn
-                Layout.topMargin: root.embeddedPresentation ? -12 : -16
+                Layout.topMargin: root.embeddedPresentation ? -4 : -16
                 Layout.fillWidth: true
                 visible: !!root.brightnessMonitor
 
@@ -234,30 +320,14 @@ WindowDialog {
                     onMoved: root.brightnessMonitor?.setBrightness(value)
                 }
 
-                RowLayout {
-                    id: embeddedBrightnessRow
+                EmbeddedSliderRow {
                     visible: root.embeddedPresentation
                     width: parent.width
-                    spacing: 8
-
-                    StyledSlider {
-                        id: embeddedBrightnessSlider
-                        Layout.fillWidth: true
-                        enableSettingsSearch: false
-                        configuration: StyledSlider.Configuration.S
-                        value: root.brightnessMonitor?.brightness ?? 0
-                        tooltipContent: `${Math.round(value * 100)} %`
-                        Accessible.name: Translation.tr("Brightness")
-                        onMoved: root.brightnessMonitor?.setBrightness(value)
-                    }
-
-                    StyledText {
-                        Layout.preferredWidth: 48
-                        text: `${Math.round(embeddedBrightnessSlider.value * 100)} %`
-                        color: Appearance.colors.colSubtext
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        horizontalAlignment: Text.AlignRight
-                    }
+                    label: Translation.tr("Brightness")
+                    value: root.brightnessMonitor?.brightness ?? 0
+                    valueText: `${Math.round(value * 100)} %`
+                    tooltipContent: valueText
+                    onMoved: root.brightnessMonitor?.setBrightness(value)
                 }
             }
 

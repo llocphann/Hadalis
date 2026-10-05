@@ -25308,3 +25308,108 @@ Next audit should re-fetch current `dev`, reconcile concurrent commits and
 rotate away from the worker recovery path. Prefer another production
 record-scaled parser/model or a steady-state automation operation only when its
 durability/concurrency contract can be preserved exactly.
+
+## 110. Round 96 — implementation reconciliation for §103.1 and §47.5 (2026-10-05)
+
+### 110.1 Scheduler profile re-lookup — IMPLEMENTED / CONFIRMED
+
+Current implementation commit:
+`90c25e5397798872d8f35e9938225d313d4290fd`
+(`perf(automation): avoid redundant scheduler profile lookup`).
+
+Path:
+
+- `automation/manager/daemon.py`.
+
+The scheduler's normalized `for p in c["profiles"]` loop now passes the exact
+profile object it already owns into the private claim helper. The helper derives
+`profile_id` once from that object instead of rescanning `config["profiles"]`
+with `_profile()`.
+
+The original §103.1 proof was rechecked against current `dev` before the edit:
+profile IDs remain unique after normalization; claim order, state mutation,
+event order, due-time tests, locking and durable state publication are unchanged.
+
+Structurally proven local reduction for P configured profiles per heartbeat:
+
+- profile-search generator allocations: **P -> 0**;
+- redundant profile-row visits: **P(P+1)/2 -> 0**;
+- claim evaluations/state lookups/state writes: unchanged.
+
+Bounded worker validation used base
+`90c25e5397798872d8f35e9938225d313d4290fd`, job commit
+`6f718e0e58a71b8392d9357648e4ecfa576f8b55`, profile
+`profile-c2f353cc8d1c4c1f`.
+
+All three explicit commands exited 0 with no timeout/cancellation:
+
+- scheduler regression — `JOB-C2F353CC-P103-20261005-1626:0`;
+- profile lifecycle regression — `JOB-C2F353CC-P103-20261005-1626:1`;
+- recovery regression — `JOB-C2F353CC-P103-20261005-1626:2`.
+
+No whole-application CPU/RAM/latency percentage is claimed.
+
+### 110.2 Horizontal BarTaskbar overflow collections — IMPLEMENTED / CONFIRMED
+
+Runtime implementation:
+`1d4e6f77a53e2de71feaf8e01dcf975acf88d53b`
+(`perf(bar): reduce taskbar overflow collection work`).
+
+Behavior-parity regression:
+`2853832042771fd299096973803a4ea79958aaba`
+(`test(bar): cover taskbar overflow optimization parity`).
+
+Paths:
+
+- `modules/bar/BarTaskbar.qml`;
+- `scripts/test-bar-taskbar-overflow-parity.py`.
+
+The implementation applies the three already-confirmed §47.5 reductions without
+changing horizontal-overflow selection or final visual ordering:
+
+1. focused/rest partition visits `keep` once instead of two `filter()` passes;
+2. original-index Map is built directly instead of allocating
+   `items.map((it,i) => [it.uniqueId,i])`;
+3. the final separator filter is removed because separators are excluded before
+   either `keep` or `droppable` is populated and therefore cannot reach
+   `result`.
+
+The direct Map loop intentionally retains last-index-wins behavior for duplicate
+`uniqueId` values. Focused precedence, pinned-only shedding, max-fit behavior,
+source-order restoration and the existing "all separators disappear on
+horizontal overflow" behavior remain unchanged.
+
+For K must-keep items, N input items and R selected result items on the overflow
+path, the local reduction is:
+
+- focused/rest source visits: **2K -> K**;
+- temporary N-element Map-entry pair array: **1 -> 0**;
+- final separator-filter traversal/result-array allocation: **R -> 0**;
+- sort comparator/order and selected item identities: unchanged.
+
+The deterministic parity test covers focused/running/pinned-only/separator
+combinations and duplicate IDs. Worker validation used base
+`2853832042771fd299096973803a4ea79958aaba`, job commit
+`1765059ef2c2395e203e57d22c3cc708caff3db4`, profile
+`profile-c2f353cc8d1c4c1f`.
+
+All three explicit commands exited 0 with no timeout/cancellation:
+
+- overflow behavior parity — `JOB-C2F353CC-BARTASKBAR-P47-20261005-1631:0`;
+- taskbar app-model contract — `JOB-C2F353CC-BARTASKBAR-P47-20261005-1631:1`;
+- bar orientation/module regression — `JOB-C2F353CC-BARTASKBAR-P47-20261005-1631:2`.
+
+No live compositor/visual acceptance or project-wide performance percentage is
+inferred from these static/local tests.
+
+### 110.3 Continuation
+
+Current `dev` before this durable checkpoint write:
+`6f9465d2d4cde353cd09fe3b9395ba71cb025590`.
+
+Both implemented groups above are complete at their exact tested descendants.
+Continue by re-fetching `dev`, reconciling concurrent work and rotating away
+from scheduler internals and BarTaskbar overflow. Prefer a distinct production
+record-scaled/model/reactive path that is still present on current `dev` and
+is not already ALREADY/CLOSED/SUPERSEDED in this handoff.
+

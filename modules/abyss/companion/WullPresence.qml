@@ -56,6 +56,9 @@ Item {
     property real dragVelocityX: 0
     property real dragVelocityY: 0
     property double dragSampleTime: 0
+    property real throwSpeed: 0
+    property real throwArc: 0
+    readonly property real throwThreshold: .8*(scene?.scale ?? 1)
     property int shakeReversals: 0
     property string pendingReaction: ""
     property real avoidX: 0
@@ -113,7 +116,7 @@ Item {
     }
     function clearMotion(): void {
         stopRequested()
-        traveling=false; releasedFlight=false; waypoints=[]; waypoint=0
+        traveling=false; releasedFlight=false; throwSpeed=0; throwArc=0; waypoints=[]; waypoint=0
     }
     function hideImmediately(): void {
         clearMotion()
@@ -223,12 +226,15 @@ Item {
         const here=position(), next=waypoints[waypoint++]
         if (!Scene.clearSegment(scene,here,next)) {hideImmediately();return}
         directionX=next.x-here.x; directionY=next.y-here.y
-        const speed=(retreating ? 300 : mode==="walk" ? 16 : mode==="run" ? 32 : 105)*scene.scale
+        const speed=releasedFlight
+            ? Math.max(220*scene.scale,Math.min(950*scene.scale,throwSpeed*1000))
+            : (retreating ? 300 : mode==="walk" ? 16 : mode==="run" ? 32 : 105)*scene.scale
         normalX=mode==="jump" ? placement.support?.nx ?? 0 : 0
         normalY=mode==="jump" ? placement.support?.ny ?? -1 : -1
-        arc=mode==="jump" ? 42*scene.scale : mode==="fly" && !retreating
+        arc=releasedFlight ? throwArc : mode==="jump" ? 42*scene.scale : mode==="fly" && !retreating
             && Scene.clearArc(scene,here,next,12*scene.scale) ? 12*scene.scale : 0
-        duration=mode==="jump" ? 950 : mode==="fall"
+        duration=releasedFlight ? Math.max(220,Math.min(900,Math.round(Scene.distance(here,next)/speed*1000)))
+            : mode==="jump" ? 950 : mode==="fall"
             ? Math.max(240,Math.round(Math.sqrt(2*Math.max(0,next.y-here.y)/(1250*scene.scale))*1000))
             : Math.max(180,Math.round(Scene.distance(here,next)/speed*1000))
         targetX=next.x; targetY=next.y
@@ -343,12 +349,70 @@ Item {
         directionX=point.x-previous.x; directionY=point.y-previous.y
         placement=point; destination=point; targetX=point.x; targetY=point.y
     }
+    function throwCandidates(here, vx, vy): var {
+        const speed=Math.hypot(vx,vy),scale=scene?.scale ?? 1
+        if (!Scene.valid(scene) || speed<throwThreshold) return []
+        const flightMs=Math.max(150,Math.min(360,150+speed/scale*85))
+        const predicted={
+            x:Scene.clamp(here.x+vx*flightMs,2,scene.width-scene.hostWidth-2),
+            y:Scene.clamp(here.y+vy*flightMs,2,scene.height-scene.hostHeight-2)
+        }
+        const candidates=Scene.surfacePoints(scene).slice()
+        const centerX=predicted.x+scene.hostWidth/2,centerY=predicted.y+scene.hostHeight/2
+        for (const edge of ["top","right","bottom","left"]) {
+            const fraction=(edge==="top" || edge==="bottom")
+                ? centerX/scene.width : centerY/scene.height
+            const point=Scene.edgePoint(scene,edge,fraction)
+            if (point.qualified) candidates.push(point)
+        }
+        const scored=[]
+        for (const candidate of candidates) {
+            if (!candidate?.qualified || !candidate.grounded) continue
+            const dx=candidate.x-here.x,dy=candidate.y-here.y,distance=Math.hypot(dx,dy)
+            if (distance<40*scale || !Scene.clearSegment(scene,here,candidate)) continue
+            const alignment=(dx*vx+dy*vy)/(Math.max(.001,distance)*speed)
+            if (alignment<-.12) continue
+            const predictionError=Math.hypot(candidate.x-predicted.x,candidate.y-predicted.y)
+            scored.push({candidate:candidate,score:predictionError+(1-alignment)*150*scale})
+        }
+        scored.sort((a,b)=>a.score-b.score)
+        return scored.map(item=>item.candidate)
+    }
+    function throwTo(candidate, speed): bool {
+        const here=position(),scale=scene?.scale ?? 1
+        if (!candidate?.qualified || !candidate.grounded || !Scene.clearSegment(scene,here,candidate)) return false
+        let desiredArc=Math.max(28*scale,Math.min(130*scale,24*scale+speed*72))
+        while (desiredArc>8*scale && !Scene.clearArc(scene,here,candidate,desiredArc,0,-1))
+            desiredArc*=.62
+        if (desiredArc<=8*scale || !Scene.clearArc(scene,here,candidate,desiredArc,0,-1))
+            desiredArc=0
+        disturb("depart",Scene.annotate(scene,here,placement.edge,placement.kind,placement.key))
+        clearMotion()
+        destination=candidate;mode="fly";retreating=false
+        waypoints=[candidate];waypoint=0
+        throwSpeed=speed;throwArc=desiredArc;releasedFlight=true;traveling=true
+        setReaction("surprised",Math.max(900,Math.min(1800,Math.round(700+speed*450))))
+        advance()
+        return true
+    }
+    function tryThrow(vx, vy): bool {
+        if (!motionEnabled || requestedReveal<=0) return false
+        const speed=Math.hypot(vx,vy)
+        if (speed<throwThreshold) return false
+        const here=position()
+        const candidates=throwCandidates(here,vx,vy)
+        for (const candidate of candidates)
+            if (throwTo(candidate,speed)) return true
+        return false
+    }
     function endDrag(): void {
         if (!dragging) return
+        const releaseVx=dragVelocityX,releaseVy=dragVelocityY
         dragging=false
         if (shakeReversals>=4) {annoyance=5;setReaction("angry",6000);hideForAWhile();return}
         reconcileScene()
         if (requestedReveal<=0) {retreat();return}
+        if (tryThrow(releaseVx,releaseVy)) return
         if (motionEnabled && !placement.grounded) {
             const here=position(), floor=Scene.landingBelow(scene,here)
             releasedFlight=false

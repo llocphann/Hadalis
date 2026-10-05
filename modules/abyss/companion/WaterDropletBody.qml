@@ -52,6 +52,11 @@ Item {
     // Shader uniforms below are identical across repeated limb/droplet
     // delegates. Construct each shared QVector4D once per input revision.
     readonly property vector4d materialRenderingUniform: Qt.vector4d(qualityLevel, translucency, 0, 0)
+    // Small hands/feet/orbital droplets cover very few pixels but otherwise
+    // pay the same tiered liquid ray cost as the 76 px torso. Tier 0 keeps the
+    // same implicit surface/material shader while dropping high-tier secondary
+    // traces and studio-light detail that is sub-pixel at these sizes.
+    readonly property vector4d smallMaterialRenderingUniform: Qt.vector4d(0, translucency, 0, 0)
     readonly property vector4d limbMotionUniform: Qt.vector4d(shimmer, 0, pulse, effectsEnabled ? 1 : 0)
     readonly property vector4d limbOpticsUniform: Qt.vector4d(modelYawRadians, 3, 0, 0)
     readonly property vector4d limbPoseUniform: Qt.vector4d(modelPitchRadians, modelRollRadians, 0, 0)
@@ -243,7 +248,7 @@ Item {
                     property color specular: root.reflectionColor
                     property vector4d motion: root.limbMotionUniform
                     property vector4d optics: root.limbOpticsUniform
-                    property vector4d rendering: root.materialRenderingUniform
+                    property vector4d rendering: root.smallMaterialRenderingUniform
                     property vector4d pose: root.limbPoseUniform
                     fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
                 }
@@ -335,7 +340,7 @@ Item {
                         property color specular: root.reflectionColor
                         property vector4d motion: root.dropletMotionUniform
                         property vector4d optics: Qt.vector4d(0, 1, 0, 0)
-                        property vector4d rendering: root.materialRenderingUniform
+                        property vector4d rendering: root.smallMaterialRenderingUniform
                         property vector4d pose:Qt.vector4d(0,0,0,0)
                         fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
                     }

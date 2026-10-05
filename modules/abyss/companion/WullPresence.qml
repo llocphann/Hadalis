@@ -64,6 +64,8 @@ Item {
     property real avoidX: 0
     property real avoidY: 0
     property string appearClip: "emerge"
+    property real appearanceOffsetX: 0
+    property real appearanceOffsetY: 0
     property string hideClip: "dive"
     readonly property real peekReveal: .64
     readonly property bool peeking: renderedReveal>0 && renderedReveal<.99
@@ -103,12 +105,40 @@ Item {
         actor.reactionExpression=expression
         reactionDeadline.interval=milliseconds;reactionDeadline.restart()
     }
-    function chooseAppearance(selected): void {
-        appearClip="emerge"
-        const n=Scene.normal(selected.edge)
-        if (!motionEnabled || !Scene.clearArc(scene,selected,selected,1.10*Math.max(scene.hostWidth,scene.hostHeight),n.nx,n.ny)) return
+    function appearanceLanding(source): var {
+        const support=Scene.supportAt(scene,source,source.support?.edge ?? source.edge)
+        if (!support) return source
+        const horizontal=support.axis==="x", extent=horizontal ? scene.hostWidth : scene.hostHeight
+        const coordinate=horizontal ? source.x : source.y
+        const roomBefore=coordinate-support.from
+        const roomAfter=support.to-extent-coordinate
+        const preferred=roomAfter>=roomBefore ? 1 : -1
+        const n=Scene.normal(support.edge)
+        const arcHeight=1.12*Math.max(scene.hostWidth,scene.hostHeight)
+        for (const distance of [150,115,82].map(value=>value*scene.scale)) {
+            for (const sign of [preferred,-preferred]) {
+                const along=Scene.clamp(coordinate+sign*distance,support.from,support.to-extent)
+                if (Math.abs(along-coordinate)<48*scene.scale) continue
+                const point=horizontal ? {x:along,y:source.y} : {x:source.x,y:along}
+                const candidate=Scene.annotate(scene,point,support.edge,source.kind,source.key)
+                if (!candidate.grounded || candidate.support?.key!==support.key
+                        || candidate.support?.edge!==support.edge) continue
+                if (Scene.clearArc(scene,source,candidate,arcHeight,n.nx,n.ny))
+                    return candidate
+            }
+        }
+        return source
+    }
+    function chooseAppearance(selected): var {
+        appearClip="emerge";appearanceOffsetX=0;appearanceOffsetY=0
+        if (!motionEnabled) return selected
+        const landing=appearanceLanding(selected)
+        if (!landing?.qualified || Scene.distance(selected,landing)<1) return selected
         const roll=random()
         appearClip=roll<.18 ? "launch" : roll<.32 ? "stuckLaunch" : roll<.46 ? "stuckJump" : roll<.62 ? "faceplant" : roll<.80 ? "buttplant" : "riseJump"
+        appearanceOffsetX=selected.x-landing.x
+        appearanceOffsetY=selected.y-landing.y
+        return landing
     }
     function position() {
         return actor ? {x:actor.x-(actor.scale-1)*actor.width/2,
@@ -120,6 +150,7 @@ Item {
     }
     function hideImmediately(): void {
         clearMotion()
+        appearanceOffsetX=0;appearanceOffsetY=0
         peekDeadline.stop(); peekIntro=false
         surfaceDeadline.stop(); surfaceDue=false
         recoveryDeadline.stop();reactionDeadline.stop()
@@ -134,17 +165,22 @@ Item {
         clearMotion()
         recoveryDeadline.stop()
         fullVisitDeadline.stop();fullyPresentSince=0
-        placement=selected; destination=selected
-        exitAttempts=0;iceOpening=null;chooseAppearance(selected)
-        targetX=selected.x; targetY=selected.y
+        const source=selected
+        const landing=chooseAppearance(source)
+        placement=landing; destination=landing
+        exitAttempts=0;iceOpening=null
+        targetX=landing.x; targetY=landing.y
         retreating=false; visitActive=true
-        resetRequested(targetX,targetY,selected.edge)
+        resetRequested(targetX,targetY,source.edge)
         peekDeadline.stop()
-        peekIntro=motionEnabled && requestedReveal>.99
+        // Jump-style entrances are a complete water-to-ground arc. Peeking
+        // remains available only to the simple emerge animation so a partial
+        // reveal cannot freeze halfway between the source and landing point.
+        peekIntro=appearClip==="emerge" && motionEnabled && requestedReveal>.99
         peekOnly=peekIntro && random()<.28
         peekDeadline.interval=550+Math.floor(random()*450)
         renderedReveal=peekIntro || requestedReveal<.99 ? peekReveal : requestedReveal
-        disturb(peekIntro || requestedReveal<.99 ? "peek" : "emerge",selected)
+        disturb(peekIntro || requestedReveal<.99 ? "peek" : "emerge",source)
         scheduleSurface()
     }
     function synchronize(): void {

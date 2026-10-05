@@ -40,6 +40,13 @@ Item {
     property real travelNormalY: -1
     property real standingAngle: 0
     property string appearClip: "emerge"
+    property real appearanceOffsetX: 0
+    property real appearanceOffsetY: 0
+    readonly property bool appearanceArcActive:
+        !leaving && !peeking && appearClip!=="emerge"
+        && presentation<.999
+        && Math.hypot(appearanceOffsetX,appearanceOffsetY)>.1
+    readonly property real appearanceJourney: appearanceArcActive ? presentation : 1
     property string hideClip: "dive"
     property string reactionExpression: ""
     readonly property real tangentDirection: travelDirection*Math.cos(standingAngle*Math.PI/180)+travelDirectionY*Math.sin(standingAngle*Math.PI/180)
@@ -288,8 +295,14 @@ Item {
         anchors.horizontalCenterOffset: root.sideAlignment
         transform: [
             Translate {
+                // Jump-style presentation starts at the selected water opening
+                // and travels tangentially while the authored normal track
+                // supplies the rise/fall, producing a real arc to the landing
+                // point instead of a vertical hop in place.
                 x: root.emergenceNormal * root.width * (root.activeEmergenceEdge === "left" ? -1 : root.activeEmergenceEdge === "right" ? 1 : 0)
+                    + root.appearanceOffsetX * (1-root.appearanceJourney)
                 y: root.emergenceNormal * root.height * (root.activeEmergenceEdge === "top" ? -1 : root.activeEmergenceEdge === "bottom" ? 1 : 0)
+                    + root.appearanceOffsetY * (1-root.appearanceJourney)
             },
             Scale {
                 origin.x: emergenceLayer.width / 2; origin.y: emergenceLayer.height / 2

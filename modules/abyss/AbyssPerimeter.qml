@@ -618,6 +618,8 @@ Scope {
                 upright: true
                 standingAngle: companionPresence.standingAngle
                 appearClip: companionPresence.appearClip
+                appearanceOffsetX: companionPresence.appearanceOffsetX
+                appearanceOffsetY: companionPresence.appearanceOffsetY
                 hideClip: companionPresence.hideClip
                 travelNormalX: companionPresence.normalX
                 travelNormalY: companionPresence.normalY

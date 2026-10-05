@@ -543,9 +543,18 @@ Singleton {
 
     function handleWindowClosed(data) {
         const currentList = _windowsDirty ? _pendingWindows : windows
-        const closedWin = currentList.find(w => w.id === data.id)
+        const updatedWindows = []
+        let closedWin = null
+        for (let i = 0; i < currentList.length; ++i) {
+            const window = currentList[i]
+            if (window.id === data.id) {
+                if (closedWin === null)
+                    closedWin = window
+                continue
+            }
+            updatedWindows.push(window)
+        }
         const closedWsId = closedWin?.workspace_id
-        const updatedWindows = currentList.filter(w => w.id !== data.id)
         scheduleWindowsUpdate(updatedWindows)
 
         if (mruWindowIds && mruWindowIds.length > 0) {
@@ -677,14 +686,20 @@ Singleton {
         // Usar _pendingWindows si hay cambios pendientes, o windows actual
         const currentList = _windowsDirty ? _pendingWindows : windows
         const updatedWindows = [...currentList]
+        const firstIndexById = new Map()
+        for (let i = 0; i < updatedWindows.length; ++i) {
+            const windowId = updatedWindows[i].id
+            if (!firstIndexById.has(windowId))
+                firstIndexById.set(windowId, i)
+        }
         let hasChanges = false
 
         for (const change of data.changes) {
             const windowId = change[0]
             const layoutData = change[1]
 
-            const windowIndex = updatedWindows.findIndex(w => w.id === windowId)
-            if (windowIndex < 0)
+            const windowIndex = firstIndexById.get(windowId)
+            if (windowIndex === undefined)
                 continue
 
             const updatedWindow = {}

@@ -36,11 +36,7 @@ WindowDialog {
             }
 
             WindowDialogSeparator {
-                Layout.fillWidth: !root.embeddedPresentation
-                Layout.preferredWidth: root.embeddedPresentation
-                    ? Math.max(160, protectionContent.width - 64)
-                    : protectionContent.width
-                Layout.alignment: Qt.AlignHCenter
+                visible: !root.embeddedPresentation
                 Layout.topMargin: -22
                 Layout.leftMargin: 0
                 Layout.rightMargin: 0
@@ -146,11 +142,7 @@ WindowDialog {
             }
 
             WindowDialogSeparator {
-                Layout.fillWidth: !root.embeddedPresentation
-                Layout.preferredWidth: root.embeddedPresentation
-                    ? Math.max(160, protectionContent.width - 64)
-                    : protectionContent.width
-                Layout.alignment: Qt.AlignHCenter
+                visible: !root.embeddedPresentation
                 Layout.topMargin: -22
                 Layout.leftMargin: 0
                 Layout.rightMargin: 0
@@ -216,11 +208,7 @@ WindowDialog {
             }
 
             WindowDialogSeparator {
-                Layout.fillWidth: !root.embeddedPresentation
-                Layout.preferredWidth: root.embeddedPresentation
-                    ? Math.max(160, protectionContent.width - 64)
-                    : protectionContent.width
-                Layout.alignment: Qt.AlignHCenter
+                visible: !root.embeddedPresentation
                 Layout.topMargin: -22
                 Layout.leftMargin: 0
                 Layout.rightMargin: 0
@@ -228,11 +216,12 @@ WindowDialog {
 
             Column {
                 id: brightnessColumn
-                Layout.topMargin: -16
+                Layout.topMargin: root.embeddedPresentation ? -12 : -16
                 Layout.fillWidth: true
                 visible: !!root.brightnessMonitor
 
                 WindowDialogSlider {
+                    visible: !root.embeddedPresentation
                     anchors {
                         left: parent.left
                         right: parent.right
@@ -243,6 +232,32 @@ WindowDialog {
                     valueText: `${Math.round(value*100)} %`
                     value: root.brightnessMonitor?.brightness ?? 0
                     onMoved: root.brightnessMonitor?.setBrightness(value)
+                }
+
+                RowLayout {
+                    id: embeddedBrightnessRow
+                    visible: root.embeddedPresentation
+                    width: parent.width
+                    spacing: 8
+
+                    StyledSlider {
+                        id: embeddedBrightnessSlider
+                        Layout.fillWidth: true
+                        enableSettingsSearch: false
+                        configuration: StyledSlider.Configuration.S
+                        value: root.brightnessMonitor?.brightness ?? 0
+                        tooltipContent: `${Math.round(value * 100)} %`
+                        Accessible.name: Translation.tr("Brightness")
+                        onMoved: root.brightnessMonitor?.setBrightness(value)
+                    }
+
+                    StyledText {
+                        Layout.preferredWidth: 48
+                        text: `${Math.round(embeddedBrightnessSlider.value * 100)} %`
+                        color: Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        horizontalAlignment: Text.AlignRight
+                    }
                 }
             }
 

@@ -1,0 +1,84 @@
+{
+  "id": "JOB-C2F353CC-CANONDIAG-R1-20261005-1706",
+  "base_sha": "ded7246c71d699ab53f0367d393bb7748ce284d3",
+  "profile_id": "profile-c2f353cc8d1c4c1f",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "set -uo pipefail\nfor tool in git bash sh python3 make grep sed awk find sort fish node jq rsync cmp sha256sum realpath head cut tr; do\n  command -v \"$tool\" >/dev/null 2>&1 || exit 20\ndone\nmake build >/dev/null 2>&1 || exit 21\nwhile IFS= read -r -d '' file; do\n  [[ -f \"$file\" ]] || continue\n  first_line=\"$(head -n1 \"$file\" 2>/dev/null || true)\"\n  if [[ \"$first_line\" =~ (^|/)(sh)([[:space:]]|$) ]] && [[ \"$first_line\" != *bash* ]]; then interpreter=sh; else interpreter=bash; fi\n  marker=\"$(grep -n -m1 '^### DATA ###$' \"$file\" | cut -d: -f1 || true)\"\n  if [[ -z \"$marker\" ]]; then\n    \"$interpreter\" -n \"$file\" >/dev/null 2>&1 || exit 22\n  else\n    head -n \"$((marker - 1))\" \"$file\" | grep -Eq '^[[:space:]]*exit([[:space:]]|$)' || exit 22\n    tmp=\"$(mktemp)\"\n    head -n \"$((marker - 1))\" \"$file\" >\"$tmp\"\n    \"$interpreter\" -n \"$tmp\" >/dev/null 2>&1 || { rm -f \"$tmp\"; exit 22; }\n    rm -f \"$tmp\"\n  fi\ndone < <(git ls-files -z -- '*.sh' '*.install' 'setup' 'scripts/inir' '*/PKGBUILD' 'assets/helpers/inir-battery-charge-limit' 'assets/helpers/inir-thinkfan')\npython3 - <<'PY' >/dev/null 2>&1 || exit 23\nfrom pathlib import Path\nimport subprocess\nraw=subprocess.check_output([\"git\",\"ls-files\",\"-z\",\"--\",\"*.py\"])\nfor name in raw.decode().split(\"\\0\"):\n    if name: compile(Path(name).read_text(encoding=\"utf-8\"),name,\"exec\")\nPY\npython3 - <<'PY' >/dev/null 2>&1 || exit 24\nfrom pathlib import Path\nimport json,subprocess\nraw=subprocess.check_output([\"git\",\"ls-files\",\"-z\",\"--\",\"*.json\"])\nfor name in raw.decode().split(\"\\0\"):\n    if name: json.loads(Path(name).read_text(encoding=\"utf-8\"))\nPY\nwhile IFS= read -r -d '' file; do\n  if grep -Eq '^[[:space:]]*\\.(pragma|import)([[:space:]]|$)' \"$file\"; then continue; fi\n  node --check \"$file\" >/dev/null 2>&1 || exit 25\ndone < <(git ls-files -z -- '*.js')\nwhile IFS= read -r -d '' file; do fish -n \"$file\" >/dev/null 2>&1 || exit 26; done < <(git ls-files -z -- '*.fish')\npython3 translations/tools/l10n.py audit-all >/dev/null 2>&1 || exit 27\npython3 translations/tools/source-parity.py >/dev/null 2>&1 || exit 28\nexit 0"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 900
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "set -uo pipefail\nn=0\nlocal_i=0\nwhile IFS= read -r -d '' f; do\n  case \"$f\" in\n    scripts/test-wull-manual-perimeter.py|scripts/test-megaqml-host-ui-fixture.py|scripts/test-megaqml-ui-fixture.py|scripts/test-megaqml-qt-diagnostic.py|scripts/test-megaqml-quickshell-classify.py|scripts/test-megaqml-phase2p-history-guard.py) continue ;;\n  esac\n  if (( n < 147 )); then\n    python3 \"$f\" >/dev/null 2>&1 || exit $((10 + local_i))\n    local_i=$((local_i + 1))\n  fi\n  n=$((n + 1))\ndone < <(git ls-files -z -- ':(glob)**/test-*.py' 'test-*.py' | sort -z -u)\nexit 0"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1200
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "set -uo pipefail\nn=0\nlocal_i=0\nwhile IFS= read -r -d '' f; do\n  case \"$f\" in\n    scripts/test-wull-manual-perimeter.py|scripts/test-megaqml-host-ui-fixture.py|scripts/test-megaqml-ui-fixture.py|scripts/test-megaqml-qt-diagnostic.py|scripts/test-megaqml-quickshell-classify.py|scripts/test-megaqml-phase2p-history-guard.py) continue ;;\n  esac\n  if (( n >= 147 )); then\n    python3 \"$f\" >/dev/null 2>&1 || exit $((10 + local_i))\n    local_i=$((local_i + 1))\n  fi\n  n=$((n + 1))\ndone < <(git ls-files -z -- ':(glob)**/test-*.py' 'test-*.py' | sort -z -u)\nexit 0"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1200
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "set -uo pipefail\npython3 scripts/lib/generate-ipc-registry.py --check >/dev/null 2>&1 || exit 20\nbash scripts/verify-docs.sh >/dev/null 2>&1 || exit 21\nfish scripts/qml-check.fish --all >/dev/null 2>&1 || exit 22\nexit 0"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 900
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "set -uo pipefail\nn=0\nlocal_i=0\nwhile IFS= read -r -d '' f; do\n  case \"$f\" in\n    test-nix-*.sh|*/test-nix-*.sh|*/nix/*|scripts/test-megaqml-phase2-local.sh|scripts/test-megaqml-ui-loader-local.sh|scripts/test-megaqml-quickshell-smoke.sh|scripts/test-hadalis-desktop-repair.sh) continue ;;\n  esac\n  if (( n < 60 )); then\n    first_line=\"$(head -n1 \"$f\" 2>/dev/null || true)\"\n    if [[ \"$first_line\" =~ (^|/)(sh)([[:space:]]|$) ]] && [[ \"$first_line\" != *bash* ]]; then interpreter=sh; else interpreter=bash; fi\n    \"$interpreter\" \"$f\" >/dev/null 2>&1 || exit $((10 + local_i))\n    local_i=$((local_i + 1))\n  fi\n  n=$((n + 1))\ndone < <(git ls-files -z -- ':(glob)**/test-*.sh' 'test-*.sh' | sort -z -u)\nexit 0"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1200
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "set -uo pipefail\nn=0\nlocal_i=0\nwhile IFS= read -r -d '' f; do\n  case \"$f\" in\n    test-nix-*.sh|*/test-nix-*.sh|*/nix/*|scripts/test-megaqml-phase2-local.sh|scripts/test-megaqml-ui-loader-local.sh|scripts/test-megaqml-quickshell-smoke.sh|scripts/test-hadalis-desktop-repair.sh) continue ;;\n  esac\n  if (( n >= 60 )); then\n    first_line=\"$(head -n1 \"$f\" 2>/dev/null || true)\"\n    if [[ \"$first_line\" =~ (^|/)(sh)([[:space:]]|$) ]] && [[ \"$first_line\" != *bash* ]]; then interpreter=sh; else interpreter=bash; fi\n    \"$interpreter\" \"$f\" >/dev/null 2>&1 || exit $((10 + local_i))\n    local_i=$((local_i + 1))\n  fi\n  n=$((n + 1))\ndone < <(git ls-files -z -- ':(glob)**/test-*.sh' 'test-*.sh' | sort -z -u)\nexit 0"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1200
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "set -uo pipefail\nbash -o errexit -o nounset -o pipefail -c 'make \"$1\" SHELL=/bin/bash .SHELLFLAGS=\"-eu -o pipefail -c\"' _ test-prefix-install >/dev/null 2>&1 || exit 30\nbash -o errexit -o nounset -o pipefail -c 'make \"$1\" SHELL=/bin/bash .SHELLFLAGS=\"-eu -o pipefail -c\"' _ test-package-metadata >/dev/null 2>&1 || exit 31\nbash -o errexit -o nounset -o pipefail -c 'make \"$1\" SHELL=/bin/bash .SHELLFLAGS=\"-eu -o pipefail -c\"' _ test-package-hooks >/dev/null 2>&1 || exit 32\ngit diff --exit-code -- . >/dev/null 2>&1 || exit 33\n[[ -z \"$(git status --porcelain=v1 --untracked-files=all)\" ]] || exit 34\nexit 0"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 1200
+      }
+    }
+  ]
+}

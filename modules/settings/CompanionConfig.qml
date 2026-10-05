@@ -15,6 +15,7 @@ ContentPage {
     settingsPageIndex: 37
     settingsPageName: Translation.tr("Companion")
     property string activeSection: "overview"
+    onActiveSectionChanged: if (activeSection === "ai") LocalModels.ensureInitialized()
     property string previewExpression: "idle"
     property string previewMotion: ""
     readonly property var preferences: Preferences.normalize(Config.options?.abyss?.companion)

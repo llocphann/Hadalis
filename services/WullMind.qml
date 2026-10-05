@@ -19,8 +19,20 @@ Singleton {
         ? String(options.thinkingEffort ?? "off") : "off"
     readonly property string referenceVault: String(options.referenceVault ?? "")
     readonly property string proactive: String(options.proactive ?? "occasional")
-    readonly property string contextKey: JSON.stringify([obsidianEnabled, referenceVault,
-        Config.options?.todo?.obsidian ?? {}, Config.options?.notes?.zettelkasten?.vaultPath ?? ""])
+    readonly property string contextKey: {
+        const todo=Config.options?.todo?.obsidian ?? ({})
+        const daily=todo.dailyNote ?? ({})
+        return JSON.stringify([
+            obsidianEnabled,
+            referenceVault,
+            String(todo.vaultPath ?? ""),
+            String(todo.notePath ?? ""),
+            String(daily.folder ?? "00_Capture/01_Journal"),
+            String(daily.format ?? "YYYY/MMMM/DD-MM-YYYY-dddd"),
+            String(daily.plannerHeading ?? "Day Planner"),
+            String(Config.options?.notes?.zettelkasten?.vaultPath ?? "")
+        ])
+    }
     property bool hostVisible: false
     property bool hostIdle: false
     property string text: ""

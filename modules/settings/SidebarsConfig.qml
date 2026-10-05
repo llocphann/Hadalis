@@ -322,12 +322,13 @@ ContentPage {
                     let current = [...(Config.options?.sidebar?.right?.enabledWidgets ?? defaults)]
                     _log(`[RightSidebar] Current widgets:`, JSON.stringify(current))
 
-                    if (active && !current.includes(widgetId)) {
+                    const index = current.indexOf(widgetId)
+                    if (active && index === -1) {
                         current.push(widgetId)
                         _log(`[RightSidebar] Adding ${widgetId}, new array:`, JSON.stringify(current))
                         Config.setNestedValue("sidebar.right.enabledWidgets", current)
-                    } else if (!active && current.includes(widgetId)) {
-                        current.splice(current.indexOf(widgetId), 1)
+                    } else if (!active && index !== -1) {
+                        current.splice(index, 1)
                         _log(`[RightSidebar] Removing ${widgetId}, new array:`, JSON.stringify(current))
                         Config.setNestedValue("sidebar.right.enabledWidgets", current)
                     } else {

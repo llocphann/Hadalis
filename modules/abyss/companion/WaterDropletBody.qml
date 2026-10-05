@@ -49,6 +49,13 @@ Item {
     readonly property real modelYawRadians: modelYaw * Math.PI / 180
     readonly property real modelPitchRadians: modelPitch * Math.PI / 180
     readonly property real modelRollRadians: gait.roll * Math.PI / 180
+    // Shader uniforms below are identical across repeated limb/droplet
+    // delegates. Construct each shared QVector4D once per input revision.
+    readonly property vector4d materialRenderingUniform: Qt.vector4d(qualityLevel, translucency, 0, 0)
+    readonly property vector4d limbMotionUniform: Qt.vector4d(shimmer, 0, pulse, effectsEnabled ? 1 : 0)
+    readonly property vector4d limbOpticsUniform: Qt.vector4d(modelYawRadians, 3, 0, 0)
+    readonly property vector4d limbPoseUniform: Qt.vector4d(modelPitchRadians, modelRollRadians, 0, 0)
+    readonly property vector4d dropletMotionUniform: Qt.vector4d(shimmer, 0, pulse, 0)
     readonly property var poseRotation: Pose.rotation(modelYaw,modelPitch,gait.roll)
     readonly property real poseScaleX: gait.scaleX
     readonly property real poseScaleY: gait.scaleY
@@ -221,7 +228,6 @@ Item {
                 readonly property string zTrack: (hand ? "arm"+index : "foot"+(index-2)) + "Z"
                 readonly property real stepX: gait.footX(xTrack)
                 readonly property real stepZ: gait.footZ(zTrack)
-                readonly property real yaw: root.modelYawRadians
                 readonly property var spatial: root.project(side*(hand ? 34 : 19)+stepX,
                     46.14-(hand ? 53.3 : 75.9)+stepZ,8)
                 readonly property real depth: spatial.z
@@ -235,10 +241,10 @@ Item {
                     visible: !root.softwareFallback && material.status !== ShaderEffect.Error
                     property color accent: root.liquidAccent
                     property color specular: root.reflectionColor
-                    property vector4d motion: Qt.vector4d(root.shimmer, 0, root.pulse, root.effectsEnabled ? 1 : 0)
-                    property vector4d optics: Qt.vector4d(waterFoot.yaw, 3, 0, 0)
-                    property vector4d rendering: Qt.vector4d(root.qualityLevel, root.translucency, 0, 0)
-                    property vector4d pose:Qt.vector4d(root.modelPitchRadians,root.modelRollRadians,0,0)
+                    property vector4d motion: root.limbMotionUniform
+                    property vector4d optics: root.limbOpticsUniform
+                    property vector4d rendering: root.materialRenderingUniform
+                    property vector4d pose: root.limbPoseUniform
                     fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
                 }
                 Shape {
@@ -301,7 +307,7 @@ Item {
                 property vector4d motion: Qt.vector4d(root.shimmer, root.stateTip + root.sway * 0.25,
                     Math.max(root.pulse,root.tapPulse*.65) + root.hoverAmount*.16, root.effectsEnabled ? 1 : 0)
                 property vector4d optics: Qt.vector4d(root.modelYawRadians, 0, 0, 0)
-                property vector4d rendering: Qt.vector4d(root.qualityLevel, root.translucency, 0, 0)
+                property vector4d rendering: root.materialRenderingUniform
                 property vector4d pose:Qt.vector4d(root.modelPitchRadians,root.modelRollRadians,root.poseScaleX-1,root.poseScaleY-1)
                 fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
             }
@@ -327,9 +333,9 @@ Item {
                         visible: !root.softwareFallback && material.status !== ShaderEffect.Error
                         property color accent: root.liquidAccent
                         property color specular: root.reflectionColor
-                        property vector4d motion: Qt.vector4d(root.shimmer, 0, root.pulse, 0)
+                        property vector4d motion: root.dropletMotionUniform
                         property vector4d optics: Qt.vector4d(0, 1, 0, 0)
-                        property vector4d rendering: Qt.vector4d(root.qualityLevel, root.translucency, 0, 0)
+                        property vector4d rendering: root.materialRenderingUniform
                         property vector4d pose:Qt.vector4d(0,0,0,0)
                         fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
                     }

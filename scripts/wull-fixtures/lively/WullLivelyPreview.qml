@@ -59,6 +59,7 @@ Window {
         travelEnabled:presence.traveling;travelMode:presence.mode;travelDuration:presence.duration
         travelArc:presence.arc;surfaceSupported:presence.grounded
         standingAngle:presence.standingAngle;appearClip:presence.appearClip;hideClip:presence.hideClip
+        appearanceOffsetX:presence.appearanceOffsetX;appearanceOffsetY:presence.appearanceOffsetY
         travelNormalX:presence.normalX;travelNormalY:presence.normalY
         travelDirection:presence.directionX/Math.max(1,Math.hypot(presence.directionX,presence.directionY))
         travelDirectionY:presence.directionY/Math.max(1,Math.hypot(presence.directionX,presence.directionY))
@@ -100,6 +101,25 @@ Window {
                 tryCompare(actor,"presentation",1,3500)
                 check(!actor.appearanceArcActive && presence.grounded,
                     "jump entrance did not finish grounded at its new landing")
+
+                root.testPhase="stumble entrance clipping"
+                const stumbleSource=Scene.edgePoint(root.scene,"bottom",.58)
+                check(stumbleSource.qualified && stumbleSource.grounded,
+                    "stumble source is not a grounded water opening")
+                presence.randomState=682
+                presence.appear(stumbleSource)
+                wait(80)
+                const emergenceViewport=root.named(actor,"wullEmergenceViewport")
+                check(presence.appearClip==="faceplant",
+                    "fixture did not select the faceplant entrance "+presence.appearClip)
+                check(actor.appearanceArcActive && !actor.clip && !!emergenceViewport
+                    && emergenceViewport.clip
+                    && emergenceViewport.width>actor.width+Math.abs(actor.appearanceOffsetX),
+                    "faceplant entrance is still cropped by the resting actor bounds")
+                tryCompare(actor,"presentation",1,3500)
+                check(presence.grounded && !actor.appearanceArcActive,
+                    "faceplant entrance did not finish on grounded geometry")
+
                 root.place(480,600)
                 check(actor.inputReady && presence.surfaceBound,"actor did not reset into surface-bound mode")
                 const body=root.named(actor,"wullLiquidBody"), gait=root.named(actor,"wullLocomotion")
@@ -211,7 +231,7 @@ Window {
                 root.allowed=false;wait(40)
                 check(!curiosity.busy && !actor.visible && !deadline.running && !presence.directed,
                     "policy hide did not cancel curiosity")
-                console.log("WULL_LIVELY=PASS arcEntrance distinctLanding run jump surfaceBoundRelease velocityThrow groundedLanding acceleratingFall regrab reducedMotion curiosityGesture distanceClose continuedDeparture ownedClose userHandoff surfaceLossFall ownershipRaceSafe groundedAfterSurfaceLoss policyHide")
+                console.log("WULL_LIVELY=PASS arcEntrance distinctLanding stumbleUnclipped faceplantLanding run jump surfaceBoundRelease velocityThrow groundedLanding acceleratingFall regrab reducedMotion curiosityGesture distanceClose continuedDeparture ownedClose userHandoff surfaceLossFall ownershipRaceSafe groundedAfterSurfaceLoss policyHide")
             } catch(error) {console.error("WULL_LIVELY=FAIL "+error+" "+JSON.stringify({phase:root.testPhase,
                 stage:curiosity.stage,owned:curiosity.owned,near:curiosity.nearFeature,reached:curiosity.reachedFeature,
                 featureOpen:root.featureOpen,closes:root.closes,traveling:presence.traveling,mode:presence.mode,

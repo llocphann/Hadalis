@@ -25413,3 +25413,52 @@ from scheduler internals and BarTaskbar overflow. Prefer a distinct production
 record-scaled/model/reactive path that is still present on current `dev` and
 is not already ALREADY/CLOSED/SUPERSEDED in this handoff.
 
+### 110.4 CustomThemeEditor quick-adjustment collection — IMPLEMENTED / CONFIRMED
+
+Runtime implementation:
+`d9ce107a0010fa1e91c038a603486ed51aa73ce6`
+(`perf(settings): streamline theme quick adjustments`).
+
+Behavior-parity regression:
+`fc38bd13d6ee044e3d5b675846d8a331ec5288a9`
+(`test(settings): cover theme quick-adjustment parity`).
+
+Paths:
+
+- `modules/settings/CustomThemeEditor.qml`;
+- `scripts/test-custom-theme-quick-adjustments-parity.py`.
+
+The implementation applies the already-confirmed §59.10 reduction on the
+50 ms-debounced Saturation/Brightness/Temperature interaction path:
+
+- retain one `Object.keys(originalColors)` enumeration in exact own-key order;
+- test the existing `m3*` / string / leading-`#` predicate inside that loop;
+- cache the qualifying snapshot value once as `original`;
+- keep the existing Qt.color/HSL transform, update-key construction,
+  `Config.setNestedValues(updates)`, and `applyToShell()` ordering unchanged.
+
+The strict-lossless proof remains source-current because `originalColors` is
+captured through `JSON.parse(JSON.stringify(...))`: a plain JSON snapshot with
+no QML getter/dependency side effects. Empty update maps retain the same
+publication/apply calls.
+
+Per debounced application:
+
+- filtered key array: **1 -> 0**;
+- qualifying-key source traversals: **2 -> 1**;
+- qualifying `originalColors[key]` reads: **2 -> 1**;
+- Qt color transforms, Config publication and shell apply calls: unchanged.
+
+Worker validation used base
+`fc38bd13d6ee044e3d5b675846d8a331ec5288a9`, job commit
+`85316653d1016ba534de45c3016310b745e2ea58`, profile
+`profile-c2f353cc8d1c4c1f`.
+
+Both explicit commands exited 0 without timeout/cancellation:
+
+- quick-adjustment parity — `JOB-C2F353CC-THEME-P59-20261005-1638:0`;
+- Material Settings contract — `JOB-C2F353CC-THEME-P59-20261005-1638:1`.
+
+No whole-shell CPU/frame-time percentage or live visual acceptance is inferred
+from these local/static tests.
+

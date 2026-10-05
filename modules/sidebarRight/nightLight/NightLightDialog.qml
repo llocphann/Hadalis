@@ -213,32 +213,43 @@ WindowDialog {
                 Layout.topMargin: -16
                 Layout.fillWidth: true
 
-                ConfigSwitch {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                    }
-                    iconSize: Appearance.font.pixelSize.larger
-                    buttonIcon: "flash_off"
-                    text: Translation.tr("Enable")
-                    autoToggle: false
-                    checked: Config.options?.light?.antiFlashbang?.enable ?? false
-                    onToggledByUser: checked => Config.setNestedValue("light.antiFlashbang.enable", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Dim bright content automatically while preserving your selected brightness")
-                    }
-                }
-                Column {
+                // Match Night Light: primary toggles share one compact row in
+                // embedded Utilities, while the standalone dialog can stack them.
+                GridLayout {
+                    id: antiFlashbangPrimaryToggles
                     width: parent.width
-                    visible: Config.options?.light?.antiFlashbang?.enable ?? false
-                    spacing: 8
+                    columns: root.embeddedPresentation ? 2 : 1
+                    columnSpacing: root.embeddedPresentation ? 8 : 0
+                    rowSpacing: 0
+
                     ConfigSwitch {
-                        width: parent.width
-                        text: Translation.tr("Only in dark mode")
+                        Layout.fillWidth: true
+                        iconSize: Appearance.font.pixelSize.larger
+                        buttonIcon: "flash_off"
+                        text: Translation.tr("Enable")
+                        autoToggle: false
+                        checked: Config.options?.light?.antiFlashbang?.enable ?? false
+                        onToggledByUser: checked => Config.setNestedValue("light.antiFlashbang.enable", checked)
+                        StyledToolTip {
+                            text: Translation.tr("Dim bright content automatically while preserving your selected brightness")
+                        }
+                    }
+
+                    ConfigSwitch {
+                        Layout.fillWidth: true
+                        iconSize: Appearance.font.pixelSize.larger
+                        buttonIcon: "dark_mode"
+                        text: Translation.tr("Only Dark Mode")
                         autoToggle: false
                         checked: Config.options?.light?.antiFlashbang?.darkOnly ?? true
                         onToggledByUser: checked => Config.setNestedValue("light.antiFlashbang.darkOnly", checked)
                     }
+                }
+
+                Column {
+                    width: parent.width
+                    visible: Config.options?.light?.antiFlashbang?.enable ?? false
+                    spacing: 8
                     Repeater {
                         model: [
                             {label:"Bright content threshold",key:"threshold",fallback:.30,from:0,to:.95,unit:"%",scale:100},

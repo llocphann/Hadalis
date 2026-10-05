@@ -210,7 +210,10 @@ Item {
         objectName: "wullFloorReflectionSource"
         sourceItem: root.grounded && root.detailedEffects && !root.softwareFallback && material.status !== ShaderEffect.Error ? reflectionLayer : null
         sourceRect: Qt.rect(0, 7, 76, 82)
-        textureSize: root.qualityLevel > 1 ? Qt.size(152, 164) : Qt.size(76, 82)
+        // The reflection is finally compressed into a 13-18 px-tall puddle
+        // and sampled with a three-tap softening kernel. A 2x capture at tier 2
+        // quadruples offscreen pixels without preserving visible extra detail.
+        textureSize: Qt.size(76, 82)
         smooth: true
         live: root.visible && root.grounded && root.detailedEffects
         visible: false

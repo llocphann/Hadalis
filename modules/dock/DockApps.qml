@@ -183,11 +183,20 @@ Item {
 
         const currentRunning = new Set(runningAppsMap.keys());
         const runningOrder = root._runningAppOrder.filter(appId => currentRunning.has(appId));
+        const runningOrderSet = new Set(runningOrder);
         for (const [lowerAppId] of runningAppsMap) {
-            if (!runningOrder.includes(lowerAppId))
+            if (!runningOrderSet.has(lowerAppId)) {
+                runningOrderSet.add(lowerAppId);
                 runningOrder.push(lowerAppId);
+            }
         }
         root._runningAppOrder = runningOrder;
+        const runningOrderIndex = new Map();
+        for (let i = 0; i < runningOrder.length; ++i) {
+            const appId = runningOrder[i];
+            if (!runningOrderIndex.has(appId))
+                runningOrderIndex.set(appId, i);
+        }
 
         const values = [];
         let order = 0;
@@ -223,8 +232,8 @@ Item {
             }
 
             const running = Array.from(runningAppsMap.entries())
-                .sort((a, b) => root._runningAppOrder.indexOf(a[0])
-                    - root._runningAppOrder.indexOf(b[0]));
+                .sort((a, b) => runningOrderIndex.get(a[0])
+                    - runningOrderIndex.get(b[0]));
             for (const [lowerAppId, entry] of running) {
                 values.push({
                     uniqueId: "app-" + lowerAppId,
@@ -287,8 +296,8 @@ Item {
                     return pinnedOrder.get(a.lowerAppId) - pinnedOrder.get(b.lowerAppId)
                 if (aPinned !== bPinned)
                     return aPinned ? -1 : 1
-                return root._runningAppOrder.indexOf(a.lowerAppId)
-                    - root._runningAppOrder.indexOf(b.lowerAppId)
+                return runningOrderIndex.get(a.lowerAppId)
+                    - runningOrderIndex.get(b.lowerAppId)
             });
 
             for (const {lowerAppId, entry} of sortedRunningApps) {

@@ -47,18 +47,26 @@ Rules:
 | `services/RecorderStatus.qml` | **NO ACTION / BOUNDED FALLBACK.** External `wf-recorder` discovery uses `pgrep` every 15 s (30 s Low Power) only when not recording and no fast UI demand; visible recorder UI owns a separate 1 s demand poll and action-triggered checks are bounded. Existing regression explicitly protects this split. | High downside for tiny idle saving unless an equally reliable event source replaces external-recorder discovery. | None. | Negligible. | 0%. |
 | `services/MprisController.qml` | **NO NEW CANDIDATE FROM THIS PASS.** The previously identified unconditional PipeWire enrichment debt has already been adapted: `pw-dump` is now scheduled from audio-stream/player-relevant events rather than an unconditional construction-time call. MPD bridge probing remains a separate compatibility path for ALSA/direct MPD. | Medium. Media discovery compatibility is broad. | None. | Negligible. | 0%. |
 
+
+| `services/Notifications.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — fuse derived-history rebuilds.** Every list mutation currently filters the full list for popups, scans the full list for latest-per-app timestamps, scans the full list again to build groups, then scans the popup subset again for popup groups. A single ordered pass can build popupList, latest timestamps and both group maps while preserving first-icon ownership, notification ordering, critical flags and the existing quirk that popup-group time is derived from the latest notification for that app across the full history. | Low–Medium if read/order parity is oracle-tested; notification objects/actions/timers are untouched. | None. | Low transient allocation reduction; persistent history size unchanged. | 0%. |
+| `modules/common/widgets/Favicon.qml` | **HIGH-CONFIDENCE CPU/process candidate — eliminate cached-hit shell spawn and coalesce duplicate misses.** Every component instance starts `/usr/bin/bash` on completion even when the favicon file already exists; uncached instances can race for the same domain and launch duplicate curl work. Research a shared resolver/in-flight map: try the local cached URL without a child process, perform one direct curl/fetch per missing domain, then fan out the resulting URL to all waiters. | Low–Medium. Must preserve failed-download semantics, file identity, user agent and retry behavior; malformed/corrupt cache handling needs an explicit contract. | Negligible. | Low direct RAM; avoids transient child-process memory. | 0%. |
+| `modules/mediaControls/EqualizerPanel.qml` + `modules/sidebarRight/CompactSidebarRightContent.qml` | **HIGH-CONFIDENCE hidden-work candidate — presentation-gate the CAVA lease.** The compact sidebar keeps its base Controls section loaded permanently; when the Media subsection exists, its Equalizer uses `active: root.panelVisible` even while a different sidebar section is presented. The Canvas 33 ms animation clock becomes effectively hidden with its ancestor, but the explicit Equalizer/CAVA subscription can remain held for the whole time the sidebar is open. Research a presentation lease that retains CAVA through the controls crossfade/prewarm boundary and releases it once Controls/Media cannot contribute visible pixels. | Medium. Returning directly to Controls must not expose analyzer startup/stale-spectrum latency; crossfade timing and other CAVA consumers must remain unchanged. | Low–Medium indirect reduction when this is the last CAVA consumer. | Low. | 0% target; release only outside the visible/crossfade interval. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
 2. **ConnectedSurfaceIrisFrame shadow capture elimination** — first remove only the redundant post-blur capture if exact clipping parity can be proven; keep analytic-shadow replacement as a separate <1% candidate.
 3. **ResourceUsage metric-demand gating** — add GPU/temperature/disk demand leases so persistent CPU/RAM-only consumers do not launch unrelated probes/processes.
 4. **Anti-Flashbang native sampler** — high CPU/process reduction when the opt-in feature is enabled; preserve luminance/policy decisions exactly.
-5. **WallpaperSkewView masked delegate layers** — strong transient GPU/RAM candidate while the selector is open.
-6. **AltSwitcher skew mask/blur path** — strong interactive GPU candidate with bounded lifetime.
-7. **Waffle lock static-wallpaper blur + avatar mask specialization** — potentially valuable because lock screens can remain visible for long periods.
-8. **DashboardLayout guarded allocation/CPU work** — strict-lossless if current-dev oracle parity is re-established.
-9. **GameMode fallback watchdog research** — small CPU/wakeup candidate with no visual change.
-10. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
+5. **Notification derived-state single pass** — strict-lossless CPU/allocation reduction for long histories without truncating or changing persisted history.
+6. **Favicon shared resolver/in-flight coalescing** — remove cached-hit Bash spawns and duplicate cache-miss downloads.
+7. **Compact Sidebar Equalizer presentation lease** — release hidden CAVA ownership without changing visible analyzer frames.
+8. **WallpaperSkewView masked delegate layers** — strong transient GPU/RAM candidate while the selector is open.
+9. **AltSwitcher skew mask/blur path** — strong interactive GPU candidate with bounded lifetime.
+10. **Waffle lock static-wallpaper blur + avatar mask specialization** — potentially valuable because lock screens can remain visible for long periods.
+11. **DashboardLayout guarded allocation/CPU work** — strict-lossless if current-dev oracle parity is re-established.
+12. **GameMode fallback watchdog research** — small CPU/wakeup candidate with no visual change.
+13. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
 
 ## Explicit non-candidates from this pass
 
@@ -200,4 +208,96 @@ The cache sweep did not find a new high-confidence unbounded core RAM cache:
 - AppSearch caches are proportional to the installed DesktopEntry set and intentionally avoid repeated fuzzy-preparation work.
 
 `NewsService` keeps feed responses by feed URL for the lifetime of the deferred singleton, but its practical key space is tied to a small fixed topic/mode set. It is lower priority than the render-pass and process-spawn candidates above unless RSS evidence shows otherwise.
+
+## Research continuation — round 4
+
+Baseline: `dev` at `b9821ec8f3959b075e8c7a0a60d902baa8c472c0`.
+
+### R4.1 — Notification derived-state fusion
+
+Current source: `services/Notifications.qml` at `a05c6744c123d8ed96ee19c8d04cccdbcdeeae0e`.
+
+The current `_updateGroups()` pipeline performs:
+
+```text
+list.filter(popup)                 ~ N
+list.forEach(latest-per-app)       ~ N
+_groupsForListOptimized(list)      ~ N
+_groupsForListOptimized(popupList) ~ P
+sort full app names                ~ G log G
+sort popup app names               ~ Pg log Pg
+```
+
+where `N` is retained history length and `P` is the popup subset. The repository has no configured notification-history count/age cap, so this path scales with long-session history.
+
+A strict-lossless replacement can traverse `root.list` once and construct:
+
+- `popupList` in original list order;
+- `latestTimeForApp`;
+- full groups, preserving the first encountered `appIcon`, notification order and critical flag;
+- popup groups, preserving the first popup notification's icon and popup order.
+
+After the pass, set both full and popup group `time` from the completed **full-history** `latestTimeForApp`, because that is what the current two-stage implementation does even for popup groups. Then sort the same group-key sets with the same comparator.
+
+Required oracle: randomized histories including duplicate app names, equal timestamps, mixed popup state, critical urgency, empty names and mutation sequences. Compare public `popupList`, `latestTimeForApp`, group object fields, notification reference identity and app-name ordering.
+
+This candidate deliberately does **not** cap history or alter persistence; those would change user-visible/history semantics.
+
+### R4.2 — Favicon cached-hit and duplicate-miss process churn
+
+Current source: `modules/common/widgets/Favicon.qml` at `3d7e24e97236e53a174c977736d75e5ed850871d`.
+
+Every component completion starts:
+
+```text
+bash -c '[ -f CACHE ] || curl ...'
+```
+
+Therefore a cache hit still creates a shell process. Multiple simultaneously materialized delegates for the same uncached domain have no shared in-flight owner and can race into duplicate shell/curl work.
+
+Research path:
+
+1. centralize per-domain state: `unknown / loading / ready / failed`;
+2. let cached files resolve without a process spawn;
+3. permit only one download owner for a domain;
+4. preserve `curl -f --remove-on-error` semantics or an equivalent direct fetch failure contract;
+5. publish the same cache URL to all waiting Favicon instances;
+6. retain bounded/explicit retry behavior for failures and define corrupt-cache behavior rather than silently changing it.
+
+Measure cold-cache and warm-cache child-process counts across Search, AI source chips and other multi-item surfaces. The primary claim should be process-count/CPU reduction, not GPU improvement.
+
+### R4.3 — Compact Sidebar hidden Equalizer ownership
+
+Current source:
+
+- `modules/mediaControls/EqualizerPanel.qml`: `2be0c2479bd26bc259077a3a2f07e32ba0b1782a`;
+- `modules/sidebarRight/CompactSidebarRightContent.qml`: `da5520299f6562a484b31fe8c3a449ab54abab73`;
+- `modules/common/widgets/CavaProcess.qml`: `c8c5e5ea82181d2a28c8af4839920305edad6610`.
+
+The compact sidebar keeps the Controls section loaded unconditionally:
+
+```qml
+active: sectionItem.isBase
+    || sectionItem.isCurrent
+    || Math.abs(root.activeSection - sectionItem.index) <= 1
+```
+
+Inside Controls, the Media subsection materializes an `EqualizerPanel` with:
+
+```qml
+active: root.panelVisible
+```
+
+The Equalizer's CAVA wrapper holds a shared service lease whenever `active` is true. Its Canvas clock is `running: root.active && analyzerCanvas.visible`; ancestor visibility can suppress paint, but it does not release the explicit CAVA lease.
+
+A candidate should therefore target **subscription ownership**, not delete the 33 ms visual clock. That clock intentionally drives the electric-wire `Date.now()` motion while the analyzer is visible.
+
+Strict-lossless boundary: keep the subscription through any period in which Controls can contribute pixels during the section crossfade. If direct navigation can jump from a distant section to Controls, prove that pre-acquisition still supplies the same first visible spectrum frame; otherwise classify the release as a tiny presentation-latency tradeoff rather than strict-lossless.
+
+### R4.4 — Existing optimizations confirmed, not re-promoted
+
+- `AppSearch.qml` already has a limited-result top-N path that avoids allocating/sorting the full score-record set, and lazy prepared-name/icon arrays are revision-cached.
+- `MprisController.qml` already moved `pw-dump` behind relevant stream state, matching earlier research.
+- Niri window updates already use pending/published batching for presentation churn. The remaining GameMode live-state idea is already tracked in this audit and must preserve the batching contract rather than bypass it globally.
+- Notification timer/object destruction on explicit discard is already correct; the new target is repeated derived-state traversal, not orphan cleanup.
 

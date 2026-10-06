@@ -7,6 +7,7 @@ import math
 from pathlib import Path
 import random
 import shutil
+import struct
 import subprocess
 import tempfile
 
@@ -22,6 +23,10 @@ runtime = (BASE / "ScreenEdges.qml").read_text(encoding="utf-8")
 
 for token in (
     "float roundedBox(",
+    "float qMax = max(q.x, q.y);",
+    "if (q.x <= 0.0 || q.y <= 0.0)",
+    "return qMax - radius;",
+    "return length(q) - radius;",
     "bool axisDeep =",
     "bool centralCore =",
     "if (axisDeep && centralCore)",
@@ -91,6 +96,47 @@ assert runtime.index("ScreenEdgeField {") < runtime.index("id: legacyFramePainte
 fallback = runtime[runtime.index("id: legacyFramePainter"):]
 assert "MultiEffect {" in fallback
 assert "ShapePath {" in fallback
+
+
+def f32(value: float) -> float:
+    return struct.unpack("<f", struct.pack("<f", float(value)))[0]
+
+
+def legacy_rounded_box_from_q(qx: float, qy: float, radius: float) -> float:
+    qx, qy, radius = f32(qx), f32(qy), f32(radius)
+    px = f32(max(qx, 0.0))
+    py = f32(max(qy, 0.0))
+    squared = f32(f32(px * px) + f32(py * py))
+    length = f32(math.sqrt(squared))
+    qmax = f32(max(qx, qy))
+    return f32(f32(length + f32(min(qmax, 0.0))) - radius)
+
+
+def optimized_rounded_box_from_q(qx: float, qy: float, radius: float) -> float:
+    qx, qy, radius = f32(qx), f32(qy), f32(radius)
+    qmax = f32(max(qx, qy))
+    if qx <= 0.0 or qy <= 0.0:
+        return f32(qmax - radius)
+    squared = f32(f32(qx * qx) + f32(qy * qy))
+    return f32(f32(math.sqrt(squared)) - radius)
+
+
+# The straight-edge shortcut is not an approximation: with at most one positive
+# q component the legacy length(max(q, 0)) + min(max(q), 0) algebra collapses
+# to max(q.x, q.y). Check float32 operation results directly across edge,
+# corner and interior quadrants so the optimization cannot drift numerically.
+float_rng = random.Random(0x53515254)
+for _ in range(200000):
+    qx = f32(float_rng.uniform(-128.0, 128.0))
+    qy = f32(float_rng.uniform(-128.0, 128.0))
+    radius = f32(float_rng.uniform(0.0, 96.0))
+    legacy_bits = struct.pack("<f", legacy_rounded_box_from_q(qx, qy, radius))
+    optimized_bits = struct.pack(
+        "<f", optimized_rounded_box_from_q(qx, qy, radius)
+    )
+    assert legacy_bits == optimized_bits, (
+        "straight-edge rounded-box shortcut changed float32 output"
+    )
 
 
 def sd_round_box(

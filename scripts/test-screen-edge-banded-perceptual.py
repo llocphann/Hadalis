@@ -34,7 +34,10 @@ ShellRoot {
     readonly property real inset: 10
     readonly property real radius: 25
     readonly property real shadow: 15
-    readonly property real extent: Math.ceil(inset + radius + Math.max(shadow, 2) + 2)
+    readonly property real horizontalExtent:
+        Math.ceil(inset + radius + Math.max(shadow, 2) + 2)
+    readonly property real verticalExtent:
+        Math.ceil(inset + Math.max(shadow, 2) + 2)
 
     FloatingWindow {
         id: window
@@ -68,11 +71,11 @@ ShellRoot {
                 anchors.fill: parent
                 visible: root.banded
 
-                readonly property real topH: Math.min(height, root.extent)
-                readonly property real bottomH: Math.min(Math.max(0, height - topH), root.extent)
+                readonly property real topH: Math.min(height, root.horizontalExtent)
+                readonly property real bottomH: Math.min(Math.max(0, height - topH), root.horizontalExtent)
                 readonly property real middleH: Math.max(0, height - topH - bottomH)
-                readonly property real leftW: Math.min(width, root.extent)
-                readonly property real rightW: Math.min(Math.max(0, width - leftW), root.extent)
+                readonly property real leftW: Math.min(width, root.verticalExtent)
+                readonly property real rightW: Math.min(Math.max(0, width - leftW), root.verticalExtent)
 
                 Field {
                     x: 0; y: 0

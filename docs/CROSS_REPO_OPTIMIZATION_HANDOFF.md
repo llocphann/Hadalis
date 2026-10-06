@@ -2113,3 +2113,100 @@ Compare current and direct-argv behavior for:
 Assert identical `stateKnown`, `active`, pending enable/disable state and
 timeout/error behavior.
 
+## 2026-10-07 — MPRIS grace-state session-growth research
+
+Research-only continuation on current `dev`
+`a0a88b34a63e14847358ade133c4e14a183c0ed4`. No runtime/product source was
+changed in this round.
+
+Current `services/MprisController.qml`:
+`3a8184f9308f0816ea395ea26f182bb5a3fbcf15`.
+
+### Candidate — HIGH CONFIDENCE: prune behaviorally expired player-grace entries during existing updates
+
+The controller keeps a private grace map:
+
+```qml
+property var _playerGrace: ({})  // dbusName -> timestamp
+```
+
+and defines grace validity as:
+
+```qml
+const graceTime = _playerGrace[name]
+if (!graceTime) return false
+return (Date.now() - graceTime) < 2000
+```
+
+When a player has valid metadata or is playing, the update path does:
+
+```qml
+let nextGrace = Object.assign({}, _playerGrace)
+nextGrace[name] = Date.now()
+_playerGrace = nextGrace
+```
+
+Full-file occurrence inspection shows no path that removes an expired key.
+
+Therefore every unique D-Bus player instance name seen during a long session can
+remain in the map forever even though its behavioral value becomes permanently
+dead after two seconds unless the exact same D-Bus name is updated again.
+Browser tabs, transient mpv instances and players that encode a unique instance
+suffix can grow this state gradually.
+
+The cost is twofold:
+
+1. stale JS key/value retention;
+2. every later valid metadata update clones the entire accumulated map before
+   changing one timestamp.
+
+Strict-lossless direction:
+
+- when `_updateGrace()` already needs to publish a new grace timestamp, build
+  the next map from only entries whose current timestamp is still inside the
+  same existing 2000 ms validity window, then write the current player;
+- alternatively mutate the private map in-place only if an oracle proves no
+  consumer depends on `_playerGraceChanged`; pruning is still required either
+  way;
+- do **not** add a cleanup timer;
+- do **not** shorten the current 2000 ms window;
+- keep `_isInGracePeriod()` comparison semantics unchanged.
+
+A conservative implementation can preserve the current QML property
+reassignment pattern while pruning, which makes the optimization independent of
+any question about property-change notification.
+
+### Required oracle
+
+Use a deterministic clock helper and compare current/new
+`_isInGracePeriod()` answers for:
+
+- no entry;
+- timestamp at 0/1/1999/2000/2001 ms age;
+- multiple live entries;
+- mixture of live and expired entries;
+- current player's previous expired entry;
+- repeated updates of the same D-Bus name;
+- many unique historical names followed by one current-player update.
+
+Assert:
+
+- every grace answer for every non-expired player is identical;
+- expired keys disappear only during an already-existing update event;
+- no additional timer/wakeup is introduced;
+- active/display player membership/order remains identical.
+
+This is a cumulative session RAM/JS-allocation cleanup, not a GPU optimization,
+and no whole-Hadalis percentage is claimed without runtime measurement.
+
+### Adjacent private-map sweep
+
+`NiriService._autoMaximizedWs` was inspected in the same pass. It is also a
+private imperative map and uses copy-on-write, but it is bounded by active
+workspace count and is actively pruned when tracked workspaces gain/lose tiling
+windows. Its absolute value is much smaller, so it is not promoted as a
+separate optimization.
+
+`KeyboardIndicators` state maps are rebuilt from the currently discovered
+LED path set and likewise do not form an unbounded session cache.
+

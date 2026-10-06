@@ -4422,3 +4422,103 @@ before expanding this candidate into a full music-library index.
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — WorldClock timezone catalog research
+
+Research-only continuation on current `dev`
+`0d46417c9da64a4f548b6195099cc854182214b0`. No runtime/product source was
+changed in this round.
+
+Current `services/WorldClock.qml`:
+`1260b2d2ed85cf70339c2c8f366c296655dc3c9a`.
+
+Repository/history search found no prior optimization note for the full
+timezone catalog/model.
+
+### Candidate — HIGH CONFIDENCE lifecycle/RAM: materialize the full timezone picker model only when a picker needs it
+
+The runtime clock needs only the configured timezone set, normally four values:
+
+```qml
+readonly property var timezones: {
+    const configured =
+        Config.options?.background?.widgets?.worldClock?.timezones
+    ...
+}
+```
+
+but every time the WorldClock singleton is materialized it also eagerly builds
+the full IANA picker catalog:
+
+```qml
+readonly property var timezoneList: {
+    if (typeof Intl !== "undefined"
+            && typeof Intl.supportedValuesOf === "function")
+        return Intl.supportedValuesOf("timeZone")
+    return root.fallbackTimezones
+}
+
+readonly property var comboModel: root.timezoneList.map(tz => ({
+    label: root.labelFor(tz),
+    tz: tz,
+    icon: ""
+}))
+```
+
+Repository-wide occurrence inspection shows:
+
+- `timezoneList` has no consumer except `comboModel`;
+- `comboModel` is consumed only by:
+  - the background World Clock edit-popover timezone pickers;
+  - Desktop Widgets Settings timezone pickers;
+- normal clock rendering reads `WorldClock.entries`, `timezones`,
+  `offsetsMinutes` and `now`, not the full picker model.
+
+Therefore the catalog is settings/editor data, not runtime clock state.
+
+Strict-lossless direction:
+
+1. replace eager `timezoneList/comboModel` evaluation with an idempotent lazy
+   `ensureTimezoneCatalog()`;
+2. keep an initially empty/private catalog state;
+3. call the ensure function from each picker owner before the picker becomes
+   visible/materialized;
+4. compute `Intl.supportedValuesOf("timeZone")` once per WorldClock singleton;
+5. build labels once and reuse the same model for all four pickers;
+6. retain the exact fallback timezone list and `labelFor()` formatting;
+7. keep currently selected timezone values independent of catalog readiness.
+
+The edit-popover is declared through `editPopoverContent: Component`, so its
+picker subtree is not required for ordinary widget rendering. Settings can
+explicitly prime the catalog when its timezone controls are loaded.
+
+### Expected structural saving
+
+When WorldClock is used only as a clock:
+
+- no full IANA timezone array is materialized;
+- no second array of `{label,tz,icon}` objects is allocated;
+- no label splitting/replacement is performed for every supported timezone.
+
+This is not a default-shell saving when WorldClock never materializes, but it
+removes unnecessary CPU/RAM from every session that displays the clock without
+opening its timezone editor.
+
+### Required oracle
+
+- Intl supported-values path;
+- fallback path when `Intl.supportedValuesOf` is unavailable/throws;
+- normal clock rendering before catalog creation;
+- open widget edit popover for the first time;
+- open Desktop Widgets Settings first instead;
+- open both surfaces in either order;
+- selected index for all configured timezones;
+- custom/configured timezone not present in the catalog;
+- change timezone and verify current clock state/offset refresh exactly as
+  before.
+
+No visual change is expected outside the moment the picker is intentionally
+opened; the picker must still present the complete model on its first visible
+frame.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+

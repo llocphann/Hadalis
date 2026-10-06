@@ -2047,3 +2047,69 @@ Weather GPS parsing and thumbnail/media cache helpers.
 Only wrappers whose command can be represented as the exact same argv/process
 contract should be converted under strict-lossless rules.
 
+## 2026-10-07 — Hyprsunset direct-argv probe research
+
+Research-only continuation on current `dev`
+`86a60f30893011ff8eb7ef25d8de9249faa84ba9`. No runtime/product source was
+changed in this round.
+
+Current `services/Hyprsunset.qml`:
+`ad37a89247439f2133ba65fb2248b81edbdc90b3`.
+
+### Candidate — HIGH CONFIDENCE but low-frequency: remove the shell from Hyprland state probing
+
+The Hyprland night-light state probe currently uses:
+
+```qml
+command: ["/usr/bin/bash", "-c", "hyprctl hyprsunset temperature"]
+```
+
+The shell command contains no shell syntax. Its only purpose is to execute
+`hyprctl` with two argv entries.
+
+The Process already owns all required control outside the shell:
+
+- stdout collection;
+- start-observed tracking;
+- 5-second timeout;
+- exit-code handling;
+- output checks for empty / `Couldn't...` / `6500`;
+- state publication and pending enable/disable continuation.
+
+Therefore the equivalent direct command can be:
+
+```qml
+command: ["hyprctl", "hyprsunset", "temperature"]
+```
+
+(or an explicit resolved hyprctl path if the project decides PATH lookup should
+be fixed).
+
+This removes one Bash process from each Hyprland night-light state probe while
+keeping the authoritative `hyprctl` observation unchanged.
+
+### Priority
+
+This is strict-lossless and simple, but lower value than the Cloudflare WARP
+direct-argv candidate because Hyprsunset does not continuously poll at a short
+cadence. Probes occur around deferred load, explicit state resolution and
+post-action verification.
+
+Keep it as a companion process-churn cleanup, not a headline optimization.
+
+### Required oracle
+
+Compare current and direct-argv behavior for:
+
+- hyprsunset active;
+- inactive / 6500 output;
+- hyprctl error output;
+- hyprctl missing / spawn failure;
+- timeout;
+- explicit enable/disable;
+- temperature change while active;
+- pending toggle before initial state becomes known.
+
+Assert identical `stateKnown`, `active`, pending enable/disable state and
+timeout/error behavior.
+

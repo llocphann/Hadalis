@@ -288,8 +288,10 @@ reject "$it_thumbnail" 'GE.OpacityMask' 'InnerTune list thumbnails must not allo
 require "$it_thumbnail" 'GlobalStates.sidebarLeftOpen' 'InnerTune decorative equalizer must stop with the sidebar'
 
 require "$screen_edges" 'readonly property bool physicalShadowActive:' 'Screen Edge must compute physical shadow activity explicitly'
-require "$screen_edges" 'layer.enabled: frameShape.physicalShadowActive' 'Screen Edge full-screen layer must sleep when physical shadow is off'
-require "$screen_edges" 'fillRule: ShapePath.OddEvenFill' 'Screen Edge geometry lock must remain one odd-even frame'
+require "$screen_edges" 'ScreenEdgeField {' 'Screen Edge normal path must use the analytic field painter'
+require "$screen_edges" 'elevationEnabled: frameWindow.physicalShadowActive' 'Screen Edge analytic elevation must stop when physical shadow is inactive'
+require "$screen_edges" 'active: frameField.status === ShaderEffect.Error' 'Legacy Screen Edge painter must remain lazy and error-only'
+require "$screen_edges" 'fillRule: ShapePath.OddEvenFill' 'Screen Edge fallback geometry must retain the locked odd-even frame'
 
 require "$alt_switcher" 'cacheBuffer: root.skewExpandedWidth' 'ii skew AltSwitcher cache must stay bounded'
 require "$alt_switcher" 'id: skewFocusRetryTimer' 'ii skew AltSwitcher focus must use bounded retries'

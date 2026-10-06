@@ -483,8 +483,51 @@ pub fn build_app_palette(base: &Palette) -> Palette {
     } else {
         readable_hex(&subtext_seed, &layer1, 3.0)
     };
-    let selection = mix_hex(&primary_container, &layer3, 0.75);
-    let selection_hover = mix_hex(&primary_container, &layer3, 0.88);
+    let container_hct = parse_hex(&primary_container)
+        .map(Hct::from_argb)
+        .unwrap_or_else(|_| Hct::from_argb(Argb::from_u32(0xFF6750A4)));
+    let layer0_hct = parse_hex(&layer0)
+        .map(Hct::from_argb)
+        .unwrap_or_else(|_| Hct::from_argb(Argb::from_u32(0xFF000000)));
+    let selection_tone = if layer0_hct.tone() < 50.0 {
+        container_hct.tone().max(layer0_hct.tone() + 12.0)
+    } else {
+        container_hct.tone().min(layer0_hct.tone() - 10.0)
+    };
+    let selection = Hct::new(
+        container_hct.hue(),
+        container_hct.chroma().min(20.0),
+        selection_tone,
+    )
+    .to_argb()
+    .to_hex();
+    let selection_hover = Hct::new(
+        container_hct.hue(),
+        container_hct.chroma().min(26.0),
+        selection_tone,
+    )
+    .to_argb()
+    .to_hex();
+
+    let is_dark = layer0_hct.tone() < 50.0;
+    let accent_hue = parse_hex(&primary)
+        .map(Hct::from_argb)
+        .map(|hct| hct.hue())
+        .unwrap_or(270.0);
+    let layer0_argb = parse_hex(&layer0).unwrap_or_else(|_| Argb::from_u32(0xFF000000));
+    let status = |hue: f64, chroma: f64| -> String {
+        let delta = (accent_hue - hue + 180.0).rem_euclid(360.0) - 180.0;
+        let shifted_hue = (hue + (delta * 0.25).clamp(-15.0, 15.0)).rem_euclid(360.0);
+        let seed = Hct::new(shifted_hue, chroma, if is_dark { 80.0 } else { 40.0 }).to_argb();
+        ensure_contrast(seed, layer0_argb, 4.5, is_dark).to_hex()
+    };
+    let success = status(145.0, 48.0);
+    let warning = status(75.0, 56.0);
+    let error = base
+        .get("error")
+        .map(|value| readable_hex(value, &layer0, 4.5))
+        .unwrap_or_else(|| status(25.0, 60.0));
+    let on_status = layer0.clone();
 
     let mut app = base.clone();
     let entries = [
@@ -540,6 +583,10 @@ pub fn build_app_palette(base: &Palette) -> Palette {
             "app_on_selection",
             readable_hex(&on_layer3, &selection, 4.5),
         ),
+        ("app_success", success),
+        ("app_warning", warning),
+        ("app_error", error),
+        ("app_on_status", on_status),
         ("app_window_bg", layer0.clone()),
         ("app_view_bg", layer0.clone()),
         ("app_headerbar_bg", layer0.clone()),

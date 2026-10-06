@@ -28,6 +28,8 @@ def main() -> int:
     require(
         "modules/common/ThemePresets.qml",
         "c.darkmode",
+        "tintLightSurfaces(c)",
+        "themed.m3background = surface(0.86, 1.00)",
         "ColorUtils.quietSelection(primaryContainer, layer0, false)",
         "ColorUtils.semanticStatus(primary, layer0, 145.0, 0.48)",
         "app_success: success",
@@ -42,6 +44,8 @@ def main() -> int:
     require(
         "scripts/colors/generate_colors_material.py",
         "layer1_active, 4.5",
+        "tint_light_surfaces(material_colors, args.scheme)",
+        '"background": (86.0, 1.00)',
         "selection_tone",
         "min(container_hct.chroma, 20.0)",
         '"app_success": success',
@@ -62,6 +66,8 @@ def main() -> int:
     require(
         "native/inir-theme/src/palette.rs",
         "scheme.primary_palette",
+        "tint_light_surfaces(&mut palette, scheme_name)",
+        '("background", 86.0, 1.00)',
         "layer0_is_light",
         "let selection_tone",
         "container_hct.chroma().min(20.0)",

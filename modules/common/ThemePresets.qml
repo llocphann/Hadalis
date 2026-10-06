@@ -3390,6 +3390,53 @@ Singleton {
         return newColors;
     }
 
+    function tintLightSurfaces(colorsObj) {
+        if (!colorsObj || colorsObj.darkmode !== false) return colorsObj;
+
+        var themed = {};
+        var keys = Object.keys(colorsObj);
+        for (var i = 0; i < keys.length; i++)
+            themed[keys[i]] = colorsObj[keys[i]];
+
+        var accent = Qt.color(
+            themed.m3primary || themed.m3surfaceTint || themed.m3primaryContainer || ""
+        );
+        if (!accent.valid) return themed;
+
+        var hue = accent.hslHue;
+        var surfaceSat = Math.max(0.18,
+            Math.min(0.34, accent.hslSaturation * 0.55));
+
+        function surface(lightness, scale) {
+            var sat = Math.max(0.12, Math.min(0.38, surfaceSat * scale));
+            return Qt.hsla(hue, sat, lightness, 1.0).toString();
+        }
+        function ink(lightness, scale) {
+            var inkSat = Math.max(0.06, Math.min(0.20, surfaceSat * 0.45 * scale));
+            return Qt.hsla(hue, inkSat, lightness, 1.0).toString();
+        }
+
+        themed.m3background = surface(0.86, 1.00);
+        themed.m3surface = surface(0.86, 1.00);
+        themed.m3surfaceDim = surface(0.72, 1.10);
+        themed.m3surfaceBright = surface(0.91, 0.82);
+        themed.m3surfaceContainerLowest = surface(0.89, 0.88);
+        themed.m3surfaceContainerLow = surface(0.83, 0.96);
+        themed.m3surfaceContainer = surface(0.79, 1.00);
+        themed.m3surfaceContainerHigh = surface(0.75, 1.06);
+        themed.m3surfaceContainerHighest = surface(0.71, 1.12);
+        themed.m3surfaceVariant = surface(0.74, 1.02);
+
+        themed.m3onBackground = ink(0.12, 0.75);
+        themed.m3onSurface = ink(0.12, 0.75);
+        themed.m3onSurfaceVariant = ink(0.27, 0.95);
+        themed.m3outline = ink(0.43, 0.80);
+        themed.m3outlineVariant = ink(0.60, 0.90);
+        themed.m3inverseSurface = ink(0.18, 0.90);
+        themed.m3inverseOnSurface = ink(0.90, 0.65);
+        return themed;
+    }
+
     function applyPreset(id, applyExternal = true, skipColorsJson = false) {
         _log("[ThemePresets] Applying preset:", id);
         const preset = getPreset(id);
@@ -3404,6 +3451,7 @@ Singleton {
         // Soften colors for built-in presets (not custom) if enabled in config
         var shouldSoften = (Config.options?.appearance?.softenColors ?? true) && (id !== "custom");
         var c = shouldSoften ? softenColors(cSource) : cSource;
+        c = tintLightSurfaces(c);
 
         const m3 = Appearance.m3colors;
         
@@ -4035,6 +4083,7 @@ Singleton {
         var cSource = preset.colors === "custom" ? Config.options?.appearance?.customTheme : preset.colors;
         var shouldSoften = (Config.options?.appearance?.softenColors ?? true) && (id !== "custom");
         var c = shouldSoften ? softenColors(cSource) : cSource;
+        c = tintLightSurfaces(c);
         
         applyColorsToAppearance(c);
     }
@@ -4048,6 +4097,7 @@ Singleton {
     }
 
     function applyColorsToAppearance(c) {
+        c = tintLightSurfaces(c);
         const m3 = Appearance.m3colors;
         m3.darkmode = c.darkmode;
         m3.transparent = c.transparent ?? false;

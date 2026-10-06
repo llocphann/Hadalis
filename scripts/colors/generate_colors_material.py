@@ -455,6 +455,61 @@ def readable_hex(fg_hex: str, bg_hex: str, min_ratio: float = 4.5) -> str:
     return argb_to_hex(ensure_contrast(hex_to_argb(fg_hex), bg_argb, min_ratio, is_bg_dark))
 
 
+def tint_light_surfaces(palette: dict[str, str], scheme_name: str) -> dict[str, str]:
+    """Replace near-white Material light surfaces with the active theme hue.
+
+    Light mode remains high-tone/readable, but its structural surfaces are
+    deliberately chromatic: a red theme yields light red/rose surfaces instead
+    of white/grey, blue yields light blue, etc.
+    """
+    if scheme_name == "scheme-monochrome":
+        return palette
+
+    seed_hex = (
+        palette.get("primary")
+        or palette.get("surfaceTint")
+        or palette.get("primaryContainer")
+    )
+    if not seed_hex:
+        return palette
+
+    seed = Hct.from_int(hex_to_argb(seed_hex))
+    surface_chroma = min(32.0, max(18.0, seed.chroma * 0.55))
+    hue = seed.hue
+
+    surface_ramp = {
+        "background": (86.0, 1.00),
+        "surface": (86.0, 1.00),
+        "surfaceDim": (72.0, 1.10),
+        "surfaceBright": (91.0, 0.82),
+        "surfaceContainerLowest": (89.0, 0.88),
+        "surfaceContainerLow": (83.0, 0.96),
+        "surfaceContainer": (79.0, 1.00),
+        "surfaceContainerHigh": (75.0, 1.06),
+        "surfaceContainerHighest": (71.0, 1.12),
+        "surfaceVariant": (74.0, 1.02),
+    }
+    for role, (tone, chroma_scale) in surface_ramp.items():
+        chroma = min(36.0, max(12.0, surface_chroma * chroma_scale))
+        palette[role] = argb_to_hex(Hct.from_hct(hue, chroma, tone).to_int())
+
+    ink_chroma = min(18.0, max(6.0, surface_chroma * 0.45))
+    ink_ramp = {
+        "onBackground": (12.0, 0.75),
+        "onSurface": (12.0, 0.75),
+        "onSurfaceVariant": (27.0, 0.95),
+        "outline": (43.0, 0.80),
+        "outlineVariant": (60.0, 0.90),
+        "inverseSurface": (18.0, 0.90),
+        "inverseOnSurface": (90.0, 0.65),
+    }
+    for role, (tone, chroma_scale) in ink_ramp.items():
+        chroma = min(20.0, max(4.0, ink_chroma * chroma_scale))
+        palette[role] = argb_to_hex(Hct.from_hct(hue, chroma, tone).to_int())
+
+    return palette
+
+
 def build_app_palette(base_palette: dict[str, str]) -> dict[str, str]:
     layer0 = base_palette.get("background") or base_palette.get("surface") or "#000000"
     layer1 = base_palette.get("surface_container_low") or base_palette.get("surface") or layer0
@@ -691,6 +746,11 @@ if args.scheme != "scheme-monochrome":
                     h = Hct.from_int(hex_to_argb(material_colors[role]))
                     if 4.0 <= h.chroma < floor:
                         material_colors[role] = argb_to_hex(Hct.from_hct(h.hue, floor, h.tone).to_int())
+
+# Material's stock light surfaces are deliberately near-white. Hadalis light
+# mode instead uses a high-tone ramp in the active theme hue.
+if not darkmode:
+    tint_light_surfaces(material_colors, args.scheme)
 
 # Extended material
 if darkmode == True:
@@ -1145,6 +1205,8 @@ if args.render_templates:
                 ]:
                     g = Hct.from_hct(g.hue, g.chroma * 0.60, g.tone)
                 palette[c] = rgba_to_hex(g.to_rgba())
+        if not is_dark:
+            tint_light_surfaces(palette, args.scheme)
         # source_color is the seed itself
         palette["source_color"] = argb_to_hex(argb)
         # Extended Material tokens (not in MaterialDynamicColors)

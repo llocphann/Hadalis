@@ -171,6 +171,63 @@ fn adjust_material_color(argb: Argb, scheme_name: &str, soften: bool, color_stre
     hct.to_argb()
 }
 
+fn tint_light_surfaces(palette: &mut Palette, scheme_name: &str) {
+    if scheme_name == "scheme-monochrome" {
+        return;
+    }
+
+    let Some(seed_hex) = palette
+        .get("primary")
+        .or_else(|| palette.get("surfaceTint"))
+        .or_else(|| palette.get("primaryContainer"))
+        .cloned()
+    else {
+        return;
+    };
+    let Ok(seed_argb) = parse_hex(&seed_hex) else {
+        return;
+    };
+    let seed = Hct::from_argb(seed_argb);
+    let surface_chroma = (seed.chroma() * 0.55).clamp(18.0, 32.0);
+    let hue = seed.hue();
+
+    for (role, tone, scale) in [
+        ("background", 86.0, 1.00),
+        ("surface", 86.0, 1.00),
+        ("surfaceDim", 72.0, 1.10),
+        ("surfaceBright", 91.0, 0.82),
+        ("surfaceContainerLowest", 89.0, 0.88),
+        ("surfaceContainerLow", 83.0, 0.96),
+        ("surfaceContainer", 79.0, 1.00),
+        ("surfaceContainerHigh", 75.0, 1.06),
+        ("surfaceContainerHighest", 71.0, 1.12),
+        ("surfaceVariant", 74.0, 1.02),
+    ] {
+        let chroma = (surface_chroma * scale).clamp(12.0, 36.0);
+        palette.insert(
+            role.into(),
+            Hct::new(hue, chroma, tone).to_argb().to_hex(),
+        );
+    }
+
+    let ink_chroma = (surface_chroma * 0.45).clamp(6.0, 18.0);
+    for (role, tone, scale) in [
+        ("onBackground", 12.0, 0.75),
+        ("onSurface", 12.0, 0.75),
+        ("onSurfaceVariant", 27.0, 0.95),
+        ("outline", 43.0, 0.80),
+        ("outlineVariant", 60.0, 0.90),
+        ("inverseSurface", 18.0, 0.90),
+        ("inverseOnSurface", 90.0, 0.65),
+    ] {
+        let chroma = (ink_chroma * scale).clamp(4.0, 20.0);
+        palette.insert(
+            role.into(),
+            Hct::new(hue, chroma, tone).to_argb().to_hex(),
+        );
+    }
+}
+
 pub fn material_palette(
     seed: Argb,
     scheme_name: &str,
@@ -290,6 +347,10 @@ fn material_palette_with_policy(
                 }
             }
         }
+    }
+
+    if !dark {
+        tint_light_surfaces(&mut palette, scheme_name);
     }
 
     if dark {
@@ -956,6 +1017,54 @@ mod tests {
     fn scss_boolean_spelling_matches_python_output() {
         let output = scss_output(&Palette::new(), &Palette::new(), true, false);
         assert_eq!(output, "$darkmode: True;\n$transparent: False;\n");
+    }
+
+    #[test]
+    fn light_palette_uses_theme_hue_instead_of_white_surfaces() {
+        let material = material_palette(
+            Argb::from_rgb(0xB0, 0x00, 0x20),
+            "scheme-tonal-spot",
+            false,
+            false,
+            1.0,
+        );
+        let primary = Hct::from_argb(parse_hex(material.get("primary").unwrap()).unwrap());
+        let background =
+            Hct::from_argb(parse_hex(material.get("background").unwrap()).unwrap());
+        let container =
+            Hct::from_argb(parse_hex(material.get("surfaceContainer").unwrap()).unwrap());
+
+        assert!(
+            background.tone() < 90.0,
+            "light background regressed to near-white: {}",
+            material.get("background").unwrap()
+        );
+        assert!(
+            background.chroma() >= 12.0,
+            "light background lost theme tint: {}",
+            material.get("background").unwrap()
+        );
+        assert!(
+            container.chroma() >= 12.0,
+            "light container lost theme tint: {}",
+            material.get("surfaceContainer").unwrap()
+        );
+
+        let hue_delta = |a: f64, b: f64| {
+            let d = (a - b).abs() % 360.0;
+            d.min(360.0 - d)
+        };
+        assert!(
+            hue_delta(primary.hue(), background.hue()) <= 12.0,
+            "light background no longer follows primary hue"
+        );
+
+        let on_surface = parse_hex(material.get("onSurface").unwrap()).unwrap();
+        let background_argb = parse_hex(material.get("background").unwrap()).unwrap();
+        assert!(
+            contrast_ratio(on_surface, background_argb) >= 4.5,
+            "tinted light background lost readable foreground contrast"
+        );
     }
 
     #[test]

@@ -1291,3 +1291,97 @@ Required oracle:
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — Shared MPRIS position ticker research
+
+Research-only continuation on current `dev`
+`70174b2cee2acd94f997ce993f55689acfc938e4`. No runtime/product source was
+changed in this round.
+
+Repository-wide source search finds ten `positionChanged()` occurrences in
+the media path. Nine are producer-style refresh sites/timers; LyricsService is
+a listener.
+
+Current independent refresh owners include:
+
+- horizontal Bar media;
+- vertical Bar media;
+- BarMediaPlayerItem;
+- PlayerControl;
+- PlayerBase;
+- left-sidebar MediaPlayerWidget;
+- Control Panel MediaSection;
+- LockMediaWidget;
+- Waffle Action Center MediaPaneContent;
+- VolumeMixer music page.
+
+Current cadences are not uniform:
+
+- `PlayerBase`: 500 ms while its presentation explicitly requests updates;
+- several rich surfaces: 1000 ms;
+- Bar/VerticalBar/VolumeMixer: configurable resource interval, defaulting near
+  3000 ms.
+
+Every producer calls the same method on the same `MprisPlayer` object:
+
+```qml
+player.positionChanged()
+```
+
+That is a player-level signal refresh, not a private per-surface computation.
+If multiple surfaces refer to the same player, the fastest timer already wakes
+bindings attached to that player; slower owners can then add redundant signal
+emissions/wakeups.
+
+### Candidate — P1 / MEASURE THEN ADAPT: one demand-leased ticker per player identity
+
+A shared ticker can potentially replace the independent periodic producers while
+preserving each surface's demand boundary:
+
+1. consumers acquire a lease for a specific player and requested interval;
+2. one ticker per player runs at the minimum active requested interval;
+3. releasing a consumer recomputes the required interval and stops the ticker
+   when no consumer remains;
+4. acquiring a consumer performs the current `triggeredOnStart` equivalent:
+   request one immediate refresh even if another ticker is already running;
+5. YtMusic/direct playback-adapter paths that do not rely on MPRIS position
+   refresh remain outside this lease;
+6. multi-player surfaces retain one logical ticker per player, not one global
+   active-player ticker.
+
+This direction has higher leverage than shaving individual timer intervals
+because it attacks duplicated ownership, not merely cadence.
+
+### Why this is not yet marked strict-lossless
+
+The exact timing and count of `positionChanged()` emissions is observable to
+bindings/listeners. Independent timers currently have separate phases. A shared
+minimum-cadence ticker would change that signal schedule even when displayed
+position values remain equivalent or fresher.
+
+Before implementation, capture the current signal/callback sequence for:
+
+- one Bar-only active player;
+- PlayerControl only;
+- PlayerBase/preset only;
+- Bar + popup simultaneously;
+- Bar + Sidebar/Control Panel;
+- Dashboard + another active media surface;
+- Lock transition;
+- Waffle Action Center;
+- two different MPRIS players in the multi-player surface;
+- consumer open/close while playing;
+- pause/resume;
+- configured resource interval differing from 3000 ms.
+
+Then define the parity contract around visible progress freshness rather than
+assuming raw signal count is irrelevant.
+
+### Important implementation boundary
+
+Do not centralize this as a permanently running MPRIS poll. The current code is
+already presentation/demand gated. Any shared owner must preserve that property
+and balance all leases on destruction/visibility transitions.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

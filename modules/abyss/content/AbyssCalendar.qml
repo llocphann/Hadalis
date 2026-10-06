@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import qs.services
+import qs.modules.common
 import qs.modules.abyss.looks
 
 ColumnLayout {
@@ -23,7 +24,7 @@ ColumnLayout {
                 required property int index
                 readonly property var date: new Date(root.month.getFullYear(),root.month.getMonth(),index-root.month.getDay()+1)
                 text: String(date.getDate())
-                color: date.getMonth() === root.month.getMonth() ? AbyssStyle.textColor : AbyssStyle.textColorMuted
+                color: date.getMonth() === root.month.getMonth() ? (Appearance.m3colors.darkmode ? AbyssStyle.textColor : "#000000") : (Appearance.m3colors.darkmode ? AbyssStyle.textColorMuted : "#1a1a1a")
                 font.bold: date.toDateString() === DateTime.clock.date.toDateString()
                 horizontalAlignment: Text.AlignHCenter
                 Layout.fillWidth: true

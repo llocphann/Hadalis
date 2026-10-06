@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
+import qs.modules.common
 import qs.modules.abyss.looks
 import "../looks/AbyssPresentation.js" as Presentation
 
@@ -69,7 +70,7 @@ Item {
                         text: root.kind === "quickNotes" ? "Notes / To-do / Timers"
                             : root.kind === "notificationCenter" ? "Notification history / Activity"
                             : "Notification popup"
-                        color: AbyssStyle.textColorMuted
+                        color: Appearance.m3colors.darkmode ? AbyssStyle.textColorMuted : "#1a1a1a"
                     }
                 }
             }

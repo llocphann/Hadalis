@@ -35,8 +35,7 @@ void main() {
     vec2 centre = (lo + hi) * 0.5;
 
     if (halfSize.x <= 0.0 || halfSize.y <= 0.0) {
-        float alpha = u.frameColor.a;
-        fragColor = vec4(u.frameColor.rgb * alpha, alpha) * u.qt_Opacity;
+        fragColor = u.frameColor * u.qt_Opacity;
         return;
     }
 

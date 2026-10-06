@@ -1091,3 +1091,112 @@ behavioral change into a process-only optimization patch.
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — Media artwork resolver process research
+
+Research-only continuation on current `dev`
+`d52ea737adb5cd1d52926e15ec164beaa719a723`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `modules/common/widgets/MediaArtworkResolver.qml`:
+  `801d6422216b4b5f8e1ed31111b27010b963006e`;
+- canonical active-player singleton `modules/common/widgets/MediaArtwork.qml`:
+  `22cde9d2038d0ebf4c226773cdb9ca9a8cc6721f`.
+
+Repository/history search found no prior optimization note for shared in-flight
+ownership inside `MediaArtworkResolver`.
+
+### Candidate — HIGH CONFIDENCE structural duplicate: share exact-key artwork file work while keeping per-instance display state
+
+`MediaArtworkResolver` intentionally gives each owner independent presentation
+state: current display source, stale-art retention, generation counters, retry
+timers and local-file reload handling. That independence must remain.
+
+The expensive file/backend work is not independent, however. Every resolver
+instance owns its own:
+
+- `artExistsChecker` process;
+- remote `artworkDownloader`;
+- base64 writer;
+- local-file MIME checker/cacher;
+- stable-file readiness checker.
+
+The remote/data/local cache destination is derived from the resolver's exact
+metadata identity: normalized source URL + title + artist + album. Multiple
+resolver instances with the same identity therefore target the same cache file,
+yet can independently probe or produce it.
+
+This can happen for active-player surfaces because Hadalis has both the
+canonical `MediaArtwork` singleton and additional resolver instances in
+`PlayerControl`, `PlayerBase`, `CavaTheme`, Bar media and YtMusic-specific
+surfaces. Other owners legitimately resolve non-active players, so replacing
+all of them with the active-player singleton would be incorrect.
+
+Strict-lossless direction:
+
+1. keep each resolver's presentation/generation state local;
+2. centralize only backend work keyed by the exact output/cache identity
+   (`artFilePath` or an equivalent exact metadata key + operation kind);
+3. allow one producer/check pipeline at a time for a given exact key;
+4. fan successful completion/path readiness back to all current waiters;
+5. keep distinct metadata keys independent even when they share the same URL;
+6. never use URL-only dedup because title/artist/album are intentionally part of
+   cache identity;
+7. preserve atomic temp-file publication and MIME validation;
+8. do not make failures sticky.
+
+The last point is important: current remote resolver instances each have their
+own retry counter/timing. A shared backend must not silently convert several
+independent retry opportunities into a permanent failed cache entry. The safest
+design is success/in-flight sharing only, with failed in-flight state removed
+and retry scheduling still owned by the requesting resolver(s), or another
+oracle-proven policy that reproduces current visible recovery.
+
+### Why not simply route everything through `MediaArtwork`
+
+That would change behavior:
+
+- `MediaControls` can render several players, not only the active player;
+- LocalMusic can use a playback adapter;
+- YtMusic-specific surfaces have dedicated metadata rules;
+- some resolver metadata keys differ in album handling;
+- each surface currently preserves its own previous artwork while the next
+  source resolves.
+
+Backend dedup is therefore the narrow optimization boundary.
+
+### Required oracle before implementation
+
+Exercise exact result/path and transition parity for:
+
+- two simultaneous resolvers with identical remote metadata;
+- identical URL but different title/artist/album;
+- active-player singleton + `PlayerControl` / `PlayerBase` overlap;
+- different players resolving concurrently;
+- warm cache hit;
+- cold remote download;
+- HTTP failure followed by retries and later recovery;
+- resolver destroyed while shared work is in flight;
+- local file that appears late;
+- local file replaced or deleted during readiness checks;
+- Plasma/browser temporary art copied before the source disappears;
+- base64 data URI success/failure;
+- rapid track A -> B -> A generation changes;
+- each resolver retaining its own stale display until its requested replacement
+  is ready.
+
+Measure process count (`test`, Bash, curl, file/stat helpers) for one active
+track displayed on several surfaces before claiming a runtime saving.
+
+### Adjacent non-candidate
+
+Do not memoize a successful file path forever without filesystem invalidation.
+Current resolvers re-check existence and can recover if a cache file is deleted
+or replaced externally. A process-free session-known-success set would change
+that recovery contract unless coupled to authoritative file lifetime/version
+evidence.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

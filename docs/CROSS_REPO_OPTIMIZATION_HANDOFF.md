@@ -2580,3 +2580,95 @@ mutations.
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — System tray classification research
+
+Research-only continuation on current `dev`
+`cb11f16188f7e62480d2fc9c21ffa7fdee82eee7`. No runtime/product source was
+changed in this round.
+
+Current `services/TrayService.qml`:
+`3f5e1f2580aebadf87ab40b91b4876c9ca68e76b`.
+
+### Candidate — HIGH CONFIDENCE: classify SystemTray items once per source/config change
+
+Current derived lists independently scan the same source collection:
+
+```qml
+property list<var> fcitxItems:
+    SystemTray.items.values.filter(i => root.isFcitxItem(i))
+
+property list<var> itemsInUserList:
+    SystemTray.items.values.filter(i =>
+        isValidItem(i)
+        && !root.isFcitxItem(i)
+        && _pinnedItems.includes(i.id))
+
+property list<var> itemsNotInUserList:
+    SystemTray.items.values.filter(i =>
+        isValidItem(i)
+        && !root.isFcitxItem(i)
+        && !_pinnedItems.includes(i.id)
+        && (!smartTray || i.status !== Status.Passive))
+```
+
+A tray-source/status/pin change can therefore:
+
+- traverse `SystemTray.items.values` three times;
+- run Fcitx id/title lowercase classification in all three derivations;
+- linearly scan `_pinnedItems` for every non-Fcitx item in the two user-list
+  derivations.
+
+The three outputs are mutually derivable from one ordered pass.
+
+Strict-lossless direction:
+
+1. create one derived private classification object from:
+   - `SystemTray.items.values`;
+   - `_pinnedItems`;
+   - `smartTray`;
+2. create a JS `Set` from the raw pinned-id array for membership only;
+3. iterate tray items once in source order:
+   - invalid item: omit from all outputs;
+   - Fcitx item: append only to `fcitx`;
+   - valid pinned non-Fcitx item: append to `inUserList` regardless of passive
+     status, exactly as current source;
+   - valid unpinned non-Fcitx item: append to `notInUserList` only when
+     `!smartTray || status !== Status.Passive`;
+4. publish the existing `fcitxItems`, `itemsInUserList` and
+   `itemsNotInUserList` properties from that one classification result;
+5. leave `invertPins`, final pinned/unpinned concatenation and all tray action
+   behavior unchanged.
+
+A Set is semantically safe for the membership test because current
+`Array.includes(item.id)` only asks whether an exact raw id value is present;
+pin ordering/duplicates are not consulted by this classification path.
+Do not use the Set to rewrite the persisted pin array or pin-management
+semantics.
+
+### Required oracle
+
+Compare the three derived lists by object identity and order for:
+
+- empty tray;
+- null/invalid entries;
+- Fcitx item by id and by title;
+- pinned active/passive item;
+- unpinned active/passive item with smartTray on/off;
+- duplicate persisted pin ids;
+- pin ids absent from the tray;
+- invertPins true/false;
+- item status changes without item insertion/removal;
+- live pin/unpin mutations.
+
+Also assert final `pinnedItems`/`unpinnedItems` arrays remain identical.
+
+### Structural saving
+
+One tray derivation event moves from three source-list filters plus repeated
+linear pin membership checks to one source pass plus O(1)-average membership
+lookups. Absolute gain will normally be modest because tray item counts are
+small, but the service is shell-lifetime state and the change is fully
+lossless.
+
+No whole-Hadalis CPU/RAM percentage is claimed without runtime measurement.
+

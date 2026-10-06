@@ -52,12 +52,12 @@ window = read("settings.qml")
 overlay = read("modules/settings/SettingsOverlay.qml")
 focus = read("modules/settings/SettingsFocus.qml")
 waffle = read("modules/waffle/settings/WSettingsContent.qml")
-for path, source in (
-    ("Window", window),
-    ("Overlay", overlay),
+for path, source, order_token in (
+    ("Window", window, "SettingsPageRegistry.navigationPageIndexes(root.easyMode)"),
+    ("Overlay", overlay, "SettingsPageRegistry.navigationPageIndexes(false)"),
 ):
+    assert order_token in source, f"{path}: flat navigation order missing {order_token}"
     for token in (
-        "SettingsPageRegistry.navigationPageIndexes(root.easyMode)",
         "readonly property var navPageOrder: visibleNavItems.map",
         "spacing: SettingsMaterialPreset.navItemSpacing",
         "implicitHeight: SettingsMaterialPreset.navItemHeight",

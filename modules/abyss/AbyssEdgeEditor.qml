@@ -715,7 +715,8 @@ Item {
                         : (root.editingPopups
                             ? "Drag · Enter save · Esc cancel"
                             : "Drag · Shift free · Enter save · Esc cancel")
-                    color:AbyssStyle.textColorMuted
+                    color: Appearance.m3colors.darkmode
+                        ? AbyssStyle.textColorMuted : "#1a1a1a"
                     Layout.fillWidth:true
                     wrapMode:Text.WordWrap
                 }

@@ -27,10 +27,12 @@ import Quickshell.Wayland
 //
 // Caelestia does not build its border from four strips plus corner patches.
 // Its idle border is one inverted rounded rectangle: the window bounds are the
-// outer rect and the workspace is one rounded inner hole. Hadalis mirrors that
-// geometry here with one ShapePath / OddEvenFill per output. The four thin
-// ReservationWindow surfaces below are transparent and exist only to reserve
-// compositor work-area space; they do not paint any Screen Edge pixels.
+// outer rect and the workspace is one rounded inner hole. Hadalis preserves
+// that exact geometry in the texture-free ScreenEdgeField analytic SDF. The
+// historical ShapePath / OddEvenFill + MultiEffect renderer remains only as a
+// lazy ShaderEffect.Error fallback. The four thin ReservationWindow surfaces
+// below are transparent and exist only to reserve compositor work-area space;
+// they do not paint any Screen Edge pixels.
 Scope {
     id: root
 

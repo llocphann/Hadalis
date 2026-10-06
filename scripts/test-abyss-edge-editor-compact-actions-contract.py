@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+from pathlib import Path
+
+root = Path(__file__).resolve().parents[1]
+editor = (root / "modules/abyss/AbyssEdgeEditor.qml").read_text()
+positions = (root / "modules/abyss/settings/AbyssPositionSettings.qml").read_text()
+
+for needle in [
+    'text: "Reset"; glyph: "restart_alt"; compact: true',
+    'text: "Cancel"; glyph: "close"; compact: true',
+    'text: "Done"; glyph: "check"',
+    'buttonIcon:"widgets";buttonText:"Modules"',
+    'buttonIcon:"open_in_new";buttonText:"Popups / IPC"',
+    'compactActions:root.toolbarOnHorizontalEdge',
+    'text:"Add module";glyph:"add"',
+    'text:"Snap to guides";glyph:"grid_4x4"',
+    'text:"Inherit surface";glyph:"layers"',
+    'text:"Expand whole Edge";glyph:"fit_screen"',
+    '? "visibility" : "visibility_off"',
+    'text:"Remove";glyph:"delete"',
+]:
+    assert needle in editor, needle
+
+# Horizontal editor actions become compact icon controls. Side editor actions
+# retain icon + text for readability in the vertical control rail.
+assert editor.count("compact:root.toolbarOnHorizontalEdge") >= 5
+assert 'property bool compactActions: false' in positions
+assert 'text:"Reset position";glyph:"restart_alt"' in positions
+assert 'compact:root.compactActions' in positions
+assert 'description:"Reset popup or IPC position"' in positions
+
+# Ambiguous scope/placement semantics intentionally stay textual.
+for needle in [
+    'text:"This output only"',
+    'text:"Custom size"',
+    '"Join "+root.nearbyCorner+" Edge"',
+    'text:"Join nearby corner"',
+]:
+    assert needle in editor, needle
+
+print("abyss editor compact action density contract: ok")

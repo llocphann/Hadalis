@@ -17,6 +17,7 @@ ColumnLayout {
     property bool commitImmediately: true
     property bool outputSelectionEnabled: true
     property bool compactVertical: false
+    property bool compactActions: false
     property var allowedKinds: []
     property string nearbyEdge: ""
     signal positionsEdited(var positions,string kind,string outputName,var values)
@@ -121,10 +122,10 @@ ColumnLayout {
             currentIndex:Math.max(0,model.findIndex(p => p.value===(root.position.alignment ?? "source")))
             onActivated:root.change("alignment",currentValue)
         }
-        RippleButton {
-            buttonText:"Reset position"
-            implicitWidth:140
-            implicitHeight:38
+        AbyssButton {
+            text:"Reset position";glyph:"restart_alt"
+            compact:root.compactActions
+            description:"Reset popup or IPC position"
             Layout.fillWidth:root.compactVertical
             onClicked:root.apply(null)
         }

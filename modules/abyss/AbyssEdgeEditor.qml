@@ -398,19 +398,31 @@ Item {
                         font.bold: true
                         Layout.fillWidth: true
                     }
-                    AbyssButton { text: "Reset"; onClicked: root.reset() }
-                    AbyssButton { text: "Cancel"; onClicked: root.finish(false) }
-                    AbyssButton { text: "Done"; glyph: "check"; onClicked: root.finish(true) }
+                    AbyssButton {
+                        text: "Reset"; glyph: "restart_alt"; compact: true
+                        description: "Reset layout draft"
+                        onClicked: root.reset()
+                    }
+                    AbyssButton {
+                        text: "Cancel"; glyph: "close"; compact: true
+                        description: "Cancel editing"
+                        onClicked: root.finish(false)
+                    }
+                    AbyssButton {
+                        text: "Done"; glyph: "check"
+                        description: "Save layout changes"
+                        onClicked: root.finish(true)
+                    }
                 }
 
                 RowLayout {
                     Layout.fillWidth: true
                     SelectionGroupButton {
-                        buttonText:"Modules";toggled:!root.editingPopups
+                        buttonIcon:"widgets";buttonText:"Modules";toggled:!root.editingPopups
                         onClicked:root.editingPopups=false
                     }
                     SelectionGroupButton {
-                        buttonText:"Popups / IPC";toggled:root.editingPopups
+                        buttonIcon:"open_in_new";buttonText:"Popups / IPC";toggled:root.editingPopups
                         onClicked:root.editingPopups=true
                     }
                     Item { Layout.fillWidth:true }
@@ -443,6 +455,7 @@ Item {
                     visible:root.editingPopups
                     kind:"volume"
                     compactVertical:!root.toolbarOnHorizontalEdge
+                    compactActions:root.toolbarOnHorizontalEdge
                     commitImmediately:false
                     positions:root.draftPositions
                     outputSelectionEnabled:false
@@ -471,6 +484,8 @@ Item {
                     }
                     AbyssButton {
                         text:"Add module";glyph:"add"
+                        compact:root.toolbarOnHorizontalEdge
+                        description:"Add selected module"
                         enabled:root.draft.length<24
                         Layout.fillWidth: !root.toolbarOnHorizontalEdge
                         onClicked:root.add(palette.currentValue)
@@ -518,8 +533,11 @@ Item {
                         onMoved:root.edgeSizes=Object.assign(
                             {},root.edgeSizes,{[root.editingEdge]:value})
                     }
-                    AbyssCheckBox {
-                        text:"Snap to guides";checked:root.snapEnabled
+                    AbyssButton {
+                        text:"Snap to guides";glyph:"grid_4x4"
+                        compact:root.toolbarOnHorizontalEdge
+                        description:"Snap module movement to alignment guides"
+                        checkable:true;checked:root.snapEnabled
                         Layout.fillWidth:!root.toolbarOnHorizontalEdge
                         onToggled:root.snapEnabled=checked
                     }
@@ -543,7 +561,8 @@ Item {
                             {[root.editingEdge]:value})
                     }
                     AbyssButton {
-                        text:"Inherit surface"
+                        text:"Inherit surface";glyph:"layers"
+                        description:"Inherit the physical surface thickness"
                         Layout.fillWidth:!root.toolbarOnHorizontalEdge
                         enabled:(root.edgeThicknesses[root.editingEdge] ?? -1)>=0
                         onClicked:root.edgeThicknesses=Object.assign(
@@ -565,8 +584,11 @@ Item {
                         Layout.fillWidth:true
                         onMoved:root.moduleScale=value
                     }
-                    AbyssCheckBox {
-                        text:"Single module expands the whole Edge"
+                    AbyssButton {
+                        text:"Expand whole Edge";glyph:"fit_screen"
+                        compact:root.toolbarOnHorizontalEdge
+                        description:"Expand a single module across the whole Edge; turn off to expand only its local surface."
+                        checkable:true
                         Layout.fillWidth:!root.toolbarOnHorizontalEdge
                         enabled:root.draft.filter(
                             p=>p.enabled && p.edge===root.editingEdge).length===1
@@ -574,9 +596,6 @@ Item {
                         onToggled:root.singleModuleExpansion=Object.assign(
                             {},root.singleModuleExpansion,
                             {[root.editingEdge]:checked ? "edge" : "local"})
-                        StyledToolTip {
-                            text:"Disable to expand only the surface around a single module. Application space remains reserved for it."
-                        }
                     }
                 }
 
@@ -612,12 +631,19 @@ Item {
                     AbyssButton {
                         text:root.selected?.enabled === false
                             ? "Enable" : "Disable"
+                        glyph:root.selected?.enabled === false
+                            ? "visibility" : "visibility_off"
+                        compact:root.toolbarOnHorizontalEdge
+                        description:text
                         enabled:root.selected !== undefined
                         Layout.fillWidth:!root.toolbarOnHorizontalEdge
                         onClicked:root.change("enabled",!root.selected.enabled)
                     }
                     AbyssButton {
-                        text:"Remove";enabled:root.selected !== undefined
+                        text:"Remove";glyph:"delete"
+                        compact:root.toolbarOnHorizontalEdge
+                        description:"Remove selected module"
+                        enabled:root.selected !== undefined
                         Layout.fillWidth:!root.toolbarOnHorizontalEdge
                         onClicked:{
                             root.draft=root.draft.filter(

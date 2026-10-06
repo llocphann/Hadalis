@@ -3710,3 +3710,124 @@ remaining **visible-state full-screen FBO area**, not hidden residency.
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — Connected iRiS shadow pass research
+
+Research-only continuation on current `dev`
+`72e7a55c8033ad97699583ce496ef4b739e927f7`. No runtime/product source was
+changed in this round.
+
+Current `modules/common/perimeter/ConnectedSurfaceIrisFrame.qml`:
+`e703046f2a527ad30afc1a83ccd71f5e5a78cba7`.
+
+The current shadow path is already spatially bounded to the popup body plus
+fillet/blur reach, which is good. It still consists of:
+
+```text
+ConnectedSurfaceIrisField (shadowMaskField)
+    -> ShaderEffectSource (shadowTextureSource)
+    -> MultiEffect blur (blurredShadow)
+    -> ShaderEffectSource crop (isolatedShadow)
+    -> visible shadow
+```
+
+The second capture exists only to isolate the owner-clipped subrectangle after
+the blur.
+
+### Candidate A — HIGH CONFIDENCE GPU/RAM: replace the post-blur capture with rectangular clipping
+
+The final `isolatedShadow` does not transform the blurred pixels. It selects:
+
+```qml
+sourceItem: blurredShadow
+sourceRect: Qt.rect(
+    shadowPaintBounds.x - rawShadowBounds.x,
+    shadowPaintBounds.y - rawShadowBounds.y,
+    shadowPaintBounds.width,
+    shadowPaintBounds.height)
+```
+
+and displays that rectangle at `shadowPaintBounds`.
+
+A strict-lossless experiment can instead:
+
+1. create a parent Item at `shadowPaintBounds`;
+2. set `clip: true`;
+3. render the existing `blurredShadow` inside that parent with the exact
+   `rawShadowBounds - shadowPaintBounds` offset;
+4. keep `shadowTextureSource`, `MultiEffect`, blur radius, mask field and
+   owner clipping math unchanged;
+5. remove only the second `ShaderEffectSource`.
+
+This should preserve the same rectangular scissor while eliminating one live
+capture texture/pass.
+
+The candidate is intentionally narrow. Do not simultaneously change the SDF,
+blur algorithm, shadow extent or owner-boundary rules.
+
+### Required A/B oracle for Candidate A
+
+Compare current and clipped-direct presentation for:
+
+- top/bottom/left/right owners;
+- popup attached at each tangent end and centered;
+- joined and unjoined corners;
+- fractional output scale;
+- minimum and maximum supported shadow extent;
+- popup animation/reveal frames;
+- body near output corners;
+- ownerPaintOverlap values;
+- shadow disabled/enabled transitions.
+
+Require:
+
+- exact owner-side cutoff;
+- no dark band beneath the physical Screen Edge;
+- no clipped fillet shoulders;
+- no one-pixel seam at fractional scale;
+- 0% target visual deviation.
+
+### Candidate B — HIGH POTENTIAL, <1% program only: analytic iRiS shadow
+
+After Candidate A, the remaining path still rasterizes the same iRiS silhouette
+a second time into `shadowMaskField`, captures it, and feeds a blur pyramid.
+
+A later experiment may compute shadow coverage analytically from the same SDF
+field, analogous to the successful analytic Screen Edge work, and composite it
+in/alongside the visible field pass.
+
+Potentially removable stages:
+
+```text
+shadowMaskField
+shadowTextureSource
+MultiEffect blur
+```
+
+This is **not** assumed strict-lossless. A Gaussian-like MultiEffect blur and an
+analytic SDF falloff are different kernels. Treat it as a separate visual
+candidate under the user's <1% deviation budget.
+
+Required measurements:
+
+- normalized full-frame MAE;
+- edge-band MAE around the complete shadow reach;
+- max channel delta;
+- contact-fillet/corner crops;
+- live compositor acceptance across popup motion.
+
+Do not promote merely because static screenshots look similar.
+
+### Existing good work not to undo
+
+The current implementation already avoids a much worse full-output shadow
+texture:
+
+- `rawShadowBounds` is body + explicit shadow/fuse/AA reach;
+- `ShaderEffectSource.sourceRect` is bounded to that region;
+- physical owner pixels are clipped before and after blur.
+
+Any optimization must preserve those ownership and ghost-band guarantees.
+
+No whole-Hadalis GPU/RAM/FPS percentage is claimed without before/after
+measurement.
+

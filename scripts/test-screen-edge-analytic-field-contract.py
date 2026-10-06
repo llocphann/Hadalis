@@ -68,15 +68,21 @@ for forbidden in (
 
 for token in (
     "Item {",
-    "readonly property real topBandExtent:",
-    "readonly property real bottomBandExtent:",
-    "readonly property real leftBandExtent:",
-    "readonly property real rightBandExtent:",
-    "readonly property real topBandHeight:",
-    "readonly property real bottomBandHeight:",
-    "readonly property real middleHeight:",
-    "readonly property real leftBandWidth:",
-    "readonly property real rightBandWidth:",
+    "readonly property real topShallowExtent:",
+    "readonly property real bottomShallowExtent:",
+    "readonly property real leftShallowExtent:",
+    "readonly property real rightShallowExtent:",
+    "readonly property real topDeepExtent:",
+    "readonly property real bottomDeepExtent:",
+    "readonly property real leftDeepExtent:",
+    "readonly property real rightDeepExtent:",
+    "readonly property real horizontalArea:",
+    "readonly property real verticalArea:",
+    "readonly property bool horizontalCornerBands:",
+    "readonly property real topBandX:",
+    "readonly property real topBandWidth:",
+    "readonly property real leftBandY:",
+    "readonly property real leftBandHeight:",
     "readonly property bool shaderError:",
     "component Band: ShaderEffect {",
     "property vector4d viewport: root.viewportUniform",
@@ -222,61 +228,78 @@ def band_layout(
     radius: float,
     shadow_reach: float,
 ):
-    safe_reach = max(shadow_reach, 2.0)
-    top_extent = math.ceil(max(0.0, top) + max(0.0, radius) + safe_reach)
-    bottom_extent = math.ceil(
-        max(0.0, bottom) + max(0.0, radius) + safe_reach
-    )
-    left_extent = math.ceil(max(0.0, left) + safe_reach)
-    right_extent = math.ceil(max(0.0, right) + safe_reach)
-    top_h = min(height, top_extent)
-    bottom_h = min(max(0.0, height - top_h), bottom_extent)
-    middle_y = top_h
-    middle_h = max(0.0, height - top_h - bottom_h)
-    left_w = min(width, left_extent)
-    right_w = min(max(0.0, width - left_w), right_extent)
-    return (
-        top_extent,
-        bottom_extent,
-        left_extent,
-        right_extent,
-        top_h,
-        bottom_h,
-        middle_y,
-        middle_h,
-        left_w,
-        right_w,
-    )
+    safe = max(shadow_reach, 2.0)
+    rad = max(0.0, radius)
+
+    top_shallow = math.ceil(max(0.0, top) + safe)
+    bottom_shallow = math.ceil(max(0.0, bottom) + safe)
+    left_shallow = math.ceil(max(0.0, left) + safe)
+    right_shallow = math.ceil(max(0.0, right) + safe)
+
+    top_deep = math.ceil(max(0.0, top) + rad + safe)
+    bottom_deep = math.ceil(max(0.0, bottom) + rad + safe)
+    left_deep = math.ceil(max(0.0, left) + rad + safe)
+    right_deep = math.ceil(max(0.0, right) + rad + safe)
+
+    h_top = min(height, top_deep)
+    h_bottom = min(max(0.0, height - h_top), bottom_deep)
+    h_middle = max(0.0, height - h_top - h_bottom)
+    h_left = min(width, left_shallow)
+    h_right = min(max(0.0, width - h_left), right_shallow)
+    h_area = width * (h_top + h_bottom) + h_middle * (h_left + h_right)
+
+    v_left = min(width, left_deep)
+    v_right = min(max(0.0, width - v_left), right_deep)
+    v_middle = max(0.0, width - v_left - v_right)
+    v_top = min(height, top_shallow)
+    v_bottom = min(max(0.0, height - v_top), bottom_shallow)
+    v_area = height * (v_left + v_right) + v_middle * (v_top + v_bottom)
+
+    horizontal = h_area <= v_area
+    if horizontal:
+        rects = (
+            (0.0, 0.0, width, h_top),
+            (0.0, height - h_bottom, width, h_bottom),
+            (0.0, h_top, h_left, h_middle),
+            (width - h_right, h_top, h_right, h_middle),
+        )
+        chosen_area = h_area
+    else:
+        rects = (
+            (v_left, 0.0, v_middle, v_top),
+            (v_left, height - v_bottom, v_middle, v_bottom),
+            (0.0, 0.0, v_left, height),
+            (width - v_right, 0.0, v_right, height),
+        )
+        chosen_area = v_area
+
+    return horizontal, h_area, v_area, chosen_area, rects
 
 
-def band_covers(
-    x: float,
-    y: float,
-    width: float,
-    height: float,
-    layout,
-) -> bool:
-    _, _, _, _, top_h, bottom_h, middle_y, middle_h, left_w, right_w = layout
-    if y < top_h or y >= height - bottom_h:
-        return True
-    if middle_y <= y < middle_y + middle_h:
-        return x < left_w or x >= width - right_w
-    return False
+def band_covers(x: float, y: float, layout) -> bool:
+    rects = layout[4]
+    return any(
+        rw > 0.0
+        and rh > 0.0
+        and rx <= x < rx + rw
+        and ry <= y < ry + rh
+        for rx, ry, rw, rh in rects
+    )
 
 
 def band_area_ratio(width, height, inset, radius, shadow):
     layout = band_layout(
         width, height, inset, inset, inset, inset, radius, shadow
     )
-    _, _, _, _, top_h, bottom_h, _, middle_h, left_w, right_w = layout
-    area = width * (top_h + bottom_h) + middle_h * (left_w + right_w)
-    return area / (width * height)
+    return layout[3] / (width * height)
 
 
-# Default structural raster footprint: the same global field is evaluated over
-# only a perimeter ring. These are invocation-area ratios, not measured GPU %.
-assert band_area_ratio(1920, 1080, 10, 25, 15) < 0.117
-assert band_area_ratio(3840, 2160, 10, 25, 15) < 0.059
+# Adaptive orientation keeps the same four draws and selects the smaller
+# strict-lossless perimeter partition for each output geometry.
+assert band_area_ratio(1920, 1080, 10, 25, 15) < 0.097
+assert band_area_ratio(3840, 2160, 10, 25, 15) < 0.049
+assert band_layout(1920, 1080, 10, 10, 10, 10, 25, 15)[0] is False
+assert band_layout(1080, 1920, 10, 10, 10, 10, 25, 15)[0] is True
 
 
 rng = random.Random(0x53435245454E)
@@ -321,7 +344,7 @@ for _ in range(50000):
         layout = band_layout(
             width, height, left, top, right, bottom, radius, shadow_reach
         )
-        if not band_covers(x, y, width, height, layout):
+        if not band_covers(x, y, layout):
             assert axis_deep and central_core, (
                 "banded raster omitted a fragment outside the proven transparent core"
             )

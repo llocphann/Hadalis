@@ -55,22 +55,37 @@ Rules:
 
 | `modules/wallpaperSelector/WallpaperSkewView.qml` | **HIGH-CONFIDENCE transient CPU/process candidate — uncached color analysis.** In addition to the GPU mask candidate above, current `dev` automatically walks every non-video item after color-cache load, component completion, count changes and folder changes; uncached images are processed in batches of 20 by one Bash script that invokes ImageMagick `convert` once per image. This work happens even with default `sortMode: "date"` and no color filter selected. Research a single native/batched analyzer with parity to the current 1×1 HSL result; separately evaluate demand-driven analysis only if color-filter first-use latency is explicitly accepted. | Medium. Hue/saturation bucket output, failure handling, queue ordering and cache publication must remain stable. Cache identity is currently filename-only and collides across folders; do not optimize around that bug without defining migration/path identity. | None. | Low direct RAM; lower transient child-process memory. | 0% for native-equivalent analysis; deferred first-use analysis changes interaction latency and is not strict behavioral parity. |
 
+
+| `scripts/inir` | **HIGH-CONFIDENCE startup latency/process candidate — repair the pre-QML environment cache and ABI fast path.** `_get_systemd_user_env()` mutates cache variables but both consumers capture it with command substitution, so the function runs in a subshell and its cache state does not reach the parent. `apply_qt_runtime_env()` can therefore invoke bounded `systemctl --user show-environment`, then background `ensure_systemd_graphical_env` invokes it again while QML starts. Separately, `check_qs_abi()` runs `qs --version` before consulting the mtime-keyed successful ABI cache. Populate/read environment cache in the parent shell, parse the snapshot once, and move the exact successful ABI cache check ahead of `qs --version` while retaining a full probe when binary/library identity changes. | Low–Medium. Session env recovery and ABI mismatch protection are startup-critical; fallback paths must remain byte/condition equivalent. | None. | Negligible steady RAM; lower transient process memory. | 0%; no UI behavior change. |
+| `shell.qml` + `services/ThinkFanService.qml` | **HIGH-CONFIDENCE default-startup process candidate — demand-gate ThinkFan ownership.** `shell.qml` force-materializes `ThinkFanService` every session, while the shipped default is `powerProfiles.fanControl.enabled=false`. The singleton immediately runs `/usr/libexec/inir-thinkfan --status` on completion. Keep session-long ownership when profile fan control is enabled, react when it becomes enabled later, and let Settings/System Monitor materialize/refresh the service on demand otherwise. | Low–Medium. Must preserve profile-follow immediately after enable and existing managed/direct-control detection. | None. | Negligible direct RAM; avoids helper/process fan-out on default sessions. | 0%. |
+| `services/Battery.qml` + `services/TlpService.qml` | **HIGH-CONFIDENCE default-startup process candidate — separate normal battery telemetry from charge-care capability.** Battery unconditionally binds many `TlpService.*` properties, which materializes `TlpService`; its completion unconditionally runs `/usr/libexec/inir-battery-charge-limit --status` even though shipped `battery.chargeLimit.enable=false`. Demand-load/prime the charge-limit adapter when charge care is enabled or the Battery/TLP Settings surface needs capability details; keep ordinary UPower battery state independent. | Medium. Settings must get authoritative capability/status immediately on first presentation, and enabled policies must reconcile on boot before any write. | None. | Negligible direct RAM; avoids helper/process fan-out on default sessions. | 0%. |
+| `services/Audio.qml` + `modules/common/widgets/SoundPicker.qml` | **HIGH-CONFIDENCE settings-only startup candidate — lazy sound-theme catalog.** Audio correctly refreshes microphone state on materialization, but also always runs `sh -> ls | sed | sort` to populate `themeSounds`. Repository search shows the catalog is consumed by `SoundPicker` only, and SoundPicker is used by Settings pages. Add idempotent `ensureThemeSoundsLoaded()`; refresh on audio-theme changes only after the catalog has been demanded. | Low. Preserve first Settings presentation and post-theme-change contents/order exactly. | None. | Negligible direct RAM; removes one startup shell pipeline. | 0%. |
+| `modules/common/Appearance.qml` | **HIGH-CONFIDENCE settings/explicit-backend startup candidate — demand-gate Niri blur capability probe.** Appearance runs `niri --version` whenever Niri is active. Yet `blurBackendFor()` explicitly makes `auto` fidelity-first and never selects compositor blur; `nativeBlurSupported` is otherwise used by explicit compositor selection and Effects Settings visibility. Probe only when any effective blur backend requests `compositor`, or when an Effects Settings surface asks for capability; reactively prime when config changes. | Low–Medium. Explicit compositor config present at boot must not briefly fall back to wallpaper/off due to an unresolved capability. | None. | Negligible. | 0%. |
+| `modules/common/widgets/MediaArtworkResolver.qml` | **HIGH-CONFIDENCE process dedupe candidate — share in-flight artwork resolution by cache key.** Six call sites can materialize independent resolvers for the same current media. Each instance independently launches cache-existence checks, local MIME checks/copies, file-stability checks, data-URI writers or curl download/retry workers against the same deterministic cache path. Atomic publish prevents corruption but does not prevent duplicated work. Research a shared resolver keyed by normalized metadata/cache identity that owns one in-flight operation and publishes readiness to all consumers. | Medium. Preserve display-source cache-busting, local-file stability checks, retries, MIME rejection and old-art retention during metadata transitions. | None directly. | Low–Medium transient reduction from fewer concurrent helper processes and duplicated buffers. | 0%. |
+| `modules/common/widgets/CliphistImage.qml` | **HIGH-CONFIDENCE transient process dedupe candidate — one decode owner per clipboard entry.** Visibility gating prevents mass decode, and atomic temp-file publication prevents corruption, but multiple clipboard/search surfaces can still see the same uncached image simultaneously and each launch a Bash + `cliphist decode` pipeline before the shared output exists. A shared per-entry in-flight lease can let one owner decode while all waiters publish the same completed path. | Low–Medium. Entry identity, failure behavior and session-cache cleanup must remain unchanged; do not make invisible rows eager. | None. | Low transient reduction. | 0%. |
+| `services/ThemeService.qml` + `services/MaterialThemeLoader.qml` + `services/IconThemeService.qml` + `services/FontSyncService.qml` | **MEASURE FIRST — separate shell-internal theme readiness from external desktop synchronization.** At Config-ready, shell calls ThemeService and IconThemeService. ThemeService can queue `applycolor.sh` plus the default-enabled Vesktop palette generation; IconThemeService restores the saved theme via `gsettings set` then runs native desktop icon sync; FontSync later reconciles GTK/KDE fonts. Shell palette/icon identity should stay immediate, but external app synchronization could be coalesced/deferred until after first frame if startup traces show contention. | Medium–High. External applications may observe synchronization timing, so this is not strict behavioral parity unless the deferred boundary is proven unobservable for session startup. | None. | Low transient. | Shell visual target 0%; external-app timing requires separate acceptance. |
+| `modules/common/Directories.qml` + `services/SystemInfo.qml` | **MEASURE FIRST — split critical bootstrap directories from transient cleanup and lazy GECOS display-name lookup.** Directories already consolidated fourteen child processes into one ordered Bash bootstrap, but that command still removes feature temp trees during first-frame formation. SystemInfo seeds username from `$USER` yet immediately runs `getent passwd` to resolve displayName. Measure before changing: defer only cleanup that no startup-visible feature requires, and resolve displayName on first profile/lock/settings demand while retaining NSS correctness. | Medium. Early avatar/profile consumers and stale-cache cleanup contracts must be enumerated first. | None. | Low. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
-2. **ConnectedSurfaceIrisFrame shadow capture elimination** — first remove only the redundant post-blur capture if exact clipping parity can be proven; keep analytic-shadow replacement as a separate <1% candidate.
-3. **ResourceUsage metric-demand gating** — add GPU/temperature/disk demand leases so persistent CPU/RAM-only consumers do not launch unrelated probes/processes.
-4. **Anti-Flashbang native sampler** — high CPU/process reduction when the opt-in feature is enabled; preserve luminance/policy decisions exactly.
-5. **Notification derived-state single pass** — strict-lossless CPU/allocation reduction for long histories without truncating or changing persisted history.
-6. **Favicon shared resolver/in-flight coalescing** — remove cached-hit Bash spawns and duplicate cache-miss downloads.
-7. **Compact Sidebar Equalizer presentation lease** — release hidden CAVA ownership without changing visible analyzer frames.
-8. **WallpaperSkew color-analysis process consolidation** — eliminate one ImageMagick process per uncached image while preserving exact color buckets.
-9. **WallpaperSkewView masked delegate layers** — strong transient GPU/RAM candidate while the selector is open.
-10. **AltSwitcher skew mask/blur path** — strong interactive GPU candidate with bounded lifetime.
-11. **Waffle lock static-wallpaper blur + avatar mask specialization** — potentially valuable because lock screens can remain visible for long periods.
-12. **DashboardLayout guarded allocation/CPU work** — strict-lossless if current-dev oracle parity is re-established.
-13. **GameMode fallback watchdog research** — small CPU/wakeup candidate with no visual change.
-14. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
+2. **Pre-QML environment/ABI fast path** — repair the broken parent-shell environment cache and let unchanged ABI identity skip `qs --version`; highest-confidence startup latency candidate.
+3. **ConnectedSurfaceIrisFrame shadow capture elimination** — first remove only the redundant post-blur capture if exact clipping parity can be proven; keep analytic-shadow replacement as a separate <1% candidate.
+4. **ResourceUsage metric-demand gating** — add GPU/temperature/disk demand leases so persistent CPU/RAM-only consumers do not launch unrelated probes/processes.
+5. **Default-off capability demand gating** — ThinkFan, battery charge-limit/TLP, Audio sound catalog and Niri native-blur capability should not spawn startup probes until their feature/settings demand exists.
+6. **Anti-Flashbang native sampler** — high CPU/process reduction when the opt-in feature is enabled; preserve luminance/policy decisions exactly.
+7. **Notification derived-state single pass** — strict-lossless CPU/allocation reduction for long histories without truncating or changing persisted history.
+8. **Media artwork shared in-flight resolver** — coalesce identical cache checks/download/copy/stability work across simultaneously visible media surfaces.
+9. **Favicon shared resolver/in-flight coalescing** — remove cached-hit Bash spawns and duplicate cache-miss downloads.
+10. **Clipboard image decode in-flight coalescing** — keep visibility-lazy behavior but avoid duplicate decode processes for the same entry.
+11. **Compact Sidebar Equalizer presentation lease** — release hidden CAVA ownership without changing visible analyzer frames.
+12. **WallpaperSkew color-analysis process consolidation** — eliminate one ImageMagick process per uncached image while preserving exact color buckets.
+13. **WallpaperSkewView masked delegate layers** — strong transient GPU/RAM candidate while the selector is open.
+14. **AltSwitcher skew mask/blur path** — strong interactive GPU candidate with bounded lifetime.
+15. **Waffle lock static-wallpaper blur + avatar mask specialization** — potentially valuable because lock screens can remain visible for long periods.
+16. **DashboardLayout guarded allocation/CPU work** — strict-lossless if current-dev oracle parity is re-established.
+17. **GameMode fallback watchdog research** — small CPU/wakeup candidate with no visual change.
+18. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
 
 ## Explicit non-candidates from this pass
 
@@ -360,4 +375,154 @@ A targeted 16/33 ms timer sweep did not justify additional generic timer consoli
 - common slider/search/background timers found in this pass are interaction/debounce/safety timers rather than unconditional idle animation loops.
 
 Therefore timer count alone remains a rejected optimization heuristic. The higher-value action is to release the owning presentation/service lease when a surface cannot contribute visible pixels.
+
+## Research continuation — round 6
+
+Baseline: `dev` at `5cfb6cc9cc6cb1a4b782362b3137343e4fa8d83e`.
+
+### R6.1 — Pre-QML environment cache is not actually shared
+
+Current source: `scripts/inir` at `5cf6ca0ef112cf0f98ee28f23cc618cbb34d5018`.
+
+The launcher declares:
+
+```bash
+_cached_systemd_env=""
+_cached_systemd_env_fetched=false
+
+_get_systemd_user_env() {
+    if [[ "$_cached_systemd_env_fetched" == true ]]; then
+        printf '%s' "$_cached_systemd_env"
+        return 0
+    fi
+    _cached_systemd_env_fetched=true
+    _cached_systemd_env="$(timeout 3s systemctl --user show-environment 2>/dev/null)" || true
+    printf '%s' "$_cached_systemd_env"
+}
+```
+
+but both main consumers use command substitution:
+
+```bash
+_qs_sys_env="$(_get_systemd_user_env)"
+sys_env="$(_get_systemd_user_env)"
+```
+
+Bash executes command substitution in a subshell. Therefore `_cached_systemd_env_fetched=true` and the snapshot assignment do not persist to the parent shell. On both the normal path and session-boot path, `apply_qt_runtime_env()` can perform the first bounded `systemctl --user show-environment`; the subsequently backgrounded `ensure_systemd_graphical_env &` inherits the parent state in which the cache is still unfetched and can perform the second call while Quickshell is starting.
+
+Strict-lossless research direction:
+
+1. add a parent-shell population function that mutates the two cache variables without command substitution;
+2. let consumers read `$_cached_systemd_env` directly after population;
+3. parse the multiline snapshot once into presence/value helpers rather than repeatedly spawning `grep | head | cut` and `grep -q`;
+4. preserve all existing fallback socket/environment detection and the 3 s fail-open deadline;
+5. add a shell contract test with a fake `systemctl` that counts calls and proves both consumers observe the same snapshot.
+
+This is a structural correctness fix to the intended cache contract as well as a startup optimization.
+
+### R6.2 — ABI cache lookup occurs after an avoidable process
+
+The same launcher calls `qs --version` at the beginning of `check_qs_abi()`, then computes the mtime-keyed `v2:<qs_mtime>:<qt_mtime>` cache and returns immediately when that cache matches.
+
+On an unchanged successful installation, the expensive `strings` scan is correctly skipped, but the `qs --version` process has already been launched.
+
+A safe fast path can compute exact binary/library identity first, compare the successful cache, and return before `qs --version` only when both identities match the previously validated pair. Any changed/missing identity falls through to the current full mismatch checks. The cache must remain **success-only**; never cache or bypass a prior mismatch.
+
+### R6.3 — Default-off feature probes are still startup-owned
+
+Verified current source identities:
+
+- `shell.qml`: `aae76205a819e9b098f6a4be7fb6d56e14ff4900`;
+- `ThinkFanService.qml`: `943082413a143df3e642ee3d60587093dda1ec02`;
+- `Battery.qml`: `e276ddc01dcbe01977e1f285ed2c7dc46e5928d2`;
+- `TlpService.qml`: `4e0ef4fba76eb00df7ddc54941e205029dde07ec`;
+- `Audio.qml`: `03e2286f1e4035113ba33523c196aca27904cdcc`;
+- `SoundPicker.qml`: `c9f041163d1572230dee136e48efc735bc01a65c`;
+- `Appearance.qml`: `55480307855a511518206c8dbea5e5eb20d76c33`.
+
+The four ownership splits are independent:
+
+**ThinkFan**
+- shell has `property var _thinkFanService: ThinkFanService`;
+- default `powerProfiles.fanControl.enabled=false`;
+- `ThinkFanService.Component.onCompleted: root.refresh()`;
+- detector command is `/usr/libexec/inir-thinkfan --status`.
+
+**Battery charge care**
+- default `battery.chargeLimit.enable=false`;
+- ordinary Battery singleton binds `TlpService.available/supported/.../statusReason` unconditionally;
+- `TlpService.Component.onCompleted` calls `_detect()`;
+- detector command is `/usr/libexec/inir-battery-charge-limit --status`.
+
+**Audio theme sound catalog**
+- Audio's microphone state refresh is legitimate startup work;
+- the same completion handler also starts `themeSoundsProc`;
+- that process is `/bin/sh -c 'ls ... | sed ... | sort -u'`;
+- repository search finds `Audio.themeSounds` consumed only by `SoundPicker`, whose call sites are Settings surfaces.
+
+**Niri native blur capability**
+- Appearance unconditionally runs `niri --version` on Niri;
+- default `performance.blurBackend="auto"`;
+- `blurBackendFor()` explicitly returns wallpaper/off for `auto`, never compositor blur;
+- `nativeBlurSupported` is otherwise a capability input for explicit compositor blur and Settings visibility.
+
+These should be tested as four small demand gates rather than one large lifecycle rewrite.
+
+### R6.4 — Media artwork work is atomic but not coalesced
+
+Current `MediaArtworkResolver.qml`: `801d6422216b4b5f8e1ed31111b27010b963006e`.
+
+The resolver is instantiated by at least six repository call sites, including the shared media artwork widget, Bar media, PlayerBase/PlayerControl, YT Music card and CavaTheme.
+
+For one deterministic cache identity, every resolver instance owns its own:
+
+- `/usr/bin/test -s` cache check;
+- local `file` MIME check;
+- local copy-to-cache pipeline;
+- file-size stability checker with two `stat` calls and a 200 ms sleep;
+- base64 decode writer;
+- remote curl/MIME-validation pipeline;
+- retry timer.
+
+The cache file publication is atomic, so concurrent writers should converge safely, but duplicate operations still occur before one wins. A shared resolver should own the in-flight state while each visual consumer retains its own presentation generation/display-source state. This distinction avoids coupling UI transitions to another surface's lifecycle.
+
+Required oracle should cover: remote success/failure/retry, simultaneous identical consumers, source switch during in-flight download, local file initially incomplete then stable, non-image local source, data URI, consumer destruction, and old-art retention.
+
+### R6.5 — Clipboard decode has the same atomic-without-dedupe pattern
+
+Current `CliphistImage.qml`: `d210fa7c52aba17fddec09909cc464fe034ffa03`.
+
+The component correctly waits for visibility before decoding and uses a process-unique temporary file followed by atomic `mv`. Its own comment explicitly notes that multiple clipboard surfaces can render the same entry concurrently.
+
+For an uncached entry, simultaneous Clipboard/Search/Waffle presentation can therefore launch more than one:
+
+```text
+bash
+  -> cliphist decode ENTRY
+  -> temporary file
+  -> atomic mv to shared session cache
+```
+
+The optimization is not to make decoding earlier. Keep the current visibility gate, but centralize `entryNumber -> loading/ready/failed` ownership so one visible consumer triggers the decode and other visible consumers await the result.
+
+### R6.6 — Theme/icon synchronization remains measurement-gated
+
+Current source confirms the older startup concern still exists:
+
+- shell invokes `ThemeService.applyCurrentTheme()` and `IconThemeService.ensureInitialized()` as soon as Config is ready;
+- auto theme queues external `applycolor.sh` after 600 ms and default-enabled Vesktop generation;
+- saved icon theme restoration starts `gsettings set` and then native desktop-icon synchronization;
+- FontSyncService separately reconciles desktop fonts later.
+
+This can create startup process waves, but moving them changes **when external applications** observe the persisted theme. Do not classify deferral as strict-lossless until a startup trace shows material contention and acceptance defines the external synchronization boundary. Shell-internal color/icon identity must remain available immediately.
+
+### R6.7 — Bootstrap cleanup / identity lookup stay measure-first
+
+`Directories.qml` at `0fb9ae0b8ce77bb5b280c3aef16c9b3d22d73f27` already made the important improvement: many independent cleanup/create processes became one ordered Bash invocation. Do not split it back into process fan-out.
+
+`SystemInfo.qml` at `d62d67334070ac34070d113d6316d4d0152327e5` seeds `username` from `$USER` but still schedules `getent passwd USER` immediately for the GECOS display name. Both this lookup and transient feature-directory cleanup are lower priority unless a startup trace attributes measurable delay/I/O to them.
+
+### R6.8 — Current ranking implication
+
+This round changes the audit emphasis: before implementing more low-frequency QML micro-optimizations, obtain a startup trace around the pre-QML launcher and default-off probes. The environment-cache defect has a bounded **seconds-scale worst case**, whereas many later candidates save only a handful of short child processes. That makes it the highest-value CPU/startup candidate found after the rendering work.
 

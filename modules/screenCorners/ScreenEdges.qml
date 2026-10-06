@@ -428,21 +428,31 @@ Scope {
             onTriggered: {
                 if (reservationWindow.workspaceOverviewEdgeTriggerEnabled
                         && workspaceOverviewHitArea.containsMouse)
-                    workspaceEdgeOverview.showWorkspace(null, workspaceOverviewHitArea)
+                    workspaceEdgeOverviewLoader.item?.showWorkspace(
+                        null, workspaceOverviewHitArea)
             }
         }
 
-        Bar.BarWorkspaceOverview {
-            id: workspaceEdgeOverview
-            dockHovered: reservationWindow.workspaceOverviewEdgeTriggerEnabled
-                && workspaceOverviewHitArea.containsMouse
-            barPosition: "top"
-            attachmentThickness: root.thickness
+        // Only the top reservation can ever expose workspace-hover Overview.
+        // Avoid constructing three inactive StyledPopup/Overview stacks per
+        // output for bottom/left/right reservations that can never use them.
+        Loader {
+            id: workspaceEdgeOverviewLoader
+            active: reservationWindow.edge === "top"
+            sourceComponent: Component {
+                Bar.BarWorkspaceOverview {
+                    dockHovered:
+                        reservationWindow.workspaceOverviewEdgeTriggerEnabled
+                        && workspaceOverviewHitArea.containsMouse
+                    barPosition: "top"
+                    attachmentThickness: root.thickness
+                }
+            }
         }
 
         onWorkspaceOverviewEdgeTriggerEnabledChanged: {
             if (!workspaceOverviewEdgeTriggerEnabled)
-                workspaceEdgeOverview.close()
+                workspaceEdgeOverviewLoader.item?.close()
         }
 
         mask: Region {

@@ -28,7 +28,7 @@ jobs:
       - name: Bake reproducible Screen Edge QSB
         run: |
           set -euo pipefail
-          cd "$GITHUB_WORKSPACE"
+          cd /__w/Hadalis/Hadalis
           git config user.name "Hadalis Shader Baker"
           git config user.email "actions@users.noreply.github.com"
           git fetch origin dev

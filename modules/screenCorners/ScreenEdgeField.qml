@@ -25,13 +25,13 @@ Item {
     // corner zones are removed, the middle left/right bands see only straight
     // edges and need no extra radius allowance.
     readonly property real topBandExtent: Math.ceil(
-        Math.max(0, topInset) + Math.max(0, radius) + safeReach + 2)
+        Math.max(0, topInset) + Math.max(0, radius) + safeReach)
     readonly property real bottomBandExtent: Math.ceil(
-        Math.max(0, bottomInset) + Math.max(0, radius) + safeReach + 2)
+        Math.max(0, bottomInset) + Math.max(0, radius) + safeReach)
     readonly property real leftBandExtent: Math.ceil(
-        Math.max(0, leftInset) + safeReach + 2)
+        Math.max(0, leftInset) + safeReach)
     readonly property real rightBandExtent: Math.ceil(
-        Math.max(0, rightInset) + safeReach + 2)
+        Math.max(0, rightInset) + safeReach)
 
     readonly property real topBandHeight: Math.min(height, topBandExtent)
     readonly property real bottomBandHeight: Math.min(

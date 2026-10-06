@@ -334,50 +334,9 @@ QtObject {
         return true
     }
 
-    function moveGroup(sourceIndex: int, insertIndex: int): bool {
-        const state = root.snapshot()
-        if (!state.groups[sourceIndex])
-            return false
-        const group = state.groups.splice(sourceIndex, 1)[0]
-        let target = insertIndex
-        if (insertIndex > sourceIndex)
-            target--
-        state.groups.splice(Math.max(0, Math.min(target, state.groups.length)), 0, group)
-        root.save(state)
-        return true
-    }
 
-    function renameCategory(index: int, label: string): bool {
-        const trimmed = label.trim()
-        if (trimmed.length === 0)
-            return false
-        const state = root.snapshot()
-        if (!state.groups[index])
-            return false
-        state.groups[index].label = trimmed
-        root.save(state)
-        return true
-    }
 
-    function removeCategory(index: int): bool {
-        const state = root.snapshot()
-        if (state.groups.length <= 1 || !state.groups[index])
-            return false
-        const removed = state.groups.splice(index, 1)[0]
-        for (const page of removed.pages) {
-            const target = root.bestRestoreCategory(page, state.groups)
-            if (!state.groups[target].pages.includes(page))
-                state.groups[target].pages.push(page)
-        }
-        root.save(state)
-        return true
-    }
 
-    function addCategory(): void {
-        const state = root.snapshot()
-        state.groups.push({ label: Translation.tr("New group"), pages: [] })
-        root.save(state)
-    }
 
     function reset(): void {
         Config.setNestedValue("settingsUi.categories", "")

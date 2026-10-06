@@ -188,22 +188,22 @@ fn tint_light_surfaces(palette: &mut Palette, scheme_name: &str) {
         return;
     };
     let seed = Hct::from_argb(seed_argb);
-    let surface_chroma = (seed.chroma() * 0.82).clamp(30.0, 50.0);
+    let surface_chroma = (seed.chroma() * 0.90).clamp(34.0, 56.0);
     let hue = seed.hue();
 
     for (role, tone, scale) in [
-        ("background", 80.0, 1.00),
-        ("surface", 80.0, 1.00),
-        ("surfaceDim", 63.0, 1.08),
-        ("surfaceBright", 87.0, 0.88),
-        ("surfaceContainerLowest", 84.0, 0.92),
-        ("surfaceContainerLow", 76.0, 1.00),
-        ("surfaceContainer", 72.0, 1.04),
-        ("surfaceContainerHigh", 68.0, 1.08),
-        ("surfaceContainerHighest", 64.0, 1.12),
-        ("surfaceVariant", 67.0, 1.06),
+        ("background", 77.0, 1.00),
+        ("surface", 77.0, 1.00),
+        ("surfaceDim", 60.0, 1.08),
+        ("surfaceBright", 84.0, 0.90),
+        ("surfaceContainerLowest", 81.0, 0.94),
+        ("surfaceContainerLow", 73.0, 1.00),
+        ("surfaceContainer", 69.0, 1.05),
+        ("surfaceContainerHigh", 65.0, 1.10),
+        ("surfaceContainerHighest", 61.0, 1.14),
+        ("surfaceVariant", 64.0, 1.08),
     ] {
-        let chroma = (surface_chroma * scale).clamp(24.0, 54.0);
+        let chroma = (surface_chroma * scale).clamp(28.0, 60.0);
         palette.insert(role.into(), Hct::new(hue, chroma, tone).to_argb().to_hex());
     }
 
@@ -308,7 +308,7 @@ fn material_palette_with_policy(
                     palette.insert(container.into(), tonal.tone(30).to_hex());
                     palette.insert(on_container.into(), tonal.tone(90).to_hex());
                 } else if !dark {
-                    palette.insert(container.into(), tonal.tone(84).to_hex());
+                    palette.insert(container.into(), tonal.tone(82).to_hex());
                     palette.insert(on_container.into(), tonal.tone(10).to_hex());
                 }
             }
@@ -1028,17 +1028,17 @@ mod tests {
             Hct::from_argb(parse_hex(material.get("surfaceContainer").unwrap()).unwrap());
 
         assert!(
-            background.tone() <= 82.0,
+            background.tone() <= 79.0,
             "light background is still too close to white: {}",
             material.get("background").unwrap()
         );
         assert!(
-            background.chroma() >= 24.0,
+            background.chroma() >= 28.0,
             "light background lost strong theme hue: {}",
             material.get("background").unwrap()
         );
         assert!(
-            container.chroma() >= 24.0,
+            container.chroma() >= 28.0,
             "light container lost strong theme hue: {}",
             material.get("surfaceContainer").unwrap()
         );

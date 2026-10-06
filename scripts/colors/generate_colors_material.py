@@ -476,23 +476,23 @@ def tint_light_surfaces(palette: dict[str, str], scheme_name: str) -> dict[str, 
     seed = Hct.from_int(hex_to_argb(seed_hex))
     # Light mode is the same color family as dark mode at higher tones, not a
     # near-white Material palette with a faint tint.
-    surface_chroma = min(50.0, max(30.0, seed.chroma * 0.82))
+    surface_chroma = min(56.0, max(34.0, seed.chroma * 0.90))
     hue = seed.hue
 
     surface_ramp = {
-        "background": (80.0, 1.00),
-        "surface": (80.0, 1.00),
-        "surfaceDim": (63.0, 1.08),
-        "surfaceBright": (87.0, 0.88),
-        "surfaceContainerLowest": (84.0, 0.92),
-        "surfaceContainerLow": (76.0, 1.00),
-        "surfaceContainer": (72.0, 1.04),
-        "surfaceContainerHigh": (68.0, 1.08),
-        "surfaceContainerHighest": (64.0, 1.12),
-        "surfaceVariant": (67.0, 1.06),
+        "background": (77.0, 1.00),
+        "surface": (77.0, 1.00),
+        "surfaceDim": (60.0, 1.08),
+        "surfaceBright": (84.0, 0.90),
+        "surfaceContainerLowest": (81.0, 0.94),
+        "surfaceContainerLow": (73.0, 1.00),
+        "surfaceContainer": (69.0, 1.05),
+        "surfaceContainerHigh": (65.0, 1.10),
+        "surfaceContainerHighest": (61.0, 1.14),
+        "surfaceVariant": (64.0, 1.08),
     }
     for role, (tone, chroma_scale) in surface_ramp.items():
-        chroma = min(54.0, max(24.0, surface_chroma * chroma_scale))
+        chroma = min(60.0, max(28.0, surface_chroma * chroma_scale))
         palette[role] = argb_to_hex(Hct.from_hct(hue, chroma, tone).to_int())
 
     ink_chroma = min(26.0, max(10.0, surface_chroma * 0.48))
@@ -737,7 +737,7 @@ if args.scheme != "scheme-monochrome":
                 material_colors[container] = argb_to_hex(palette.tone(30))
                 material_colors[on_container] = argb_to_hex(palette.tone(90))
             elif not darkmode:
-                material_colors[container] = argb_to_hex(palette.tone(84))
+                material_colors[container] = argb_to_hex(palette.tone(82))
                 material_colors[on_container] = argb_to_hex(palette.tone(10))
         role_hct = Hct.from_int(hex_to_argb(material_colors[key]))
         if role_hct.chroma > 60.0:

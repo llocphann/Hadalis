@@ -3404,11 +3404,11 @@ Singleton {
         if (!accent.valid) return themed;
 
         var hue = accent.hslHue;
-        var surfaceSat = Math.max(0.30,
-            Math.min(0.58, accent.hslSaturation * 0.82));
+        var surfaceSat = Math.max(0.34,
+            Math.min(0.64, accent.hslSaturation * 0.90));
 
         function surface(lightness, scale) {
-            var sat = Math.max(0.24, Math.min(0.62, surfaceSat * scale));
+            var sat = Math.max(0.28, Math.min(0.68, surfaceSat * scale));
             return Qt.hsla(hue, sat, lightness, 1.0).toString();
         }
         function ink(lightness, scale) {
@@ -3416,16 +3416,16 @@ Singleton {
             return Qt.hsla(hue, inkSat, lightness, 1.0).toString();
         }
 
-        themed.m3background = surface(0.80, 1.00);
-        themed.m3surface = surface(0.80, 1.00);
-        themed.m3surfaceDim = surface(0.63, 1.08);
-        themed.m3surfaceBright = surface(0.87, 0.88);
-        themed.m3surfaceContainerLowest = surface(0.84, 0.92);
-        themed.m3surfaceContainerLow = surface(0.76, 1.00);
-        themed.m3surfaceContainer = surface(0.72, 1.04);
-        themed.m3surfaceContainerHigh = surface(0.68, 1.08);
-        themed.m3surfaceContainerHighest = surface(0.64, 1.12);
-        themed.m3surfaceVariant = surface(0.67, 1.06);
+        themed.m3background = surface(0.77, 1.00);
+        themed.m3surface = surface(0.77, 1.00);
+        themed.m3surfaceDim = surface(0.60, 1.08);
+        themed.m3surfaceBright = surface(0.84, 0.90);
+        themed.m3surfaceContainerLowest = surface(0.81, 0.94);
+        themed.m3surfaceContainerLow = surface(0.73, 1.00);
+        themed.m3surfaceContainer = surface(0.69, 1.05);
+        themed.m3surfaceContainerHigh = surface(0.65, 1.10);
+        themed.m3surfaceContainerHighest = surface(0.61, 1.14);
+        themed.m3surfaceVariant = surface(0.64, 1.08);
 
         themed.m3onBackground = ink(0.10, 0.80);
         themed.m3onSurface = ink(0.10, 0.80);

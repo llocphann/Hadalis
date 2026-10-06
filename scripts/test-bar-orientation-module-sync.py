@@ -200,6 +200,8 @@ def main() -> None:
             "Screen Edge must lazy-load the complete workspace Overview support stack.")
     require(screen_edges, "active: reservationWindow.workspaceOverviewEdgeSupportEnabled",
             "Workspace Overview support must stay unloaded when the top vertical-Bar path is unavailable.")
+    require(screen_edges, "updatesEnabled: mapped && workspaceOverviewEdgeSupportEnabled",
+            "Transparent reservation windows must render-update only when Overview hover support is available.")
     require(screen_edges, "workspaceEdgeOverview.showWorkspace(",
             "Top-edge hover must route through the loaded Overview instance.")
     require(screen_edges, 'barPosition: "top"',

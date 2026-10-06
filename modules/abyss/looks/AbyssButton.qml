@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import qs.modules.common
 import qs.modules.common.widgets
 
 AbstractButton {
@@ -8,6 +9,12 @@ AbstractButton {
     property string glyph: ""
     property bool compact: false
     property string description: text
+    readonly property color baseInk: Appearance.m3colors.darkmode
+        ? AbyssStyle.textColor : "#000000"
+    readonly property color activeInk: Appearance.m3colors.darkmode
+        ? AbyssStyle.accent
+        : ColorUtils.ensureReadable(Appearance.colors.colPrimary,
+            Appearance.colors.colLayer1Base, 4.5)
     hoverEnabled: true
     implicitHeight: 36
     implicitWidth: Math.max(36, contentItem.implicitWidth + 24)
@@ -32,13 +39,13 @@ AbstractButton {
             visible: root.glyph.length > 0
             text: root.glyph
             iconSize: 20
-            color: root.hovered || root.checked ? AbyssStyle.accent : AbyssStyle.textColor
+            color: root.hovered || root.checked ? root.activeInk : root.baseInk
             Layout.alignment: Qt.AlignVCenter
         }
         Text {
             visible: !root.compact && root.text.length > 0
             text: root.text
-            color: root.hovered || root.checked ? AbyssStyle.accent : AbyssStyle.textColor
+            color: root.hovered || root.checked ? root.activeInk : root.baseInk
             font: root.font
             elide: Text.ElideRight
             Layout.fillWidth: true

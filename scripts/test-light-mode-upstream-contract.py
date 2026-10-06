@@ -109,6 +109,37 @@ def main() -> int:
         "m3colors.m3onErrorContainer, colErrorContainer, 4.5",
     )
     require(
+        "modules/common/Appearance.qml",
+        'readonly property color _lightInk: "#000000"',
+        'readonly property color _lightInkVariant: "#1a1a1a"',
+        "property color colOnSurface: m3colors.darkmode",
+        ": _lightInk",
+        "property color colSubtext: m3colors.darkmode",
+    )
+    require(
+        "modules/abyss/looks/AbyssLabel.qml",
+        'Appearance.m3colors.darkmode ? AbyssStyle.textColor : "#000000"',
+    )
+    require(
+        "modules/abyss/looks/AbyssButton.qml",
+        'readonly property color baseInk: Appearance.m3colors.darkmode',
+        '? AbyssStyle.textColor : "#000000"',
+        "root.activeInk : root.baseInk",
+    )
+    require(
+        "modules/abyss/looks/AbyssSlider.qml",
+        'readonly property color sliderInk: Appearance.m3colors.darkmode',
+        '? AbyssStyle.textColor : "#000000"',
+        '? AbyssStyle.textColorMuted : "#1a1a1a"',
+    )
+    require(
+        "modules/abyss/content/AbyssUtilitiesPopup.qml",
+        'readonly property color utilityInk: Appearance.m3colors.darkmode',
+        '? AbyssStyle.textColor : "#000000"',
+        'readonly property color utilityMutedInk: Appearance.m3colors.darkmode',
+        '? AbyssStyle.textColorMuted : "#1a1a1a"',
+    )
+    require(
         "modules/bar/weather/OrbitalWeather.qml",
         "readonly property color orbitInk: Appearance.colors.colOnLayer1",
         "readonly property color orbitSubInk: Appearance.colors.colSubtext",

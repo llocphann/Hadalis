@@ -369,18 +369,26 @@ Singleton {
         readonly property color _inkMuted: "#8a7f73"
         readonly property bool _needsHighContrast: false
 
-        // Resolve raw palette ink against its actual backdrop once here. All
-        // text/icon consumers then inherit a contrast-safe token in both modes.
-        readonly property color _baseOnSurface: ColorUtils.ensureReadable(
-            m3colors.m3onSurface, m3colors.m3surface, 4.5)
-        readonly property color _baseOnSurfaceVariant: ColorUtils.ensureReadable(
-            m3colors.m3onSurfaceVariant, m3colors.m3surfaceContainerLow, 4.5)
+        // Light mode uses dark ink by policy. Do not inherit a pale onSurface
+        // from wallpaper/theme generation: large tinted light surfaces need
+        // black/near-black typography consistently across every consumer.
+        readonly property color _lightInk: "#000000"
+        readonly property color _lightInkVariant: "#1a1a1a"
+        readonly property color _baseOnSurface: m3colors.darkmode
+            ? ColorUtils.ensureReadable(m3colors.m3onSurface, m3colors.m3surface, 4.5)
+            : _lightInk
+        readonly property color _baseOnSurfaceVariant: m3colors.darkmode
+            ? ColorUtils.ensureReadable(
+                m3colors.m3onSurfaceVariant, m3colors.m3surfaceContainerLow, 4.5)
+            : _lightInkVariant
 
-        property color colSubtext: ColorUtils.ensureReadable(
-            ColorUtils.mix(_baseOnSurfaceVariant, colLayer1Base, 0.45),
-            colLayer1Base,
-            5.5
-        )
+        property color colSubtext: m3colors.darkmode
+            ? ColorUtils.ensureReadable(
+                ColorUtils.mix(_baseOnSurfaceVariant, colLayer1Base, 0.45),
+                colLayer1Base,
+                5.5
+            )
+            : ColorUtils.ensureReadable(_lightInkVariant, colLayer1Base, 4.5)
 
         // Layer 0
         property color colLayer0Base: m3colors.transparent
@@ -507,8 +515,12 @@ Singleton {
             colSurfaceContainerHighest, colOnSurface, 0.95)
         property color colSurfaceContainerHighestActive: ColorUtils.mix(
             colSurfaceContainerHighest, colOnSurface, 0.85)
-        property color colOnSurface: ColorUtils.ensureReadable(m3colors.m3onSurface, m3colors.m3surface, 4.5)
-        property color colOnSurfaceVariant: ColorUtils.ensureReadable(m3colors.m3onSurfaceVariant, m3colors.m3surfaceContainer, 4.5)
+        property color colOnSurface: m3colors.darkmode
+            ? ColorUtils.ensureReadable(m3colors.m3onSurface, m3colors.m3surface, 4.5)
+            : _lightInk
+        property color colOnSurfaceVariant: m3colors.darkmode
+            ? ColorUtils.ensureReadable(m3colors.m3onSurfaceVariant, m3colors.m3surfaceContainer, 4.5)
+            : _lightInkVariant
 
         // Misc
         property color colTooltip: m3colors.m3inverseSurface

@@ -27,6 +27,10 @@ Item {
     // on Display, Sound and Eye protection.
     readonly property int panelWidth: 620
     readonly property int panelHeight: 400
+    readonly property color utilityInk: Appearance.m3colors.darkmode
+        ? AbyssStyle.textColor : "#000000"
+    readonly property color utilityMutedInk: Appearance.m3colors.darkmode
+        ? root.utilityMutedInk : "#1a1a1a"
 
     implicitWidth: panelWidth
     implicitHeight: panelHeight
@@ -103,7 +107,7 @@ Item {
                     height: width
                     radius: width / 2
                     color: index === pages.currentIndex
-                        ? AbyssStyle.accent : Qt.alpha(AbyssStyle.textColor, .28)
+                        ? AbyssStyle.accent : Qt.alpha(root.utilityInk, .28)
 
                     Behavior on width {
                         enabled: AbyssStyle.motionEnabled
@@ -141,7 +145,7 @@ Item {
                 visible: !CompositorService.isNiri
                 horizontalAlignment: Text.AlignHCenter
                 text: "Niri only."
-                color: AbyssStyle.textColorMuted
+                color: root.utilityMutedInk
                 font.pixelSize: Appearance.font.pixelSize.smaller
             }
         }
@@ -188,7 +192,7 @@ Item {
                         spacing: 4
                         AbyssLabel {
                             text: "Second screen"
-                            color: AbyssStyle.textColorMuted
+                            color: root.utilityMutedInk
                             font.pixelSize: Appearance.font.pixelSize.smaller
                         }
                         StyledComboBox {
@@ -255,7 +259,7 @@ Item {
                                 spacing: 4
                                 AbyssLabel {
                                     text: "Source"
-                                    color: AbyssStyle.textColorMuted
+                                    color: root.utilityMutedInk
                                     font.pixelSize: Appearance.font.pixelSize.smaller
                                 }
                                 StyledComboBox {
@@ -273,7 +277,7 @@ Item {
                                 spacing: 4
                                 AbyssLabel {
                                     text: "Target"
-                                    color: AbyssStyle.textColorMuted
+                                    color: root.utilityMutedInk
                                     font.pixelSize: Appearance.font.pixelSize.smaller
                                 }
                                 StyledComboBox {
@@ -315,7 +319,7 @@ Item {
                     text: DisplayMode.lastError.length > 0
                         ? DisplayMode.lastError : DisplayMode.statusMessage
                     color: DisplayMode.lastError.length > 0
-                        ? Appearance.colors.colError : AbyssStyle.textColorMuted
+                        ? Appearance.colors.colError : root.utilityMutedInk
                     font.pixelSize: Appearance.font.pixelSize.smallest
                 }
             }
@@ -378,7 +382,7 @@ Item {
                 Rectangle {
                     Layout.fillWidth: true
                     implicitHeight: 1
-                    color: Qt.alpha(AbyssStyle.textColor, .12)
+                    color: Qt.alpha(root.utilityInk, .12)
                 }
 
                 AbyssLabel {
@@ -434,7 +438,7 @@ Item {
                         : Audio.outputDevices.length === 0
                             ? "No PipeWire output devices are available."
                             : "No PipeWire input devices are available."
-                    color: AbyssStyle.textColorMuted
+                    color: root.utilityMutedInk
                     font.pixelSize: Appearance.font.pixelSize.smallest
                 }
 

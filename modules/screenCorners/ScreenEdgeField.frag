@@ -18,6 +18,7 @@ layout(std140, binding = 0) uniform buf {
     vec4 frameColor;
     vec4 shadowColor;
     vec4 params;      // radius, shadow reach, minimum AA width, reserved
+    vec4 tileRect;    // output-local origin x/y, tile width/height
 } u;
 
 float roundedBox(vec2 p, vec2 centre, vec2 halfSize, float radius) {
@@ -44,7 +45,10 @@ void main() {
         return;
     }
 
-    vec2 p = qt_TexCoord0 * size;
+    // Each ShaderEffect tile evaluates the exact same output-local field.
+    // Splitting the perimeter into four disjoint tiles removes deep-centre
+    // fragment invocations while preserving global pixel coordinates.
+    vec2 p = u.tileRect.xy + qt_TexCoord0 * u.tileRect.zw;
 
     // Exact deep-interior reject. A rounded rectangle differs from its axis
     // box only inside the four radius corner squares. Once a fragment is both

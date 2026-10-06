@@ -55,7 +55,7 @@ require(edge,
     "elevationSize: root.physicalShadowSize",
     "elevationEnabled: frameWindow.physicalShadowActive",
     "id: legacyFramePainter",
-    "active: frameField.status === ShaderEffect.Error",
+    "active: frameField.shaderError",
     'Qt.resolvedUrl("ScreenEdgeLegacyFallback.qml")',
     "readonly property color shadowColor: Qt.alpha(",
     "Appearance.m3colors.m3shadow",
@@ -99,7 +99,7 @@ primary_start = frame_component.index("ScreenEdgeField {")
 fallback_start = frame_component.index("id: legacyFramePainter")
 assert primary_start < fallback_start
 fallback_block = frame_component[fallback_start:]
-assert "active: frameField.status === ShaderEffect.Error" in fallback_block
+assert "active: frameField.shaderError" in fallback_block
 assert 'Qt.resolvedUrl("ScreenEdgeLegacyFallback.qml")' in fallback_block
 assert "import QtQuick.Shapes" not in edge
 assert "import QtQuick.Effects" not in edge

@@ -353,8 +353,8 @@ Singleton {
         const subtext = Appearance.m3colors.darkmode
             ? ColorUtils.ensureReadable(ColorUtils.mix(on1, l1, 0.75), l1, 3.0)
             : ColorUtils.ensureReadable(ColorUtils.mix(on1, l1, 0.75), layer1Active, 4.5)
-        const selection = ColorUtils.mix(accentContainer, l3, 0.75)
-        const selectionHover = ColorUtils.mix(accentContainer, l3, 0.88)
+        const selection = ColorUtils.quietSelection(accentContainer, l0, false)
+        const selectionHover = ColorUtils.quietSelection(accentContainer, l0, true)
         const onSelection = ColorUtils.ensureReadable(on3, selection, 4.5)
 
         const hex = root.colorToHex

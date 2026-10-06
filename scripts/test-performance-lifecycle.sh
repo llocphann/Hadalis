@@ -292,7 +292,7 @@ require "$screen_edges" 'updatesEnabled: mapped && !fullscreenCovered' 'Covered 
 require "$screen_edges" 'readonly property bool physicalShadowActive:' 'Screen Edge must compute physical shadow activity explicitly'
 require "$screen_edges" 'ScreenEdgeField {' 'Screen Edge normal path must use the analytic field painter'
 require "$screen_edges" 'elevationEnabled: frameWindow.physicalShadowActive' 'Screen Edge analytic elevation must stop when physical shadow is inactive'
-require "$screen_edges" 'active: frameField.status === ShaderEffect.Error' 'Legacy Screen Edge painter must remain lazy and error-only'
+require "$screen_edges" 'active: frameField.shaderError' 'Legacy Screen Edge painter must remain lazy and error-only'
 require "$screen_edges" 'Qt.resolvedUrl("ScreenEdgeLegacyFallback.qml")' 'Legacy Screen Edge renderer must load by URL only after shader error'
 reject "$screen_edges" 'import QtQuick.Shapes' 'Healthy Screen Edge path must not import the legacy Shapes module'
 reject "$screen_edges" 'import QtQuick.Effects' 'Healthy Screen Edge path must not import the legacy Effects module'

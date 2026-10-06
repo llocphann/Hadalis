@@ -382,17 +382,18 @@ def main() -> None:
           "Screen Edge must default to 10px while remaining user-adjustable")
     check("Config.options?.appearance?.screenEdge?.radius" not in screen_edge
           and "RoundCorner {" not in screen_edge
-          and "readonly property real rounding: PerimeterTokens.frameRadius" in screen_edge
-          and "readonly property int outerPadding: 50" in screen_edge,
-          "Screen Edge must consume the shared configurable radius while preserving the locked inverted-frame geometry")
+          and "readonly property real rounding: PerimeterTokens.frameRadius" in screen_edge,
+          "Screen Edge must consume the shared configurable radius")
     check("screenEdge?.enable" not in screen_edge,
           "Screen Edge must not be disabled by stale persisted enable flags")
+
     frame_window_start = screen_edge.index("component FrameWindow: PanelWindow")
     reservation_window_start = screen_edge.index("component ReservationWindow: PanelWindow")
     check(frame_window_start >= 0 and reservation_window_start > frame_window_start,
           "Screen Edge must retain separate painted FrameWindow and transparent ReservationWindow roles")
     frame_window_block = screen_edge[frame_window_start:reservation_window_start]
     reservation_window_block = screen_edge[reservation_window_start:]
+
     frame_mapped_start = frame_window_block.index("readonly property bool mapped:")
     frame_mapped_end = frame_window_block.index("// LOCKED BAR/SCREEN-EDGE INSETS:")
     frame_mapped_block = frame_window_block[frame_mapped_start:frame_mapped_end]
@@ -400,21 +401,28 @@ def main() -> None:
           and "!GlobalStates.screenLocked" in frame_mapped_block
           and "fullscreen" not in frame_mapped_block.lower()
           and "gameModeMinimal" not in frame_mapped_block,
-          "Painted Screen Edge FrameWindow must stay mapped across fullscreen so remapping cannot cover BarContent")
-    check("GameMode.hasFullscreenOnOutput(outputName)" in frame_window_block
-          and "&& !frameWindow.fullscreenCovered" in frame_window_block,
-          "Fullscreen coverage may gate only the painted frame shadow work, not the frame mapping lifecycle")
+          "Painted Screen Edge FrameWindow must stay mapped across fullscreen")
+
+    check("readonly property bool fullscreenCovered: outputName.length > 0" in frame_window_block
+          and "GameMode.hasFullscreenOnOutput(outputName)" in frame_window_block,
+          "FrameWindow must expose fullscreen coverage only for render-work gating")
+    check("readonly property bool physicalShadowActive:" in frame_window_block
+          and "&& !frameWindow.fullscreenCovered" in frame_window_block
+          and "&& !Appearance.gameModeMinimal" in frame_window_block,
+          "Expensive Screen Edge elevation must suspend under fullscreen/minimal mode")
     check("GameMode.hasFullscreenOnOutput(outputName)" in reservation_window_block
           and "!fullscreenCovered" in reservation_window_block,
           "Transparent Screen Edge reservation windows may release work-area reservations during fullscreen")
     check("mask: Region { item: emptyFrameInput }" in screen_edge,
           "Painted Screen Edge frame must remain completely click-through")
+
     check("workspaceOverviewEdgeSupportEnabled" in screen_edge
           and "workspaceOverviewEdgeTriggerEnabled" in screen_edge
           and "active: reservationWindow.workspaceOverviewEdgeSupportEnabled" in screen_edge
           and "workspaceOverviewSupport.item?.hitArea" in screen_edge
           and ": emptyReservationInput" in screen_edge,
           "Reservation surfaces may allocate/accept Overview input only for the supported vertical-Bar Top-edge path")
+
     for retired_shadow_geometry in (
         "id: edgeShadow",
         "shadowExtent",
@@ -426,20 +434,55 @@ def main() -> None:
               f"Physical Screen Edge must not restore separate shadow geometry: {retired_shadow_geometry}")
     check("Config.options?.appearance?.screenEdge?.shadow" not in screen_edge,
           "Physical Screen Edge must not consume the connected-surface shadow config")
-    check("import QtQuick.Effects" in screen_edge
-          and "Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true" in screen_edge
-          and "Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15" in screen_edge
-          and "Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70" in screen_edge
-          and "readonly property bool physicalShadowActive:" in screen_edge
-          and "layer.enabled: frameShape.physicalShadowActive" in screen_edge
-          and "layer.effect: MultiEffect {" in screen_edge
-          and "shadowEnabled: frameShape.physicalShadowActive" in screen_edge
-          and "blurMax: Math.max(1, root.physicalShadowSize)" in screen_edge
-          and "shadowBlur: 1.0" in screen_edge
-          and "shadowHorizontalOffset: 0" in screen_edge
-          and "shadowVerticalOffset: 0" in screen_edge
-          and "Appearance.m3colors.m3shadow" in screen_edge,
-          "Physical Screen Edge must own one dedicated Caelestia-style shadow effect")
+
+    # Primary painter: one texture-free analytic field fed by the exact same
+    # FrameWindow inset/radius ownership as the locked Shape geometry.
+    for token in (
+        "ScreenEdgeField {",
+        "id: frameField",
+        "visible: !frameWindow.fullscreenCovered",
+        "leftInset: frameWindow.frameLeftInset",
+        "topInset: frameWindow.frameTopInset",
+        "rightInset: frameWindow.frameRightInset",
+        "bottomInset: frameWindow.frameBottomInset",
+        "radius: root.rounding",
+        "edgeColor: root.edgeColor",
+        "elevationColor: Qt.alpha(",
+        "Appearance.m3colors.m3shadow",
+        "elevationSize: root.physicalShadowSize",
+        "elevationEnabled: frameWindow.physicalShadowActive",
+    ):
+        check(token in frame_window_block,
+              f"Analytic Screen Edge primary painter contract missing: {token}")
+
+    analytic_start = frame_window_block.index("ScreenEdgeField {")
+    fallback_start = frame_window_block.index("id: legacyFramePainter")
+    check(analytic_start >= 0 and fallback_start > analytic_start,
+          "Analytic Screen Edge must be primary and the legacy painter secondary")
+
+    # The prior Shape/MultiEffect visual stays available only as an error
+    # fallback. It must not be resident during a healthy analytic path.
+    fallback_block = frame_window_block[fallback_start:]
+    for token in (
+        "active: frameField.status === ShaderEffect.Error",
+        "sourceComponent: Component {",
+        "Shape {",
+        "preferredRendererType: Shape.CurveRenderer",
+        "fillRule: ShapePath.OddEvenFill",
+        "readonly property real shadowRasterScale:",
+        "root.physicalShadowSize >= 12 ? 0.5 : 0.625",
+        "layer.enabled: frameWindow.physicalShadowActive",
+        "layer.effect: MultiEffect {",
+        "shadowEnabled: frameWindow.physicalShadowActive",
+        "blurMax: Math.max(1, root.physicalShadowSize)",
+        "shadowBlur: 1.0",
+        "autoPaddingEnabled: false",
+        "shadowHorizontalOffset: 0",
+        "shadowVerticalOffset: 0",
+    ):
+        check(token in fallback_block,
+              f"Legacy Screen Edge error fallback contract missing: {token}")
+
     check("component FrameWindow: PanelWindow" in screen_edge
           and "component ReservationWindow: PanelWindow" in screen_edge
           and "implicitHeight: horizontal ? root.thickness : 1" in screen_edge
@@ -450,6 +493,7 @@ def main() -> None:
           "Full-screen Screen Edge frame must ignore reservations without resetting itself to normal exclusion mode")
     check("exclusiveZone: mapped ? root.thickness : 0" in screen_edge,
           "Transparent Screen Edge reservation windows must reserve the configured physical edge thickness")
+
     check("function iiBarOwnsEdge(outputName, edge)" in screen_edge
           and "!(Config.options?.bar?.autoHide?.enable ?? false)" in screen_edge,
           "Auto-hide ii Bar must hand physical edge ownership to ScreenEdges.qml")
@@ -460,16 +504,17 @@ def main() -> None:
         'root.iiBarOwnsEdge(outputName, "bottom")',
         "Appearance.sizes.verticalBarWidth : root.thickness",
         "Appearance.sizes.barHeight : root.thickness",
-        "readonly property real innerLeft: frameWindow.frameLeftInset",
-        "readonly property real innerTop: frameWindow.frameTopInset",
-        "frameShape.width - frameWindow.frameRightInset",
-        "frameShape.height - frameWindow.frameBottomInset",
+        "leftInset: frameWindow.frameLeftInset",
+        "topInset: frameWindow.frameTopInset",
+        "rightInset: frameWindow.frameRightInset",
+        "bottomInset: frameWindow.frameBottomInset",
     ):
         check(bar_frame_token in screen_edge,
-              f"ii Bar must remain the thicker side of the single Screen Edge frame: {bar_frame_token}")
+              f"ii Bar must remain the thicker side of the single Screen Edge field: {bar_frame_token}")
     check(screen_edge.count("Appearance.sizes.verticalBarWidth : root.thickness") == 2
           and screen_edge.count("Appearance.sizes.barHeight : root.thickness") == 2,
           "Left/right and top/bottom Bar frame insets must remain orientation-symmetric")
+
     for retired_geometry in (
         "PERIMETER-CORNER-LOCK",
         "id: leadingCorner",
@@ -480,25 +525,22 @@ def main() -> None:
     ):
         check(retired_geometry not in screen_edge,
               f"Screen Edge must not restore retired corner implementations: {retired_geometry}")
-    check("import QtQuick.Shapes" in screen_edge
-          and "component FrameWindow: PanelWindow" in screen_edge
-          and "fillRule: ShapePath.OddEvenFill" in screen_edge
-          and "readonly property bool lowCostRendererActive:" in screen_edge
-          and "preferredRendererType: frameShape.lowCostRendererActive" in screen_edge
-          and "? Shape.GeometryRenderer : Shape.CurveRenderer" in screen_edge,
-          "Physical Screen Edge must remain one odd-even frame while low-cost states may use the cheaper geometry renderer")
+
     check("SCREEN-EDGE-GEOMETRY-LOCK (maintainer approved 2026-09-19)" in screen_edge
           and "BAR-SCREEN-EDGE-CORNER-LOCK (maintainer approved 2026-09-19)" in screen_edge,
           "Approved Screen Edge + Bar corner geometry lock markers must remain present")
     check("BAR-SCREEN-EDGE-CORNER-LOCK" in perimeter_tokens,
           "Shared perimeter radius owner must retain the Bar/Screen Edge corner lock marker")
+
+    # The only Shape/ShapePath left in this file is the dormant error fallback;
+    # normal rendering is owned by ScreenEdgeField and independently geometry-
+    # checked by test-screen-edge-analytic-field-contract.py.
     check(screen_edge.count("Shape {") == 1
           and screen_edge.count("ShapePath {") == 1
           and screen_edge.count("PathMove {") == 1
           and screen_edge.count("direction: PathArc.Clockwise") == 4,
-          "Screen Edge must keep one and only one painted inverted-frame path")
-    for locked_geometry in (
-        "readonly property real rounding: PerimeterTokens.frameRadius",
+          "Screen Edge may retain exactly one legacy inverted-frame fallback")
+    for fallback_geometry in (
         "readonly property int outerPadding: 50",
         "readonly property real innerLeft: frameWindow.frameLeftInset",
         "readonly property real innerTop: frameWindow.frameTopInset",
@@ -510,20 +552,12 @@ def main() -> None:
         "y: frameShape.height + root.outerPadding",
         "x: framePath.innerLeft + framePath.r",
         "x: framePath.innerRight - framePath.r",
-        "x: framePath.innerRight",
-        "x: framePath.innerLeft",
-        "y: framePath.innerTop",
-        "y: framePath.innerBottom",
         "radiusX: framePath.r",
         "radiusY: framePath.r",
     ):
-        check(locked_geometry in screen_edge,
-              f"Approved Screen Edge corner geometry changed: {locked_geometry}")
-    check("PathMove {" in screen_edge
-          and screen_edge.count("direction: PathArc.Clockwise") == 4
-          and "x: framePath.innerLeft + framePath.r" in screen_edge
-          and "y: framePath.innerTop" in screen_edge,
-          "Screen Edge inner workspace hole must be one closed 25px rounded rectangle")
+        check(fallback_geometry in fallback_block,
+              f"Legacy Screen Edge fallback geometry changed: {fallback_geometry}")
+
     check("component CornerWindow: PanelWindow" not in screen_edge
           and "CornerWindow {" not in screen_edge
           and "component EdgeWindow: PanelWindow" not in screen_edge

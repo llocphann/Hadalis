@@ -378,6 +378,7 @@ def main() -> None:
           "Toast connected-surface properties must not be escaped into a line comment")
 
     screen_edge = read("modules/screenCorners/ScreenEdges.qml")
+    screen_edge_fallback = read("modules/screenCorners/ScreenEdgeLegacyFallback.qml")
     check("Config.options?.appearance?.screenEdge?.width ?? 10" in screen_edge,
           "Screen Edge must default to 10px while remaining user-adjustable")
     check("Config.options?.appearance?.screenEdge?.radius" not in screen_edge
@@ -461,28 +462,40 @@ def main() -> None:
     check(analytic_start >= 0 and fallback_start > analytic_start,
           "Analytic Screen Edge must be primary and the legacy painter secondary")
 
-    # The prior Shape/MultiEffect visual stays available only as an error
-    # fallback. It must not be resident during a healthy analytic path.
+    # The prior Shape/MultiEffect visual stays available only as a URL-loaded
+    # error fallback. Healthy ScreenEdges.qml must not import its type graph.
     fallback_block = frame_window_block[fallback_start:]
     for token in (
         "active: frameField.status === ShaderEffect.Error",
-        "sourceComponent: Component {",
-        "Shape {",
+        'Qt.resolvedUrl("ScreenEdgeLegacyFallback.qml")',
+        "readonly property real frameLeftInset: frameWindow.frameLeftInset",
+        "readonly property color shadowColor: Qt.alpha(",
+    ):
+        check(token in fallback_block,
+              f"Legacy Screen Edge loader contract missing: {token}")
+    check("import QtQuick.Shapes" not in screen_edge
+          and "import QtQuick.Effects" not in screen_edge
+          and "Shape {" not in frame_window_block
+          and "MultiEffect {" not in frame_window_block,
+          "Healthy Screen Edge path must not import or embed the legacy renderer")
+    for token in (
+        "import QtQuick.Shapes",
+        "import QtQuick.Effects",
         "preferredRendererType: Shape.CurveRenderer",
         "fillRule: ShapePath.OddEvenFill",
         "readonly property real shadowRasterScale:",
-        "root.physicalShadowSize >= 12 ? 0.5 : 0.625",
-        "layer.enabled: frameWindow.physicalShadowActive",
+        "root.host.physicalShadowSize >= 12 ? 0.5 : 0.625",
+        "layer.enabled: root.host.physicalShadowActive",
         "layer.effect: MultiEffect {",
-        "shadowEnabled: frameWindow.physicalShadowActive",
-        "blurMax: Math.max(1, root.physicalShadowSize)",
+        "shadowEnabled: root.host.physicalShadowActive",
+        "blurMax: Math.max(1, root.host.physicalShadowSize)",
         "shadowBlur: 1.0",
         "autoPaddingEnabled: false",
         "shadowHorizontalOffset: 0",
         "shadowVerticalOffset: 0",
     ):
-        check(token in fallback_block,
-              f"Legacy Screen Edge error fallback contract missing: {token}")
+        check(token in screen_edge_fallback,
+              f"Legacy Screen Edge external fallback contract missing: {token}")
 
     check("component FrameWindow: PanelWindow" in screen_edge
           and "component ReservationWindow: PanelWindow" in screen_edge
@@ -533,31 +546,29 @@ def main() -> None:
     check("BAR-SCREEN-EDGE-CORNER-LOCK" in perimeter_tokens,
           "Shared perimeter radius owner must retain the Bar/Screen Edge corner lock marker")
 
-    # The only Shape/ShapePath left in this file is the dormant error fallback;
-    # normal rendering is owned by ScreenEdgeField and independently geometry-
-    # checked by test-screen-edge-analytic-field-contract.py.
-    check(screen_edge.count("Shape {") == 1
-          and screen_edge.count("ShapePath {") == 1
-          and screen_edge.count("PathMove {") == 1
-          and screen_edge.count("direction: PathArc.Clockwise") == 4,
-          "Screen Edge may retain exactly one legacy inverted-frame fallback")
+    # Legacy geometry exists only in the URL-loaded fallback file.
+    check(screen_edge_fallback.count("Shape {") == 1
+          and screen_edge_fallback.count("ShapePath {") == 1
+          and screen_edge_fallback.count("PathMove {") == 1
+          and screen_edge_fallback.count("direction: PathArc.Clockwise") == 4,
+          "External Screen Edge fallback must retain exactly one inverted frame")
     check("readonly property int outerPadding: 50" in screen_edge,
           "Screen Edge must retain the locked outer padding token")
     for fallback_geometry in (
-        "readonly property real innerLeft: frameWindow.frameLeftInset",
-        "readonly property real innerTop: frameWindow.frameTopInset",
-        "frameShape.width - frameWindow.frameRightInset",
-        "frameShape.height - frameWindow.frameBottomInset",
-        "startX: -root.outerPadding",
-        "startY: -root.outerPadding",
-        "x: frameShape.width + root.outerPadding",
-        "y: frameShape.height + root.outerPadding",
+        "readonly property real innerLeft: root.host.frameLeftInset",
+        "readonly property real innerTop: root.host.frameTopInset",
+        "frameShape.width - root.host.frameRightInset",
+        "frameShape.height - root.host.frameBottomInset",
+        "startX: -root.host.outerPadding",
+        "startY: -root.host.outerPadding",
+        "x: frameShape.width + root.host.outerPadding",
+        "y: frameShape.height + root.host.outerPadding",
         "x: framePath.innerLeft + framePath.r",
         "x: framePath.innerRight - framePath.r",
         "radiusX: framePath.r",
         "radiusY: framePath.r",
     ):
-        check(fallback_geometry in fallback_block,
+        check(fallback_geometry in screen_edge_fallback,
               f"Legacy Screen Edge fallback geometry changed: {fallback_geometry}")
 
     check("component CornerWindow: PanelWindow" not in screen_edge

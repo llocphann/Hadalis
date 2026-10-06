@@ -21,6 +21,15 @@ def main() -> int:
     require(
         "services/MaterialThemeLoader.qml",
         'Config.setNestedValue("appearance.wallpaperTheming.autoDarkLightMode", false)',
+        "Appearance.m3colors.darkmode",
+        "ColorUtils.mix(accentContainer, l3, 0.75)",
+        "layer1Active, 4.5",
+    )
+    require(
+        "modules/common/ThemePresets.qml",
+        "c.darkmode",
+        "mixHex(primaryContainer, layer3, 0.75)",
+        "layer1Active, 4.5",
     )
     require(
         "scripts/colors/switchwall.sh",

@@ -1,5 +1,4 @@
 modules
-automation
 services
 scripts
 assets

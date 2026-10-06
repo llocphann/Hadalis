@@ -39,9 +39,10 @@ def main() -> None:
         ], labels
         page_indices = [index for group in groups for index in group["pages"]]
         assert len(page_indices) == len(set(page_indices)), "duplicate default page"
-        excluded = {18, 19, 21, 27, 28}
+        excluded = {18, 19, 21, 27, 28, 35, 36}
         if family == "abyss": excluded.update({26, 30, 31})
-        assert set(page_indices) == (set(range(38)) if family == "abyss" else (set(range(30)) | {36})) - excluded
+        expected = set(range(38 if family == "abyss" else 30)) - excluded
+        assert set(page_indices) == expected
         if family == "abyss":
             assert next(group for group in groups if group["label"] == "Abyss")["pages"] == [2,32,34,33,37,22,23,16]
 
@@ -77,8 +78,7 @@ def main() -> None:
         "property int currentPage:", 1
     )[0])
     legacy_waffle_keys = ["quick","system","bar","wallpaper","themes","gowall","panels","modules","waffle-style","shortcuts","about","monitors","autostart","workspace-strip","mascot","ai","effects","shell-layout","power"]
-    assert wkeys[:19] == legacy_waffle_keys, "Waffle historical page indices must not shift"
-    assert wkeys[19:] == ["cloud-storage"], "Cloud Storage must be appended at index 19"
+    assert wkeys == legacy_waffle_keys, "Waffle historical page indices must not shift"
     assert len(wkeys) == len(set(wkeys)), "Waffle page keys must be unique"
     wgroups = wcontent.split("readonly property var navigationGroups: [", 1)[1].split(
         "readonly property var navigationItems:", 1

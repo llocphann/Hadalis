@@ -169,7 +169,7 @@ Further equalizer presentation experiments are planned/deferred rather than curr
 
 ## 3. v1.0 release blockers
 
-The active source/release checklist now lives in [`to-do/cloud-bot/RELEASE.md`](to-do/cloud-bot/RELEASE.md). See [`to-do/local-bot/VALIDATION.md`](to-do/local-bot/VALIDATION.md) for SHA-pinned checks and maintainer-only live acceptance.
+The active source/release checklist now lives in [`to-do/cloud-bot/RELEASE.md`](to-do/cloud-bot/RELEASE.md). See [`docs/VALIDATION.md`](docs/VALIDATION.md) for the canonical SHA-pinned validator and maintainer-only live acceptance.
 
 ## 3.1 Latest maintainer runtime findings
 
@@ -232,7 +232,7 @@ See [`to-do/cloud-bot/RELEASE.md`](to-do/cloud-bot/RELEASE.md).
 
 ## 7. Local release validation — P0 gate
 
-See [`to-do/local-bot/VALIDATION.md`](to-do/local-bot/VALIDATION.md) for the deterministic executor boundary and the separately labeled maintainer-only live checklist. The validator contract is still [`docs/VALIDATION.md`](docs/VALIDATION.md).
+See [`docs/VALIDATION.md`](docs/VALIDATION.md) for the canonical validator contract and the separately labeled maintainer-only live checklist.
 
 ## 8. v1.0 definition of done
 

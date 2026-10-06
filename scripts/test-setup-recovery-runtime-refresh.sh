@@ -40,6 +40,22 @@ export XDG_STATE_HOME="$stage/state"
 export REPO_ROOT="$repo_root"
 mkdir -p "$HOME" "$XDG_BIN_HOME" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME"
 
+# This contract exercises runtime refresh/orphan cleanup, not Rust compilation.
+# Keep it hermetic on validator hosts where rustup has no configured default.
+export CARGO_TARGET_DIR="$stage/native-target"
+cat > "$XDG_BIN_HOME/cargo" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+release="${CARGO_TARGET_DIR:?}/release"
+mkdir -p "$release"
+for binary in inir-inputd inir-mpdd inir-native inir-theme inir-companiond; do
+    printf '#!/usr/bin/env sh\nexit 0\n' > "$release/$binary"
+    chmod +x "$release/$binary"
+done
+EOF
+chmod +x "$XDG_BIN_HOME/cargo"
+export PATH="$XDG_BIN_HOME:$PATH"
+
 # Installer functions write to this bookkeeping file while copying the real
 # canonical payload. Keep all other installer state inside the fixture root.
 export INSTALLED_LISTFILE="$stage/installed-files"

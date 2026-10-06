@@ -348,9 +348,13 @@ Singleton {
         const accentContainer = _solid(c.colPrimaryContainer, l2)
         const onAccentContainer = _solid(c.colOnPrimaryContainer, accentContainer)
 
-        const subtext = ColorUtils.ensureReadable(ColorUtils.mix(on1, l1, 0.75), l1, 3.0)
-        const selection = ColorUtils.mix(l3, accent, 0.82)
-        const selectionHover = ColorUtils.mix(l3, accent, 0.74)
+        const layer1Hover = ColorUtils.mix(l1, on1, 0.92)
+        const layer1Active = ColorUtils.mix(l1, on1, 0.85)
+        const subtext = Appearance.m3colors.darkmode
+            ? ColorUtils.ensureReadable(ColorUtils.mix(on1, l1, 0.75), l1, 3.0)
+            : ColorUtils.ensureReadable(ColorUtils.mix(on1, l1, 0.75), layer1Active, 4.5)
+        const selection = ColorUtils.mix(accentContainer, l3, 0.75)
+        const selectionHover = ColorUtils.mix(accentContainer, l3, 0.88)
         const onSelection = ColorUtils.ensureReadable(on3, selection, 4.5)
 
         const hex = root.colorToHex
@@ -376,8 +380,8 @@ Singleton {
             "app_foreground": hex(on0),
             "app_subtext": hex(subtext),
             "app_surface": hex(l1),
-            "app_surface_hover": hex(ColorUtils.mix(l1, on1, 0.92)),
-            "app_surface_active": hex(ColorUtils.mix(l1, on1, 0.85)),
+            "app_surface_hover": hex(layer1Hover),
+            "app_surface_active": hex(layer1Active),
             "app_surface_elevated": hex(l2),
             "app_surface_elevated_hover": hex(ColorUtils.mix(l2, on2, 0.90)),
             "app_surface_elevated_active": hex(ColorUtils.mix(l2, on2, 0.80)),

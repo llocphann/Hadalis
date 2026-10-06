@@ -1675,3 +1675,146 @@ This candidate is intentionally kept below the already promoted appId bucketing
 and private layout-sort cache, both of which have source-proven savings without
 depending on undocumented Quickshell signal behavior.
 
+## 2026-10-07 — Media artwork decode-size research
+
+Research-only continuation on current `dev`
+`a87aef29009bf0ae2457aa1804a474578cf77528`. No runtime/product source was
+changed in this round.
+
+Current source identities include:
+
+- `modules/common/widgets/MediaCrossSlideImage.qml`:
+  `99aacfef3bc12d58ab341e5cd530a5d776263ab6`;
+- `modules/mediaControls/presets/CompactPlayer.qml`:
+  `4642a25def2eff69ffe450dd09ca336d8f4b68bf`;
+- `modules/mediaControls/presets/FullPlayer.qml`:
+  `e51ef3d470192a245fe19b26bef3fcca8dc2a98a`;
+- `modules/mediaControls/presets/AlbumArtPlayer.qml`:
+  `f9c123d6b82073872dcafb7d1b9ba99b4ffeddf9`;
+- `modules/waffle/actionCenter/MediaPaneContent.qml`:
+  `dfea7b4e2cfb5a0629f8b77911dd56e7c883c354`;
+- `modules/waffle/widgets/WidgetsContent.qml`:
+  `7919f08b523479a5348660f0b95993d0b0b57544`;
+- `modules/waffle/lock/WaffleLockSurface.qml`:
+  `9cc7e75e21650c26572a17f61140b7d56fd9a734`;
+- `modules/waffle/lock/WaffleLockSurfaceSafe.qml`:
+  `86d038cdb3503b0aaae1d3c78b6fdb580263235b`;
+- `modules/ii/overlay/volumeMixer/VolumeMixer.qml`:
+  `612903a3b1d8cdd5ebb933a53abd90c79aa93f7b`.
+
+Repository/history search found no prior focused optimization note for bounding
+these media-art Image decode sizes.
+
+### Candidate — HIGH CONFIDENCE for RAM/GPU, visual budget <1%: bound direct media-art decode size to conservative presentation resolution
+
+Hadalis already has a local precedent for this exact class of image:
+`MediaCrossSlideImage.qml` loads both transition layers with:
+
+```qml
+sourceSize.width: Math.max(1, Math.round(root.width * 2))
+sourceSize.height: Math.max(1, Math.round(root.height * 2))
+```
+
+That keeps cover transitions sharp while avoiding decoding the original album
+art at arbitrary source resolution.
+
+Several direct media-art Image/StyledImage paths still have no `sourceSize`
+at all even though their maximum presentation size is tightly bounded.
+
+Confirmed examples:
+
+| Surface | Presented size / role | Current decode bound |
+|---|---|---|
+| Waffle Action Center media art | about 104×104 logical px | none |
+| Waffle Widgets foreground art | 108×108 logical px | none |
+| Waffle Lock / Safe Lock art | 48×48 logical px | none |
+| ii Volume Mixer art | 96×96 logical px | none |
+| CompactPlayer blurred card background | card-sized | none |
+| FullPlayer cover-art background | card-sized | none |
+| AlbumArtPlayer blurred cover background | card-sized | none |
+| Waffle Widgets blurred background source | roughly panel/card-sized | none |
+
+The Waffle OSD already bounds its media art to 140×140, and
+`CompactMediaPlayer.qml` already bounds its blurred card image to the card
+size. Those existing paths are evidence that decode-size bounding is compatible
+with current media artwork ownership.
+
+Most of the unbounded paths use `cache: false`, so multiple simultaneously
+resident surfaces can decode/retain their own image representation instead of
+relying on the shared QML Image cache.
+
+### Conservative implementation policy
+
+Do **not** set every media image to 1× logical dimensions.
+
+For foreground artwork, use a conservative target at least equivalent to the
+existing cross-slide policy:
+
+```text
+requested decode width  = ceil(presentation width  × 2)
+requested decode height = ceil(presentation height × 2)
+```
+
+or an explicit physical-pixel/DPR-aware equivalent if the runtime contract is
+proven across 1.0/1.25/1.5/2.0 scale.
+
+For full-card blurred artwork:
+
+- request enough pixels for the actual visible card/body size;
+- include whatever oversampling is required to keep the current blur/mipmap
+  result within the visual budget;
+- do not assume the same 1× policy as a tiny foreground icon;
+- preserve `PreserveAspectCrop`, blur parameters, mipmap/smooth flags and
+  transition timing unchanged.
+
+This is intentionally classified as **<1% visual budget**, not exact
+pixel-lossless. Pre-decoding/downscaling can change filtering by very small
+amounts versus sampling the full-resolution source directly.
+
+### Why the RAM/GPU opportunity can be material
+
+An illustrative 2000×2000 RGBA decoded image represents about 16 MB of raw
+pixel data before accounting for implementation-specific texture/mipmap/effect
+overheads. A 216×216 conservative decode for a 108×108 foreground slot is about
+0.18 MB of RGBA pixels.
+
+Those numbers are size arithmetic, **not measured Hadalis RSS/VRAM savings**.
+Actual decoder behavior varies by image format and Qt backend, and some formats
+may transiently decode more data before scaling. The steady-state image/texture
+residency, however, has a clear upper-bound opportunity.
+
+The gain is especially relevant when the same large album cover is presented
+by multiple `cache:false` media surfaces.
+
+### Required visual/resource oracle
+
+Before any implementation is called accepted:
+
+1. fixture covers at low resolution, 512 px, 1k, 2k and 4k;
+2. square and non-square source aspect ratios;
+3. 1.0 / 1.25 / 1.5 / 2.0 output scale;
+4. foreground 48/96/104/108/140 px art;
+5. Compact/Full/AlbumArt blurred backgrounds;
+6. moving cross-slide/track-change state;
+7. compare baseline and bounded versions with:
+   - global pixel-difference ratio;
+   - edge/detail crop around album-art boundaries;
+   - maximum per-channel difference;
+   - subjective text/cover sharpness check;
+8. record RSS/PSS and, where available, renderer texture/GPU memory for the same
+   set of simultaneously visible surfaces.
+
+A candidate that cannot stay below the maintainer's <1% visual-difference
+budget at the chosen scale must be rejected or use a larger decode target.
+
+### Adjacent non-candidates
+
+- `MediaCrossSlideImage.qml` already uses a 2× source-size bound; do not reduce
+  it from static reasoning.
+- `Waffle MediaOSD` already requests a 140×140 source size.
+- `CompactMediaPlayer` already bounds the blurred art source to the card.
+- ColorQuantizer paths already use their own tiny rescale settings and are not
+  the target of this work.
+
+No whole-Hadalis RAM/GPU percentage is claimed without measurement.
+

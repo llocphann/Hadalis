@@ -287,6 +287,7 @@ require "$it_thumbnail" 'ClippingRectangle {' 'InnerTune thumbnails must use sce
 reject "$it_thumbnail" 'GE.OpacityMask' 'InnerTune list thumbnails must not allocate an OpacityMask layer'
 require "$it_thumbnail" 'GlobalStates.sidebarLeftOpen' 'InnerTune decorative equalizer must stop with the sidebar'
 
+require "$screen_edges" 'updatesEnabled: mapped && !fullscreenCovered' 'Covered Screen Edge frame must suspend scenegraph updates without unmapping'
 require "$screen_edges" 'readonly property bool physicalShadowActive:' 'Screen Edge must compute physical shadow activity explicitly'
 require "$screen_edges" 'ScreenEdgeField {' 'Screen Edge normal path must use the analytic field painter'
 require "$screen_edges" 'elevationEnabled: frameWindow.physicalShadowActive' 'Screen Edge analytic elevation must stop when physical shadow is inactive'

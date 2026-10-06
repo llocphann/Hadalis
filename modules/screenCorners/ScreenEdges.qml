@@ -359,6 +359,7 @@ Scope {
                 }
             }
         }
+    }
 
     // Transparent compositor reservation only. ScreenEdge pixels are never
     // painted here, so these windows cannot alter the frame/corner silhouette.

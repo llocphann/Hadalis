@@ -204,10 +204,7 @@ fn tint_light_surfaces(palette: &mut Palette, scheme_name: &str) {
         ("surfaceVariant", 74.0, 1.02),
     ] {
         let chroma = (surface_chroma * scale).clamp(12.0, 36.0);
-        palette.insert(
-            role.into(),
-            Hct::new(hue, chroma, tone).to_argb().to_hex(),
-        );
+        palette.insert(role.into(), Hct::new(hue, chroma, tone).to_argb().to_hex());
     }
 
     let ink_chroma = (surface_chroma * 0.45).clamp(6.0, 18.0);
@@ -221,10 +218,7 @@ fn tint_light_surfaces(palette: &mut Palette, scheme_name: &str) {
         ("inverseOnSurface", 90.0, 0.65),
     ] {
         let chroma = (ink_chroma * scale).clamp(4.0, 20.0);
-        palette.insert(
-            role.into(),
-            Hct::new(hue, chroma, tone).to_argb().to_hex(),
-        );
+        palette.insert(role.into(), Hct::new(hue, chroma, tone).to_argb().to_hex());
     }
 }
 
@@ -1029,8 +1023,7 @@ mod tests {
             1.0,
         );
         let primary = Hct::from_argb(parse_hex(material.get("primary").unwrap()).unwrap());
-        let background =
-            Hct::from_argb(parse_hex(material.get("background").unwrap()).unwrap());
+        let background = Hct::from_argb(parse_hex(material.get("background").unwrap()).unwrap());
         let container =
             Hct::from_argb(parse_hex(material.get("surfaceContainer").unwrap()).unwrap());
 

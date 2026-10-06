@@ -34,13 +34,19 @@ for token in (
     "fragColor = vec4(0.0);",
     "float d = roundedBox(",
     "vec2 p = u.tileRect.xy + qt_TexCoord0 * u.tileRect.zw;",
-    "float frameCover = smoothstep(-aa, aa, d);",
-    "if (u.shadowColor.a > 0.0)",
+    "float shadowResponse(float d, float aa, float reach)",
+    "if (u.shadowColor.a <= 0.0)",
     "float sharpReach = max(aa, reach / 15.0);",
     "float midReach = max(sharpReach, reach / 3.0);",
     "0.175 * smoothstep(-sharpReach, 0.0, d)",
     "0.250 * smoothstep(-midReach, 0.0, d)",
     "0.075 * smoothstep(-reach, 0.0, d)",
+    "if (d <= -reach)",
+    "if (d <= -aa)",
+    "fragColor = u.shadowColor * innerShadow * u.qt_Opacity;",
+    "if (d >= aa)",
+    "float innerShadow = u.shadowColor.a > 0.0 ? 0.5 : 0.0;",
+    "float frameCover = smoothstep(-aa, aa, d);",
     "vec3 frameRgb = u.frameColor.rgb * frameCover;",
     "vec3 shadowRgb = u.shadowColor.rgb * innerShadow;",
     "float shadowAlpha = u.shadowColor.a * innerShadow;",
@@ -115,6 +121,11 @@ assert "ShapePath {" in fallback_qml
 
 def f32(value: float) -> float:
     return struct.unpack("<f", struct.pack("<f", float(value)))[0]
+
+
+assert f32(f32(f32(0.175) + f32(0.250)) + f32(0.075)) == f32(0.5), (
+    "full-frame shadow fast path must equal the three accepted band weights"
+)
 
 
 def legacy_rounded_box_from_q(qx: float, qy: float, radius: float) -> float:

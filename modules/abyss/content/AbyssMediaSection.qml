@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.services
+import qs.modules.common
 import qs.modules.abyss.looks
 
 ColumnLayout {
@@ -15,7 +16,7 @@ ColumnLayout {
         asynchronous: true
     }
     AbyssLabel { text: root.player?.trackTitle || "No media playing"; font.pixelSize: AbyssStyle.fontSize*1.25; Layout.fillWidth: true }
-    AbyssLabel { text: root.player?.trackArtist || ""; color: AbyssStyle.textColorMuted; Layout.fillWidth: true }
+    AbyssLabel { text: root.player?.trackArtist || ""; color: Appearance.m3colors.darkmode ? AbyssStyle.textColorMuted : "#1a1a1a"; Layout.fillWidth: true }
     RowLayout {
         AbyssButton { glyph: "skip_previous"; description: "Previous track"; enabled: root.player?.canGoPrevious ?? false; onClicked: root.player.previous() }
         AbyssButton { glyph: root.player?.isPlaying ? "pause" : "play_arrow"; description: root.player?.isPlaying ? "Pause" : "Play"; enabled: root.player?.canTogglePlaying ?? false; onClicked: root.player.togglePlaying() }

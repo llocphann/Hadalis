@@ -1921,3 +1921,129 @@ intended to change.
 
 No whole-Hadalis CPU percentage is claimed without runtime measurement.
 
+## 2026-10-07 — Cloudflare WARP direct-argv research
+
+Research-only continuation on current `dev`
+`ca83feb68910eab36c5820a63701a3f8ecf40fc3`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- shared Waffle model
+  `modules/common/models/quickToggles/CloudflareWarpToggle.qml`:
+  `0ec62b42e71e805b3c18f2cbfc9ffb5cd78b0e3c`;
+- Classic Sidebar toggle
+  `modules/sidebarRight/quickToggles/classicStyle/CloudflareWarp.qml`:
+  `fee5c5fa1e85ba12daa2fb963fb2d80239558059`;
+- Android Sidebar toggle
+  `modules/sidebarRight/quickToggles/androidStyle/AndroidCloudflareWarpToggle.qml`:
+  `6c0e743dd92f2aa3016cc08e108d1576bde025e2`.
+
+Repository/history search found no earlier optimization note for this process
+wrapper.
+
+### Candidate — HIGH CONFIDENCE: execute `warp-cli status` directly instead of forking a shell for every poll
+
+All three implementations currently define the status Process as:
+
+```qml
+command: ["/bin/sh", "-c", root.warpCliPath + " status"]
+```
+
+where `root.warpCliPath` is the fixed literal:
+
+```qml
+readonly property string warpCliPath: "/usr/bin/warp-cli"
+```
+
+No shell feature is used by the status command:
+
+- no pipe;
+- no redirection;
+- no variable expansion;
+- no glob;
+- no conditional;
+- no compound command;
+- no user-controlled interpolation.
+
+The equivalent direct argv command is therefore:
+
+```qml
+command: [root.warpCliPath, "status"]
+```
+
+This removes one shell process from every status refresh while leaving
+`warp-cli` stdout/exit status as the Process observation.
+
+The common Waffle model is already lifecycle-gated:
+
+```qml
+running: root.available
+    && (GlobalStates.sidebarRightOpen || GlobalStates.waffleActionCenterOpen)
+```
+
+and Classic/Android Sidebar implementations poll while the Sidebar is open.
+The current interval is 5 seconds and `triggeredOnStart: true`, with additional
+explicit refreshes after connect/disconnect/service-start actions.
+
+Thus this is not an argument to change the 5-second freshness contract. It
+removes only the unnecessary intermediate process.
+
+### Expected structural saving
+
+While the relevant surface is open, every periodic status refresh changes from:
+
+```text
+Quickshell Process
+  -> /bin/sh -c
+      -> /usr/bin/warp-cli status
+```
+
+to:
+
+```text
+Quickshell Process
+  -> /usr/bin/warp-cli status
+```
+
+At a 5-second cadence, one minute of open-surface polling can avoid about
+12 shell child processes per live WARP-toggle instance. Action-triggered
+refreshes avoid the shell as well.
+
+This is CPU/process churn, not a GPU/RAM headline item.
+
+### Required oracle before implementation
+
+For each of the three toggle implementations, compare current and direct-argv
+behavior for:
+
+- WARP installed and connected;
+- installed and disconnected;
+- daemon unavailable;
+- `warp-cli status` nonzero exit;
+- stdout containing the existing connected/disconnected/error strings;
+- panel open/close poll start/stop;
+- connect/disconnect action followed by immediate refresh;
+- service-start action followed by refresh.
+
+Assert identical:
+
+- `available`;
+- `_daemonRunning`;
+- `toggled`;
+- visibility behavior of legacy Classic/Android toggles;
+- tooltip/status text;
+- notification/error behavior.
+
+### Adjacent shell-wrapper sweep
+
+Other `sh -c` / `bash -c` sites inspected in the same pass were **not**
+mechanically promoted. Most use real shell semantics such as pipes,
+redirection, multiple commands, positional parameters, timeout composition or
+filesystem tests. Examples include Audio sound enumeration, Brightness paired
+queries, TLP capability probing, Hotspot setup, ResourceUsage GPU probes,
+Weather GPS parsing and thumbnail/media cache helpers.
+
+Only wrappers whose command can be represented as the exact same argv/process
+contract should be converted under strict-lossless rules.
+

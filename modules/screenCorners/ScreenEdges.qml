@@ -363,15 +363,17 @@ Scope {
         readonly property bool horizontal: edge === "top" || edge === "bottom"
         readonly property bool fullscreenCovered: outputName.length > 0
             && GameMode.hasFullscreenOnOutput(outputName)
-        readonly property bool workspaceOverviewEdgeTriggerEnabled:
+        readonly property bool workspaceOverviewEdgeSupportEnabled:
             edge === "top"
             && root.barVertical
             && !root.waffleFamily
             && root.iiBarPanelEnabled
-            && GlobalStates.barOpen
-            && !GlobalStates.widgetEditMode
             && root.iiBarTargetsOutput(outputName)
             && (Config.options?.overview?.workspaceHover?.enable ?? true)
+        readonly property bool workspaceOverviewEdgeTriggerEnabled:
+            workspaceOverviewEdgeSupportEnabled
+            && GlobalStates.barOpen
+            && !GlobalStates.widgetEditMode
         readonly property bool mapped: Config.ready
             && !GlobalStates.screenLocked
             && !fullscreenCovered
@@ -407,57 +409,74 @@ Scope {
             visible: false
         }
 
-        MouseArea {
-            id: workspaceOverviewHitArea
-            anchors.fill: parent
-            enabled: reservationWindow.workspaceOverviewEdgeTriggerEnabled
-            hoverEnabled: enabled
-            acceptedButtons: Qt.NoButton
-            onContainsMouseChanged: {
-                if (containsMouse && enabled)
-                    workspaceOverviewHoverDelay.restart()
-                else
-                    workspaceOverviewHoverDelay.stop()
-            }
-        }
-
-        Timer {
-            id: workspaceOverviewHoverDelay
-            interval: Config.options?.overview?.workspaceHover?.delayMs ?? 280
-            repeat: false
-            onTriggered: {
-                if (reservationWindow.workspaceOverviewEdgeTriggerEnabled
-                        && workspaceOverviewHitArea.containsMouse)
-                    workspaceEdgeOverviewLoader.item?.showWorkspace(
-                        null, workspaceOverviewHitArea)
-            }
-        }
-
-        // Only the top reservation can ever expose workspace-hover Overview.
-        // Avoid constructing three inactive StyledPopup/Overview stacks per
-        // output for bottom/left/right reservations that can never use them.
         Loader {
-            id: workspaceEdgeOverviewLoader
-            active: reservationWindow.edge === "top"
+            id: workspaceOverviewSupport
+            anchors.fill: parent
+            // In the common horizontal-Bar configuration this remains
+            // completely unloaded. Bottom/left/right reservations can never
+            // satisfy the support gate either, so they retain no hover timer,
+            // hit area or StyledPopup/Overview object graph.
+            active: reservationWindow.workspaceOverviewEdgeSupportEnabled
             sourceComponent: Component {
-                Bar.BarWorkspaceOverview {
-                    dockHovered:
-                        reservationWindow.workspaceOverviewEdgeTriggerEnabled
-                        && workspaceOverviewHitArea.containsMouse
-                    barPosition: "top"
-                    attachmentThickness: root.thickness
+                Item {
+                    id: overviewSupport
+                    property alias hitArea: workspaceOverviewHitArea
+
+                    function closeOverview(): void {
+                        workspaceEdgeOverview.close()
+                    }
+
+                    MouseArea {
+                        id: workspaceOverviewHitArea
+                        anchors.fill: parent
+                        enabled:
+                            reservationWindow.workspaceOverviewEdgeTriggerEnabled
+                        hoverEnabled: enabled
+                        acceptedButtons: Qt.NoButton
+                        onContainsMouseChanged: {
+                            if (containsMouse && enabled)
+                                workspaceOverviewHoverDelay.restart()
+                            else
+                                workspaceOverviewHoverDelay.stop()
+                        }
+                    }
+
+                    Timer {
+                        id: workspaceOverviewHoverDelay
+                        interval:
+                            Config.options?.overview?.workspaceHover?.delayMs
+                            ?? 280
+                        repeat: false
+                        onTriggered: {
+                            if (reservationWindow.workspaceOverviewEdgeTriggerEnabled
+                                    && workspaceOverviewHitArea.containsMouse)
+                                workspaceEdgeOverview.showWorkspace(
+                                    null, workspaceOverviewHitArea)
+                        }
+                    }
+
+                    Bar.BarWorkspaceOverview {
+                        id: workspaceEdgeOverview
+                        dockHovered:
+                            reservationWindow.workspaceOverviewEdgeTriggerEnabled
+                            && workspaceOverviewHitArea.containsMouse
+                        barPosition: "top"
+                        attachmentThickness: root.thickness
+                    }
                 }
             }
         }
 
         onWorkspaceOverviewEdgeTriggerEnabledChanged: {
             if (!workspaceOverviewEdgeTriggerEnabled)
-                workspaceEdgeOverviewLoader.item?.close()
+                workspaceOverviewSupport.item?.closeOverview()
         }
 
         mask: Region {
             item: reservationWindow.workspaceOverviewEdgeTriggerEnabled
-                ? workspaceOverviewHitArea : emptyReservationInput
+                ? (workspaceOverviewSupport.item?.hitArea
+                    ?? emptyReservationInput)
+                : emptyReservationInput
         }
     }
 

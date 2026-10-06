@@ -109,6 +109,24 @@ Singleton {
     readonly property var hiddenPages: SettingsPageRegistryData.hiddenPages.filter(
         index => !root.isHiddenLegacyIndex(index))
 
+    // The public Settings rail is flat. Persisted groups may still carry the
+    // user's ordering, but their labels never become visual headings.
+    function navigationPageIndexes(essentialOnly = false): var {
+        const order = []
+        const seen = new Set()
+        for (const category of root.categories) {
+            for (const index of category.pages) {
+                const page = root.pages[index]
+                if (!page || seen.has(index) || !root.isPageApplicable(index)
+                        || (essentialOnly && page.essential !== true))
+                    continue
+                seen.add(index)
+                order.push(index)
+            }
+        }
+        return order
+    }
+
     readonly property var _arrangement: ({ groups: root.categories, hidden: root.hiddenPages })
 
     function _migrateLegacyPersistentPage(): void {

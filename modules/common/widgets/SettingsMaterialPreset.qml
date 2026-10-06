@@ -130,4 +130,18 @@ QtObject {
     readonly property int navItemHeight: Math.round((Appearance.regaliaEverywhere ? Appearance.regalia.controlHeight : 34) * Appearance.fontSizeScale)
     readonly property int navCategorySpacing: Math.round((Appearance.regaliaEverywhere ? Appearance.regalia.tileGap + Appearance.regalia.controlGap : 10) * Appearance.fontSizeScale)
     readonly property int navItemSpacing: Appearance.regaliaEverywhere ? Appearance.regalia.controlGap : 2
+
+    // One continuous theme-derived gradient across the flat Settings list.
+    // No page owns a hard-coded icon color.
+    function navigationIconColor(position: int, count: int, selected = false): color {
+        const t = count <= 1 ? 0 : Math.max(0, Math.min(1, position / (count - 1)))
+        const base = t <= 0.5
+            ? ColorUtils.mix(Appearance.colors.colPrimary,
+                Appearance.colors.colSecondary, 1 - t * 2)
+            : ColorUtils.mix(Appearance.colors.colSecondary,
+                Appearance.colors.colTertiary, 2 - t * 2)
+        return selected
+            ? ColorUtils.mix(base, Appearance.colors.colOnPrimaryContainer, 0.72)
+            : ColorUtils.mix(base, Appearance.colors.colOnSurfaceVariant, 0.58)
+    }
 }

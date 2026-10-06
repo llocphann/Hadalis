@@ -57,83 +57,26 @@ ApplicationWindow {
         }
     }
 
-    onCurrentPageChanged: {
-        root._persistCurrentPage()
-        root.revealCurrentNavGroup()
-    }
+    onCurrentPageChanged: root._persistCurrentPage()
 
     property bool uiReady: Config.ready
 
-    // Easy mode helpers — derived list filtered to essentials when on
+    // Easy mode filters the same flat tab list down to essential pages.
     readonly property bool easyMode: Config.options?.settingsUi?.easyMode ?? false
-    // Collapse inactive groups by default: a navigation category is not another
-    // flat list of every settings page. Explicit user toggles survive page swaps.
-    property var expandedNavGroups: ({})
-    function groupExpanded(index, pageIndices): bool {
-        if (Object.prototype.hasOwnProperty.call(expandedNavGroups, index))
-            return expandedNavGroups[index] === true
-        return pageIndices.includes(root.currentPage)
-    }
-    function toggleNavGroup(index: int, pageIndices): void {
-        const next = Object.assign({}, expandedNavGroups)
-        next[index] = !groupExpanded(index, pageIndices)
-        expandedNavGroups = next
-    }
 
-    function revealCurrentNavGroup(): void {
-        const groupIndex = SettingsPageRegistry.categories.findIndex(
-            group => group.pages.includes(root.currentPage))
-        if (groupIndex < 0 || expandedNavGroups[groupIndex] !== false) return
-        const next = Object.assign({}, expandedNavGroups)
-        delete next[groupIndex]
-        expandedNavGroups = next
-    }
-
-    // Nav model: category headers + page entries, filtered by easy mode (same as overlay)
     readonly property var visibleNavItems: {
-        var items = [];
-        var cats = SettingsPageRegistry.categories;
-        for (var c = 0; c < cats.length; c++) {
-            var cat = cats[c];
-            var catPages = [];
-            for (var p = 0; p < cat.pages.length; p++) {
-                var pageIdx = cat.pages[p];
-                if (pageIdx >= pages.length) continue;
-                if (!SettingsPageRegistry.isPageApplicable(pageIdx)) continue;
-                if (easyMode && pages[pageIdx].essential !== true) continue;
-                catPages.push(pageIdx);
-            }
-            if (catPages.length === 0) continue;
-            // Keep the Repeater model stable while groups open/close. Rebuilding
-            // this array on every heading click destroys the active delegate for
-            // a frame, which makes the shared selection pill lose its target.
-            items.push({ type: "header", label: cat.label, groupIndex: c,
-                pageIndices: catPages });
-            for (var j = 0; j < catPages.length; j++) {
-                var entry = Object.assign({}, pages[catPages[j]]);
-                entry.type = "page";
-                entry.realIndex = catPages[j];
-                entry.groupIndex = c;
-                entry.groupPageIndices = catPages;
-                items.push(entry);
-            }
+        const items = []
+        for (const index of SettingsPageRegistry.navigationPageIndexes(root.easyMode)) {
+            const page = pages[index]
+            if (!page) continue
+            const entry = Object.assign({}, page)
+            entry.realIndex = index
+            items.push(entry)
         }
-        return items;
+        return items
     }
 
-    // Ordered page indices matching nav rail order (for keyboard nav)
-    readonly property var navPageOrder: {
-        const order = []
-        const groups = SettingsPageRegistry.categories
-        for (const group of groups) {
-            for (const index of group.pages) {
-                const page = pages[index]
-                if (page && (!easyMode || page.essential === true))
-                    order.push(index)
-            }
-        }
-        return order
-    }
+    readonly property var navPageOrder: visibleNavItems.map(entry => entry.realIndex)
 
     function nextNavPage(current) {
         var idx = navPageOrder.indexOf(current);
@@ -1026,7 +969,7 @@ ApplicationWindow {
                 id: navRailWrapper
                 Layout.fillHeight: true
                 Layout.margins: 5
-                implicitWidth: root.navEditMode ? 228 : 168
+                implicitWidth: root.navEditMode ? 228 : 204
 
                 Behavior on implicitWidth {
                     enabled: Appearance.animationsEnabled
@@ -1046,6 +989,7 @@ ApplicationWindow {
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
                     interactive: contentHeight > height
+
                     ScrollBar.vertical: StyledScrollBar {
                         policy: ScrollBar.AlwaysOff
                     }
@@ -1053,255 +997,62 @@ ApplicationWindow {
                     ColumnLayout {
                         id: navCol
                         width: parent.width
-                        spacing: 0
+                        spacing: SettingsMaterialPreset.navItemSpacing
 
                         Repeater {
                             id: navRepeater
                             model: root.visibleNavItems
-                            delegate: Column {
-                                id: navItem
+
+                            delegate: RippleButton {
+                                id: navBtn
                                 required property int index
                                 required property var modelData
                                 Layout.fillWidth: true
-                                spacing: 0
-                                readonly property color headerAccentColor: Appearance.colors.colPrimary
-                                readonly property Item navButton: navBtn
-                                readonly property bool groupIsExpanded: {
-                                    if (!navItem.modelData) return false
-                                    if (navItem.modelData.type === "header")
-                                        return root.groupExpanded(
-                                            navItem.modelData.groupIndex, navItem.modelData.pageIndices)
-                                    if (navItem.modelData.type === "page")
-                                        return root.groupExpanded(
-                                            navItem.modelData.groupIndex, navItem.modelData.groupPageIndices)
-                                    return false
-                                }
+                                implicitHeight: SettingsMaterialPreset.navItemHeight
+                                rippleEnabled: true
+                                buttonRadius: Math.min(width, height) / 2
+                                readonly property int pageRealIndex: modelData.realIndex
+                                toggled: root.currentPage === pageRealIndex
+                                colBackground: "transparent"
+                                colBackgroundToggled: Appearance.colors.colPrimaryContainer
+                                colBackgroundToggledHover: Appearance.colors.colPrimaryContainerHover
+                                colBackgroundHover: Appearance.colors.colLayer1Hover
+                                onClicked: root.currentPage = pageRealIndex
 
-                                // ── Category header ──
-                                Item {
-                                    width: parent.width
-                                    height: visible ? 36 : 0
-                                    visible: navItem.modelData.type === "header"
+                                contentItem: RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 10
+                                    anchors.rightMargin: 9
+                                    spacing: 9
 
-                                    Behavior on height {
-                                        enabled: Appearance.animationsEnabled
-                                        animation: NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve }
+                                    MaterialSymbol {
+                                        text: navBtn.modelData.icon || ""
+                                        iconSize: 18
+                                        color: SettingsMaterialPreset.navigationIconColor(
+                                            navBtn.index, root.visibleNavItems.length, navBtn.toggled)
+                                        rotation: navBtn.modelData.iconRotation || 0
+                                        Behavior on color {
+                                            enabled: Appearance.animationsEnabled
+                                            ColorAnimation { duration: Appearance.animation.elementMoveFast.duration }
+                                        }
                                     }
 
                                     StyledText {
-                                        anchors.left: parent.left
-                                        anchors.leftMargin: 12
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: navItem.modelData.label || ""
-                                        anchors.right: parent.right
-                                        anchors.rightMargin: 34
+                                        Layout.fillWidth: true
+                                        text: navBtn.modelData.name || ""
+                                        font.pixelSize: Appearance.font.pixelSize.small
+                                        font.weight: navBtn.toggled ? Font.DemiBold : Font.Normal
+                                        color: navBtn.toggled
+                                            ? Appearance.colors.colOnPrimaryContainer
+                                            : Appearance.colors.colOnSurfaceVariant
                                         elide: Text.ElideRight
-                                        font {
-                                            family: Appearance.font.family.main
-                                            pixelSize: Appearance.font.pixelSize.smaller
-                                            weight: Font.DemiBold
-                                            capitalization: Font.AllUppercase
-                                            letterSpacing: 1.1
-                                        }
-                                        color: navItem.headerAccentColor
-                                        opacity: 0.85
-
                                         Behavior on color {
                                             enabled: Appearance.animationsEnabled
-                                            animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                                        }
-                                    }
-                                        MaterialSymbol {
-                                            anchors.right: parent.right
-                                            anchors.rightMargin: 12
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            text: navItem.groupIsExpanded ? "expand_less" : "expand_more"
-                                            iconSize: 17
-                                            color: navItem.headerAccentColor
-                                        }
-
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.toggleNavGroup(
-                                                navItem.modelData.groupIndex, navItem.modelData.pageIndices)
-                                        }
-                                }
-
-                                // ── Nav button ──
-                                RippleButton {
-                                    id: navBtn
-                                    visible: navItem.modelData.type === "page" && (navItem.groupIsExpanded || navBtn.toggled)
-                                    width: parent.width
-                                    implicitHeight: visible ? 34 : 0
-                                    z: 1
-
-                                    readonly property int pageRealIndex: navItem.modelData.realIndex !== undefined ? navItem.modelData.realIndex : navItem.index
-
-                                    buttonRadius: Math.min(width, height) / 2
-                                    toggled: root.currentPage === pageRealIndex
-                                    rippleEnabled: true
-                                    colBackground: "transparent"
-                                    colBackgroundToggled: "transparent"
-                                    // Keep the travelling Material selection pill visible
-                                    // beneath the transparent toggled button surface.
-                                    colBackgroundToggledHover: CF.ColorUtils.transparentize(
-                                        Appearance.colors.colLayer1Hover, 0.5)
-                                    colBackgroundHover: Appearance.colors.colLayer1Hover
-
-                                    onClicked: root.currentPage = pageRealIndex
-                                    // A layout move after group expansion must reposition the pill.
-                                    onYChanged: Qt.callLater(sharedNavIndicator.updatePosition)
-                                    onHeightChanged: Qt.callLater(sharedNavIndicator.updatePosition)
-                                    onVisibleChanged: Qt.callLater(sharedNavIndicator.updatePosition)
-
-                                    contentItem: Item {
-                                        anchors.fill: parent
-
-                                        RowLayout {
-                                            anchors.fill: parent
-                                            anchors.leftMargin: 10
-                                            anchors.rightMargin: 8
-                                            spacing: 10
-
-                                            MaterialSymbol {
-                                                text: navItem.modelData.icon || ""
-                                                iconSize: 18
-                                                color: navBtn.toggled
-                                                    ? Appearance.colors.colPrimary
-                                                    : Appearance.colors.colOnSurfaceVariant
-                                                rotation: navItem.modelData.iconRotation || 0
-
-                                                Behavior on color {
-                                                    enabled: Appearance.animationsEnabled
-                                                    animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                                                }
-                                            }
-
-                                            StyledText {
-                                                Layout.fillWidth: true
-                                                text: navItem.modelData.name || ""
-                                                font {
-                                                    family: Appearance.font.family.main
-                                                    pixelSize: Appearance.font.pixelSize.small
-                                                    weight: navBtn.toggled ? Font.Medium : Font.Normal
-                                                }
-                                                color: navBtn.toggled
-                                                    ? Appearance.colors.colOnLayer1
-                                                    : Appearance.colors.colOnSurfaceVariant
-                                                elide: Text.ElideRight
-
-                                                Behavior on color {
-                                                    enabled: Appearance.animationsEnabled
-                                                    animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                                                }
-                                            }
+                                            ColorAnimation { duration: Appearance.animation.elementMoveFast.duration }
                                         }
                                     }
                                 }
                             }
-                        }
-
-                        // Active Material indicator: keep it on the Flickable content layer, not
-                        // as a ColumnLayout child. Layout-managed children have their y
-                        // rewritten during heading relayouts, which used to push this pill
-                        // to the bottom of the navigation rail.
-                        Rectangle {
-                            id: sharedNavIndicator
-                            z: -1
-                            parent: navRailFlickable.contentItem
-                            x: 0
-                            width: navCol.width
-                            radius: Appearance.rounding.small
-                            color: Appearance.colors.colPrimaryContainer
-
-                            Behavior on radius {
-                                enabled: Appearance.animationsEnabled
-                                NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve }
-                            }
-                            Behavior on color {
-                                enabled: Appearance.animationsEnabled
-                                ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                            }
-
-                            property real targetY: 0
-                            property real targetH: 0
-                            property bool hasTarget: false
-
-                            // Leading/trailing edges travel at different speeds, so the
-                            // pill stretches toward the target and contracts on arrival.
-                            property real edgeTop: targetY
-                            property real edgeBottom: targetY + targetH
-                            Behavior on edgeTop {
-                                enabled: Appearance.animationsEnabled
-                                animation: NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve }
-                            }
-                            Behavior on edgeBottom {
-                                enabled: Appearance.animationsEnabled
-                                animation: NumberAnimation { duration: Math.round(Appearance.animation.elementResize.duration * 1.18); easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve }
-                            }
-
-                            function _setTargetGeometry(targetItem) {
-                                if (!targetItem || !targetItem.visible || targetItem.height <= 0)
-                                    return false
-                                targetY = targetItem.mapToItem(sharedNavIndicator.parent, 0, 0).y
-                                targetH = targetItem.height
-                                hasTarget = true
-                                return true
-                            }
-
-                            function updatePosition() {
-                                for (var i = 0; i < navRepeater.count; i++) {
-                                    var item = navRepeater.itemAt(i)
-                                    if (item && item.modelData && item.modelData.type === "page"
-                                            && item.modelData.realIndex === root.currentPage) {
-                                        // The selected row remains mounted and visible even when its
-                                        // group is collapsed. Never retarget the indicator to a heading.
-                                        // If geometry is transiently zero during relayout, keep the last
-                                        // valid target until the row reports its next geometry.
-                                        _setTargetGeometry(item.navButton)
-                                        return
-                                    }
-                                }
-                                hasTarget = false
-                            }
-                            y: Math.min(edgeTop, edgeBottom)
-                            height: hasTarget ? Math.abs(edgeBottom - edgeTop) : 0
-                            opacity: hasTarget ? 1 : 0
-
-                            Rectangle {
-                                anchors.left: parent.left
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.leftMargin: 4
-                                width: 3
-                                radius: 1.5
-                                height: parent.hasTarget ? parent.height * 0.5 : 0
-                                color: Appearance.colors.colPrimary
-                                Behavior on height {
-                                    enabled: Appearance.animationsEnabled
-                                    animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                                }
-                            }
-
-                            Behavior on opacity {
-                                enabled: Appearance.animationsEnabled
-                                animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                            }
-
-                            Connections {
-                                target: root
-                                function onCurrentPageChanged() { Qt.callLater(sharedNavIndicator.updatePosition); }
-                                function onVisibleNavItemsChanged() { Qt.callLater(sharedNavIndicator.updatePosition); }
-                            }
-                            Connections {
-                                target: navRepeater
-                                function onCountChanged() { Qt.callLater(sharedNavIndicator.updatePosition); }
-                            }
-                            Connections {
-                                target: navCol
-                                function onImplicitHeightChanged() { Qt.callLater(sharedNavIndicator.updatePosition); }
-                            }
-                            Component.onCompleted: Qt.callLater(updatePosition)
                         }
                     }
                 }

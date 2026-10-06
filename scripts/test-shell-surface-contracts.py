@@ -467,10 +467,10 @@ def main() -> None:
     # error fallback. Healthy ScreenEdges.qml must not import its type graph.
     fallback_block = frame_window_block[fallback_start:]
     for token in (
+        "readonly property var edgeRoot: root",
+        "readonly property var frameHost: frameWindow",
         "active: frameField.shaderError",
         'Qt.resolvedUrl("ScreenEdgeLegacyFallback.qml")',
-        "readonly property real frameLeftInset: frameWindow.frameLeftInset",
-        "readonly property color shadowColor: Qt.alpha(",
     ):
         check(token in fallback_block,
               f"Legacy Screen Edge loader contract missing: {token}")
@@ -480,16 +480,19 @@ def main() -> None:
           and "MultiEffect {" not in frame_window_block,
           "Healthy Screen Edge path must not import or embed the legacy renderer")
     for token in (
+        "import qs.modules.common",
         "import QtQuick.Shapes",
         "import QtQuick.Effects",
+        "readonly property var edgeRoot: parent.edgeRoot",
+        "readonly property var frameHost: parent.frameHost",
         "preferredRendererType: Shape.CurveRenderer",
         "fillRule: ShapePath.OddEvenFill",
         "readonly property real shadowRasterScale:",
-        "root.host.physicalShadowSize >= 12 ? 0.5 : 0.625",
-        "layer.enabled: root.host.physicalShadowActive",
+        "root.edgeRoot.physicalShadowSize >= 12 ? 0.5 : 0.625",
+        "layer.enabled: root.frameHost.physicalShadowActive",
         "layer.effect: MultiEffect {",
-        "shadowEnabled: root.host.physicalShadowActive",
-        "blurMax: Math.max(1, root.host.physicalShadowSize)",
+        "shadowEnabled: root.frameHost.physicalShadowActive",
+        "blurMax: Math.max(1, root.edgeRoot.physicalShadowSize)",
         "shadowBlur: 1.0",
         "autoPaddingEnabled: false",
         "shadowHorizontalOffset: 0",
@@ -556,14 +559,14 @@ def main() -> None:
     check("readonly property int outerPadding: 50" in screen_edge,
           "Screen Edge must retain the locked outer padding token")
     for fallback_geometry in (
-        "readonly property real innerLeft: root.host.frameLeftInset",
-        "readonly property real innerTop: root.host.frameTopInset",
-        "frameShape.width - root.host.frameRightInset",
-        "frameShape.height - root.host.frameBottomInset",
-        "startX: -root.host.outerPadding",
-        "startY: -root.host.outerPadding",
-        "x: frameShape.width + root.host.outerPadding",
-        "y: frameShape.height + root.host.outerPadding",
+        "readonly property real innerLeft: root.frameHost.frameLeftInset",
+        "readonly property real innerTop: root.frameHost.frameTopInset",
+        "frameShape.width - root.frameHost.frameRightInset",
+        "frameShape.height - root.frameHost.frameBottomInset",
+        "startX: -root.edgeRoot.outerPadding",
+        "startY: -root.edgeRoot.outerPadding",
+        "x: frameShape.width + root.edgeRoot.outerPadding",
+        "y: frameShape.height + root.edgeRoot.outerPadding",
         "x: framePath.innerLeft + framePath.r",
         "x: framePath.innerRight - framePath.r",
         "radiusX: framePath.r",

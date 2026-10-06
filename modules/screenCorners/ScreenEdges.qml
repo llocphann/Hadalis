@@ -186,42 +186,51 @@ Scope {
         }
         mask: Region { item: emptyFrameInput }
 
-        // LOCKED CORNER GEOMETRY: exactly one painted geometry. Odd-even fill
+        readonly property bool physicalShadowActive:
+            root.physicalShadowEnabled
+            && root.physicalShadowSize > 0
+            && root.physicalShadowOpacity > 0
+            && !frameWindow.fullscreenCovered
+            && !Appearance.gameModeMinimal
+
+        // Primary physical Screen Edge painter: one output-local analytic SDF
+        // pass. It draws the exact rounded workspace hole plus inward elevation
+        // without any source capture, blur pyramid or texture sampling.
+        ScreenEdgeField {
+            id: frameField
+            anchors.fill: parent
+            visible: !frameWindow.fullscreenCovered
+            leftInset: frameWindow.frameLeftInset
+            topInset: frameWindow.frameTopInset
+            rightInset: frameWindow.frameRightInset
+            bottomInset: frameWindow.frameBottomInset
+            radius: root.rounding
+            edgeColor: root.edgeColor
+            elevationColor: Qt.alpha(
+                Appearance.m3colors.m3shadow,
+                root.physicalShadowOpacity)
+            elevationSize: root.physicalShadowSize
+            elevationEnabled: frameWindow.physicalShadowActive
+        }
+
+        // Fail-safe only. The accepted legacy Shape/MultiEffect painter stays
+        // dormant unless the packaged analytic shader fails to load.
+        // LOCKED CORNER GEOMETRY: exactly one fallback geometry. Odd-even fill
         // subtracts the rounded workspace rect from the padded outer rect,
         // matching the isolated Caelestia BlobInvertedRect border silhouette.
         // Do not split this into edge/corner renderers or add painted helpers.
         Shape {
             id: frameShape
             anchors.fill: parent
+            visible: frameField.status === ShaderEffect.Error
+                && !frameWindow.fullscreenCovered
             antialiasing: true
-            // GeometryRenderer is cheaper to redraw than CurveRenderer. While
-            // the shadow layer is active, the shape is already rasterized to a
-            // smooth upscaled texture, so that layer provides the subpixel
-            // smoothing that GeometryRenderer itself lacks. When there is no
-            // shadow layer, retain CurveRenderer's built-in antialiasing.
-            readonly property bool lowCostRendererActive:
-                frameShape.physicalShadowActive
-                || frameWindow.fullscreenCovered
-                || Appearance.gameModeMinimal
-            preferredRendererType: frameShape.lowCostRendererActive
-                ? Shape.GeometryRenderer : Shape.CurveRenderer
+            preferredRendererType: Shape.CurveRenderer
 
-            // One geometry, one effect. This is attached directly to the locked
+            // Fallback geometry/effect only. This remains attached directly to
             // frame Shape, so there is no second painted item, overlay, wedge,
             // corner patch or shadow rectangle. At the defaults this matches
             // Caelestia ContentWindow: blurMax=15 and m3shadow alpha=0.70.
-            readonly property bool physicalShadowActive:
-                root.physicalShadowEnabled
-                && root.physicalShadowSize > 0
-                && root.physicalShadowOpacity > 0
-                // Fullscreen clients cover this Top-layer frame in Niri; keep
-                // the frame mapped for stacking stability but skip its costly
-                // offscreen shadow pipeline while no shadow pixel can present.
-                && !frameWindow.fullscreenCovered
-                // Match the shell-wide minimal-mode policy used by other
-                // material shadows: GameMode intentionally trades depth cues
-                // for lower GPU cost.
-                && !Appearance.gameModeMinimal
             // Maintainer-approved perceptual optimization (2026-10-06):
             // preserve the exact locked geometry and logical shadow radius, but
             // rasterize the offscreen shadow source at 5/8 resolution. The
@@ -229,14 +238,15 @@ Scope {
             // allocates/rasterizes only 39.06% of the former pixels.
             readonly property real shadowRasterScale:
                 root.physicalShadowSize >= 12 ? 0.5 : 0.625
-            layer.enabled: frameShape.physicalShadowActive
-            layer.textureSize: frameShape.physicalShadowActive
+            layer.enabled: frameShape.visible
+                && frameWindow.physicalShadowActive
+            layer.textureSize: frameWindow.physicalShadowActive
                 ? Qt.size(Math.max(1, Math.ceil(frameShape.width * frameShape.shadowRasterScale)),
                     Math.max(1, Math.ceil(frameShape.height * frameShape.shadowRasterScale)))
                 : Qt.size(0, 0)
             layer.smooth: true
             layer.effect: MultiEffect {
-                shadowEnabled: frameShape.physicalShadowActive
+                shadowEnabled: frameWindow.physicalShadowActive
                 // blurMax alone only sets the kernel ceiling; without
                 // shadowBlur the effect paints no soft falloff into the
                 // workspace at the four inverted rounded corners.

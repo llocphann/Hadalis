@@ -20,6 +20,7 @@ qsb_path = BASE / "ScreenEdgeField.frag.qsb"
 frag = frag_path.read_text(encoding="utf-8")
 qml = qml_path.read_text(encoding="utf-8")
 runtime = (BASE / "ScreenEdges.qml").read_text(encoding="utf-8")
+fallback_qml = (BASE / "ScreenEdgeLegacyFallback.qml").read_text(encoding="utf-8")
 
 for token in (
     "float roundedBox(",
@@ -32,6 +33,7 @@ for token in (
     "if (axisDeep && centralCore)",
     "fragColor = vec4(0.0);",
     "float d = roundedBox(",
+    "vec2 p = u.tileRect.xy + qt_TexCoord0 * u.tileRect.zw;",
     "float frameCover = smoothstep(-aa, aa, d);",
     "if (u.shadowColor.a > 0.0)",
     "float sharpReach = max(aa, reach / 15.0);",
@@ -59,16 +61,23 @@ for forbidden in (
     assert forbidden not in frag, forbidden
 
 for token in (
-    "ShaderEffect {",
+    "Item {",
+    "readonly property real bandExtent:",
+    "readonly property real topBandHeight:",
+    "readonly property real bottomBandHeight:",
+    "readonly property real middleHeight:",
+    "readonly property real leftBandWidth:",
+    "readonly property real rightBandWidth:",
+    "readonly property bool shaderError:",
+    "component Band: ShaderEffect {",
+    "property vector4d viewport: root.viewportUniform",
+    "property vector4d insets: root.insetsUniform",
+    "property vector4d params: root.paramsUniform",
+    "property vector4d tileRect: Qt.vector4d(x, y, width, height)",
     'fragmentShader: Qt.resolvedUrl("ScreenEdgeField.frag.qsb")',
-    "required property real leftInset",
-    "required property real topInset",
-    "required property real rightInset",
-    "required property real bottomInset",
-    "readonly property vector4d insets:",
-    "readonly property vector4d params:",
 ):
     assert token in qml, token
+assert qml.count("Band {") == 4, "Screen Edge field must use four perimeter tiles"
 for forbidden in ("ShaderEffectSource", "MultiEffect", "ShapePath", "PathArc"):
     assert forbidden not in qml, forbidden
 
@@ -88,14 +97,17 @@ for token in (
     "radius: root.rounding",
     "elevationEnabled: frameWindow.physicalShadowActive",
     "id: legacyFramePainter",
-    "active: frameField.status === ShaderEffect.Error",
-    "sourceComponent: Component {",
+    "active: frameField.shaderError",
+    'Qt.resolvedUrl("ScreenEdgeLegacyFallback.qml")',
 ):
     assert token in runtime, token
 assert runtime.index("ScreenEdgeField {") < runtime.index("id: legacyFramePainter")
 fallback = runtime[runtime.index("id: legacyFramePainter"):]
-assert "MultiEffect {" in fallback
-assert "ShapePath {" in fallback
+assert 'Qt.resolvedUrl("ScreenEdgeLegacyFallback.qml")' in fallback
+assert "import QtQuick.Shapes" not in runtime
+assert "import QtQuick.Effects" not in runtime
+assert "MultiEffect {" in fallback_qml
+assert "ShapePath {" in fallback_qml
 
 
 def f32(value: float) -> float:
@@ -186,6 +198,59 @@ def reference_inside(
     return (x - cx) ** 2 + (y - cy) ** 2 <= rad ** 2
 
 
+def band_layout(
+    width: float,
+    height: float,
+    left: float,
+    top: float,
+    right: float,
+    bottom: float,
+    radius: float,
+    shadow_reach: float,
+):
+    safe_reach = max(shadow_reach, 2.0)
+    extent = math.ceil(
+        max(left, top, right, bottom) + max(0.0, radius) + safe_reach + 2.0
+    )
+    top_h = min(height, extent)
+    bottom_h = min(max(0.0, height - top_h), extent)
+    middle_y = top_h
+    middle_h = max(0.0, height - top_h - bottom_h)
+    left_w = min(width, extent)
+    right_w = min(max(0.0, width - left_w), extent)
+    return extent, top_h, bottom_h, middle_y, middle_h, left_w, right_w
+
+
+def band_covers(
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    layout,
+) -> bool:
+    _, top_h, bottom_h, middle_y, middle_h, left_w, right_w = layout
+    if y < top_h or y >= height - bottom_h:
+        return True
+    if middle_y <= y < middle_y + middle_h:
+        return x < left_w or x >= width - right_w
+    return False
+
+
+def band_area_ratio(width, height, inset, radius, shadow):
+    layout = band_layout(
+        width, height, inset, inset, inset, inset, radius, shadow
+    )
+    _, top_h, bottom_h, _, middle_h, left_w, right_w = layout
+    area = width * (top_h + bottom_h) + middle_h * (left_w + right_w)
+    return area / (width * height)
+
+
+# Default structural raster footprint: the same global field is evaluated over
+# only a perimeter ring. These are invocation-area ratios, not measured GPU %.
+assert band_area_ratio(1920, 1080, 10, 25, 15) < 0.146
+assert band_area_ratio(3840, 2160, 10, 25, 15) < 0.075
+
+
 rng = random.Random(0x53435245454E)
 for _ in range(50000):
     width = rng.uniform(320.0, 7680.0)
@@ -223,6 +288,16 @@ for _ in range(50000):
         assert d <= -safe_reach + 1e-7, (
             "deep-interior guard rejected a potentially visible fragment"
         )
+
+    if 0.0 <= x < width and 0.0 <= y < height:
+        layout = band_layout(
+            width, height, left, top, right, bottom, radius, shadow_reach
+        )
+        if not band_covers(x, y, width, height, layout):
+            assert axis_deep and central_core, (
+                "banded raster omitted a fragment outside the proven transparent core"
+            )
+            assert d <= -safe_reach + 1e-7
     # Ignore an infinitesimal mathematical boundary where either sign is an
     # equivalent coverage convention; everywhere else classification is exact.
     if abs(d) > 1e-7:

@@ -28,7 +28,6 @@ for token in (
     "fragColor = vec4(0.0);",
     "float d = roundedBox(",
     "float frameCover = smoothstep(-aa, aa, d);",
-    "float innerShadow = smoothstep(-reach, 0.0, d)",
     "if (u.shadowColor.a > 0.0)",
     "float sharpReach = max(aa, reach / 15.0);",
     "float midReach = max(sharpReach, reach / 3.0);",

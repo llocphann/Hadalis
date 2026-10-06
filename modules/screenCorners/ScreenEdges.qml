@@ -213,12 +213,9 @@ Scope {
             elevationEnabled: frameWindow.physicalShadowActive
         }
 
-        // Fail-safe only. The accepted legacy Shape/MultiEffect painter stays
-        // dormant unless the packaged analytic shader fails to load.
-        // LOCKED CORNER GEOMETRY: exactly one fallback geometry. Odd-even fill
-        // subtracts the rounded workspace rect from the padded outer rect,
-        // matching the isolated Caelestia BlobInvertedRect border silhouette.
-        // Do not split this into edge/corner renderers or add painted helpers.
+        // Fail-safe only. The accepted legacy Shape/MultiEffect painter is
+        // not constructed during the normal analytic path; it materializes
+        // only if the packaged QSB reports ShaderEffect.Error.
         Loader {
             id: legacyFramePainter
             anchors.fill: parent
@@ -229,140 +226,139 @@ Scope {
                     id: frameShape
                     anchors.fill: parent
                     antialiasing: true
-            preferredRendererType: Shape.CurveRenderer
-
-            // Fallback geometry/effect only. This remains attached directly to
-            // frame Shape, so there is no second painted item, overlay, wedge,
-            // corner patch or shadow rectangle. At the defaults this matches
-            // Caelestia ContentWindow: blurMax=15 and m3shadow alpha=0.70.
+                    preferredRendererType: Shape.CurveRenderer
+        
+                    // Fallback geometry/effect only. This remains attached directly to
+                    // frame Shape, so there is no second painted item, overlay, wedge,
+                    // corner patch or shadow rectangle. At the defaults this matches
+                    // Caelestia ContentWindow: blurMax=15 and m3shadow alpha=0.70.
                     // Fallback-only perceptual optimization (2026-10-06):
-                    // wide shadows rasterize at 1/2 resolution; small shadows
-                    // retain 5/8. This path exists only after analytic QSB error.
+                    // wide shadows rasterize at 1/2 resolution; smaller shadows retain
+                    // 5/8. This path exists only after analytic QSB failure.
                     readonly property real shadowRasterScale:
                         root.physicalShadowSize >= 12 ? 0.5 : 0.625
                     layer.enabled: frameWindow.physicalShadowActive
                     layer.textureSize: frameWindow.physicalShadowActive
-                ? Qt.size(Math.max(1, Math.ceil(frameShape.width * frameShape.shadowRasterScale)),
-                    Math.max(1, Math.ceil(frameShape.height * frameShape.shadowRasterScale)))
-                : Qt.size(0, 0)
-            layer.smooth: true
-            layer.effect: MultiEffect {
+                        ? Qt.size(Math.max(1, Math.ceil(frameShape.width * frameShape.shadowRasterScale)),
+                            Math.max(1, Math.ceil(frameShape.height * frameShape.shadowRasterScale)))
+                        : Qt.size(0, 0)
+                    layer.smooth: true
+                    layer.effect: MultiEffect {
                         shadowEnabled: frameWindow.physicalShadowActive
-                // blurMax alone only sets the kernel ceiling; without
-                // shadowBlur the effect paints no soft falloff into the
-                // workspace at the four inverted rounded corners.
-                blurMax: Math.max(1, root.physicalShadowSize)
-                shadowBlur: 1.0
-                // The locked Shape already spans the complete output and its
-                // outer contour extends 50 px past the window. Automatic
-                // padding would only enlarge the offscreen layer beyond pixels
-                // the compositor can present; the visible inward shadow stays
-                // inside the output item.
-                autoPaddingEnabled: false
-                shadowHorizontalOffset: 0
-                shadowVerticalOffset: 0
-                shadowColor: Qt.alpha(
-                    Appearance.m3colors.m3shadow,
-                    root.physicalShadowOpacity)
-            }
-
-            ShapePath {
-                id: framePath
-
-                fillColor: root.edgeColor
-                fillRule: ShapePath.OddEvenFill
-                strokeColor: "transparent"
-                strokeWidth: -1
-
-                readonly property real innerLeft: frameWindow.frameLeftInset
-                readonly property real innerTop: frameWindow.frameTopInset
-                readonly property real innerRight:
-                    frameShape.width - frameWindow.frameRightInset
-                readonly property real innerBottom:
-                    frameShape.height - frameWindow.frameBottomInset
-                readonly property real r: Math.max(0, Math.min(root.rounding,
-                    Math.max(0, innerRight - innerLeft) / 2,
-                    Math.max(0, innerBottom - innerTop) / 2))
-
-                // Outer rectangle. Deliberately extends past the window just as
-                // Caelestia's BlobInvertedRect uses anchors.margins: -50.
-                startX: -root.outerPadding
-                startY: -root.outerPadding
-                PathLine {
-                    x: frameShape.width + root.outerPadding
-                    y: -root.outerPadding
-                }
-                PathLine {
-                    x: frameShape.width + root.outerPadding
-                    y: frameShape.height + root.outerPadding
-                }
-                PathLine {
-                    x: -root.outerPadding
-                    y: frameShape.height + root.outerPadding
-                }
-                PathLine {
-                    x: -root.outerPadding
-                    y: -root.outerPadding
-                }
-
-                // Single rounded inner workspace hole. With no normal Bar,
-                // every side inset is the Screen Edge thickness. When the ii Bar
-                // owns top/bottom/left/right, only that side inset becomes the
-                // Bar body thickness — the same ContentWindow/BlobInvertedRect
-                // principle Caelestia uses for its Bar edge.
-                PathMove {
-                    x: framePath.innerLeft + framePath.r
-                    y: framePath.innerTop
-                }
-                PathLine {
-                    x: framePath.innerRight - framePath.r
-                    y: framePath.innerTop
-                }
-                PathArc {
-                    x: framePath.innerRight
-                    y: framePath.innerTop + framePath.r
-                    radiusX: framePath.r
-                    radiusY: framePath.r
-                    direction: PathArc.Clockwise
-                }
-                PathLine {
-                    x: framePath.innerRight
-                    y: framePath.innerBottom - framePath.r
-                }
-                PathArc {
-                    x: framePath.innerRight - framePath.r
-                    y: framePath.innerBottom
-                    radiusX: framePath.r
-                    radiusY: framePath.r
-                    direction: PathArc.Clockwise
-                }
-                PathLine {
-                    x: framePath.innerLeft + framePath.r
-                    y: framePath.innerBottom
-                }
-                PathArc {
-                    x: framePath.innerLeft
-                    y: framePath.innerBottom - framePath.r
-                    radiusX: framePath.r
-                    radiusY: framePath.r
-                    direction: PathArc.Clockwise
-                }
-                PathLine {
-                    x: framePath.innerLeft
-                    y: framePath.innerTop + framePath.r
-                }
-                PathArc {
-                    x: framePath.innerLeft + framePath.r
-                    y: framePath.innerTop
-                    radiusX: framePath.r
-                    radiusY: framePath.r
-                    direction: PathArc.Clockwise
-                }
+                        // blurMax alone only sets the kernel ceiling; without
+                        // shadowBlur the effect paints no soft falloff into the
+                        // workspace at the four inverted rounded corners.
+                        blurMax: Math.max(1, root.physicalShadowSize)
+                        shadowBlur: 1.0
+                        // The locked Shape already spans the complete output and its
+                        // outer contour extends 50 px past the window. Automatic
+                        // padding would only enlarge the offscreen layer beyond pixels
+                        // the compositor can present; the visible inward shadow stays
+                        // inside the output item.
+                        autoPaddingEnabled: false
+                        shadowHorizontalOffset: 0
+                        shadowVerticalOffset: 0
+                        shadowColor: Qt.alpha(
+                            Appearance.m3colors.m3shadow,
+                            root.physicalShadowOpacity)
+                    }
+        
+                    ShapePath {
+                        id: framePath
+        
+                        fillColor: root.edgeColor
+                        fillRule: ShapePath.OddEvenFill
+                        strokeColor: "transparent"
+                        strokeWidth: -1
+        
+                        readonly property real innerLeft: frameWindow.frameLeftInset
+                        readonly property real innerTop: frameWindow.frameTopInset
+                        readonly property real innerRight:
+                            frameShape.width - frameWindow.frameRightInset
+                        readonly property real innerBottom:
+                            frameShape.height - frameWindow.frameBottomInset
+                        readonly property real r: Math.max(0, Math.min(root.rounding,
+                            Math.max(0, innerRight - innerLeft) / 2,
+                            Math.max(0, innerBottom - innerTop) / 2))
+        
+                        // Outer rectangle. Deliberately extends past the window just as
+                        // Caelestia's BlobInvertedRect uses anchors.margins: -50.
+                        startX: -root.outerPadding
+                        startY: -root.outerPadding
+                        PathLine {
+                            x: frameShape.width + root.outerPadding
+                            y: -root.outerPadding
+                        }
+                        PathLine {
+                            x: frameShape.width + root.outerPadding
+                            y: frameShape.height + root.outerPadding
+                        }
+                        PathLine {
+                            x: -root.outerPadding
+                            y: frameShape.height + root.outerPadding
+                        }
+                        PathLine {
+                            x: -root.outerPadding
+                            y: -root.outerPadding
+                        }
+        
+                        // Single rounded inner workspace hole. With no normal Bar,
+                        // every side inset is the Screen Edge thickness. When the ii Bar
+                        // owns top/bottom/left/right, only that side inset becomes the
+                        // Bar body thickness — the same ContentWindow/BlobInvertedRect
+                        // principle Caelestia uses for its Bar edge.
+                        PathMove {
+                            x: framePath.innerLeft + framePath.r
+                            y: framePath.innerTop
+                        }
+                        PathLine {
+                            x: framePath.innerRight - framePath.r
+                            y: framePath.innerTop
+                        }
+                        PathArc {
+                            x: framePath.innerRight
+                            y: framePath.innerTop + framePath.r
+                            radiusX: framePath.r
+                            radiusY: framePath.r
+                            direction: PathArc.Clockwise
+                        }
+                        PathLine {
+                            x: framePath.innerRight
+                            y: framePath.innerBottom - framePath.r
+                        }
+                        PathArc {
+                            x: framePath.innerRight - framePath.r
+                            y: framePath.innerBottom
+                            radiusX: framePath.r
+                            radiusY: framePath.r
+                            direction: PathArc.Clockwise
+                        }
+                        PathLine {
+                            x: framePath.innerLeft + framePath.r
+                            y: framePath.innerBottom
+                        }
+                        PathArc {
+                            x: framePath.innerLeft
+                            y: framePath.innerBottom - framePath.r
+                            radiusX: framePath.r
+                            radiusY: framePath.r
+                            direction: PathArc.Clockwise
+                        }
+                        PathLine {
+                            x: framePath.innerLeft
+                            y: framePath.innerTop + framePath.r
+                        }
+                        PathArc {
+                            x: framePath.innerLeft + framePath.r
+                            y: framePath.innerTop
+                            radiusX: framePath.r
+                            radiusY: framePath.r
+                            direction: PathArc.Clockwise
+                        }
                     }
                 }
             }
         }
-    }
 
     // Transparent compositor reservation only. ScreenEdge pixels are never
     // painted here, so these windows cannot alter the frame/corner silhouette.

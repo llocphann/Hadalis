@@ -446,7 +446,7 @@ Item {
                     text: root.editingPopups
                         ? "Popup / IPC placement" : "Module placement"
                     font.bold: true
-                    color: AbyssStyle.textColorMuted
+                    color: Appearance.m3colors.darkmode ? AbyssStyle.textColorMuted : "#1a1a1a"
                     Layout.fillWidth: true
                 }
 

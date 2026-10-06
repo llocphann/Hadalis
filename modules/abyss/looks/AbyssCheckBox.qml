@@ -1,8 +1,11 @@
 import QtQuick
 import QtQuick.Controls
+import qs.modules.common
 
 CheckBox {
     id: root
+    readonly property color labelInk: Appearance.m3colors.darkmode
+        ? AbyssStyle.textColor : "#000000"
     hoverEnabled: true
     implicitHeight: 36
     spacing: 8
@@ -23,7 +26,7 @@ CheckBox {
         }
     }
     contentItem: Text {
-        text: root.text; font: root.font; color: AbyssStyle.textColor
+        text: root.text; font: root.font; color: root.labelInk
         leftPadding: root.indicator.width+root.spacing
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight

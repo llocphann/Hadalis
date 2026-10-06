@@ -218,23 +218,6 @@ QtObject {
         return pages.splice(actual, 1)[0]
     }
 
-    function movePage(sourceCategory: int, sourceIndex: int, pageIdx: int,
-                      targetCategory: int, targetIndex: int): bool {
-        if (!SettingsPageRegistry.categories[targetCategory])
-            return false
-
-        const state = root.snapshot()
-        const page = root.removePage(state, sourceCategory, sourceIndex, pageIdx)
-        if (page < 0)
-            return false
-
-        const target = state.groups[targetCategory]?.pages
-        if (!target)
-            return false
-        target.splice(Math.max(0, Math.min(targetIndex, target.length)), 0, page)
-        root.save(state)
-        return true
-    }
 
     function _locationInSnapshot(snapshot, pageIdx: int): var {
         for (let categoryIndex = 0; categoryIndex < snapshot.groups.length; categoryIndex++) {

@@ -2,6 +2,7 @@
 """Guard shared light-mode semantics adapted from snowarch/iNiR."""
 
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -164,6 +165,21 @@ def main() -> int:
         "id: variantProc",
         "icon-theme-for-mode.sh",
     )
+    legacy_abyss_ink = re.compile(
+        r"(?:color|placeholderTextColor)\s*:\s*AbyssStyle\.textColor(?:Muted)?\b"
+    )
+    offenders = []
+    for path in (ROOT / "modules/abyss").rglob("*.qml"):
+        if path.name == "AbyssStyle.qml":
+            continue
+        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if legacy_abyss_ink.search(line):
+                offenders.append(f"{path.relative_to(ROOT)}:{line_no}:{line.strip()}")
+    if offenders:
+        raise AssertionError(
+            "Abyss light-mode ink bypasses remain:\n" + "\n".join(offenders)
+        )
+
     if not (ROOT / "scripts/colors/icon-theme-for-mode.sh").is_file():
         raise AssertionError("scripts/colors/icon-theme-for-mode.sh is missing")
 

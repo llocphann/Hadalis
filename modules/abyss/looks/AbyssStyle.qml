@@ -43,10 +43,9 @@ Singleton {
     readonly property color surfaceRaised: ColorUtils.colorWithLightness(Appearance.colors.colPrimary, 0.11)
     readonly property color surface: surfaceOpacity >= .999 ? surfaceDeep : Qt.alpha(surfaceDeep,surfaceOpacity)
     readonly property color accent: ColorUtils.colorWithLightness(Appearance.colors.colPrimary, 0.68)
-    readonly property color textColor: ColorUtils.ensureReadable(
-        Appearance.colors.colOnLayer0, surfaceDeep, 4.5)
-    readonly property color textColorMuted: ColorUtils.readableSubtext(
-        textColor, surfaceDeep, 0.68)
+    readonly property color textColor: Qt.hsla(Math.max(0, Appearance.m3colors.m3onSurface.hslHue),
+        Math.min(0.15, Appearance.m3colors.m3onSurface.hslSaturation), 0.92, 1)
+    readonly property color textColorMuted: Qt.alpha(textColor, 0.68)
     readonly property color specular: ColorUtils.colorWithLightness(accent, 0.85)
     readonly property color glow: Qt.alpha(accent, glowStrength)
     readonly property color shadow: Qt.alpha(Appearance.m3colors.m3shadow, shadowStrength)

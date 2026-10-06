@@ -115,11 +115,6 @@ def main() -> int:
         "readonly property color orbitAccent: ColorUtils.ensureReadable(",
     )
     require(
-        "modules/abyss/looks/AbyssStyle.qml",
-        "readonly property color textColor: ColorUtils.ensureReadable(",
-        "readonly property color textColorMuted: ColorUtils.readableSubtext(",
-    )
-    require(
         "services/IconThemeService.qml",
         "function _apply(themeName: string, skipRestart: bool): void",
         "id: variantProc",

@@ -17,7 +17,7 @@ import sys
 
 
 root = Path(sys.argv[1])
-approved_on = "2026-09-25"
+approved_on = "2026-10-07"
 
 # VISUAL FREEZE: the maintainer explicitly approved this exact Orbital Weather
 # appearance on 2026-09-25. These are Git blob IDs, so even a tiny edit to the
@@ -26,6 +26,9 @@ approved_on = "2026-09-25"
 # The 2026-09-27 maintainer request explicitly redesigns Orbital Weather for
 # Abyss. The 2026-09-28 hover defect fix changes only the shared tab motion
 # to prevent the detail page painting over the orbit on first layout.
+# The 2026-10-07 maintainer request explicitly approves changing the Material
+# orbital foreground/accents so the stronger themed light palette uses dark,
+# contrast-safe ink instead of pale light-mode text.
 # WeatherPopupContent selects the Abyss view; the Material GPU
 # membrane and all its visual-defining blobs remain unchanged.
 # Do NOT refresh these hashes as part of refactors, cleanup, optimization,
@@ -39,7 +42,7 @@ expected = {
     "modules/bar/weather/LiquidOrbitalField.frag.qsb":
         "586f42291e050d432406e1ce9f1235ee63b91d34",
     "modules/bar/weather/OrbitalWeather.qml":
-        "1b74f970a179756a6ec743b310654bdaf5ae90eb",
+        "a00490152d798cd1f705c795e75782b42e6cf5f7",
     "modules/bar/weather/WeatherPopupContent.qml":
         "d0342726a1b6337f7495d1099a1e7a4a38c21ca3",
     "modules/bar/weather/WeatherPopup.qml":

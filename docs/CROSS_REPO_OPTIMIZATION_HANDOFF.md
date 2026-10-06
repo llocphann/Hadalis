@@ -390,3 +390,187 @@ retry this session”.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed from static analysis.
 
+## 2026-10-07 — App identity-rule lookup hot-path research
+
+Research-only continuation on `dev`
+`5b1a7d44d7b66a84318f19c998ea32fe47ebd9b8`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `services/AppSearch.qml`:
+  `74ea3c9e92860af62f10850c89118d79b7837543`;
+- `services/TaskbarApps.qml`:
+  `b05b0b39988a40faf7fa3cb84e6b0c747cf4a3ee`.
+
+Repository/history search found no earlier optimization note for
+`_parseIdentityRules()`, `_identityRulesKey` or the per-window
+`JSON.stringify(appIdentityRules)` path.
+
+### Candidate A — HIGH CONFIDENCE: move identity-rule cache validation out of every window lookup
+
+`AppSearch` correctly caches the compiled regular expressions, but validates
+that cache by serializing the entire configured rule list every time
+`resolveWindowIdentity()` is called:
+
+```qml
+function _parseIdentityRules(): var {
+    const rules = Config.options?.windows?.appIdentityRules ?? []
+    const key = JSON.stringify(rules)
+    if (root._identityRulesKey === key)
+        return root._identityRules
+    ...
+}
+
+function resolveWindowIdentity(toplevel): string {
+    ...
+    const rules = root._parseIdentityRules()
+    ...
+}
+```
+
+This means a cache hit still performs a complete `JSON.stringify(rules)`.
+
+That lookup is used inside collection passes by:
+
+- `TaskbarApps.qml`;
+- `DockApps.qml`;
+- `BarTaskbarPreview.qml`;
+- `BarTaskbar.qml`;
+- `AltSwitcherNoVisual.qml`;
+- `AltSwitcher.qml`;
+- `WaffleTaskViewContent.qml`.
+
+For a pass over N windows, one unchanged identity-rule list can therefore be
+serialized N times before the already-cached RegExp list is reused. Several
+surfaces perform their own N-window passes, so this work can repeat again for
+the same compositor snapshot.
+
+The config schema already exposes:
+
+```qml
+property JsonObject windows: JsonObject {
+    ...
+    property list<var> appIdentityRules: []
+}
+```
+
+and current `TaskbarApps` already relies on
+`Config.options.windows.onAppIdentityRulesChanged`. The narrower invalidation
+signal therefore exists today; no new Config API is required.
+
+Strict-lossless direction:
+
+1. keep the parsed rule array resident in `AppSearch`;
+2. parse/rebuild it on initial use/Config-ready and on
+   `appIdentityRulesChanged`, rather than fingerprinting it for every window;
+3. let `resolveWindowIdentity()` read the current parsed array directly;
+4. if `Config.options.windows` can be replaced during file reload, keep the
+   `Connections.target` bound to the current object so the handler follows
+   replacement;
+5. preserve lazy desktop-entry resolution exactly as today: `desktopId` stays
+   a string in the parsed rule and is not resolved during parsing.
+
+Behavior that must remain byte-for-byte/logically equivalent:
+
+- first matching rule wins;
+- app-id regex and title regex are independently optional;
+- at least one regex must be present;
+- malformed regex rules are ignored;
+- matching stays case-insensitive;
+- empty app IDs return immediately;
+- rules with missing/empty `desktopId` are ignored;
+- rule ordering and configured object read order remain stable.
+
+Required oracle before implementation:
+
+- empty list;
+- app-id-only/title-only/both-regex rules;
+- malformed regex mixed with valid rules;
+- multiple matching rules proving first-match ownership;
+- repeated lookup of the same and different windows;
+- rule-list replacement between lookups;
+- Config object reload/replacement if the runtime can recreate the nested
+  JsonObject;
+- compare both result strings and malformed-rule behavior against current
+  source.
+
+Structural saving only: unchanged-rule cache validation becomes O(1) per window
+lookup instead of serializing the rule list per lookup. No whole-shell CPU
+percentage is claimed without runtime measurement.
+
+### Candidate B — HIGH CONFIDENCE companion cleanup: Taskbar's identity revision is currently redundant
+
+`TaskbarApps` owns:
+
+```qml
+property int _identityRulesRevision: 0
+...
+function onAppIdentityRulesChanged() {
+    root._identityRulesRevision++
+    refreshApps.restart()
+}
+...
+function computeApps(): var {
+    const identityRulesRevision = root._identityRulesRevision
+    ...
+}
+```
+
+Full-file occurrence inspection finds only those three references. The local
+`identityRulesRevision` value is never consumed after assignment.
+
+Because `computeApps()` is called imperatively by the 16 ms
+`refreshApps` timer, the property read does not establish a live property
+binding for `root.apps`. The same change handler already directly restarts
+`refreshApps`, which is the actual invalidation mechanism.
+
+After Candidate A establishes AppSearch's own rule invalidation, this revision
+counter/read can be removed as a strict-lossless cleanup. Its standalone
+resource value is negligible; keep it grouped with the identity-rule work
+rather than advertising it as an independent optimization.
+
+### Candidate C — LOWER PRIORITY: cache Taskbar ignored-app RegExp compilation only with log parity
+
+Every `TaskbarApps.computeApps()` also rebuilds RegExp objects for configured
+`dock.ignoredAppRegexes` plus the fixed system ignore patterns. Window list
+changes can therefore recompile an unchanged pattern set.
+
+The RegExp flags are only `i`, so successful regex instances have no
+`lastIndex` state and are safe to reuse for matching. However invalid patterns
+currently emit a warning each time `computeApps()` recompiles them. Silently
+caching parse failures would change diagnostic log frequency.
+
+Do not promote this as a trivial cache unless the implementation preserves that
+observable diagnostic contract, e.g. cache valid compiled expressions and the
+ordered invalid-pattern list while re-emitting the same warnings when the
+current compute path would have done so. Given normal ignored-pattern counts,
+this ranks below Candidate A.
+
+### Non-candidates / corrections in this pass
+
+- Do not claim `TaskbarApps.Config.onOptionsChanged` is equivalent to the
+  explicit `Config.configChanged` signal. `Config.options` is an alias to a
+  JsonAdapter object, and static source alone does not prove that its top-level
+  `optionsChanged` fires for every nested mutation.
+- Notification group reconstruction remains a real multi-pass candidate, but it
+  was already recorded elsewhere in the optimization research as a
+  notification derived-state single-pass direction. It is not counted again as
+  a new finding here.
+- Waffle Task View's wallpaper blur tree is instantiated only while Task View is
+  open and captures a horizontal strip rather than the entire output. Static
+  source alone does not justify a new residency/blur optimization claim.
+- Current ScreenTime on Niri is already focus-event-driven with a coarse
+  30-second heartbeat; no new high-confidence source-only polling reduction was
+  established in this pass.
+
+### Next research order
+
+1. build a behavioral/read-order oracle for Candidate A;
+2. benchmark rule-list sizes and window counts only if implementation is later
+   authorized;
+3. inspect another distinct collection hot path rather than expanding this into
+   speculative AppSearch micro-caches.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed from static analysis.
+

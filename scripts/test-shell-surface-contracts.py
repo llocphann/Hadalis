@@ -483,8 +483,10 @@ def main() -> None:
     check("import QtQuick.Shapes" in screen_edge
           and "component FrameWindow: PanelWindow" in screen_edge
           and "fillRule: ShapePath.OddEvenFill" in screen_edge
-          and "preferredRendererType: Shape.CurveRenderer" in screen_edge,
-          "Physical Screen Edge must be one antialiased odd-even frame geometry")
+          and "readonly property bool lowCostRendererActive:" in screen_edge
+          and "preferredRendererType: frameShape.lowCostRendererActive" in screen_edge
+          and "? Shape.GeometryRenderer : Shape.CurveRenderer" in screen_edge,
+          "Physical Screen Edge must remain one odd-even frame while low-cost states may use the cheaper geometry renderer")
     check("SCREEN-EDGE-GEOMETRY-LOCK (maintainer approved 2026-09-19)" in screen_edge
           and "BAR-SCREEN-EDGE-CORNER-LOCK (maintainer approved 2026-09-19)" in screen_edge,
           "Approved Screen Edge + Bar corner geometry lock markers must remain present")

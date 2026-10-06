@@ -13,9 +13,7 @@ AbstractButton {
     readonly property color baseInk: Appearance.m3colors.darkmode
         ? AbyssStyle.textColor : "#000000"
     readonly property color activeInk: Appearance.m3colors.darkmode
-        ? AbyssStyle.accent
-        : ColorUtils.ensureReadable(Appearance.colors.colPrimary,
-            Appearance.colors.colLayer1Base, 4.5)
+        ? AbyssStyle.accent : "#000000"
     hoverEnabled: true
     implicitHeight: 36
     implicitWidth: Math.max(36, contentItem.implicitWidth + 24)

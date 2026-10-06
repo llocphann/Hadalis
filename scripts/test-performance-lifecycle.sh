@@ -33,6 +33,7 @@ sidebar_media="$repo_root/modules/sidebarLeft/widgets/MediaPlayerWidget.qml"
 crypto_widget="$repo_root/modules/sidebarLeft/widgets/CryptoWidget.qml"
 it_thumbnail="$repo_root/modules/sidebarLeft/innertune/ITThumbnail.qml"
 screen_edges="$repo_root/modules/screenCorners/ScreenEdges.qml"
+screen_edge_fallback="$repo_root/modules/screenCorners/ScreenEdgeLegacyFallback.qml"
 alt_switcher="$repo_root/modules/altSwitcher/AltSwitcher.qml"
 waffle_alt="$repo_root/modules/waffle/altSwitcher/WaffleAltSwitcher.qml"
 waffle_alt_content="$repo_root/modules/waffle/altSwitcher/WaffleAltSwitcherContent.qml"
@@ -292,7 +293,10 @@ require "$screen_edges" 'readonly property bool physicalShadowActive:' 'Screen E
 require "$screen_edges" 'ScreenEdgeField {' 'Screen Edge normal path must use the analytic field painter'
 require "$screen_edges" 'elevationEnabled: frameWindow.physicalShadowActive' 'Screen Edge analytic elevation must stop when physical shadow is inactive'
 require "$screen_edges" 'active: frameField.status === ShaderEffect.Error' 'Legacy Screen Edge painter must remain lazy and error-only'
-require "$screen_edges" 'fillRule: ShapePath.OddEvenFill' 'Screen Edge fallback geometry must retain the locked odd-even frame'
+require "$screen_edges" 'Qt.resolvedUrl("ScreenEdgeLegacyFallback.qml")' 'Legacy Screen Edge renderer must load by URL only after shader error'
+reject "$screen_edges" 'import QtQuick.Shapes' 'Healthy Screen Edge path must not import the legacy Shapes module'
+reject "$screen_edges" 'import QtQuick.Effects' 'Healthy Screen Edge path must not import the legacy Effects module'
+require "$screen_edge_fallback" 'fillRule: ShapePath.OddEvenFill' 'External Screen Edge fallback must retain the locked odd-even frame'
 
 require "$alt_switcher" 'cacheBuffer: root.skewExpandedWidth' 'ii skew AltSwitcher cache must stay bounded'
 require "$alt_switcher" 'id: skewFocusRetryTimer' 'ii skew AltSwitcher focus must use bounded retries'

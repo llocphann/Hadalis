@@ -40,11 +40,11 @@ def main() -> None:
         page_indices = [index for group in groups for index in group["pages"]]
         assert len(page_indices) == len(set(page_indices)), "duplicate default page"
         if family == "abyss":
-            excluded = {11, 18, 19, 21, 26, 27, 28, 30, 31, 36}
+            excluded = {11, 18, 19, 21, 26, 27, 28, 30, 31, 35, 36}
             expected = set(range(38)) - excluded
         else:
             excluded = {18, 19, 21, 27, 28}
-            expected = (set(range(30)) - excluded) | {35}
+            expected = set(range(30)) - excluded
         assert set(page_indices) == expected
         if family == "abyss":
             assert next(group for group in groups if group["label"] == "Abyss")["pages"] == [2,32,34,33,37,22,23,16]
@@ -111,8 +111,7 @@ def main() -> None:
                         "_retired-27", "_retired-28", "_retired-30",
                         "_retired-31", "_retired-35", "_retired-36"):
         forbid(data, retired_key, "retired registry page")
-    require(data, 'key: "automation"', "Automation route")
-    require(data, 'component: "modules/settings/AutomationConfig.qml"', "Automation route")
+    forbid(data, 'key: "automation"', "retired Automation route")
     for path, source, token in (
         ("Modules", modules, 'Config.setNestedValue("appearance.typography.sizeScale"'),
         ("System", system, 'Config.setNestedValue("policies.ai"'),

@@ -19,7 +19,7 @@ import qs.modules.common
 Singleton {
     id: root
 
-    readonly property var legacyHiddenIndexes: [18, 19, 21, 27, 28, 30, 31, 36]
+    readonly property var legacyHiddenIndexes: [18, 19, 21, 27, 28, 30, 31, 35, 36]
 
     readonly property var pages: [
         {
@@ -233,14 +233,7 @@ Singleton {
         {key:"abyss-waves",name:"Waves & Audio",icon:"waves",desc:"Waves, spectrum and interaction",component:"modules/settings/AbyssWavesConfig.qml"},
         {key:"abyss-popups",name:"Popups",icon:"chat_bubble",desc:"Popup and indicator placement",component:"modules/settings/AbyssPopupsConfig.qml"},
         {key:"abyss-modules",name:"Bar modules",icon:"widgets",desc:"Edge modules and behavior",component:"modules/settings/AbyssModulesConfig.qml"},
-                {
-            key: "automation",
-            name: Translation.tr("Automation"),
-            icon: "smart_toy",
-            desc: Translation.tr("ChatGPT sessions and service health"),
-            essential: false,
-            component: "modules/settings/AutomationConfig.qml"
-        },
+                        null,
                 null,
         {key:"companion",name:Translation.tr("Companion"),icon:"water_drop",desc:Translation.tr("Wull appearance, personality and movement"),essential:true,component:"modules/settings/CompanionConfig.qml"}
     ]
@@ -254,7 +247,7 @@ Singleton {
         { label: Translation.tr("Appearance"), pages: [4, 3, 25, 8] },
         { label: Translation.tr("Desktop & Layout"), pages: Config.options?.panelFamily === "abyss" ? [15,5,14,29,10,11] : [15,26,2,22,23,5,16,14,29,10,11] },
         { label: Translation.tr("System"), pages: [1, 12, 17] },
-        { label: Translation.tr("Features & Services"), pages: [24, 35, 7, 6] },
+        { label: Translation.tr("Features & Services"), pages: [24, 7, 6] },
         { label: Translation.tr("Advanced & Help"), pages: [20, 9, 13] }
     ]
 
@@ -281,13 +274,6 @@ Singleton {
             return _staticSearchIndex
 
         _staticSearchIndex = [
-        {
-            pageIndex: 35, pageName: root.pages[35].name,
-            section: Translation.tr("Automation"),
-            label: Translation.tr("Automation profiles and service health"),
-            description: Translation.tr("Manage autonomous ChatGPT sessions, schedules and recovery"),
-            keywords: ["automation", "chatgpt", "profiles", "scheduler", "worker", "service", "recovery"]
-        },
         {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Overview"),label:Translation.tr("Enable Companion"),description:Translation.tr("Wull appearance, personality and movement"),keywords:["wull","companion","droplet","pet","mascot","fullscreen","interactive"]},
         {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Rendering"),label:Translation.tr("Companion size"),description:Translation.tr("Keep Wull small or give it a little more room."),keywords:["wull","companion","size","liquid"]},
         {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Behavior"),label:Translation.tr("Personality"),description:Translation.tr("Appearance frequency"),keywords:["wull","companion","calm","balanced","energetic","hyperactive","frequency","visits","animations","reflection","bubbles"]},

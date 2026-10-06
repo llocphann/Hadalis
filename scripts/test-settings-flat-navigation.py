@@ -28,9 +28,8 @@ for key in ("_retired-18", "_retired-19", "_retired-21", "_retired-27",
             "_retired-36"):
     assert key not in data, key
 
-assert 'key: "automation"' in data
-assert 'component: "modules/settings/AutomationConfig.qml"' in data
-assert 'if (index === 35) return true' in registry
+assert 'key: "automation"' not in data
+assert "AutomationConfig.qml" not in data
 assert not (ROOT / "modules/settings/TlpConfig.qml").exists()
 
 print("PASS: flat palette-tinted Settings navigation has no retired page components")

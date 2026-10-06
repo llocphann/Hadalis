@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import qs
 import qs.services
 import qs.services.deferred
+import qs.modules.common
 import qs.modules.abyss.bar
 import qs.modules.abyss.looks
 
@@ -71,6 +72,6 @@ Item {
                 onClicked: root.run(modelData)
             }
         }
-        AbyssLabel { text: "No matching results"; color: AbyssStyle.textColorMuted; visible: root.entries.length === 0 }
+        AbyssLabel { text: "No matching results"; color: Appearance.m3colors.darkmode ? AbyssStyle.textColorMuted : "#1a1a1a"; visible: root.entries.length === 0 }
     }
 }

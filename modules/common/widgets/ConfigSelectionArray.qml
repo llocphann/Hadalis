@@ -29,6 +29,7 @@ Flow {
     ]
     property var currentValue: null
     property bool highContrastSelection: false
+    property bool useAbyssPillShape: true
     readonly property bool hovered: _hoverHandler.hovered
 
     signal selected(var newValue)
@@ -146,6 +147,7 @@ Flow {
             buttonPreviewKind: modelData.previewKind || ""
             buttonText: modelData.displayName
             highContrastSelection: root.highContrastSelection
+            useAbyssPillShape: root.useAbyssPillShape
             opacity: modelData?.dimmed === true ? 0.45 : 1
             toggled: (root.currentValue != null && root.currentValue == modelData.value) ?? false
             onClicked: {

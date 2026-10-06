@@ -15,7 +15,8 @@ GroupButton {
     horizontalPadding: 11
     verticalPadding: 6
     bounce: false
-    waveFace: Config.options?.panelFamily === "abyss"
+    property bool useAbyssPillShape: true
+    waveFace: root.useAbyssPillShape && Config.options?.panelFamily === "abyss"
     property string buttonIcon
     // Opt-in high contrast for compact category tabs on dense Settings pages.
     property bool highContrastSelection: false
@@ -38,8 +39,10 @@ GroupButton {
     property bool leftmost: false
     property bool rightmost: false
     readonly property bool showZzzPreview: false
-    leftRadius: (Config.options?.panelFamily === "abyss" || toggled || leftmost) ? (height / 2) : Appearance.rounding.unsharpenmore
-    rightRadius: (Config.options?.panelFamily === "abyss" || toggled || rightmost) ? (height / 2) : Appearance.rounding.unsharpenmore
+    leftRadius: ((root.useAbyssPillShape && Config.options?.panelFamily === "abyss") || toggled || leftmost)
+        ? (height / 2) : Appearance.rounding.unsharpenmore
+    rightRadius: ((root.useAbyssPillShape && Config.options?.panelFamily === "abyss") || toggled || rightmost)
+        ? (height / 2) : Appearance.rounding.unsharpenmore
     Behavior on leftRadius {
         enabled: Appearance.animationsEnabled
         animation: NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve }
@@ -48,9 +51,12 @@ GroupButton {
         enabled: Appearance.animationsEnabled
         animation: NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve }
     }
-    colBackground: Config.options?.panelFamily === "abyss" ? Qt.alpha(Appearance.colors.colPrimary,.1) : Appearance.colors.colSecondaryContainer
-    colBackgroundHover: Config.options?.panelFamily === "abyss" ? Qt.alpha(Appearance.colors.colPrimary,.18) : Appearance.colors.colSecondaryContainerHover
-    colBackgroundActive: Config.options?.panelFamily === "abyss" ? Qt.alpha(Appearance.colors.colPrimary,.26) : Appearance.colors.colSecondaryContainerActive
+    colBackground: root.useAbyssPillShape && Config.options?.panelFamily === "abyss"
+        ? Qt.alpha(Appearance.colors.colPrimary,.1) : Appearance.colors.colSecondaryContainer
+    colBackgroundHover: root.useAbyssPillShape && Config.options?.panelFamily === "abyss"
+        ? Qt.alpha(Appearance.colors.colPrimary,.18) : Appearance.colors.colSecondaryContainerHover
+    colBackgroundActive: root.useAbyssPillShape && Config.options?.panelFamily === "abyss"
+        ? Qt.alpha(Appearance.colors.colPrimary,.26) : Appearance.colors.colSecondaryContainerActive
 
     contentItem: RowLayout {
         spacing: root.buttonIcon?.length > 0 && root.buttonText?.length > 0 ? 4 : 0

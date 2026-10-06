@@ -215,3 +215,178 @@ counts above are historical evidence only; they are not current runtime,
 packaging or validation dependencies. Future work must use repository tests and
 the canonical maintainer validator directly and must not dispatch local worker
 jobs or expect MegaQML/Cloud Storage routes.
+
+## 2026-10-07 — Wallpaper thumbnail queue strict-lossless research
+
+Research-only continuation on current `dev`
+`08fcc563311cde0e218672f4f97df006377e7a61`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `services/Wallpapers.qml`:
+  `162dc98dcb742d7dec918a1da01659ef64265330`;
+- `modules/common/widgets/ThumbnailImage.qml`:
+  `64386a41505f5b1a3dc4942b2a549b04d0f0cf59`;
+- `scripts/thumbnails/thumbgen.py`:
+  `fdc9ce7e4557a4296e45e8d25aea9101caf90fa1`.
+
+Repository/history search found no prior optimization note for
+`_singleThumbPending`, `_knownThumbnailOutputs` or `_ffPending`.
+This is distinct from the older Dashboard projection/overlap research.
+
+### Candidate A — HIGH CONFIDENCE: stop cloning private thumbnail bookkeeping maps
+
+`Wallpapers` currently uses copy-on-write for two private maps:
+
+```qml
+const pending = Object.assign({}, root._singleThumbPending)
+pending[key] = true
+root._singleThumbPending = pending
+```
+
+and:
+
+```qml
+const nextKnown = Object.assign({}, root._knownThumbnailOutputs)
+nextKnown[normalizedPath] = true
+root._knownThumbnailOutputs = nextKnown
+```
+
+The corresponding delete paths clone again before deleting the key.
+
+Repository-wide search shows:
+
+- `_singleThumbPending` is read/written only inside `Wallpapers.qml`;
+- `_knownThumbnailOutputs` is exposed only through imperative
+  `hasKnownThumbnail()/rememberThumbnail()/forgetThumbnail()`;
+- no QML binding, `Connections`, change handler or external consumer depends
+  on either property's change notification.
+
+Therefore the copy-on-write reassignment is not part of the observable
+contract. Directly mutating the private object preserves the current
+dedup/existence answers while avoiding whole-map copies.
+
+The allocation shape is materially worse than O(n): enqueueing n distinct
+single-thumbnail requests copies approximately 0+1+...+(n-1) keys; draining
+them copies the shrinking pending map again. The known-output set similarly
+copies all previously known thumbnail paths on each newly learned path.
+This can become quadratic JS key-copy/allocation work while browsing a large
+wallpaper library.
+
+Required oracle before implementation:
+
+1. enqueue repeated and distinct thumbnail keys;
+2. prove one queued request per unique pending key;
+3. finish requests in success/failure order and prove pending membership parity;
+4. prove `hasKnownThumbnail` answers are identical across remember/forget;
+5. include empty/malformed paths and source-size changes.
+
+No visual deviation is expected; this is bookkeeping-only.
+
+### Candidate B — HIGH CONFIDENCE, protocol-gated: eliminate post-batch per-delegate `test -f` process fan-out
+
+`ThumbnailImage.reloadThumbnail()` starts a dedicated Process when a thumbnail
+path is not already in the shared known set:
+
+```qml
+_thumbnailCheckProc.command = ["test", "-f", targetPath]
+_thumbnailCheckProc.running = true
+```
+
+The component is used by Quick Wallpaper, wallpaper selector directory/grid,
+Coverflow, Skew, Waffle quick/background and related wallpaper surfaces.
+Generation itself has already been centralized to avoid one
+ImageMagick/ffmpeg process per delegate, but existence verification remains
+per instantiated `ThumbnailImage`.
+
+The batch generator already reports progress through stdout. However the
+current machine protocol is **not a success protocol**:
+
+```python
+for result in p.imap(make_thumbnail, all_files):
+    completed += 1
+    print(f"PROGRESS {completed}/{total} FILE {all_files[completed - 1]}")
+```
+
+`make_thumbnail()` returns `False` both for an already-fresh cache entry and
+for generation failure, and the parent currently ignores `result`.
+Therefore QML must **not** treat the current `FILE` token as proof that the
+thumbnail exists.
+
+Strict-lossless direction:
+
+1. extend the machine-progress protocol so the Python parent reports whether
+   the expected thumbnail path exists after each worker result, e.g.
+   `READY <source>` vs `FAILED <source>`;
+2. compute that readiness in Python with in-process filesystem metadata, not a
+   subprocess;
+3. on READY, QML calls `rememberThumbnail(getExpectedThumbnailPath(...))`
+   before emitting the existing source-file notification;
+4. affected delegates then hit the shared known set and avoid their immediate
+   `test -f` process;
+5. FAILED retains the current fallback/generation behavior and must not be
+   marked known.
+
+The shell fallback generator
+`generate-thumbnails-magick.sh` does not expose per-file machine progress, so
+its rare fallback path can retain the existing end-of-directory reload/check
+behavior unless separately measured.
+
+Required evidence before promotion beyond HIGH CONFIDENCE:
+
+- a fixture with fresh, newly generated and intentionally failed inputs proving
+  READY/FAILED classification;
+- identical delegate visible state and generation retry behavior;
+- process-count comparison for a representative gallery open.
+
+### Candidate C — CONFIRMED lifecycle asymmetry, but do not call the failure fix strict-lossless
+
+The video first-frame dedup map currently does:
+
+```qml
+if (root._ffPending[videoPath]) return
+root._ffPending[videoPath] = true
+```
+
+and no current source path deletes that key.
+
+On success, `videoFirstFrames[videoPath]` is populated, so the stale pending
+entry no longer changes subsequent answers because the success cache is checked
+first. Removing the pending key inside `_cacheFirstFrame()` is therefore a
+strict-lossless memory cleanup for successful paths.
+
+On generation/check failure, however, the pending key remains true for the rest
+of the shell session. That suppresses all retry attempts for that video. Simply
+deleting the key on failure would change current behavior and could also create
+a repeated ffmpeg retry loop when a reactive surface keeps asking for a bad
+video.
+
+Treat the failure side as a separate correctness/lifecycle decision, not as an
+optimization. If product repair is authorized later, use an explicit failed
+state with bounded retry/backoff rather than conflating “in flight” and “never
+retry this session”.
+
+### Non-candidates checked in this pass
+
+- `KeyboardIndicators` lock-state maps are rebuilt from the current discovered
+  LED path set by `_setLockPaths()`; stale device paths are pruned there, so
+  the per-path copy-on-write code is not an unbounded session leak and the maps
+  are normally tiny.
+- `WindowPreviewService` explicitly prunes previews against the authoritative
+  compositor window list and bounds decoded overview warm images to 12. Do not
+  reopen it as a generic cache-growth candidate without new runtime evidence.
+- `videoFirstFrames` itself must remain copy-on-write in the current design
+  because multiple QML consumers deliberately depend on that property changing
+  to refresh Image/ColorQuantizer bindings.
+
+### Next measurement/research order
+
+1. build a source-level oracle for Candidate A's private-map mutation parity;
+2. inspect/fixture the thumbnail machine-progress protocol for Candidate B;
+3. measure gallery process count before considering implementation;
+4. then leave wallpaper thumbnails and diversify into another high-value hot
+   path rather than accumulating micro-candidates in the same subsystem.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed from static analysis.
+

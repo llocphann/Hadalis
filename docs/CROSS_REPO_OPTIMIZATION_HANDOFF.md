@@ -1200,3 +1200,94 @@ evidence.
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — Settings World Clock process research
+
+Research-only continuation on current `dev`
+`da0d94faa2b8376e1cd6f026f8474c9fd4982596`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `modules/settings/InterfaceConfig.qml`:
+  `6f9e2c644aafebc0b3b54ba34df14c272bbbe52d`;
+- sibling `modules/sidebarLeft/widgets/WorldClockWidget.qml`:
+  `5f9272b1aeedc3fa91b76e3a13de150bb6e61829`;
+- shared desktop `services/WorldClock.qml`:
+  `1260b2d2ed85cf70339c2c8f366c296655dc3c9a`.
+
+Repository/history search found no prior optimization note for the Settings
+`liveTimeProc` child-process fan-out.
+
+### Candidate — HIGH CONFIDENCE for supported timezone inputs: collapse Settings preview from 1+N processes to one Bash process
+
+The World Clock settings preview refreshes every 20 seconds while the Widgets
+section is active. It currently builds shell source like:
+
+```qml
+for (let i = 0; i < tzs.length; i++)
+    script += `printf ... "$(TZ='timezone' date '+format|%:z')"\n`
+liveTimeProc.command = ["/usr/bin/bash", "-c", script]
+```
+
+For N configured timezones, each refresh starts one Bash plus N external
+`date` children.
+
+Two existing sibling implementations already prove Hadalis does not need those
+children:
+
+- `services/WorldClock.qml`;
+- `modules/sidebarLeft/widgets/WorldClockWidget.qml`.
+
+Both pass timezone names as argv and use Bash's builtin
+`printf '%(...)T' ... -1`, so one Bash process formats all requested zones.
+
+Strict-lossless direction for the Settings preview:
+
+1. keep the existing 20-second cadence and visibility gate unchanged;
+2. keep one `liveTimeProc`;
+3. pass each configured timezone as an argv entry;
+4. use the already-proven sibling `TZ="$tz" printf '%(...)T' ... -1` loop;
+5. preserve the exact output protocol currently consumed by `SplitParser`:
+   `timezone|time|offset`;
+6. preserve the configured 12/24-hour format choice;
+7. do not merge Settings state with the desktop/background World Clock service,
+   because the two features use different config namespaces.
+
+Structural saving per refresh:
+
+- current: 1 Bash + N `date` children;
+- candidate: 1 Bash;
+- child-process reduction: N external processes per refresh while this settings
+  section is visible.
+
+No cadence reduction is claimed here. Changing 20 seconds to one minute would
+alter refresh timing and is a separate product/performance decision.
+
+### Input-contract caveat
+
+Current Settings code interpolates timezone strings into shell source inside
+single quotes. The sibling argv implementations avoid that interpolation. For
+valid IANA timezone names the behavior is directly equivalent.
+
+Malformed strings containing shell-significant characters currently have
+shell-parsing side effects rather than a well-defined timezone contract. Moving
+them to argv is safer, but strict-lossless classification for malformed input
+requires an oracle/decision rather than pretending those shell side effects are
+a supported behavior.
+
+Required oracle:
+
+- empty timezone list;
+- 1 and several valid zones;
+- 12-hour and 24-hour formatting;
+- positive/negative UTC offsets;
+- DST transition fixture if practical;
+- invalid but non-shell-significant timezone;
+- timezone string containing whitespace/quote/metacharacters, explicitly
+  deciding whether safe argv handling supersedes historical shell parsing;
+- repeated refresh while a prior process is still running, if that condition is
+  reachable in the current Settings process wrapper.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

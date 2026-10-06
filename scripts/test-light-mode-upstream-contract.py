@@ -45,6 +45,13 @@ def main() -> int:
         'contrast_hex(colors.get("term7"',
     )
     require(
+        "native/inir-theme/src/palette.rs",
+        "scheme.primary_palette",
+        "layer0_is_light",
+        'let selection = mix_hex(&primary_container, &layer3, 0.75);',
+        '("term7", if dark { 75.0 } else { 35.0 }, 4.5)',
+    )
+    require(
         "scripts/colors/apply-gtk-theme.sh",
         "theme-meta.json",
         "APPLIED_ICON_THEME",

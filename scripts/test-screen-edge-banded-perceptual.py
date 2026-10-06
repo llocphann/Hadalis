@@ -35,9 +35,9 @@ ShellRoot {
     readonly property real radius: 25
     readonly property real shadow: 15
     readonly property real horizontalExtent:
-        Math.ceil(inset + radius + Math.max(shadow, 2) + 2)
+        Math.ceil(inset + radius + Math.max(shadow, 2))
     readonly property real verticalExtent:
-        Math.ceil(inset + Math.max(shadow, 2) + 2)
+        Math.ceil(inset + Math.max(shadow, 2))
 
     FloatingWindow {
         id: window

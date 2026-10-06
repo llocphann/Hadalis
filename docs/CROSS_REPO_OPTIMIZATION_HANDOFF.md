@@ -3316,3 +3316,112 @@ Compare `ready`, `_todayData`, `_dirty`, current app/session fields and
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — Region Selector script argv research
+
+Research-only continuation on current `dev`
+`21a9deb257b113c21cd71fb8e65d8fdfe603fa1f`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `modules/regionSelector/RegionSelection.qml`:
+  `05fe24280c78cfe065dc70660827dedb68f316c0`;
+- `scripts/videos/record.sh`:
+  `8b81656296cce08caaff413653734c32b7f4f85a`;
+- `scripts/images/find-regions-venv.sh`:
+  `6a3bc215839758af4c4966a8a559570029d2a134`.
+
+### Candidate A — HIGH CONFIDENCE: start recorder script directly instead of via `bash -c`
+
+Region Selector currently starts recording with:
+
+```qml
+snipProc.command = ["/usr/bin/bash", "-c",
+    `${Directories.recordScriptPath} --region '${slurpRegion}'`]
+```
+
+or the same command plus `--sound`.
+
+No shell composition is required by these two branches. `slurpRegion` is one
+logical argument and `--sound` is a normal flag.
+
+The repository already invokes the same script directly in three places for
+stop operations:
+
+```qml
+Quickshell.execDetached([Directories.recordScriptPath, "--stop"])
+```
+
+so executable/shebang ownership is already part of the runtime contract.
+
+Strict-lossless replacement:
+
+```qml
+[Directories.recordScriptPath, "--region", slurpRegion]
+[Directories.recordScriptPath, "--region", slurpRegion, "--sound"]
+```
+
+This removes the outer `bash -c` interpreter/parser and avoids re-parsing a
+shell-escaped region string.
+
+Required oracle:
+
+- region with positive/negative coordinates if supported;
+- normal and sound recording;
+- recorder already running stop path;
+- record script startup failure;
+- RecorderStatus quick-check scheduling;
+- exact `slurpRegion` argv observed by a fixture wrapper.
+
+### Candidate B — HIGH CONFIDENCE: invoke the content-region wrapper as interpreter+script argv
+
+Content-region detection currently does:
+
+```qml
+["/usr/bin/bash", "-c",
+ "${scriptsPath}/images/find-regions-venv.sh --image '...' --max-width ... --max-height ..."]
+```
+
+The wrapper itself is Bash and forwards `"$@"` to `find_regions.py`. No
+pipeline/redirection/conditional shell source is needed at the QML call site.
+
+Use:
+
+```qml
+[
+    "/usr/bin/bash",
+    Directories.scriptsPath + "/images/find-regions-venv.sh",
+    "--image", root.screenshotPath,
+    "--max-width", String(...),
+    "--max-height", String(...)
+]
+```
+
+This keeps one Bash interpreter because the wrapper is a Bash script, but
+removes the extra `-c` shell source layer and all shell quoting from the QML
+boundary.
+
+A direct script exec through its shebang is also possible only if executable
+mode is explicitly part of the installed/runtime contract; interpreter+script
+argv is the safer strict-lossless form.
+
+### Deliberate non-candidates in the same file
+
+Do not mechanically remove Bash from:
+
+- Copy: crop -> tee -> wl-copy pipeline plus timestamped filename;
+- non-native Edit: crop piped to annotation tool;
+- Search: crop + three-provider upload fallback + URL validation;
+- OCR: tesseract language pipeline + dual clipboard fan-out;
+- initial screenshot: `mkdir -p && grim`.
+
+Those branches use real shell composition. In particular
+`Directories.screenshotTemp` is not created by the shared Directories bootstrap
+today, so changing the initial capture to direct grim without replacing
+directory ownership would be incorrect. Moving screenshotTemp creation to
+global startup would trade an interaction-time shell for extra unconditional
+startup I/O and is not justified by static analysis.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

@@ -413,8 +413,9 @@ def main() -> None:
           and "&& !Appearance.gameModeMinimal" in frame_window_block,
           "Expensive Screen Edge elevation must suspend under fullscreen/minimal mode")
     check("GameMode.hasFullscreenOnOutput(outputName)" in reservation_window_block
-          and "!fullscreenCovered" in reservation_window_block,
-          "Transparent Screen Edge reservation windows may release work-area reservations during fullscreen")
+          and "!fullscreenCovered" in reservation_window_block
+          and "updatesEnabled: mapped && workspaceOverviewEdgeSupportEnabled" in reservation_window_block,
+          "Transparent Screen Edge reservations must keep mapping/exclusion live while render updates sleep unless hover support needs them")
     check("mask: Region { item: emptyFrameInput }" in screen_edge,
           "Painted Screen Edge frame must remain completely click-through")
 

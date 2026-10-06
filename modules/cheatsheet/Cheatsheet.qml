@@ -18,6 +18,9 @@ Scope {
     readonly property real desiredWidth: 1100
     readonly property real desiredHeight: 750
     property bool _presentedOpen: false
+    property bool _focusLossArmed: false
+    property int _niriFocusBaseline: -1
+    readonly property var focusWindow: cheatsheetBackground.QsWindow.window
     property var pages: [
         {
             "icon": "keyboard",
@@ -42,13 +45,51 @@ Scope {
     function close() { GlobalStates.cheatsheetOpen = false; }
     function toggle() { GlobalStates.cheatsheetOpen = !GlobalStates.cheatsheetOpen; }
 
+    function armFocusLoss(): void {
+        root._focusLossArmed = false
+        focusArmTimer.restart()
+    }
+
+    Timer {
+        id: focusArmTimer
+        interval: 180
+        repeat: false
+        onTriggered: {
+            if (!root.cheatsheetOpen)
+                return
+            root._niriFocusBaseline = Number(NiriService.activeWindow?.id ?? -1)
+            root._focusLossArmed = true
+        }
+    }
+
+    Connections {
+        target: NiriService
+        function onActiveWindowChanged(): void {
+            if (!CompositorService.isNiri || !root.cheatsheetOpen
+                    || !root._focusLossArmed)
+                return
+            const focusedId = Number(NiriService.activeWindow?.id ?? -1)
+            if (focusedId !== root._niriFocusBaseline)
+                root.close()
+        }
+    }
+
+    CompositorFocusGrab {
+        windows: root.focusWindow ? [root.focusWindow] : []
+        active: CompositorService.isHyprland && root.cheatsheetOpen
+            && root.focusWindow !== null
+        onCleared: if (root.cheatsheetOpen) root.close()
+    }
+
     PanelWindow {
         id: window
 
         Component.onCompleted: {
             visible = !root.embeddedHost && root.cheatsheetOpen
-            if (root.cheatsheetOpen)
+            if (root.cheatsheetOpen) {
+                root.armFocusLoss()
                 Qt.callLater(() => { root._presentedOpen = root.cheatsheetOpen })
+            }
         }
 
         Connections {
@@ -57,8 +98,11 @@ Scope {
                 if (root.cheatsheetOpen) {
                     _closeTimer.stop()
                     window.visible = !root.embeddedHost
+                    root.armFocusLoss()
                     Qt.callLater(() => { root._presentedOpen = root.cheatsheetOpen })
                 } else {
+                    root._focusLossArmed = false
+                    focusArmTimer.stop()
                     root._presentedOpen = false
                     _closeTimer.restart()
                 }
@@ -284,13 +328,6 @@ Scope {
 
                         Item {
                             Layout.fillHeight: true
-                        }
-
-                        NavigationRailButton {
-                            buttonIcon: "close"
-                            buttonText: Translation.tr("Close")
-                            expanded: navRail.expanded
-                            onPressed: root.close()
                         }
                     }
                 }

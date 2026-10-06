@@ -6,7 +6,8 @@ import qs.modules.common.widgets
 
 RippleButton {
     id: root
-    Layout.alignment: Qt.AlignHCenter
+    Layout.alignment: Qt.AlignLeft
+    Layout.leftMargin: 10
     implicitWidth: 40
     implicitHeight: 40
     buttonText: root.parent.expanded

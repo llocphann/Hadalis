@@ -4666,3 +4666,162 @@ first replace that notification contract explicitly.
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — Hyprland Background collection-pass research
+
+Research-only continuation on current `dev`
+`5335ffef47622d598b0ecea2c197c12bd56b7535`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `modules/background/Background.qml`:
+  `29bd40236ba9579077d361fb1012d4f994ef4a3a`;
+- `modules/screenCorners/ScreenCorners.qml`:
+  `3fc43bf7e1b7ec63fae6d27f55a5dd48fbb4cb00`.
+
+Repository/history search found no prior optimization note for the Hyprland
+Background window-range pipeline or the duplicated fullscreen
+`filter().filter()[0]` path.
+
+### Candidate A — HIGH CONFIDENCE: replace Background's filter+sort window range with one summary pass
+
+Classic Background currently builds:
+
+```qml
+property list<var> relevantWindows:
+    HyprlandData.windowList
+        .filter(win => win.monitor == monitor?.id
+            && win.workspace.id >= 0)
+        .sort((a, b) => a.workspace.id - b.workspace.id)
+
+property int firstWorkspaceId:
+    relevantWindows[0]?.workspace.id || 1
+
+property int lastWorkspaceId:
+    relevantWindows[relevantWindows.length - 1]?.workspace.id || 10
+```
+
+and later tests current-workspace occupancy with:
+
+```qml
+relevantWindows.some(w =>
+    w.workspace.id === monitor.activeWorkspace.id)
+```
+
+Repository-wide occurrence inspection shows `relevantWindows` is used only
+for those three purposes.
+
+The full sorted array is therefore stronger state than the consumer needs.
+A single reactive pass over `HyprlandData.windowList` can derive:
+
+- minimum eligible workspace id on this monitor;
+- maximum eligible workspace id on this monitor;
+- whether the monitor's current active workspace contains a window.
+
+Strict-lossless direction:
+
+```text
+summary = { first, last, hasCurrent }
+for each window:
+    if monitor differs -> continue
+    if workspace.id < 0 -> continue
+    update min/max
+    if workspace.id == activeWorkspace.id -> hasCurrent = true
+```
+
+Then preserve the current fallback semantics exactly:
+
+- `firstWorkspaceId = summary.first || 1`;
+- `lastWorkspaceId = summary.last || 10`.
+
+Using `||` rather than a nullish fallback matters because the existing source
+would treat workspace id 0 as falsy for first/last defaults even though the
+filter permits id 0. Do not silently “fix” that edge case in an optimization
+patch.
+
+Expected structural change per relevant Hyprland update:
+
+- remove one filtered array allocation;
+- remove one O(N log N) sort;
+- remove a later O(N) `some()`;
+- replace with one O(N) scan per output.
+
+This is strictly stronger than merely replacing `filter` with `find`.
+
+### Candidate B — HIGH CONFIDENCE: replace nested fullscreen filters with one find/some pass
+
+Classic Background and ScreenCorners both currently construct:
+
+```qml
+workspacesForMonitor =
+    Hyprland.workspaces.values.filter(workspace =>
+        workspace.monitor
+        && workspace.monitor.name == monitor.name)
+
+activeWorkspaceWithFullscreen =
+    workspacesForMonitor.filter(workspace =>
+        workspace.toplevels.values.filter(window =>
+            window.wayland?.fullscreen)[0] != undefined
+        && workspace.active)[0]
+```
+
+The requested answer is only “does this monitor's active workspace contain a
+fullscreen Wayland window?”
+
+Equivalent allocation-free shape:
+
+```qml
+Hyprland.workspaces.values.find(workspace =>
+    workspace.monitor
+    && workspace.monitor.name == monitor.name
+    && workspace.active
+    && workspace.toplevels.values.some(window =>
+        window.wayland?.fullscreen))
+```
+
+or a small shared helper returning the boolean directly.
+
+Strict-lossless requirements:
+
+- preserve loose monitor-name equality if current source relies on it;
+- preserve the requirement that the workspace itself is active;
+- preserve Wayland-only fullscreen detection through
+  `window.wayland?.fullscreen`;
+- return false/undefined equivalently when monitor/workspace/toplevel data is
+  absent;
+- do not change the Niri path, which already delegates fullscreen authority to
+  `GameMode.hasFullscreenOnOutput()`.
+
+Because the same allocation pattern exists in both Background and
+ScreenCorners, one shared Hyprland helper is preferable if it does not create a
+new lifecycle dependency. Otherwise make the same local semantic replacement in
+both files and cover them with one oracle.
+
+### Required oracle
+
+For Candidates A/B:
+
+- one/multiple Hyprland outputs;
+- no windows;
+- windows with negative/special workspace ids;
+- workspace id 0;
+- multiple workspace ids out of order in `windowList`;
+- current workspace empty vs occupied;
+- active workspace changes without window-list order change;
+- monitor migration;
+- active fullscreen Wayland window;
+- inactive workspace fullscreen window;
+- XWayland/non-Wayland window with no `wayland.fullscreen`;
+- fullscreen exit/enter;
+- compare Background visibility, first/last workspace range and
+  ScreenCorners fullscreen state exactly.
+
+### Priority
+
+Candidate A is the more meaningful CPU/allocation saving because the current
+sort can run whenever the Hyprland window list changes. Candidate B is a clean
+secondary allocation reduction and should be bundled only if its regression
+oracle is already being added.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+

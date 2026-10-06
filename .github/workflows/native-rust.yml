@@ -26,8 +26,17 @@ on:
       - 'modules/settings/NiriConfig.qml'
       - 'modules/settings/MonitorVisibilityConfig.qml'
       - 'scripts/colors/generate_colors_material.py'
+      - 'scripts/colors/generate_terminal_configs.py'
       - 'scripts/colors/switchwall.sh'
       - 'scripts/colors/applycolor.sh'
+      - 'scripts/colors/apply-gtk-theme.sh'
+      - 'scripts/colors/icon-theme-for-mode.sh'
+      - 'scripts/colors/vscode_themegen/**'
+      - 'scripts/test-light-mode-upstream-contract.py'
+      - 'scripts/test-wallpaper-mode.py'
+      - 'services/MaterialThemeLoader.qml'
+      - 'modules/common/ThemePresets.qml'
+      - 'modules/common/functions/ColorUtils.qml'
       - 'defaults/niri/config.d/50-startup.kdl'
       - 'sdata/migrations/049-native-clipboard-selector.sh'
       - '.github/workflows/native-rust.yml'
@@ -41,8 +50,17 @@ on:
       - 'sdata/migrations/050-rust-native-default.sh'
       - 'native/scripts/check-niri-customizations.py'
       - 'scripts/colors/generate_colors_material.py'
+      - 'scripts/colors/generate_terminal_configs.py'
       - 'scripts/colors/switchwall.sh'
       - 'scripts/colors/applycolor.sh'
+      - 'scripts/colors/apply-gtk-theme.sh'
+      - 'scripts/colors/icon-theme-for-mode.sh'
+      - 'scripts/colors/vscode_themegen/**'
+      - 'scripts/test-light-mode-upstream-contract.py'
+      - 'scripts/test-wallpaper-mode.py'
+      - 'services/MaterialThemeLoader.qml'
+      - 'modules/common/ThemePresets.qml'
+      - 'modules/common/functions/ColorUtils.qml'
       - '.github/workflows/native-rust.yml'
   workflow_dispatch:
 
@@ -65,6 +83,11 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Install Go from module
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
       - name: Assert production native selector boundary
         run: |
           python3 native/scripts/assert-dormant.py
@@ -73,6 +96,10 @@ jobs:
           bash -n scripts/benchmark-python-vs-rust.sh
           bash -n scripts/colors/switchwall.sh
           bash -n scripts/colors/applycolor.sh
+          bash -n scripts/colors/apply-gtk-theme.sh
+          python3 scripts/test-light-mode-upstream-contract.py
+          python3 scripts/test-wallpaper-mode.py
+          go test ./scripts/colors/vscode_themegen
           bash -n sdata/migrations/049-native-clipboard-selector.sh
           bash scripts/test-native-selector-contract.sh
           bash scripts/test-native-selector-behavior.sh

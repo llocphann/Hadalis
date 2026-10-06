@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+"""Owner-session A/B: full-screen analytic field vs four perimeter tiles."""
+
+from pathlib import Path
+import os
+import shutil
+import subprocess
+import tempfile
+
+if os.environ.get("HADALIS_SCREEN_EDGE_BANDED_PERCEPTUAL") != "1":
+    print("SKIP: banded Screen Edge A/B requires HADALIS_SCREEN_EDGE_BANDED_PERCEPTUAL=1")
+    raise SystemExit(0)
+if not shutil.which("qs"):
+    raise SystemExit("qs is required for banded Screen Edge A/B")
+if not os.environ.get("WAYLAND_DISPLAY"):
+    raise SystemExit("WAYLAND_DISPLAY is required for banded Screen Edge A/B")
+
+from PIL import Image, ImageChops, ImageStat
+
+ROOT = Path(__file__).resolve().parents[1]
+QSB = (ROOT / "modules/screenCorners/ScreenEdgeField.frag.qsb").resolve()
+assert QSB.is_file() and QSB.stat().st_size > 1000
+
+QML = r'''
+import QtQuick
+import Quickshell
+
+ShellRoot {
+    id: root
+    property bool banded: false
+    property int frames: 0
+    property bool busy: false
+
+    readonly property real inset: 10
+    readonly property real radius: 25
+    readonly property real shadow: 15
+    readonly property real extent: Math.ceil(inset + radius + Math.max(shadow, 2) + 2)
+
+    FloatingWindow {
+        id: window
+        visible: true
+        implicitWidth: 420
+        implicitHeight: 260
+        color: "transparent"
+
+        Item {
+            id: host
+            anchors.fill: parent
+
+            component Field: ShaderEffect {
+                blending: true
+                property vector4d viewport: Qt.vector4d(host.width, host.height, 0, 0)
+                property vector4d insets: Qt.vector4d(root.inset, root.inset, root.inset, root.inset)
+                property color frameColor: "#172630"
+                property color shadowColor: Qt.rgba(0, 0, 0, 0.70)
+                property vector4d params: Qt.vector4d(root.radius, root.shadow, 0.75, 0)
+                property vector4d tileRect: Qt.vector4d(x, y, width, height)
+                fragmentShader: Qt.resolvedUrl(Quickshell.env("EDGE_QSB"))
+            }
+
+            Field {
+                id: full
+                anchors.fill: parent
+                visible: !root.banded
+            }
+
+            Item {
+                anchors.fill: parent
+                visible: root.banded
+
+                readonly property real topH: Math.min(height, root.extent)
+                readonly property real bottomH: Math.min(Math.max(0, height - topH), root.extent)
+                readonly property real middleH: Math.max(0, height - topH - bottomH)
+                readonly property real leftW: Math.min(width, root.extent)
+                readonly property real rightW: Math.min(Math.max(0, width - leftW), root.extent)
+
+                Field {
+                    x: 0; y: 0
+                    width: parent.width
+                    height: parent.topH
+                }
+                Field {
+                    x: 0
+                    y: parent.height - parent.bottomH
+                    width: parent.width
+                    height: parent.bottomH
+                }
+                Field {
+                    x: 0
+                    y: parent.topH
+                    width: parent.leftW
+                    height: parent.middleH
+                }
+                Field {
+                    x: parent.width - parent.rightW
+                    y: parent.topH
+                    width: parent.rightW
+                    height: parent.middleH
+                }
+            }
+        }
+    }
+
+    Timer {
+        interval: 75
+        repeat: true
+        running: true
+        onTriggered: {
+            if (root.busy || ++root.frames < 6)
+                return
+            root.busy = true
+            host.grabToImage(function(result) {
+                const name = root.banded ? "banded.png" : "full.png"
+                if (!result.saveToFile(Quickshell.env("EDGE_OUTPUT") + "/" + name)) {
+                    console.error("EDGE_BANDED_AB_FAIL_SAVE")
+                    Qt.quit()
+                    return
+                }
+                if (!root.banded) {
+                    root.banded = true
+                    root.frames = 0
+                    root.busy = false
+                } else {
+                    console.info("EDGE_BANDED_AB_CAPTURE_PASS")
+                    Qt.quit()
+                }
+            })
+        }
+    }
+}
+'''
+
+with tempfile.TemporaryDirectory(prefix="hadalis-edge-banded-ab-") as tmp:
+    root = Path(tmp)
+    qml = root / "shell.qml"
+    qml.write_text(QML, encoding="utf-8")
+    env = os.environ.copy()
+    env.update(
+        QT_QPA_PLATFORM="wayland",
+        EDGE_OUTPUT=str(root),
+        EDGE_QSB=QSB.as_uri(),
+    )
+    run = subprocess.run(
+        ["qs", "-p", str(root), "--no-color"],
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=20,
+    )
+    assert run.returncode == 0 and "EDGE_BANDED_AB_CAPTURE_PASS" in run.stdout, run.stdout[-4000:]
+
+    full = Image.open(root / "full.png").convert("RGBA")
+    banded = Image.open(root / "banded.png").convert("RGBA")
+    assert full.size == banded.size
+
+    diff = ImageChops.difference(full, banded)
+    mean = ImageStat.Stat(diff).mean
+    global_mae = sum(mean) / (4.0 * 255.0)
+
+    fp = full.load()
+    bp = banded.load()
+    dp = diff.load()
+    affected_sum = 0
+    affected_count = 0
+    max_channel_delta = 0
+    for y in range(full.height):
+        for x in range(full.width):
+            delta = dp[x, y]
+            max_channel_delta = max(max_channel_delta, *delta)
+            if fp[x, y][3] > 0 or bp[x, y][3] > 0:
+                affected_sum += sum(delta)
+                affected_count += 4
+    edge_mae = (
+        affected_sum / (affected_count * 255.0)
+        if affected_count else 0.0
+    )
+
+    assert global_mae <= 0.01, (
+        f"banded Screen Edge exceeds 1% global mean pixel budget: {global_mae:.6f}"
+    )
+
+print(
+    "SCREEN_EDGE_BANDED_PERCEPTUAL_PASS "
+    f"global_mae={global_mae:.6f} edge_mae={edge_mae:.6f} "
+    f"max_channel_delta={max_channel_delta}"
+)

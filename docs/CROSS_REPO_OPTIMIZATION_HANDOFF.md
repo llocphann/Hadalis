@@ -2795,3 +2795,217 @@ the existing event-driven monitor architecture.
 
 No whole-Hadalis CPU/RAM percentage is claimed without runtime measurement.
 
+## 2026-10-07 — Default-off startup probe ownership research
+
+Research-only continuation on current `dev`
+`fe236f306bbeded229db9b66d2a75a4d4eb87136`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `shell.qml`:
+  `aae76205a819e9b098f6a4be7fb6d56e14ff4900`;
+- `services/ThinkFanService.qml`:
+  `943082413a143df3e642ee3d60587093dda1ec02`;
+- `services/Battery.qml`:
+  `e276ddc01dcbe01977e1f285ed2c7dc46e5928d2`;
+- `services/TlpService.qml`:
+  `4e0ef4fba76eb00df7ddc54941e205029dde07ec`;
+- `services/Audio.qml`:
+  `03e2286f1e4035113ba33523c196aca27904cdcc`;
+- `modules/common/Appearance.qml`:
+  `55480307855a511518206c8dbea5e5eb20d76c33`.
+
+These candidates existed in older archive research but had not yet been carried
+into the canonical cross-repo handoff. Current `dev` still exhibits the same
+ownership shape.
+
+### Candidate A — HIGH CONFIDENCE: do not force ThinkFan status discovery when profile fan control is disabled
+
+`shell.qml` holds:
+
+```qml
+property var _thinkFanService: ThinkFanService
+```
+
+for session-long profile following.
+
+The shipped default is:
+
+```json
+"powerProfiles": {
+  "fanControl": {
+    "enabled": false
+  }
+}
+```
+
+but `ThinkFanService.Component.onCompleted` immediately calls
+`root.refresh()`, whose detector runs:
+
+```text
+/usr/libexec/inir-thinkfan --status
+```
+
+The long-lived ownership is only required when profile-follow is enabled.
+Settings/System Monitor can materialize/refresh ThinkFan on explicit demand.
+
+Strict-lossless ownership direction:
+
+1. keep ThinkFan resident for the whole session when
+   `powerProfiles.fanControl.enabled=true`;
+2. react to that config becoming enabled at runtime and acquire/prime the
+   singleton before applying the current profile intent;
+3. when disabled from startup, do not force the singleton merely for
+   profile-follow;
+4. Settings/diagnostic surfaces explicitly demand/refresh capability state;
+5. preserve the current active/managed polling and stale-status refresh behavior
+   once the feature is enabled.
+
+Do not remove the service or helper; only move default-off ownership.
+
+### Candidate B — HIGH CONFIDENCE, deeper dependency: separate ordinary Battery telemetry from charge-limit/TLP capability
+
+`Battery.qml` is normal session state for percentage/charge notifications, but
+also directly re-exports many `TlpService` properties:
+
+```qml
+chargeLimitAvailable: TlpService.available
+chargeLimitSupported: TlpService.supported
+chargeLimitAdjustable: TlpService.adjustable
+...
+```
+
+The shipped default is:
+
+```json
+"battery": {
+  "chargeLimit": {
+    "enable": false
+  }
+}
+```
+
+while `TlpService` still owns unconditional startup detection and runs:
+
+```text
+/usr/libexec/inir-battery-charge-limit --status
+```
+
+Normal UPower battery telemetry does not need that helper.
+
+Strict-lossless direction:
+
+- keep ordinary Battery percentage/state/cycle-count ownership independent;
+- demand the charge-limit adapter when:
+  - charge care is enabled in config, or
+  - a Settings/TLP capability surface is presented;
+- when demand first appears, run the current authoritative detection before
+  presenting/writing policy;
+- if charge care is enabled at boot, preserve current early reconciliation and
+  ownership semantics;
+- do not weaken TLP/plugin/vendor capability detection.
+
+This needs a focused QML lifecycle test because Battery is widely referenced and
+the current re-export API should remain usable by Settings consumers.
+
+### Candidate C — HIGH CONFIDENCE: lazy-load the Audio sound-theme catalog
+
+Audio itself is startup-relevant for device/microphone state. Its completion
+handler correctly calls:
+
+```qml
+_refreshMicState()
+```
+
+but also unconditionally starts:
+
+```qml
+themeSoundsProc.running = true
+```
+
+whose command is:
+
+```text
+sh -> ls /usr/share/sounds/<theme>/stereo
+   -> sed
+   -> sort -u
+```
+
+Repository-wide current-source search finds `Audio.themeSounds` consumed only
+by the shared `SoundPicker`, and `SoundPicker` is instantiated by Settings
+pages.
+
+Strict-lossless direction:
+
+1. add idempotent `ensureThemeSoundsLoaded()`;
+2. SoundPicker requests the catalog when it becomes resident;
+3. keep a “catalog has been demanded” flag;
+4. after first demand, `onAudioThemeChanged` refreshes the loaded catalog as
+   today;
+5. before first demand, theme changes do not enumerate a list no surface can
+   read.
+
+Microphone/device startup behavior remains untouched.
+
+### Candidate D — HIGH CONFIDENCE with explicit-backend guard: demand-gate the Niri version blur-capability probe
+
+`Appearance.qml` currently runs:
+
+```qml
+Process {
+    id: nativeBlurVersionProbe
+    running: CompositorService?.isNiri ?? false
+    command: ["niri", "--version"]
+}
+```
+
+for every Niri session.
+
+The shipped default is:
+
+```json
+"performance": {
+  "blurBackend": "auto"
+}
+```
+
+and `blurBackendFor()` explicitly documents that `auto` is fidelity-first:
+it returns wallpaper/off and never upgrades to compositor blur.
+
+Current direct consumers of `nativeBlurSupported` are Effects Settings.
+Runtime `compositorBlurActive` matters only when an effective area/backend
+request explicitly resolves to `compositor`.
+
+Strict-lossless direction:
+
+- if any effective configured blur backend/area override explicitly requests
+  `compositor`, prime the Niri version capability early enough that those
+  surfaces keep the current compositor-or-wallpaper fallback behavior;
+- otherwise, do not run `niri --version` merely for default `auto`;
+- Effects Settings can explicitly ensure the capability probe before deciding
+  whether the compositor-blur control is visible;
+- cache the result for the session;
+- if configuration changes from auto/wallpaper/off to compositor at runtime,
+  trigger the probe and let dependent bindings re-evaluate on completion.
+
+Do not treat “Niri is running” alone as blur-capability demand.
+
+### Validation / ordering
+
+These are four independent lifecycle cuts. Do not combine them into one broad
+lazy-singleton refactor.
+
+Suggested proof order:
+
+1. Audio sound catalog — narrowest dependency surface;
+2. Niri blur version probe — one process and explicit demand condition;
+3. ThinkFan profile-follow ownership;
+4. Battery/TLP charge-care split — widest API/lifecycle surface.
+
+For each, compare child-process traces on default config and on the explicitly
+enabled feature. Enabled-feature behavior must remain unchanged.
+
+No whole-Hadalis startup percentage is claimed without a measured before/after
+boot trace.
+

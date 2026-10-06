@@ -194,6 +194,12 @@ def main() -> None:
             "Workspace Overview must route through its explicit attachment edge.")
     require(screen_edges, "workspaceOverviewEdgeTriggerEnabled",
             "Top Screen Edge must own the Left/Right workspace Overview hover trigger.")
+    require(screen_edges, "id: workspaceEdgeOverviewLoader",
+            "Screen Edge must lazy-load the workspace Overview popup.")
+    require(screen_edges, 'active: reservationWindow.edge === "top"',
+            "Only the top reservation may instantiate the workspace Overview popup.")
+    require(screen_edges, "workspaceEdgeOverviewLoader.item?.showWorkspace(",
+            "Top-edge hover must route through the lazy Overview instance.")
     require(screen_edges, 'barPosition: "top"',
             "Left/Right workspace Overview must attach to the Top Screen Edge.")
     require(screen_edges, "attachmentThickness: root.thickness",

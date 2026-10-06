@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Structural and geometry proof for the dormant Screen Edge analytic field."""
+"""Production contract for the Screen Edge analytic single-pass field."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ qsb_path = BASE / "ScreenEdgeField.frag.qsb"
 
 frag = frag_path.read_text(encoding="utf-8")
 qml = qml_path.read_text(encoding="utf-8")
+runtime = (BASE / "ScreenEdges.qml").read_text(encoding="utf-8")
 
 for token in (
     "float roundedBox(",
@@ -46,6 +47,31 @@ for token in (
     assert token in qml, token
 for forbidden in ("ShaderEffectSource", "MultiEffect", "ShapePath", "PathArc"):
     assert forbidden not in qml, forbidden
+
+assert qsb_path.is_file() and qsb_path.stat().st_size > 1000, (
+    "Packaged ScreenEdgeField QSB is missing"
+)
+
+# Production ownership: the analytic field is the normal painter. The former
+# Shape/MultiEffect renderer is only constructed on ShaderEffect.Error.
+for token in (
+    "ScreenEdgeField {",
+    "id: frameField",
+    "leftInset: frameWindow.frameLeftInset",
+    "topInset: frameWindow.frameTopInset",
+    "rightInset: frameWindow.frameRightInset",
+    "bottomInset: frameWindow.frameBottomInset",
+    "radius: root.rounding",
+    "elevationEnabled: frameWindow.physicalShadowActive",
+    "id: legacyFramePainter",
+    "active: frameField.status === ShaderEffect.Error",
+    "sourceComponent: Component {",
+):
+    assert token in runtime, token
+assert runtime.index("ScreenEdgeField {") < runtime.index("id: legacyFramePainter")
+fallback = runtime[runtime.index("id: legacyFramePainter"):]
+assert "MultiEffect {" in fallback
+assert "ShapePath {" in fallback
 
 
 def sd_round_box(
@@ -113,7 +139,7 @@ for _ in range(50000):
         assert (d < 0.0) == inside
 
 compiler = shutil.which("qsb") or "/usr/lib/qt6/bin/qsb"
-if qsb_path.is_file() and Path(compiler).is_file():
+if Path(compiler).is_file():
     with tempfile.TemporaryDirectory(prefix="hadalis-screen-edge-qsb-") as tmp:
         rebuilt = Path(tmp) / qsb_path.name
         subprocess.run(

@@ -3968,3 +3968,177 @@ imperative cache with no change-notification observer”.
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — Calendar event bucketing research
+
+Research-only continuation on current `dev`
+`e72cb942616e5d504abe22adb93ea4258745dd3e`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `services/CalendarSync.qml`:
+  `6e0b89c56eda5ee612be8438d9c20d4851a09617`;
+- `modules/dashboard/DashAgenda.qml`:
+  `222f16088cf07d53c0ad606d1cc8a68d3abe717c`;
+- `modules/sidebarRight/calendar/CalendarWidget.qml`:
+  `4b5c53bc6392e7ce5f99df8e2643029969cdb98e`;
+- `modules/waffle/notificationCenter/CalendarWidget.qml`:
+  `820a50373bd475e583e8ce4cd9b66515a4acba01`.
+
+Repository/history search found no prior optimization note for the existing
+`_getEventBucketsForDates()` helper or month-grid event bucketing.
+
+### Existing partial optimization already on current dev
+
+`CalendarSync.qml` already contains a batch helper:
+
+```qml
+function _getEventBucketsForDates(dates) {
+    ...
+    for (const event of root.events) {
+        ...
+        for (let i = 0; i < targetTimes.length; i++) {
+            ...
+            buckets[i].push(event)
+        }
+    }
+    return buckets
+}
+```
+
+Several consumers have already migrated to it:
+
+- `modules/sidebarRight/events/EventsWidget.qml` builds 30 dates once and
+  consumes one batch result;
+- `modules/sidebarRight/CompactSidebarRightContent.qml` does the same for
+  14 dates;
+- `modules/background/widgets/calendar/CalendarUpcomingWidget.qml` does the
+  same for 30 dates.
+
+Do not count those current-dev migrations as new gains.
+
+### Candidate A — HIGH CONFIDENCE: finish the batch migration for remaining upcoming views
+
+Two current consumers still repeat one full external-event scan per date:
+
+**DashAgenda**
+
+```qml
+for (let i = 0; i < card.lookaheadDays; i++) {
+    const d = ...
+    const dayEvents = CalendarSync.getEventsForDate(d) || []
+    ...
+}
+```
+
+with `lookaheadDays = 14`.
+
+**Waffle notification-center Calendar**
+
+The upcoming section repeats the same pattern for three dates.
+
+Strict-lossless direction:
+
+1. construct the same ordered date list currently produced by the loops;
+2. call `CalendarSync._getEventBucketsForDates(dates)` once;
+3. iterate buckets in the same date order;
+4. keep every later filter, clone, per-day sort and five-item cap unchanged.
+
+This is semantically safer than replacing the loops with
+`CalendarSync.getUpcomingEvents(days)`. The current per-day path deliberately
+duplicates a multi-day all-day event into every matching day bucket. The batch
+helper preserves that exact behavior; the range helper returns each event only
+once.
+
+Required oracle:
+
+- timed event;
+- single-day all-day event;
+- RFC5545 all-day event with exclusive DTEND;
+- multi-day all-day event proving repeated appearance in each matching day;
+- event before `now` on today;
+- empty external list;
+- date-range crossing month/year boundary;
+- complete resulting item identity/order equality before the final existing
+  sort/cap.
+
+### Candidate B — HIGH POTENTIAL CPU: compute month-grid local/external buckets once instead of scanning both lists twice per day cell
+
+The classic Sidebar calendar constructs a six-week `monthCells` array. For
+each of up to 42 cells it calls:
+
+```text
+getEventCountForDay()
+  -> Events.getEventsForDate(date)
+  -> CalendarSync.getEventsForDate(date)
+
+getSourceColorsForDay()
+  -> Events.getEventsForDate(date)
+  -> CalendarSync.getSourceColorsForDate(date)
+       -> CalendarSync.getEventsForDate(date)
+```
+
+So one month-grid rebuild can perform:
+
+- up to 84 full scans of the local event list;
+- up to 84 full scans of the external event list;
+
+before deriving counts/colors.
+
+The Waffle notification-center calendar has the same shape in its day
+delegates: each day exposes both `eventCount` and `sourceColors`, and those
+two functions independently query the same local/external event lists.
+
+Strict-lossless direction:
+
+1. derive the exact ordered set of visible cell dates for the current month
+   model;
+2. batch external events through the existing date-bucket helper;
+3. add an equivalent local-event batch helper or build the local date buckets
+   once from `Events.list`;
+4. for each date bucket derive:
+   - local count;
+   - external count;
+   - whether the local primary/accent dot exists;
+   - ordered unique external source colors;
+5. publish one private month-cell metadata array/map;
+6. let count/color bindings become O(1) lookups into that snapshot.
+
+Hard semantic requirements:
+
+- local `notified` filtering must match `Events.getEventsForDate()`;
+- all-day local events remain visible after notification;
+- external multi-day/all-day inclusion must match
+  `CalendarSync.getEventsForDate()`;
+- external source colors retain first-event encounter order with duplicate
+  source ids removed;
+- previous/current/next-month cells shown in the six-week grid must use their
+  actual dates;
+- `_eventsTrigger`, `_externalTrigger` and month navigation still invalidate
+  the snapshot at the same observable times.
+
+A source-only implementation should not introduce a long-lived service-wide
+date cache first. The visible month has a small fixed date set, so a
+widget-local snapshot provides a bounded proof surface and avoids cache
+invalidation complexity.
+
+### Why this is higher leverage than a generic cache
+
+This is not speculative memoization. The existing widget explicitly asks for
+two derived values for every visible day cell, and both values currently rescan
+the same lists. A month snapshot converts repeated list-wide work into one
+batch pass per source plus O(42) metadata derivation.
+
+The gain scales with event-history size and external ICS event count while
+remaining independent of rendering fidelity.
+
+### Non-candidate
+
+Do not rewrite `CalendarSync.getUpcomingEvents()` merely to share this month
+cache. Its semantics are different from per-day buckets, especially for
+multi-day all-day events. Keep range and bucket APIs separate unless a later
+oracle proves a common internal index can serve both exactly.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

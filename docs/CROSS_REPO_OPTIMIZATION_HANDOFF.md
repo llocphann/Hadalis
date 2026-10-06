@@ -666,3 +666,123 @@ data transformation is demonstrably repeated within one event or visible frame.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed from static analysis.
 
+## 2026-10-07 — Niri toplevel matching research
+
+Research-only continuation on current `dev`
+`580792f3785031cd79746b0305728503233d3652`. No runtime/product source was
+changed in this round.
+
+Current `services/NiriService.qml`:
+`4c8194493fd380bf0ad8c51bc62990ad0c232738`.
+
+Repository/history search found no prior optimization note for
+`sortToplevels()`, `filterCurrentWorkspace()` or
+`matchToplevelToWindow()`.
+
+### Candidate — HIGH CONFIDENCE: bucket foreign toplevels by appId before Niri greedy matching
+
+Both `sortToplevels()` and `filterCurrentWorkspace()` currently use the
+same greedy nested match:
+
+```qml
+for (const niriWindow of ...) {
+    let bestMatch = null
+    let bestScore = -1
+
+    for (const toplevel of toplevels) {
+        if (usedToplevels.has(toplevel))
+            continue
+
+        const score = matchToplevelToWindow(toplevel, niriWindow)
+        ...
+    }
+    ...
+}
+```
+
+The matcher begins with:
+
+```qml
+if (toplevel.appId !== niriWindow.app_id)
+    return 0
+```
+
+Therefore every comparison against a toplevel from a different app is
+provably incapable of winning. On a desktop with W Niri windows and T foreign
+toplevel handles, the current path can execute W*T matcher calls even when
+nearly every window belongs to a different application.
+
+Strict-lossless direction:
+
+1. make one pass over the input `toplevels` and build
+   `Map<appId, toplevel[]>`, preserving original toplevel order inside every
+   bucket;
+2. for each Niri window, scan only the bucket matching
+   `niriWindow.app_id`;
+3. preserve the existing `usedToplevels` rule inside each bucket;
+4. keep `matchToplevelToWindow()` unchanged for title scoring;
+5. preserve `sortWindowsByLayout(windows)` ordering in `sortToplevels()`;
+6. preserve current workspace-window order in `filterCurrentWorkspace()`;
+7. continue dropping all unmatched foreign handles so stale/ghost Wayland
+   handles cannot reappear in Dock/Taskbar.
+
+Why this is semantically safe:
+
+- different-app candidates always score 0 today;
+- a successful match always has score > 0;
+- within one app bucket, retaining original toplevel order preserves tie
+  behavior because the current algorithm updates only when
+  `score > bestScore`, not on equality;
+- an exact-title score 3 still stops scanning immediately;
+- score-2 substring and score-1 same-app fallbacks retain the same candidate
+  order and used-object exclusion.
+
+The optimization changes only which candidates are known in advance to be
+incapable of matching.
+
+Expected complexity:
+
+- bucket construction: O(T);
+- matching: sum of same-app candidate scans rather than W*T global scans;
+- worst case remains quadratic when every window belongs to the same app,
+  which is necessary unless the title-scoring/greedy contract is redesigned;
+- mixed-app desktops approach a much smaller comparison count.
+
+This has broader leverage than a consumer-local taskbar cache because
+`CompositorService.sortedToplevels` feeds Dock/Taskbar and other surfaces,
+and `filterCurrentWorkspace()` contains the same matching debt separately.
+
+### Required oracle before implementation
+
+Use a pure helper/oracle with stable object identities and compare complete
+matched source identity/order for:
+
+- zero windows / zero toplevels;
+- all unique app IDs;
+- multiple windows of the same app;
+- duplicate same-app/same-title handles;
+- exact-title score 3;
+- asymmetric substring score 2;
+- same-app title mismatch score 1;
+- mixed stale foreign handles absent from Niri;
+- Niri window without a foreign handle;
+- one foreign handle that could match multiple same-app Niri windows, proving
+  used-handle exclusion and greedy order;
+- reordered input toplevels to prove tie behavior follows current input order;
+- workspace-filtered subset parity.
+
+Ghost-window correctness is a hard boundary: unmatched foreign handles must
+remain dropped exactly as current source specifies.
+
+### Adjacent source notes
+
+- `findNiriWindow()` also linearly scans `windows`, but its call frequency
+  was not established as a hot path in this pass; do not merge it into this
+  candidate without evidence.
+- Do not replace greedy title scoring with a direct title Map. Duplicate titles,
+  substring matches and one-handle-per-window ownership make that a behavioral
+  redesign, not the strict-lossless bucket optimization above.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

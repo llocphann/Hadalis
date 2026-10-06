@@ -3788,9 +3788,13 @@ Singleton {
         const layer2Active = mixHex(layer2, onLayer2, 0.80);
         const layer3Hover = mixHex(layer3, onLayer3, 0.90);
         const layer3Active = mixHex(layer3, onLayer3, 0.80);
-        const selection = mixHex(primaryContainer, layer3, 0.75);
-        const selectionHover = mixHex(primaryContainer, layer3, 0.88);
+        const selection = colorHex(ColorUtils.quietSelection(primaryContainer, layer0, false));
+        const selectionHover = colorHex(ColorUtils.quietSelection(primaryContainer, layer0, true));
         const onSelection = readableHex(onLayer3, selection, 4.5);
+        const success = colorHex(ColorUtils.semanticStatus(primary, layer0, 145.0, 0.48));
+        const warning = colorHex(ColorUtils.semanticStatus(primary, layer0, 75.0, 0.56));
+        const fallbackError = colorHex(ColorUtils.semanticStatus(primary, layer0, 25.0, 0.60));
+        const error = readableHex(base.error || fallbackError, layer0, 4.5);
 
         return Object.assign({}, base, {
             background: layer0,
@@ -3830,6 +3834,10 @@ Singleton {
             app_selection: selection,
             app_selection_hover: selectionHover,
             app_on_selection: onSelection,
+            app_success: success,
+            app_warning: warning,
+            app_error: error,
+            app_on_status: layer0,
             app_window_bg: layer0,
             app_view_bg: layer0,
             app_headerbar_bg: layer0,

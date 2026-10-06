@@ -170,50 +170,33 @@ Scope {
         });
     }
 
-    // ── Home grid model: categories that still have visible pages ──
-    readonly property var visibleGroups: {
-        var groups = [];
-        var cats = SettingsPageRegistry.categories;
-        for (var c = 0; c < cats.length; c++) {
-            var cat = cats[c];
-            var entries = [];
-            for (var p = 0; p < cat.pages.length; p++) {
-                var idx = cat.pages[p];
-                if (idx < 0 || idx >= pages.length)
-                    continue;
-                if (!SettingsPageRegistry.isPageApplicable(idx))
-                    continue;
-                var entry = Object.assign({}, pages[idx]);
-                entry.realIndex = idx;
-                // Carried on the model on purpose: a nested Repeater delegate
-                // reading the outer delegate's required `index` crosses a
-                // Component boundary and can fail to construct silently.
-                entry.groupIndex = groups.length;
-                entries.push(entry);
-            }
-            if (entries.length === 0)
-                continue;
-            groups.push({ label: cat.label, entries: entries });
+    // All Settings surfaces consume the same flat navigation order. Focus mode
+    // may present these tabs as tiles, but categories are implementation-only
+    // ordering metadata and never become user-visible headings.
+    readonly property var flatPages: {
+        const entries = []
+        const order = SettingsPageRegistry.navigationPageIndexes(false)
+        for (let position = 0; position < order.length; position++) {
+            const index = order[position]
+            const page = pages[index]
+            if (!page)
+                continue
+            const entry = Object.assign({}, page)
+            entry.realIndex = index
+            entry.flatIndex = position
+            entry.groupIndex = 0
+            entries.push(entry)
         }
-        return groups;
+        return entries
     }
 
-    // The category the open page belongs to. Drilling into a page otherwise cut
-    // every sibling loose: the only way to reach the next page in the same
-    // category was to walk back out to the grid and in again.
-    readonly property var currentGroup: {
-        if (root.currentPage < 0)
-            return null;
-        const groups = root.visibleGroups;
-        for (let g = 0; g < groups.length; g++) {
-            const entries = groups[g].entries;
-            for (let e = 0; e < entries.length; e++) {
-                if (entries[e].realIndex === root.currentPage)
-                    return groups[g];
-            }
-        }
-        return null;
-    }
+    // Keep the existing Focus grid plumbing as one heading-free container.
+    readonly property var visibleGroups: root.flatPages.length > 0
+        ? [{ label: "", entries: root.flatPages }]
+        : []
+    readonly property var currentGroup: root.visibleGroups.length > 0
+        ? root.visibleGroups[0]
+        : null
 
     // Each category gets its own medallion silhouette so groups are told apart
     // by shape, not just by a small uppercase label. Cycles rather than mapping
@@ -1382,6 +1365,7 @@ Scope {
                                             spacing: 10
 
                                             RowLayout {
+                                                visible: (group.modelData.label || "").length > 0
                                                 Layout.fillWidth: true
                                                 Layout.leftMargin: 2
                                                 spacing: 8
@@ -1436,6 +1420,7 @@ Scope {
                                                     delegate: RippleButton {
                                                         id: tile
                                                         required property var modelData
+                                                        required property int index
 
                                                         // preferredWidth 1 + fillWidth is what
                                                         // makes GridLayout share columns evenly
@@ -1483,10 +1468,8 @@ Scope {
                                                                     : Appearance.angelEverywhere ? Appearance.angel.colGlassCard
                                                                     : Appearance.inirEverywhere ? Appearance.inir.colLayer2
                                                                     : CF.ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.20)
-                                                                colSymbol: Appearance.zzzEverywhere ? Appearance.zzz.accent
-                                                                    : Appearance.inirEverywhere ? Appearance.inir.colAccent
-                                                                    : Appearance.angelEverywhere ? Appearance.angel.colText
-                                                                    : Appearance.colors.colPrimary
+                                                                colSymbol: SettingsMaterialPreset.navigationIconColor(
+                                                                    tile.index, group.modelData.entries.length, false)
                                                                 // Rotation rides the whole medallion: the wrapper
                                                                 // exposes no handle on the inner symbol. Every shape
                                                                 // used here reads the same at 180°, so only the
@@ -2001,24 +1984,6 @@ Scope {
                                             }
                                         }
 
-                                        StyledText {
-                                            Layout.fillWidth: true
-                                            Layout.leftMargin: 2
-                                            Layout.bottomMargin: 2
-                                            visible: siblingRepeater.count > 0
-                                            text: root.currentGroup?.label ?? ""
-                                            color: SettingsMaterialPreset.accentColor
-                                            opacity: 0.9
-                                            elide: Text.ElideRight
-                                            wrapMode: Text.NoWrap
-                                            font {
-                                                family: Appearance.font.family.main
-                                                pixelSize: Appearance.font.pixelSize.smaller
-                                                weight: Font.DemiBold
-                                                capitalization: Font.AllUppercase
-                                                letterSpacing: 1.1
-                                            }
-                                        }
 
                                         Repeater {
                                             id: siblingRepeater
@@ -2027,6 +1992,7 @@ Scope {
                                             delegate: RippleButton {
                                                 id: siblingItem
                                                 required property var modelData
+                                                required property int index
 
                                                 readonly property bool isCurrent:
                                                     siblingItem.modelData.realIndex === root.currentPage
@@ -2053,11 +2019,10 @@ Scope {
                                                         text: siblingItem.modelData.icon || ""
                                                         rotation: siblingItem.modelData.iconRotation || 0
                                                         iconSize: 15
-                                                        color: siblingItem.isCurrent
-                                                            ? (Appearance.zzzEverywhere ? Appearance.zzz.accent
-                                                              : SettingsMaterialPreset.accentColor)
-                                                            : (Appearance.zzzEverywhere ? Appearance.zzz.inkMuted
-                                                              : Appearance.colors.colOnSurfaceVariant)
+                                                        color: SettingsMaterialPreset.navigationIconColor(
+                                                            siblingItem.index,
+                                                            Math.max(1, root.currentGroup?.entries.length ?? 1),
+                                                            siblingItem.isCurrent)
                                                     }
 
                                                     StyledText {

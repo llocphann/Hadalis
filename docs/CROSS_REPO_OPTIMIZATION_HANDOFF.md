@@ -1818,3 +1818,106 @@ budget at the chosen scale must be rejected or use a larger decode target.
 
 No whole-Hadalis RAM/GPU percentage is claimed without measurement.
 
+## 2026-10-07 — MPRIS desktop-entry hint memo research
+
+Research-only continuation on current `dev`
+`fbcdae1136546d8a2ed081401fb32cbbe8348b94`. No runtime/product source was
+changed in this round.
+
+Current `services/MprisController.qml`:
+`3a8184f9308f0816ea395ea26f182bb5a3fbcf15`.
+
+### Candidate — HIGH CONFIDENCE: memoize `_desktopEntryForHint()` after its full fallback scan
+
+MPRIS stream/player labeling first calls:
+
+```qml
+const direct = AppSearch.lookupDesktopEntry(hint)
+if (direct) return direct
+```
+
+but a direct miss then performs a second, MPRIS-specific fuzzy resolver:
+
+```text
+for every DesktopEntry:
+    inspect id/name/genericName/startupClass/command[0]
+    normalize each candidate
+    tokenize candidate
+    compare exact/substring/token overlap
+```
+
+The same stable hint can be resolved repeatedly from:
+
+- `playerDisplayName()`;
+- `streamDesktopEntry()`;
+- `streamDisplayName()`;
+- `streamIconName()`;
+- volume-mixer and media bindings that call those helpers again as reactive
+  stream/player state changes.
+
+The previously researched AppSearch exact-input memo only accelerates the first
+stage. It does not remove this MPRIS-specific full DesktopEntries scan after an
+AppSearch miss.
+
+Strict-lossless direction:
+
+1. normalize the incoming value with the existing
+   `_cleanDisplayName(value)`;
+2. memoize the **final** `DesktopEntry|null` result under that exact cleaned
+   hint;
+3. distinguish cached miss from not-cached;
+4. invalidate the memo immediately when
+   `DesktopEntries.applications.valuesChanged` fires;
+5. keep every score, token rule, tie rule and the `bestScore >= 36` threshold
+   unchanged;
+6. do not key the cache by player/node identity: this resolver's output depends
+   only on the cleaned hint plus the current DesktopEntries catalog.
+
+Immediate DesktopEntries invalidation is required for the same reason as the
+AppSearch memo candidate: a package install/remove/change must not leave an old
+hit or miss visible during any later debounce window.
+
+### Why this has broader leverage than one mixer-only cache
+
+A single PipeWire node can ask for a desktop entry through multiple hint
+sources:
+
+```text
+application.process.binary
+player.desktopEntry
+player.identity
+application.id
+application.name
+```
+
+and later ask again while building display name and icon. When the direct
+AppSearch resolver cannot identify those strings, each request currently pays
+the full MPRIS-specific DesktopEntries scan again.
+
+Caching the final hint result therefore removes repeated tokenization and
+catalog scans without changing player↔stream matching, volume state, active
+player choice or MPRIS metadata.
+
+### Required oracle
+
+Compare current and memoized object identity/null result for:
+
+- direct AppSearch hit;
+- exact MPRIS fallback field match;
+- substring match;
+- token-overlap match;
+- score below threshold;
+- multiple equal-score entries proving current first-best/tie behavior;
+- empty/malformed hints;
+- case/whitespace/version-suffix variants;
+- repeated hit and repeated miss;
+- DesktopEntry added/removed/changed between calls.
+
+Also verify `streamDisplayName()` and `streamIconName()` output for a
+representative set of PipeWire nodes/browser players before and after memo use.
+
+This is CPU/allocation work only; no visual or media-control behavior is
+intended to change.
+
+No whole-Hadalis CPU percentage is claimed without runtime measurement.
+

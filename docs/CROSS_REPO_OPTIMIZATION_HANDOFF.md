@@ -974,3 +974,120 @@ token scoring.
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — Clipboard/Booru image process research
+
+Research-only continuation on current `dev`
+`31665dcccb696c66741ca80d3d78a05f3159fd6d`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `modules/common/widgets/CliphistImage.qml`:
+  `d210fa7c52aba17fddec09909cc464fe034ffa03`;
+- `modules/sidebarLeft/anime/BooruImage.qml`:
+  `69e9db92e3a900c0295f6eee309e900f30a503b6`;
+- `modules/common/Directories.qml`:
+  `0fb9ae0b8ce77bb5b280c3aef16c9b3d22d73f27`.
+
+### Candidate A — HIGH CONFIDENCE: shared in-flight/success cache for Cliphist image decode
+
+`CliphistImage` is correctly lazy: it only starts decoding once the delegate is
+visible. It also publishes through a per-process temporary file and atomic
+rename. However each visible `CliphistImage` still owns its own Bash process:
+
+```qml
+if [ -s '${imageDecodeFilePath}' ]; then
+    exit 0
+fi
+_tmp='${imageDecodeFilePath}'.$$
+if ${Cliphist.decodeCommand(root.entry)} > "$_tmp" && [ -s "$_tmp" ]; then
+    /usr/bin/mv -f "$_tmp" '${imageDecodeFilePath}'
+...
+```
+
+The source itself notes that multiple clipboard surfaces can render the same
+entry concurrently. Current call sites include Overview search, ii Clipboard and
+Waffle Clipboard.
+
+Consequences today for the same clipboard entry:
+
+- every visible instance forks its own Bash;
+- a cache hit still forks Bash just to test `-s`;
+- simultaneous misses can decode the same cliphist entry more than once;
+- atomic rename prevents partial-file corruption but does not deduplicate the
+  decode work.
+
+Strict-lossless direction:
+
+1. move per-entry decode ownership into the shared Cliphist/service layer or a
+   dedicated shared resolver;
+2. preserve demand gating: no decode until at least one visible image requests
+   it;
+3. maintain `entryNumber -> decodedPath` for **successful** decodes only;
+4. maintain one in-flight request per entry number;
+5. let all requesting delegates subscribe to the same completion;
+6. on failure, clear in-flight state and do **not** cache failure, so a later
+   delegate/open can retry just as current independent instances can;
+7. preserve the current temporary-file + atomic-rename publication;
+8. keep Directories' session cleanup boundary unchanged.
+
+This removes duplicate decode processes without changing success/failure file
+semantics or making failure sticky.
+
+Required oracle:
+
+- one visible instance, cold decode success;
+- two/three simultaneous surfaces requesting the same entry;
+- different entries requested concurrently;
+- successful cache reuse after the first decode;
+- decode failure followed by a later retry;
+- delegate destroyed while decode is in flight;
+- source file already present before the first request;
+- malformed/zero entry number behavior matching current source;
+- exact published path and visibility behavior unchanged.
+
+Measure child-process count and cliphist decode invocation count before/after;
+do not claim CPU/RSS percentages from source alone.
+
+### Candidate B — P2 / INVESTIGATE: Booru manual-preview process burst
+
+For providers listed by `BooruResponse` as manual-download providers
+(`danbooru`, `waifu.im`, `t.alcy.cc`), each `BooruImage` delegate starts:
+
+```qml
+/usr/bin/bash -c "mkdir -p ... && [ -f path ] || curl ... -o path"
+```
+
+on component completion.
+
+Unlike Favicon, this is not a persistent cross-session cache-hit problem:
+`Directories.qml` deliberately removes and recreates `booruPreviews` on
+shell startup. Unique images therefore legitimately need one network fetch in
+the session. The remaining debt is burst/concurrency overhead:
+
+- one Bash wrapper per manual-preview delegate;
+- potentially many simultaneous curl processes as a result grid instantiates;
+- repeated delegates for the same image in one session can still race/check
+  independently.
+
+Do not promote a serial queue blindly: changing download concurrency can change
+visible image arrival order/timing. Measure representative result counts first.
+A safer first optimization may be shared in-flight dedup plus direct curl
+ownership after one directory-readiness gate, while retaining current
+parallelism for distinct URLs.
+
+### Separate correctness issue — Booru preview cache identity
+
+`BooruImage.fileName` is derived from the remote file URL basename, while all
+providers share `Directories.booruPreviews`. Therefore unrelated provider URLs
+with the same basename can map to the same local preview path. Current
+`[ -f path ]` logic can then reuse the wrong image.
+
+This is a cache-identity correctness issue, not a strict-lossless optimization.
+A future repair should key by normalized full source URL/provider+id or a hash
+and define how legacy basename-only files are ignored/migrated. Do not fold that
+behavioral change into a process-only optimization patch.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

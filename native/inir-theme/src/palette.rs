@@ -191,6 +191,68 @@ pub fn material_palette(
         palette.insert(snake_to_camel(&color.name), adjusted.to_hex());
     }
 
+    // Keep wallpaper accents inside Material's readable tone/chroma band,
+    // matching the Python fallback and upstream light-mode behavior.
+    if scheme_name != "scheme-monochrome" {
+        for (key, container, on_container, tonal) in [
+            ("primary", "primaryContainer", "onPrimaryContainer", &scheme.primary_palette),
+            ("secondary", "secondaryContainer", "onSecondaryContainer", &scheme.secondary_palette),
+            ("tertiary", "tertiaryContainer", "onTertiaryContainer", &scheme.tertiary_palette),
+        ] {
+            if let Some(value) = palette.get(key).cloned()
+                && let Ok(argb) = parse_hex(&value)
+            {
+                let tone = Hct::from_argb(argb).tone();
+                if dark && !(70.0..=85.0).contains(&tone) {
+                    palette.insert(key.into(), tonal.tone(80).to_hex());
+                } else if !dark && !(25.0..=50.0).contains(&tone) {
+                    palette.insert(key.into(), tonal.tone(40).to_hex());
+                }
+            }
+
+            if let Some(value) = palette.get(container).cloned()
+                && let Ok(argb) = parse_hex(&value)
+            {
+                let tone = Hct::from_argb(argb).tone();
+                if dark && !(20.0..=40.0).contains(&tone) {
+                    palette.insert(container.into(), tonal.tone(30).to_hex());
+                    palette.insert(on_container.into(), tonal.tone(90).to_hex());
+                } else if !dark && !(80.0..=95.0).contains(&tone) {
+                    palette.insert(container.into(), tonal.tone(90).to_hex());
+                    palette.insert(on_container.into(), tonal.tone(10).to_hex());
+                }
+            }
+
+            if let Some(value) = palette.get(key).cloned()
+                && let Ok(argb) = parse_hex(&value)
+            {
+                let hct = Hct::from_argb(argb);
+                if hct.chroma() > 60.0 {
+                    palette.insert(
+                        key.into(),
+                        Hct::new(hct.hue(), 60.0, hct.tone()).to_argb().to_hex(),
+                    );
+                }
+            }
+
+            if key == "primary" {
+                for (role, floor) in [(key, 36.0), (container, 24.0)] {
+                    if let Some(value) = palette.get(role).cloned()
+                        && let Ok(argb) = parse_hex(&value)
+                    {
+                        let hct = Hct::from_argb(argb);
+                        if (4.0..floor).contains(&hct.chroma()) {
+                            palette.insert(
+                                role.into(),
+                                Hct::new(hct.hue(), floor, hct.tone()).to_argb().to_hex(),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     if dark {
         palette.insert("success".into(), "#B5CCBA".into());
         palette.insert("onSuccess".into(), "#213528".into());
@@ -395,8 +457,19 @@ pub fn build_app_palette(base: &Palette) -> Palette {
     let on_layer2 = readable_hex(&on_surface, &layer2, 4.5);
     let on_layer3 = readable_hex(&on_surface, &layer3, 4.5);
     let on_layer4 = readable_hex(&on_surface, &layer4, 4.5);
-    let subtext = readable_hex(&mix_hex(&on_layer1, &layer1, 0.75), &layer1, 3.0);
-    let selection = mix_hex(&layer3, &primary, 0.82);
+    let layer1_hover = mix_hex(&layer1, &on_layer1, 0.92);
+    let layer1_active = mix_hex(&layer1, &on_layer1, 0.85);
+    let layer0_is_light = parse_hex(&layer0)
+        .map(|argb| Hct::from_argb(argb).tone() >= 50.0)
+        .unwrap_or(false);
+    let subtext_seed = mix_hex(&on_layer1, &layer1, 0.75);
+    let subtext = if layer0_is_light {
+        readable_hex(&subtext_seed, &layer1_active, 4.5)
+    } else {
+        readable_hex(&subtext_seed, &layer1, 3.0)
+    };
+    let selection = mix_hex(&primary_container, &layer3, 0.75);
+    let selection_hover = mix_hex(&primary_container, &layer3, 0.88);
 
     let mut app = base.clone();
     let entries = [
@@ -417,8 +490,8 @@ pub fn build_app_palette(base: &Palette) -> Palette {
         ("app_foreground", on_layer0),
         ("app_subtext", subtext),
         ("app_surface", layer1.clone()),
-        ("app_surface_hover", mix_hex(&layer1, &on_layer1, 0.92)),
-        ("app_surface_active", mix_hex(&layer1, &on_layer1, 0.85)),
+        ("app_surface_hover", layer1_hover),
+        ("app_surface_active", layer1_active),
         ("app_surface_elevated", layer2.clone()),
         (
             "app_surface_elevated_hover",
@@ -447,7 +520,7 @@ pub fn build_app_palette(base: &Palette) -> Palette {
         ("app_on_accent", on_primary),
         ("app_accent_container", primary_container),
         ("app_selection", selection.clone()),
-        ("app_selection_hover", mix_hex(&layer3, &primary, 0.74)),
+        ("app_selection_hover", selection_hover),
         (
             "app_on_selection",
             readable_hex(&on_layer3, &selection, 4.5),
@@ -684,6 +757,23 @@ pub fn terminal_palette(
                 result.insert(
                     name.into(),
                     ensure_contrast(color, background, 3.5, dark).to_hex(),
+                );
+            }
+        }
+
+        // Neutral terminal text follows the terminal background hue and is
+        // contrast-checked, preventing faint suggestions/comments in light mode.
+        let bg_hct = Hct::from_argb(background);
+        let grey_chroma = bg_hct.chroma().min(10.0);
+        for (name, start_tone, ratio) in [
+            ("term7", if dark { 75.0 } else { 35.0 }, 4.5),
+            ("term8", if dark { 60.0 } else { 50.0 }, 3.5),
+        ] {
+            if result.contains_key(name) {
+                let grey = Hct::new(bg_hct.hue(), grey_chroma, start_tone).to_argb();
+                result.insert(
+                    name.into(),
+                    ensure_contrast(grey, background, ratio, dark).to_hex(),
                 );
             }
         }

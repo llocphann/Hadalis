@@ -92,7 +92,7 @@ ColumnLayout {
                                     MaterialSymbol {
                                         text: rowLoader.modelData?.iconName ?? ""
                                         iconSize: 16
-                                        color: AbyssStyle.textColor
+                                        color: Appearance.m3colors.darkmode ? AbyssStyle.textColor : "#000000"
                                     }
                                 }
                                 Component {
@@ -109,7 +109,7 @@ ColumnLayout {
                             StyledText {
                                 Layout.fillWidth: true
                                 text: rowLoader.modelData?.text ?? ""
-                                color: AbyssStyle.textColor
+                                color: Appearance.m3colors.darkmode ? AbyssStyle.textColor : "#000000"
                                 font.pixelSize: Appearance.font.pixelSize.small
                                 elide: Text.ElideRight
                             }

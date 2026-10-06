@@ -1385,3 +1385,96 @@ and balance all leases on destruction/visibility transitions.
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — Saved-theme catalog polling research
+
+Research-only continuation on current `dev`
+`10c4a09d0dc222a58cff316d1b6824b54611c286`. No runtime/product source was
+changed in this round.
+
+Current `modules/settings/ThemesConfig.qml`:
+`fa617e33a5a4672e970a46ee19c2a3dae2c309be`.
+
+Repository/history search found no prior optimization note for
+`savedThemesProcess` / `refreshSavedThemes()`.
+
+### Candidate A — HIGH CONFIDENCE: collapse per-poll theme catalog child fan-out
+
+While the Custom Theme Editor is expanded, `ThemesConfig` refreshes the saved
+theme catalog every 2000 ms.
+
+The current scan starts one Bash and, for every saved JSON file, invokes:
+
+- one external `basename`;
+- one external `jq`.
+
+For T saved themes, one unchanged poll therefore uses approximately
+`1 + 2T` processes.
+
+The same output can be produced without changing the polling cadence or model
+semantics:
+
+1. keep the current Bash owner and 2-second timer;
+2. derive the basename with shell parameter expansion instead of an external
+   `basename`;
+3. invoke one `jq` over the complete ordered file argument list, deriving each
+   record's name from `input_filename`;
+4. preserve one compact JSON object per input file on stdout and the existing
+   `SplitParser` consumption;
+5. preserve glob/order semantics and invalid-file warning behavior through an
+   oracle.
+
+Structural process count per poll becomes roughly:
+
+- current: `1 + 2T`;
+- candidate: `1 Bash + 1 jq`, independent of T.
+
+This is a narrow strict-lossless process optimization and does not require a
+new service or watcher.
+
+### Candidate B — P1 follow-up: replace fixed 2-second polling with filesystem-driven refresh only after overwrite semantics are proven
+
+The repository already uses `FolderListModel` reactively for setup scripts and
+other directory inventories. That makes event-driven saved-theme discovery a
+natural follow-up.
+
+However add/remove detection alone is not sufficient: an existing
+`name.json` can be overwritten in place while keeping the same filename and
+count. A watcher design must prove it catches content replacement, not merely
+directory count changes.
+
+A robust eventual design may combine:
+
+- `FolderListModel` for add/remove/name/order changes;
+- watched per-file content or another authoritative directory/content change
+  signal for same-name overwrites;
+- explicit refresh after Hadalis itself saves/deletes a theme.
+
+Do not delete the polling timer merely because `FolderListModel.countChanged`
+works for add/remove.
+
+### Required oracle
+
+For Candidate A:
+
+- zero saved themes;
+- one/many themes;
+- filenames with spaces/dots;
+- deterministic output order;
+- invalid JSON mixed with valid JSON;
+- one file removed during scan;
+- one file replaced during scan;
+- exact preset id/name/description/tags/colors parity;
+- same warning/skip behavior for invalid entries.
+
+For Candidate B later:
+
+- external create/delete;
+- external same-name overwrite;
+- atomic rename replacement;
+- Hadalis save/delete;
+- editor closed/reopened;
+- no refresh/process activity while the relevant settings surface is inactive.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

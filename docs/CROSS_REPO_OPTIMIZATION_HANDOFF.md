@@ -3157,3 +3157,75 @@ documented cache contract that current code does not actually satisfy.
 No startup percentage is claimed until a cold/warm before-after boot trace is
 captured.
 
+## 2026-10-07 — Weather primary fetch direct-argv research
+
+Research-only continuation on current `dev`
+`cdfdf26130de9de0aa1ab1612c59a4dc9d805d51`. No runtime/product source was
+changed in this round.
+
+Current `services/Weather.qml`:
+`53ef5db3a161e6df18a29b1e6a7c6192d2e35a79`.
+
+### Candidate — HIGH CONFIDENCE: remove Bash from the primary wttr.in fetch path
+
+The primary weather provider currently builds a URL and then starts:
+
+```qml
+const cmd = `curl -s --max-time 15 'https://wttr.in/${query}?format=j1'`
+fetcher.command = ["/usr/bin/bash", "-c", cmd]
+```
+
+No shell feature is required by this command. There is no pipe, redirect,
+variable expansion or conditional execution. The same service already uses
+direct argv for its Open-Meteo fallback and air-quality requests:
+
+```qml
+["/usr/bin/curl", "-s", "--max-time", "15", url]
+```
+
+Strict-lossless direction:
+
+1. construct the exact same wttr.in URL string;
+2. assign
+   `fetcher.command = ["/usr/bin/curl", "-s", "--max-time", "15", url]`;
+3. keep request-generation ownership, empty-response handling, parse fallback,
+   retry counters and provider failover untouched;
+4. do not alter query construction or provider ordering.
+
+This removes one Bash process for every primary-provider request/retry while
+keeping the curl process and stdout/exit semantics unchanged.
+
+### Required oracle before implementation
+
+- coordinates path;
+- city-name path with spaces and non-ASCII characters;
+- request generation cancellation;
+- curl exit failure;
+- empty payload;
+- non-JSON payload;
+- valid wttr JSON;
+- three primary failures causing the existing Open-Meteo bypass window;
+- force-refresh while another provider request is running.
+
+Compare the exact argv URL against the current shell command's effective curl
+argument. No network behavior, retry timing or visual state should change.
+
+### GPS path is separate
+
+The Geoclue fallback currently uses:
+
+```text
+where-am-i -t 10
+  | grep latitude/longitude
+  | head -2
+  | paste -sd' '
+```
+
+That path genuinely uses a parsing pipeline. Do not classify it as the same
+direct-argv cleanup. A future optimization would require capturing raw
+`where-am-i` output and reproducing the current extraction semantics in QML or
+a helper with a focused parser oracle.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

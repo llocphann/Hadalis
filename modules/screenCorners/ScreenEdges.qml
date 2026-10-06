@@ -228,19 +228,11 @@ Scope {
             id: legacyFramePainter
             anchors.fill: parent
 
-            readonly property real frameLeftInset: frameWindow.frameLeftInset
-            readonly property real frameTopInset: frameWindow.frameTopInset
-            readonly property real frameRightInset: frameWindow.frameRightInset
-            readonly property real frameBottomInset: frameWindow.frameBottomInset
-            readonly property real radius: root.rounding
-            readonly property int outerPadding: root.outerPadding
-            readonly property bool physicalShadowActive:
-                frameWindow.physicalShadowActive
-            readonly property int physicalShadowSize: root.physicalShadowSize
-            readonly property color edgeColor: root.edgeColor
-            readonly property color shadowColor: Qt.alpha(
-                Appearance.m3colors.m3shadow,
-                root.physicalShadowOpacity)
+            // Keep only object references resident on the healthy path. All
+            // legacy value bindings are created inside the fallback file only
+            // after an actual ShaderEffect error.
+            readonly property var edgeRoot: root
+            readonly property var frameHost: frameWindow
 
             active: frameField.shaderError
                 && !frameWindow.fullscreenCovered

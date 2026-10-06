@@ -62,7 +62,10 @@ for forbidden in (
 
 for token in (
     "Item {",
-    "readonly property real bandExtent:",
+    "readonly property real topBandExtent:",
+    "readonly property real bottomBandExtent:",
+    "readonly property real leftBandExtent:",
+    "readonly property real rightBandExtent:",
     "readonly property real topBandHeight:",
     "readonly property real bottomBandHeight:",
     "readonly property real middleHeight:",
@@ -209,16 +212,30 @@ def band_layout(
     shadow_reach: float,
 ):
     safe_reach = max(shadow_reach, 2.0)
-    extent = math.ceil(
-        max(left, top, right, bottom) + max(0.0, radius) + safe_reach + 2.0
+    top_extent = math.ceil(max(0.0, top) + max(0.0, radius) + safe_reach + 2.0)
+    bottom_extent = math.ceil(
+        max(0.0, bottom) + max(0.0, radius) + safe_reach + 2.0
     )
-    top_h = min(height, extent)
-    bottom_h = min(max(0.0, height - top_h), extent)
+    left_extent = math.ceil(max(0.0, left) + safe_reach + 2.0)
+    right_extent = math.ceil(max(0.0, right) + safe_reach + 2.0)
+    top_h = min(height, top_extent)
+    bottom_h = min(max(0.0, height - top_h), bottom_extent)
     middle_y = top_h
     middle_h = max(0.0, height - top_h - bottom_h)
-    left_w = min(width, extent)
-    right_w = min(max(0.0, width - left_w), extent)
-    return extent, top_h, bottom_h, middle_y, middle_h, left_w, right_w
+    left_w = min(width, left_extent)
+    right_w = min(max(0.0, width - left_w), right_extent)
+    return (
+        top_extent,
+        bottom_extent,
+        left_extent,
+        right_extent,
+        top_h,
+        bottom_h,
+        middle_y,
+        middle_h,
+        left_w,
+        right_w,
+    )
 
 
 def band_covers(
@@ -228,7 +245,7 @@ def band_covers(
     height: float,
     layout,
 ) -> bool:
-    _, top_h, bottom_h, middle_y, middle_h, left_w, right_w = layout
+    _, _, _, _, top_h, bottom_h, middle_y, middle_h, left_w, right_w = layout
     if y < top_h or y >= height - bottom_h:
         return True
     if middle_y <= y < middle_y + middle_h:
@@ -240,15 +257,15 @@ def band_area_ratio(width, height, inset, radius, shadow):
     layout = band_layout(
         width, height, inset, inset, inset, inset, radius, shadow
     )
-    _, top_h, bottom_h, _, middle_h, left_w, right_w = layout
+    _, _, _, _, top_h, bottom_h, _, middle_h, left_w, right_w = layout
     area = width * (top_h + bottom_h) + middle_h * (left_w + right_w)
     return area / (width * height)
 
 
 # Default structural raster footprint: the same global field is evaluated over
 # only a perimeter ring. These are invocation-area ratios, not measured GPU %.
-assert band_area_ratio(1920, 1080, 10, 25, 15) < 0.146
-assert band_area_ratio(3840, 2160, 10, 25, 15) < 0.075
+assert band_area_ratio(1920, 1080, 10, 25, 15) < 0.122
+assert band_area_ratio(3840, 2160, 10, 25, 15) < 0.062
 
 
 rng = random.Random(0x53435245454E)

@@ -485,10 +485,10 @@ pub fn build_app_palette(base: &Palette) -> Palette {
     };
     let container_hct = parse_hex(&primary_container)
         .map(Hct::from_argb)
-        .unwrap_or_else(|_| Hct::from_argb(Argb::from_u32(0xFF6750A4)));
+        .unwrap_or_else(|_| Hct::from_argb(parse_hex("#6750A4").expect("valid fallback")));
     let layer0_hct = parse_hex(&layer0)
         .map(Hct::from_argb)
-        .unwrap_or_else(|_| Hct::from_argb(Argb::from_u32(0xFF000000)));
+        .unwrap_or_else(|_| Hct::from_argb(parse_hex("#000000").expect("valid fallback")));
     let selection_tone = if layer0_hct.tone() < 50.0 {
         container_hct.tone().max(layer0_hct.tone() + 12.0)
     } else {
@@ -514,7 +514,7 @@ pub fn build_app_palette(base: &Palette) -> Palette {
         .map(Hct::from_argb)
         .map(|hct| hct.hue())
         .unwrap_or(270.0);
-    let layer0_argb = parse_hex(&layer0).unwrap_or_else(|_| Argb::from_u32(0xFF000000));
+    let layer0_argb = parse_hex(&layer0).unwrap_or_else(|_| parse_hex("#000000").expect("valid fallback"));
     let status = |hue: f64, chroma: f64| -> String {
         let delta = (accent_hue - hue + 180.0).rem_euclid(360.0) - 180.0;
         let shifted_hue = (hue + (delta * 0.25).clamp(-15.0, 15.0)).rem_euclid(360.0);

@@ -78,11 +78,15 @@ void main() {
         * (1.0 - frameCover);
     innerShadow *= innerShadow;
 
+    // ShaderEffect passes QColor uniforms already premultiplied. Apply only
+    // coverage here; multiplying by color alpha again would square the shadow
+    // opacity and visibly weaken the elevation.
+    vec3 frameRgb = u.frameColor.rgb * frameCover;
     float frameAlpha = u.frameColor.a * frameCover;
+    vec3 shadowRgb = u.shadowColor.rgb * innerShadow;
     float shadowAlpha = u.shadowColor.a * innerShadow;
     float remaining = 1.0 - frameAlpha;
-    vec3 rgb = u.frameColor.rgb * frameAlpha
-        + u.shadowColor.rgb * shadowAlpha * remaining;
+    vec3 rgb = frameRgb + shadowRgb * remaining;
     float alpha = frameAlpha + shadowAlpha * remaining;
 
     fragColor = vec4(rgb, alpha) * u.qt_Opacity;

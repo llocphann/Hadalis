@@ -4522,3 +4522,147 @@ frame.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
 
+## 2026-10-07 — Background active-workspace occupancy research
+
+Research-only continuation on current `dev`
+`0f3507b160bdd6f57c94a38cb8ceba6eeacec74b`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `services/NiriService.qml`:
+  `4c8194493fd380bf0ad8c51bc62990ad0c232738`;
+- `modules/background/Background.qml`:
+  `29bd40236ba9579077d361fb1012d4f994ef4a3a`;
+- `modules/waffle/background/WaffleBackground.qml`:
+  `6e9bcbdf8daef77c9f8169ed998c44bc72b94fa6`.
+
+Repository/history search found no prior optimization note for the duplicated
+per-output `hasWindowsOnCurrentWorkspace` scan.
+
+### Candidate A — HIGH CONFIDENCE: centralize active-workspace occupancy for Niri
+
+Both Classic/ii Background and Waffle Background independently bind:
+
+```qml
+const allWs = Object.values(NiriService.workspaces)
+const currentWs = allWs.find(ws =>
+    ws.output === outputName && ws.is_active)
+return NiriService.windows.some(w =>
+    w.workspace_id === currentWs.id)
+```
+
+This expression exists once per output instance. Any change to
+`NiriService.windows` or `NiriService.workspaces` can therefore make every
+background instance repeat:
+
+- `Object.values(workspaces)`;
+- a scan to locate the active workspace for its output;
+- a scan of the complete Niri window list to test occupancy.
+
+With M outputs, W workspaces and N windows, the source shape is approximately
+O(M * (W + N)) per relevant publication, duplicated independently by the two
+panel families' implementations.
+
+The requested visual result is only one boolean per output:
+“does this output's currently active Niri workspace contain at least one
+window?”
+
+Strict-lossless direction:
+
+1. derive once in `NiriService` (or one shared compositor helper) an
+   `activeWorkspaceIdByOutput` map from the authoritative workspace snapshot;
+2. derive once an `occupiedWorkspaceIds` Set/map from the authoritative
+   published window snapshot;
+3. expose an imperative helper such as
+   `activeWorkspaceHasWindows(outputName)`;
+4. ensure the helper's reactive invalidation is backed by a small revision or
+   replaced derived object whenever either source snapshot changes;
+5. switch both Background families to the same helper;
+6. retain `false` for unknown output, no active workspace, empty workspace
+   map, non-Niri compositor and exception/fail-closed cases.
+
+A local-only variant can compute one shared output->bool map at the Background
+root and let every per-screen delegate read from it. Centralizing in
+`NiriService` has more leverage because `modules/bar/Workspaces.qml` already
+builds its own occupied-workspace Set and could reuse the same authoritative
+index in a later, separately qualified change.
+
+Do not derive this from foreign toplevels. Niri's own `windows` snapshot is the
+authority used by current code, including workspace ids and stale-handle
+behavior.
+
+### Required oracle
+
+- zero windows;
+- zero workspaces;
+- one and multiple outputs;
+- active workspace changes on one output;
+- window open/close/move between workspaces;
+- window move across outputs;
+- workspace id/index/output topology changes;
+- focused-window-only changes that must not alter occupancy;
+- multiple windows on one workspace;
+- output removed/re-added;
+- compare both Classic/ii and Waffle `hasWindowsOnCurrentWorkspace`,
+  `focusWindowsPresent` and resulting blur-progress transitions.
+
+No visual change is expected; only repeated collection scans are removed.
+
+### Candidate B — HIGH CONFIDENCE but low priority: mutate the private wallpaper-size LRU in place
+
+Classic `Background.qml` keeps a shared bounded cache for
+`magick identify` results:
+
+```qml
+property var _wallpaperSizeCache: ({})
+property var _wallpaperSizeCacheKeys: []
+readonly property int _wallpaperSizeCacheLimit: 64
+```
+
+On every successful metrics lookup it currently copies both structures:
+
+```qml
+const cache = Object.assign({}, root._wallpaperSizeCache)
+const keys = root._wallpaperSizeCacheKeys.slice()
+...
+root._wallpaperSizeCache = cache
+root._wallpaperSizeCacheKeys = keys
+```
+
+Repository-wide occurrence inspection shows:
+
+- both properties are private to this Background root;
+- there is no `...Changed` handler or binding depending on their reassignment;
+- the cache is read imperatively by `wallpaperSizeDebounce`;
+- the key list is used only by `cacheWallpaperSize()` itself for LRU order.
+
+Therefore direct mutation of the private object/array preserves the current
+lookup/LRU contract while avoiding object and array copies on each insertion.
+
+Required oracle:
+
+- first insert;
+- same-path refresh moves key to newest position;
+- eviction at 64 -> 65 entries;
+- cache hit returns identical width/height;
+- rapid wallpaper switching while one metrics process is active;
+- stale metrics result for a no-longer-current wallpaper remains ignored as
+  today.
+
+This is intentionally ranked below Candidate A because insertions are
+infrequent and the cache is capped at 64 entries.
+
+### Non-candidate checked in the same pass
+
+`ScreenTime._todayData = Object.assign({}, _todayData)` cannot be removed as a
+pure private-map optimization. `ScreenTime.todayData` is publicly bound by the
+Waffle Action Center main page, and the reassignment currently supplies the
+property-notify after nested usage data is mutated. The service also emits a
+separate `dataChanged()` signal for other consumers, but not every
+`todayData` consumer listens to that signal. Any future in-place mutation must
+first replace that notification contract explicitly.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

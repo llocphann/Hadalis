@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Owner-session A/B budget for the Screen Edge half-resolution shadow layer."""
+"""Owner-session A/B budget for low-cost Screen Edge shadow rendering."""
 from pathlib import Path
 import os
 import shutil
@@ -42,7 +42,8 @@ ShellRoot {
                 id: shape
                 anchors.fill: parent
                 antialiasing: true
-                preferredRendererType: Shape.CurveRenderer
+                preferredRendererType: root.optimized
+                    ? Shape.GeometryRenderer : Shape.CurveRenderer
                 layer.enabled: true
                 layer.textureSize: root.optimized
                     ? Qt.size(Math.ceil(width * 0.5), Math.ceil(height * 0.5))
@@ -147,4 +148,4 @@ with tempfile.TemporaryDirectory(prefix="hadalis-edge-perceptual-") as tmp:
         f"Screen Edge half-raster exceeds 1% mean pixel budget: {normalized_mae:.6f}"
     )
 
-print(f"SCREEN_EDGE_HALF_RASTER_PERCEPTUAL_PASS mae={normalized_mae:.6f}")
+print(f"SCREEN_EDGE_LOW_COST_PERCEPTUAL_PASS mae={normalized_mae:.6f}")

@@ -47,13 +47,13 @@ an iRiS adapter.
 ## Screen Edge ownership
 
 For Material II, `modules/screenCorners/ScreenEdges.qml` is the only physical Screen Edge
-renderer. Its geometry is unchanged by Abyss. Each output has one full-screen `FrameWindow`, one odd-even
-`ShapePath`, exactly four circular `PathArc` segments for the rounded
-workspace hole, and transparent reservation windows. Bar ownership changes only
-the matching inner-frame inset. The physical frame's `MultiEffect` must
-set both `blurMax` (kernel size) and nonzero `shadowBlur` (actual falloff),
-with zero shadow offset so its four rounded inner corners cast inward depth.
-Do not add a Bar-local shadow or another Screen Edge painter.
+renderer. Its output ownership and locked rounded-workspace geometry are unchanged by Abyss. Each output
+has one full-screen `FrameWindow`, one primary `ScreenEdgeField` analytic SDF painter, and transparent
+reservation windows. Bar ownership changes only the matching inner-frame inset. The analytic field paints
+the physical frame and inward elevation in one texture-free fragment pass; it does not allocate the former
+offscreen Shape/MultiEffect shadow chain. The historical odd-even `ShapePath`, four circular `PathArc`
+segments and `MultiEffect` remain inside a lazy loader only for `ShaderEffect.Error` recovery and are
+not constructed on the healthy path. Do not add a Bar-local shadow or another Screen Edge painter.
 
 Transparent Material surfaces still use independent Material shadow ink:
 surface alpha must never turn `Appearance.colors.colShadow` transparent.

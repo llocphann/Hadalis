@@ -3577,3 +3577,136 @@ Before implementation:
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — Bounded wallpaper blur surface research
+
+Research-only continuation on current `dev`
+`1e53e355d92c5fca5ca102de194dc8d96ec13ce1`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `modules/common/widgets/GlassBackground.qml`:
+  `0df61709dc3ab6f1667196ca66a1c85c188dd960`;
+- `modules/common/widgets/RicelinSurface.qml`:
+  `a3ac4e9c35e8b680ccd6a918d907bdd36c7f5516`;
+- `modules/bar/BarContent.qml`:
+  `3afa7aa5e27c069ceed6c3db71d34f1e7ef445d1`;
+- `modules/dock/Dock.qml`:
+  `a42cff209c3f9239ad0818987af7f50a00e1f645`;
+- reference `modules/common/widgets/ZzzGlassWash.qml`:
+  `b7b6c1273db0523dbfbe0315ab2e1964d0baf8fc`.
+
+Repository search currently finds roughly 25 production references to
+`GlassBackground` and 8 to `RicelinSurface`, in addition to dedicated
+Bar/Dock fallback paths.
+
+### Candidate — HIGH POTENTIAL GPU/RAM: blur only the visible screen-aligned surface plus exact kernel support
+
+The common glass implementations still use a screen-sized wallpaper item even
+when the visible host is a small panel:
+
+```qml
+Image {
+    x: -root.screenX
+    y: -root.screenY
+    width: root.screenWidth
+    height: root.screenHeight
+    sourceSize.width: root.screenWidth
+    sourceSize.height: root.screenHeight
+
+    layer.enabled: ...
+    layer.effect: MultiEffect {
+        blurEnabled: true
+        blurMax: 64
+        ...
+    }
+}
+```
+
+The parent/root then clips or masks that full-screen blurred layer back to the
+small surface.
+
+The same shape exists in `RicelinSurface`, and the non-native-blur Bar/Dock
+paths create a wallpaper Image sized to the entire output even though the
+visible result is a narrow strip/body.
+
+This means the decoded wallpaper can be shared in Qt's image cache, but each
+effect host can still materialize an offscreen layer/FBO proportional to the
+full output.
+
+For scale only, one RGBA8 full-output surface is approximately:
+
+- 1920×1080×4 = 7.9 MiB;
+- 2560×1440×4 = 14.1 MiB;
+- 3840×2160×4 = 31.6 MiB;
+
+before any additional blur-pyramid/intermediate storage. These are texture-size
+calculations, **not measured Hadalis RSS/VRAM savings**.
+
+Strict visual direction:
+
+1. keep the same decoded/cached wallpaper source and exact
+   `PreserveAspectCrop` screen mapping;
+2. derive the visible host rectangle in screen coordinates;
+3. expand it by a conservative blur-support padding sufficient for the exact
+   `MultiEffect` kernel at the current scale/blur value;
+4. materialize only that expanded wallpaper source region into the effect item;
+5. run the same saturation/blur settings;
+6. crop/mask back to the original host geometry.
+
+The optimization is **spatial bounding**, not a lower-resolution or weaker blur.
+The desired visible pixels should remain identical if the source mapping and
+kernel padding are exact.
+
+### Bar and Dock are especially clean targets
+
+Bar and Dock know their physical edge, dimensions and output size. Their
+Aurora/Angel fallback blur therefore has a simple visible strip/body whose
+screen-space rectangle is explicit.
+
+A first proof should target one horizontal Bar and one Dock edge before
+generalizing the common helper. If the bounded source can reproduce those
+pixels exactly, the same mapping can then be abstracted for
+`GlassBackground`/`RicelinSurface`.
+
+### Required A/B oracle
+
+Before implementation/promotion:
+
+- top and bottom Bar;
+- all four Dock edges;
+- floating panel at arbitrary x/y;
+- rounded corners and asymmetric radii;
+- 1× and fractional output scale;
+- 16:9, ultrawide and portrait outputs;
+- wallpaper source wider/narrower than output;
+- blur strengths including 0 and 1;
+- Angel saturation/color-strength variants;
+- mask edges and exact blur support near output boundaries.
+
+Compare:
+
+- normalized global MAE;
+- edge-band MAE;
+- maximum per-channel delta;
+- pixel parity on the interior host area.
+
+Strict-lossless promotion should target 0% visible difference. If the Qt
+MultiEffect kernel makes exact support difficult to bound, keep this in the
+user's allowed <1% visual-deviation program and document the measured delta
+rather than silently reducing fidelity.
+
+### Existing good work not to rediscover
+
+`ZzzGlassWash` already addresses a related but different cost: its wallpaper
+decode/effect source is intentionally rendered at `_washScale = 0.5` and the
+blur radius is adjusted accordingly. Do not count that existing half-resolution
+optimization as a new gain.
+
+`GlassBackground` also already disables its effect layers while the host is
+hidden, which is the correct lifecycle baseline. This candidate targets the
+remaining **visible-state full-screen FBO area**, not hidden residency.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

@@ -29,41 +29,20 @@ jobs:
         run: |
           set -euo pipefail
           cd /__w/Hadalis/Hadalis
-          git config user.name "Hadalis Shader Baker"
-          git config user.email "actions@users.noreply.github.com"
-          git fetch origin dev
-          git reset --hard origin/dev
 
           QSB="$(command -v qsb || true)"
           if [ -z "$QSB" ]; then QSB=/usr/lib/qt6/bin/qsb; fi
           "$QSB" --version
 
           src=modules/screenCorners/ScreenEdgeField.frag
-          out=modules/screenCorners/ScreenEdgeField.frag.qsb
+          out=/tmp/ScreenEdgeField.frag.qsb
           "$QSB" --qt6 -o "$out" "$src"
           "$QSB" --dump "$out" >/dev/null
 
-          tmp="$(mktemp)"
-          "$QSB" --qt6 -o "$tmp" "$src"
-          cmp "$tmp" "$out"
-          rm -f "$tmp"
+          second=/tmp/ScreenEdgeField.second.frag.qsb
+          "$QSB" --qt6 -o "$second" "$src"
+          cmp "$second" "$out"
 
-          git add "$out"
-          if git diff --cached --quiet; then
-            echo "Screen Edge QSB already current"
-            exit 0
-          fi
-
-          git commit -m "build(screen-edge): bake analytic field shader"
-
-          git fetch origin dev
-          git rebase origin/dev
-
-          tmp="$(mktemp)"
-          "$QSB" --qt6 -o "$tmp" "$src"
-          cmp "$tmp" "$out"
-          rm -f "$tmp"
-
-          git fetch origin dev
-          test "$(git rev-parse HEAD^)" = "$(git rev-parse origin/dev)"
-          git push origin HEAD:dev
+          printf 'SCREEN_EDGE_QSB_BASE64='
+          base64 -w0 "$out"
+          printf '\n'

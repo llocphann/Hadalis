@@ -42,7 +42,7 @@ cleanup_service_processes
         base = Path(tmp)
         group = "/user.slice/user-1000.slice/user@1000.service/app.slice/inir.service"
         for pid, cg in {101:group, 102:group, 103:group, 104:group,
-                        201:"/user.slice/automation.service", 202:"/user.slice/apps.scope",
+                        201:"/user.slice/unrelated.service", 202:"/user.slice/apps.scope",
                         203:"/user.slice/worker.service", 301:group+"-other",
                         401:group+"/child"}.items():
             folder = base / f"proc/{pid}"

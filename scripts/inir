@@ -2181,7 +2181,7 @@ kill_wrapper() {
 }
 
 # Only the stopped shell service owns these processes. Independent Quickshell
-# sessions, automation validation fixtures and user jobs must survive cleanup.
+# sessions, independent validation fixtures and user jobs must survive cleanup.
 inir_cleanup_owns_pid() {
     local pid="$1" unit_group="$2" hierarchy controllers process_group
     [[ "$pid" =~ ^[1-9][0-9]*$ && "$unit_group" == */inir.service ]] || return 1

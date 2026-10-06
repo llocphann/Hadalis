@@ -45,7 +45,7 @@ a release-readiness declaration.
 
 The maintainer authorized further strict-lossless Abyss implementation.
 This continuation uses repository tests and independent temporary fixtures/clones;
-there is no local worker/job-dispatch path.
+there is no background job-dispatch path.
 
 - [x] Refine existing §59.3: Sidebar obstacle arrays 3 → 1; Dock combination
   arrays 4 → 2. Retain both Sidebar progress reads before selected records and

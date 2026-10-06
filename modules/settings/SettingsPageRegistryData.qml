@@ -173,7 +173,7 @@ Singleton {
             key: "arrange",
             name: Translation.tr("Arrange"),
             icon: "swap_vert",
-            desc: Translation.tr("Reorder and hide navigation pages"),
+            desc: Translation.tr("Reorder and hide navigation tabs"),
             essential: false,
             component: "modules/settings/ArrangeConfig.qml"
         },
@@ -346,8 +346,8 @@ Singleton {
             pageIndex: 20, pageName: root.pages[20].name,
             section: Translation.tr("Arrange settings"),
             label: Translation.tr("Arrange settings"),
-            description: Translation.tr("Reorder groups and pages, or hide pages from navigation"),
-            keywords: ["arrange", "reorder", "categories", "groups", "nav", "sidebar", "customize", "layout", "settings", "hide", "show", "visibility", "drag"]
+            description: Translation.tr("Reorder or hide navigation tabs"),
+            keywords: ["arrange", "reorder", "tabs", "nav", "sidebar", "customize", "layout", "settings", "hide", "show", "visibility"]
         },
         {
             pageIndex: 1, pageName: root.pages[1].name,

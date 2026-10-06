@@ -514,7 +514,8 @@ pub fn build_app_palette(base: &Palette) -> Palette {
         .map(Hct::from_argb)
         .map(|hct| hct.hue())
         .unwrap_or(270.0);
-    let layer0_argb = parse_hex(&layer0).unwrap_or_else(|_| parse_hex("#000000").expect("valid fallback"));
+    let layer0_argb =
+        parse_hex(&layer0).unwrap_or_else(|_| parse_hex("#000000").expect("valid fallback"));
     let status = |hue: f64, chroma: f64| -> String {
         let delta = (accent_hue - hue + 180.0).rem_euclid(360.0) - 180.0;
         let shifted_hue = (hue + (delta * 0.25).clamp(-15.0, 15.0)).rem_euclid(360.0);

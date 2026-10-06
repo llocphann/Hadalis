@@ -466,7 +466,7 @@ def main() -> None:
     # error fallback. Healthy ScreenEdges.qml must not import its type graph.
     fallback_block = frame_window_block[fallback_start:]
     for token in (
-        "active: frameField.status === ShaderEffect.Error",
+        "active: frameField.shaderError",
         'Qt.resolvedUrl("ScreenEdgeLegacyFallback.qml")',
         "readonly property real frameLeftInset: frameWindow.frameLeftInset",
         "readonly property color shadowColor: Qt.alpha(",

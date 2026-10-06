@@ -474,16 +474,21 @@ def build_app_palette(base_palette: dict[str, str]) -> dict[str, str]:
     on_layer2 = readable_hex(on_surface, layer2, 4.5)
     on_layer3 = readable_hex(on_surface, layer3, 4.5)
     on_layer4 = readable_hex(on_surface, layer4, 4.5)
-    subtext = readable_hex(mix_hex(on_layer1, layer1, 0.75), layer1, 3.0)
-
     layer1_hover = mix_hex(layer1, on_layer1, 0.92)
     layer1_active = mix_hex(layer1, on_layer1, 0.85)
+    # Light themes need muted text to remain readable on hover/pressed fills.
+    if Hct.from_int(hex_to_argb(layer0)).tone >= 50:
+        subtext = readable_hex(mix_hex(on_layer1, layer1, 0.75), layer1_active, 4.5)
+    else:
+        subtext = readable_hex(mix_hex(on_layer1, layer1, 0.75), layer1, 3.0)
     layer2_hover = mix_hex(layer2, on_layer2, 0.90)
     layer2_active = mix_hex(layer2, on_layer2, 0.80)
     layer3_hover = mix_hex(layer3, on_layer3, 0.90)
     layer3_active = mix_hex(layer3, on_layer3, 0.80)
-    selection = mix_hex(layer3, primary, 0.82)
-    selection_hover = mix_hex(layer3, primary, 0.74)
+    # Selection uses the accent's quiet container rather than a greyed trace
+    # of primary, so state remains visible in both light and dark schemes.
+    selection = mix_hex(primary_container, layer3, 0.75)
+    selection_hover = mix_hex(primary_container, layer3, 0.88)
     on_selection = readable_hex(on_layer3, selection, 4.5)
 
     app = dict(base_palette)
@@ -629,6 +634,39 @@ for color in vars(MaterialDynamicColors).keys():
 
         rgba = generated_hct.to_rgba()
         material_colors[color] = rgba_to_hex(rgba)
+
+# Keep wallpaper accents inside Material's readable tone/chroma band.
+# Fidelity/content schemes can otherwise turn pale walls nearly white in dark
+# mode or vivid walls into neon.
+if args.scheme != "scheme-monochrome":
+    for key, palette_name in (("primary", "primary_palette"), ("secondary", "secondary_palette"), ("tertiary", "tertiary_palette")):
+        palette = getattr(scheme, palette_name, None)
+        if palette is None or key not in material_colors:
+            continue
+        tone = Hct.from_int(hex_to_argb(material_colors[key])).tone
+        if darkmode and not 70.0 <= tone <= 85.0:
+            material_colors[key] = argb_to_hex(palette.tone(80))
+        elif not darkmode and not 25.0 <= tone <= 50.0:
+            material_colors[key] = argb_to_hex(palette.tone(40))
+        container = key + "Container"
+        on_container = "on" + key[0].upper() + key[1:] + "Container"
+        if container in material_colors:
+            ctone = Hct.from_int(hex_to_argb(material_colors[container])).tone
+            if darkmode and not 20.0 <= ctone <= 40.0:
+                material_colors[container] = argb_to_hex(palette.tone(30))
+                material_colors[on_container] = argb_to_hex(palette.tone(90))
+            elif not darkmode and not 80.0 <= ctone <= 95.0:
+                material_colors[container] = argb_to_hex(palette.tone(90))
+                material_colors[on_container] = argb_to_hex(palette.tone(10))
+        role_hct = Hct.from_int(hex_to_argb(material_colors[key]))
+        if role_hct.chroma > 60.0:
+            material_colors[key] = argb_to_hex(Hct.from_hct(role_hct.hue, 60.0, role_hct.tone).to_int())
+        if key == "primary":
+            for role, floor in ((key, 36.0), (container, 24.0)):
+                if role in material_colors:
+                    h = Hct.from_int(hex_to_argb(material_colors[role]))
+                    if 4.0 <= h.chroma < floor:
+                        material_colors[role] = argb_to_hex(Hct.from_hct(h.hue, floor, h.tone).to_int())
 
 # Extended material
 if darkmode == True:
@@ -785,6 +823,15 @@ if args.termscheme is not None:
                 fg_argb = hex_to_argb(term_colors[color])
                 adjusted = ensure_contrast(fg_argb, bg_argb, 4.5, darkmode)
                 term_colors[color] = argb_to_hex(adjusted)
+
+        # Neutral terminal text follows the terminal background hue and is
+        # contrast-checked, preventing faint suggestions/comments in light mode.
+        bg_hct = Hct.from_int(bg_argb)
+        grey_chroma = min(bg_hct.chroma, 10.0)
+        for color, start_tone, ratio in (("term7", 75.0 if darkmode else 35.0, 4.5), ("term8", 60.0 if darkmode else 50.0, 3.5)):
+            if color in term_colors:
+                grey = Hct.from_hct(bg_hct.hue, grey_chroma, start_tone).to_int()
+                term_colors[color] = argb_to_hex(ensure_contrast(grey, bg_argb, ratio, darkmode))
 
         # Bright semantic colors: lighter contrast requirement (3.5:1) to preserve vibrancy
         bright_colors = ["term9", "term10", "term11", "term12", "term13", "term14"]
@@ -1112,7 +1159,17 @@ if args.render_templates:
 
     dark_palette = _generate_palette(True)
     light_palette = _generate_palette(False)
-    default_palette = dark_palette if darkmode else light_palette
+    # The current-mode templates must use exactly the palette the shell shows,
+    # including corrected accents and app semantic tokens.
+    current = dict(_generate_palette(darkmode))
+    current.update(material_colors)
+    current["source_color"] = argb_to_hex(argb)
+    current.update(app_palette_json)
+    if darkmode:
+        dark_palette = current
+    else:
+        light_palette = current
+    default_palette = current
 
     # Build the nested `colors` namespace expected by the compatibility templates:
     #   colors.<token>.dark.hex          → "#rrggbb"

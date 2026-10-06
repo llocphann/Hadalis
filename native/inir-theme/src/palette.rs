@@ -188,36 +188,36 @@ fn tint_light_surfaces(palette: &mut Palette, scheme_name: &str) {
         return;
     };
     let seed = Hct::from_argb(seed_argb);
-    let surface_chroma = (seed.chroma() * 0.55).clamp(18.0, 32.0);
+    let surface_chroma = (seed.chroma() * 0.82).clamp(30.0, 50.0);
     let hue = seed.hue();
 
     for (role, tone, scale) in [
-        ("background", 86.0, 1.00),
-        ("surface", 86.0, 1.00),
-        ("surfaceDim", 72.0, 1.10),
-        ("surfaceBright", 91.0, 0.82),
-        ("surfaceContainerLowest", 89.0, 0.88),
-        ("surfaceContainerLow", 83.0, 0.96),
-        ("surfaceContainer", 79.0, 1.00),
-        ("surfaceContainerHigh", 75.0, 1.06),
-        ("surfaceContainerHighest", 71.0, 1.12),
-        ("surfaceVariant", 74.0, 1.02),
+        ("background", 80.0, 1.00),
+        ("surface", 80.0, 1.00),
+        ("surfaceDim", 63.0, 1.08),
+        ("surfaceBright", 87.0, 0.88),
+        ("surfaceContainerLowest", 84.0, 0.92),
+        ("surfaceContainerLow", 76.0, 1.00),
+        ("surfaceContainer", 72.0, 1.04),
+        ("surfaceContainerHigh", 68.0, 1.08),
+        ("surfaceContainerHighest", 64.0, 1.12),
+        ("surfaceVariant", 67.0, 1.06),
     ] {
-        let chroma = (surface_chroma * scale).clamp(12.0, 36.0);
+        let chroma = (surface_chroma * scale).clamp(24.0, 54.0);
         palette.insert(role.into(), Hct::new(hue, chroma, tone).to_argb().to_hex());
     }
 
-    let ink_chroma = (surface_chroma * 0.45).clamp(6.0, 18.0);
+    let ink_chroma = (surface_chroma * 0.48).clamp(10.0, 26.0);
     for (role, tone, scale) in [
-        ("onBackground", 12.0, 0.75),
-        ("onSurface", 12.0, 0.75),
-        ("onSurfaceVariant", 27.0, 0.95),
-        ("outline", 43.0, 0.80),
-        ("outlineVariant", 60.0, 0.90),
-        ("inverseSurface", 18.0, 0.90),
-        ("inverseOnSurface", 90.0, 0.65),
+        ("onBackground", 10.0, 0.80),
+        ("onSurface", 10.0, 0.80),
+        ("onSurfaceVariant", 24.0, 1.00),
+        ("outline", 40.0, 0.85),
+        ("outlineVariant", 54.0, 0.95),
+        ("inverseSurface", 16.0, 0.95),
+        ("inverseOnSurface", 88.0, 0.70),
     ] {
-        let chroma = (ink_chroma * scale).clamp(4.0, 20.0);
+        let chroma = (ink_chroma * scale).clamp(6.0, 30.0);
         palette.insert(role.into(), Hct::new(hue, chroma, tone).to_argb().to_hex());
     }
 }
@@ -307,8 +307,8 @@ fn material_palette_with_policy(
                 if dark && !(20.0..=40.0).contains(&tone) {
                     palette.insert(container.into(), tonal.tone(30).to_hex());
                     palette.insert(on_container.into(), tonal.tone(90).to_hex());
-                } else if !dark && !(80.0..=95.0).contains(&tone) {
-                    palette.insert(container.into(), tonal.tone(90).to_hex());
+                } else if !dark {
+                    palette.insert(container.into(), tonal.tone(84).to_hex());
                     palette.insert(on_container.into(), tonal.tone(10).to_hex());
                 }
             }
@@ -1028,18 +1028,18 @@ mod tests {
             Hct::from_argb(parse_hex(material.get("surfaceContainer").unwrap()).unwrap());
 
         assert!(
-            background.tone() < 90.0,
-            "light background regressed to near-white: {}",
+            background.tone() <= 82.0,
+            "light background is still too close to white: {}",
             material.get("background").unwrap()
         );
         assert!(
-            background.chroma() >= 12.0,
-            "light background lost theme tint: {}",
+            background.chroma() >= 24.0,
+            "light background lost strong theme hue: {}",
             material.get("background").unwrap()
         );
         assert!(
-            container.chroma() >= 12.0,
-            "light container lost theme tint: {}",
+            container.chroma() >= 24.0,
+            "light container lost strong theme hue: {}",
             material.get("surfaceContainer").unwrap()
         );
 

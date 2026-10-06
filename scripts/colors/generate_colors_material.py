@@ -474,37 +474,39 @@ def tint_light_surfaces(palette: dict[str, str], scheme_name: str) -> dict[str, 
         return palette
 
     seed = Hct.from_int(hex_to_argb(seed_hex))
-    surface_chroma = min(32.0, max(18.0, seed.chroma * 0.55))
+    # Light mode is the same color family as dark mode at higher tones, not a
+    # near-white Material palette with a faint tint.
+    surface_chroma = min(50.0, max(30.0, seed.chroma * 0.82))
     hue = seed.hue
 
     surface_ramp = {
-        "background": (86.0, 1.00),
-        "surface": (86.0, 1.00),
-        "surfaceDim": (72.0, 1.10),
-        "surfaceBright": (91.0, 0.82),
-        "surfaceContainerLowest": (89.0, 0.88),
-        "surfaceContainerLow": (83.0, 0.96),
-        "surfaceContainer": (79.0, 1.00),
-        "surfaceContainerHigh": (75.0, 1.06),
-        "surfaceContainerHighest": (71.0, 1.12),
-        "surfaceVariant": (74.0, 1.02),
+        "background": (80.0, 1.00),
+        "surface": (80.0, 1.00),
+        "surfaceDim": (63.0, 1.08),
+        "surfaceBright": (87.0, 0.88),
+        "surfaceContainerLowest": (84.0, 0.92),
+        "surfaceContainerLow": (76.0, 1.00),
+        "surfaceContainer": (72.0, 1.04),
+        "surfaceContainerHigh": (68.0, 1.08),
+        "surfaceContainerHighest": (64.0, 1.12),
+        "surfaceVariant": (67.0, 1.06),
     }
     for role, (tone, chroma_scale) in surface_ramp.items():
-        chroma = min(36.0, max(12.0, surface_chroma * chroma_scale))
+        chroma = min(54.0, max(24.0, surface_chroma * chroma_scale))
         palette[role] = argb_to_hex(Hct.from_hct(hue, chroma, tone).to_int())
 
-    ink_chroma = min(18.0, max(6.0, surface_chroma * 0.45))
+    ink_chroma = min(26.0, max(10.0, surface_chroma * 0.48))
     ink_ramp = {
-        "onBackground": (12.0, 0.75),
-        "onSurface": (12.0, 0.75),
-        "onSurfaceVariant": (27.0, 0.95),
-        "outline": (43.0, 0.80),
-        "outlineVariant": (60.0, 0.90),
-        "inverseSurface": (18.0, 0.90),
-        "inverseOnSurface": (90.0, 0.65),
+        "onBackground": (10.0, 0.80),
+        "onSurface": (10.0, 0.80),
+        "onSurfaceVariant": (24.0, 1.00),
+        "outline": (40.0, 0.85),
+        "outlineVariant": (54.0, 0.95),
+        "inverseSurface": (16.0, 0.95),
+        "inverseOnSurface": (88.0, 0.70),
     }
     for role, (tone, chroma_scale) in ink_ramp.items():
-        chroma = min(20.0, max(4.0, ink_chroma * chroma_scale))
+        chroma = min(30.0, max(6.0, ink_chroma * chroma_scale))
         palette[role] = argb_to_hex(Hct.from_hct(hue, chroma, tone).to_int())
 
     return palette
@@ -734,8 +736,8 @@ if args.scheme != "scheme-monochrome":
             if darkmode and not 20.0 <= ctone <= 40.0:
                 material_colors[container] = argb_to_hex(palette.tone(30))
                 material_colors[on_container] = argb_to_hex(palette.tone(90))
-            elif not darkmode and not 80.0 <= ctone <= 95.0:
-                material_colors[container] = argb_to_hex(palette.tone(90))
+            elif not darkmode:
+                material_colors[container] = argb_to_hex(palette.tone(84))
                 material_colors[on_container] = argb_to_hex(palette.tone(10))
         role_hct = Hct.from_int(hex_to_argb(material_colors[key]))
         if role_hct.chroma > 60.0:

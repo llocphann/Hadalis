@@ -879,3 +879,98 @@ strict-lossless patch without first establishing the intended consumer order.
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — Desktop-entry lookup memo research
+
+Research-only continuation on current `dev`
+`3153562a6dabe3d630360a3786a1e93461300547`. No runtime/product source was
+changed in this round.
+
+Current `services/AppSearch.qml`:
+`74ea3c9e92860af62f10850c89118d79b7837543`.
+
+Repository/history search found no prior optimization note for memoizing
+`lookupDesktopEntry()` results.
+
+### Candidate — HIGH CONFIDENCE: memoize exact desktop-entry lookup results per DesktopEntries epoch
+
+`AppSearch.lookupDesktopEntry(appId)` already has good internal reverse maps,
+but every call still restarts the whole lookup chain:
+
+1. `DesktopEntries.heuristicLookup(appId)`;
+2. direct lowercase/kebab map probes;
+3. scoped/reverse-domain normalization candidates;
+4. suffix stripping;
+5. last-resort token-overlap scans across
+   `_desktopIdStemMap` and `_startupClassMap`.
+
+Many shell surfaces ask for the same application identity repeatedly across
+model rebuilds and delegate bindings. Current callers include:
+
+- `TaskbarApps.qml`;
+- `DockApps.qml`;
+- `BarTaskbar.qml`;
+- Dock/Bar/Waffle task buttons;
+- AltSwitcher;
+- MPRIS hint resolution;
+- ScreenTime history repair;
+- Dock Settings;
+- desktop-item validation/opening;
+- icon-theme fallback paths.
+
+A per-exact-input memo therefore avoids both repeated successful resolution and
+repeated expensive misses.
+
+Strict-lossless direction:
+
+1. cache `appId -> DesktopEntry|null` after the current lookup chain finishes;
+2. key by the exact incoming appId string rather than only lowercasing the key,
+   so any behavior specific to `DesktopEntries.heuristicLookup()` input casing
+   remains untouched;
+3. distinguish an explicit cached miss from “not in memo”;
+4. clear/invalidate the memo **immediately** in
+   `DesktopEntries.applications.onValuesChanged`;
+5. retain the existing 500 ms debounce for rebuilding the reverse maps;
+6. keep the exact lookup precedence and token-score algorithm unchanged.
+
+The immediate invalidation is required. Current source can observe a newly
+installed/removed desktop entry through `DesktopEntries.heuristicLookup()`
+before the debounced `_rebuildCache()` has rebuilt the local maps. If the memo
+were invalidated only when `_cacheRevision` advances, a previously cached hit
+or miss could remain stale for that debounce window.
+
+This candidate can be implemented with a private JS Map or equivalent private
+object; no QML binding or public change notification needs to depend on memo
+mutation.
+
+### Required oracle before implementation
+
+Compare current and memoized lookup result identity for:
+
+- exact desktop id/stem;
+- StartupWMClass;
+- executable basename;
+- whitespace/kebab normalization;
+- scoped IDs such as `@scope/app-desktop`;
+- reverse-domain ids;
+- suffix stripping;
+- token-overlap fallback;
+- no match;
+- case variants;
+- repeated hit and repeated miss;
+- DesktopEntries add/remove/change between repeated lookups, including a change
+  observed before the 500 ms reverse-map rebuild;
+- malformed/unexpected but currently tolerated string inputs.
+
+Cache invalidation must preserve the same first lookup result immediately after
+a DesktopEntries change.
+
+### Expected saving
+
+Repeated lookup of an unchanged app identity becomes O(1) Map access rather
+than re-running heuristic/normalization/token-overlap work. The structural gain
+is largest for misses and unusual Electron/AppImage ids that fall through to
+token scoring.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

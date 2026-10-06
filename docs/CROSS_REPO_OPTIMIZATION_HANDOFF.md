@@ -3425,3 +3425,155 @@ startup I/O and is not justified by static analysis.
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — Sidebar World Clock process cadence research
+
+Research-only continuation on current `dev`
+`d1811fdd4327a6120b5233f40d9442b4ba9f6a17`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- sidebar widget `modules/sidebarLeft/widgets/WorldClockWidget.qml`:
+  `5f9272b1aeedc3fa91b76e3a13de150bb6e61829`;
+- newer background service `services/WorldClock.qml`:
+  `1260b2d2ed85cf70339c2c8f366c296655dc3c9a`;
+- Settings world-clock section in `modules/settings/InterfaceConfig.qml`:
+  `6f9e2c644aafebc0b3b54ba34df14c272bbbe52d`.
+
+Repository/history search found no prior optimization note for the sidebar
+widget's process-per-tick clock rendering.
+
+### Candidate A — HIGH POTENTIAL, oracle-gated: separate timezone offset refresh from display ticking
+
+The sidebar World Clock renders each configured timezone by starting one Bash
+process on every display refresh:
+
+```qml
+Timer {
+    interval: root.showSeconds ? 1000 : 30000
+    running: GlobalStates.sidebarLeftOpen
+    repeat: true
+    triggeredOnStart: true
+    onTriggered: root._refresh()
+}
+
+function _refresh() {
+    ...
+    const command = [
+        "/usr/bin/bash", "-c",
+        "for tz; do TZ=\"$tz\" printf ...; done",
+        "world-clock-widget"
+    ]
+    ...
+    clockProcess.running = true
+}
+```
+
+Therefore, while the sidebar is open:
+
+- normal minute-only mode starts about two Bash processes per minute;
+- `showSeconds=true` starts roughly one Bash process every second.
+
+The process is doing two logically different jobs at once:
+
+1. resolving timezone/DST offset and calendar metadata;
+2. advancing the displayed clock.
+
+The newer background `WorldClock` service already demonstrates a lower-wakeup
+architecture: it resolves configured timezone offsets only every five minutes
+and advances display time locally from one `now` value.
+
+Research direction for the sidebar widget:
+
+1. split the current process-backed refresh into a sparse **timezone metadata /
+   offset refresh** and a cheap in-process **display tick**;
+2. refresh offset metadata at startup/timezone changes and on a conservative
+   cadence comparable to the newer service;
+3. when seconds are disabled, schedule a one-shot update at the next minute
+   boundary rather than every 30 seconds;
+4. when seconds are enabled, update the rendered second in-process from
+   `Date.now()` / a shared SystemClock rather than spawning Bash every second;
+5. keep the current process path as a compatibility oracle/fallback until QML
+   formatting proves parity.
+
+This can remove nearly all recurring child-process creation from the visible
+sidebar clock without reducing clock precision.
+
+### Why this is not yet a source-only strict-lossless patch
+
+The existing Bash output carries more than UTC offset:
+
+```text
+time | %z | localized date | day-of-year | hour24
+```
+
+and the widget derives cross-day badges from the day-of-year values.
+Replacing those fields with QML/JS calculations must be qualified for:
+
+- DST transitions;
+- half-hour / quarter-hour zones;
+- year rollover;
+- locale/date formatting parity;
+- local-zone day-delta behavior;
+- system clock jumps;
+- timezone config changes while a process is in flight.
+
+The process cadence reduction is therefore a strong optimization direction,
+but promotion to strict-lossless implementation requires a deterministic
+old-vs-new formatting oracle.
+
+### Candidate B — MEDIUM CONFIDENCE: process-free system-timezone fast path with readlink fallback
+
+Both the sidebar widget and its Settings section independently execute:
+
+```text
+/usr/bin/readlink /etc/localtime
+```
+
+to infer the system IANA timezone. The QML runtime already exposes `Intl`
+functionality — `services/WorldClock.qml` uses
+`Intl.supportedValuesOf("timeZone")`.
+
+A conservative path is:
+
+1. first try
+   `Intl.DateTimeFormat().resolvedOptions().timeZone`;
+2. accept it only when it is a non-empty IANA-like value;
+3. retain the current `readlink /etc/localtime` process as fallback when Intl
+   is unavailable, empty or unsuitable.
+
+This avoids one readlink process for normal supported runtimes while preserving
+the existing filesystem fallback.
+
+Do not remove the fallback from static reasoning alone. Systems can use copied
+`/etc/localtime`, unusual timezone configuration, or Qt builds with incomplete
+Intl behavior.
+
+### Existing good lifecycle retained
+
+The sidebar clock itself is not globally startup-resident by default. It is
+instantiated through `DraggableWidgetContainer.visibleWidgets`, and its periodic
+timer runs only while `GlobalStates.sidebarLeftOpen`.
+
+The Settings timezone probe also runs only while the Widgets Settings section is
+active.
+
+Therefore this finding is about **visible-feature recurring process cadence**,
+not default-idle shell startup.
+
+### Required measurement/oracle
+
+Before implementation:
+
+- compare old Bash records and proposed in-process records for a timezone corpus
+  covering UTC, DST, non-DST, +05:30, +05:45, -03:30 and date-line zones;
+- include one minute boundary, midnight, year rollover and known DST boundary
+  fixtures;
+- verify 12h/24h, seconds on/off, date text, offset label, dayDelta and local
+  highlight;
+- record child-process count for 5 minutes of sidebar-open operation in normal
+  and seconds modes.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

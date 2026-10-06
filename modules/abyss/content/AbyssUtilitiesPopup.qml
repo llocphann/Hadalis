@@ -30,7 +30,7 @@ Item {
     readonly property color utilityInk: Appearance.m3colors.darkmode
         ? AbyssStyle.textColor : "#000000"
     readonly property color utilityMutedInk: Appearance.m3colors.darkmode
-        ? root.utilityMutedInk : "#1a1a1a"
+        ? AbyssStyle.textColorMuted : "#1a1a1a"
 
     implicitWidth: panelWidth
     implicitHeight: panelHeight

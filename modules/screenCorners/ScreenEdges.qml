@@ -81,11 +81,16 @@ Scope {
         const list = configuredList ?? []
         if (!list || list.length === 0)
             return true
-        const matched = Quickshell.screens.filter(screen => {
+        let hasConfiguredOutput = false
+        // Preserve the old filter callback's complete screen/name read order so
+        // QML dependency capture stays identical, but avoid allocating a result
+        // array that was used only for its length.
+        for (const screen of Quickshell.screens) {
             const screenName = String(screen?.name ?? "")
-            return screenName.length > 0 && list.includes(screenName)
-        })
-        if (matched.length === 0)
+            if (screenName.length > 0 && list.includes(screenName))
+                hasConfiguredOutput = true
+        }
+        if (!hasConfiguredOutput)
             return true
         return list.includes(outputName)
     }

@@ -82,7 +82,10 @@ ON_PRIMARY=$(jq -r '.app_on_accent // .on_primary // empty' "$COLOR_SOURCE" 2>/d
 PRIMARY_CONTAINER=$(jq -r '.primary_container // empty' "$COLOR_SOURCE" 2>/dev/null)
 ON_PRIMARY_CONTAINER=$(jq -r '.on_primary_container // empty' "$COLOR_SOURCE" 2>/dev/null)
 SURFACE=$(jq -r '.app_view_bg // .surface // empty' "$COLOR_SOURCE" 2>/dev/null || echo "$BG")
-ON_SURFACE=$(jq -r '.app_on_surface // .on_surface // empty' "$COLOR_SOURCE" 2>/dev/null || echo "$FG")
+# Popovers, menus and dialogs use the window's full-strength text. The muted
+# app_on_surface token is intended for secondary content and can fall too low
+# on light popup surfaces.
+ON_SURFACE=$(jq -r '.app_foreground // .on_surface // empty' "$COLOR_SOURCE" 2>/dev/null || echo "$FG")
 SURFACE_CONTAINER=$(jq -r '.app_surface_elevated // .surface_container // empty' "$COLOR_SOURCE" 2>/dev/null)
 SURFACE_CONTAINER_HIGH=$(jq -r '.app_surface_popup // .surface_container_high // empty' "$COLOR_SOURCE" 2>/dev/null)
 SURFACE_CONTAINER_LOW=$(jq -r '.app_surface // .surface_container_low // empty' "$COLOR_SOURCE" 2>/dev/null)
@@ -97,6 +100,9 @@ APP_DIALOG_BG=$(jq -r '.app_dialog_bg // empty' "$COLOR_SOURCE" 2>/dev/null)
 APP_SELECTION=$(jq -r '.app_selection // empty' "$COLOR_SOURCE" 2>/dev/null)
 APP_SELECTION_HOVER=$(jq -r '.app_selection_hover // empty' "$COLOR_SOURCE" 2>/dev/null)
 APP_ON_SELECTION=$(jq -r '.app_on_selection // empty' "$COLOR_SOURCE" 2>/dev/null)
+APP_SUCCESS=$(jq -r '.app_success // empty' "$COLOR_SOURCE" 2>/dev/null)
+APP_WARNING=$(jq -r '.app_warning // empty' "$COLOR_SOURCE" 2>/dev/null)
+APP_ERROR=$(jq -r '.app_error // empty' "$COLOR_SOURCE" 2>/dev/null)
 
 # Semantic colors from Material tokens
 ERROR_COLOR=$(jq -r '.error // empty' "$COLOR_SOURCE" 2>/dev/null)
@@ -187,10 +193,10 @@ write_if_changed() {
 [[ -z "$SECONDARY" ]]   && SECONDARY="#69db7c"
 [[ -z "$SECONDARY_CONTAINER" ]] && SECONDARY_CONTAINER=$(adjust_color "$PRIMARY_CONTAINER" 8)
 
-# Map to KDE semantic names
-FG_NEGATIVE="$ERROR_COLOR"
-FG_NEUTRAL="$TERTIARY"
-FG_POSITIVE="$SECONDARY"
+# Map to KDE/GTK semantic names from the shared app palette when available.
+FG_NEGATIVE="${APP_ERROR:-$ERROR_COLOR}"
+FG_NEUTRAL="${APP_WARNING:-$TERTIARY}"
+FG_POSITIVE="${APP_SUCCESS:-$SECONDARY}"
 
 avg_brightness() {
     local hex="${1#\#}"
@@ -300,18 +306,18 @@ ForegroundPositive=${FG_POSITIVE}
 ForegroundVisited=${PRIMARY}
 
 [Colors:Selection]
-BackgroundAlternate=${ROW_ACTIVE_BG}
-BackgroundNormal=${ROW_ACTIVE_HOVER_BG}
-DecorationFocus=${PRIMARY}
-DecorationHover=${ROW_ACTIVE_HOVER_BG}
-ForegroundActive=${ROW_SELECTED_FG}
-ForegroundInactive=${FG_INACTIVE}
-ForegroundLink=${ROW_SELECTED_FG}
-ForegroundNegative=${ROW_SELECTED_FG}
-ForegroundNeutral=${ROW_SELECTED_FG}
-ForegroundNormal=${ROW_SELECTED_FG}
-ForegroundPositive=${ROW_SELECTED_FG}
-ForegroundVisited=${ROW_SELECTED_FG}
+BackgroundAlternate=${KDE_SELECTION_ALT}
+BackgroundNormal=${KDE_SELECTION_BG}
+DecorationFocus=${KDE_DECORATION_FOCUS}
+DecorationHover=${KDE_DECORATION_HOVER}
+ForegroundActive=${KDE_SELECTION_FG}
+ForegroundInactive=${KDE_SELECTION_FG_INACTIVE}
+ForegroundLink=${KDE_SELECTION_FG}
+ForegroundNegative=${FG_NEGATIVE}
+ForegroundNeutral=${FG_NEUTRAL}
+ForegroundNormal=${KDE_SELECTION_FG}
+ForegroundPositive=${FG_POSITIVE}
+ForegroundVisited=${KDE_SELECTION_FG}
 
 [Colors:Tooltip]
 BackgroundAlternate=${BG_ALT}
@@ -482,6 +488,16 @@ ROW_SELECTED_FG="$FG"
 [[ -n "$APP_SELECTION_HOVER" ]] && ROW_ACTIVE_HOVER_BG="$APP_SELECTION_HOVER"
 [[ -n "$APP_ON_SELECTION" ]]    && ROW_SELECTED_FG="$APP_ON_SELECTION"
 
+# Qt/KDE consumes semantic palette roles rather than CSS state rules. Keep the
+# selected row/tab and focus decoration on the same quiet accent-container
+# family as GTK, including readable secondary text on the selected fill.
+KDE_SELECTION_BG="${APP_SELECTION:-$ROW_ACTIVE_BG}"
+KDE_SELECTION_ALT="${APP_SELECTION_HOVER:-$ROW_ACTIVE_HOVER_BG}"
+KDE_SELECTION_FG="${APP_ON_SELECTION:-$ROW_SELECTED_FG}"
+KDE_SELECTION_FG_INACTIVE=$(blend_hex_percent "$KDE_SELECTION_FG" "$KDE_SELECTION_BG" 18)
+KDE_DECORATION_HOVER="${APP_SELECTION:-$ROW_ACTIVE_BG}"
+KDE_DECORATION_FOCUS="${APP_SELECTION_HOVER:-$ROW_ACTIVE_HOVER_BG}"
+
 # Generate Darkly.colors for Qt style override
 generate_darkly_colors() {
     local bg_rgb=$(hex_to_rgb "$BG")
@@ -495,9 +511,11 @@ generate_darkly_colors() {
     local error_rgb=$(hex_to_rgb "$FG_NEGATIVE")
     local neutral_rgb=$(hex_to_rgb "$FG_NEUTRAL")
     local positive_rgb=$(hex_to_rgb "$FG_POSITIVE")
-    local selection_bg_rgb=$(blend_rgb_percent "$SURFACE_CONTAINER_HIGH" "$PRIMARY" 18)
-    local selection_bg_alt_rgb=$(blend_rgb_percent "$SURFACE_CONTAINER" "$PRIMARY" 14)
-    local selection_hover_rgb=$(blend_rgb_percent "$SURFACE_CONTAINER_HIGH" "$PRIMARY" 28)
+    local selection_bg_rgb=$(hex_to_rgb "$KDE_SELECTION_BG")
+    local selection_bg_alt_rgb=$(hex_to_rgb "$KDE_SELECTION_ALT")
+    local selection_fg_rgb=$(hex_to_rgb "$KDE_SELECTION_FG")
+    local decoration_hover_rgb=$(hex_to_rgb "$KDE_DECORATION_HOVER")
+    local decoration_focus_rgb=$(hex_to_rgb "$KDE_DECORATION_FOCUS")
     
     cat << EOF
 [ColorEffects:Disabled]
@@ -551,16 +569,16 @@ ForegroundVisited=${primary_rgb}
 [Colors:Selection]
 BackgroundAlternate=${selection_bg_alt_rgb}
 BackgroundNormal=${selection_bg_rgb}
-DecorationFocus=${primary_rgb}
-DecorationHover=${selection_hover_rgb}
-ForegroundActive=${fg_rgb}
-ForegroundInactive=${fg_inactive_rgb}
-ForegroundLink=${fg_rgb}
-ForegroundNegative=${fg_rgb}
-ForegroundNeutral=${fg_rgb}
-ForegroundNormal=${fg_rgb}
-ForegroundPositive=${fg_rgb}
-ForegroundVisited=${fg_rgb}
+DecorationFocus=${decoration_focus_rgb}
+DecorationHover=${decoration_hover_rgb}
+ForegroundActive=${selection_fg_rgb}
+ForegroundInactive=$(hex_to_rgb "$KDE_SELECTION_FG_INACTIVE")
+ForegroundLink=${selection_fg_rgb}
+ForegroundNegative=${error_rgb}
+ForegroundNeutral=${neutral_rgb}
+ForegroundNormal=${selection_fg_rgb}
+ForegroundPositive=${positive_rgb}
+ForegroundVisited=${selection_fg_rgb}
 
 [Colors:Header]
 BackgroundAlternate=${bg_alt_rgb}
@@ -678,6 +696,19 @@ if write_if_changed "$GTK3_CSS" << EOF
 
 @define-color card_bg_color ${APP_CARD_BG};
 @define-color card_fg_color ${ON_SURFACE};
+
+@define-color success_color ${FG_POSITIVE};
+@define-color warning_color ${FG_NEUTRAL};
+@define-color error_color ${FG_NEGATIVE};
+@define-color destructive_color ${FG_NEGATIVE};
+@define-color success_bg_color ${FG_POSITIVE};
+@define-color warning_bg_color ${FG_NEUTRAL};
+@define-color error_bg_color ${FG_NEGATIVE};
+@define-color destructive_bg_color ${FG_NEGATIVE};
+@define-color success_fg_color ${BG};
+@define-color warning_fg_color ${BG};
+@define-color error_fg_color ${BG};
+@define-color destructive_fg_color ${BG};
 
 @define-color sidebar_bg_color ${APP_SIDEBAR_BG};
 @define-color sidebar_fg_color ${FG};
@@ -852,6 +883,20 @@ if write_if_changed "$GTK4_CSS" << EOF
     /* Thumbnail */
     --thumbnail-bg-color: ${SURFACE_CONTAINER_HIGHEST};
     --thumbnail-fg-color: ${ON_SURFACE};
+
+    /* Semantic status colours from the shared app palette */
+    --success-color: ${FG_POSITIVE};
+    --success-bg-color: ${FG_POSITIVE};
+    --success-fg-color: ${BG};
+    --warning-color: ${FG_NEUTRAL};
+    --warning-bg-color: ${FG_NEUTRAL};
+    --warning-fg-color: ${BG};
+    --error-color: ${FG_NEGATIVE};
+    --error-bg-color: ${FG_NEGATIVE};
+    --error-fg-color: ${BG};
+    --destructive-color: ${FG_NEGATIVE};
+    --destructive-bg-color: ${FG_NEGATIVE};
+    --destructive-fg-color: ${BG};
 
     /* Misc */
     --shade-color: rgba(0, 0, 0, 0.25);

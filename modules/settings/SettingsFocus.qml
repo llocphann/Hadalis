@@ -66,7 +66,7 @@ Scope {
     })
 
     readonly property var currentMeta: (currentPage >= 0 && currentPage < pages.length)
-        ? pages[currentPage] : ({})
+        ? (pages[currentPage] ?? ({})) : ({})
 
     onSettingsOpenChanged: {
         if (settingsOpen) {

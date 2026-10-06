@@ -260,7 +260,7 @@ Never run raw `qs kill -c inir` / `qs -c inir` by hand. iNiR runs under `inir.se
 Material connected presentation retains its existing ownership boundary:
 
 - **Connected popup presentation is active by default** for existing ii bar popups through `StyledPopup.qml`. `ConnectedSurfaceGeometry` and `ConnectedSurfaceRevealClip` retain the slide-only lifecycle, while `ConnectedSurfaceIrisFrame` renders the exact iRiS v2.31.0 SDF union in the Overlay window using Top-layer Bar/Screen Edge owner records without repainting those owners. `ConnectedSurfaceBodyMask` keeps compositor input on the revealed rounded body only. Legacy `ConnectedSurfaceFrame` / `ConnectedSurfaceMask` remain available for Waffle and non-cutover shared surfaces; they are no longer the ii StyledPopup renderer.
-- **Retired `iiPerimeter` composition remains absent.** Abyss is an independent family with its own output-local renderer, not a reactivation of that cutover. Material ScreenEdges geometry remains unchanged.
+- **Retired `iiPerimeter` composition remains absent.** Abyss is an independent family with its own output-local renderer, not a reactivation of that cutover. Material ScreenEdges keeps the same locked FrameWindow ownership, rounded workspace opening, Bar-owned inset rules and reservation windows; its healthy paint backend is now the texture-free `ScreenEdgeField` analytic SDF, with the former Shape/MultiEffect renderer retained only as a lazy shader-error fallback.
 
 Detailed contracts and local visual acceptance steps live in `docs/PERIMETER.md` and `docs/SHELL_SURFACE_CONTRACTS.md`.
 

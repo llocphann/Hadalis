@@ -97,6 +97,12 @@ Rules:
 | `services/TlpService.qml` | **HIGH-CONFIDENCE opt-in reactive candidate — reconcile charge policy from `enabled`/`effectiveRequestedLimit` changes instead of every Config write.** The current global listener calls `apply()` after every Config mutation. `apply()` has strong no-op guards, so unrelated writes usually do not spawn `pkexec`, but they still schedule reconciliation. The desired charge policy is represented by the two Config-derived properties; hardware/status changes already flow through detector/apply completion. | Low. Preserve Config-ready detection, supported/discrete normalization and disable-owned-policy cleanup. | None. | Low CPU/event-loop reduction; avoids unnecessary apply comparisons on unrelated setting edits. | 0%. |
 | `modules/background/Background.qml` | **NO CURRENT CHANGE — revision invalidations are live, not dead.** Full-file verification shows `_zoneRevision` is consumed by `_computeZoneOccupants()`, and `_imageRouteRevision` is consumed by the dynamic image-converter `Connections.target`. Search snippets initially obscured those reads. Do not remove either counter without a replacement dependency contract. | — | None. | None. | 0%. |
 
+
+| `modules/bar/Workspaces.qml` | **HIGH-CONFIDENCE multi-output CPU candidate — skip workspace config/occupancy refresh when the workspace config snapshot is unchanged.** Every Workspaces instance listens to global `Config.configChanged`; `syncWorkspaceConfig()` then calls `updateWorkspaceOccupied()`, whose debounced worker builds a Set from every Niri window and derives occupied state for each shown workspace. Unrelated settings changes therefore cause O(outputs × windows) work. Keep the broad reliability signal if desired, but compare a signature/snapshot of only `bar.workspaces` fields before assigning properties or scheduling occupancy work. | Low. Relevant workspace config changes must still refresh immediately; Niri/Hyprland workspace/window signals remain the authoritative occupancy triggers. | None. | Low–Medium CPU/allocation reduction during settings edits, larger with more outputs/windows. | 0%. |
+| `services/Ai.qml` | **NO IMMEDIATE MODEL-REBUILD BUG — global Config listener already has a semantic signature guard.** `_syncExtraModels()` serializes AI policy/extraModels/provider membership and returns before destroying/recreating AiModels when unchanged. A narrower Config trigger could save signature allocations when Ai is resident, but model churn is already prevented. | — | None. | Low possible allocation cleanup only. | 0%. |
+| `services/TimerService.qml` | **NO IMMEDIATE OPTIMIZATION — broad Pomodoro sync is intentionally cheap.** Every Config change copies four validated integers into service properties. No process, file I/O, model rebuild or list scan follows solely from that sync. Keep the simple reliable listener unless profiling identifies it. | — | None. | Negligible. | 0%. |
+| `shell.qml` deferred-feature Config listener | **NO IMMEDIATE OPTIMIZATION — broad checks are idempotent feature admission, not repeated heavy work.** On Config changes shell re-evaluates ScreenTime/Weather/CavaTheme/CalendarSync/FontSync eligibility; assignments are one-way singleton materialization and expensive service work retains its own lifecycle. Narrow only if a runtime trace shows this bookkeeping itself matters. | — | None. | Negligible. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -120,8 +126,9 @@ Rules:
 19. **GameMode Config-ready-safe Niri reconciliation** — preserve startup-resident GameMode state but prevent pre-config mutation/reload based on fallback defaults.
 20. **AppSearch revision-keyed desktop-entry lookup memo** — avoid repeated O(n)-style fallback scans for stable unknown/Electron/AppImage IDs.
 21. **Domain-specific Config invalidation narrowing** — WallpaperListener, ThemeService and MPRIS are the cleanest first cuts; ThinkFan/TLP follow with feature-specific regression updates.
-22. **MPRIS expired grace pruning** — low-risk cumulative session cleanup; fold pruning into existing lifecycle updates with no timer.
-23. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
+22. **Workspace config snapshot guard** — prevent every unrelated Config write from scheduling per-output O(windows) occupancy reconstruction.
+23. **MPRIS expired grace pruning** — low-risk cumulative session cleanup; fold pruning into existing lifecycle updates with no timer.
+24. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
 
 ## Explicit non-candidates from this pass
 
@@ -1174,4 +1181,99 @@ A repository search snippet initially exposed only the declaration/increment of 
 Both are deliberate dependency bridges around imperative helper functions. Do not remove them under the current strict-lossless audit.
 
 A later optimization could narrow `_zoneRevision` to widget-layout-related changes, but that requires a domain signature or path-aware Config event and is lower confidence than the service-level cuts above.
+
+## Research continuation — round 11
+
+Baseline: `dev` at `2b66fce9e5b58b801757b581b7029f3f309fb043`.
+
+### R11.1 — Workspaces turns an unrelated Config write into per-output window scanning
+
+Current `modules/bar/Workspaces.qml`: `f7c51bb42b984ba8d3da078652a36ca75bd2db71`.
+
+Every instance owns:
+
+```qml
+Connections {
+    target: Config
+    function onConfigChanged(): void {
+        syncWorkspaceConfigTimer.restart()
+    }
+}
+```
+
+The zero-delay timer runs `syncWorkspaceConfig()`, which copies the `bar.workspaces` settings and unconditionally calls:
+
+```qml
+root.updateWorkspaceOccupied()
+```
+
+That starts a 50 ms debounce whose Niri path does:
+
+```text
+iterate NiriService.windows
+ -> build Set(workspace_id)
+ -> derive occupied state for every shown workspace
+```
+
+The shared Workspaces component is instantiated by Classic horizontal/vertical bars and Abyss bar modules, so the cost scales with the number of presented output bars.
+
+Nothing about a change such as theme color, audio setting, notification preference or unrelated widget option changes workspace occupancy.
+
+Strict-lossless direction:
+
+1. compute a canonical snapshot from the fields copied by `syncWorkspaceConfig()`:
+   `showAppIcons`, `alwaysShowNumbers`, `useNerdFont`, `monochromeIcons`, `numberMap`, `perMonitor`, `scrollBehavior`, `dynamicCount`, `shown`, `wrapAround`, `scrollSteps`, `invertScroll`;
+2. if the snapshot equals the last applied snapshot, return before assignments and before `updateWorkspaceOccupied()`;
+3. preserve Config-ready initial sync;
+4. preserve Niri/Hyprland workspace/window/focus signals as the normal occupancy owners;
+5. if `syncGlobalWorkspaceConfig=false`, do not use unrelated Config changes as an occupancy clock.
+
+Focused regression should count `doUpdateWorkspaceOccupied()` calls across two synthetic outputs: unrelated Config change -> zero new occupancy work; relevant workspace setting -> one per instance after debounce; Niri window/workspace change -> unchanged behavior.
+
+### R11.2 — AI model synchronization already protects the expensive part
+
+Current `services/Ai.qml`: `91496b093b137b77bed6ffbd9bfffeba201684e3`.
+
+Ai still receives every Config change, but `_syncExtraModels()` builds:
+
+```text
+policy | JSON(extraModels) | JSON(sorted live provider IDs)
+```
+
+and returns when that signature matches `_extraModelsSignature`.
+
+The destructive part — destroying old extra `AiModel` objects, recreating them and rebuilding `modelList` — therefore does not happen for unrelated Config changes.
+
+A later micro-optimization could move the call behind derived `policy/extraModels` changes and let `AiProviderCatalog.onCatalogUpdated` remain the provider owner. That would only save temporary arrays/Set/sort/JSON serialization while Ai is resident, so it ranks below Workspaces and Round 10 services.
+
+### R11.3 — TimerService's broad Config sync is cheap enough to leave alone
+
+Current `services/TimerService.qml`: `00f1733dc6f9b0ef822557dfb8524800af104ff2`.
+
+The global listener calls `_syncPomodoroConfig()`, which validates and assigns four integer values:
+
+- focus duration;
+- break duration;
+- long-break duration;
+- cycles before long break.
+
+It does not launch a process, persist state, rebuild a model or start a timer merely because those assignments occur.
+
+Replacing this with more signal machinery would optimize a handful of arithmetic/property assignments and increase lifecycle complexity. Keep it as a deliberate non-candidate unless profiling contradicts the static assessment.
+
+### R11.4 — Shell's broad deferred-feature check is admission control, not repeated service work
+
+Current `shell.qml`: `aae76205a819e9b098f6a4be7fb6d56e14ff4900`.
+
+On every Config change, shell calls:
+
+```text
+_ensureScreenTimeService()
+_ensureDeferredFeatureServices()
+_ensureLateFeatureServices()
+```
+
+Those functions check a small set of booleans/panel membership and assign singleton references only when a feature should exist. Once assigned, the same assignment does not recreate a singleton; the services retain their own work gating.
+
+This broad check also allows an option enabled at runtime to materialize its service without requiring shell restart. It is therefore a good example where narrowing the listener is unnecessary unless actual traces attribute cost to it.
 

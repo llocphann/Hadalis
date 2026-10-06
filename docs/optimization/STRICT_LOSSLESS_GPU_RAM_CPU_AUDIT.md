@@ -81,6 +81,14 @@ Rules:
 | `services/MprisController.qml` | **MEASURE FIRST — direct-ALSA MPD compatibility probe remains eager.** Standard MPRIS state is needed early, and `pw-dump` is already event-gated, but `Component.onCompleted` still launches a Bash probe for `mpd-mpris` + `pgrep mpd` so an MPD session that bypasses PipeWire can become visible automatically. Moving only this probe after first frame could reduce startup fan-out, but can delay an already-playing MPD indicator. | Medium; direct-ALSA MPD discovery timing is user-visible. | None. | Negligible. | 0% pixels; presentation timing tradeoff. |
 | `services/YtMusic.qml` | **NO ACTION — feature is already correctly self-gated despite early singleton references.** MprisController references YtMusic, but YtMusic's completion path calls `_initialize()` only when `sidebar.ytmusic.enable` is true; dependency probes, orphan-mpv cleanup, browser detection, data loads and OAuth checks remain dormant otherwise. | — | None. | None beyond resident declarative state. | 0%. |
 
+
+| `services/Wallpapers.qml` | **HIGH-CONFIDENCE dead-cache removal — stop rebuilding the unused `wallpapers` list.** The service already exposes `folderModel` directly to every live selector/settings consumer. Repository-wide search finds no reader of `Wallpapers.wallpapers`; inside the service it is only cleared and repopulated in 64-item batches from `folderModel`. Remove `wallpapers`, `_wallpaperCacheIndex`, `_wallpaperCacheBuilder`, `_wallpaperCacheBatchesSincePublish`, `rebuildWallpapersCache()`, `appendWallpapersCacheBatch()`, the zero-delay cache timer and the `onCountChanged` rebuild hook. | Low. Preserve the public `folderModel`/directory/search/history contract; verify no external documented IPC/SDK surface promises `Wallpapers.wallpapers`. | None. | Low–Medium on large wallpaper folders by avoiding duplicate path strings, repeated array copies and batch timer churn. | 0%. |
+| `services/AppSearch.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — revision-keyed memo for `lookupDesktopEntry(appId)`.** Taskbar, dock, media, icon, ScreenTime and desktop-item surfaces repeatedly resolve stable app IDs. Direct misses currently fall through aggressive normalization and token-overlap loops over `_desktopIdStemMap`/`_startupClassMap` every call. Cache both hits and misses by exact input for the current `_cacheRevision`; invalidate atomically whenever DesktopEntries rebuild. | Low. The memo must key on input plus current revision and never survive a DesktopEntries rebuild; malformed/empty inputs remain uncached or preserve current null semantics. | None. | Low–Medium JS allocation/CPU reduction on repeated unknown/Electron/AppImage IDs. | 0%. |
+| `services/Wallpapers.qml` + `FolderListModelWithHistory.qml` | **MEASURE FIRST — lazy wallpaper catalog residency.** `Wallpapers` is startup-resident through theme/background state, and its `FolderListModelWithHistory` immediately points at `~/Pictures/Wallpapers` (or configured directory), even though ordinary desktop rendering only needs the configured current path. Random-wallpaper actions and selector/settings pages need the catalog. Measure directory metadata/RSS cost with 100/1k/10k entries before deciding whether catalog ownership should activate only on selector/settings/random/auto-wallpaper demand. | Medium. Random shortcut currently has immediate access to `folderModel.count`; lazy loading introduces first-use latency unless a separate on-demand picker is used. Directory history/search semantics must survive activation/deactivation. | None directly. | Potentially medium with very large libraries. | 0% final pixels; first-use latency is the acceptance risk. |
+| `services/GlobalActions.qml` + `scripts/setup/_scan.sh` | **LOW-PRIORITY / MEASURE FIRST — setup recipe scan.** Tier 3 always runs one Bash scanner; today the shipped directory has only one non-private recipe, so the scanner starts Bash plus one AWK process and reads at most 60 lines of that script. It also enables reactive rescans on folder mutation. This is real process fan-out but currently too small to justify complicating IPC/search availability. | Low technically, but setup actions are part of the globalActions catalog/IPC after Tier 3. | None. | Negligible. | 0%. |
+| `services/RecorderStatus.qml` | **MEASURE FIRST — global external-recorder discovery cadence.** The service already does the right thing for visible controls: keyed fast-demand leases and bounded quick checks. When idle with no UI demand it still runs a global status probe every 15 s (30 s in low-power mode) to discover externally launched recorders. Replacing or further delaying this changes discovery latency; only revisit if process-wakeup traces show measurable cost. | Medium because external recorder detection latency is observable. | None. | Negligible. | 0%. |
+| `services/AwwwBackend.qml` | **NO IMMEDIATE OPTIMIZATION — capability probe is required by the default backend contract.** Static wallpapers default to awww when both optional client/daemon binaries are available; the service must discover availability before deciding whether the external renderer or internal fallback owns the visible wallpaper. One startup Bash capability probe is therefore legitimate until an equivalent in-process executable lookup is available without PATH semantic loss. | — | None. | Negligible. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -100,9 +108,11 @@ Rules:
 15. **Waffle lock static-wallpaper blur + avatar mask specialization** — potentially valuable because lock screens can remain visible for long periods.
 16. **DashboardLayout guarded allocation/CPU work** — strict-lossless if current-dev oracle parity is re-established.
 17. **GameMode fallback watchdog research** — small CPU/wakeup candidate with no visual change.
-18. **GameMode Config-ready-safe Niri reconciliation** — preserve startup-resident GameMode state but prevent pre-config mutation/reload based on fallback defaults.
-19. **MPRIS expired grace pruning** — low-risk cumulative session cleanup; fold pruning into existing lifecycle updates with no timer.
-20. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
+18. **Wallpapers dead catalog-cache removal** — remove the unused duplicated path list/batch rebuild while preserving the public FolderListModel.
+19. **GameMode Config-ready-safe Niri reconciliation** — preserve startup-resident GameMode state but prevent pre-config mutation/reload based on fallback defaults.
+20. **AppSearch revision-keyed desktop-entry lookup memo** — avoid repeated O(n)-style fallback scans for stable unknown/Electron/AppImage IDs.
+21. **MPRIS expired grace pruning** — low-risk cumulative session cleanup; fold pruning into existing lifecycle updates with no timer.
+22. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
 
 ## Explicit non-candidates from this pass
 
@@ -795,4 +805,161 @@ Current `YtMusic.qml`: `063ef1bd591d222d9a60b240dec218c1c4171213`.
 Despite direct singleton references from MprisController, YtMusic only calls `_initialize()` when `sidebar.ytmusic.enable` is true. Its orphaned-mpv cleanup, dependency probes, browser detection, data load and OAuth/session restoration therefore remain dormant when the feature is disabled.
 
 This is the desired state-vs-expensive-work pattern and should be preserved.
+
+## Research continuation — round 9
+
+Baseline: `dev` at `05f7e7f75416545f16ab67eca6ec017c5dc1bc43`.
+
+### R9.1 — Wallpapers builds a dead duplicate catalog on every folder count change
+
+Current `services/Wallpapers.qml`: `162dc98dcb742d7dec918a1da01659ef64265330`.
+
+The service exposes the live `FolderListModelWithHistory` directly:
+
+```qml
+property alias directory: folderModel.folder
+property alias folderModel: folderModel
+readonly property bool folderModelReady: ...
+```
+
+and all repository consumers use `Wallpapers.folderModel`, `folderModelReady`, `effectiveDirectory`, `searchQuery` or direct helper methods.
+
+Separately, the service owns:
+
+```qml
+property list<string> wallpapers: []
+property int _wallpaperCacheIndex: 0
+property var _wallpaperCacheBuilder: []
+property int _wallpaperCacheBatchesSincePublish: 0
+```
+
+plus `rebuildWallpapersCache()`, `appendWallpapersCacheBatch()` and a zero-delay `wallpaperCacheTimer`. `folderModel.onCountChanged` always starts this batch copy.
+
+Repository-wide search finds **no read of `Wallpapers.wallpapers`**. Inside the file, the property is only cleared and assigned from `builder.slice()`.
+
+That makes this a strict-lossless source cleanup for current repo behavior:
+
+1. remove the unused path-list property and its builder/index counters;
+2. remove both rebuild functions and the zero-delay batch timer;
+3. remove only the `onCountChanged: root.rebuildWallpapersCache()` side effect;
+4. keep the actual `FolderListModelWithHistory` and all navigation/search/history behavior untouched.
+
+For a directory with N items, this avoids copying every file path into a second JS/QML list and avoids repeated partial `slice()` publications every four 64-item batches.
+
+### R9.2 — The wallpaper directory model itself is a separate, larger residency question
+
+Current model implementation: `modules/common/models/FolderListModelWithHistory.qml` at `2aeb3e712dbf3f3ad9e7c0d67a1250b7373fa0ca`.
+
+`Wallpapers.defaultFolder` resolves to `Directories.wallpapersPath`, which defaults to `~/Pictures/Wallpapers`. The `FolderListModelWithHistory` is constructed as soon as Wallpapers is resident and immediately points at that directory.
+
+Yet startup-critical wallpaper rendering does not need the directory catalog. It needs current configured paths, per-monitor mapping and video-first-frame helpers. The catalog is consumed by:
+
+- Wallpaper Selector/Coverflow;
+- Quick/Background Settings wallpaper grids;
+- random-from-current-folder actions;
+- auto-wallpaper cycling.
+
+This suggests a larger memory/I/O opportunity: separate “current wallpaper state/apply helpers” from “directory catalog ownership.”
+
+Do **not** promote this from static reading alone. A lazy model changes the first random/selector interaction unless an on-demand catalog can be primed fast enough. Benchmark at least 100, 1,000 and 10,000 files and record:
+
+- shell startup CPU/I/O;
+- RSS before selector open;
+- first selector-open latency;
+- random shortcut latency;
+- folder-history/search behavior after close/reopen.
+
+If the directory model is material, prefer a demand lease such as `selector/settings/random/autoWallpaper` rather than keeping it permanently alive solely for `randomFromCurrentFolder()`.
+
+### R9.3 — AppSearch has a safe memo boundary around expensive fallback identity matching
+
+Current `services/AppSearch.qml`: `74ea3c9e92860af62f10850c89118d79b7837543`.
+
+At startup `_rebuildCache()` builds three reverse maps:
+
+- StartupWMClass -> DesktopEntry;
+- executable basename -> DesktopEntry;
+- desktop-id stem -> DesktopEntry.
+
+The maps are required early because Taskbar/Dock/IconThemeService/MPRIS and other visible surfaces call `lookupDesktopEntry(appId)`.
+
+For simple IDs, Quickshell heuristic lookup or direct map lookup is cheap. For an unknown/scoped/Electron/AppImage ID, the function can continue through:
+
+- scoped/path segment normalization;
+- suffix stripping;
+- token extraction;
+- `Object.entries(_desktopIdStemMap)` scan with per-key tokenization;
+- `Object.entries(_startupClassMap)` scan with per-key tokenization.
+
+The same stable app IDs are resolved repeatedly by taskbar buttons, previews, dock buttons, media-node icon matching and other bindings. There is currently no result memo.
+
+Strict-lossless direction:
+
+```text
+lookupMemoRevision
+lookupMemo: exact input string -> DesktopEntry | explicit MISS sentinel
+```
+
+At the start of `lookupDesktopEntry`:
+
+1. empty input preserves current null result;
+2. if memo revision equals `_cacheRevision` and the exact input is present, return cached hit/miss;
+3. otherwise execute the current lookup byte-for-byte;
+4. cache the final result;
+5. when `_rebuildCache()` increments `_cacheRevision`, clear or logically invalidate the memo.
+
+Caching misses is important: strange app IDs are precisely the path that pays the two fallback map scans.
+
+Add a focused contract covering: normal heuristic hit, StartupWMClass hit, exec hit, scoped Electron normalization, token-overlap fallback, cached miss, and invalidation after a synthetic DesktopEntries revision.
+
+### R9.4 — Do not lazy-build the whole AppSearch catalog yet
+
+The full `_rebuildCache()` also sorts DesktopEntries and builds `_cachedList`/`_cachedNameLowers`. Only launcher/settings/all-apps surfaces need the alphabetical list, while taskbar identity needs the reverse maps.
+
+Splitting those ownership domains could save startup sort/allocation work, but the current list also participates in reactive `list` semantics and several Settings pages. This is plausible but lower-confidence than lookup memoization.
+
+Measure desktop-entry counts and `_rebuildCache()` duration before introducing a second lazy list lifecycle. The existing fuzzy prepared-name/icon indices are already lazy and should remain so.
+
+### R9.5 — GlobalActions setup scan is real but currently tiny
+
+Current sources:
+
+- `services/GlobalActions.qml`: `30c88a1edf2c6f70a2f6471631585e9b8fc566bd`;
+- `scripts/setup/_scan.sh`: `a8047db9398e1df52e91d94d6114f522bb3b8b23`.
+
+Tier 3 unconditionally calls `refreshSetupActions()`, which starts one Bash process. The scanner then starts one AWK per non-private setup recipe and reads only the first 60 lines for `@meta` headers.
+
+At this baseline, `scripts/setup/` contains only one public recipe (`spotify.sh`). Therefore this wave is currently one Bash + one AWK, not a large startup fan-out.
+
+Keep reactive folder rescanning and immediate post-Tier-3 action availability unless a future recipe count grows enough for measurement to justify a different metadata format.
+
+### R9.6 — RecorderStatus is already demand-tiered where it matters
+
+Current `services/RecorderStatus.qml`: `7e221f7168f42c5348f4b07fe7ae8a0827c6a946`.
+
+The service has already avoided the bad design of one-second global polling:
+
+- visible recorder controls acquire keyed fast-status demand;
+- start/stop actions use a bounded 350 ms quick-check loop;
+- active recording uses a 1 s tick for elapsed time and stop detection;
+- idle/no-demand mode polls every 15 s, or 30 s in low-power mode.
+
+Only the last path remains unconditional once the service is resident, because it discovers externally launched `wf-recorder` instances.
+
+Turning it off would change external-recorder detection semantics. Treat it as a runtime wakeup measurement target, not a source-only optimization.
+
+### R9.7 — Awww startup capability detection is part of the default wallpaper renderer decision
+
+Current `services/AwwwBackend.qml`: `fb5fc38ebe2735a1d97201990e555c40a2c82779`.
+
+The backend is intentionally enabled by default and static wallpaper ownership depends on:
+
+```qml
+readonly property bool available: clientAvailable && daemonAvailable
+readonly property bool active: enabled && available
+```
+
+The startup probe checks explicit standard paths and then PATH fallback for both `awww` and `awww-daemon`. When available, it triggers sync; when unavailable, Background/Waffle fall back to the internal renderer.
+
+Thus this process cannot simply be demand-gated behind Settings or wallpaper selection: it determines the initial visible rendering engine. Only replace it if Quickshell/native code can perform an equivalent executable lookup without losing non-standard PATH support.
 

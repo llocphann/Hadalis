@@ -66,6 +66,15 @@ Rules:
 | `services/ThemeService.qml` + `services/MaterialThemeLoader.qml` + `services/IconThemeService.qml` + `services/FontSyncService.qml` | **MEASURE FIRST — separate shell-internal theme readiness from external desktop synchronization.** At Config-ready, shell calls ThemeService and IconThemeService. ThemeService can queue `applycolor.sh` plus the default-enabled Vesktop palette generation; IconThemeService restores the saved theme via `gsettings set` then runs native desktop icon sync; FontSync later reconciles GTK/KDE fonts. Shell palette/icon identity should stay immediate, but external app synchronization could be coalesced/deferred until after first frame if startup traces show contention. | Medium–High. External applications may observe synchronization timing, so this is not strict behavioral parity unless the deferred boundary is proven unobservable for session startup. | None. | Low transient. | Shell visual target 0%; external-app timing requires separate acceptance. |
 | `modules/common/Directories.qml` + `services/SystemInfo.qml` | **MEASURE FIRST — split critical bootstrap directories from transient cleanup and lazy GECOS display-name lookup.** Directories already consolidated fourteen child processes into one ordered Bash bootstrap, but that command still removes feature temp trees during first-frame formation. SystemInfo seeds username from `$USER` yet immediately runs `getent passwd` to resolve displayName. Measure before changing: defer only cleanup that no startup-visible feature requires, and resolve displayName on first profile/lock/settings demand while retaining NSS correctness. | Medium. Early avatar/profile consumers and stale-cache cleanup contracts must be enumerated first. | None. | Low. | 0%. |
 
+
+| `services/MprisController.qml` | **HIGH-CONFIDENCE session-growth cleanup — prune expired player-grace keys during existing lifecycle updates.** `_playerGrace` stores `dbusName -> timestamp`; behavioral grace expires after 2 s, but stale keys are never deleted. Every metadata-valid update clones the entire map with `Object.assign`, so many unique browser/mpv instance names slowly increase retained JS data and clone cost. When updating/rebuilding existing player state, retain only unexpired/current entries; do not add a polling timer. | Low. The only observable contract is the existing 2 s grace; pruning entries older than that cannot extend or shorten a valid grace window if the comparison uses the same timestamp boundary. | None. | Low but truly cumulative session RAM/JS-object reduction. | 0%. |
+| `modules/abyss/looks/AbyssField.frag` + `AbyssField.qml` | **MEASURE/PROVE FIRST — guaranteed-transparent interior rejection before wave/SDF work.** Every presented full-screen Abyss field currently evaluates `waveProfile()`, water interaction and an SDF union with up to 40 rounded-rect records before the existing `d > 24` transparent exit. A conservative per-edge maximum inward-reach bound, expanded by connection smoothing, shadow/glow, current `crestPeak`, contact/ripple displacement and AA safety, could reject center fragments before wave texture reads and record SDF evaluation. | High until the geometric bound is formally conservative. Large utility/dialog surfaces can legitimately extend far into the workspace; derivative rules and corner joins must remain valid. | **Potentially high** on large outputs because rejected center pixels avoid wave texture sampling and dozens of SDF/fuse operations. | Negligible. | Exact 0% target for all accepted pixels; any false rejection is unacceptable. |
+| `services/deferred/LatexRenderer.qml` | **MEASURE FIRST — intentional unbounded session cache, not a simple leak.** Every successful unique expression remains in `processedHashes`, `processedExpressions` and `renderedImagePaths`. The expression/path maps are actively consumed by `MessageTextBlock` to replace rendered LaTeX and replay duplicate completion, so they cannot simply be dropped after render. Consider count/byte-bounded LRU only if long AI sessions show meaningful JS/RSS growth; eviction trades RAM for MicroTeX re-render work. | Medium. Evicted expressions can incur re-render latency/process cost and must not break existing rendered messages. | None. | Potentially medium only in unusually LaTeX-heavy long sessions. | Pixels can remain 0%; latency/resource behavior changes. |
+| `modules/background/widgets/CustomImageWidget.qml` | **MEASURE FIRST — paused video pipeline residency.** Transition-stale media slots are already cleared, and playback stops when hidden/power-suspended, but the active video slot keeps its `MediaPlayer` Loader active and source attached while merely paused. Benchmark PSS/GPU decoder residency versus resume latency before considering delayed unload/recreate on WidgetPowerManager suspension. | Medium–High for UX latency; unloading can change resume frame/timing even if eventual pixels are identical. | Low–Medium possible decoder/GPU residency reduction while suspended. | Medium possible multimedia-buffer reduction. | Not strict behavioral parity unless an exact preserved-frame/resume contract is proven. |
+| `modules/settings/BarConfig.qml` | **MEASURE FIRST — section-level Settings residency.** Classic Bar page sections are all instantiated and switched with `visible`; host-level Settings residency is already bounded elsewhere. If page-open allocation profiling justifies it, use a short-residency/lazy section wrapper for inactive Appearance/Spectrum/Behavior/Modules content rather than redesigning the whole Settings host. | Medium. Section switch latency, focus/search navigation and config binding initialization are user-visible. | Low local potential. | Low–Medium while Bar Settings is open. | 0% visual result, but interaction latency must be accepted. |
+| `services/PowerProfilePersistence.qml` | **MEASURE FIRST — ownership probe timing, not probe removal.** The shell keeps this service startup-resident; Config readiness immediately launches a shell that checks `systemctl is-active/is-enabled tlp-pd.service` before deciding whether persisted shell-owned power profile may be restored. The ownership check is correctness-critical. Measure moving only reconciliation after first frame; reject if delayed restore changes thermal/power/user-visible profile behavior. | High relative to expected saving. | None. | Negligible. | UI 0%, but power-profile timing is observable system behavior. |
+| `scripts/capture-windows.sh` + `services/WindowPreviewService.qml` | **MEASURE FIRST — preview capture concurrency 2 vs 1.** Capture helper defaults to bounded two-way concurrency (override 1–4) and atomically publishes each result. Serial capture may reduce compositor/clipboard contention but increases total refresh time; current implementation already has timeout, stale-file, clipboard restoration and bounded warm-cache safeguards. Benchmark rather than assume. | Medium. First-preview/Overview freshness latency changes even if final images are identical. | Potentially lower transient compositor pressure. | Low transient. | Final pixels 0%; latency tradeoff. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -85,7 +94,8 @@ Rules:
 15. **Waffle lock static-wallpaper blur + avatar mask specialization** — potentially valuable because lock screens can remain visible for long periods.
 16. **DashboardLayout guarded allocation/CPU work** — strict-lossless if current-dev oracle parity is re-established.
 17. **GameMode fallback watchdog research** — small CPU/wakeup candidate with no visual change.
-18. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
+18. **MPRIS expired grace pruning** — low-risk cumulative session cleanup; fold pruning into existing lifecycle updates with no timer.
+19. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
 
 ## Explicit non-candidates from this pass
 
@@ -525,4 +535,170 @@ This can create startup process waves, but moving them changes **when external a
 ### R6.8 — Current ranking implication
 
 This round changes the audit emphasis: before implementing more low-frequency QML micro-optimizations, obtain a startup trace around the pre-QML launcher and default-off probes. The environment-cache defect has a bounded **seconds-scale worst case**, whereas many later candidates save only a handful of short child processes. That makes it the highest-value CPU/startup candidate found after the rendering work.
+
+## Research continuation — round 7
+
+Baseline: `dev` at `22b0a5fc4039c4f8baee3feb4f3ae781da035cd2`.
+
+### R7.1 — MPRIS grace state has real stale-key growth
+
+Current `services/MprisController.qml`: `3a8184f9308f0816ea395ea26f182bb5a3fbcf15`.
+
+The grace contract is only:
+
+```qml
+const graceTime = _playerGrace[name]
+return graceTime && (Date.now() - graceTime) < 2000
+```
+
+but each valid metadata update does:
+
+```qml
+let nextGrace = Object.assign({}, _playerGrace)
+nextGrace[name] = Date.now()
+_playerGrace = nextGrace
+```
+
+No source path deletes expired names. Long-running browser sessions, transient mpv instances and other players with unique D-Bus instance names therefore leave behaviorally dead entries behind. Those entries cost both retained JS memory and clone time on every later grace update.
+
+Strict-lossless direction:
+
+1. during an existing rebuild/grace update, construct the next map from entries whose timestamp is still inside the same 2 s window and/or whose current player is still relevant;
+2. update the current player timestamp as today;
+3. do not introduce a cleanup timer;
+4. add a deterministic clock-based test that compares `_isInGracePeriod` before/after for boundary timestamps and proves stale keys disappear.
+
+This is lower absolute value than startup/render candidates, but unlike speculative cache trimming it has no useful stale-data hit to preserve.
+
+### R7.2 — LaTeX session cache is semantically active
+
+Current sources:
+
+- `services/deferred/LatexRenderer.qml`: `7447b36177da576b25aba5018560ccfaad519d00`;
+- `modules/sidebarLeft/aiChat/MessageTextBlock.qml`: `e877c5c8e90a9a0ab06ead0c8bf687141d4721ba`.
+
+A first static read suggested three unbounded structures might duplicate data. Cross-reference disproves a simple deletion:
+
+- `processedHashes` deduplicates in-flight/completed requests;
+- `renderedImagePaths[hash]` is read when applying the generated Markdown image;
+- `processedExpressions[hash]` is read on `renderFinished` to replace the original expression and is also needed for duplicate completion handling.
+
+Therefore these structures are an intentional session cache, not dead retention. The SVG output directory is reset on shell startup by `Directories`, so growth does not persist across sessions.
+
+Only promote an LRU/count-byte bound after measuring a long LaTeX-heavy chat. The oracle must include already-rendered visible messages, revisiting an old expression after eviction, simultaneous duplicate requests and render failure/retry. The expected tradeoff is lower RAM versus additional MicroTeX process work.
+
+### R7.3 — CustomImageWidget suspension keeps the current video pipeline
+
+Current `CustomImageWidget.qml`: `cc9e05d2775713489a58146d38c4044adedd8267`.
+
+The existing lifecycle is already careful:
+
+- folder rotation stops when `!powerActive` or invisible;
+- stale transition slot clears `sourcePath` after the transition;
+- GIF playback is gated by visibility/power/animation policy;
+- a MediaPlayer is only constructed for slots that actually own a video.
+
+For the **current** video slot, however:
+
+```qml
+Loader {
+    active: slot.isVideo && slot.sourcePath.length > 0
+    sourceComponent: MediaPlayer { source: ... }
+}
+```
+
+remains active during power suspension. `syncVideoPlayback()` pauses the player once a frame exists rather than clearing the source or destroying the loader.
+
+This may intentionally preserve decoder state and instant resume. Before changing it, record PSS/RSS, render-node/decoder threads and resume-to-first-frame for:
+
+- visible playing video;
+- power-suspended for 5 s / 60 s;
+- hidden desktop/widget;
+- resume after each duration.
+
+A delayed teardown (for example only after sustained suspension) is a RAM/latency policy candidate, not currently a strict-lossless optimization.
+
+### R7.4 — Abyss full-screen fragment early rejection needs a proof, but potential is large
+
+Current sources:
+
+- `AbyssField.frag`: `98719594e2752d5938a02540d47aab0523ebd5d0`;
+- `AbyssField.qml`: `e90297e341430c8745b53cc7ade05410092bb819`;
+- `AbyssWaveController.qml`: `43f066c05d75d49adff40fdd45343515c69eec97`.
+
+Current shader order:
+
+```text
+waveProfile(p)
+  -> potentially up to 4 waveAt paths
+waterInteraction(p)
+field(p)
+  -> workspace-hole SDF
+  -> up to 40 record() roundedBox/fuse evaluations
+dFdx/dFdy/fwidth
+if d > 24 -> transparent
+material/wallpaper/specular/shadow work
+```
+
+The Wave controller already computes `crestPeak`; however `AbyssField.qml` currently passes only wave texture width/active state/effects in `waveMaterial`, not crest height. Surface records carry exact rectangles but there is no precomputed per-edge maximum inward reach uniform.
+
+A safe experiment can compute on the CPU/QML side, whenever records/insets/wave/contact state change:
+
+```text
+topReach, rightReach, bottomReach, leftReach
+    = maximum inward extent of all active edge-attached records
+    + connection/smooth-union radius
+    + maximum active wave crest
+    + bounded water-contact/ripple displacement
+    + 24 px existing shadow/glow exit band
+    + AA/refraction safety
+```
+
+Then a fragment whose distance from **every** physical edge exceeds the matching conservative reach is guaranteed to remain transparent and may exit before wave sampling/SDF union. This must be proven against corner joins, center/large utility surfaces, editor previews, max-size popups and water interactions. If any content class is not edge-bounded, disable the fast reject for that frame instead of guessing.
+
+Because the ShaderEffect covers the full output, a correct reject could save work over a large fraction of 1440p/4K pixels. No resource percentage is claimed until GPU/frame-time measurement.
+
+### R7.5 — Classic Bar Settings is a local residency opportunity only
+
+Current `BarConfig.qml`: `13857cee12d5d1616476cc0e86fce7b714160df9`.
+
+The page uses an `activeSection` selector, but the large `SettingsCardSection` trees are instantiated normally and only hidden with `visible`. This is distinct from `SettingsPageHost`, which is already bounded and should not be redesigned.
+
+Measure QML object count/RSS/page-open time first. If material, a section loader should:
+
+- instantiate the selected section synchronously enough that search/task navigation remains responsive;
+- optionally keep the previous section for a short bounded residency window;
+- preserve every config binding and `SettingsTaskNavigator` target;
+- unload all section content when the host unloads the page.
+
+This is lower priority because cost exists only while that Settings page is resident.
+
+### R7.6 — PowerProfilePersistence cannot simply be delayed under strict-lossless rules
+
+Current `PowerProfilePersistence.qml`: `b014a90512ad93e94a4e43ffb38aa121f64c309d`.
+
+It probes TLP-PD ownership immediately at Config readiness, because applying a persisted profile before knowing ownership could fight `tlp-pd`. Conversely, deferring the entire probe delays shell-owned profile restoration when `tlp-pd` is absent.
+
+Therefore the process is not equivalent to the default-off ThinkFan/TLP-charge probes from round 6. Moving it after first frame is a timing/power-policy change. Keep this as measurement-only unless the ownership answer can be obtained through a cheaper equivalent event/state source without changing restore timing.
+
+### R7.7 — Window preview concurrency remains an A/B benchmark, not a static conclusion
+
+Current capture helper `1375bd607bb522dca1218ddc581e638829ed25e5` defaults:
+
+```bash
+max_concurrent="${INIR_WINDOW_PREVIEW_CAPTURE_CONCURRENCY:-2}"
+[[ ! "$max_concurrent" =~ ^[1-4]$ ]] && max_concurrent=2
+```
+
+The lifecycle regression explicitly requires bounded two-way default concurrency. Serializing to one capture may smooth compositor/clipboard pressure, but necessarily lengthens a multi-window refresh if individual captures are independent.
+
+Benchmark concurrency 1 and 2 with identical window sets and collect:
+
+- total batch time;
+- first-preview publication latency;
+- compositor/GPU spikes;
+- clipboard restoration duration;
+- failed/closed-window behavior.
+
+Do not change the default on static reasoning alone.
 

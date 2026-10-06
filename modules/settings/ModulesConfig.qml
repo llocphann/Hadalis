@@ -977,7 +977,7 @@ ContentPage {
                     Layout.fillWidth: true
                     text: (Config.options?.settingsUi?.overlayStyle ?? "rail") === "focus"
                         ? Translation.tr("One page at a time: a grid of every settings page, then the page you pick, full width. Escape steps back.")
-                        : Translation.tr("A persistent category rail beside the page you are editing.")
+                        : Translation.tr("A persistent flat tab rail beside the page you are editing.")
                     color: Appearance.colors.colSubtext
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     wrapMode: Text.WordWrap

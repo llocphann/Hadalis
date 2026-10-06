@@ -2474,3 +2474,109 @@ Structural saving:
 This is CPU/JS collection work only and no whole-Hadalis percentage is claimed
 without runtime measurement.
 
+## 2026-10-07 — Notification badge lookup research
+
+Research-only continuation on current `dev`
+`15273940fffa93c78308bf3bae10421b32982442`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `services/Notifications.qml`:
+  `a05c6744c123d8ed96ee19c8d04cccdbcdeeae0e`;
+- `modules/dock/DockAppButton.qml`:
+  `e82cf611338e518d70f8c95e45808217c7b90934`.
+
+### Candidate — HIGH CONFIDENCE: cache normalized popup-group badge lookup once per notification-group rebuild
+
+Each Dock application button exposes:
+
+```qml
+readonly property int notificationCount: {
+    ...
+    return Notifications.countForApp([
+        appToplevel?.originalAppId ?? appToplevel?.appId,
+        root.desktopEntry?.name
+    ])
+}
+```
+
+The current helper normalizes the caller identifiers and then scans every popup
+group, normalizing each group appName on every call:
+
+```qml
+function countForApp(identifiers): int {
+    const keys = (identifiers ?? [])
+        .map(root._normalizeAppKey)
+        .filter(k => k.length > 0)
+    if (keys.length === 0) return 0
+    const groups = root.popupGroupsByAppName
+    for (const appName in groups) {
+        if (keys.indexOf(root._normalizeAppKey(appName)) !== -1)
+            return groups[appName].notifications?.length ?? 0
+    }
+    return 0
+}
+```
+
+Popup groups already have an explicit rebuild boundary in `_updateGroups()`.
+The normalized app-name lookup can therefore be derived once per rebuilt popup
+snapshot instead of once per Dock delegate evaluation.
+
+Strict-lossless direction:
+
+1. while publishing `_cachedPopupGroupsByAppName`, derive a private normalized
+   lookup from that exact object insertion order;
+2. store for each normalized key:
+   - the first matching group's rank/order;
+   - that group's notification count;
+3. `countForApp(identifiers)` normalizes only the supplied identifiers,
+   performs direct cached lookups and returns the count belonging to the
+   **lowest-ranked** matching group;
+4. invalidate/publish that lookup in the same `_updateGroups()` transaction as
+   popup groups.
+
+The rank rule is required for parity. Current semantics are not “sum all groups
+whose normalized name matches” and are not “first caller identifier wins”.
+The outer loop is the popup-group enumeration, so the **first group in current
+object order that matches any supplied identifier** wins. If two distinct app
+names normalize to the same key, a simple overwriting Map or summation would
+change behavior.
+
+### Expected structural saving
+
+For D visible Dock app buttons and G popup app groups, current badge
+re-evaluation can perform roughly D×G group iterations plus repeated regex
+normalization of app names. The cached form moves group-name normalization to
+the group-rebuild event and makes each button lookup proportional only to its
+small identifier set (normally two strings).
+
+The gain remains small when there are few notifications, but it is strict,
+centralized and scales better for notification-heavy sessions.
+
+### Required oracle
+
+Compare current/new `countForApp()` for:
+
+- empty groups and empty identifiers;
+- one normal app match;
+- appId vs desktop display-name match;
+- punctuation/case differences;
+- two caller identifiers matching different popup groups;
+- two distinct group names that normalize to the same key;
+- no match;
+- popup timeout/read transition;
+- group insertion/order changes after notification updates.
+
+Assert exact count parity after every `_updateGroups()` snapshot.
+
+### Adjacent note
+
+This composes with the separate notification timer object-reuse finding, but it
+must remain a separate patch/oracle: one optimizes group-derived badge reads,
+the other removes redundant notification-ID scans during timeout/read
+mutations.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

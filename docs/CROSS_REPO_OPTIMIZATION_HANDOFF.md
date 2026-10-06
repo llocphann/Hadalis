@@ -4825,3 +4825,150 @@ oracle is already being added.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
 
+## 2026-10-07 — GameMode fullscreen snapshot cache research
+
+Research-only continuation on current `dev`
+`b61a5886f19db7b532fcf28d483fb2fb520ee728`. No runtime/product source was
+changed in this round.
+
+Current `services/GameMode.qml`:
+`692f3e200b7c46835f44f152c88f231e2d0bd2b5`.
+
+### Candidate — HIGH CONFIDENCE: derive fullscreen state once per Niri snapshot and make all per-output queries O(1)
+
+GameMode currently evaluates the same published Niri state through several
+independent full-list scans:
+
+```qml
+readonly property bool hasAnyFullscreenWindow:
+    checkAnyFullscreenWindow()
+
+readonly property bool hasVisibleFullscreenWindow: {
+    for (let i = 0; i < NiriService.windows.length; ++i) {
+        if (!isWindowFullscreen(NiriService.windows[i])) continue
+        const ws = NiriService.workspaces[...]
+        if (ws?.is_active) return true
+    }
+}
+
+function hasFullscreenOnOutput(outputName): bool {
+    for (let i = 0; i < NiriService.windows.length; ++i) {
+        const ws = NiriService.workspaces?.[w.workspace_id]
+        if (!(ws?.is_active ?? false)) continue
+        if (outputName.length > 0 && ws.output !== outputName) continue
+        if (_isWindowFullscreenWithWorkspace(w, ws, true)) return true
+    }
+}
+```
+
+`hasFullscreenOnOutput()` is consumed by many simultaneously resident
+surfaces/services, including:
+
+- Classic Bar;
+- Screen Edges;
+- Screen Corners;
+- Classic Background;
+- Waffle Background;
+- SidebarHost;
+- Abyss Perimeter/reservation logic;
+- WidgetPowerManager;
+- Family work-area guard paths.
+
+Each binding can therefore rescan the same `NiriService.windows` snapshot after
+one window/layout/workspace publication.
+
+Strict-lossless direction:
+
+derive one private snapshot object from exactly the same current sources:
+
+```text
+{
+    any: bool,
+    visible: bool,
+    activeOutputs: { outputName: true, ... }
+}
+```
+
+For every Niri window in source order:
+
+1. resolve its workspace from `NiriService.workspaces[workspace_id]`;
+2. evaluate fullscreen with the existing
+   `_isWindowFullscreenWithWorkspace()` logic;
+3. set `any` when any window is fullscreen;
+4. only when the workspace exists and is active, set `visible`;
+5. for an active workspace with a known output, set
+   `activeOutputs[ws.output] = true`.
+
+Then:
+
+- `hasAnyFullscreenWindow` reads `snapshot.any`;
+- `hasVisibleFullscreenWindow` reads `snapshot.visible`;
+- `hasFullscreenOnOutput("")` returns `snapshot.visible`, matching today's
+  empty-name semantics;
+- `hasFullscreenOnOutput(name)` becomes an O(1) activeOutputs lookup.
+
+The snapshot must retain the current distinction between these cases:
+
+- `checkAnyFullscreenWindow()` may report true even when workspace metadata is
+  temporarily missing, because `isWindowFullscreen()` can use the existing
+  single-output fallback;
+- visible/per-output state currently requires a resolved active workspace and
+  therefore stays false when that workspace record is missing.
+
+Do not accidentally promote the single-output fallback into visible/per-output
+ownership.
+
+### Focused-window auto-detection remains a separate path
+
+`_doCheckFullscreen()` currently finds the focused window from
+`NiriService.windows` (with `activeWindow` fallback) because focus flags and
+layout events can arrive independently. Preserve that lookup initially.
+
+The optimization here is to make the secondary
+`|| root.hasVisibleFullscreenWindow` check O(1), not to redesign focus
+authority in the same patch.
+
+### Relationship to older GameMode research
+
+Historical optimization notes proposed a `liveWindows`-style behavioral view
+to improve freshness/correctness relative to Niri's batched presentation list.
+That is a different question.
+
+This candidate is valid even if the source remains the current published
+`NiriService.windows`: it removes duplicate scans of whichever authoritative
+snapshot GameMode is currently specified to use. If a future correctness patch
+switches GameMode to a fresher source, build the same derived snapshot over that
+new source rather than discarding this optimization shape.
+
+### Required oracle
+
+Compare current and cached behavior for:
+
+- no outputs/windows;
+- single-output workspace metadata temporarily missing;
+- one/multiple outputs;
+- fullscreen on inactive workspace (any=true, visible=false);
+- fullscreen on active workspace;
+- fullscreen isolated to one output;
+- two outputs fullscreen simultaneously;
+- `window.is_fullscreen === true` direct path;
+- size-heuristic fullscreen path;
+- tolerance ±2 px;
+- layout update before workspace update;
+- output geometry update;
+- workspace active/inactive transition;
+- fullscreen exit;
+- empty-string `hasFullscreenOnOutput("")`;
+- all existing Bar/ScreenEdge/Sidebar/Abyss/WidgetPowerManager consumers.
+
+Signal/binding frequency should stay source-driven by the same
+windows/workspaces/outputs inputs; do not add a polling timer.
+
+### Expected structural saving
+
+Instead of O(C * N) scans for C fullscreen-query consumers and N windows, the
+service performs one O(N) derivation per relevant Niri snapshot and O(1)
+lookups thereafter.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+

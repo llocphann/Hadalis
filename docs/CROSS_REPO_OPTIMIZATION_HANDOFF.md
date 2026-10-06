@@ -4306,3 +4306,119 @@ For Candidate B:
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
 
+## 2026-10-07 — LocalMusic search preparation research
+
+Research-only continuation on current `dev`
+`dbf6739b187622b4caf992cdda49dfcf5641526d`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `modules/sidebarLeft/LocalMusicView.qml`:
+  `d5b1880d5a1a3796f0faefe343cf3f2f9909953a`;
+- `modules/sidebarLeft/SidebarLeftContent.qml`:
+  `06c8e5aa355b97d14d606f7d152123d29a8b36ab`.
+
+Repository/history search found no prior optimization note for LocalMusic's
+per-keystroke search normalization path.
+
+### Candidate — HIGH CONFIDENCE CPU, transient bounded RAM: prepare search haystacks once per active search session
+
+Current search is a direct QML binding:
+
+```qml
+readonly property string query: searchField.text.trim().toLowerCase()
+readonly property var filteredTracks: {
+    if (!root.query) return LocalMusic.libraryTracks
+    const result = []
+    for (const track of LocalMusic.libraryTracks) {
+        const title = String(track?.title ?? "").toLowerCase()
+        const artist = String(track?.artist ?? "").toLowerCase()
+        const album = String(track?.album ?? "").toLowerCase()
+        const folder = String(track?.folder ?? "").toLowerCase()
+        const haystack = title + " " + artist + " " + album + " " + folder
+        if (haystack.includes(root.query))
+            result.push(track)
+    }
+    return result
+}
+```
+
+There is no search debounce in `LocalMusicView`; editing the text therefore
+re-normalizes four metadata strings and allocates a concatenated haystack for
+every library track on every query change.
+
+For a library of N tracks and a query typed through Q intermediate text states,
+the current source performs roughly O(N*Q) lowercase/concatenation work even
+though track metadata did not change between keystrokes.
+
+The view itself is not always shell-resident. `SidebarLeftContent` keeps only
+the current/next/previous SwipeView loaders active, so a prepared search index
+can stay local to the Music view without adding permanent shell RAM.
+
+Strict-lossless direction:
+
+1. keep a private transient array such as
+   `[{ track, searchText }]`;
+2. build it only when query transitions from empty to non-empty, or lazily on
+   the first non-empty filter evaluation;
+3. each `searchText` must preserve the exact current construction:
+   lowercase title + single space + artist + single space + album + single space
+   + folder, with the same String/null fallbacks;
+4. reuse that array for subsequent query edits while
+   `LocalMusic.libraryTracks` identity is unchanged;
+5. invalidate immediately on `libraryTracksChanged`;
+6. release the prepared array when the query becomes empty, so the extra search
+   strings are not retained during ordinary browsing;
+7. return original track object references exactly as current code does.
+
+This converts later keystrokes in one search session from repeated string
+normalization/allocation into one `includes()` check per already-prepared
+track.
+
+### Interaction with the previous folder-payload finding
+
+The prior research identified a much larger dead persistent duplicate:
+`LocalMusic.folderCollections`, whose payload duplicates full track metadata
+and has no consumer.
+
+If both candidates are eventually implemented:
+
+- remove the dead full-track folder duplicate first;
+- add only a compact search string/reference pair while search is active;
+- clear that transient index when search ends.
+
+That ordering should make it possible to improve search CPU without replacing
+the removed persistent duplicate with another permanent per-track structure.
+Do not claim a net RAM number until measured.
+
+### Required oracle
+
+Compare current and prepared-search results for:
+
+- empty query;
+- title, artist, album and folder matches;
+- mixed-case metadata/query;
+- null/missing metadata;
+- whitespace-only query;
+- multi-word substring queries;
+- duplicate tracks;
+- library rescan while query is active;
+- query clear then re-enter;
+- exact result object identity/order.
+
+The candidate must not add fuzzy matching, tokenization, Unicode normalization,
+ranking or debounce. Those would change current search semantics.
+
+### Adjacent collection work not promoted
+
+`buildSongEntries()` also scans `libraryTracks` to derive the current folder
+view, and `folderTracks()/resolveSelectedTracks()` perform additional scans on
+explicit folder/selection operations. A compact folder index could reduce those
+costs, but it adds more retained structure and changes a wider set of bulk
+selection/navigation contracts. Measure large-library folder-navigation latency
+before expanding this candidate into a full music-library index.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

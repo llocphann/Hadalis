@@ -106,6 +106,7 @@ ShellRoot {
                 property color frameColor: "#172630"
                 property color shadowColor: Qt.rgba(0, 0, 0, 0.70)
                 property vector4d params: Qt.vector4d(25, 15, 0.75, 0)
+                property vector4d tileRect: Qt.vector4d(0, 0, width, height)
                 fragmentShader: Qt.resolvedUrl(Quickshell.env("EDGE_QSB"))
             }
         }

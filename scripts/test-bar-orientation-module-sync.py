@@ -192,14 +192,16 @@ def main() -> None:
             "Connected popups must support physical Screen Edge thickness.")
     require(workspace_overview, "attachmentEdgeOverride: root.barPosition",
             "Workspace Overview must route through its explicit attachment edge.")
+    require(screen_edges, "workspaceOverviewEdgeSupportEnabled",
+            "Top Screen Edge must expose a support gate for vertical-Bar workspace Overview.")
     require(screen_edges, "workspaceOverviewEdgeTriggerEnabled",
             "Top Screen Edge must own the Left/Right workspace Overview hover trigger.")
-    require(screen_edges, "id: workspaceEdgeOverviewLoader",
-            "Screen Edge must lazy-load the workspace Overview popup.")
-    require(screen_edges, 'active: reservationWindow.edge === "top"',
-            "Only the top reservation may instantiate the workspace Overview popup.")
-    require(screen_edges, "workspaceEdgeOverviewLoader.item?.showWorkspace(",
-            "Top-edge hover must route through the lazy Overview instance.")
+    require(screen_edges, "id: workspaceOverviewSupport",
+            "Screen Edge must lazy-load the complete workspace Overview support stack.")
+    require(screen_edges, "active: reservationWindow.workspaceOverviewEdgeSupportEnabled",
+            "Workspace Overview support must stay unloaded when the top vertical-Bar path is unavailable.")
+    require(screen_edges, "workspaceEdgeOverview.showWorkspace(",
+            "Top-edge hover must route through the loaded Overview instance.")
     require(screen_edges, 'barPosition: "top"',
             "Left/Right workspace Overview must attach to the Top Screen Edge.")
     require(screen_edges, "attachmentThickness: root.thickness",

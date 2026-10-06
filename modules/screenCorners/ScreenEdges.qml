@@ -7,8 +7,6 @@ import qs.modules.bar as Bar
 import qs.services
 import qs.modules.waffle.looks as WaffleLooks
 import QtQuick
-import QtQuick.Shapes
-import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 
@@ -218,151 +216,31 @@ Scope {
             elevationEnabled: frameWindow.physicalShadowActive
         }
 
-        // Fail-safe only. The accepted legacy Shape/MultiEffect painter is
-        // not constructed during the normal analytic path; it materializes
-        // only if the packaged QSB reports ShaderEffect.Error.
+        // Fail-safe only. Keep the legacy Shapes/Effects implementation in a
+        // separately loaded file so the healthy analytic path does not import
+        // or parse that renderer/type graph at startup.
         Loader {
             id: legacyFramePainter
             anchors.fill: parent
+
+            readonly property real frameLeftInset: frameWindow.frameLeftInset
+            readonly property real frameTopInset: frameWindow.frameTopInset
+            readonly property real frameRightInset: frameWindow.frameRightInset
+            readonly property real frameBottomInset: frameWindow.frameBottomInset
+            readonly property real radius: root.rounding
+            readonly property int outerPadding: root.outerPadding
+            readonly property bool physicalShadowActive:
+                frameWindow.physicalShadowActive
+            readonly property int physicalShadowSize: root.physicalShadowSize
+            readonly property color edgeColor: root.edgeColor
+            readonly property color shadowColor: Qt.alpha(
+                Appearance.m3colors.m3shadow,
+                root.physicalShadowOpacity)
+
             active: frameField.status === ShaderEffect.Error
                 && !frameWindow.fullscreenCovered
-            sourceComponent: Component {
-                Shape {
-                    id: frameShape
-                    anchors.fill: parent
-                    antialiasing: true
-                    preferredRendererType: Shape.CurveRenderer
-        
-                    // Fallback geometry/effect only. This remains attached directly to
-                    // frame Shape, so there is no second painted item, overlay, wedge,
-                    // corner patch or shadow rectangle. At the defaults this matches
-                    // Caelestia ContentWindow: blurMax=15 and m3shadow alpha=0.70.
-                    // Fallback-only perceptual optimization (2026-10-06):
-                    // wide shadows rasterize at 1/2 resolution; smaller shadows retain
-                    // 5/8. This path exists only after analytic QSB failure.
-                    readonly property real shadowRasterScale:
-                        root.physicalShadowSize >= 12 ? 0.5 : 0.625
-                    layer.enabled: frameWindow.physicalShadowActive
-                    layer.textureSize: frameWindow.physicalShadowActive
-                        ? Qt.size(Math.max(1, Math.ceil(frameShape.width * frameShape.shadowRasterScale)),
-                            Math.max(1, Math.ceil(frameShape.height * frameShape.shadowRasterScale)))
-                        : Qt.size(0, 0)
-                    layer.smooth: true
-                    layer.effect: MultiEffect {
-                        shadowEnabled: frameWindow.physicalShadowActive
-                        // blurMax alone only sets the kernel ceiling; without
-                        // shadowBlur the effect paints no soft falloff into the
-                        // workspace at the four inverted rounded corners.
-                        blurMax: Math.max(1, root.physicalShadowSize)
-                        shadowBlur: 1.0
-                        // The locked Shape already spans the complete output and its
-                        // outer contour extends 50 px past the window. Automatic
-                        // padding would only enlarge the offscreen layer beyond pixels
-                        // the compositor can present; the visible inward shadow stays
-                        // inside the output item.
-                        autoPaddingEnabled: false
-                        shadowHorizontalOffset: 0
-                        shadowVerticalOffset: 0
-                        shadowColor: Qt.alpha(
-                            Appearance.m3colors.m3shadow,
-                            root.physicalShadowOpacity)
-                    }
-        
-                    ShapePath {
-                        id: framePath
-        
-                        fillColor: root.edgeColor
-                        fillRule: ShapePath.OddEvenFill
-                        strokeColor: "transparent"
-                        strokeWidth: -1
-        
-                        readonly property real innerLeft: frameWindow.frameLeftInset
-                        readonly property real innerTop: frameWindow.frameTopInset
-                        readonly property real innerRight:
-                            frameShape.width - frameWindow.frameRightInset
-                        readonly property real innerBottom:
-                            frameShape.height - frameWindow.frameBottomInset
-                        readonly property real r: Math.max(0, Math.min(root.rounding,
-                            Math.max(0, innerRight - innerLeft) / 2,
-                            Math.max(0, innerBottom - innerTop) / 2))
-        
-                        // Outer rectangle. Deliberately extends past the window just as
-                        // Caelestia's BlobInvertedRect uses anchors.margins: -50.
-                        startX: -root.outerPadding
-                        startY: -root.outerPadding
-                        PathLine {
-                            x: frameShape.width + root.outerPadding
-                            y: -root.outerPadding
-                        }
-                        PathLine {
-                            x: frameShape.width + root.outerPadding
-                            y: frameShape.height + root.outerPadding
-                        }
-                        PathLine {
-                            x: -root.outerPadding
-                            y: frameShape.height + root.outerPadding
-                        }
-                        PathLine {
-                            x: -root.outerPadding
-                            y: -root.outerPadding
-                        }
-        
-                        // Single rounded inner workspace hole. With no normal Bar,
-                        // every side inset is the Screen Edge thickness. When the ii Bar
-                        // owns top/bottom/left/right, only that side inset becomes the
-                        // Bar body thickness — the same ContentWindow/BlobInvertedRect
-                        // principle Caelestia uses for its Bar edge.
-                        PathMove {
-                            x: framePath.innerLeft + framePath.r
-                            y: framePath.innerTop
-                        }
-                        PathLine {
-                            x: framePath.innerRight - framePath.r
-                            y: framePath.innerTop
-                        }
-                        PathArc {
-                            x: framePath.innerRight
-                            y: framePath.innerTop + framePath.r
-                            radiusX: framePath.r
-                            radiusY: framePath.r
-                            direction: PathArc.Clockwise
-                        }
-                        PathLine {
-                            x: framePath.innerRight
-                            y: framePath.innerBottom - framePath.r
-                        }
-                        PathArc {
-                            x: framePath.innerRight - framePath.r
-                            y: framePath.innerBottom
-                            radiusX: framePath.r
-                            radiusY: framePath.r
-                            direction: PathArc.Clockwise
-                        }
-                        PathLine {
-                            x: framePath.innerLeft + framePath.r
-                            y: framePath.innerBottom
-                        }
-                        PathArc {
-                            x: framePath.innerLeft
-                            y: framePath.innerBottom - framePath.r
-                            radiusX: framePath.r
-                            radiusY: framePath.r
-                            direction: PathArc.Clockwise
-                        }
-                        PathLine {
-                            x: framePath.innerLeft
-                            y: framePath.innerTop + framePath.r
-                        }
-                        PathArc {
-                            x: framePath.innerLeft + framePath.r
-                            y: framePath.innerTop
-                            radiusX: framePath.r
-                            radiusY: framePath.r
-                            direction: PathArc.Clockwise
-                        }
-                    }
-                }
-            }
+            source: active
+                ? Qt.resolvedUrl("ScreenEdgeLegacyFallback.qml") : ""
         }
     }
 

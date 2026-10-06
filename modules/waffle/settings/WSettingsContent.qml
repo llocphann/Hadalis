@@ -33,7 +33,7 @@ Item {
         { label: Translation.tr("Appearance"), keys: ["themes", "wallpaper", "gowall", "effects"] },
         { label: Translation.tr("Desktop & Layout"), keys: ["monitors", "shell-layout", "bar", "workspace-strip", "panels", "waffle-style", "modules"] },
         { label: Translation.tr("System"), keys: ["system", "power", "autostart"] },
-        { label: Translation.tr("Features & Services"), keys: ["ai", "mascot", "cloud-storage"] },
+        { label: Translation.tr("Features & Services"), keys: ["ai", "mascot"] },
         { label: Translation.tr("Advanced & Help"), keys: ["shortcuts", "about"] }
     ]
     property var expandedNavGroups: ({})
@@ -64,11 +64,7 @@ Item {
         expandedNavGroups = next
     }
 
-    property string _pendingCloudSection: ""
-    onCurrentPageChanged: {
-        root.revealCurrentNavGroup()
-        if (root.currentPage !== 19) root._pendingCloudSection = ""
-    }
+    onCurrentPageChanged: root.revealCurrentNavGroup()
 
     readonly property var navigationItems: {
         const items = []
@@ -112,17 +108,6 @@ Item {
     }    
     // Complete search index with all individual options + targetLabel for spotlight
     property var searchIndex: [
-        // Waffle standalone 19: shared static-only service; ten routes.
-        { pageIndex: 19, pageName: "Cloud Storage", section: "overview", label: "Overview", targetLabel: "Area", keywords: ["mega", "cloud", "storage", "overview"] },
-        { pageIndex: 19, pageName: "Cloud Storage", section: "drive", label: "Drive", targetLabel: "Area", keywords: ["mega", "cloud", "storage", "drive"] },
-        { pageIndex: 19, pageName: "Cloud Storage", section: "transfers", label: "Transfers", targetLabel: "Area", keywords: ["mega", "cloud", "storage", "transfers"] },
-        { pageIndex: 19, pageName: "Cloud Storage", section: "sync", label: "Sync Folders", targetLabel: "Area", keywords: ["mega", "cloud", "storage", "sync"] },
-        { pageIndex: 19, pageName: "Cloud Storage", section: "backups", label: "Backups", targetLabel: "Area", keywords: ["mega", "cloud", "storage", "backups"] },
-        { pageIndex: 19, pageName: "Cloud Storage", section: "sharing", label: "Sharing", targetLabel: "Area", keywords: ["mega", "cloud", "storage", "sharing"] },
-        { pageIndex: 19, pageName: "Cloud Storage", section: "contacts", label: "Contacts", targetLabel: "Area", keywords: ["mega", "cloud", "storage", "contacts"] },
-        { pageIndex: 19, pageName: "Cloud Storage", section: "mounts", label: "Mounts & Local Access", targetLabel: "Area", keywords: ["mega", "cloud", "storage", "mounts"] },
-        { pageIndex: 19, pageName: "Cloud Storage", section: "security", label: "Account & Security", targetLabel: "Area", keywords: ["mega", "cloud", "storage", "security"] },
-        { pageIndex: 19, pageName: "Cloud Storage", section: "preferences", label: "Preferences & Diagnostics", targetLabel: "Area", keywords: ["mega", "cloud", "storage", "preferences"] },
         { pageIndex: 18, pageName: "Battery", section: "Power management", label: "Battery and TLP settings", targetLabel: "Configuration categories", keywords: ["tlp", "power", "battery", "cpu", "processor", "disk", "pcie", "usb", "radio", "energy", "profile"] },
         { pageIndex: 18, pageName: "Battery", section: "Battery Care", label: "Charge limit", targetLabel: "Hardware-aware charge care", keywords: ["tlp", "battery", "charge", "limit", "threshold", "thinkpad", "conservation"] },
         { pageIndex: 17, pageName: "Shell Layout", section: "Live shell layout", label: "Edit live", targetLabel: "Edit live", keywords: ["layout", "move", "position", "taskbar", "output", "edit", "live"] },
@@ -459,23 +444,9 @@ Item {
         searchResults = unique.slice(0, 30);
     }
     
-    function applyPendingCloudSection(): void {
-        if (!root._pendingCloudSection || root.currentPage !== 19) return
-        const loader = pageRepeater.itemAt(19)
-        if (!loader || loader.status !== Loader.Ready || !loader.item) return
-        const section = root._pendingCloudSection
-        root._pendingCloudSection = ""
-        if (typeof loader.item.activateSettingsSearchSection === "function")
-            loader.item.activateSettingsSearchSection(section)
-    }
-
     function openSearchResult(entry: var): void {
-        if (entry?.pageIndex === 19 && entry.section)
-            root._pendingCloudSection = String(entry.section)
         if (entry && entry.pageIndex !== undefined && entry.pageIndex >= 0) {
             currentPage = entry.pageIndex;
-            if (entry.pageIndex === 19) Qt.callLater(root.applyPendingCloudSection)
-
             // Focus option - try optionId first (dynamic registry), then targetLabel (static index)
             if (typeof SettingsSearchRegistry !== "undefined") {
                 if (entry.optionId !== undefined) {

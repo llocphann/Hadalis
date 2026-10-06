@@ -64,7 +64,7 @@ rust_ready() {
 
 cmd="${1:-}"
 [[ -n "$cmd" ]] || {
-    echo "usage: native-dispatch <input-lock|input-keys|niri|clipboard-store|mpd|mpd-daemon|mpd-subscribe|lyrics|theme|desktop-icons|mega|companion|backend-info> [args...]" >&2
+    echo "usage: native-dispatch <input-lock|input-keys|niri|clipboard-store|mpd|mpd-daemon|mpd-subscribe|lyrics|theme|desktop-icons|companion|backend-info> [args...]" >&2
     exit 64
 }
 shift
@@ -76,7 +76,6 @@ if [[ "$MODE" == rust && "$STRICT" == 1 ]]; then
         niri|clipboard-store|desktop-icons) required_binary=inir-native ;;
         mpd|mpd-daemon|mpd-subscribe|lyrics) required_binary=inir-mpdd ;;
         theme) required_binary=inir-theme ;;
-        mega) required_binary=inir-mega ;;
         companion) required_binary=inir-companiond ;;
     esac
     if [[ -n "$required_binary" ]] && ! rust_ready "$required_binary"; then
@@ -89,24 +88,13 @@ case "$cmd" in
     backend-info)
         printf 'mode=%s\n' "$MODE"
         printf 'bin_dir=%s\n' "$BIN_DIR"
-        for binary in inir-inputd inir-native inir-mpdd inir-theme inir-mega inir-companiond; do
+        for binary in inir-inputd inir-native inir-mpdd inir-theme inir-companiond; do
             if rust_ready "$binary"; then
                 printf '%s=ready\n' "$binary"
             else
                 printf '%s=missing\n' "$binary"
             fi
         done
-        ;;
-
-    mega)
-        # Cloud Storage is a security-sensitive typed Rust boundary. It is
-        # intentionally independent of the generic Python rollback selector:
-        # there is no Python mutation/authentication fallback.
-        if rust_ready inir-mega; then
-            exec "$BIN_DIR/inir-mega" "$@"
-        fi
-        echo "[native-dispatch] Cloud Storage requires the dedicated Rust helper: $BIN_DIR/inir-mega" >&2
-        exit 127
         ;;
 
     companion)

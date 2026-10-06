@@ -1,9 +1,0 @@
-{
-  "actions": [],
-  "evidence_location": "Private local evidence; raw output is not published",
-  "finished_at_unix": 1791195487,
-  "input_sha256": "d8eb079a43d558459f7976924e67379ce7f83198bbcdf558f816c277af50858a",
-  "job": "JOB-C2F353CC-WULLCURIOSITY-DIAG-R2-20261005-1714",
-  "job_commit": "605b1ce5396fbe5ce0224563752e5945fe6f3942",
-  "status": "invalid"
-}

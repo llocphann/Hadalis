@@ -688,18 +688,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "inir-mega"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "libc",
- "serde",
- "serde_json",
- "sha2",
-]
-
-[[package]]
 name = "inir-mpdd"
 version = "0.1.0"
 dependencies = [

@@ -4,7 +4,6 @@ members = [
     "crates/inir-protocol",
     "inir-companiond",
     "inir-inputd",
-    "inir-mega",
     "inir-mpdd",
     "inir-native",
     "inir-theme",

@@ -319,16 +319,6 @@ while IFS= read -r -d '' test_file; do
         scripts/test-wull-manual-perimeter.py)
             record_skip "MANUAL-DEFERRED: $test_file"
             continue ;;
-        # These are phase-specific builders/classifiers called with arguments
-        # by the SHA-pinned MegaQML runner, not stand-alone regression tests.
-        scripts/test-megaqml-host-ui-fixture.py|scripts/test-megaqml-ui-fixture.py|scripts/test-megaqml-qt-diagnostic.py|scripts/test-megaqml-quickshell-classify.py)
-            record_skip "PHASE-RUNNER-HELPER: $test_file (requires fixture/log arguments)"
-            continue ;;
-        # This protects consumption of frozen Phase 2p evidence. A new product
-        # commit must not be declared that old evidence's source identity.
-        scripts/test-megaqml-phase2p-history-guard.py)
-            record_skip "FROZEN-EVIDENCE-GATE: $test_file (phase-specific ancestry)"
-            continue ;;
     esac
     run_check "Python regression: $test_file" python3 "$test_file"
 done < <(git ls-files -z -- ':(glob)**/test-*.py' 'test-*.py' | sort -z -u)
@@ -338,14 +328,6 @@ run_check 'QML parser capability' probe_qml_parser
 run_check 'QML/startup project guards' run_qml_guards
 while IFS= read -r -d '' test_file; do
     case "$test_file" in test-nix-*.sh|*/test-nix-*.sh|*/nix/*) record_skip "NIX-DEFERRED: $test_file"; continue ;; esac
-    case "$test_file" in
-        scripts/test-megaqml-phase2-local.sh|scripts/test-megaqml-ui-loader-local.sh|scripts/test-megaqml-quickshell-smoke.sh)
-            record_skip "MANUAL-PHASE-RUNNER: $test_file (requires explicit SHA/output and can publish evidence)"
-            continue ;;
-        scripts/test-hadalis-desktop-repair.sh)
-            record_skip "MANUAL-DESKTOP-ACCEPTANCE: $test_file (live installed automation/session contract)"
-            continue ;;
-    esac
     run_check "shell regression: $test_file" run_shell_regression "$test_file"
 done < <(git ls-files -z -- ':(glob)**/test-*.sh' 'test-*.sh' | sort -z -u)
 run_check 'Make contract: prefix/path relocation' run_make_contract test-prefix-install

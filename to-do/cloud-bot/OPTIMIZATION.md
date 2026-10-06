@@ -7,7 +7,7 @@ Canonical active objective migrated from `agent/WORK.md`. Historical checkpoint:
 - [ ] At consolidation, Round 60 documented the guarded X-axis subset in `modules/dashboard/DashboardLayout.js` (§74.1). On continuation, read the actual newest handoff and diversify into a distinct high-value hot path.
 - [ ] Round 59 §73.2 active-only responsive overlap scan was HIGH CONFIDENCE **pending malformed-state oracle**; do not silently promote it to CONFIRMED.
 - [ ] Record proven findings and exact constraints in `docs/CROSS_REPO_OPTIMIZATION_HANDOFF.md`. A completed round must CONTINUE, not DONE. Never fabricate whole-Hadalis speedup percentages.
-- [ ] For necessary local deterministic validation, publish a bounded explicit `automation/queue/pending/JOB-*.json` at the latest parent-matched `base_sha`. Local Bot returns mechanical evidence; ChatGPT alone reasons about it.
+- [ ] For necessary local validation, run focused repository tests and the canonical maintainer validator against an exact source SHA; record bounded evidence and keep environment-owned desktop acceptance separate.
 
 ## Maintainer-scoped Abyss audit — 2026-09-30
 
@@ -43,10 +43,9 @@ a release-readiness declaration.
 
 ## Maintainer implementation continuation — 2026-10-01
 
-The maintainer authorized further strict-lossless Abyss implementation and
-explicitly excluded automation changes/control because it serves two other
-tasks. Do not dispatch jobs, change its files/state, or restart its services for
-this continuation. Cloud-side tests use independent temporary fixtures/clones.
+The maintainer authorized further strict-lossless Abyss implementation.
+This continuation uses repository tests and independent temporary fixtures/clones;
+there is no local worker/job-dispatch path.
 
 - [x] Refine existing §59.3: Sidebar obstacle arrays 3 → 1; Dock combination
   arrays 4 → 2. Retain both Sidebar progress reads before selected records and
@@ -56,13 +55,13 @@ this continuation. Cloud-side tests use independent temporary fixtures/clones.
   Existing controller/wave oracle, body placement and geometry checks passed.
 - [ ] Run canonical local validation once on the new committed candidate SHA;
   retain the clean log and classify failures without changing unrelated product
-  behavior. Live automation acceptance is not enabled.
+  behavior. Live desktop acceptance remains separate.
 - [ ] Retain owner-session desktop acceptance separately from local tests.
 
 ## Maintainer product repair and optimization — 2026-10-04
 
-One active context handles the four requested outcomes. Automation remains
-excluded; concurrent Wull development and unrelated MEGA evidence are preserved.
+One active context handles the four requested outcomes. Concurrent Wull
+development and unrelated historical evidence are preserved.
 
 - [x] Rehost the desktop Edit Widget toolbar in the existing Abyss body/field,
   choose bottom/top/left/right placement around nearby widgets, and retain all
@@ -101,8 +100,7 @@ Product changes and retained evidence:
 ## Maintainer connected popup continuation — 2026-10-04
 
 The maintainer added these outcomes and requested continued bug finding and
-lossless optimization. Automation exclusion and the single-agent dev workflow
-remain in effect.
+lossless optimization. The single-agent dev workflow remains in effect.
 
 - [x] Present Niri Reloaded through the same notification placement/stack;
   retain reload debounce, cooldown and Game Mode suppression. Committed
@@ -129,4 +127,4 @@ Finish the actual field/narrow-output checks, inspect rendering, qualify output
 and search/task-view lifecycle, then commit and validate a new exact SHA. Further
 related bug finding/lossless work and owner-session acceptance remain pending.
 The earlier 415/0/11 canonical result applies only to its recorded source SHA.
-Keep automation excluded and preserve concurrent owner work.
+Preserve concurrent owner work.

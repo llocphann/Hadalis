@@ -205,3 +205,13 @@ Live owner-session acceptance remains separate:
 
 No whole-Hadalis CPU/GPU/RAM/FPS percentage is claimed without before/after
 measurement.
+
+## 2026-10-06 — subsystem removal boundary
+
+The maintainer removed the Hadalis Automation subsystem and the MegaQML/MEGAcmd
+Cloud Storage integration from current `dev`. Older worker queues/results,
+MegaQML failures, Cloud Storage qualification notes and exact-SHA validation
+counts above are historical evidence only; they are not current runtime,
+packaging or validation dependencies. Future work must use repository tests and
+the canonical maintainer validator directly and must not dispatch local worker
+jobs or expect MegaQML/Cloud Storage routes.

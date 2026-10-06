@@ -10,7 +10,7 @@ harness="$root/scripts/native-cutover-benchmark.sh"
 [[ -x "$dispatch" ]] || fail 'native-dispatch must be executable'
 [[ -x "$harness" ]] || fail 'native cutover harness must be executable'
 
-for token in     'input-lock)'     'input-keys)'     'niri)'     'clipboard-store)'     'mpd)'     'mpd-daemon)'     'mpd-subscribe)'     'lyrics)'     'theme)'     'desktop-icons)'     'mega)'
+for token in     'input-lock)'     'input-keys)'     'niri)'     'clipboard-store)'     'mpd)'     'mpd-daemon)'     'mpd-subscribe)'     'lyrics)'     'theme)'     'desktop-icons)'
 do
     grep -Fq "$token" "$dispatch"         || fail "native-dispatch missing route: $token"
 done
@@ -49,8 +49,6 @@ grep -Fq 'MODE_FILE="$STATE_DIR/native-backend"' "$dispatch"     || fail 'native
 grep -Fq 'BIN_DIR_FILE="$STATE_DIR/native-bin-dir"' "$dispatch"     || fail 'native-dispatch must read persistent native binary path for Niri-spawned helpers'
 grep -Fq 'MODE="${MODE:-rust}"' "$dispatch"     || fail 'native-dispatch production default must be Rust'
 grep -Fq 'DEFAULT_BIN_DIR="$ROOT_DIR/native/bin"' "$dispatch"     || fail 'native-dispatch must prefer packaged native binaries'
-grep -Fq 'exec "$BIN_DIR/inir-mega" "$@"' "$dispatch"     || fail 'Cloud Storage must route directly to inir-mega'
-grep -Fq 'there is no Python mutation/authentication fallback' "$dispatch"     || fail 'Cloud Storage route must document its no-fallback boundary'
 grep -Fq -- '--restore' "$harness"     || fail 'cutover harness must expose --restore'
 
 # Python remains the explicit emergency fallback after production cutover.

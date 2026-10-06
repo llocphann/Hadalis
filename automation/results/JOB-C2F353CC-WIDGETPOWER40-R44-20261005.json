@@ -1,9 +1,0 @@
-{
-  "actions": [],
-  "evidence_location": "Private local evidence; raw output is not published",
-  "finished_at_unix": 1791215056,
-  "input_sha256": "37ac6412c28a3cf522ddbd411d8124a1f4063be63d9d7b6b11dae5560c43525b",
-  "job": "JOB-C2F353CC-WIDGETPOWER40-R44-20261005",
-  "job_commit": "75b1f5c7b37e1e1291902c58a8f475a131c33e00",
-  "status": "invalid"
-}

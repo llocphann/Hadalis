@@ -124,7 +124,20 @@ def main() -> int:
         "modules/abyss/looks/AbyssButton.qml",
         'readonly property color baseInk: Appearance.m3colors.darkmode',
         '? AbyssStyle.textColor : "#000000"',
+        'readonly property color activeInk: Appearance.m3colors.darkmode',
+        '? AbyssStyle.accent : "#000000"',
         "root.activeInk : root.baseInk",
+    )
+    require(
+        "modules/abyss/looks/AbyssCheckBox.qml",
+        'readonly property color labelInk: Appearance.m3colors.darkmode',
+        '? AbyssStyle.textColor : "#000000"',
+    )
+    require(
+        "modules/abyss/looks/AbyssSearchField.qml",
+        'readonly property color fieldInk: Appearance.m3colors.darkmode',
+        '? AbyssStyle.textColor : "#000000"',
+        '? AbyssStyle.textColorMuted : "#1a1a1a"',
     )
     require(
         "modules/abyss/looks/AbyssSlider.qml",

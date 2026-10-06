@@ -17,13 +17,13 @@ jobs:
       - name: Install deterministic tools
         run: |
           apt-get update -qq
-          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git ca-certificates qt6-shader-baker
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ca-certificates python3 qt6-shader-baker
 
       - name: Checkout dev
         uses: actions/checkout@v5
         with:
           ref: dev
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Bake reproducible Screen Edge QSB
         run: |
@@ -36,13 +36,78 @@ jobs:
 
           src=modules/screenCorners/ScreenEdgeField.frag
           out=/tmp/ScreenEdgeField.frag.qsb
+          second=/tmp/ScreenEdgeField.second.frag.qsb
+
           "$QSB" --qt6 -o "$out" "$src"
           "$QSB" --dump "$out" >/dev/null
-
-          second=/tmp/ScreenEdgeField.second.frag.qsb
           "$QSB" --qt6 -o "$second" "$src"
           cmp "$second" "$out"
 
-          printf 'SCREEN_EDGE_QSB_BASE64='
-          base64 -w0 "$out"
-          printf '\n'
+          sha256sum "$src" "$out"
+
+      - name: Publish QSB if source still matches dev
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cd /__w/Hadalis/Hadalis
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+          from pathlib import Path
+          from urllib.error import HTTPError
+          from urllib.request import Request, urlopen
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          token = os.environ["GITHUB_TOKEN"]
+          api = f"https://api.github.com/repos/{repo}"
+          source_path = "modules/screenCorners/ScreenEdgeField.frag"
+          qsb_path = "modules/screenCorners/ScreenEdgeField.frag.qsb"
+
+          def request(method, path, payload=None):
+              data = None if payload is None else json.dumps(payload).encode()
+              req = Request(
+                  api + path,
+                  data=data,
+                  method=method,
+                  headers={
+                      "Accept": "application/vnd.github+json",
+                      "Authorization": f"Bearer {token}",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                      "User-Agent": "hadalis-screen-edge-qsb-baker",
+                  },
+              )
+              with urlopen(req) as response:
+                  return json.load(response)
+
+          local_source = Path(source_path).read_bytes()
+          remote_source = request("GET", f"/contents/{source_path}?ref=dev")
+          remote_source_bytes = base64.b64decode(remote_source["content"])
+          if remote_source_bytes != local_source:
+              raise SystemExit("dev ScreenEdgeField.frag moved during bake; refusing stale QSB publish")
+
+          baked = Path("/tmp/ScreenEdgeField.frag.qsb").read_bytes()
+          current_qsb_sha = None
+          try:
+              current_qsb = request("GET", f"/contents/{qsb_path}?ref=dev")
+              current_qsb_sha = current_qsb["sha"]
+              if base64.b64decode(current_qsb["content"]) == baked:
+                  print("Screen Edge QSB already matches current dev source")
+                  raise SystemExit(0)
+          except HTTPError as exc:
+              if exc.code != 404:
+                  raise
+
+          payload = {
+              "message": "build(screen-edge): bake analytic field QSB",
+              "content": base64.b64encode(baked).decode(),
+              "branch": "dev",
+          }
+          if current_qsb_sha:
+              payload["sha"] = current_qsb_sha
+
+          result = request("PUT", f"/contents/{qsb_path}", payload)
+          print("published_qsb_commit=" + result["commit"]["sha"])
+          PY

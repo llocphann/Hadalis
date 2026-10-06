@@ -1,8 +1,9 @@
 import QtQuick
 import "WullScene.js" as Scene
 
-// Semantic wander events only. One finite deadline exists during an owned
-// visit; a pointer hand-off releases ownership without dismissing the UI.
+// Semantic wander events only. Movement keeps its finite visit deadline while
+// Wull-owned UI has a separate 1-3 s lease; pointer hand-off cancels that lease
+// and releases ownership without dismissing the user's UI.
 Item {
     id: root
     property var presence: null

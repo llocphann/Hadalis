@@ -4142,3 +4142,167 @@ oracle proves a common internal index can serve both exactly.
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — LocalMusic folder payload duplication research
+
+Research-only continuation on current `dev`
+`06caf4884e3c25a706a8972880ac768eb5298e0a`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `services/LocalMusic.qml`:
+  `88263668b48d85323a576c4c3645d9f40909f466`;
+- `modules/sidebarLeft/LocalMusicView.qml`:
+  `d5b1880d5a1a3796f0faefe343cf3f2f9909953a`;
+- Python MPD fallback `scripts/local_music_mpd.py`:
+  `0e05af4f8a308072fbed7bed96994559b66bf6f1`;
+- native MPD backend `native/inir-mpdd/src/main.rs`:
+  `1c63b8e5281dad2a28e88ea3cb660f7cc0c0cb88`.
+
+Repository-wide search finds no consumer of `LocalMusic.folderCollections`
+outside `services/LocalMusic.qml` itself.
+
+### Candidate A — HIGH CONFIDENCE RAM: stop retaining the dead `folderCollections` duplicate in QML
+
+Current snapshot application retains three large library structures:
+
+```qml
+if (includeLibrary) {
+    libraryTracks = payload.tracks ?? []
+    playlists = payload.playlists ?? []
+    folderCollections = payload.folders ?? []
+}
+```
+
+but `folderCollections` has no runtime reader.
+
+The current Songs browser does **not** consume that pre-grouped payload.
+`LocalMusicView.qml` derives folder navigation directly from
+`LocalMusic.libraryTracks`:
+
+```qml
+for (const track of LocalMusic.libraryTracks) {
+    const folder = root.normalizedFolder(track?.folder)
+    ...
+    childMap[childPath] ...
+}
+```
+
+and `folderTracks(path)` likewise filters `LocalMusic.libraryTracks`
+directly.
+
+Therefore the persistent QML copy of `payload.folders` is dead state at this
+baseline.
+
+Strict-lossless direction:
+
+1. remove the unused `folderCollections` property;
+2. stop assigning `payload.folders` in `_applyPayload()`;
+3. keep `libraryTracks`, `playlists`, current queue and all MPD status fields
+   unchanged;
+4. do not alter Songs browser folder derivation.
+
+This immediately lets the parsed `payload.folders` subtree become collectible
+after the snapshot application returns instead of being retained for the life
+of the library snapshot.
+
+### Why the duplicate can be large
+
+The native backend constructs the folder payload by cloning each library track:
+
+```rust
+for track in &tracks {
+    let folder = track_value(track, "folder");
+    if !folder.is_empty() {
+        folders.entry(folder)
+            .or_default()
+            .push(Value::Object(track.clone()));
+    }
+}
+```
+
+and then serializes both:
+
+```text
+tracks  -> every library track object
+folders -> the same track metadata cloned into folder arrays
+```
+
+The Python fallback has the equivalent structure: it groups the already-built
+track dictionaries into `folders_map` and emits a `folders` list in the
+snapshot.
+
+So the current payload carries a second representation proportional to library
+size, and QML currently retains both representations even though the UI only
+reads `libraryTracks`.
+
+No exact RSS percentage is claimed because JSON parser/string sharing and QML
+engine representation must be measured.
+
+### Candidate B — HIGH POTENTIAL transport/CPU/RAM, compatibility-gated: stop generating `folders` in the snapshot
+
+After Candidate A proves no shell consumer needs `payload.folders`, the native
+and Python snapshot helpers can avoid constructing and serializing that field.
+
+Potentially removable native work:
+
+- BTreeMap folder grouping over every track;
+- `track.clone()` into every folder bucket;
+- folder-entry sorting/building;
+- JSON serialization of duplicated track metadata.
+
+Potentially removable Python fallback work is the equivalent
+`folders_map/folders` construction.
+
+This is stronger than Candidate A because it removes the duplicate before it
+crosses the process boundary.
+
+However this second step is **not assumed internal-contract-neutral** solely from
+repository search. `native-dispatch mpd snapshot` has a compatibility/fallback
+role and an external/manual caller could theoretically parse the JSON field.
+
+Promotion options:
+
+1. verify the snapshot schema is repository-private and no documented IPC/CLI
+   contract promises `folders`; then remove the field from both Rust and
+   Python together; or
+2. if compatibility must be retained, add an explicit snapshot mode/version
+   where Hadalis requests the lean payload while the legacy CLI shape remains
+   available.
+
+Do not remove the field from only one backend: Rust/Python selector parity is a
+maintained contract.
+
+### Required oracle
+
+For Candidate A:
+
+- load a library with nested folders;
+- compare Songs root entries, child folders, counts, navigation, search,
+  selection and bulk folder actions;
+- compare saved playlists and playback;
+- prove no QML warning/reference to `folderCollections` remains;
+- compare library snapshot state before/after excluding only the dead property.
+
+For Candidate B:
+
+- compare Rust and Python snapshot schemas in the chosen compatibility mode;
+- prove all current LocalMusic frontend tests pass;
+- measure snapshot stdout byte size and QML RSS for representative libraries,
+  for example small, 1k-track and larger libraries;
+- preserve folder metadata on each individual `libraryTracks` record because
+  the UI derives hierarchy from that field.
+
+### Adjacent findings not promoted
+
+- `playPath()` performs a linear library scan, but it runs on an explicit user
+  play-by-path action rather than a recurring hot loop.
+- `_trackForIdentity()` currently has no repository call site beyond its
+  definition, so it is dead helper code, not a performance hotspot.
+- playlist payloads also duplicate track objects relative to the library, but
+  saved playlists are a live UI feature and can contain ordering/membership
+  semantics not equivalent to simple folder derivation. Do not collapse them
+  without a separate contract.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+

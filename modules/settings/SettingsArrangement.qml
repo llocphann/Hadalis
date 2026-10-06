@@ -236,6 +236,51 @@ QtObject {
         return true
     }
 
+    function _locationInSnapshot(snapshot, pageIdx: int): var {
+        for (let categoryIndex = 0; categoryIndex < snapshot.groups.length; categoryIndex++) {
+            const pages = snapshot.groups[categoryIndex]?.pages ?? []
+            const pageIndex = pages.indexOf(pageIdx)
+            if (pageIndex >= 0)
+                return ({ categoryIndex: categoryIndex, pageIndex: pageIndex })
+        }
+        return null
+    }
+
+    function movePageFlat(pageIdx: int, direction: int): bool {
+        const order = SettingsPageRegistry.navigationPageIndexes(false)
+        const sourceFlat = order.indexOf(pageIdx)
+        const targetFlat = Math.max(0, Math.min(order.length - 1, sourceFlat + direction))
+        if (sourceFlat < 0 || targetFlat === sourceFlat)
+            return false
+
+        const targetPage = order[targetFlat]
+        const state = root.snapshot()
+        const source = root._locationInSnapshot(state, pageIdx)
+        if (!source)
+            return false
+
+        const moved = root.removePage(state, source.categoryIndex, source.pageIndex, pageIdx)
+        if (moved < 0)
+            return false
+
+        const target = root._locationInSnapshot(state, targetPage)
+        if (!target)
+            return false
+
+        const insertIndex = target.pageIndex + (direction > 0 ? 1 : 0)
+        state.groups[target.categoryIndex].pages.splice(insertIndex, 0, moved)
+        root.save(state)
+        return true
+    }
+
+    function hidePageById(pageIdx: int): bool {
+        const state = root.snapshot()
+        const source = root._locationInSnapshot(state, pageIdx)
+        if (!source)
+            return false
+        return root.hidePage(source.categoryIndex, source.pageIndex, pageIdx)
+    }
+
     function hidePage(categoryIndex: int, pageIndex: int, pageIdx: int): bool {
         if (categoryIndex < 0)
             return false

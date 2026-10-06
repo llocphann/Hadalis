@@ -4972,3 +4972,126 @@ lookups thereafter.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
 
+## 2026-10-07 — DesktopItems snapshot research
+
+Research-only continuation on current `dev`
+`29b0fcea1b229611f9039d0b61d3557d536a69ce`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `services/DesktopItems.qml`:
+  `415be57a15cfe34f373c8d2290e481bf978643ae`;
+- `modules/background/desktopItems/DesktopItemDelegate.qml`:
+  `88000b9820fb3b68cee5a007cec6a698b50948ba`.
+
+### Candidate A — HIGH CONFIDENCE: publish one cloned item-list snapshot per items revision instead of cloning all items once per output
+
+`DesktopItems.items` is stored as an id->record object. `listItems()` currently
+builds a fresh array and a fresh object for every item on every call:
+
+```qml
+function listItems(): list<var> {
+    return Object.keys(root.items).map(itemId =>
+        Object.assign({ id: itemId }, root.items[itemId]))
+}
+```
+
+Classic Background renders desktop items per output through:
+
+```qml
+model: widgetCanvas._desktopItemsForOutput(outputName)
+```
+
+and that helper begins with:
+
+```qml
+DesktopItems.listItems().filter(...)
+```
+
+Therefore every output delegate rebuilds/clones the complete desktop-item set
+before retaining only its output subset. With M outputs and I items, one
+DesktopItems revision can allocate approximately M * I cloned records before
+the per-output Repeater models settle.
+
+The delegate does not mutate `itemData` directly. Its writes are routed through
+`DesktopItems.update/remove/repair`, including drag/drop persistence,
+rename/lock/layer changes and cross-output moves.
+
+Strict-lossless direction:
+
+1. expose a derived read snapshot owned by `DesktopItems`, rebuilt only when
+   `root.items` changes:
+   `[{id, ...record}, ...]`;
+2. keep the existing imperative `listItems()` API if callers are expected to
+   receive defensive copies;
+3. let Background consume the shared derived snapshot instead of calling
+   `listItems()` once per output;
+4. perform only the per-output filter in Background;
+5. keep orphaned-output fallback semantics unchanged: an item whose saved output
+   is no longer connected is still shown only on the focused fallback output.
+
+A later extension could publish output buckets too, but that mixes screen/focus
+state into the persistence service and is unnecessary for the first
+optimization.
+
+### Snapshot identity boundary
+
+The derived snapshot may share record objects among read-only presentation
+consumers only if no consumer mutates them. Current DesktopItemDelegate reads
+fields and sends explicit patches back to the service; it does not assign into
+`itemData`.
+
+If a future caller needs a mutable defensive copy, it should keep using
+`get()/listItems()` rather than receiving the presentation snapshot.
+
+### Required oracle
+
+- zero items;
+- one/many outputs;
+- create/update/remove/undo;
+- rename/lock/layer changes;
+- drag persistence;
+- move item across outputs;
+- disconnected/stale output name fallback to focused output;
+- invalid-record preservation remains storage-only and never leaks into the
+  visible snapshot;
+- Repeater model identity/order after each `items` reassignment;
+- verify no delegate-side mutation of the shared snapshot.
+
+### Candidate B — MEASURE FIRST: `arrangePosition()` builds and sorts the full grid candidate set
+
+When grid snap is enabled, `DesktopItems.arrangePosition()` currently:
+
+1. builds every candidate grid cell in the work area;
+2. stores `{x,y,distance}` objects;
+3. sorts the complete list by squared distance, then y, then x;
+4. tests candidates in order until the first collision-free position.
+
+This is not a pointer-frame hot path. Current delegate usage calls it on:
+
+- component position reconciliation;
+- work-area/grid changes;
+- drag release;
+- cross-output move.
+
+The candidate count is also bounded by a pitch based on the desktop-item
+footprint, not the raw grid size. Therefore do not rewrite this algorithm from
+static complexity alone.
+
+If startup/edit traces show it matters with large item counts or 4K/8K work
+areas, then research an exact-order nearest-free search or precomputed candidate
+offset strategy. Any replacement must preserve the current ordering tuple
+`(distance, y, x)`, collision rectangle semantics and anchor fallback exactly.
+
+### Adjacent process note
+
+Every non-application/non-http desktop item also performs a bounded
+`test -e` target probe on component completion/target change. This is real
+child-process fan-out for large file/folder desktop collections, but the repo
+currently has no in-process filesystem existence API with proven identical path
+semantics. Keep it measurement-gated rather than replacing it with an
+unqualified QML/FileView approximation.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+

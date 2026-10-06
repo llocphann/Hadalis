@@ -21,6 +21,8 @@ Item {
     // instead of raw Material onSurface values.
     readonly property color orbitInk: Appearance.colors.colOnLayer1
     readonly property color orbitSubInk: Appearance.colors.colSubtext
+    readonly property color orbitTimeInk: Appearance.m3colors.darkmode
+        ? root.orbitSubInk : "#000000"
     readonly property color orbitAccent: ColorUtils.ensureReadable(
         Appearance.colors.colPrimary, Appearance.colors.colLayer1Base, 3.0)
 
@@ -310,11 +312,7 @@ Item {
                         ? Math.max(Appearance.font.pixelSize.smallest + 1,
                             Math.min(23, root.pointSize * 0.18))
                         : Appearance.font.pixelSize.smallest
-                    color: root.liquidMode
-                        ? root.orbitInk
-                        : hourPoint.highlighted
-                            ? Appearance.colors.colOnPrimaryContainer
-                            : root.orbitSubInk
+                    color: root.orbitTimeInk
                 }
 
                 MaterialSymbol {

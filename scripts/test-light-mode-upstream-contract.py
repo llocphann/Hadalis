@@ -163,6 +163,9 @@ def main() -> int:
         "modules/bar/weather/OrbitalWeather.qml",
         "readonly property color orbitInk: Appearance.colors.colOnLayer1",
         "readonly property color orbitSubInk: Appearance.colors.colSubtext",
+        "readonly property color orbitTimeInk: Appearance.m3colors.darkmode",
+        '? root.orbitSubInk : "#000000"',
+        "color: root.orbitTimeInk",
         "readonly property color orbitAccent: ColorUtils.ensureReadable(",
     )
     require(

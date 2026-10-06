@@ -28,7 +28,8 @@ approved_on = "2026-10-07"
 # to prevent the detail page painting over the orbit on first layout.
 # The 2026-10-07 maintainer request explicitly approves changing the Material
 # orbital foreground/accents so the stronger themed light palette uses dark,
-# contrast-safe ink instead of pale light-mode text.
+# contrast-safe ink instead of pale light-mode text. The same approval covers
+# forcing hourly time labels to black in light mode.
 # WeatherPopupContent selects the Abyss view; the Material GPU
 # membrane and all its visual-defining blobs remain unchanged.
 # Do NOT refresh these hashes as part of refactors, cleanup, optimization,
@@ -42,7 +43,7 @@ expected = {
     "modules/bar/weather/LiquidOrbitalField.frag.qsb":
         "586f42291e050d432406e1ce9f1235ee63b91d34",
     "modules/bar/weather/OrbitalWeather.qml":
-        "a00490152d798cd1f705c795e75782b42e6cf5f7",
+        "1a341d0102095971212f06903365cf572b7bad6b",
     "modules/bar/weather/WeatherPopupContent.qml":
         "d0342726a1b6337f7495d1099a1e7a4a38c21ca3",
     "modules/bar/weather/WeatherPopup.qml":

@@ -175,6 +175,43 @@ Singleton {
         return c.hslLightness < 0.5;
     }
 
+    /**
+     * Restrained selection token used by app/preset overlays.
+     * Mirrors the upstream HCT rule conceptually in QML: keep the container's
+     * hue, cap colour strength, and hold a visible lightness step from the
+     * window instead of painting selected rows like accent buttons.
+     */
+    function quietSelection(containerColor, backgroundColor, hover = false) {
+        var container = Qt.color(containerColor);
+        var bg = Qt.color(backgroundColor);
+        if (!container.valid || !bg.valid)
+            return container;
+        var targetLightness = bg.hslLightness < 0.5
+            ? Math.max(container.hslLightness, bg.hslLightness + 0.12)
+            : Math.min(container.hslLightness, bg.hslLightness - 0.10);
+        var saturationCap = hover ? 0.26 : 0.20;
+        return Qt.hsla(container.hslHue,
+            Math.min(container.hslSaturation, saturationCap),
+            clamp01(targetLightness), container.a);
+    }
+
+    /**
+     * Semantic green/amber/red leaned gently toward the active accent and
+     * solved for readable text contrast on the current app background.
+     */
+    function semanticStatus(accentColor, backgroundColor, baseHueDegrees, saturation = 0.55) {
+        var accent = Qt.color(accentColor);
+        var bg = Qt.color(backgroundColor);
+        if (!accent.valid || !bg.valid)
+            return accent;
+        var accentHue = accent.hslHue * 360.0;
+        var delta = ((accentHue - baseHueDegrees + 540.0) % 360.0) - 180.0;
+        var hue = (baseHueDegrees + Math.max(-15.0, Math.min(15.0, delta * 0.25)) + 360.0) % 360.0;
+        var lightness = bg.hslLightness < 0.5 ? 0.72 : 0.38;
+        var seed = Qt.hsla(hue / 360.0, clamp01(saturation), lightness, 1.0);
+        return ensureReadable(seed, bg, 4.5);
+    }
+
     function clamp01(x) {
         return Math.min(1, Math.max(0, x));
     }

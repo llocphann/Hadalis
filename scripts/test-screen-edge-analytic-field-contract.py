@@ -223,12 +223,12 @@ def band_layout(
     shadow_reach: float,
 ):
     safe_reach = max(shadow_reach, 2.0)
-    top_extent = math.ceil(max(0.0, top) + max(0.0, radius) + safe_reach + 2.0)
+    top_extent = math.ceil(max(0.0, top) + max(0.0, radius) + safe_reach)
     bottom_extent = math.ceil(
-        max(0.0, bottom) + max(0.0, radius) + safe_reach + 2.0
+        max(0.0, bottom) + max(0.0, radius) + safe_reach
     )
-    left_extent = math.ceil(max(0.0, left) + safe_reach + 2.0)
-    right_extent = math.ceil(max(0.0, right) + safe_reach + 2.0)
+    left_extent = math.ceil(max(0.0, left) + safe_reach)
+    right_extent = math.ceil(max(0.0, right) + safe_reach)
     top_h = min(height, top_extent)
     bottom_h = min(max(0.0, height - top_h), bottom_extent)
     middle_y = top_h
@@ -275,8 +275,8 @@ def band_area_ratio(width, height, inset, radius, shadow):
 
 # Default structural raster footprint: the same global field is evaluated over
 # only a perimeter ring. These are invocation-area ratios, not measured GPU %.
-assert band_area_ratio(1920, 1080, 10, 25, 15) < 0.122
-assert band_area_ratio(3840, 2160, 10, 25, 15) < 0.062
+assert band_area_ratio(1920, 1080, 10, 25, 15) < 0.117
+assert band_area_ratio(3840, 2160, 10, 25, 15) < 0.059
 
 
 rng = random.Random(0x53435245454E)

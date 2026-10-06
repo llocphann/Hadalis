@@ -8,16 +8,14 @@ import "../common/PanelFamilyPolicy.js" as FamilyPolicy
 /**
  * Public Settings registry facade.
  *
- * SettingsPageRegistryData keeps only historical slots that precede live pages.
- * Retired terminal indices are handled here as migration-only persisted values,
- * without retaining placeholder pages in the active registry.
+ * SettingsPageRegistryData keeps historical numeric gaps as null migration
+ * markers only. Retired Settings components are not retained or instantiated.
  */
 Singleton {
     id: root
 
-    // Historical 30/31 slots stay hidden now that focused Abyss pages follow
-    // them. Stored indices migrate without shifting any live page identity.
-    readonly property var retiredFeaturePageIndexes: [18, 19, 21, 27, 30, 31]
+    // Numeric compatibility gaps are defined once in SettingsPageRegistryData.
+    // They remain migration inputs only and never become Settings pages.
     readonly property int retiredTlpPageIndex: 28
     readonly property int systemPageIndex: 1
     readonly property int barPageIndex: 2
@@ -29,8 +27,8 @@ Singleton {
     readonly property bool waffleFamily: Config.options?.panelFamily === "waffle"
     function isPageApplicable(index: int): bool {
         if (index < 0 || index >= root.pages.length
-                || root.isHiddenLegacyIndex(index)) return false
-        if (index === 36) return true // Cloud Storage applies to ii, Abyss and Waffle.
+                || root.isHiddenLegacyIndex(index) || !root.pages[index]) return false
+        if (index === 35) return true // Automation is renderer-independent.
         if (root.abyssFamily)
             return ![11,26].includes(index)
         if (root.waffleFamily)
@@ -46,8 +44,8 @@ Singleton {
         const value = String(key ?? "").trim()
         if (!value) return -1
         if (root.abyssFamily && ["shell-layout","bar"].includes(value)) return value === "bar" ? 34 : root.barPageIndex
-        return root.pages.findIndex((page, index) => page.key === value
-            && page.devNavigationHidden !== true
+        return root.pages.findIndex((page, index) => page?.key === value
+            && page?.devNavigationHidden !== true
             && root.isPageApplicable(index))
     }
     function navigateToKey(key: string, section: string): bool {
@@ -66,35 +64,17 @@ Singleton {
     property bool _legacySidebarSurfaceMigrationDone: false
     property bool _legacyScreenEdgeShadowMigrationDone: false
 
-    function isRetiredFeaturePage(index: int): bool {
-        return root.retiredFeaturePageIndexes.includes(index)
-    }
-
     readonly property var pages: SettingsPageRegistryData.pages.map((page, index) => {
+        if (!page)
+            return null
         if (root.abyssFamily && index === root.barPageIndex)
             return Object.assign({},page,{key:"abyss",name:"Surface",icon:"water",
                 desc:"Screen Edge, waves and surface presentation",component:"modules/settings/AbyssConfig.qml"})
-        if (root.isRetiredFeaturePage(index)) {
-            const panelsPage = SettingsPageRegistryData.pages[root.panelsPageIndex]
-            return Object.assign({}, panelsPage, {
-                devNavigationHidden: true
-            })
-        }
-        if (index !== root.retiredTlpPageIndex)
-            return page
-        const systemPage = SettingsPageRegistryData.pages[root.systemPageIndex]
-        return Object.assign({}, page, {
-            name: systemPage.name,
-            icon: systemPage.icon,
-            desc: systemPage.desc,
-            essential: systemPage.essential,
-            component: systemPage.component,
-            devNavigationHidden: true
-        })
+        return page
     })
 
     function isHiddenLegacyIndex(index: int): bool {
-        return index === root.retiredTlpPageIndex || root.isRetiredFeaturePage(index)
+        return SettingsPageRegistryData.legacyHiddenIndexes.includes(index)
             || (root.abyssFamily && index === 26)
     }
 
@@ -138,15 +118,15 @@ Singleton {
             Persistent.states.settings.iiPage = root.barPageIndex
             return
         }
-        if (root.isRetiredFeaturePage(current)) {
+        if (current === root.retiredTlpPageIndex) {
+            Persistent.states.settings.iiPage = root.systemPageIndex
+            root._legacyTlpPowerRedirectPending = true
+            return
+        }
+        if (SettingsPageRegistryData.legacyHiddenIndexes.includes(current)) {
             Persistent.states.settings.iiPage = root.panelsPageIndex
             return
         }
-        if (current !== root.retiredTlpPageIndex)
-            return
-
-        Persistent.states.settings.iiPage = root.systemPageIndex
-        root._legacyTlpPowerRedirectPending = true
     }
 
     function _migrateLegacyDockStyle(): void {
@@ -235,27 +215,14 @@ Singleton {
 
     function searchIndex(): var {
         return SettingsPageRegistryData.searchIndex()
-            .filter(entry => !root.isRetiredFeaturePage(entry.pageIndex))
+            .filter(entry => !root.isHiddenLegacyIndex(entry.pageIndex))
             .map(entry => {
                 const route = FamilyPolicy.settingsRoute(Config.options?.panelFamily,entry.pageIndex,entry.section)
                 if (route.pageIndex !== entry.pageIndex)
                     return Object.assign({},entry,route,{pageName:"Abyss"})
                 if (root.abyssFamily && entry.pageIndex === root.barPageIndex)
                     return Object.assign({},entry,{pageName:"Abyss"})
-                if (entry.pageIndex !== root.retiredTlpPageIndex)
-                    return entry
-
-                const redirected = Object.assign({}, entry)
-                const keywords = Array.isArray(entry.keywords) ? entry.keywords : []
-
-                redirected.pageIndex = root.systemPageIndex
-                redirected.pageName = root.pages[root.systemPageIndex].name
-                // Battery care is integrated into the primary Power card;
-                // legacy charge-limit searches land on that same visible target.
-                redirected.section = Translation.tr("Power")
-                redirected.label = Translation.tr("Battery & TLP")
-                redirected.keywords = keywords.concat(["system", "settings", "power"])
-                return redirected
+                return entry
             })
     }
 

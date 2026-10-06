@@ -24,7 +24,7 @@ ContentPage {
 
     readonly property bool pageDragging: dragInfo?.type === "page"
     readonly property bool groupDragging: dragInfo?.type === "group"
-    readonly property int visiblePageCount: SettingsPageRegistry.pages.length - SettingsPageRegistry.hiddenPages.length
+    readonly property int visiblePageCount: SettingsPageRegistry.navigationPageIndexes(false).length
 
     function _pageIndexFromY(y: real, count: int): int {
         return Math.max(0, Math.min(Math.round(y / root.pagePitch), count))

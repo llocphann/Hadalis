@@ -59,9 +59,10 @@ Scope {
     // Component paths are registry-relative; resolve to absolute shell URLs
     // so the host's Loaders work regardless of where this file lives.
     readonly property var pages: SettingsPageRegistry.pages.map(p => {
-        var entry = Object.assign({}, p);
-        entry.component = Quickshell.shellPath(p.component);
-        return entry;
+        if (!p) return null
+        var entry = Object.assign({}, p)
+        entry.component = Quickshell.shellPath(p.component)
+        return entry
     })
 
     readonly property var currentMeta: (currentPage >= 0 && currentPage < pages.length)
@@ -94,7 +95,8 @@ Scope {
     }
 
     function openPage(index: int): void {
-        if (index < 0 || index >= root.pages.length)
+        if (index < 0 || index >= root.pages.length
+                || !root.pages[index] || !SettingsPageRegistry.isPageApplicable(index))
             return;
         root.currentPage = index;
         root.level = 1;

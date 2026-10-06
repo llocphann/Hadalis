@@ -12,13 +12,14 @@ import qs.modules.common
  * Component paths are relative to the shell root — resolve with
  * Quickshell.shellPath(page.component).
  *
- * Historical page slots stay hidden in place so the appended focused Abyss
- * pages do not shift stored indices. Navigation consumes only applicable pages.
+ * Historical numeric slots survive only as null migration gaps so old
+ * persisted indices can be migrated without retaining retired Settings pages.
+ * Navigation consumes only real, applicable pages.
  */
 Singleton {
     id: root
 
-    readonly property var legacyHiddenIndexes: [18, 19, 21, 27, 28, 30, 31, 35, 36]
+    readonly property var legacyHiddenIndexes: [18, 19, 21, 27, 28, 30, 31, 36]
 
     readonly property var pages: [
         {
@@ -166,22 +167,8 @@ Singleton {
             essential: false,
             component: "modules/settings/AutostartConfig.qml"
         },
-        {
-            key: "_retired-18",
-            name: "",
-            icon: "settings",
-            desc: "",
-            essential: false,
-            component: "modules/settings/InterfaceConfig.qml"
-        },
-        {
-            key: "_retired-19",
-            name: "",
-            icon: "settings",
-            desc: "",
-            essential: false,
-            component: "modules/settings/InterfaceConfig.qml"
-        },
+                null,
+                null,
         {
             key: "arrange",
             name: Translation.tr("Arrange"),
@@ -190,14 +177,7 @@ Singleton {
             essential: false,
             component: "modules/settings/ArrangeConfig.qml"
         },
-        {
-            key: "_retired-21",
-            name: "",
-            icon: "settings",
-            desc: "",
-            essential: false,
-            component: "modules/settings/InterfaceConfig.qml"
-        },
+                null,
         {
             key: "dock",
             name: Translation.tr("Dock"),
@@ -238,22 +218,8 @@ Singleton {
             essential: true,
             component: "modules/settings/ShellLayoutConfig.qml"
         },
-        {
-            key: "_retired-27",
-            name: "",
-            icon: "settings",
-            desc: "",
-            essential: false,
-            component: "modules/settings/InterfaceConfig.qml"
-        },
-        {
-            key: "_retired-28",
-            name: "",
-            icon: "settings",
-            desc: "",
-            essential: false,
-            component: "modules/settings/GeneralConfig.qml"
-        },
+                null,
+                null,
         {
             key: "overview",
             name: Translation.tr("Overview"),
@@ -262,13 +228,20 @@ Singleton {
             essential: false,
             component: "modules/settings/OverviewConfig.qml"
         },
-        {key:"_retired-30",name:"",icon:"settings",component:"modules/settings/InterfaceConfig.qml",devNavigationHidden:true},
-        {key:"_retired-31",name:"",icon:"settings",component:"modules/settings/InterfaceConfig.qml",devNavigationHidden:true},
+                null,
+                null,
         {key:"abyss-waves",name:"Waves & Audio",icon:"waves",desc:"Waves, spectrum and interaction",component:"modules/settings/AbyssWavesConfig.qml"},
         {key:"abyss-popups",name:"Popups",icon:"chat_bubble",desc:"Popup and indicator placement",component:"modules/settings/AbyssPopupsConfig.qml"},
         {key:"abyss-modules",name:"Bar modules",icon:"widgets",desc:"Edge modules and behavior",component:"modules/settings/AbyssModulesConfig.qml"},
-        {key:"_retired-35",name:"",icon:"settings",component:"modules/settings/InterfaceConfig.qml",devNavigationHidden:true},
-        {key:"_retired-36",name:"",icon:"settings",component:"modules/settings/InterfaceConfig.qml",devNavigationHidden:true},
+                {
+            key: "automation",
+            name: Translation.tr("Automation"),
+            icon: "smart_toy",
+            desc: Translation.tr("ChatGPT sessions and service health"),
+            essential: false,
+            component: "modules/settings/AutomationConfig.qml"
+        },
+                null,
         {key:"companion",name:Translation.tr("Companion"),icon:"water_drop",desc:Translation.tr("Wull appearance, personality and movement"),essential:true,component:"modules/settings/CompanionConfig.qml"}
     ]
 
@@ -281,7 +254,7 @@ Singleton {
         { label: Translation.tr("Appearance"), pages: [4, 3, 25, 8] },
         { label: Translation.tr("Desktop & Layout"), pages: Config.options?.panelFamily === "abyss" ? [15,5,14,29,10,11] : [15,26,2,22,23,5,16,14,29,10,11] },
         { label: Translation.tr("System"), pages: [1, 12, 17] },
-        { label: Translation.tr("Features & Services"), pages: [24, 7, 6] },
+        { label: Translation.tr("Features & Services"), pages: [24, 35, 7, 6] },
         { label: Translation.tr("Advanced & Help"), pages: [20, 9, 13] }
     ]
 
@@ -308,6 +281,13 @@ Singleton {
             return _staticSearchIndex
 
         _staticSearchIndex = [
+        {
+            pageIndex: 35, pageName: root.pages[35].name,
+            section: Translation.tr("Automation"),
+            label: Translation.tr("Automation profiles and service health"),
+            description: Translation.tr("Manage autonomous ChatGPT sessions, schedules and recovery"),
+            keywords: ["automation", "chatgpt", "profiles", "scheduler", "worker", "service", "recovery"]
+        },
         {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Overview"),label:Translation.tr("Enable Companion"),description:Translation.tr("Wull appearance, personality and movement"),keywords:["wull","companion","droplet","pet","mascot","fullscreen","interactive"]},
         {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Rendering"),label:Translation.tr("Companion size"),description:Translation.tr("Keep Wull small or give it a little more room."),keywords:["wull","companion","size","liquid"]},
         {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Behavior"),label:Translation.tr("Personality"),description:Translation.tr("Appearance frequency"),keywords:["wull","companion","calm","balanced","energetic","hyperactive","frequency","visits","animations","reflection","bubbles"]},
@@ -321,18 +301,18 @@ Singleton {
             keywords: ["todo", "to-do", "quick notes", "zettelkasten", "obsidian", "tasks", "markdown", "vault", "sync", "data"]
         },
         {
-            pageIndex: 28, pageName: root.pages[28].name,
-            section: Translation.tr("Power management"),
-            label: Translation.tr("Battery and TLP settings"),
+            pageIndex: 1, pageName: root.pages[1].name,
+            section: Translation.tr("Power"),
+            label: Translation.tr("Battery & TLP"),
             description: Translation.tr("Power profiles, processor, disks, PCIe, USB, radios and battery care"),
-            keywords: ["tlp", "power", "battery", "cpu", "processor", "disk", "pcie", "usb", "radio", "energy", "profile", "charge"]
+            keywords: ["tlp", "power", "battery", "cpu", "processor", "disk", "pcie", "usb", "radio", "energy", "profile", "charge", "system", "settings"]
         },
         {
-            pageIndex: 28, pageName: root.pages[28].name,
-            section: Translation.tr("Battery Care"),
-            label: Translation.tr("Charge limit"),
+            pageIndex: 1, pageName: root.pages[1].name,
+            section: Translation.tr("Power"),
+            label: Translation.tr("Battery & TLP"),
             description: Translation.tr("Hardware-aware TLP battery charge thresholds"),
-            keywords: ["tlp", "battery", "charge", "limit", "threshold", "thinkpad", "conservation"]
+            keywords: ["tlp", "battery", "charge", "limit", "threshold", "thinkpad", "conservation", "system", "settings", "power"]
         },
         {
             pageIndex: 26, pageName: root.pages[26].name,

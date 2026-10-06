@@ -27,9 +27,10 @@ ApplicationWindow {
     // Pages come from the shared registry; resolve component paths to absolute
     // shell URLs so the Loaders work regardless of this file's location.
     readonly property var pages: SettingsPageRegistry.pages.map(p => {
-        var entry = Object.assign({}, p);
-        entry.component = Quickshell.shellPath(p.component);
-        return entry;
+        if (!p) return null
+        var entry = Object.assign({}, p)
+        entry.component = Quickshell.shellPath(p.component)
+        return entry
     })
     property int currentPage: 0
     property bool navEditMode: false
@@ -112,7 +113,7 @@ ApplicationWindow {
     // Static section/option index — shared with the overlay via SettingsPageRegistry.
     function getWaffleSettingsPageIndex() {
         for (var i = 0; i < pages.length; i++) {
-            if ((pages[i].component || "").indexOf("modules/settings/WaffleConfig.qml") >= 0)
+            if ((pages[i]?.component || "").indexOf("modules/settings/WaffleConfig.qml") >= 0)
                 return i;
         }
         return -1;

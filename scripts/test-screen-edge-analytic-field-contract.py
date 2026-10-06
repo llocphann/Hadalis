@@ -22,6 +22,10 @@ runtime = (BASE / "ScreenEdges.qml").read_text(encoding="utf-8")
 
 for token in (
     "float roundedBox(",
+    "bool axisDeep =",
+    "bool centralCore =",
+    "if (axisDeep && centralCore)",
+    "fragColor = vec4(0.0);",
     "float d = roundedBox(",
     "float frameCover = smoothstep(-aa, aa, d);",
     "float innerShadow = smoothstep(-reach, 0.0, d)",
@@ -133,6 +137,31 @@ for _ in range(50000):
     inside = reference_inside(
         x, y, width, height, left, top, right, bottom, radius
     )
+
+    # Mirror the production deep-interior guard and prove it can only reject
+    # pixels whose exact SDF is already beyond the complete shadow/AA band.
+    l, t = max(left, 0.0), max(top, 0.0)
+    rgt = max(l, width - max(right, 0.0))
+    bot = max(t, height - max(bottom, 0.0))
+    hx = max((rgt - l) * 0.5, 0.0)
+    hy = max((bot - t) * 0.5, 0.0)
+    clamped_radius = min(max(radius, 0.0), hx, hy)
+    shadow_reach = rng.uniform(0.0, 32.0)
+    safe_reach = max(shadow_reach, 2.0)
+    axis_deep = (
+        x >= l + safe_reach
+        and x <= rgt - safe_reach
+        and y >= t + safe_reach
+        and y <= bot - safe_reach
+    )
+    central_core = (
+        (x >= l + clamped_radius and x <= rgt - clamped_radius)
+        or (y >= t + clamped_radius and y <= bot - clamped_radius)
+    )
+    if axis_deep and central_core:
+        assert d <= -safe_reach + 1e-7, (
+            "deep-interior guard rejected a potentially visible fragment"
+        )
     # Ignore an infinitesimal mathematical boundary where either sign is an
     # equivalent coverage convention; everywhere else classification is exact.
     if abs(d) > 1e-7:

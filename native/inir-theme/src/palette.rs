@@ -195,9 +195,24 @@ pub fn material_palette(
     // matching the Python fallback and upstream light-mode behavior.
     if scheme_name != "scheme-monochrome" {
         for (key, container, on_container, tonal) in [
-            ("primary", "primaryContainer", "onPrimaryContainer", &scheme.primary_palette),
-            ("secondary", "secondaryContainer", "onSecondaryContainer", &scheme.secondary_palette),
-            ("tertiary", "tertiaryContainer", "onTertiaryContainer", &scheme.tertiary_palette),
+            (
+                "primary",
+                "primaryContainer",
+                "onPrimaryContainer",
+                &scheme.primary_palette,
+            ),
+            (
+                "secondary",
+                "secondaryContainer",
+                "onSecondaryContainer",
+                &scheme.secondary_palette,
+            ),
+            (
+                "tertiary",
+                "tertiaryContainer",
+                "onTertiaryContainer",
+                &scheme.tertiary_palette,
+            ),
         ] {
             if let Some(value) = palette.get(key).cloned()
                 && let Ok(argb) = parse_hex(&value)

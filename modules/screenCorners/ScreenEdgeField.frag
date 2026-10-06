@@ -21,10 +21,15 @@ layout(std140, binding = 0) uniform buf {
 } u;
 
 float roundedBox(vec2 p, vec2 centre, vec2 halfSize, float radius) {
-    float r = min(max(radius, 0.0), min(halfSize.x, halfSize.y));
-    vec2 q = abs(p - centre) - (halfSize - vec2(r));
-    return length(max(q, vec2(0.0)))
-        + min(max(q.x, q.y), 0.0) - r;
+    // Callers pass the already-clamped radius. For every straight-edge sample
+    // at least one q component is non-positive, so the canonical rounded-box
+    // expression reduces exactly to max(q.x, q.y) - radius. Only true corner
+    // quadrants need the Euclidean length/sqrt.
+    vec2 q = abs(p - centre) - (halfSize - vec2(radius));
+    float qMax = max(q.x, q.y);
+    if (q.x <= 0.0 || q.y <= 0.0)
+        return qMax - radius;
+    return length(q) - radius;
 }
 
 void main() {

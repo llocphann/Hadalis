@@ -41,7 +41,28 @@ void main() {
     }
 
     vec2 p = qt_TexCoord0 * size;
-    float d = roundedBox(p, centre, halfSize, u.params.x);
+
+    // Exact deep-interior reject. A rounded rectangle differs from its axis
+    // box only inside the four radius corner squares. Once a fragment is both
+    // farther than the complete shadow reach from every straight side and in
+    // either central rectangle, its signed distance is guaranteed below the
+    // visible AA/shadow band. Most workspace pixels therefore skip length(),
+    // derivatives and smoothstep work entirely.
+    float clampedRadius = min(max(u.params.x, 0.0),
+        min(halfSize.x, halfSize.y));
+    float safeReach = max(max(u.params.y, 0.0), 2.0);
+    bool axisDeep =
+        p.x >= lo.x + safeReach && p.x <= hi.x - safeReach
+        && p.y >= lo.y + safeReach && p.y <= hi.y - safeReach;
+    bool centralCore =
+        (p.x >= lo.x + clampedRadius && p.x <= hi.x - clampedRadius)
+        || (p.y >= lo.y + clampedRadius && p.y <= hi.y - clampedRadius);
+    if (axisDeep && centralCore) {
+        fragColor = vec4(0.0);
+        return;
+    }
+
+    float d = roundedBox(p, centre, halfSize, clampedRadius);
 
     // Positive distance is physical frame, negative distance is workspace.
     // Curve/GeometryRenderer differences disappear here: the silhouette AA is

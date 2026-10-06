@@ -33,29 +33,34 @@ bars = (
     source("modules/verticalBar/VerticalBarContent.qml"),
 )
 
-# The physical frame owns one inverted silhouette. A blur kernel ceiling
-# without shadowBlur does not produce the soft corner falloff.
+# The physical frame is now a single analytic SDF pass. The old
+# Shape/MultiEffect path is retained only as a fail-safe for packaged-QSB
+# failure, and must not be constructed during the normal path.
 require(edge,
-    "fillRule: ShapePath.OddEvenFill",
-    "readonly property bool lowCostRendererActive:",
-    "frameShape.physicalShadowActive",
-    "|| frameWindow.fullscreenCovered",
-    "|| Appearance.gameModeMinimal",
-    "preferredRendererType: frameShape.lowCostRendererActive",
-    "? Shape.GeometryRenderer : Shape.CurveRenderer",
     "readonly property bool physicalShadowActive:",
     "readonly property bool fullscreenCovered: outputName.length > 0",
     "GameMode.hasFullscreenOnOutput(outputName)",
     "&& !frameWindow.fullscreenCovered",
     "&& !Appearance.gameModeMinimal",
-    "layer.enabled: frameShape.physicalShadowActive",
+    "ScreenEdgeField {",
+    "id: frameField",
+    "leftInset: frameWindow.frameLeftInset",
+    "topInset: frameWindow.frameTopInset",
+    "rightInset: frameWindow.frameRightInset",
+    "bottomInset: frameWindow.frameBottomInset",
+    "radius: root.rounding",
+    "edgeColor: root.edgeColor",
+    "elevationSize: root.physicalShadowSize",
+    "elevationEnabled: frameWindow.physicalShadowActive",
+    "id: legacyFramePainter",
+    "active: frameField.status === ShaderEffect.Error",
+    "sourceComponent: Component {",
+    "preferredRendererType: Shape.CurveRenderer",
     "readonly property real shadowRasterScale:",
     "root.physicalShadowSize >= 12 ? 0.5 : 0.625",
-    "layer.textureSize: frameShape.physicalShadowActive",
-    "Math.ceil(frameShape.width * frameShape.shadowRasterScale)",
-    "Math.ceil(frameShape.height * frameShape.shadowRasterScale)",
-    "layer.smooth: true",
-    "shadowEnabled: frameShape.physicalShadowActive",
+    "layer.enabled: frameWindow.physicalShadowActive",
+    "layer.effect: MultiEffect {",
+    "shadowEnabled: frameWindow.physicalShadowActive",
     "blurMax: Math.max(1, root.physicalShadowSize)",
     "shadowBlur: 1.0",
     "autoPaddingEnabled: false",
@@ -63,17 +68,35 @@ require(edge,
     "shadowVerticalOffset: 0",
     "Appearance.m3colors.m3shadow",
 )
+
 # Fullscreen/minimal-mode optimization must never weaken the lifecycle lock:
-# the frame remains mapped, while only its expensive shadow layer is gated.
-frame_component = edge[edge.index("component FrameWindow:"):edge.index("component ReservationWindow:")]
-mapped_block = frame_component[frame_component.index("readonly property bool mapped:"):frame_component.index("// LOCKED BAR/SCREEN-EDGE INSETS:")]
+# the FrameWindow remains mapped; only its painter/elevation work may gate.
+frame_component = edge[
+    edge.index("component FrameWindow:"):
+    edge.index("component ReservationWindow:")
+]
+mapped_block = frame_component[
+    frame_component.index("readonly property bool mapped:"):
+    frame_component.index("// LOCKED BAR/SCREEN-EDGE INSETS:")
+]
 assert "fullscreen" not in mapped_block.lower()
 assert "gameModeMinimal" not in mapped_block
-shadow_block = frame_component[frame_component.index("readonly property bool physicalShadowActive:"):frame_component.index("layer.enabled: frameShape.physicalShadowActive")]
+shadow_block = frame_component[
+    frame_component.index("readonly property bool physicalShadowActive:"):
+    frame_component.index("// Primary physical Screen Edge painter:")
+]
 assert "!frameWindow.fullscreenCovered" in shadow_block
 assert "!Appearance.gameModeMinimal" in shadow_block
 
-assert edge.count("Shape {") == 1, "The physical frame must remain one shape"
+primary_start = frame_component.index("ScreenEdgeField {")
+fallback_start = frame_component.index("id: legacyFramePainter")
+assert primary_start < fallback_start
+fallback_block = frame_component[fallback_start:]
+assert "active: frameField.status === ShaderEffect.Error" in fallback_block
+assert "MultiEffect {" in fallback_block
+assert frame_component.count("Shape {") == 1, (
+    "Only the dormant legacy fallback may retain Shape geometry"
+)
 assert "PerimeterCornerShadow" not in edge
 assert "RoundCorner {" not in edge
 

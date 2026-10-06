@@ -37,6 +37,8 @@ bars = (
 # without shadowBlur does not produce the soft corner falloff.
 require(edge,
     "fillRule: ShapePath.OddEvenFill",
+    "preferredRendererType: frameShape.physicalShadowActive",
+    "? Shape.GeometryRenderer : Shape.CurveRenderer",
     "readonly property bool physicalShadowActive:",
     "readonly property bool fullscreenCovered: outputName.length > 0",
     "GameMode.hasFullscreenOnOutput(outputName)",

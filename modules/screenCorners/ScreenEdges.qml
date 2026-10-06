@@ -194,7 +194,13 @@ Scope {
             id: frameShape
             anchors.fill: parent
             antialiasing: true
-            preferredRendererType: Shape.CurveRenderer
+            // GeometryRenderer is cheaper to redraw than CurveRenderer. While
+            // the shadow layer is active, the shape is already rasterized to a
+            // smooth upscaled texture, so that layer provides the subpixel
+            // smoothing that GeometryRenderer itself lacks. When there is no
+            // shadow layer, retain CurveRenderer's built-in antialiasing.
+            preferredRendererType: frameShape.physicalShadowActive
+                ? Shape.GeometryRenderer : Shape.CurveRenderer
 
             // One geometry, one effect. This is attached directly to the locked
             // frame Shape, so there is no second painted item, overlay, wedge,

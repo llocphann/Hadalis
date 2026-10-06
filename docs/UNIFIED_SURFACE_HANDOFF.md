@@ -30,14 +30,14 @@ If runtime evidence, regression tests or maintainer acceptance show that a fix d
 The physical Screen Edge / normal ii Bar perimeter is locked.
 
 - `modules/screenCorners/ScreenEdges.qml` owns one full-output `FrameWindow`.
-- The frame is one odd-even `ShapePath`: padded outer rectangle minus one rounded workspace hole.
-- It has exactly four circular `PathArc` corners.
+- The healthy painter is one texture-free `ScreenEdgeField` analytic SDF: the full output minus one rounded workspace hole, with inward elevation composed in the same pass.
+- The historical odd-even `ShapePath` with exactly four circular `PathArc` corners and its `MultiEffect` shadow remain only inside a lazy `ShaderEffect.Error` fallback and are not constructed on the healthy path.
 - Normal ii Bar ownership changes only the matching inner-frame inset to Bar/VerticalBar thickness.
-- `appearance.screenEdge.radius` through `PerimeterTokens.frameRadius` is the only physical corner-radius control.
+- `appearance.screenEdge.radius` through `PerimeterTokens.frameRadius` is the only physical corner-radius control and drives both the analytic field and its reference fallback.
 - Horizontal/vertical Bar and the painted Screen Edge frame remain mapped across fullscreen; compositor stacking owns coverage.
 - Waffle is a separate supported panel family and must not be changed as a side effect of ii perimeter work.
 
-Do not add Bar-local or ScreenCorner-local `RoundCorner`, `PathArc`, wedge, contact rectangle, shadow band, fake rounded-screen overlay or fallback physical-edge renderer.
+Do not add Bar-local or ScreenCorner-local `RoundCorner`, `PathArc`, wedge, contact rectangle, shadow band, fake rounded-screen overlay or a second healthy-path physical-edge renderer.
 
 ## Current production connected-surface architecture
 

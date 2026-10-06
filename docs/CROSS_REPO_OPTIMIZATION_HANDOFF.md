@@ -786,3 +786,96 @@ remain dropped exactly as current source specifies.
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — Niri layout-sort cache research
+
+Research-only continuation on current `dev`
+`3d607b1b01f9ec937122fdaf48bcfa938cafcfed`. No runtime/product source was
+changed in this round.
+
+Current `services/NiriService.qml`:
+`4c8194493fd380bf0ad8c51bc62990ad0c232738`.
+
+### Candidate — HIGH CONFIDENCE: cache the Niri layout-sorted window view instead of sorting it again on every toplevel match pass
+
+`NiriService.windows` is already layout-sorted at the normal publication
+boundary:
+
+```qml
+const nextWindows = sortWindowsByLayout(_pendingWindows)
+windows = nextWindows
+```
+
+and it is explicitly re-sorted when output geometry changes. However
+`sortToplevels()` still starts from:
+
+```qml
+for (const niriWindow of sortWindowsByLayout(windows)) {
+    ...
+}
+```
+
+so every compositor sort pass allocates another enriched array, sorts it and
+maps it back before the actual Niri↔foreign-toplevel matching begins.
+
+A direct replacement with `for (const niriWindow of windows)` is **not**
+strict-lossless today. `handleWorkspacesChanged()` replaces the workspace map
+and may change `ws.idx` or `ws.output`, both of which are sort keys, but it
+does not reassign public `windows`; it only emits `windowOrderChanged()`.
+The extra sort inside `sortToplevels()` currently repairs that derived order
+before consumers observe it.
+
+Strict-lossless direction:
+
+1. maintain a private layout-sorted window view for matching;
+2. refresh that view whenever any sort-key source changes:
+   - normal batched window publication;
+   - `WorkspacesChanged` (workspace index/output topology);
+   - output geometry changes;
+   - initial output fetch completion;
+3. keep public `windows` assignments and `windowsChanged` signal count exactly
+   as today;
+4. let `sortToplevels()` iterate the private sorted view directly;
+5. keep `windowOrderChanged()` emissions unchanged so current compositor
+   scheduling remains intact.
+
+The private-view requirement matters. Reassigning public `windows` from
+`handleWorkspacesChanged()` merely to refresh order would introduce an extra
+`windowsChanged` notification and could wake unrelated consumers; that is not
+strict-lossless.
+
+Expected structural saving:
+
+- one `map -> sort -> map` pipeline is removed from each
+  `sortToplevels()` call;
+- sorting instead happens only when the authoritative inputs that determine
+  layout order change;
+- the benefit composes with the separate appId-bucket matching candidate:
+  cached order removes redundant O(W log W) preparation, while bucketing removes
+  impossible cross-app match comparisons.
+
+Required oracle before implementation:
+
+- window open/close/change publication;
+- focus-only changes where layout order must not change;
+- `WindowLayoutsChanged`;
+- `WorkspacesChanged` changing workspace idx;
+- workspace moved between outputs;
+- `OutputsChanged` changing logical x/y;
+- initial output fetch arriving after windows;
+- zero-window transitions;
+- verify public `windowsChanged`, `windowOrderChanged`,
+  `activeWindowChanged` counts/order remain identical to the current source;
+- compare complete `sortToplevels()` output identity/order before and after.
+
+### Adjacent finding deliberately not promoted
+
+`filterCurrentWorkspace()` currently filters from public `windows` and does
+not call `sortWindowsByLayout()`. That means its order semantics differ from
+`sortToplevels()` after a workspace-topology-only change until another public
+window sort occurs. This is potentially a correctness consistency question, not
+an optimization. Do not silently switch it to the new private view under a
+strict-lossless patch without first establishing the intended consumer order.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

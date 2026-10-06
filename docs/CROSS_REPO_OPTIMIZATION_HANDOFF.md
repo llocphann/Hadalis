@@ -2339,3 +2339,138 @@ monitoring; low-power mode reduces both the original and optimized cadence.
 
 No whole-Hadalis CPU/RAM percentage is claimed without runtime measurement.
 
+## 2026-10-07 — Notification timer object-reuse research
+
+Research-only continuation on current `dev`
+`10bde01ceb00f0fc54db7e1c65997d1711e0d2b8`. No runtime/product source was
+changed in this round.
+
+Current `services/Notifications.qml`:
+`a05c6744c123d8ed96ee19c8d04cccdbcdeeae0e`.
+
+### Candidate — HIGH CONFIDENCE: stop re-looking-up notification objects that the caller already owns
+
+Several notification paths already hold the exact notification QML object, but
+call the public ID-based helper:
+
+```qml
+function cancelTimeout(id) {
+    const index = root.list.findIndex(
+        notif => notif.notificationId === id)
+    if (index !== -1 && root.list[index]?.timer != null) {
+        root.list[index].timer.stop()
+        root.list[index].timer.destroy()
+        root.list[index].timer = null
+    }
+}
+```
+
+That forces another full `root.list` scan.
+
+#### Current `timeoutNotification(id)`
+
+The function first performs:
+
+```qml
+const index = root.list.findIndex(...)
+```
+
+and then immediately calls:
+
+```qml
+root.cancelTimeout(id)
+```
+
+which performs the same lookup again.
+
+This can be reduced to one lookup by retaining
+`const notif = root.list[index]` and cancelling `notif.timer` directly.
+
+#### Current `timeoutAll()`
+
+`root.popupList` already contains the live notification objects:
+
+```qml
+root.popupList.forEach(notif => {
+    root.cancelTimeout(notif.notificationId)
+    root.timeout(notif.notificationId)
+})
+root.popupList.forEach(notif => {
+    notif.popup = false
+})
+```
+
+If P popup notifications exist in a retained history list of N notifications,
+the cancellation phase can perform P separate O(N) ID scans even though the
+correct object is already present.
+
+Strict-lossless replacement can keep the exact logical order:
+
+1. snapshot/use the current popup object list as today;
+2. for each popup object:
+   - stop/destroy/null its timer directly;
+   - emit `root.timeout(notificationId)` in the same order;
+3. perform the existing popup-flag clear in the same second pass if signal/order
+   parity requires retaining that phase split;
+4. call `triggerListChange()` once exactly as today.
+
+#### Current `markReadForApp(identifiers)`
+
+This function already iterates `root.list`:
+
+```qml
+root.list.forEach(notif => {
+    if (notif.popup && appMatches) {
+        cancelTimeout(notif.notificationId)
+        notif.popup = false
+        changed = true
+    }
+})
+```
+
+Each matching notification therefore triggers a second list scan. Directly
+cancelling the timer on `notif` preserves the current behavior and turns the
+path back into one list pass.
+
+### Why this is strict-lossless
+
+No new cache/index is required. The optimization only reuses an object reference
+that the current caller already obtained from the authoritative list.
+
+Preserve exactly:
+
+- timer `stop()`;
+- timer `destroy()`;
+- assignment `notif.timer = null`;
+- per-notification `timeout(id)` emission in `timeoutAll()`;
+- popup-flag mutation order;
+- final `triggerListChange()` behavior;
+- `cancelTimeout(id)` itself for external callers that only have an ID
+  (Classic/Waffle notification-group hover paths).
+
+### Required oracle
+
+Cover:
+
+- one popup in one-item history;
+- many popups in long retained history;
+- mixture of popup and already-read notifications;
+- notification with no timer;
+- timeout of missing ID;
+- `timeoutNotification()`;
+- `timeoutAll()`;
+- `markReadForApp()` matching zero/one/many notifications;
+- verify identical `timeout(id)` signal count/order;
+- verify timer destruction/null state;
+- verify final popupList/group state.
+
+Structural saving:
+
+- `timeoutNotification`: two full-list ID scans become one;
+- `timeoutAll`: P full-list scans are removed;
+- `markReadForApp`: one extra full-list scan is removed per matching
+  notification.
+
+This is CPU/JS collection work only and no whole-Hadalis percentage is claimed
+without runtime measurement.
+

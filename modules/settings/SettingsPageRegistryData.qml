@@ -19,7 +19,7 @@ import qs.modules.common
 Singleton {
     id: root
 
-    readonly property var legacyHiddenIndexes: [18, 19, 21, 27, 28, 30, 31, 35, 36]
+    readonly property var legacyHiddenIndexes: [18, 19, 20, 21, 27, 28, 30, 31, 35, 36]
 
     readonly property var pages: [
         {
@@ -169,14 +169,7 @@ Singleton {
         },
                 null,
                 null,
-        {
-            key: "arrange",
-            name: Translation.tr("Arrange"),
-            icon: "swap_vert",
-            desc: Translation.tr("Reorder and hide navigation tabs"),
-            essential: false,
-            component: "modules/settings/ArrangeConfig.qml"
-        },
+                null,
                 null,
         {
             key: "dock",
@@ -248,7 +241,7 @@ Singleton {
         { label: Translation.tr("Desktop & Layout"), pages: Config.options?.panelFamily === "abyss" ? [15,5,14,29,10,11] : [15,26,2,22,23,5,16,14,29,10,11] },
         { label: Translation.tr("System"), pages: [1, 12, 17] },
         { label: Translation.tr("Features & Services"), pages: [24, 7, 6] },
-        { label: Translation.tr("Advanced & Help"), pages: [20, 9, 13] }
+        { label: Translation.tr("Advanced & Help"), pages: [9, 13] }
     ]
 
     readonly property var _arrangement: Navigation.arrange(
@@ -258,7 +251,7 @@ Singleton {
     readonly property var hiddenPages: _arrangement.hidden
 
     function iconForPage(idx) {
-        return (idx >= 0 && idx < pages.length) ? (pages[idx].icon || "settings") : "settings";
+        return (idx >= 0 && idx < pages.length) ? (pages[idx]?.icon ?? "settings") : "settings";
     }
 
     property var _staticSearchIndex: null
@@ -341,13 +334,6 @@ Singleton {
             label: Translation.tr("Screenshots folder"),
             description: Translation.tr("Where iNiR screenshots are saved"),
             keywords: ["capture", "screenshot", "snip", "save", "path", "folder", "directory", "picture"]
-        },
-        {
-            pageIndex: 20, pageName: root.pages[20].name,
-            section: Translation.tr("Arrange settings"),
-            label: Translation.tr("Arrange settings"),
-            description: Translation.tr("Reorder or hide navigation tabs"),
-            keywords: ["arrange", "reorder", "tabs", "nav", "sidebar", "customize", "layout", "settings", "hide", "show", "visibility"]
         },
         {
             pageIndex: 1, pageName: root.pages[1].name,

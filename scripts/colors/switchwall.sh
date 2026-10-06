@@ -477,46 +477,6 @@ switch() {
         fi
     fi
 
-    # Determine mode if not set
-    if [[ -z "$mode_flag" ]]; then
-        # Auto light/dark from wallpaper brightness (opt-in). Keeps UI text
-        # readable: a bright wallpaper selects the light scheme (dark text), a
-        # dark one selects dark. Falls back to the gsettings color-scheme on any
-        # failure (missing magick, unreadable image, etc.).
-        if [[ "$cfg_auto_dark_light" == "true" && -n "$imgpath" && -f "$imgpath" ]] \
-            && command -v magick >/dev/null 2>&1; then
-            wp_lum=$(magick "${imgpath}[0]" -resize 64x64\! -colorspace Gray -format '%[fx:mean]' info: 2>/dev/null)
-            if [[ -n "$wp_lum" ]]; then
-                if awk -v l="$wp_lum" 'BEGIN { exit !(l > 0.5) }'; then
-                    mode_flag="light"
-                else
-                    mode_flag="dark"
-                fi
-                echo "[switchwall.sh] auto dark/light: wallpaper luminance ${wp_lum} -> ${mode_flag}"
-            fi
-        fi
-    fi
-    if [[ -z "$mode_flag" ]]; then
-        if [[ "$cfg_preferred_darkmode" == "false" ]]; then
-            mode_flag="light"
-        else
-            mode_flag="dark"
-        fi
-    fi
-    if [[ -z "$mode_flag" ]]; then
-        current_mode=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null | tr -d "'")
-        if [[ "$current_mode" == "prefer-dark" ]]; then
-            mode_flag="dark"
-        else
-            mode_flag="light"
-        fi
-    fi
-
-    # Shell/UI colors follow the requested real mode.
-    # Terminal colors may optionally force dark mode, but that must not darken the shell palette.
-    if [[ -n "$mode_flag" ]]; then
-        generate_colors_material_args+=(--mode "$mode_flag")
-    fi
     # If useBackdropForColors is enabled, override color source to use backdrop wallpaper
     # Respects active panel family: ii reads from background.backdrop, waffle from waffles.background.backdrop
     if [[ "$color_flag" != "1" ]]; then
@@ -546,6 +506,26 @@ switch() {
             fi
         fi
     fi
+
+    # Auto light/dark reads the exact image used for color generation
+    # (including backdrop/video thumbnail), with alpha removed from luminance.
+    if [[ -z "$mode_flag" && "$cfg_auto_dark_light" == "true" ]] && command -v magick >/dev/null 2>&1; then
+        local lum_source="$imgpath" lum_index
+        for ((lum_index = 0; lum_index < ${#generate_colors_material_args[@]} - 1; lum_index++)); do
+            [[ "${generate_colors_material_args[lum_index]}" == "--path" ]] && lum_source="${generate_colors_material_args[lum_index + 1]}"
+        done
+        if [[ -f "$lum_source" ]]; then
+            wp_lum=$(magick "${lum_source}[0]" -alpha off -resize 64x64\! -colorspace Gray -format '%[fx:mean]' info: 2>/dev/null)
+            if [[ -n "$wp_lum" ]]; then
+                if awk -v l="$wp_lum" 'BEGIN { exit !(l > 0.5) }'; then mode_flag="light"; else mode_flag="dark"; fi
+                echo "[switchwall.sh] auto dark/light: luminance ${wp_lum} of ${lum_source} -> ${mode_flag}"
+            fi
+        fi
+    fi
+    if [[ -z "$mode_flag" ]]; then
+        [[ "$cfg_preferred_darkmode" == "false" ]] && mode_flag="light" || mode_flag="dark"
+    fi
+    generate_colors_material_args+=(--mode "$mode_flag")
 
     [[ -n "$type_flag" ]] && generate_colors_material_args+=(--scheme "$type_flag")
     generate_colors_material_args+=(--termscheme "$terminalscheme" --blend_bg_fg)

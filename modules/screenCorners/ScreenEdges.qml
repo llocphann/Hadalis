@@ -219,34 +219,35 @@ Scope {
         // subtracts the rounded workspace rect from the padded outer rect,
         // matching the isolated Caelestia BlobInvertedRect border silhouette.
         // Do not split this into edge/corner renderers or add painted helpers.
-        Shape {
-            id: frameShape
+        Loader {
+            id: legacyFramePainter
             anchors.fill: parent
-            visible: frameField.status === ShaderEffect.Error
+            active: frameField.status === ShaderEffect.Error
                 && !frameWindow.fullscreenCovered
-            antialiasing: true
+            sourceComponent: Component {
+                Shape {
+                    id: frameShape
+                    anchors.fill: parent
+                    antialiasing: true
             preferredRendererType: Shape.CurveRenderer
 
             // Fallback geometry/effect only. This remains attached directly to
             // frame Shape, so there is no second painted item, overlay, wedge,
             // corner patch or shadow rectangle. At the defaults this matches
             // Caelestia ContentWindow: blurMax=15 and m3shadow alpha=0.70.
-            // Maintainer-approved perceptual optimization (2026-10-06):
-            // preserve the exact locked geometry and logical shadow radius, but
-            // rasterize the offscreen shadow source at 5/8 resolution. The
-            // default 10 px frame still has 6.25 source texels while the layer
-            // allocates/rasterizes only 39.06% of the former pixels.
-            readonly property real shadowRasterScale:
-                root.physicalShadowSize >= 12 ? 0.5 : 0.625
-            layer.enabled: frameShape.visible
-                && frameWindow.physicalShadowActive
-            layer.textureSize: frameWindow.physicalShadowActive
+                    // Fallback-only perceptual optimization (2026-10-06):
+                    // wide shadows rasterize at 1/2 resolution; small shadows
+                    // retain 5/8. This path exists only after analytic QSB error.
+                    readonly property real shadowRasterScale:
+                        root.physicalShadowSize >= 12 ? 0.5 : 0.625
+                    layer.enabled: frameWindow.physicalShadowActive
+                    layer.textureSize: frameWindow.physicalShadowActive
                 ? Qt.size(Math.max(1, Math.ceil(frameShape.width * frameShape.shadowRasterScale)),
                     Math.max(1, Math.ceil(frameShape.height * frameShape.shadowRasterScale)))
                 : Qt.size(0, 0)
             layer.smooth: true
             layer.effect: MultiEffect {
-                shadowEnabled: frameWindow.physicalShadowActive
+                        shadowEnabled: frameWindow.physicalShadowActive
                 // blurMax alone only sets the kernel ceiling; without
                 // shadowBlur the effect paints no soft falloff into the
                 // workspace at the four inverted rounded corners.
@@ -356,6 +357,8 @@ Scope {
                     radiusX: framePath.r
                     radiusY: framePath.r
                     direction: PathArc.Clockwise
+                }
+                    }
                 }
             }
         }

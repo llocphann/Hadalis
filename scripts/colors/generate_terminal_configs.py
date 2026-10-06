@@ -55,7 +55,26 @@ def load_generator_colors(scss_path, palette_json_path, terminal_json_path):
     # Explicit contracts should win over SCSS compatibility values.
     colors.update(palette_colors)
     colors.update(terminal_colors)
+    # Selection is an accent tint under the foreground, constrained so normal
+    # text remains readable on light themes.
+    term0, term15 = colors.get("term0", "#282828"), colors.get("term15", "#EBDBB2")
+    primary = colors.get("primary", "#458588")
+    factor = 0.35
+    while factor > 0.05 and contrast_hex(term15, blend_hex(term0, primary, factor)) < 4.5:
+        factor -= 0.03
+    colors.setdefault("selectionBg", blend_hex(term0, primary, factor))
+    colors.setdefault("tabInactiveBg", blend_hex(term0, term15, 0.06))
     return colors
+
+
+def contrast_hex(a, b):
+    def lum(h):
+        h = h.lstrip("#")
+        c = [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+        c = [x / 12.92 if x <= 0.04045 else ((x + 0.055) / 1.055) ** 2.4 for x in c]
+        return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    la, lb = lum(a), lum(b)
+    return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
 
 
 def blend_hex(color1, color2, factor=0.5):
@@ -109,8 +128,8 @@ def generate_kitty_config(colors, output_path):
 # The basic colors
 foreground              {colors.get("term15", "#EBDBB2")}
 background              {colors.get("term0", "#282828")}
-selection_foreground    {colors.get("term0", "#282828")}
-selection_background    {colors.get("term15", "#EBDBB2")}
+selection_foreground    {colors.get("term15", "#EBDBB2")}
+selection_background    {colors["selectionBg"]}
 
 # Cursor colors
 cursor                  {colors.get("term15", "#EBDBB2")}
@@ -127,8 +146,8 @@ bell_border_color       {colors.get("term1", "#CC241D")}
 # Tab bar colors
 active_tab_foreground   {colors.get("onPrimary", "#FFFFFF")}
 active_tab_background   {colors.get("primary", "#458588")}
-inactive_tab_foreground {colors.get("term7", "#A89984")}
-inactive_tab_background {colors.get("term8", "#928374")}
+inactive_tab_foreground {colors.get("term7", "#A89984") if contrast_hex(colors.get("term7", "#A89984"), colors["tabInactiveBg"]) >= 4.5 else colors.get("term15", "#EBDBB2")}
+inactive_tab_background {colors["tabInactiveBg"]}
 tab_bar_background      {colors.get("term0", "#282828")}
 
 # The 16 terminal colors

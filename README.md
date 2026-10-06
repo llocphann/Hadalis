@@ -51,7 +51,7 @@ This section is the **maintainer handoff for new chat sessions**. Read it before
 
 **Frozen / do-not-touch unless the maintainer explicitly asks:**
 
-- **Physical Screen Edge geometry is locked.** Do not redesign, refactor or "clean up" `modules/screenCorners/ScreenEdges.qml` while working on Popup/Sidebar/Dashboard. The accepted model is one full-screen `FrameWindow`, one odd-even `ShapePath`, four circular `PathArc` corners and transparent reservation windows only.
+- **Physical Screen Edge geometry is locked.** Do not redesign, refactor or "clean up" `modules/screenCorners/ScreenEdges.qml` while working on Popup/Sidebar/Dashboard. The accepted model is one full-screen `FrameWindow` whose primary painter is the texture-free `ScreenEdgeField` analytic rounded-workspace SDF, plus transparent reservation windows. The former odd-even `ShapePath` / four-`PathArc` / `MultiEffect` renderer is retained only as a lazy `ShaderEffect.Error` fail-safe; it is not constructed on the healthy path.
 - **Normal ii Bar/VerticalBar perimeter geometry is locked together with Screen Edge.** Do not add Bar-local `RoundCorner`, `PathArc`, rectangle, wedge, contact patch, shadow band or fallback geometry. Bar position top/bottom/left/right is represented only by changing the matching inner-frame inset to Bar/VerticalBar thickness inside the existing Screen Edge frame.
 - The only approved curvature control for that physical perimeter is `appearance.screenEdge.radius` through `PerimeterTokens.frameRadius` (default **25px**, supported range **0–96px**).
 - `appearance.screenEdge.physicalShadow` is the public connected-edge depth control and is shared by the physical frame, ii Bar `StyledPopup`, Dock, Sidebar and Dashboard. The older `appearance.screenEdge.shadow` key remains only for Settings/OSK compatibility paths.
@@ -60,7 +60,7 @@ This section is the **maintainer handoff for new chat sessions**. Read it before
 
 **Connected-surface policy — legacy round-wedge geometry retired:**
 
-- **Physical Screen Edge geometry remains locked** to the single full-screen odd-even frame below.
+- **Physical Screen Edge geometry remains locked** to the single full-screen rounded workspace opening below. `ScreenEdgeField` is the normal painter; the historical odd-even Shape/MultiEffect renderer is error fallback only.
 - ii Bar popups keep the production iRiS SDF union through `StyledPopup`.
 - Sidebar, Dashboard and Settings use `ConnectedSurfaceIrisEdgeSurface`, which adapts their real body rectangle to the same iRiS field without a standalone wedge/corner helper.
 - Dashboard-owned Applications Search inherits the Dashboard `ConnectedSurfaceIrisEdgeSurface`; the embedded `SearchWidget` must not paint a second field. Dock also uses `ConnectedSurfaceIrisEdgeSurface` on top/bottom/left/right so its body is one iRiS-connected block with Screen Edge. OSK, standalone/non-cutover Search and current Waffle bodies keep direct square joined edges without auxiliary endpoint wedges.
@@ -73,11 +73,10 @@ This section is the **maintainer handoff for new chat sessions**. Read it before
 ```text
 ScreenEdges.qml
 └── FrameWindow (full output, ExclusionMode.Ignore)
-    └── Shape
-        └── ShapePath OddEvenFill
-            ├── padded outer rectangle
-            └── one rounded inner workspace hole
-                └── exactly 4 PathArc corners
+    ├── ScreenEdgeField (primary, texture-free analytic SDF)
+    │   └── one rounded inner workspace hole + inward elevation
+    └── Loader (ShaderEffect.Error only)
+        └── legacy ShapePath OddEvenFill + 4 PathArc + MultiEffect fallback
 
 normal ii Bar:
 top/bottom  -> owned inner inset = Appearance.sizes.barHeight

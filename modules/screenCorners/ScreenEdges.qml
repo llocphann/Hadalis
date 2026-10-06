@@ -130,6 +130,8 @@ Scope {
         required property ShellScreen modelData
 
         readonly property string outputName: String(modelData?.name ?? "")
+        readonly property bool fullscreenCovered: outputName.length > 0
+            && GameMode.hasFullscreenOnOutput(outputName)
         // FULLSCREEN-SCREEN-EDGE-LIFECYCLE-LOCK (maintainer approved 2026-09-19):
         // This painted FrameWindow must stay mapped across fullscreen just like
         // the ii Bar. Quickshell destroys layer-shell windows when visible=false;
@@ -202,6 +204,14 @@ Scope {
                 root.physicalShadowEnabled
                 && root.physicalShadowSize > 0
                 && root.physicalShadowOpacity > 0
+                // Fullscreen clients cover this Top-layer frame in Niri; keep
+                // the frame mapped for stacking stability but skip its costly
+                // offscreen shadow pipeline while no shadow pixel can present.
+                && !frameWindow.fullscreenCovered
+                // Match the shell-wide minimal-mode policy used by other
+                // material shadows: GameMode intentionally trades depth cues
+                // for lower GPU cost.
+                && !Appearance.gameModeMinimal
             // Maintainer-approved perceptual optimization (2026-10-06):
             // preserve the exact locked geometry and logical shadow radius, but
             // rasterize the offscreen shadow source at 5/8 resolution. The

@@ -165,7 +165,10 @@ Scope {
 
         screen: modelData
         visible: mapped
-        updatesEnabled: mapped
+        // Preserve the mapped layer-shell surface across fullscreen for stable
+        // stacking, but suspend its scenegraph while the fullscreen client
+        // completely covers the physical frame.
+        updatesEnabled: mapped && !fullscreenCovered
         color: "transparent"
         // Visual host must ignore all exclusive zones and remain pinned to the
         // physical output bounds, matching Caelestia ContentWindow.

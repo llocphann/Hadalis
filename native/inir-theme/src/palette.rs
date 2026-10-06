@@ -171,25 +171,52 @@ fn adjust_material_color(argb: Argb, scheme_name: &str, soften: bool, color_stre
     hct.to_argb()
 }
 
-fn tint_light_surfaces(palette: &mut Palette, scheme_name: &str) {
+fn shortest_hue_delta(source: f64, target: f64) -> f64 {
+    (target - source + 540.0).rem_euclid(360.0) - 180.0
+}
+
+fn surface_theme_anchor(
+    palette: &Palette,
+    scheme_name: &str,
+    theme_seed: Argb,
+) -> Option<(f64, f64)> {
+    let primary_hex = palette
+        .get("primary")
+        .or_else(|| palette.get("surfaceTint"))
+        .or_else(|| palette.get("primaryContainer"))?;
+    let primary = Hct::from_argb(parse_hex(primary_hex).ok()?);
+    let seed = Hct::from_argb(theme_seed);
+
+    let (hue, source_chroma) = if seed.chroma() >= 8.0 {
+        let shift = (shortest_hue_delta(seed.hue(), primary.hue()) * 0.18)
+            .clamp(-8.0, 8.0);
+        ((seed.hue() + shift).rem_euclid(360.0), seed.chroma())
+    } else {
+        (primary.hue(), primary.chroma())
+    };
+
+    let chroma = if scheme_name == "scheme-neutral" {
+        (source_chroma * 0.45)
+            .max(primary.chroma() * 0.45)
+            .clamp(14.0, 28.0)
+    } else {
+        (source_chroma * 0.72)
+            .max(primary.chroma() * 0.62)
+            .clamp(28.0, 52.0)
+    };
+    Some((hue, chroma))
+}
+
+fn tint_light_surfaces(palette: &mut Palette, scheme_name: &str, theme_seed: Argb) {
     if scheme_name == "scheme-monochrome" {
         return;
     }
 
-    let Some(seed_hex) = palette
-        .get("primary")
-        .or_else(|| palette.get("surfaceTint"))
-        .or_else(|| palette.get("primaryContainer"))
-        .cloned()
+    let Some((hue, surface_chroma)) =
+        surface_theme_anchor(palette, scheme_name, theme_seed)
     else {
         return;
     };
-    let Ok(seed_argb) = parse_hex(&seed_hex) else {
-        return;
-    };
-    let seed = Hct::from_argb(seed_argb);
-    let surface_chroma = (seed.chroma() * 0.90).clamp(34.0, 56.0);
-    let hue = seed.hue();
 
     for (role, tone, scale) in [
         ("background", 77.0, 1.00),
@@ -203,7 +230,7 @@ fn tint_light_surfaces(palette: &mut Palette, scheme_name: &str) {
         ("surfaceContainerHighest", 61.0, 1.14),
         ("surfaceVariant", 64.0, 1.08),
     ] {
-        let chroma = (surface_chroma * scale).clamp(28.0, 60.0);
+        let chroma = (surface_chroma * scale).clamp(18.0, 56.0);
         palette.insert(role.into(), Hct::new(hue, chroma, tone).to_argb().to_hex());
     }
 
@@ -344,7 +371,7 @@ fn material_palette_with_policy(
     }
 
     if !dark {
-        tint_light_surfaces(&mut palette, scheme_name);
+        tint_light_surfaces(&mut palette, scheme_name, seed);
     }
 
     if dark {
@@ -1014,6 +1041,24 @@ mod tests {
     }
 
     #[test]
+    fn expressive_light_surface_stays_near_theme_seed_hue() {
+        let seed = Argb::from_rgb(0x19, 0x8F, 0xA3);
+        let material = material_palette(seed, "scheme-expressive", false, false, 1.0);
+        let seed_hct = Hct::from_argb(seed);
+        let background =
+            Hct::from_argb(parse_hex(material.get("background").unwrap()).unwrap());
+
+        let hue_delta = |a: f64, b: f64| {
+            let d = (a - b).abs() % 360.0;
+            d.min(360.0 - d)
+        };
+        assert!(
+            hue_delta(seed_hct.hue(), background.hue()) <= 12.0,
+            "expressive light surface drifted away from theme seed hue"
+        );
+    }
+
+    #[test]
     fn light_palette_uses_theme_hue_instead_of_white_surfaces() {
         let material = material_palette(
             Argb::from_rgb(0xB0, 0x00, 0x20),
@@ -1022,7 +1067,7 @@ mod tests {
             false,
             1.0,
         );
-        let primary = Hct::from_argb(parse_hex(material.get("primary").unwrap()).unwrap());
+        let seed_hct = Hct::from_argb(Argb::from_rgb(0xB0, 0x00, 0x20));
         let background = Hct::from_argb(parse_hex(material.get("background").unwrap()).unwrap());
         let container =
             Hct::from_argb(parse_hex(material.get("surfaceContainer").unwrap()).unwrap());
@@ -1048,8 +1093,8 @@ mod tests {
             d.min(360.0 - d)
         };
         assert!(
-            hue_delta(primary.hue(), background.hue()) <= 12.0,
-            "light background no longer follows primary hue"
+            hue_delta(seed_hct.hue(), background.hue()) <= 12.0,
+            "light background no longer follows theme seed hue"
         );
 
         let on_surface = parse_hex(material.get("onSurface").unwrap()).unwrap();

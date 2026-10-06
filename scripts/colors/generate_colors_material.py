@@ -455,29 +455,58 @@ def readable_hex(fg_hex: str, bg_hex: str, min_ratio: float = 4.5) -> str:
     return argb_to_hex(ensure_contrast(hex_to_argb(fg_hex), bg_argb, min_ratio, is_bg_dark))
 
 
-def tint_light_surfaces(palette: dict[str, str], scheme_name: str) -> dict[str, str]:
-    """Replace near-white Material light surfaces with the active theme hue.
+def _shortest_hue_delta(source: float, target: float) -> float:
+    return ((target - source + 540.0) % 360.0) - 180.0
 
-    Light mode remains high-tone/readable, but its structural surfaces are
-    deliberately chromatic: a red theme yields light red/rose surfaces instead
-    of white/grey, blue yields light blue, etc.
-    """
-    if scheme_name == "scheme-monochrome":
-        return palette
 
-    seed_hex = (
+def _surface_theme_anchor(
+    palette: dict[str, str], scheme_name: str, theme_seed: Hct | None
+) -> tuple[float, float]:
+    primary_hex = (
         palette.get("primary")
         or palette.get("surfaceTint")
         or palette.get("primaryContainer")
     )
-    if not seed_hex:
+    if not primary_hex:
+        return (theme_seed.hue, theme_seed.chroma) if theme_seed else (0.0, 0.0)
+
+    primary = Hct.from_int(hex_to_argb(primary_hex))
+
+    # Wallpaper/custom seed is the identity of the theme. Material variants are
+    # allowed to harmonize the surface hue, but never rotate it into a different
+    # family (notably expressive/fruit-salad/rainbow).
+    if theme_seed is not None and theme_seed.chroma >= 8.0:
+        shift = max(-8.0, min(
+            8.0,
+            _shortest_hue_delta(theme_seed.hue, primary.hue) * 0.18,
+        ))
+        hue = (theme_seed.hue + shift) % 360.0
+        source_chroma = theme_seed.chroma
+    else:
+        hue = primary.hue
+        source_chroma = primary.chroma
+
+    if scheme_name == "scheme-neutral":
+        chroma = min(28.0, max(
+            14.0, source_chroma * 0.45, primary.chroma * 0.45
+        ))
+    else:
+        chroma = min(52.0, max(
+            28.0, source_chroma * 0.72, primary.chroma * 0.62
+        ))
+    return hue, chroma
+
+
+def tint_light_surfaces(
+    palette: dict[str, str], scheme_name: str, theme_seed: Hct | None = None
+) -> dict[str, str]:
+    """Build colored light surfaces around the actual theme seed hue."""
+    if scheme_name == "scheme-monochrome":
         return palette
 
-    seed = Hct.from_int(hex_to_argb(seed_hex))
-    # Light mode is the same color family as dark mode at higher tones, not a
-    # near-white Material palette with a faint tint.
-    surface_chroma = min(56.0, max(34.0, seed.chroma * 0.90))
-    hue = seed.hue
+    hue, surface_chroma = _surface_theme_anchor(
+        palette, scheme_name, theme_seed
+    )
 
     surface_ramp = {
         "background": (77.0, 1.00),
@@ -492,7 +521,7 @@ def tint_light_surfaces(palette: dict[str, str], scheme_name: str) -> dict[str, 
         "surfaceVariant": (64.0, 1.08),
     }
     for role, (tone, chroma_scale) in surface_ramp.items():
-        chroma = min(60.0, max(28.0, surface_chroma * chroma_scale))
+        chroma = min(56.0, max(18.0, surface_chroma * chroma_scale))
         palette[role] = argb_to_hex(Hct.from_hct(hue, chroma, tone).to_int())
 
     ink_chroma = min(26.0, max(10.0, surface_chroma * 0.48))
@@ -752,7 +781,7 @@ if args.scheme != "scheme-monochrome":
 # Material's stock light surfaces are deliberately near-white. Hadalis light
 # mode instead uses a high-tone ramp in the active theme hue.
 if not darkmode:
-    tint_light_surfaces(material_colors, args.scheme)
+    tint_light_surfaces(material_colors, args.scheme, hct)
 
 # Extended material
 if darkmode == True:
@@ -1208,7 +1237,7 @@ if args.render_templates:
                     g = Hct.from_hct(g.hue, g.chroma * 0.60, g.tone)
                 palette[c] = rgba_to_hex(g.to_rgba())
         if not is_dark:
-            tint_light_surfaces(palette, args.scheme)
+            tint_light_surfaces(palette, args.scheme, hct)
         # source_color is the seed itself
         palette["source_color"] = argb_to_hex(argb)
         # Extended Material tokens (not in MaterialDynamicColors)

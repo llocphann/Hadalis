@@ -3398,17 +3398,38 @@ Singleton {
         for (var i = 0; i < keys.length; i++)
             themed[keys[i]] = colorsObj[keys[i]];
 
-        var accent = Qt.color(
+        var primary = Qt.color(
             themed.m3primary || themed.m3surfaceTint || themed.m3primaryContainer || ""
         );
-        if (!accent.valid) return themed;
+        if (!primary.valid) return themed;
 
-        var hue = accent.hslHue;
-        var surfaceSat = Math.max(0.34,
-            Math.min(0.64, accent.hslSaturation * 0.90));
+        // Presets/custom themes may already encode their intended family in the
+        // background. Prefer that hue when it is meaningfully chromatic; only
+        // fall back to primary for neutral/near-white backgrounds.
+        var originalSurface = Qt.color(
+            themed.m3background || themed.m3surface || themed.m3surfaceContainer || ""
+        );
+        var surfaceChromaProxy = originalSurface.valid
+            ? originalSurface.hslSaturation
+                * (1.0 - Math.abs(2.0 * originalSurface.hslLightness - 1.0))
+            : 0.0;
+        var anchor = surfaceChromaProxy >= 0.06 ? originalSurface : primary;
+
+        function signedHueDelta(source, target) {
+            var delta = ((target - source + 1.5) % 1.0) - 0.5;
+            return delta;
+        }
+
+        var hueShift = Math.max(-8.0 / 360.0,
+            Math.min(8.0 / 360.0,
+                signedHueDelta(anchor.hslHue, primary.hslHue) * 0.18));
+        var hue = (anchor.hslHue + hueShift + 1.0) % 1.0;
+        var sourceSat = Math.max(anchor.hslSaturation, primary.hslSaturation * 0.62);
+        var surfaceSat = Math.max(0.28,
+            Math.min(0.58, sourceSat * 0.82));
 
         function surface(lightness, scale) {
-            var sat = Math.max(0.28, Math.min(0.68, surfaceSat * scale));
+            var sat = Math.max(0.20, Math.min(0.62, surfaceSat * scale));
             return Qt.hsla(hue, sat, lightness, 1.0).toString();
         }
         function ink(lightness, scale) {

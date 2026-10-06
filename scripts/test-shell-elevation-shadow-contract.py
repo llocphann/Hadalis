@@ -38,6 +38,10 @@ bars = (
 require(edge,
     "fillRule: ShapePath.OddEvenFill",
     "readonly property bool physicalShadowActive:",
+    "readonly property bool fullscreenCovered: outputName.length > 0",
+    "GameMode.hasFullscreenOnOutput(outputName)",
+    "&& !frameWindow.fullscreenCovered",
+    "&& !Appearance.gameModeMinimal",
     "layer.enabled: frameShape.physicalShadowActive",
     "readonly property real shadowRasterScale: 0.625",
     "layer.textureSize: frameShape.physicalShadowActive",
@@ -52,6 +56,16 @@ require(edge,
     "shadowVerticalOffset: 0",
     "Appearance.m3colors.m3shadow",
 )
+# Fullscreen/minimal-mode optimization must never weaken the lifecycle lock:
+# the frame remains mapped, while only its expensive shadow layer is gated.
+frame_component = edge[edge.index("component FrameWindow:"):edge.index("component ReservationWindow:")]
+mapped_block = frame_component[frame_component.index("readonly property bool mapped:"):frame_component.index("// LOCKED BAR/SCREEN-EDGE INSETS:")]
+assert "fullscreen" not in mapped_block.lower()
+assert "gameModeMinimal" not in mapped_block
+shadow_block = frame_component[frame_component.index("readonly property bool physicalShadowActive:"):frame_component.index("layer.enabled: frameShape.physicalShadowActive")]
+assert "!frameWindow.fullscreenCovered" in shadow_block
+assert "!Appearance.gameModeMinimal" in shadow_block
+
 assert edge.count("Shape {") == 1, "The physical frame must remain one shape"
 assert "PerimeterCornerShadow" not in edge
 assert "RoundCorner {" not in edge

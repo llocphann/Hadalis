@@ -22,13 +22,15 @@ def main() -> int:
         "services/MaterialThemeLoader.qml",
         'Config.setNestedValue("appearance.wallpaperTheming.autoDarkLightMode", false)',
         "Appearance.m3colors.darkmode",
-        "ColorUtils.mix(accentContainer, l3, 0.75)",
+        "ColorUtils.quietSelection(accentContainer, l0, false)",
         "layer1Active, 4.5",
     )
     require(
         "modules/common/ThemePresets.qml",
         "c.darkmode",
-        "mixHex(primaryContainer, layer3, 0.75)",
+        "ColorUtils.quietSelection(primaryContainer, layer0, false)",
+        "ColorUtils.semanticStatus(primary, layer0, 145.0, 0.48)",
+        "app_success: success",
         "layer1Active, 4.5",
     )
     require(
@@ -40,7 +42,11 @@ def main() -> int:
     require(
         "scripts/colors/generate_colors_material.py",
         "layer1_active, 4.5",
-        'selection = mix_hex(primary_container, layer3, 0.75)',
+        "selection_tone",
+        "min(container_hct.chroma, 20.0)",
+        '"app_success": success',
+        '"app_warning": warning',
+        '"app_error": error',
         'if args.scheme != "scheme-monochrome":',
         '("term7", 75.0 if darkmode else 35.0, 4.5)',
         "current.update(material_colors)",
@@ -57,7 +63,11 @@ def main() -> int:
         "native/inir-theme/src/palette.rs",
         "scheme.primary_palette",
         "layer0_is_light",
-        'let selection = mix_hex(&primary_container, &layer3, 0.75);',
+        "let selection_tone",
+        "container_hct.chroma().min(20.0)",
+        '("app_success", success)',
+        '("app_warning", warning)',
+        '("app_error", error)',
         '("term7", if dark { 75.0 } else { 35.0 }, 4.5)',
     )
     require(
@@ -65,6 +75,25 @@ def main() -> int:
         "theme-meta.json",
         "APPLIED_ICON_THEME",
         'bash "$SCRIPT_DIR/icon-theme-for-mode.sh"',
+        "APP_SUCCESS=",
+        "APP_WARNING=",
+        "APP_ERROR=",
+        'FG_POSITIVE="${APP_SUCCESS:-$SECONDARY}"',
+        "KDE_SELECTION_FG_INACTIVE",
+        "@define-color success_color",
+        "--success-color:",
+        ".app_foreground // .on_surface",
+    )
+    require(
+        "scripts/colors/vscode_themegen/main.go",
+        'themeNameLight   = "iNiR Material Light"',
+        'themeFileLight   = "inir-material-light-color-theme.json"',
+        '{"label": themeNameLight, "uiTheme": "vs"',
+        "func mutedInk(",
+        "func lightenEdges(",
+        "manifestHasLight(",
+        "activeName, activeFile := themeIdentity(colors)",
+        "syntaxColor(termColors, primary, editorBg",
     )
     require(
         "services/IconThemeService.qml",

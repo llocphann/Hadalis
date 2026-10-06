@@ -188,8 +188,7 @@ fn surface_theme_anchor(
     let seed = Hct::from_argb(theme_seed);
 
     let (hue, source_chroma) = if seed.chroma() >= 8.0 {
-        let shift = (shortest_hue_delta(seed.hue(), primary.hue()) * 0.18)
-            .clamp(-8.0, 8.0);
+        let shift = (shortest_hue_delta(seed.hue(), primary.hue()) * 0.18).clamp(-8.0, 8.0);
         ((seed.hue() + shift).rem_euclid(360.0), seed.chroma())
     } else {
         (primary.hue(), primary.chroma())
@@ -212,9 +211,7 @@ fn tint_light_surfaces(palette: &mut Palette, scheme_name: &str, theme_seed: Arg
         return;
     }
 
-    let Some((hue, surface_chroma)) =
-        surface_theme_anchor(palette, scheme_name, theme_seed)
-    else {
+    let Some((hue, surface_chroma)) = surface_theme_anchor(palette, scheme_name, theme_seed) else {
         return;
     };
 
@@ -1045,8 +1042,7 @@ mod tests {
         let seed = Argb::from_rgb(0x19, 0x8F, 0xA3);
         let material = material_palette(seed, "scheme-expressive", false, false, 1.0);
         let seed_hct = Hct::from_argb(seed);
-        let background =
-            Hct::from_argb(parse_hex(material.get("background").unwrap()).unwrap());
+        let background = Hct::from_argb(parse_hex(material.get("background").unwrap()).unwrap());
 
         let hue_delta = |a: f64, b: f64| {
             let d = (a - b).abs() % 360.0;

@@ -393,19 +393,28 @@ def main() -> None:
           "Screen Edge must retain separate painted FrameWindow and transparent ReservationWindow roles")
     frame_window_block = screen_edge[frame_window_start:reservation_window_start]
     reservation_window_block = screen_edge[reservation_window_start:]
+    frame_mapped_start = frame_window_block.index("readonly property bool mapped:")
+    frame_mapped_end = frame_window_block.index("// LOCKED BAR/SCREEN-EDGE INSETS:")
+    frame_mapped_block = frame_window_block[frame_mapped_start:frame_mapped_end]
     check("FULLSCREEN-SCREEN-EDGE-LIFECYCLE-LOCK (maintainer approved 2026-09-19)" in frame_window_block
-          and "!GlobalStates.screenLocked" in frame_window_block
-          and "fullscreenCovered" not in frame_window_block
-          and "GameMode.hasFullscreenOnOutput" not in frame_window_block,
+          and "!GlobalStates.screenLocked" in frame_mapped_block
+          and "fullscreen" not in frame_mapped_block.lower()
+          and "gameModeMinimal" not in frame_mapped_block,
           "Painted Screen Edge FrameWindow must stay mapped across fullscreen so remapping cannot cover BarContent")
+    check("GameMode.hasFullscreenOnOutput(outputName)" in frame_window_block
+          and "&& !frameWindow.fullscreenCovered" in frame_window_block,
+          "Fullscreen coverage may gate only the painted frame shadow work, not the frame mapping lifecycle")
     check("GameMode.hasFullscreenOnOutput(outputName)" in reservation_window_block
           and "!fullscreenCovered" in reservation_window_block,
           "Transparent Screen Edge reservation windows may release work-area reservations during fullscreen")
     check("mask: Region { item: emptyFrameInput }" in screen_edge,
           "Painted Screen Edge frame must remain completely click-through")
-    check("workspaceOverviewEdgeTriggerEnabled" in screen_edge
-          and "? workspaceOverviewHitArea : emptyReservationInput" in screen_edge,
-          "Reservation surfaces may accept input only for the explicit vertical-Bar Top-edge Overview trigger")
+    check("workspaceOverviewEdgeSupportEnabled" in screen_edge
+          and "workspaceOverviewEdgeTriggerEnabled" in screen_edge
+          and "active: reservationWindow.workspaceOverviewEdgeSupportEnabled" in screen_edge
+          and "workspaceOverviewSupport.item?.hitArea" in screen_edge
+          and ": emptyReservationInput" in screen_edge,
+          "Reservation surfaces may allocate/accept Overview input only for the supported vertical-Bar Top-edge path")
     for retired_shadow_geometry in (
         "id: edgeShadow",
         "shadowExtent",

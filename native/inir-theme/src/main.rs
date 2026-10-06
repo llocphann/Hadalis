@@ -271,6 +271,8 @@ fn main() -> Result<()> {
             scheme: &scheme,
             dark_mode: dark,
             soften: args.soften,
+            current_material: &material,
+            current_app_palette: &app_palette,
             image: source_path.as_deref(),
         })?;
         if rendered > 0

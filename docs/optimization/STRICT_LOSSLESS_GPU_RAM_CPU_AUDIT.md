@@ -52,6 +52,9 @@ Rules:
 | `modules/common/widgets/Favicon.qml` | **HIGH-CONFIDENCE CPU/process candidate — eliminate cached-hit shell spawn and coalesce duplicate misses.** Every component instance starts `/usr/bin/bash` on completion even when the favicon file already exists; uncached instances can race for the same domain and launch duplicate curl work. Research a shared resolver/in-flight map: try the local cached URL without a child process, perform one direct curl/fetch per missing domain, then fan out the resulting URL to all waiters. | Low–Medium. Must preserve failed-download semantics, file identity, user agent and retry behavior; malformed/corrupt cache handling needs an explicit contract. | Negligible. | Low direct RAM; avoids transient child-process memory. | 0%. |
 | `modules/mediaControls/EqualizerPanel.qml` + `modules/sidebarRight/CompactSidebarRightContent.qml` | **HIGH-CONFIDENCE hidden-work candidate — presentation-gate the CAVA lease.** The compact sidebar keeps its base Controls section loaded permanently; when the Media subsection exists, its Equalizer uses `active: root.panelVisible` even while a different sidebar section is presented. The Canvas 33 ms animation clock becomes effectively hidden with its ancestor, but the explicit Equalizer/CAVA subscription can remain held for the whole time the sidebar is open. Research a presentation lease that retains CAVA through the controls crossfade/prewarm boundary and releases it once Controls/Media cannot contribute visible pixels. | Medium. Returning directly to Controls must not expose analyzer startup/stale-spectrum latency; crossfade timing and other CAVA consumers must remain unchanged. | Low–Medium indirect reduction when this is the last CAVA consumer. | Low. | 0% target; release only outside the visible/crossfade interval. |
 
+
+| `modules/wallpaperSelector/WallpaperSkewView.qml` | **HIGH-CONFIDENCE transient CPU/process candidate — uncached color analysis.** In addition to the GPU mask candidate above, current `dev` automatically walks every non-video item after color-cache load, component completion, count changes and folder changes; uncached images are processed in batches of 20 by one Bash script that invokes ImageMagick `convert` once per image. This work happens even with default `sortMode: "date"` and no color filter selected. Research a single native/batched analyzer with parity to the current 1×1 HSL result; separately evaluate demand-driven analysis only if color-filter first-use latency is explicitly accepted. | Medium. Hue/saturation bucket output, failure handling, queue ordering and cache publication must remain stable. Cache identity is currently filename-only and collides across folders; do not optimize around that bug without defining migration/path identity. | None. | Low direct RAM; lower transient child-process memory. | 0% for native-equivalent analysis; deferred first-use analysis changes interaction latency and is not strict behavioral parity. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -61,12 +64,13 @@ Rules:
 5. **Notification derived-state single pass** — strict-lossless CPU/allocation reduction for long histories without truncating or changing persisted history.
 6. **Favicon shared resolver/in-flight coalescing** — remove cached-hit Bash spawns and duplicate cache-miss downloads.
 7. **Compact Sidebar Equalizer presentation lease** — release hidden CAVA ownership without changing visible analyzer frames.
-8. **WallpaperSkewView masked delegate layers** — strong transient GPU/RAM candidate while the selector is open.
-9. **AltSwitcher skew mask/blur path** — strong interactive GPU candidate with bounded lifetime.
-10. **Waffle lock static-wallpaper blur + avatar mask specialization** — potentially valuable because lock screens can remain visible for long periods.
-11. **DashboardLayout guarded allocation/CPU work** — strict-lossless if current-dev oracle parity is re-established.
-12. **GameMode fallback watchdog research** — small CPU/wakeup candidate with no visual change.
-13. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
+8. **WallpaperSkew color-analysis process consolidation** — eliminate one ImageMagick process per uncached image while preserving exact color buckets.
+9. **WallpaperSkewView masked delegate layers** — strong transient GPU/RAM candidate while the selector is open.
+10. **AltSwitcher skew mask/blur path** — strong interactive GPU candidate with bounded lifetime.
+11. **Waffle lock static-wallpaper blur + avatar mask specialization** — potentially valuable because lock screens can remain visible for long periods.
+12. **DashboardLayout guarded allocation/CPU work** — strict-lossless if current-dev oracle parity is re-established.
+13. **GameMode fallback watchdog research** — small CPU/wakeup candidate with no visual change.
+14. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
 
 ## Explicit non-candidates from this pass
 
@@ -300,4 +304,60 @@ Strict-lossless boundary: keep the subscription through any period in which Cont
 - `MprisController.qml` already moved `pw-dump` behind relevant stream state, matching earlier research.
 - Niri window updates already use pending/published batching for presentation churn. The remaining GameMode live-state idea is already tracked in this audit and must preserve the batching contract rather than bypass it globally.
 - Notification timer/object destruction on explicit discard is already correct; the new target is repeated derived-state traversal, not orphan cleanup.
+
+## Research continuation — round 5
+
+Baseline: `dev` at `481f9f44cef96e21178b741eb27c743fba4c4cd2`.
+
+### R5.1 — WallpaperSkew color-analysis process consolidation
+
+Current source: `modules/wallpaperSelector/WallpaperSkewView.qml` at `5357519b2dfb96cf2fa7bc52cb239df11d30b974`.
+
+The current color path is still present on current `dev`:
+
+- `_analyzeUncachedColors()` is called after cache load/failure, component completion, count changes and folder changes;
+- default mode remains `sortMode: "date"` and `colorFilter: -1`, so uncached color work is not demand-gated by actual color sorting/filtering;
+- each batch contains at most 20 images;
+- one Bash process is created for the batch, but that script invokes `convert` once for every image:
+
+```text
+for each uncached image:
+    convert IMAGE -resize 1x1! -colorspace HSL
+        -format '%[fx:hue*360] %[fx:saturation] %[fx:lightness]' info:
+```
+
+For a folder with `N` uncached non-video images, the current design therefore performs approximately `ceil(N/20)` Bash launches plus `N` ImageMagick child executions.
+
+The preferred strict-lossless direction is **process consolidation**, not simply delaying work:
+
+1. create one helper invocation per batch (or one long-lived bounded request) that reads all batch images itself;
+2. emit the same `name<TAB>hue saturation lightness` logical records;
+3. preserve sequential result association, per-image failure isolation and current bucket rules;
+4. compare against ImageMagick over representative JPEG/PNG/WebP/GIF/static-frame inputs and threshold-boundary HSL values;
+5. retain asynchronous batching so UI navigation is not blocked.
+
+A native implementation can be considered only if decoder/color-space behavior is qualified against the current ImageMagick reference. Merely replacing HSL math with an approximate formula is not sufficient for a strict-lossless claim.
+
+### R5.2 — Cache identity prerequisite
+
+The color database is currently addressed by bare `fileName` rather than normalized full path. Two different folders containing the same filename can therefore reuse one color record.
+
+This is a correctness constraint for any optimization:
+
+- a new analyzer must not make the filename collision harder to migrate;
+- a path-aware or content-aware key should be evaluated as a separate correctness change;
+- performance measurements must distinguish analysis avoided by a valid cache hit from analysis incorrectly skipped because of a filename collision.
+
+The optimization table does not count correcting this identity bug as a resource gain.
+
+### R5.3 — High-frequency timer sweep
+
+A targeted 16/33 ms timer sweep did not justify additional generic timer consolidation:
+
+- `AbyssWaveController` already sleeps when the simulation settles;
+- `Audio` 16 ms timers are bounded queue/ramp control;
+- `EqualizerPanel` uses its 33 ms clock for intentional continuously animated electric-wire geometry via `Date.now()`; deleting the clock would change pixels;
+- common slider/search/background timers found in this pass are interaction/debounce/safety timers rather than unconditional idle animation loops.
+
+Therefore timer count alone remains a rejected optimization heuristic. The higher-value action is to release the owning presentation/service lease when a surface cannot contribute visible pixels.
 

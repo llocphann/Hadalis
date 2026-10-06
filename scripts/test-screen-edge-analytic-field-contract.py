@@ -33,6 +33,7 @@ for token in (
     "vec3 frameRgb = u.frameColor.rgb * frameCover;",
     "vec3 shadowRgb = u.shadowColor.rgb * innerShadow;",
     "float shadowAlpha = u.shadowColor.a * innerShadow;",
+    "fragColor = u.frameColor * u.qt_Opacity;",
 ):
     assert token in frag, token
 

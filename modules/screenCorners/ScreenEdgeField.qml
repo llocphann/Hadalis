@@ -21,21 +21,27 @@ Item {
     readonly property real shadowReach:
         elevationEnabled ? Math.max(0, elevationSize) : 0
     readonly property real safeReach: Math.max(shadowReach, 2)
-    readonly property real bandExtent: Math.ceil(
-        Math.max(leftInset, topInset, rightInset, bottomInset)
-        + Math.max(0, radius)
-        + safeReach
-        + 2)
+    // Top/bottom bands must include the rounded-corner reach. Once those
+    // corner zones are removed, the middle left/right bands see only straight
+    // edges and need no extra radius allowance.
+    readonly property real topBandExtent: Math.ceil(
+        Math.max(0, topInset) + Math.max(0, radius) + safeReach + 2)
+    readonly property real bottomBandExtent: Math.ceil(
+        Math.max(0, bottomInset) + Math.max(0, radius) + safeReach + 2)
+    readonly property real leftBandExtent: Math.ceil(
+        Math.max(0, leftInset) + safeReach + 2)
+    readonly property real rightBandExtent: Math.ceil(
+        Math.max(0, rightInset) + safeReach + 2)
 
-    readonly property real topBandHeight: Math.min(height, bandExtent)
+    readonly property real topBandHeight: Math.min(height, topBandExtent)
     readonly property real bottomBandHeight: Math.min(
-        Math.max(0, height - topBandHeight), bandExtent)
+        Math.max(0, height - topBandHeight), bottomBandExtent)
     readonly property real middleY: topBandHeight
     readonly property real middleHeight: Math.max(
         0, height - topBandHeight - bottomBandHeight)
-    readonly property real leftBandWidth: Math.min(width, bandExtent)
+    readonly property real leftBandWidth: Math.min(width, leftBandExtent)
     readonly property real rightBandWidth: Math.min(
-        Math.max(0, width - leftBandWidth), bandExtent)
+        Math.max(0, width - leftBandWidth), rightBandExtent)
 
     readonly property vector4d viewportUniform:
         Qt.vector4d(width, height, 0, 0)

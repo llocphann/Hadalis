@@ -16,6 +16,7 @@ def require(text: str, *tokens: str) -> None:
 
 
 edge = source("modules/screenCorners/ScreenEdges.qml")
+edge_fallback = source("modules/screenCorners/ScreenEdgeLegacyFallback.qml")
 theme = source("modules/common/Appearance.qml")
 popup = source("modules/bar/StyledPopup.qml")
 iris = source("modules/common/perimeter/ConnectedSurfaceIrisFrame.qml")
@@ -55,19 +56,24 @@ require(edge,
     "elevationEnabled: frameWindow.physicalShadowActive",
     "id: legacyFramePainter",
     "active: frameField.status === ShaderEffect.Error",
-    "sourceComponent: Component {",
+    'Qt.resolvedUrl("ScreenEdgeLegacyFallback.qml")',
+    "readonly property color shadowColor: Qt.alpha(",
+    "Appearance.m3colors.m3shadow",
+)
+require(edge_fallback,
+    "import QtQuick.Shapes",
+    "import QtQuick.Effects",
     "preferredRendererType: Shape.CurveRenderer",
     "readonly property real shadowRasterScale:",
-    "root.physicalShadowSize >= 12 ? 0.5 : 0.625",
-    "layer.enabled: frameWindow.physicalShadowActive",
+    "root.host.physicalShadowSize >= 12 ? 0.5 : 0.625",
+    "layer.enabled: root.host.physicalShadowActive",
     "layer.effect: MultiEffect {",
-    "shadowEnabled: frameWindow.physicalShadowActive",
-    "blurMax: Math.max(1, root.physicalShadowSize)",
+    "shadowEnabled: root.host.physicalShadowActive",
+    "blurMax: Math.max(1, root.host.physicalShadowSize)",
     "shadowBlur: 1.0",
     "autoPaddingEnabled: false",
     "shadowHorizontalOffset: 0",
     "shadowVerticalOffset: 0",
-    "Appearance.m3colors.m3shadow",
 )
 
 # Fullscreen/minimal-mode optimization must never weaken the lifecycle lock:
@@ -94,10 +100,13 @@ fallback_start = frame_component.index("id: legacyFramePainter")
 assert primary_start < fallback_start
 fallback_block = frame_component[fallback_start:]
 assert "active: frameField.status === ShaderEffect.Error" in fallback_block
-assert "MultiEffect {" in fallback_block
-assert frame_component.count("Shape {") == 1, (
-    "Only the dormant legacy fallback may retain Shape geometry"
-)
+assert 'Qt.resolvedUrl("ScreenEdgeLegacyFallback.qml")' in fallback_block
+assert "import QtQuick.Shapes" not in edge
+assert "import QtQuick.Effects" not in edge
+assert "Shape {" not in frame_component
+assert "MultiEffect {" not in frame_component
+assert edge_fallback.count("Shape {") == 1
+assert "MultiEffect {" in edge_fallback
 assert "PerimeterCornerShadow" not in edge
 assert "RoundCorner {" not in edge
 

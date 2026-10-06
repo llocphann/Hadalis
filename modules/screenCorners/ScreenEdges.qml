@@ -274,7 +274,10 @@ Scope {
 
         screen: modelData
         visible: mapped
-        updatesEnabled: mapped
+        // Reservation surfaces paint nothing. Only the optional top-edge
+        // workspace-hover support needs render updates; exclusive-zone,
+        // mapping and input-mask state remain live independently.
+        updatesEnabled: mapped && workspaceOverviewEdgeSupportEnabled
         color: "transparent"
         // Reservation surfaces intentionally participate in normal layer-shell
         // exclusion. Do not set Ignore here: their only job is to reserve the

@@ -574,3 +574,95 @@ this ranks below Candidate A.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed from static analysis.
 
+## 2026-10-07 — Bar Taskbar pinned-order research
+
+Research-only continuation on `dev`
+`050a8b19059a150bacb9f97759592dab06ee0394`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `modules/bar/BarTaskbar.qml`:
+  `3aca1b63e2633584c86f75c6a2e5eb2ebaebfdb3`;
+- sibling reference `modules/dock/DockApps.qml`:
+  `11b3ea8cc17c91a1cf3b6a1f41f64f392d4dfcc9`.
+
+Repository/history search found no prior optimization note for
+`BarTaskbar`'s `pinnedApps.findIndex()` comparator path.
+
+### Candidate — HIGH CONFIDENCE: precompute pinned rank once per Bar Taskbar rebuild
+
+When `dock.separatePinnedFromRunning` is enabled, `BarTaskbar` constructs
+`sortedRunningApps` and sorts it with:
+
+```qml
+const aIndex = pinnedApps.findIndex(p => p.toLowerCase() === a.lowerAppId)
+const bIndex = pinnedApps.findIndex(p => p.toLowerCase() === b.lowerAppId)
+...
+```
+
+After the sort it again computes:
+
+```qml
+pinned: pinnedApps.some(p => p.toLowerCase() === lowerAppId)
+```
+
+The comparator can run O(R log R) times for R running app groups, and every
+comparison linearly scans P pinned entries while lowercasing them. The final
+publication then performs another O(R * P) membership scan.
+
+The sibling Dock implementation has already eliminated this shape. It builds
+one lowercase `pinnedOrder` Map before sorting and uses Map membership/rank
+inside its comparator.
+
+Strict-lossless Bar direction:
+
+1. build one lowercase pinned-rank Map at the beginning of the separate-mode
+   branch;
+2. use Map membership/rank inside the existing comparator;
+3. keep the Bar's current unpinned fallback ordering
+   `lowerAppId.localeCompare()` — do **not** copy Dock's running-order fallback;
+4. publish `pinned` from Map membership instead of rescanning
+   `pinnedApps.some(...)`.
+
+Important duplicate/case oracle:
+
+Current `findIndex` returns the **first** case-insensitive occurrence. A naive
+Map built with unconditional `set()` would instead retain the last duplicate
+rank. Therefore the strict-lossless map must only set a lowercase key when it
+is not already present.
+
+Required behavioral oracle:
+
+- empty pinned list;
+- all-running unpinned apps;
+- mixed pinned/running apps;
+- duplicate exact pins;
+- case-variant duplicate pins;
+- pinned app missing a desktop entry;
+- alphabetical order among unpinned running apps;
+- separator placement and focused/running flags unchanged.
+
+This removes repeated pinned-list scanning from each sort comparison and from
+final membership publication. No whole-shell CPU percentage is claimed without
+runtime measurement.
+
+### Adjacent paths checked
+
+- `DockApps.qml` already uses a precomputed pinned-order Map in the equivalent
+  separate-mode sort; do not rewrite it.
+- Both Dock and Bar already cache ignored-app RegExp objects. Their cache-hit
+  check still serializes the small configured pattern list, but this ranks below
+  the AppSearch identity-rule serialization finding because it happens once per
+  model rebuild, not once per window.
+- Compositor sorting is already demand-leased and debounce-limited; no new
+  source-only lifecycle reduction was established in this pass.
+
+### Next research order
+
+Continue with another distinct high-value collection/process/render path rather
+than multiplying taskbar micro-caches. Prefer a path where the same expensive
+data transformation is demonstrably repeated within one event or visible frame.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed from static analysis.
+

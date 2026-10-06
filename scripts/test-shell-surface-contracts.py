@@ -540,8 +540,9 @@ def main() -> None:
           and screen_edge.count("PathMove {") == 1
           and screen_edge.count("direction: PathArc.Clockwise") == 4,
           "Screen Edge may retain exactly one legacy inverted-frame fallback")
+    check("readonly property int outerPadding: 50" in screen_edge,
+          "Screen Edge must retain the locked outer padding token")
     for fallback_geometry in (
-        "readonly property int outerPadding: 50",
         "readonly property real innerLeft: frameWindow.frameLeftInset",
         "readonly property real innerTop: frameWindow.frameTopInset",
         "frameShape.width - frameWindow.frameRightInset",

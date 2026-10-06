@@ -178,6 +178,30 @@ pub fn material_palette(
     soften: bool,
     color_strength: f64,
 ) -> Palette {
+    material_palette_with_policy(seed, scheme_name, dark, soften, color_strength, true)
+}
+
+// Compatibility templates need the raw opposite-mode Material palette, exactly
+// like Python's _generate_palette(). The active mode is overlaid later with
+// the corrected palette that the shell actually displays.
+pub fn raw_material_palette(
+    seed: Argb,
+    scheme_name: &str,
+    dark: bool,
+    soften: bool,
+    color_strength: f64,
+) -> Palette {
+    material_palette_with_policy(seed, scheme_name, dark, soften, color_strength, false)
+}
+
+fn material_palette_with_policy(
+    seed: Argb,
+    scheme_name: &str,
+    dark: bool,
+    soften: bool,
+    color_strength: f64,
+    normalize_accents: bool,
+) -> Palette {
     let scheme = create_scheme(seed, variant_from_name(scheme_name), dark);
     let dynamic = MaterialDynamicColors::new_with_spec(MATERIAL_SPEC);
     let mut palette = Palette::new();
@@ -193,7 +217,7 @@ pub fn material_palette(
 
     // Keep wallpaper accents inside Material's readable tone/chroma band,
     // matching the Python fallback and upstream light-mode behavior.
-    if scheme_name != "scheme-monochrome" {
+    if normalize_accents && scheme_name != "scheme-monochrome" {
         for (key, container, on_container, tonal) in [
             (
                 "primary",

@@ -96,4 +96,25 @@ scope.companionCuriosity.owned=false;window.overviewDragging=true;assert.equal(f
 window.overviewDragging=false;scope.leftPanel.presented=false;
 scope.talkCloud.editing=true;assert.equal(focus(),2,'the explicit shortcut gives Wull chat immediate keyboard focus');
 scope.talkCloud.editing=false;assert.equal(focus(),0,'automatic Wull speech must never take keyboard focus');
+
+/* Autonomous curiosity budget: sparse feature offers and a 1-3 second
+ * Wull-owned UI lease measured from the actual open. Human hand-off cancels
+ * that lease and returns lifetime ownership to the normal UI. */
+const curiositySource=fs.readFileSync('modules/abyss/companion/WullCuriosity.qml','utf8');
+const numberProperty=(name)=>{
+    const match=curiositySource.match(new RegExp('property (?:int|real) '+name+':\\s*([0-9.]+)'));
+    assert.ok(match,'missing '+name);
+    return Number(match[1]);
+};
+assert.ok(numberProperty('cooldown')>=240000,'autonomous feature cooldown regressed');
+assert.ok(numberProperty('offerChance')<=0.10,'autonomous feature chance regressed');
+assert.equal(numberProperty('ownedLifetimeMin'),1000);
+assert.equal(numberProperty('ownedLifetimeMax'),3000);
+assert.match(curiositySource,/ownedDeadline\.interval=ownedLifetimeMs\(\);ownedDeadline\.restart\(\)/,
+    'ownership TTL must start immediately after Wull opens the feature');
+assert.match(curiositySource,/deadline\.stop\(\);ownedDeadline\.stop\(\)/,
+    'human hand-off/finish must cancel the autonomous ownership TTL');
+assert.match(curiositySource,/onTriggered: if \(root\.owned\) root\.finish\(true,false,true\)/,
+    'expired Wull ownership must close its feature while preserving safe movement');
+
 console.log(`WULL_PRODUCTION_CURIOSITY_UI_OWNERSHIP_PASS cases=${cases}`);

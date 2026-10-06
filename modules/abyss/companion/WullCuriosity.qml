@@ -13,7 +13,13 @@ Item {
     property bool idle: false
     property double eventId: 0
     property double lastVisit: 0
-    property int cooldown: 90000
+    // Autonomous feature visits should feel occasional rather than persistent.
+    property int cooldown: 240000
+    property real offerChance: 0.10
+    // A surface opened only for Wull is ephemeral. Human hand-off cancels this
+    // ownership timer, after which the normal UI lifetime policy takes over.
+    property int ownedLifetimeMin: 1000
+    property int ownedLifetimeMax: 3000
     property string stage: ""
     property var feature: null
     property bool owned: false
@@ -36,7 +42,7 @@ Item {
     signal visitFinished(string kind, bool handedToUser)
 
     function finish(closeOwned = false, handedToUser = false, keepMotion = false): void {
-        deadline.stop()
+        deadline.stop();ownedDeadline.stop()
         const completedFeature=feature, kind=feature?.kind ?? "", hadOwnership=owned
         owned=false;stage="";feature=null;reachedFeature=false
         if (presence) {presence.directed=false;if (!keepMotion) presence.pause(true)}
@@ -74,8 +80,9 @@ Item {
         if (!allowed || !idle || busy || !presence?.canExplore || presence.traveling
                 || actor.gesturing || !adapter || !adapter.companionFeaturesIdle()
                 || !features.length || Date.now()-lastVisit<cooldown) return false
-        // Modest chance per existing native decision, with a shared cooldown.
-        if (presence.random()>.18) return false
+        // Native wander events are frequent enough that feature exploration needs
+        // its own conservative gate in addition to the shared cooldown.
+        if (presence.random()>offerChance) return false
         const candidate=features[Math.min(features.length-1,Math.floor(presence.random()*features.length))]
         const extent=candidate.edge==="top" || candidate.edge==="bottom" ? scene.width : scene.height
         const point=Scene.edgePoint(scene,candidate.edge,candidate.along/extent)
@@ -100,6 +107,10 @@ Item {
             if (!actor.perform(feature.openGesture)) finish(true)
         } else if (stage==="depart") finish(true,false,true)
     }
+    function ownedLifetimeMs(): int {
+        const span=Math.max(0,ownedLifetimeMax-ownedLifetimeMin)
+        return ownedLifetimeMin+Math.floor(presence.random()*(span+1))
+    }
     function gestureFinished(): void {
         if (stage==="openGesture") {
             if (!allowed || !idle || !adapter.companionFeaturesIdle()) {finish();return}
@@ -107,6 +118,9 @@ Item {
             stage="settling"
             owned=adapter.openCompanionFeature(feature)
             if (!owned) {finish();return}
+            // Start the UI lifetime at the actual open, not after Wull reaches
+            // the surface. This bounds autonomous popups/sidebars to 1-3 s.
+            ownedDeadline.interval=ownedLifetimeMs();ownedDeadline.restart()
             deadline.interval=7000;deadline.restart()
             Qt.callLater(root.visitSurface)
         } else if (stage==="inspect") startHold()
@@ -171,6 +185,14 @@ Item {
         function onPresentationChanged(): void {if (root.stage==="settling") root.visitSurface()}
         function onGestureCompleted(action): void {root.gestureFinished()}
         function onHoveredChanged(): void {if (root.actor.hovered) root.interrupt()}
+    }
+    Timer {
+        id: ownedDeadline
+        objectName: "wullCuriosityOwnershipDeadline"
+        repeat: false
+        // Preserve movement when the owned surface disappears; scene recovery
+        // handles the landing while semantic ownership is closed immediately.
+        onTriggered: if (root.owned) root.finish(true,false,true)
     }
     Timer {
         id: deadline

@@ -20,17 +20,34 @@ ColumnLayout {
     property var allowedKinds: []
     property string nearbyEdge: ""
     signal positionsEdited(var positions,string kind,string outputName,var values)
+    property var _pendingImmediatePositions: null
+    property int _pendingImmediateGeneration: 0
     function _positionsForRead(): var {
-        return commitImmediately ? Config.getNestedValue("abyss.positions",[]) : positions
+        return commitImmediately && _pendingImmediatePositions !== null
+            ? _pendingImmediatePositions
+            : positions
     }
     function _currentPosition(): var {
         return Presentation.resolve(_positionsForRead(),kind,outputName)
     }
     readonly property var position: _currentPosition()
+    function _releaseImmediateShadow(generation): void {
+        if (generation === _pendingImmediateGeneration)
+            _pendingImmediatePositions = null
+    }
     function apply(values): void {
         const next=Presentation.save(_positionsForRead(),kind,outputName,values)
-        if(commitImmediately) Config.setNestedValue("abyss.positions",next)
-        else positionsEdited(next,kind,outputName,values)
+        if(commitImmediately) {
+            // JsonAdapter-backed arrays are not guaranteed to round-trip through
+            // Config.options within the same JavaScript turn. Keep a one-turn
+            // shadow so sequential field edits merge instead of overwriting
+            // each other, while still committing each edit synchronously.
+            _pendingImmediatePositions = next
+            _pendingImmediateGeneration++
+            const generation = _pendingImmediateGeneration
+            Config.setNestedValue("abyss.positions",next)
+            Qt.callLater(() => root._releaseImmediateShadow(generation))
+        } else positionsEdited(next,kind,outputName,values)
     }
     function change(key,value): void {
         const values=Object.assign({edge:"source",alignment:"source",position:.5},_currentPosition(),{[key]:value})

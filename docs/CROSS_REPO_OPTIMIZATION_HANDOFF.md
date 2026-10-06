@@ -2672,3 +2672,126 @@ lossless.
 
 No whole-Hadalis CPU/RAM percentage is claimed without runtime measurement.
 
+## 2026-10-07 — Network nmcli helper direct-argv research
+
+Research-only continuation on current `dev`
+`8b43c897d73bc941b14307ae5ff9a9c86e1052f4`. No runtime/product source was
+changed in this round.
+
+Current `services/Network.qml`:
+`a20c4c1edf1fbeb2f2a8285518af053bf72a09dc`.
+
+### Candidate — HIGH CONFIDENCE: remove shell/head/awk wrappers from connected-network detail refresh
+
+The network service is already event-driven through `nmcli monitor` and
+debounces bursts for 200 ms. The remaining process overhead is inside the
+refresh it performs after those events.
+
+When an active link exists, the service currently resolves the displayed
+connection name through:
+
+```qml
+command: [
+    "sh", "-c",
+    "nmcli -t -f NAME c show --active | head -1"
+]
+```
+
+and Wi-Fi signal strength through:
+
+```qml
+command: [
+    "sh", "-c",
+    "nmcli -f IN-USE,SIGNAL,SSID device wifi | "
+      + "awk '/^\\*/{if (NR!=1) {print $2}}'"
+]
+```
+
+Each helper therefore launches a shell, one `nmcli` child and an additional
+`head` or `awk` child.
+
+Strict-lossless direction:
+
+#### Active connection name
+
+Run directly:
+
+```text
+nmcli -t -f NAME c show --active
+```
+
+collect stdout in QML and publish the first non-empty line. This is the direct
+equivalent of the current `head -1` ownership.
+
+Preserve exact first-row semantics; do not sort or prefer Wi-Fi over Ethernet.
+
+#### Wi-Fi strength
+
+Run `nmcli` directly and parse the active row in QML. Two safe implementation
+shapes can be oracle-tested:
+
+- retain current columns/output formatting:
+  `nmcli -f IN-USE,SIGNAL,SSID device wifi`, then select the first row whose
+  trimmed line begins with `*` and parse its signal column; or
+- use terse output:
+  `nmcli -t -f IN-USE,SIGNAL device wifi`, then parse the active `*:<signal>`
+  record.
+
+The chosen form must reproduce the current first-active-row result exactly.
+
+No refresh cadence or monitor lifecycle changes are required.
+
+### Why this is strict-lossless
+
+The shell wrappers only provide pipeline text processing:
+
+- `head -1` for connection name;
+- `awk` selection/parsing for active Wi-Fi signal.
+
+Both operations are deterministic over the collected stdout and can be moved
+into QML without changing NetworkManager queries.
+
+Keep unchanged:
+
+- `LANG=C` / `LC_ALL=C` where parser behavior depends on nmcli output;
+- updateConnectionType's existing status/connectivity/radio query;
+- the failure-only `wifiStatusProcess`;
+- the 200 ms monitor debounce;
+- clearing stale `networkName`/`networkStrength` when no active link exists;
+- no new polling timer.
+
+### Required oracle
+
+Connection-name cases:
+
+- one active Wi-Fi profile;
+- one active Ethernet profile;
+- multiple active connections, proving first-line ownership;
+- no active connection;
+- nonzero nmcli exit.
+
+Strength cases:
+
+- one active AP;
+- several visible APs with one active row;
+- no active AP;
+- signal 0/100 and malformed value;
+- SSID containing spaces/colons;
+- nonzero nmcli exit.
+
+For a scripted fixture, compare current shell-pipeline result against the direct
+argv + QML parser result byte/logically for every case.
+
+### Structural saving
+
+For each debounced connected-Wi-Fi detail refresh, up to four intermediary
+processes disappear:
+
+- connection name: shell + `head`;
+- signal strength: shell + `awk`.
+
+The two required `nmcli` queries remain. This complements rather than replaces
+the existing event-driven monitor architecture.
+
+No whole-Hadalis CPU/RAM percentage is claimed without runtime measurement.
+

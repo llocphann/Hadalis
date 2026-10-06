@@ -9,7 +9,7 @@ use material_color_utils::utils::color_utils::Argb;
 use regex::{Captures, Regex};
 use serde_json::Value;
 
-use crate::palette::{Palette, build_app_palette, material_palette, palette_contract};
+use crate::palette::{Palette, build_app_palette, palette_contract, raw_material_palette};
 
 #[derive(Debug, Clone)]
 struct TemplateEntry {
@@ -159,7 +159,7 @@ fn template_palette(
     dark: bool,
     soften: bool,
 ) -> Palette {
-    let mut material = material_palette(scheme_seed, scheme, dark, soften, 1.0);
+    let mut material = raw_material_palette(scheme_seed, scheme, dark, soften, 1.0);
     material.insert("source_color".into(), source_seed.to_hex());
 
     let mut contract = palette_contract(&material);
@@ -253,9 +253,21 @@ fn token_namespace(
     scheme: &str,
     dark_mode: bool,
     soften: bool,
+    current_material: &Palette,
+    current_app_palette: &Palette,
 ) -> BTreeMap<String, TokenValue> {
-    let dark = template_palette(scheme_seed, source_seed, scheme, true, soften);
-    let light = template_palette(scheme_seed, source_seed, scheme, false, soften);
+    let mut dark = template_palette(scheme_seed, source_seed, scheme, true, soften);
+    let mut light = template_palette(scheme_seed, source_seed, scheme, false, soften);
+
+    // Python builds both raw mode palettes, then replaces only the active side
+    // with the exact corrected palette exposed by the shell. Mirror that here
+    // so opposite-mode template tokens are stable while default/current tokens
+    // remain identical to the runtime palette.
+    let current = if dark_mode { &mut dark } else { &mut light };
+    current.extend(current_material.clone());
+    current.insert("source_color".into(), source_seed.to_hex());
+    current.extend(current_app_palette.clone());
+
     token_namespace_from_palettes(&dark, &light, dark_mode)
 }
 
@@ -347,6 +359,8 @@ pub struct RenderRequest<'a> {
     pub scheme: &'a str,
     pub dark_mode: bool,
     pub soften: bool,
+    pub current_material: &'a Palette,
+    pub current_app_palette: &'a Palette,
     pub image: Option<&'a Path>,
 }
 
@@ -363,6 +377,8 @@ pub fn render_templates(request: RenderRequest<'_>) -> Result<usize> {
         request.scheme,
         request.dark_mode,
         request.soften,
+        request.current_material,
+        request.current_app_palette,
     );
     let mut rendered_count = 0;
 

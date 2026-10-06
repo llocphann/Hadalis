@@ -3009,3 +3009,151 @@ enabled feature. Enabled-feature behavior must remain unchanged.
 No whole-Hadalis startup percentage is claimed without a measured before/after
 boot trace.
 
+## 2026-10-07 — Pre-QML environment cache and ABI fast-path research
+
+Research-only continuation on current `dev`
+`3015b97b62ca1458e869873f10521c115929be9f`. No runtime/product source was
+changed in this round.
+
+Current `scripts/inir`:
+`5cf6ca0ef112cf0f98ee28f23cc618cbb34d5018`.
+
+### Candidate A — P0 / HIGH CONFIDENCE: make the documented systemd user-environment cache actually live in the parent shell
+
+The launcher documents:
+
+```bash
+# Cached systemd user environment — avoids duplicate blocking calls.
+# ... We call it once with a tight timeout and cache the result for both
+# apply_qt_runtime_env() and ensure_systemd_graphical_env()
+_cached_systemd_env=""
+_cached_systemd_env_fetched=false
+```
+
+and the helper mutates those variables:
+
+```bash
+_get_systemd_user_env() {
+    if [[ "$_cached_systemd_env_fetched" == true ]]; then
+        printf '%s' "$_cached_systemd_env"
+        return 0
+    fi
+    _cached_systemd_env_fetched=true
+    _cached_systemd_env="$(
+        timeout 3s systemctl --user show-environment 2>/dev/null
+    )" || true
+    printf '%s' "$_cached_systemd_env"
+}
+```
+
+But both consumers invoke it through command substitution:
+
+```bash
+_qs_sys_env="$(_get_systemd_user_env)"
+...
+sys_env="$(_get_systemd_user_env)"
+```
+
+A Bash function executed inside command substitution runs in a subshell.
+Therefore the helper's assignments to
+`_cached_systemd_env_fetched` / `_cached_systemd_env` do not propagate back
+to the parent launcher.
+
+The second consumer can consequently execute the bounded
+`systemctl --user show-environment` call again even though the source claims
+the snapshot is shared.
+
+This matters before Quickshell starts: the timeout is intentionally as large as
+3 seconds because a fresh user D-Bus environment can be temporarily
+unresponsive.
+
+Strict-lossless direction:
+
+1. split “populate cache” from “print cache”;
+2. call the populate function normally in the parent shell;
+3. let both consumers read `$_cached_systemd_env` directly;
+4. preserve the current fail-open 3-second timeout and empty-snapshot behavior;
+5. keep ShellExec's later live manager-environment read unchanged.
+
+A focused shell test should provide a fake `systemctl` that increments a
+counter and assert both startup consumers observe one identical snapshot with
+exactly one `show-environment` invocation.
+
+### Candidate B — HIGH CONFIDENCE follow-on: parse the cached environment once without repeated grep/head/cut subprocesses
+
+`apply_qt_runtime_env()` currently retrieves up to fourteen named values from
+the same multiline snapshot through command substitutions such as:
+
+```bash
+grep "^NAME=" <<< "$_qs_sys_env" | head -1 | cut -d= -f2-
+```
+
+and `ensure_systemd_graphical_env()` performs another series of
+`grep -q '^NAME='` presence checks.
+
+After Candidate A makes the snapshot genuinely shared, build one pure-shell
+lookup/presence representation from that snapshot once and reuse it for both
+consumers.
+
+Constraints:
+
+- preserve first-occurrence semantics;
+- preserve values containing `=`;
+- preserve empty-vs-missing distinction wherever current code relies on it;
+- do not execute manager output as shell source;
+- keep PATH merge order exactly as current source;
+- keep compositor socket fallback/recovery logic untouched.
+
+This removes startup helper fan-out without changing session variables.
+
+### Candidate C — HIGH CONFIDENCE with cache-identity oracle: consult successful ABI identity before `qs --version`
+
+`check_qs_abi()` currently starts with:
+
+```bash
+qs_output="$("$qs_bin" --version 2>&1 || true)"
+```
+
+and only afterward computes the successful ABI cache key:
+
+```text
+v2:<quickshell-binary-mtime>:<resolved-Qt6Core-mtime>
+```
+
+If that key matches the previous successful check, the later expensive
+`strings` scan is skipped — but the `qs --version` process has already run.
+
+A safe fast path can:
+
+1. resolve the same Quickshell and Qt library identities used by the successful
+   cache;
+2. compare the exact successful cache key first;
+3. return before `qs --version` only when both identities are unchanged;
+4. fall through to the current primary/secondary mismatch detection for any
+   missing/changed identity;
+5. continue writing cache entries only for successful checks.
+
+Do not cache a mismatch or bypass validation after either binary/library
+identity changes.
+
+Required oracle:
+
+- no cache;
+- valid successful cache;
+- changed Quickshell mtime;
+- changed resolved Qt library mtime;
+- missing Qt library path;
+- `qs --version` mismatch warning;
+- secondary strings mismatch;
+- successful full check then second cached invocation;
+- stale/legacy cache prefix.
+
+### Priority implication
+
+This launcher work ranks above most single-QML micro-optimizations because it
+sits on the critical pre-QML startup path and Candidate A repairs an already
+documented cache contract that current code does not actually satisfy.
+
+No startup percentage is claimed until a cold/warm before-after boot trace is
+captured.
+

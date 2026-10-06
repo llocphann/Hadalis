@@ -3229,3 +3229,90 @@ a helper with a focused parser oracle.
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — ScreenTime startup FileView research
+
+Research-only continuation on current `dev`
+`c44541e07ca65ac283b168c00b9cdc3044545bd1`. No runtime/product source was
+changed in this round.
+
+Current `services/ScreenTime.qml`:
+`1eabb174c464bf0a1e372ebbe8a43f671d2e9d89`.
+
+### Candidate — HIGH CONFIDENCE: replace startup Bash test+cat with the existing FileView
+
+ScreenTime owns a `FileView` for the current day's JSON:
+
+```qml
+FileView {
+    id: todayFileView
+    path: ""
+}
+```
+
+It already uses that object for persistence via `setText()`. Startup loading,
+however, currently launches:
+
+```qml
+["/usr/bin/bash", "-c",
+ `test -f "${path}" && cat "${path}" || echo "__NOFILE__"`]
+```
+
+and routes stdout into `_finishStartupRead()`.
+
+The shell is only being used to distinguish “file exists” from “file missing”
+and to read text. `FileView` already exposes the exact lifecycle needed:
+
+- `onLoaded` + `text()`;
+- `onLoadFailed(error)`;
+- `FileViewError.FileNotFound`.
+
+The repository already uses this pattern in GameMode, InternalTodoBackend,
+NotesContent and other services.
+
+Strict-lossless direction:
+
+1. set `todayFileView.path = Qt.resolvedUrl(root._todayFilePath())` when the
+   startup read begins;
+2. keep the existing `_loadingToday` reentrancy guard;
+3. on `todayFileView.onLoaded`, if `_loadingToday` is true, call
+   `_finishStartupRead(todayFileView.text())`;
+4. on `FileNotFound`, call
+   `_finishStartupRead("__NOFILE__")`;
+5. preserve the current fallback behavior for any other load failure;
+6. remove `startupReadProc` only after its start-failure contract has an
+   equivalent FileView error path.
+
+This removes one Bash process and one cat/test pipeline whenever ScreenTime is
+initialized.
+
+### Important FileView boundary
+
+Do not generalize this change to external-edit reload paths. The repository
+documents that `FileView.setText()` keeps an internal buffer and can return
+that cached content after later reloads in some workflows. ScreenTime's startup
+read happens before it writes the day's state, so the startup-only replacement
+does not rely on post-write disk freshness.
+
+The current range-history reader is also separate: it batches multiple daily
+files into one shell read. Replacing that with one FileView per file could
+increase event-loop work and change batching/order, so it is not part of this
+candidate.
+
+### Required oracle before implementation
+
+- current-day file exists with valid JSON;
+- missing file;
+- empty file;
+- malformed JSON;
+- service enable/disable around initialization;
+- double startup-read request while one load is pending;
+- first persistence after successful/missing-file initialization;
+- day rollover after startup;
+- FileView non-FileNotFound failure.
+
+Compare `ready`, `_todayData`, `_dirty`, current app/session fields and
+`dataChanged()` timing/order against the current Process-backed path.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

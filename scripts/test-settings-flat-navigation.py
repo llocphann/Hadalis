@@ -13,6 +13,7 @@ preset = read("modules/common/widgets/SettingsMaterialPreset.qml")
 window = read("settings.qml")
 overlay = read("modules/settings/SettingsOverlay.qml")
 edit_pane = read("modules/settings/SettingsNavEditPane.qml")
+focus = read("modules/settings/SettingsFocus.qml")
 arrangement = read("modules/settings/SettingsArrangement.qml")
 
 for source, name in ((window, "settings.qml"), (overlay, "SettingsOverlay.qml")):
@@ -31,6 +32,10 @@ for source, name in ((edit_pane, "SettingsNavEditPane.qml"),):
     assert "category.label" not in source, name
     assert "groupDragging" not in source, name
     assert "navigationPageIndexes(false)" in source, name
+
+assert "SettingsPageRegistry.navigationPageIndexes(false)" in focus
+assert 'text: root.currentGroup?.label ?? ""' not in focus
+assert "SettingsMaterialPreset.navigationIconColor(" in focus
 assert "function movePageFlat(" in arrangement
 assert "function hidePageById(" in arrangement
 

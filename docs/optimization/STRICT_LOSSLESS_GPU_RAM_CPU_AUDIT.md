@@ -89,6 +89,14 @@ Rules:
 | `services/RecorderStatus.qml` | **MEASURE FIRST — global external-recorder discovery cadence.** The service already does the right thing for visible controls: keyed fast-demand leases and bounded quick checks. When idle with no UI demand it still runs a global status probe every 15 s (30 s in low-power mode) to discover externally launched recorders. Replacing or further delaying this changes discovery latency; only revisit if process-wakeup traces show measurable cost. | Medium because external recorder detection latency is observable. | None. | Negligible. | 0%. |
 | `services/AwwwBackend.qml` | **NO IMMEDIATE OPTIMIZATION — capability probe is required by the default backend contract.** Static wallpapers default to awww when both optional client/daemon binaries are available; the service must discover availability before deciding whether the external renderer or internal fallback owns the visible wallpaper. One startup Bash capability probe is therefore legitimate until an equivalent in-process executable lookup is available without PATH semantic loss. | — | None. | Negligible. | 0%. |
 
+
+| `services/WallpaperListener.qml` | **HIGH-CONFIDENCE reactive CPU/allocation candidate — narrow the global Config safety net to the one list it exists to protect.** `Config.configChanged` has no path and fires after every `setNestedValue(s)`. WallpaperListener already has direct bindings for multi-monitor enable/global path and a dedicated `onWallpapersByMonitorRefChanged`; the broad listener exists only as a fallback for nested/list propagation. On every unrelated setting edit it currently restarts an 80 ms timer, reconstructs the per-screen map and serializes both old/new maps before concluding nothing changed. Track a serialized `wallpapersByMonitor` safety key and schedule the fallback refresh only when that key changes; keep all direct triggers and screen hotplug behavior. | Low. The safety fingerprint must be updated on initial/direct refresh and must still catch list replacement/reload cases that fail to emit the QML property change. | None. | Low CPU/allocation reduction during settings-heavy sessions; scales with output count and config edit rate. | 0%. |
+| `services/ThemeService.qml` | **HIGH-CONFIDENCE reactive wakeup candidate — drive live-theme debounce from `liveRegenSignature`, not every Config change.** The 260 ms handler ultimately returns immediately when `liveRegenSignature === _lastLiveRegenSignature`. That signature already includes every config/wallpaper input capable of changing the regeneration result. Replace the global `Config.onConfigChanged -> liveRegenerateDebounce.restart()` trigger with the signature's own change signal, retaining Config-ready priming and explicit theme/apply paths. | Low. Keep startup signature priming, `setTheme()`'s explicit delayed auto regeneration, family-change semantics and cooldown behavior unchanged. | None directly. | Low timer/JSON/config churn reduction while editing unrelated settings. | 0%. |
+| `services/MprisController.qml` | **HIGH-CONFIDENCE reactive CPU candidate — rebuild player filtering only when its two config inputs change.** The global Config listener currently calls both `_updateMpvCache()` and debounced `_rebuildPlayerList()` after every setting edit. Config affects `isRealPlayer()` only through `media.filterDuplicatePlayers` and `sidebar.ytmusic.enable`; `_updateMpvCache()` depends on live MPRIS membership, not Config. Use a small derived filter signature/change handler for those two values and leave player/YtMusic lifecycle signals as the cache/rebuild owners. | Low. Verify filter-toggle and YtMusic enable/disable produce the same membership/order and empty-list grace behavior. | None. | Low CPU/allocation reduction; avoids repeated MPRIS scans during unrelated settings changes. | 0%. |
+| `services/ThinkFanService.qml` | **HIGH-CONFIDENCE opt-in process/wakeup candidate — replace global Config profile-follow events with derived fan-intent changes.** When profile fan control is enabled, every unrelated Config change calls `_handleProfileFollowEvent()`; stale status can trigger a helper refresh, while fresh status schedules an apply check. The actual config intent is fully represented by `profileFanControlEnabled` and `configuredActiveFanLevel`, with PowerProfiles already owning profile changes. Trigger profile-follow only from those derived values plus PowerProfiles. | Low–Medium. Preserve enable/disable behavior, active-profile level edits, post-startup arming and stale-status refresh before privileged writes. Existing tests that assert a generic `onConfigChanged` must be rewritten around the narrower contract. | None. | Low normally; meaningful process/wakeup reduction only for users with profile fan control enabled. | 0%. |
+| `services/TlpService.qml` | **HIGH-CONFIDENCE opt-in reactive candidate — reconcile charge policy from `enabled`/`effectiveRequestedLimit` changes instead of every Config write.** The current global listener calls `apply()` after every Config mutation. `apply()` has strong no-op guards, so unrelated writes usually do not spawn `pkexec`, but they still schedule reconciliation. The desired charge policy is represented by the two Config-derived properties; hardware/status changes already flow through detector/apply completion. | Low. Preserve Config-ready detection, supported/discrete normalization and disable-owned-policy cleanup. | None. | Low CPU/event-loop reduction; avoids unnecessary apply comparisons on unrelated setting edits. | 0%. |
+| `modules/background/Background.qml` | **NO CURRENT CHANGE — revision invalidations are live, not dead.** Full-file verification shows `_zoneRevision` is consumed by `_computeZoneOccupants()`, and `_imageRouteRevision` is consumed by the dynamic image-converter `Connections.target`. Search snippets initially obscured those reads. Do not remove either counter without a replacement dependency contract. | — | None. | None. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -111,8 +119,9 @@ Rules:
 18. **Wallpapers dead catalog-cache removal** — remove the unused duplicated path list/batch rebuild while preserving the public FolderListModel.
 19. **GameMode Config-ready-safe Niri reconciliation** — preserve startup-resident GameMode state but prevent pre-config mutation/reload based on fallback defaults.
 20. **AppSearch revision-keyed desktop-entry lookup memo** — avoid repeated O(n)-style fallback scans for stable unknown/Electron/AppImage IDs.
-21. **MPRIS expired grace pruning** — low-risk cumulative session cleanup; fold pruning into existing lifecycle updates with no timer.
-22. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
+21. **Domain-specific Config invalidation narrowing** — WallpaperListener, ThemeService and MPRIS are the cleanest first cuts; ThinkFan/TLP follow with feature-specific regression updates.
+22. **MPRIS expired grace pruning** — low-risk cumulative session cleanup; fold pruning into existing lifecycle updates with no timer.
+23. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
 
 ## Explicit non-candidates from this pass
 
@@ -962,4 +971,207 @@ readonly property bool active: enabled && available
 The startup probe checks explicit standard paths and then PATH fallback for both `awww` and `awww-daemon`. When available, it triggers sync; when unavailable, Background/Waffle fall back to the internal renderer.
 
 Thus this process cannot simply be demand-gated behind Settings or wallpaper selection: it determines the initial visible rendering engine. Only replace it if Quickshell/native code can perform an equivalent executable lookup without losing non-standard PATH support.
+
+## Research continuation — round 10
+
+Baseline: `dev` at `4c1932c0616ea8a4b91a188270c21d0072649228`.
+
+### R10.1 — Config's global invalidation signal has no path information
+
+Current `modules/common/Config.qml`: `3543ed88ddfa5408b1191b76e2c13499caaf67f7`.
+
+Both mutation APIs end by bumping one global revision and emitting the same zero-argument signal:
+
+```qml
+function setNestedValue(nestedKey, value) {
+    ...
+    root._bumpRevision()
+    root.configChanged()
+}
+
+function setNestedValues(updates) {
+    ...
+    if (paths.length > 0) {
+        ...
+        root._bumpRevision()
+        root.configChanged()
+    }
+}
+```
+
+This is a valid compatibility mechanism for nested JsonAdapter values, but listeners must treat it as a broad invalidation, not evidence that their own domain changed.
+
+The audit should prefer this pattern:
+
+```text
+Config.revision keeps derived values reactive
+derived domain signature/property expresses actual intent
+onDerivedValueChanged owns domain work
+global configChanged remains only where no narrower reliable signal exists
+```
+
+No Config API redesign is required for the first optimization pass.
+
+### R10.2 — WallpaperListener's safety net can preserve its purpose without rebuilding on every setting edit
+
+Current `services/WallpaperListener.qml`: `ff0253becd4b3f5b2df24c65d003fb0236304e9a`.
+
+The per-monitor map changes only from:
+
+- `background.multiMonitor.enable`;
+- `background.wallpapersByMonitor`;
+- `background.wallpaperPath`;
+- connected screen changes.
+
+Those already have direct reactive handlers. The additional broad listener is explicitly documented as a safety net for `wallpapersByMonitor` list propagation.
+
+Current unrelated-config path:
+
+```text
+Config.configChanged
+ -> restart 80 ms timer
+ -> create result object for every screen
+ -> JSON.stringify(result)
+ -> JSON.stringify(effectivePerMonitor)
+ -> usually return unchanged
+```
+
+Strict-lossless narrowing:
+
+1. keep a canonical `_wallpapersByMonitorSafetyKey` reflecting the last list snapshot incorporated by `refresh()`;
+2. on global Config change, stringify only the current `background.wallpapersByMonitor` value;
+3. restart the safety debounce only when that key differs;
+4. keep direct `onWallpapersByMonitorRefChanged`, global path/mode handlers and `Quickshell.onScreensChanged` intact;
+5. focused test: mutate unrelated setting -> no fallback refresh; replace monitor list -> refresh; simulate a missed list property notify but emit `configChanged` -> fallback still refreshes.
+
+`globalAnimationEnabled` and `globalFillMode` are also currently declared in WallpaperListener but have no repository readers and are not used by `refresh()`. They are dead aliases at this baseline and can be removed separately after a QML import/smoke check; the saving is negligible.
+
+### R10.3 — ThemeService already contains the exact signature needed to eliminate broad wakeups
+
+Current `services/ThemeService.qml`: `b73e3ae8060d41fb15d39221ad78111668d8be7c`.
+
+`liveRegenSignature` serializes the actual regeneration inputs: theme, panel family, Waffle wallpaper ownership, palette type, theming wallpaper, external-target toggles, terminal adjustments, soften-colors and auto dark/light behavior.
+
+Yet every Config change currently does:
+
+```qml
+function onConfigChanged() {
+    liveRegenerateDebounce.restart()
+}
+```
+
+260 ms later `_tryLiveRegenerateFromConfig()` begins with:
+
+```qml
+if (!Config.ready) return
+if (root.liveRegenSignature === root._lastLiveRegenSignature) return
+```
+
+Therefore unrelated Config mutations already have an explicit semantic no-op proof. Triggering the same debounce from `onLiveRegenSignatureChanged` removes only the redundant timer/wakeup path.
+
+Preserve:
+
+- Config-ready signature priming;
+- `currentTheme` explicit apply behavior;
+- `setAutoRegenTimer`;
+- family-aware regeneration;
+- `Wallpapers._applyInProgress` duplicate suppression;
+- cooldown/coalescing.
+
+### R10.4 — MPRIS filtering depends on two Config values, not the entire configuration
+
+Current `services/MprisController.qml`: `3a8184f9308f0816ea395ea26f182bb5a3fbcf15`.
+
+Global Config handler:
+
+```qml
+function onConfigChanged() {
+    root._updateMpvCache()
+    root._rebuildPlayerList()
+}
+```
+
+Source-wide Config references inside this service show player-list membership depends on:
+
+- `Config.options.media.filterDuplicatePlayers`;
+- `Config.options.sidebar.ytmusic.enable`.
+
+The other Config reference, `osd.mediaEnabled`, controls action OSD emission and does not require player-list rebuild.
+
+`_updateMpvCache()` scans live `Mpris.players.values` only; it has no Config input.
+
+A strict replacement is a derived filter signature, for example:
+
+```text
+filterDuplicatePlayers + "|" + ytmusicEnabled
+```
+
+whose change schedules `_rebuildPlayerList()`. Existing MPRIS player lifecycle and YtMusic connections continue to own mpv cache refreshes and metadata-driven rebuilds.
+
+Oracle: same membership/order/trackedPlayer before and after toggling either relevant option, including the 1.8 s empty-list grace; unrelated Config writes must not invoke the rebuild path.
+
+### R10.5 — ThinkFan's broad Config listener can become a real helper spawn when the opt-in feature is enabled
+
+Current `services/ThinkFanService.qml`: `943082413a143df3e642ee3d60587093dda1ec02`.
+
+The global handler sends every Config edit through `_handleProfileFollowEvent()`. When profile fan control is enabled:
+
+- status newer than 30 s -> schedule configured active-level reconciliation;
+- status older than 30 s -> immediately `refresh()`, starting `inir-thinkfan --status`.
+
+The periodic status timer is intentionally sparse (5 min) when profile-follow is enabled but ThinkFan is not actively managed, so unrelated Settings edits can become the event that forces a stale-status process.
+
+The actual desired fan intent is already exposed as reactive properties:
+
+```qml
+profileFanControlEnabled
+activePowerProfileKey
+configuredActiveFanLevel
+```
+
+PowerProfiles already has its own `onProfileChanged`.
+
+Promotable direction:
+
+- `onProfileFanControlEnabledChanged -> _handleProfileFollowEvent()`;
+- `onConfiguredActiveFanLevelChanged -> _handleProfileFollowEvent()`;
+- retain `PowerProfiles.onProfileChanged`;
+- remove generic Config follow event.
+
+Do not trigger inactive-profile level edits immediately; current runtime only needs the active profile level, and a later power-profile change re-evaluates it.
+
+### R10.6 — TLP charge reconciliation has the same broad-listener smell but stronger no-op guards
+
+Current `services/TlpService.qml`: `4e0ef4fba76eb00df7ddc54941e205029dde07ec`.
+
+Every Config change schedules `root.apply()`. Unlike ThinkFan, `apply()` first checks the already-detected hardware/ownership state and usually returns without spawning anything. Therefore this is primarily event-loop/CPU churn, not a routine process-spawn bug.
+
+Config intent is represented by:
+
+- `enabled`;
+- `requestedLimit` / normalized `effectiveRequestedLimit`.
+
+Hardware capability/current ownership are detector-owned state.
+
+Use derived-property changes to request `apply()`, while preserving:
+
+- initial Config-ready detection;
+- detector completion reconciliation;
+- allowed/discrete limit normalization;
+- disabling a policy still owned by Hadalis.
+
+This optimization becomes more valuable after Round 6 demand-gates TlpService itself, because the service can then remain completely absent for default charge-care-off sessions.
+
+### R10.7 — Background revision counters were rechecked and are not dead
+
+Current `modules/background/Background.qml`: `29bd40236ba9579077d361fb1012d4f994ef4a3a`.
+
+A repository search snippet initially exposed only the declaration/increment of `_zoneRevision`, which looked removable. Full-file verification found the reads:
+
+- `_zoneRevision` is explicitly consumed inside `_computeZoneOccupants()`;
+- `_imageRouteRevision` is explicitly consumed while resolving the dynamic image-converter `Connections.target`.
+
+Both are deliberate dependency bridges around imperative helper functions. Do not remove them under the current strict-lossless audit.
+
+A later optimization could narrow `_zoneRevision` to widget-layout-related changes, but that requires a domain signature or path-aware Config event and is lower confidence than the service-level cuts above.
 

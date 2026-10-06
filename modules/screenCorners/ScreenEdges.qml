@@ -199,7 +199,11 @@ Scope {
             // smooth upscaled texture, so that layer provides the subpixel
             // smoothing that GeometryRenderer itself lacks. When there is no
             // shadow layer, retain CurveRenderer's built-in antialiasing.
-            preferredRendererType: frameShape.physicalShadowActive
+            readonly property bool lowCostRendererActive:
+                frameShape.physicalShadowActive
+                || frameWindow.fullscreenCovered
+                || Appearance.gameModeMinimal
+            preferredRendererType: frameShape.lowCostRendererActive
                 ? Shape.GeometryRenderer : Shape.CurveRenderer
 
             // One geometry, one effect. This is attached directly to the locked

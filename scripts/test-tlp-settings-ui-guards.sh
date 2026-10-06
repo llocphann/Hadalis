@@ -167,36 +167,25 @@ assert_contains 'import Quickshell' "$registry" \
     'SettingsPageRegistry must import the Quickshell Singleton type or shell startup will fail'
 assert_contains 'readonly property int retiredTlpPageIndex: 28' "$registry" \
     'the historical TLP page index must stay retired from public navigation'
-assert_contains 'SettingsPageRegistryData.pages.map((page, index)' "$registry" \
-    'legacy page 28 must remain an internal compatibility alias until migration wins the startup race'
-assert_contains 'name: systemPage.name' "$registry" \
-    'the internal page-28 fallback must present itself as System, not as a standalone Battery page'
+assert_contains 'if (!page)' "$registry" \
+    'retired numeric slots must remain null migration gaps, not compatibility page instances'
 assert_contains 'function isHiddenLegacyIndex(index: int): bool' "$registry" \
     'the registry must centralize filtering of retired navigation indexes'
-assert_contains 'return index === root.retiredTlpPageIndex || root.isRetiredFeaturePage(index)' "$registry" \
-    'the hidden-index invariant must include both the retired TLP page and retired feature pages'
+assert_contains 'SettingsPageRegistryData.legacyHiddenIndexes.includes(index)' "$registry" \
+    'the hidden-index invariant must come from the canonical retired-page list'
 assert_contains 'pages:category.pages.filter(index=>root.isPageApplicable(index))' "$registry" \
     'retired compatibility pages must never reappear in sidebar categories'
 assert_contains 'Persistent.states.settings.iiPage = root.systemPageIndex' "$registry" \
     'persisted legacy page 28 must migrate to System when Persistent becomes available'
 assert_contains 'function consumeLegacyTlpPowerRedirect(): bool' "$registry" \
     'legacy current-page migration must expose a one-shot Power landing hint'
-assert_contains 'redirected.pageIndex = root.systemPageIndex' "$registry" \
-    'legacy TLP search entries must redirect to System'
-assert_contains 'redirected.section = Translation.tr("Power")' "$registry" \
-    'charge-care search must land on the merged Power section'
-assert_contains 'redirected.label = Translation.tr("Battery & TLP")' "$registry" \
-    'all retired TLP search entries must target the merged Battery/TLP card'
-assert_contains 'keywords.concat(["system", "settings", "power"])' "$registry" \
-    'redirected TLP search must stay discoverable through System settings terms'
+assert_not_contains 'redirected.pageIndex = root.systemPageIndex' "$registry" \
+    'retired TLP search aliases must not survive in the runtime registry'
 assert_contains 'const retired = SettingsPageRegistryData.legacyHiddenIndexes' "$arrangement" \
     'saved arrangements must derive hidden compatibility slots from the canonical retired-page list'
 assert_contains 'for (const index of retired)' "$arrangement" \
     'all retired compatibility pages, including historical page 28, must stay internal-only'
-assert_contains 'GeneralConfig {' "$legacy_tlp" \
-    'legacy TlpConfig links must redirect through System settings'
-assert_contains 'activeSection: "power"' "$legacy_tlp" \
-    'legacy TlpConfig links must land on the Power task'
+[ ! -e "$legacy_tlp" ] || fail 'retired TlpConfig compatibility page must be deleted'
 
 printf '%s\n' '1..1'
 printf '%s\n' 'ok 1 - TLP UI guards and System Power integration are present'

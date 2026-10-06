@@ -39,9 +39,12 @@ def main() -> None:
         ], labels
         page_indices = [index for group in groups for index in group["pages"]]
         assert len(page_indices) == len(set(page_indices)), "duplicate default page"
-        excluded = {18, 19, 21, 27, 28, 35, 36}
-        if family == "abyss": excluded.update({26, 30, 31})
-        expected = set(range(38 if family == "abyss" else 30)) - excluded
+        if family == "abyss":
+            excluded = {11, 18, 19, 21, 26, 27, 28, 30, 31, 36}
+            expected = set(range(38)) - excluded
+        else:
+            excluded = {18, 19, 21, 27, 28}
+            expected = (set(range(30)) - excluded) | {35}
         assert set(page_indices) == expected
         if family == "abyss":
             assert next(group for group in groups if group["label"] == "Abyss")["pages"] == [2,32,34,33,37,22,23,16]
@@ -66,8 +69,9 @@ def main() -> None:
                 path)
         require(source, slot, path)
         if path != "modules/settings/SettingsFocus.qml":
-            require(source, "function toggleNavGroup(", path)
-            require(source, "function revealCurrentNavGroup()", path)
+            require(source, "SettingsPageRegistry.navigationPageIndexes(", path)
+            forbid(source, 'type: "header"', path)
+            forbid(source, "toggleNavGroup(", path)
         else:
             require(source, "readonly property var visibleGroups:", path)
             require(source, "readonly property var currentGroup:", path)
@@ -103,6 +107,12 @@ def main() -> None:
                   'Config.setNestedValue("bar.vertical"'):
         forbid(quick, token, "Quick ownership")
     forbid(registry, "QuickConfigHugOnly", "retired Quick compatibility")
+    for retired_key in ("_retired-18", "_retired-19", "_retired-21",
+                        "_retired-27", "_retired-28", "_retired-30",
+                        "_retired-31", "_retired-35", "_retired-36"):
+        forbid(data, retired_key, "retired registry page")
+    require(data, 'key: "automation"', "Automation route")
+    require(data, 'component: "modules/settings/AutomationConfig.qml"', "Automation route")
     for path, source, token in (
         ("Modules", modules, 'Config.setNestedValue("appearance.typography.sizeScale"'),
         ("System", system, 'Config.setNestedValue("policies.ai"'),

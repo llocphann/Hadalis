@@ -944,7 +944,7 @@ test_tlp_settings_ui_uses_schema_groups_and_batched_apply() {
     settings_service="$repo_root/services/TlpSettingsService.qml"
     runtime_service="$repo_root/services/TlpRuntimeCapabilities.qml"
     services_qmldir="$repo_root/services/qmldir"
-    classic_page="$repo_root/modules/settings/TlpConfig.qml"
+    classic_page="$repo_root/modules/settings/GeneralConfig.qml"
     waffle_page="$repo_root/modules/waffle/settings/pages/WTlpPage.qml"
     schema="$repo_root/assets/tlp/tlp-settings-schema.json"
 
@@ -971,10 +971,10 @@ test_tlp_settings_ui_uses_schema_groups_and_batched_apply() {
         'settings service must build one privileged Apply command' || return 1
     assert_not_contains 'applyOnLeave' "$settings_service" \
         'settings service must require explicit Apply'
-    assert_contains 'GeneralConfig {' "$classic_page" \
-        'legacy TLP direct links must redirect into the canonical System page'
-    assert_contains 'activeSection: "power"' "$classic_page" \
-        'legacy TLP direct links must land on System → Power'
+    assert_contains 'TlpPowerSettings {' "$classic_page" \
+        'canonical System settings must own TLP controls directly'
+    [ ! -e "$repo_root/modules/settings/TlpConfig.qml" ] \
+        || fail 'retired standalone TLP Settings compatibility page must stay deleted'
     assert_contains 'pageTitle: Translation.tr("Battery")' "$waffle_page" \
         'Waffle Battery page must remain registered'
     assert_contains 'model: root.visibleGroups' "$waffle_page" \

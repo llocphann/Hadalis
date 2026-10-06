@@ -57,13 +57,16 @@ registry = (root / "modules/settings/SettingsPageRegistry.qml").read_text()
 applicability = registry.split("function isPageApplicable(index: int): bool {", 1)[1].split("\n    }", 1)[0]
 subprocess.run(["node", "-e", """
 const assert = require('node:assert/strict');
-const root = {pages: Array(35), barPageIndex: 2, abyssFamily: false, waffleFamily: false,
-    isHiddenLegacyIndex: i => [18,19,21,27,28].includes(i)};
+const pages = Array(38).fill({});
+for (const i of [18,19,21,27,28,30,31,36]) pages[i] = null;
+const root = {pages, barPageIndex: 2, abyssFamily: false, waffleFamily: false,
+    isHiddenLegacyIndex: i => [18,19,21,27,28,30,31,36].includes(i)};
 function applicable(index) {""" + applicability + """}
 for (const family of ['ii','waffle','abyss']) {
     root.abyssFamily = family === 'abyss'; root.waffleFamily = family === 'waffle';
     assert(applicable(1)); assert(applicable(10)); // shared System/Modules routes
-    assert(!applicable(-1)); assert(!applicable(35)); assert(!applicable(18));
+    assert(applicable(35)); // Automation is renderer-independent.
+    assert(!applicable(-1)); assert(!applicable(36)); assert(!applicable(18));
     assert.equal(applicable(2), family !== 'waffle');
     assert.equal(applicable(11), family === 'waffle');
     assert.equal(applicable(16), family !== 'waffle');

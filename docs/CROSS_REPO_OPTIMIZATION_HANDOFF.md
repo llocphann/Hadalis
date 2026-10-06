@@ -3831,3 +3831,140 @@ Any optimization must preserve those ownership and ghost-band guarantees.
 No whole-Hadalis GPU/RAM/FPS percentage is claimed without before/after
 measurement.
 
+## 2026-10-07 — Private bounded-cache mutation research
+
+Research-only continuation on current `dev`
+`967b6dd1131170a19fb23f13693c084a113d561b`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `services/Wallhaven.qml`:
+  `ce28a24564a964df2de7748080f8f7893e788ef8`;
+- `modules/background/Background.qml`:
+  `29bd40236ba9579077d361fb1012d4f994ef4a3a`.
+
+Repository/history search found no prior optimization note for the
+`Wallhaven._boundedCacheInsert()` copy-on-write path.
+
+### Candidate A — HIGH CONFIDENCE: mutate Wallhaven's private bounded caches in place
+
+Wallhaven owns three private bounded caches:
+
+- tag suggestions: 64 entries;
+- tag counts: 256 entries;
+- wallpaper tags: 256 entries.
+
+Every insertion currently performs:
+
+```qml
+const nextCache = Object.assign({}, cache)
+const nextKeys = (keys || []).slice()
+...
+nextCache[key] = value
+nextKeys.push(key)
+...
+return { cache: nextCache, keys: nextKeys }
+```
+
+and the caller then reassigns both cache and key-array properties.
+
+Repository-wide occurrence inspection shows these cache objects and key arrays
+are only consumed inside `services/Wallhaven.qml`; no external QML binding,
+`Connections`, change handler or public API depends on their property-change
+notifications.
+
+The cache reads are imperative:
+
+- direct key lookup before tag-suggestion requests;
+- direct key lookup before tag-count requests;
+- direct key lookup before wallpaper-tag fetches.
+
+Therefore the copy-on-write identity change is not part of the observable
+contract.
+
+Strict-lossless direction:
+
+1. replace `_boundedCacheInsert(cache, keys, ...)` with an in-place helper;
+2. preserve current LRU/key ordering exactly:
+   - if key already exists, remove its first occurrence from the order list;
+   - update the cache value;
+   - append key at the end;
+   - evict oldest keys until `length <= limit`;
+3. do not reassign the cache/key-array properties merely to publish identity;
+4. keep TTL checks, request queues, network ordering and response signals
+   unchanged.
+
+Why this matters structurally:
+
+- tag-count enrichment can insert many distinct ids sequentially;
+- at cache size K, every insertion currently copies O(K) object keys and O(K)
+  order entries;
+- filling a cache from empty therefore creates O(K²) key-copy/allocation work
+  even though only one entry changes at a time;
+- limits of 256 are intentionally bounded, but large enough that the avoidable
+  copies can become visible JS GC pressure during search/tag enrichment.
+
+Required oracle before implementation:
+
+- insert into empty cache;
+- refresh existing key and verify it moves to newest position;
+- insert past limit and verify the exact oldest key is evicted;
+- repeated same-key update;
+- TTL cache hit behavior before/after;
+- tag suggestion/count/detail request dedup behavior;
+- prove no `...Changed` signal is currently used as a wakeup contract.
+
+This is bookkeeping-only. Visual output and network semantics should remain
+identical.
+
+### Candidate B — LOW PRIORITY but same safe class: mutate Background wallpaper-size cache in place
+
+The shared Background wallpaper-size cache is also private:
+
+```qml
+property var _wallpaperSizeCache: ({})
+property var _wallpaperSizeCacheKeys: []
+readonly property int _wallpaperSizeCacheLimit: 64
+```
+
+`cacheWallpaperSize()` currently clones both structures on every successful
+ImageMagick identify result before publishing them back.
+
+Repository-wide search finds no external reader and no binding that depends on
+cache/key-array identity. The only read is an imperative lookup before deciding
+whether to spawn another `magick identify`.
+
+An in-place bounded LRU update is therefore also strict-lossless in principle.
+
+This ranks below Wallhaven because:
+
+- the cache is smaller (64);
+- writes happen only after a wallpaper dimension probe;
+- normal sessions usually touch far fewer distinct wallpapers than Wallhaven
+  can touch tag ids.
+
+Keep it grouped as a cleanup after higher-value candidates rather than
+advertising it as an independent major optimization.
+
+### Non-candidates from the same copy-on-write sweep
+
+Do **not** generalize this rule to every `Object.assign({}, property)` pattern.
+
+Examples deliberately retained:
+
+- `ScreenTime._todayData` reassigns object identity so QML consumers observe
+  state changes;
+- `AiProviderCatalog.providerStates` is reactive public state;
+- `WindowPreviewService.previewCache` has presentation consumers;
+- `GlobalStates` lease maps drive derived UI state;
+- `KeyboardIndicators` state maps feed reactive lock-state recomputation;
+- `videoFirstFrames` intentionally publishes object identity to image/color
+  consumers.
+
+The optimization criterion is not “object clone exists”; it is “private
+imperative cache with no change-notification observer”.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

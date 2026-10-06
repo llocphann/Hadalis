@@ -1478,3 +1478,125 @@ For Candidate B later:
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — Settings search registry hot-path research
+
+Research-only continuation on current `dev`
+`9b4ebaf9ad76f2b754ce612322533f40af669ad7`. No runtime/product source was
+changed in this round.
+
+Current `modules/common/widgets/SettingsSearchRegistry.qml`:
+`836c9c061039bae7508aa6b44973722409ddf1dd`.
+
+Repository/history search found no prior optimization note for
+`SettingsSearchRegistry.buildResults()` field normalization or pre-top-50
+highlight generation.
+
+### Candidate A — HIGH CONFIDENCE: normalize immutable registry search fields once at registration
+
+`registerOption(meta)` snapshots each live control's search metadata into an
+entry:
+
+- page index/name;
+- section;
+- label;
+- description;
+- provided + generated keywords.
+
+There is no update-in-place API for these entry fields. Controls are
+unregistered/re-registered when their searchable identity changes through
+lifecycle recreation.
+
+Despite that snapshot model, every `buildResults(query)` call currently
+recreates the normalized search corpus for every active entry:
+
+```qml
+var label = (e.label || "").toLowerCase()
+var desc = (e.description || "").toLowerCase()
+var page = (e.pageName || "").toLowerCase()
+var sect = (e.section || "").toLowerCase()
+var kw = (e.keywords || []).join(" ").toLowerCase()
+```
+
+Settings search runs on text changes, so this repeats lowercase conversions and
+keyword joining for the complete live-control registry on every keystroke.
+
+Strict-lossless direction:
+
+1. during `registerOption()`, keep the existing public/raw entry fields and
+   additionally compute private normalized fields;
+2. `buildResults()` reads those precomputed strings directly;
+3. keep current auto-keyword generation, scoring weights, match order and
+   page/tie ordering unchanged;
+4. preserve entry removal/flush behavior exactly.
+
+Because the current registry already snapshots those raw fields rather than
+reactively rereading the control during search, caching their normalized forms
+does not make metadata any staler than current behavior.
+
+### Candidate B — HIGH CONFIDENCE: defer highlight markup until after score/sort/top-50 selection
+
+Current `buildResults()` generates:
+
+```qml
+labelHighlighted: highlightTerms(e.label, matchedTerms)
+descriptionHighlighted: highlightTerms(e.description, matchedTerms)
+```
+
+for every matched entry before sorting all matches and returning only:
+
+```qml
+out.slice(0, 50)
+```
+
+Highlight markup does not participate in scoring, applicability, ordering or
+the top-50 cutoff.
+
+Strict-lossless direction:
+
+1. during the scoring pass, retain raw label/description plus
+   `matchedTerms`;
+2. perform the existing sort;
+3. take the exact same first 50 entries;
+4. only for those retained entries, call the existing `highlightTerms()` in
+   the same term order and publish the same result fields.
+
+This removes lowercase/substr/HTML-string work for matches that are guaranteed
+to be discarded while preserving the complete visible result object for every
+returned row.
+
+### Required oracle before implementation
+
+Compare complete result arrays/fields for:
+
+- empty query;
+- one and multiple terms;
+- case variants;
+- exact/prefix/mid-string matches;
+- generated and caller-provided keywords;
+- duplicate keyword terms;
+- page/section/description-only matches;
+- score ties and page-index tie ordering;
+- more than 50 matching entries;
+- overlapping highlight terms and term-order-sensitive markup;
+- removed controls before the coalesced registry flush;
+- unregister/re-register and page/control destruction/recreation;
+- translated labels/descriptions as they exist at registration time.
+
+The oracle should compare IDs, order, scores, matchedTerms, raw text and final
+highlight markup, not merely result count.
+
+### Adjacent non-candidates
+
+- Do not add a keystroke debounce as part of this strict-lossless work. That
+  changes when results become observable.
+- Do not merge standalone Settings, SettingsOverlay, SettingsFocus and Waffle
+  search orchestration merely because they call the same registry. Their
+  applicability/easy-mode/navigation contracts differ, and static source does
+  not prove those routes execute concurrently for one user query.
+- Static `SettingsPageRegistry.searchIndex()` normalization can be examined
+  separately, but it should not be conflated with the live-control registry
+  candidate above.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
+measurement.
+

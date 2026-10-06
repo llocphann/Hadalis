@@ -34,10 +34,12 @@ ShellRoot {
     readonly property real inset: 10
     readonly property real radius: 25
     readonly property real shadow: 15
-    readonly property real horizontalExtent:
-        Math.ceil(inset + radius + Math.max(shadow, 2))
-    readonly property real verticalExtent:
-        Math.ceil(inset + Math.max(shadow, 2))
+    readonly property real safeReach: Math.max(shadow, 2)
+    readonly property real shallowExtent:
+        Math.ceil(inset + safeReach)
+    readonly property real deepExtent:
+        Math.ceil(inset + radius + safeReach)
+
 
     FloatingWindow {
         id: window
@@ -71,34 +73,59 @@ ShellRoot {
                 anchors.fill: parent
                 visible: root.banded
 
-                readonly property real topH: Math.min(height, root.horizontalExtent)
-                readonly property real bottomH: Math.min(Math.max(0, height - topH), root.horizontalExtent)
-                readonly property real middleH: Math.max(0, height - topH - bottomH)
-                readonly property real leftW: Math.min(width, root.verticalExtent)
-                readonly property real rightW: Math.min(Math.max(0, width - leftW), root.verticalExtent)
+                readonly property real hTop:
+                    Math.min(height, root.deepExtent)
+                readonly property real hBottom:
+                    Math.min(Math.max(0, height - hTop), root.deepExtent)
+                readonly property real hMiddle:
+                    Math.max(0, height - hTop - hBottom)
+                readonly property real hLeft:
+                    Math.min(width, root.shallowExtent)
+                readonly property real hRight:
+                    Math.min(Math.max(0, width - hLeft), root.shallowExtent)
+                readonly property real hArea:
+                    width * (hTop + hBottom) + hMiddle * (hLeft + hRight)
+
+                readonly property real vLeft:
+                    Math.min(width, root.deepExtent)
+                readonly property real vRight:
+                    Math.min(Math.max(0, width - vLeft), root.deepExtent)
+                readonly property real vMiddle:
+                    Math.max(0, width - vLeft - vRight)
+                readonly property real vTop:
+                    Math.min(height, root.shallowExtent)
+                readonly property real vBottom:
+                    Math.min(Math.max(0, height - vTop), root.shallowExtent)
+                readonly property real vArea:
+                    height * (vLeft + vRight) + vMiddle * (vTop + vBottom)
+
+                readonly property bool horizontal: hArea <= vArea
 
                 Field {
-                    x: 0; y: 0
-                    width: parent.width
-                    height: parent.topH
+                    x: parent.horizontal ? 0 : parent.vLeft
+                    y: 0
+                    width: parent.horizontal ? parent.width : parent.vMiddle
+                    height: parent.horizontal ? parent.hTop : parent.vTop
+                }
+                Field {
+                    x: parent.horizontal ? 0 : parent.vLeft
+                    y: parent.height - (parent.horizontal
+                        ? parent.hBottom : parent.vBottom)
+                    width: parent.horizontal ? parent.width : parent.vMiddle
+                    height: parent.horizontal ? parent.hBottom : parent.vBottom
                 }
                 Field {
                     x: 0
-                    y: parent.height - parent.bottomH
-                    width: parent.width
-                    height: parent.bottomH
+                    y: parent.horizontal ? parent.hTop : 0
+                    width: parent.horizontal ? parent.hLeft : parent.vLeft
+                    height: parent.horizontal ? parent.hMiddle : parent.height
                 }
                 Field {
-                    x: 0
-                    y: parent.topH
-                    width: parent.leftW
-                    height: parent.middleH
-                }
-                Field {
-                    x: parent.width - parent.rightW
-                    y: parent.topH
-                    width: parent.rightW
-                    height: parent.middleH
+                    x: parent.width - (parent.horizontal
+                        ? parent.hRight : parent.vRight)
+                    y: parent.horizontal ? parent.hTop : 0
+                    width: parent.horizontal ? parent.hRight : parent.vRight
+                    height: parent.horizontal ? parent.hMiddle : parent.height
                 }
             }
         }

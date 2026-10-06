@@ -33,6 +33,17 @@ float roundedBox(vec2 p, vec2 centre, vec2 halfSize, float radius) {
     return length(q) - radius;
 }
 
+float shadowResponse(float d, float aa, float reach) {
+    if (u.shadowColor.a <= 0.0)
+        return 0.0;
+    float sharpReach = max(aa, reach / 15.0);
+    float midReach = max(sharpReach, reach / 3.0);
+    return
+        0.175 * smoothstep(-sharpReach, 0.0, d)
+        + 0.250 * smoothstep(-midReach, 0.0, d)
+        + 0.075 * smoothstep(-reach, 0.0, d);
+}
+
 void main() {
     vec2 size = max(u.viewport.xy, vec2(1.0));
     vec2 lo = max(u.insets.xy, vec2(0.0));
@@ -76,25 +87,35 @@ void main() {
     // Curve/GeometryRenderer differences disappear here: the silhouette AA is
     // derived directly from the SDF at output resolution.
     float aa = max(max(fwidth(d), u.params.z), 0.5);
-    float frameCover = smoothstep(-aa, aa, d);
-
-    // Approximate the accepted Qt 6.11 MultiEffect BL1 straight-edge
-    // response without sampling its source/blur pyramid. At the default
-    // blurMax=15, three inexpensive bands reproduce the sharp shoulder,
-    // middle rolloff and faint long tail much more closely than one broad
-    // smoothstep. Their boundary contributions sum to 0.5, matching a
-    // symmetric filtered step; normal source coverage below composites the
-    // shadow behind the antialiased physical frame exactly once.
     float reach = max(u.params.y, aa);
-    float innerShadow = 0.0;
-    if (u.shadowColor.a > 0.0) {
-        float sharpReach = max(aa, reach / 15.0);
-        float midReach = max(sharpReach, reach / 3.0);
-        innerShadow =
-            0.175 * smoothstep(-sharpReach, 0.0, d)
-            + 0.250 * smoothstep(-midReach, 0.0, d)
-            + 0.075 * smoothstep(-reach, 0.0, d);
+
+    // Outside the transition band, smoothstep results are exact constants.
+    // Take those exact branches before evaluating unnecessary frame/shadow
+    // curves or general alpha composition.
+    if (d <= -reach) {
+        fragColor = vec4(0.0);
+        return;
     }
+
+    if (d <= -aa) {
+        float innerShadow = shadowResponse(d, aa, reach);
+        fragColor = u.shadowColor * innerShadow * u.qt_Opacity;
+        return;
+    }
+
+    if (d >= aa) {
+        float innerShadow = u.shadowColor.a > 0.0 ? 0.5 : 0.0;
+        vec3 shadowRgb = u.shadowColor.rgb * innerShadow;
+        float shadowAlpha = u.shadowColor.a * innerShadow;
+        float remaining = 1.0 - u.frameColor.a;
+        vec3 rgb = u.frameColor.rgb + shadowRgb * remaining;
+        float alpha = u.frameColor.a + shadowAlpha * remaining;
+        fragColor = vec4(rgb, alpha) * u.qt_Opacity;
+        return;
+    }
+
+    float frameCover = smoothstep(-aa, aa, d);
+    float innerShadow = shadowResponse(d, aa, reach);
 
     // ShaderEffect passes QColor uniforms already premultiplied. Apply only
     // coverage here; multiplying by color alpha again would square the shadow

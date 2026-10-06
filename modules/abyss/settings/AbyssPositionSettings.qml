@@ -20,14 +20,20 @@ ColumnLayout {
     property var allowedKinds: []
     property string nearbyEdge: ""
     signal positionsEdited(var positions,string kind,string outputName,var values)
-    readonly property var position: Presentation.resolve(positions,kind,outputName)
+    function _positionsForRead(): var {
+        return commitImmediately ? Config.getNestedValue("abyss.positions",[]) : positions
+    }
+    function _currentPosition(): var {
+        return Presentation.resolve(_positionsForRead(),kind,outputName)
+    }
+    readonly property var position: _currentPosition()
     function apply(values): void {
-        const next=Presentation.save(positions,kind,outputName,values)
+        const next=Presentation.save(_positionsForRead(),kind,outputName,values)
         if(commitImmediately) Config.setNestedValue("abyss.positions",next)
         else positionsEdited(next,kind,outputName,values)
     }
     function change(key,value): void {
-        const values=Object.assign({edge:"source",alignment:"source",position:.5},position,{[key]:value})
+        const values=Object.assign({edge:"source",alignment:"source",position:.5},_currentPosition(),{[key]:value})
         apply(values)
     }
     readonly property var inputRegions: [kindRegion,outputRegion,edgeRegion,alignmentRegion]

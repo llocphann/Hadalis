@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import Quickshell
 import qs.services
 import qs.services.deferred
+import qs.modules.common
 import qs.modules.abyss.looks
 
 Item {
@@ -81,6 +82,6 @@ Item {
                 AbyssButton { visible: !row.modelData.pin; glyph: "delete"; description: "Delete entry"; onClicked: Cliphist.deleteEntry(row.modelData.value) }
             }
         }
-        AbyssLabel { visible: root.rows.length === 0; text: "No matching clipboard entries"; color: AbyssStyle.textColorMuted }
+        AbyssLabel { visible: root.rows.length === 0; text: "No matching clipboard entries"; color: Appearance.m3colors.darkmode ? AbyssStyle.textColorMuted : "#1a1a1a" }
     }
 }

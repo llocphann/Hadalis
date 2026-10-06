@@ -69,13 +69,23 @@ void main() {
     float aa = max(max(fwidth(d), u.params.z), 0.5);
     float frameCover = smoothstep(-aa, aa, d);
 
-    // Only the workspace-facing side needs elevation. Squaring the smoothstep
-    // gives the same restrained near-edge emphasis as Qt's analytic
-    // RectangularShadow family without a Gaussian texture pyramid.
+    // Approximate the accepted Qt 6.11 MultiEffect BL1 straight-edge
+    // response without sampling its source/blur pyramid. At the default
+    // blurMax=15, three inexpensive bands reproduce the sharp shoulder,
+    // middle rolloff and faint long tail much more closely than one broad
+    // smoothstep. Their boundary contributions sum to 0.5, matching a
+    // symmetric filtered step; normal source coverage below composites the
+    // shadow behind the antialiased physical frame exactly once.
     float reach = max(u.params.y, aa);
-    float innerShadow = smoothstep(-reach, 0.0, d)
-        * (1.0 - frameCover);
-    innerShadow *= innerShadow;
+    float innerShadow = 0.0;
+    if (u.shadowColor.a > 0.0) {
+        float sharpReach = max(aa, reach / 15.0);
+        float midReach = max(sharpReach, reach / 3.0);
+        innerShadow =
+            0.175 * smoothstep(-sharpReach, 0.0, d)
+            + 0.250 * smoothstep(-midReach, 0.0, d)
+            + 0.075 * smoothstep(-reach, 0.0, d);
+    }
 
     // ShaderEffect passes QColor uniforms already premultiplied. Apply only
     // coverage here; multiplying by color alpha again would square the shadow

@@ -3779,15 +3779,17 @@ Singleton {
         const onLayer2 = readableHex(onSurface, layer2, 4.5);
         const onLayer3 = readableHex(onSurface, layer3, 4.5);
         const onLayer4 = readableHex(onSurface, layer4, 4.5);
-        const subtext = readableHex(mixHex(onLayer1, layer1, 0.75), layer1, 3.0);
         const layer1Hover = mixHex(layer1, onLayer1, 0.92);
         const layer1Active = mixHex(layer1, onLayer1, 0.85);
+        const subtext = c.darkmode
+            ? readableHex(mixHex(onLayer1, layer1, 0.75), layer1, 3.0)
+            : readableHex(mixHex(onLayer1, layer1, 0.75), layer1Active, 4.5);
         const layer2Hover = mixHex(layer2, onLayer2, 0.90);
         const layer2Active = mixHex(layer2, onLayer2, 0.80);
         const layer3Hover = mixHex(layer3, onLayer3, 0.90);
         const layer3Active = mixHex(layer3, onLayer3, 0.80);
-        const selection = mixHex(layer3, primary, 0.82);
-        const selectionHover = mixHex(layer3, primary, 0.74);
+        const selection = mixHex(primaryContainer, layer3, 0.75);
+        const selectionHover = mixHex(primaryContainer, layer3, 0.88);
         const onSelection = readableHex(onLayer3, selection, 4.5);
 
         return Object.assign({}, base, {

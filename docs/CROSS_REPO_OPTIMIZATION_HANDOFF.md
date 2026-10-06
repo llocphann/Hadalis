@@ -140,6 +140,14 @@ visual budget below 1% only where necessary.
   complete-order scan that records only whether any configured output exists.
   A 50,000-case behavior/read-order oracle preserves answers and full screen
   traversal/dependency order.
+- **Fallback bridge binding compaction.** The inactive legacy Loader previously
+  kept ten value-proxy bindings per output (four insets, radius, padding,
+  shadow state/size/color and edge color) resident even though the fallback
+  renderer was not loaded. The healthy path now retains only two object
+  references (`edgeRoot` + `frameHost`); all fallback value bindings are
+  instantiated only after an actual tiled ShaderEffect error. This removes
+  **8 resident fallback bindings per output** without changing fallback values
+  or visual behavior.
 
 The current analytic QSB containing the exact-SDF fast paths was published by
 `f7d8d2d282326c2f906f2c385cca19ee5d1660f2`. Later commits in this
@@ -149,9 +157,10 @@ they do not change the fragment shader source.
 ### Scoped validation
 
 At exact runtime/source checkpoint
-`e2eda41803fb6dc2a6bc0920013971333ad33924`, the repository-wide CI
+`254f7d3db6a787d6cdda444c778d3750fd574f83`, the repository-wide CI
 invocation of the canonical validator completed **419 PASS / 11 FAIL / 12
-SKIP**. All Screen Edge and connected-perimeter checks relevant to this work
+SKIP**. The dedicated Nix package workflow for the same exact SHA also
+completed successfully. All Screen Edge and connected-perimeter checks relevant to this work
 passed, including:
 
 - `test-screen-edge-analytic-field-contract.py`;
@@ -177,10 +186,11 @@ jobs until that transport/backlog issue is resolved.
 
 ### Completion boundary
 
-The current Screen Edge optimization implementation pass is complete. No further
-runtime candidate is promoted here because remaining ideas either add draw-call
-complexity, alter QML reactive topology, or produce only micro-level savings
-relative to the already-bounded raster footprint.
+The current Screen Edge optimization implementation pass is complete through
+`254f7d3db6a787d6cdda444c778d3750fd574f83`. No further runtime candidate is
+promoted here because remaining ideas either add draw-call complexity, alter
+QML reactive topology, or produce only micro-level savings relative to the
+already-bounded raster footprint.
 
 Live owner-session acceptance remains separate:
 

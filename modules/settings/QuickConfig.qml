@@ -286,58 +286,6 @@ ContentPage {
             }
 
             // ── Color scheme variant chips ──
-            ConfigSelectionArray {
-                currentValue: Config.options?.appearance?.palette?.type ?? "auto"
-                onSelected: newValue => {
-                    Config.setNestedValue("appearance.palette.type", newValue)
-                    if (!ThemeService.isAutoTheme) {
-                        // Manual preset: apply variant immediately via MaterialThemeLoader
-                        const hex = MaterialThemeLoader.colorToHex(Appearance.m3colors.m3primary)
-                        const mode = Appearance.m3colors.darkmode ? "dark" : "light"
-                        MaterialThemeLoader.applySchemeVariant(hex, newValue, mode)
-                    }
-                    // Auto theme: ThemeService detects palette type change in
-                    // liveRegenSignature and regenerates automatically.
-                }
-                options: [
-                    {
-                        "value": "auto",
-                        "displayName": Translation.tr("Auto")
-                    },
-                    {
-                        "value": "scheme-content",
-                        "displayName": Translation.tr("Content")
-                    },
-                    {
-                        "value": "scheme-expressive",
-                        "displayName": Translation.tr("Expressive")
-                    },
-                    {
-                        "value": "scheme-fidelity",
-                        "displayName": Translation.tr("Fidelity")
-                    },
-                    {
-                        "value": "scheme-fruit-salad",
-                        "displayName": Translation.tr("Fruit Salad")
-                    },
-                    {
-                        "value": "scheme-monochrome",
-                        "displayName": Translation.tr("Monochrome")
-                    },
-                    {
-                        "value": "scheme-neutral",
-                        "displayName": Translation.tr("Neutral")
-                    },
-                    {
-                        "value": "scheme-rainbow",
-                        "displayName": Translation.tr("Rainbow")
-                    },
-                    {
-                        "value": "scheme-tonal-spot",
-                        "displayName": Translation.tr("Tonal Spot")
-                    }
-                ]
-            }
 
             ConfigSpinBox {
                 icon: "palette"
@@ -706,20 +654,6 @@ ContentPage {
         }
 
         SettingsGroup {
-            ConfigSwitch {
-                buttonIcon: "monitor"
-                text: Translation.tr("Per-monitor wallpapers")
-                checked: Config.options?.background?.multiMonitor?.enable ?? false
-                onCheckedChanged: {
-                    Config.setNestedValue("background.multiMonitor.enable", checked)
-                    if (!checked) {
-                        const globalPath = Config.options?.background?.wallpaperPath ?? ""
-                        if (globalPath) {
-                            Wallpapers.apply(globalPath, Appearance.m3colors.darkmode)
-                        }
-                    }
-                }
-            }
 
             // Multi-monitor management panel
             ColumnLayout {
@@ -1539,17 +1473,6 @@ ContentPage {
                             }
 
                             // Derive theme colors from backdrop
-                            ConfigSwitch {
-                                visible: multiMonitorPanel.backdropEnabled
-                                buttonIcon: "palette"
-                                text: Translation.tr("Derive theme colors from backdrop")
-                                checked: Config.options?.appearance?.wallpaperTheming?.useBackdropForColors ?? false
-                                onCheckedChanged: {
-                                    Config.setNestedValue("appearance.wallpaperTheming.useBackdropForColors", checked)
-                                    // Always regenerate — script reads useBackdropForColors from config
-                                    colorRegenTimer.restart()
-                                }
-                            }
                         }
                     }
                 }
@@ -1857,18 +1780,6 @@ ContentPage {
                 }
             }
 
-            SettingsSwitch {
-                visible: CompositorService.isNiri
-                buttonIcon: "help"
-                text: Translation.tr("Confirm before closing windows")
-                checked: Config.options?.closeConfirm?.enabled ?? false
-                onCheckedChanged: {
-                    Config.setNestedValue("closeConfirm.enabled", checked)
-                }
-                StyledToolTip {
-                    text: Translation.tr("Show a confirmation dialog when closing windows with Super+Q")
-                }
-            }
         }
     }
 

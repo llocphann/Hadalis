@@ -41,15 +41,6 @@ ContentPage {
         return (Config.options?.enabledPanels ?? []).includes("iiOverlay")
     }
 
-    function setFloatingToolsEnabled(enabled: bool): void {
-        const panels = [...(Config.options?.enabledPanels ?? [])]
-        const index = panels.indexOf("iiOverlay")
-        if (enabled && index === -1)
-            panels.push("iiOverlay")
-        else if (!enabled && index !== -1)
-            panels.splice(index, 1)
-        Config.setNestedValue("enabledPanels", panels)
-    }
 
     function openFloatingTools(): void {
         GlobalStates.settingsOverlayOpen = false
@@ -70,11 +61,12 @@ ContentPage {
                 text: Translation.tr("Floating image and widgets panel (Super+G)")
             }
 
-            SettingsSwitch {
-                buttonIcon: "dashboard_customize"
-                text: Translation.tr("Enable")
-                checked: root.floatingToolsEnabled()
-                onCheckedChanged: root.setFloatingToolsEnabled(checked)
+
+            RippleButtonWithIcon {
+                Layout.fillWidth: true
+                materialIcon: "extension"
+                mainText: Translation.tr("Manage availability in Shell & interface")
+                onClicked: SettingsPageRegistry.navigateToKey("modules", "panels")
             }
 
             RippleButtonWithIcon {

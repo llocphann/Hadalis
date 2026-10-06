@@ -1295,8 +1295,8 @@ Singleton {
             keywords: ["color", "generation", "theming", "wallpaper", "material you", "palette"]
         },
         {
-            pageIndex: 8, pageName: root.pages[8].name,
-            section: Translation.tr("Color generation"),
+            pageIndex: 4, pageName: root.pages[4].name,
+            section: Translation.tr("Color Themes"),
             label: Translation.tr("Palette type"),
             description: Translation.tr("Material You palette algorithm variant"),
             keywords: ["palette", "type", "scheme", "content", "expressive", "fidelity", "tonal", "spot", "monochrome"]

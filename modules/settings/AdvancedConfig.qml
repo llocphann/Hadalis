@@ -90,18 +90,6 @@ ContentPage {
                 }
             }
             SettingsSwitch {
-                buttonIcon: "terminal"
-                text: Translation.tr("Terminal")
-                checked: Config.options?.appearance?.wallpaperTheming?.enableTerminal ?? true
-                onCheckedChanged: {
-                    Config.setNestedValue("appearance.wallpaperTheming.enableTerminal", checked);
-                    colorRegenTimer.restart();
-                }
-                StyledToolTip {
-                    text: Translation.tr("Generate terminal color scheme from wallpaper (requires Shell & utilities)")
-                }
-            }
-            SettingsSwitch {
                 buttonIcon: "chat"
                 text: Translation.tr("Vesktop/Discord")
                 checked: Config.options?.appearance?.wallpaperTheming?.enableVesktop ?? true
@@ -393,25 +381,6 @@ ContentPage {
                 }
             }
 
-            ConfigSpinBox {
-                icon: "invert_colors"
-                text: Translation.tr("Terminal: Harmony (%)")
-                value: Math.round(((Config.options?.appearance?.wallpaperTheming?.terminalColorAdjustments?.harmony ?? Config.options?.appearance?.wallpaperTheming?.terminalGenerationProps?.harmony ?? 0.4) * 100))
-                from: 0
-                to: 100
-                stepSize: 10
-                onValueChanged: {
-                    const nextValue = value / 100;
-                    // Keep both keys in sync: terminalColorAdjustments is the active runtime source,
-                    // terminalGenerationProps is retained for backwards-compatibility surfaces.
-                    Config.setNestedValue("appearance.wallpaperTheming.terminalColorAdjustments.harmony", nextValue);
-                    Config.setNestedValue("appearance.wallpaperTheming.terminalGenerationProps.harmony", nextValue);
-                    colorRegenTimer.restart();
-                }
-                StyledToolTip {
-                    text: Translation.tr("How much to blend terminal colors with the wallpaper palette")
-                }
-            }
             ConfigSpinBox {
                 icon: "gradient"
                 text: Translation.tr("Terminal: Harmonize threshold")

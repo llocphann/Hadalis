@@ -2210,3 +2210,132 @@ separate optimization.
 `KeyboardIndicators` state maps are rebuilt from the currently discovered
 LED path set and likewise do not form an unbounded session cache.
 
+## 2026-10-07 — ResourceUsage process-backed GPU direct-argv research
+
+Research-only continuation on current `dev`
+`d06648d8c046245d520a97d943f7a04c310c7043`. No runtime/product source was
+changed in this round.
+
+Current `services/ResourceUsage.qml`:
+`1d8e8693c230ee7450072366557b6070d433af58`.
+
+### Candidate — HIGH CONFIDENCE: remove Bash from recurring NVIDIA/Intel GPU probes
+
+The service deliberately polls process-backed GPU metrics less frequently than
+CPU/RAM/sysfs metrics:
+
+```qml
+readonly property int _expensiveGpuUpdateIntervalMs:
+    lowPower
+        ? Math.max(15000, _effectiveUpdateIntervalMs)
+        : Math.max(6000, _effectiveUpdateIntervalMs)
+```
+
+When the selected source is NVIDIA or Intel, each expensive poll currently
+starts an extra shell:
+
+```qml
+// NVIDIA
+command: ["/usr/bin/bash", "-c",
+    root._nvidiaSmiPath
+    + " --query-gpu=utilization.gpu,temperature.gpu "
+    + "--format=csv,noheader,nounits 2>/dev/null | head -n 1"]
+
+// Intel
+command: ["/usr/bin/bash", "-c",
+    "timeout 1 " + root._intelGpuTopPath + " -J -s 500 2>/dev/null"]
+```
+
+The shell is not required for either underlying tool invocation.
+
+#### NVIDIA direct-argv shape
+
+Equivalent process ownership can be:
+
+```text
+_nvidiaSmiPath
+  --query-gpu=utilization.gpu,temperature.gpu
+  --format=csv,noheader,nounits
+```
+
+with stderr consumed by an empty `StdioCollector` to preserve the current
+`2>/dev/null` behavior.
+
+The current `head -n 1` selects the first GPU row. Preserve that explicitly in
+the QML parser by taking the first non-empty output line before splitting the
+two CSV fields. Do not rely on the current whole-text comma split as an
+accidental multi-GPU behavior.
+
+#### Intel direct-argv shape
+
+Equivalent timeout ownership can be:
+
+```text
+/usr/bin/timeout
+  1
+  <detected intel_gpu_top path>
+  -J
+  -s
+  500
+```
+
+again with stderr consumed by an empty `StdioCollector`.
+
+This retains:
+
+- the one-second hard timeout;
+- the 500 ms PMU sample request;
+- the same stdout JSON;
+- the same QML regex that takes the maximum reported engine `busy` value;
+- the same poll cadence and `running` gate.
+
+### Why this is strict-lossless
+
+The shell contributes only:
+
+- argv tokenization;
+- stderr redirection;
+- NVIDIA `head -n 1`;
+- Intel invocation of `timeout`.
+
+All four functions have direct equivalents in the existing Process/QML layer.
+No sampling frequency, GPU wake policy, metric interpretation or consumer
+lifecycle needs to change.
+
+This candidate is independent of the separate ResourceUsage research about
+demand-gating GPU/disk metrics. If demand gating later reduces the number of
+polls, direct argv still removes one unnecessary shell process from every poll
+that remains.
+
+### Required oracle
+
+NVIDIA:
+
+- one GPU;
+- multiple GPUs, proving first-row ownership is unchanged;
+- empty output;
+- malformed usage or temperature field;
+- nonzero exit / driver unavailable;
+- stderr-only error.
+
+Intel:
+
+- valid multi-engine JSON;
+- no `busy` field;
+- malformed/partial JSON output;
+- timeout exit;
+- tool nonzero exit;
+- missing detected executable/spawn failure.
+
+For both, assert identical published `gpuUsage` and `gpuTemp` values and no
+new stderr noise.
+
+### Structural saving
+
+While a process-backed GPU source is actively monitored, one shell process is
+removed from every expensive GPU sample. At the default minimum 6-second
+cadence this is up to about ten avoided shell launches per minute of active
+monitoring; low-power mode reduces both the original and optimized cadence.
+
+No whole-Hadalis CPU/RAM percentage is claimed without runtime measurement.
+

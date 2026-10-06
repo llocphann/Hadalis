@@ -30,12 +30,22 @@ for token in (
     "float frameCover = smoothstep(-aa, aa, d);",
     "float innerShadow = smoothstep(-reach, 0.0, d)",
     "innerShadow *= innerShadow;",
+    "vec3 frameRgb = u.frameColor.rgb * frameCover;",
+    "vec3 shadowRgb = u.shadowColor.rgb * innerShadow;",
+    "float shadowAlpha = u.shadowColor.a * innerShadow;",
 ):
     assert token in frag, token
 
 # The candidate's performance boundary is intentionally strict: no texture
 # inputs/captures and no general-purpose blur path.
-for forbidden in ("sampler2D", "texture(", "textureLod(", "imageLoad("):
+for forbidden in (
+    "sampler2D",
+    "texture(",
+    "textureLod(",
+    "imageLoad(",
+    "u.frameColor.rgb * frameAlpha",
+    "u.shadowColor.rgb * shadowAlpha",
+):
     assert forbidden not in frag, forbidden
 
 for token in (

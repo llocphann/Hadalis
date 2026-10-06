@@ -1600,3 +1600,78 @@ highlight markup, not merely result count.
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without runtime
 measurement.
 
+## 2026-10-07 — Niri focus-only enrichment research
+
+Research-only continuation on current `dev`
+`0f2a13ad0723c3d94052dd8532c7dabd648239cc`. No runtime/product source was
+changed in this round.
+
+Current source identities:
+
+- `services/CompositorService.qml`:
+  `017c1405d39a2a2f954bb8d90d350ca4d4356f1d`;
+- `services/NiriService.qml` remains
+  `4c8194493fd380bf0ad8c51bc62990ad0c232738`.
+
+### Candidate — MEASURE / PROVE FIRST: focus-only enriched-toplevel refresh
+
+Current Niri compositor wiring schedules the same full sort/match path for both:
+
+```qml
+onWindowOrderChanged() { root.scheduleSort() }
+onActiveWindowChanged() { root.scheduleSort() }
+```
+
+and the sort timer calls:
+
+```qml
+sortedToplevels = computeSortedToplevels()
+```
+
+which on Niri invokes `NiriService.sortToplevels()`.
+
+A pure focus change does not change:
+
+- Niri window membership;
+- app id;
+- title;
+- workspace id;
+- spatial/layout order;
+- foreign toplevel membership.
+
+It only changes which enriched item reports `activated: true`.
+
+Static source therefore suggests a cheaper focus-only path could rebuild the
+published enriched array from the already matched items by
+`niriWindowId`, preserving order and all other fields, instead of rerunning
+Niri↔foreign matching.
+
+However this is **not promoted to HIGH CONFIDENCE** yet.
+
+Quickshell's `ToplevelManager.toplevels.valuesChanged` is also a sort trigger.
+Static source does not prove whether Wayland activation changes emit that signal
+for every focus transition. If they do, a focus-only fast path would be followed
+by the already-scheduled full sort and save little unless the trigger model is
+also distinguished safely.
+
+Required runtime/source evidence before implementation:
+
+1. instrument one normal Niri focus-switch sequence;
+2. count which triggers fire:
+   - `NiriService.activeWindowChanged`;
+   - `NiriService.windowOrderChanged`;
+   - `ToplevelManager.toplevels.valuesChanged`;
+3. confirm whether the sort timer is normally scheduled once or more per focus;
+4. if active-window change is the only structural trigger, prototype a pure
+   focus refresh only when no full sort is already scheduled;
+5. compare complete `sortedToplevels` order, `_sourceKey`,
+   `niriWindowId`, title/appId, action functions and activated flags.
+
+If a fast path is later implemented, never let it replace an already-pending
+full structural sort. Window open/close/title/app-id/workspace/output changes
+must keep the authoritative matching path.
+
+This candidate is intentionally kept below the already promoted appId bucketing
+and private layout-sort cache, both of which have source-proven savings without
+depending on undocumented Quickshell signal behavior.
+

@@ -75,6 +75,12 @@ Rules:
 | `services/PowerProfilePersistence.qml` | **MEASURE FIRST — ownership probe timing, not probe removal.** The shell keeps this service startup-resident; Config readiness immediately launches a shell that checks `systemctl is-active/is-enabled tlp-pd.service` before deciding whether persisted shell-owned power profile may be restored. The ownership check is correctness-critical. Measure moving only reconciliation after first frame; reject if delayed restore changes thermal/power/user-visible profile behavior. | High relative to expected saving. | None. | Negligible. | UI 0%, but power-profile timing is observable system behavior. |
 | `scripts/capture-windows.sh` + `services/WindowPreviewService.qml` | **MEASURE FIRST — preview capture concurrency 2 vs 1.** Capture helper defaults to bounded two-way concurrency (override 1–4) and atomically publishes each result. Serial capture may reduce compositor/clipboard contention but increases total refresh time; current implementation already has timeout, stale-file, clipboard restoration and bounded warm-cache safeguards. Benchmark rather than assume. | Medium. First-preview/Overview freshness latency changes even if final images are identical. | Potentially lower transient compositor pressure. | Low transient. | Final pixels 0%; latency tradeoff. |
 
+
+| `services/GameMode.qml` | **HIGH-CONFIDENCE correctness/startup-process candidate — make Niri animation reconciliation Config-ready-safe and separately owned from reactive GameMode state.** GameMode is effectively startup-resident through Appearance. Its 200 ms init schedules a 900 ms Niri reconciliation without checking `Config.ready`; before config loads, `controlNiriAnimations` falls back to `true`, so a slow boot can mutate/reload Niri even if the user's final config disables that behavior. Keep fullscreen/manual state resident, but arm animation reconciliation only once Config is authoritative; if Config is not ready when the timer would fire, queue exactly one reconciliation for the ready transition. | Low–Medium for the Config-ready fix; higher for any later no-op reload suppression. Must preserve crash-recovery reconciliation and manual/auto GameMode semantics. | None. | Negligible. | 0%. |
+| `shell.qml` + `services/Weather.qml` + `services/ShellUpdates.qml` | **NO IMMEDIATE OPTIMIZATION — tier comments do not equal singleton materialization, but expensive work is already internally delayed.** Critical Bar bindings can instantiate Weather/ShellUpdates before shell's Tier 3/4 assignments. Weather nevertheless delays initial network work 3 s; ShellUpdates delays repo work 5 s and performs only update-resume state restoration at ~1 s. Treat future tiers as explicit expensive-work ownership, but do not add Loader indirection merely to delay singleton state. | Medium if timing is changed. | None. | Negligible. | 0%. |
+| `services/MprisController.qml` | **MEASURE FIRST — direct-ALSA MPD compatibility probe remains eager.** Standard MPRIS state is needed early, and `pw-dump` is already event-gated, but `Component.onCompleted` still launches a Bash probe for `mpd-mpris` + `pgrep mpd` so an MPD session that bypasses PipeWire can become visible automatically. Moving only this probe after first frame could reduce startup fan-out, but can delay an already-playing MPD indicator. | Medium; direct-ALSA MPD discovery timing is user-visible. | None. | Negligible. | 0% pixels; presentation timing tradeoff. |
+| `services/YtMusic.qml` | **NO ACTION — feature is already correctly self-gated despite early singleton references.** MprisController references YtMusic, but YtMusic's completion path calls `_initialize()` only when `sidebar.ytmusic.enable` is true; dependency probes, orphan-mpv cleanup, browser detection, data loads and OAuth checks remain dormant otherwise. | — | None. | None beyond resident declarative state. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -94,8 +100,9 @@ Rules:
 15. **Waffle lock static-wallpaper blur + avatar mask specialization** — potentially valuable because lock screens can remain visible for long periods.
 16. **DashboardLayout guarded allocation/CPU work** — strict-lossless if current-dev oracle parity is re-established.
 17. **GameMode fallback watchdog research** — small CPU/wakeup candidate with no visual change.
-18. **MPRIS expired grace pruning** — low-risk cumulative session cleanup; fold pruning into existing lifecycle updates with no timer.
-19. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
+18. **GameMode Config-ready-safe Niri reconciliation** — preserve startup-resident GameMode state but prevent pre-config mutation/reload based on fallback defaults.
+19. **MPRIS expired grace pruning** — low-risk cumulative session cleanup; fold pruning into existing lifecycle updates with no timer.
+20. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
 
 ## Explicit non-candidates from this pass
 
@@ -701,4 +708,91 @@ Benchmark concurrency 1 and 2 with identical window sets and collect:
 - failed/closed-window behavior.
 
 Do not change the default on static reasoning alone.
+
+## Research continuation — round 8
+
+Baseline: `dev` at `01a898d046e4e33c99f4e1d1e1268d4d27cf9e62`.
+
+### R8.1 — Service residency and expensive-work residency are separate contracts
+
+Current `shell.qml` still documents Tier 3/Tier 4 service assignment, but QML dependencies can materialize a singleton earlier:
+
+- `Appearance` references GameMode, so GameMode cannot be considered truly delayed until the Tier 3 assignment.
+- Classic/Abyss bar components can reference `Weather` and `ShellUpdates` before shell assigns `_weatherService`/`_shellUpdatesService`.
+- this is not itself a bug: reactive state may legitimately be needed before the expensive background task.
+
+The useful contract is therefore:
+
+```text
+singleton may exist early
+heavy maintenance/network/process work has a separate idempotent owner/arm point
+```
+
+Do not wrap ubiquitous state singletons in fragile Loaders only to satisfy tier comments. Instead, when a service still has expensive eager work, expose an explicit `startDeferredWork()`/lease only for that work and make shell tiering own the call.
+
+### R8.2 — Weather is early-resident but its heavy work is already delayed
+
+Current `Weather.qml`: `53ef5db3a161e6df18a29b1e6a7c6192d2e35a79`.
+
+Shipped Bar weather is enabled, so Weather can be instantiated by first-frame Bar bindings before `_ensureDeferredFeatureServices()`. The service itself, however, does not immediately resolve IP/GPS/location or fetch weather. It owns a 3000 ms `startupDelayTimer` and only begins location/weather work when enabled, Config-ready and not already initialized.
+
+This already keeps the network/process burst away from first-frame formation. Replacing it merely because the singleton appears before Tier 3 would add complexity without a demonstrated saving.
+
+### R8.3 — ShellUpdates is early-resident, but separates resume-state and remote work
+
+Current `ShellUpdates.qml`: `51e7eff2300e169ee0021673757dc9f4f79556d9`.
+
+The update indicator can materialize this singleton before Tier 4. Current work naturally splits into:
+
+- ~1 s: restore an in-progress update marker so a shell restart during `setup update` can recover the progress indicator;
+- ~5 s: load/resolve repository and perform the normal shell-update check;
+- configured periodic checks later.
+
+The 1 s resume path is correctness/continuity work, not generic background maintenance. The remote/repo path is already delayed beyond first frame. No source-only reason currently justifies moving either path.
+
+### R8.4 — GameMode has a real Config-readiness race
+
+Current `GameMode.qml`: `692f3e200b7c46835f44f152c88f231e2d0bd2b5`.
+
+Initialization starts a 200 ms init timer; on Niri that starts a further 900 ms `startupNiriSyncTimer`. The reconciliation has no `Config.ready` prerequisite. Meanwhile:
+
+```qml
+readonly property bool controlNiriAnimations:
+    Config.options?.gameMode?.disableNiriAnimations ?? true
+```
+
+so a sufficiently slow Config load can execute Niri mutation under fallback `true`, even when the user's eventual value is false.
+
+Safe direction:
+
+1. keep state-file loading/fullscreen observation early;
+2. add a one-shot startup Niri reconciliation request;
+3. if Config is not ready, mark pending and do not mutate;
+4. on Config ready, consume pending exactly once and evaluate final `controlNiriAnimations`;
+5. if disabled, finish without a process;
+6. if enabled, retain current reconciliation semantics.
+
+### R8.5 — Do not skip Niri reload solely because file text already matches
+
+Current `setNiriAnimations()` applies `sed -i` and then runs `niri msg action reload-config`.
+
+A compositor can remain alive while the shell restarts. The file can already hold the desired value while Niri runtime state is stale because an earlier external edit was never reloaded or a reload failed. Therefore “file unchanged” does not prove “runtime reconciled.”
+
+Only suppress reload if authoritative runtime animation state becomes queryable or another startup owner guarantees a reload from the same snapshot.
+
+### R8.6 — MPRIS optional enrichment has one remaining eager probe
+
+Current `MprisController.qml`: `3a8184f9308f0816ea395ea26f182bb5a3fbcf15`.
+
+`pw-dump` is no longer unconditional, but completion still starts `_mpdMprisProbeProc`, which runs Bash to test `mpd-mpris` and `pgrep -x mpd`. This supports direct-ALSA MPD, where PipeWire cannot trigger discovery.
+
+First-frame deferral is plausible but changes when an already-running MPD player becomes visible, so retain as A/B research rather than strict-lossless promotion.
+
+### R8.7 — YtMusic dependency probes are already correctly gated
+
+Current `YtMusic.qml`: `063ef1bd591d222d9a60b240dec218c1c4171213`.
+
+Despite direct singleton references from MprisController, YtMusic only calls `_initialize()` when `sidebar.ytmusic.enable` is true. Its orphaned-mpv cleanup, dependency probes, browser detection, data load and OAuth/session restoration therefore remain dormant when the feature is disabled.
+
+This is the desired state-vs-expensive-work pattern and should be preserved.
 

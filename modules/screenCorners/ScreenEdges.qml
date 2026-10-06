@@ -237,7 +237,7 @@ Scope {
                 Appearance.m3colors.m3shadow,
                 root.physicalShadowOpacity)
 
-            active: frameField.status === ShaderEffect.Error
+            active: frameField.shaderError
                 && !frameWindow.fullscreenCovered
             source: active
                 ? Qt.resolvedUrl("ScreenEdgeLegacyFallback.qml") : ""

@@ -1,0 +1,68 @@
+name: Bake Screen Edge Analytic Shader
+
+on:
+  push:
+    paths:
+      - ".github/workflows/screen-edge-shader-bake.yml"
+      - "modules/screenCorners/ScreenEdgeField.frag"
+
+permissions:
+  contents: write
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    container: debian:sid
+    steps:
+      - name: Install deterministic tools
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git ca-certificates qt6-shader-baker
+
+      - name: Checkout dev
+        uses: actions/checkout@v5
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Bake reproducible Screen Edge QSB
+        run: |
+          set -euo pipefail
+          git config user.name "Hadalis Shader Baker"
+          git config user.email "actions@users.noreply.github.com"
+          git fetch origin dev
+          git reset --hard origin/dev
+
+          QSB="$(command -v qsb || true)"
+          if [ -z "$QSB" ]; then QSB=/usr/lib/qt6/bin/qsb; fi
+          "$QSB" --version
+
+          src=modules/screenCorners/ScreenEdgeField.frag
+          out=modules/screenCorners/ScreenEdgeField.frag.qsb
+          "$QSB" --qt6 -o "$out" "$src"
+          "$QSB" --dump "$out" >/dev/null
+
+          tmp="$(mktemp)"
+          "$QSB" --qt6 -o "$tmp" "$src"
+          cmp "$tmp" "$out"
+          rm -f "$tmp"
+
+          git add "$out"
+          if git diff --cached --quiet; then
+            echo "Screen Edge QSB already current"
+            exit 0
+          fi
+
+          git commit -m "build(screen-edge): bake analytic field shader"
+
+          git fetch origin dev
+          git rebase origin/dev
+
+          tmp="$(mktemp)"
+          "$QSB" --qt6 -o "$tmp" "$src"
+          cmp "$tmp" "$out"
+          rm -f "$tmp"
+
+          git fetch origin dev
+          test "$(git rev-parse HEAD^)" = "$(git rev-parse origin/dev)"
+          git push origin HEAD:dev

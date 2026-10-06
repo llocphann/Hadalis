@@ -404,8 +404,9 @@ def main() -> None:
           "Painted Screen Edge FrameWindow must stay mapped across fullscreen")
 
     check("readonly property bool fullscreenCovered: outputName.length > 0" in frame_window_block
-          and "GameMode.hasFullscreenOnOutput(outputName)" in frame_window_block,
-          "FrameWindow must expose fullscreen coverage only for render-work gating")
+          and "GameMode.hasFullscreenOnOutput(outputName)" in frame_window_block
+          and "updatesEnabled: mapped && !fullscreenCovered" in frame_window_block,
+          "FrameWindow must stay mapped but suspend render updates while fullscreen covers it")
     check("readonly property bool physicalShadowActive:" in frame_window_block
           and "&& !frameWindow.fullscreenCovered" in frame_window_block
           and "&& !Appearance.gameModeMinimal" in frame_window_block,

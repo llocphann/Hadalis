@@ -17,6 +17,12 @@ Item {
     property int activeIndex: 0
     readonly property var hours: (Weather.data?.hourly ?? []).slice(0, 8)
     readonly property real orbitStageHeight: Math.max(1, height)
+    // This composition sits on a shell surface, so consume layer-safe ink
+    // instead of raw Material onSurface values.
+    readonly property color orbitInk: Appearance.colors.colOnLayer1
+    readonly property color orbitSubInk: Appearance.colors.colSubtext
+    readonly property color orbitAccent: ColorUtils.ensureReadable(
+        Appearance.colors.colPrimary, Appearance.colors.colLayer1Base, 3.0)
 
     // The reference ellipse is ~1.168x wider than tall, but the popup itself
     // is wider than the reference composition. Let liquid mode relax the aspect
@@ -172,7 +178,7 @@ Item {
                 else
                     ctx.lineTo(x, y)
             }
-            ctx.strokeStyle = Appearance.colors.colPrimary
+            ctx.strokeStyle = root.orbitAccent
             ctx.globalAlpha = 0.5
             ctx.lineWidth = 1.5
             ctx.setLineDash([4, 9])
@@ -197,7 +203,7 @@ Item {
                 Weather.isNightNow()) ?? "cloud"
             iconSize: Math.max(30, Math.min(96,
                 root.width * 0.07, root.orbitStageHeight * 0.11))
-            color: Appearance.colors.colPrimary
+            color: root.orbitAccent
         }
 
         StyledText {
@@ -212,7 +218,7 @@ Item {
                     Math.min(31, root.width * 0.022,
                         root.orbitStageHeight * 0.038))
                 : Appearance.font.pixelSize.small
-            color: Appearance.colors.colOnSurfaceVariant
+            color: root.orbitSubInk
             elide: Text.ElideRight
         }
 
@@ -227,7 +233,7 @@ Item {
                     Weather.data?.wCode,
                     Weather.isNightNow()) ?? "cloud"
                 iconSize: Appearance.font.pixelSize.normal
-                color: Appearance.colors.colPrimary
+                color: root.orbitAccent
             }
 
             StyledText {
@@ -237,7 +243,7 @@ Item {
                     ? Math.max(30, Math.min(68, root.width * 0.048,
                         root.orbitStageHeight * 0.075))
                     : Appearance.font.pixelSize.normal
-                color: Appearance.colors.colOnSurface
+                color: root.orbitInk
             }
         }
 
@@ -251,7 +257,7 @@ Item {
                     Math.min(29, root.width * 0.021,
                         root.orbitStageHeight * 0.035))
                 : Appearance.font.pixelSize.smallest
-            color: Appearance.colors.colOnSurfaceVariant
+            color: root.orbitSubInk
             elide: Text.ElideRight
         }
     }
@@ -287,7 +293,7 @@ Item {
                     : Appearance.colors.colSurfaceContainerHigh
                 border.width: 1
                 border.color: hourPoint.highlighted
-                    ? Appearance.colors.colPrimary
+                    ? root.orbitAccent
                     : Appearance.colors.colOutlineVariant
             }
 
@@ -305,10 +311,10 @@ Item {
                             Math.min(23, root.pointSize * 0.18))
                         : Appearance.font.pixelSize.smallest
                     color: root.liquidMode
-                        ? Appearance.colors.colOnSurface
+                        ? root.orbitInk
                         : hourPoint.highlighted
                             ? Appearance.colors.colOnPrimaryContainer
-                            : Appearance.colors.colOnSurfaceVariant
+                            : root.orbitSubInk
                 }
 
                 MaterialSymbol {
@@ -319,7 +325,7 @@ Item {
                     iconSize: Math.max(15,
                         Math.min(root.liquidMode ? 46 : 20,
                             hourPoint.width * 0.38))
-                    color: Appearance.colors.colPrimary
+                    color: root.orbitAccent
                 }
 
                 StyledText {
@@ -332,10 +338,10 @@ Item {
                             Math.min(24, root.pointSize * 0.19))
                         : Appearance.font.pixelSize.smallest
                     color: root.liquidMode
-                        ? Appearance.colors.colOnSurface
+                        ? root.orbitInk
                         : hourPoint.highlighted
                             ? Appearance.colors.colOnPrimaryContainer
-                            : Appearance.colors.colOnSurface
+                            : root.orbitInk
                 }
             }
         }
@@ -348,6 +354,6 @@ Item {
         visible: root.showUnavailableMessage && root.hours.length === 0
         text: Translation.tr("Hourly forecast unavailable")
         font.pixelSize: Appearance.font.pixelSize.smaller
-        color: Appearance.colors.colOnSurfaceVariant
+        color: root.orbitSubInk
     }
 }

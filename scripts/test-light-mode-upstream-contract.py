@@ -102,6 +102,24 @@ def main() -> int:
         "syntaxColor(termColors, primary, editorBg",
     )
     require(
+        "modules/common/Appearance.qml",
+        "m3colors.m3onSurface, m3colors.m3surface, 4.5",
+        "m3colors.m3onSurfaceVariant, m3colors.m3surfaceContainer, 4.5",
+        "m3colors.m3onPrimaryContainer, colPrimaryContainer, 4.5",
+        "m3colors.m3onErrorContainer, colErrorContainer, 4.5",
+    )
+    require(
+        "modules/bar/weather/OrbitalWeather.qml",
+        "readonly property color orbitInk: Appearance.colors.colOnLayer1",
+        "readonly property color orbitSubInk: Appearance.colors.colSubtext",
+        "readonly property color orbitAccent: ColorUtils.ensureReadable(",
+    )
+    require(
+        "modules/abyss/looks/AbyssStyle.qml",
+        "readonly property color textColor: ColorUtils.ensureReadable(",
+        "readonly property color textColorMuted: ColorUtils.readableSubtext(",
+    )
+    require(
         "services/IconThemeService.qml",
         "function _apply(themeName: string, skipRestart: bool): void",
         "id: variantProc",

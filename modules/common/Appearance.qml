@@ -369,8 +369,12 @@ Singleton {
         readonly property color _inkMuted: "#8a7f73"
         readonly property bool _needsHighContrast: false
 
-        readonly property color _baseOnSurface: m3colors.m3onSurface
-        readonly property color _baseOnSurfaceVariant: m3colors.m3onSurfaceVariant
+        // Resolve raw palette ink against its actual backdrop once here. All
+        // text/icon consumers then inherit a contrast-safe token in both modes.
+        readonly property color _baseOnSurface: ColorUtils.ensureReadable(
+            m3colors.m3onSurface, m3colors.m3surface, 4.5)
+        readonly property color _baseOnSurfaceVariant: ColorUtils.ensureReadable(
+            m3colors.m3onSurfaceVariant, m3colors.m3surfaceContainerLow, 4.5)
 
         property color colSubtext: ColorUtils.ensureReadable(
             ColorUtils.mix(_baseOnSurfaceVariant, colLayer1Base, 0.45),
@@ -450,7 +454,7 @@ Singleton {
 
         // Primary
         property color colPrimary: m3colors.m3primary
-        property color colOnPrimary: m3colors.m3onPrimary
+        property color colOnPrimary: ColorUtils.ensureReadable(m3colors.m3onPrimary, colPrimary, 4.5)
         property color colPrimaryHover: ColorUtils.mix(colors.colPrimary, colLayer1Hover, 0.87)
         property color colPrimaryActive: ColorUtils.mix(colors.colPrimary, colLayer1Active, 0.7)
         property color colPrimaryContainer: m3colors.m3primaryContainer
@@ -458,19 +462,19 @@ Singleton {
             colors.colPrimaryContainer, colors.colOnPrimaryContainer, 0.9)
         property color colPrimaryContainerActive: ColorUtils.mix(
             colors.colPrimaryContainer, colors.colOnPrimaryContainer, 0.8)
-        property color colOnPrimaryContainer: m3colors.m3onPrimaryContainer
+        property color colOnPrimaryContainer: ColorUtils.ensureReadable(m3colors.m3onPrimaryContainer, colPrimaryContainer, 4.5)
 
         // Secondary
         property color colSecondary: m3colors.m3secondary
         property color colSecondaryHover: ColorUtils.mix(colSecondary, colLayer1Hover, 0.85)
         property color colSecondaryActive: ColorUtils.mix(colSecondary, colLayer1Active, 0.4)
-        property color colOnSecondary: m3colors.m3onSecondary
+        property color colOnSecondary: ColorUtils.ensureReadable(m3colors.m3onSecondary, colSecondary, 4.5)
         property color colSecondaryContainer: m3colors.m3secondaryContainer
         property color colSecondaryContainerHover: ColorUtils.mix(
             colSecondaryContainer, colOnSecondaryContainer, 0.90)
         property color colSecondaryContainerActive: ColorUtils.mix(
             colSecondaryContainer, colOnSecondaryContainer, 0.54)
-        property color colOnSecondaryContainer: m3colors.m3onSecondaryContainer
+        property color colOnSecondaryContainer: ColorUtils.ensureReadable(m3colors.m3onSecondaryContainer, colSecondaryContainer, 4.5)
 
         // Tertiary
         property color colTertiary: m3colors.m3tertiary
@@ -481,8 +485,8 @@ Singleton {
             colTertiaryContainer, colOnTertiaryContainer, 0.90)
         property color colTertiaryContainerActive: ColorUtils.mix(
             colTertiaryContainer, colLayer1Active, 0.54)
-        property color colOnTertiary: m3colors.m3onTertiary
-        property color colOnTertiaryContainer: m3colors.m3onTertiaryContainer
+        property color colOnTertiary: ColorUtils.ensureReadable(m3colors.m3onTertiary, colTertiary, 4.5)
+        property color colOnTertiaryContainer: ColorUtils.ensureReadable(m3colors.m3onTertiaryContainer, colTertiaryContainer, 4.5)
 
         // Surface
         property color colBackgroundSurfaceContainer: ColorUtils.transparentize(
@@ -503,12 +507,12 @@ Singleton {
             colSurfaceContainerHighest, colOnSurface, 0.95)
         property color colSurfaceContainerHighestActive: ColorUtils.mix(
             colSurfaceContainerHighest, colOnSurface, 0.85)
-        property color colOnSurface: m3colors.m3onSurface
-        property color colOnSurfaceVariant: m3colors.m3onSurfaceVariant
+        property color colOnSurface: ColorUtils.ensureReadable(m3colors.m3onSurface, m3colors.m3surface, 4.5)
+        property color colOnSurfaceVariant: ColorUtils.ensureReadable(m3colors.m3onSurfaceVariant, m3colors.m3surfaceContainer, 4.5)
 
         // Misc
         property color colTooltip: m3colors.m3inverseSurface
-        property color colOnTooltip: m3colors.m3inverseOnSurface
+        property color colOnTooltip: ColorUtils.ensureReadable(m3colors.m3inverseOnSurface, colTooltip, 4.5)
         property color colScrim: ColorUtils.transparentize(m3colors.m3scrim, 0.5)
         // Surface transparency must not erase elevation. Shadow ink is a
         // separate physical layer, including in transparent Material themes.
@@ -519,21 +523,21 @@ Singleton {
         property color colError: m3colors.m3error
         property color colErrorHover: ColorUtils.mix(colError, colLayer1Hover, 0.85)
         property color colErrorActive: ColorUtils.mix(colError, colLayer1Active, 0.7)
-        property color colOnError: m3colors.m3onError
+        property color colOnError: ColorUtils.ensureReadable(m3colors.m3onError, colError, 4.5)
         property color colErrorContainer: m3colors.m3errorContainer
         property color colErrorContainerHover: ColorUtils.mix(
             colErrorContainer, colOnErrorContainer, 0.90)
         property color colErrorContainerActive: ColorUtils.mix(
             colErrorContainer, colOnErrorContainer, 0.70)
-        property color colOnErrorContainer: m3colors.m3onErrorContainer
+        property color colOnErrorContainer: ColorUtils.ensureReadable(m3colors.m3onErrorContainer, colErrorContainer, 4.5)
 
         property color colSuccess: m3colors.m3success
-        property color colOnSuccess: m3colors.m3onSuccess
+        property color colOnSuccess: ColorUtils.ensureReadable(m3colors.m3onSuccess, colSuccess, 4.5)
         property color colSuccessContainer: m3colors.m3successContainer
-        property color colOnSuccessContainer: m3colors.m3onSuccessContainer
+        property color colOnSuccessContainer: ColorUtils.ensureReadable(m3colors.m3onSuccessContainer, colSuccessContainer, 4.5)
         property color colWarning: m3colors.m3tertiary
         property color colWarningContainer: m3colors.m3tertiaryContainer
-        property color colOnWarningContainer: m3colors.m3onTertiaryContainer
+        property color colOnWarningContainer: ColorUtils.ensureReadable(m3colors.m3onTertiaryContainer, colWarningContainer, 4.5)
     }
 
     rounding: QtObject {

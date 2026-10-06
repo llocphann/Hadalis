@@ -136,7 +136,7 @@ Scope {
             root._snapPrimary = Appearance.colors.colPrimary
             root._snapOnPrimaryContainer = Appearance.colors.colOnPrimaryContainer
             root._snapBackground = Appearance.m3colors.m3background
-            root._snapOnSurface = Appearance.m3colors.m3onSurface
+            root._snapOnSurface = Appearance.colors.colOnSurface
             root._snapDarkmode = Appearance.m3colors.darkmode
             root._snapWaffleBg0 = Looks.colors.bg0
             root._snapWaffleBg1 = Looks.colors.bg1

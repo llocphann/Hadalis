@@ -46,6 +46,10 @@ Singleton {
     // Toggle dark/light mode by running switchwall.sh with --mode and scheduling a reload.
     function setDarkMode(dark: bool): void {
         Config.setNestedValue("appearance.customTheme.darkmode", dark)
+        // A manual choice is authoritative. Otherwise wallpaper brightness can
+        // regenerate immediately and undo the mode the user just selected.
+        if (Config.options?.appearance?.wallpaperTheming?.autoDarkLightMode ?? false)
+            Config.setNestedValue("appearance.wallpaperTheming.autoDarkLightMode", false)
         darkModeProc.command = [
             "/usr/bin/bash",
             Directories.wallpaperSwitchScriptPath,

@@ -124,6 +124,8 @@ Rules:
 | `services/TrayService.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — promote the archived one-pass tray partition into the canonical ledger.** The service independently filters `SystemTray.items.values` three times for Fcitx, pinned-user-list and unpinned-user-list outputs, repeating Fcitx normalization and linear pin membership tests. One ordered pass plus a membership Set can produce the same three arrays. | Low. Preserve source order, passive filtering asymmetry, raw-id equality, duplicate pin semantics and final invertPins composition. | None. | Low transient allocation/CPU reduction on tray source/status/pin invalidation; persistent RAM essentially unchanged. | 0%. |
 | `modules/bar/SysTray.qml` | **HIGH-CONFIDENCE separate Material-tray candidate — collapse three local SystemTray scans into one private partition snapshot.** Material does not simply consume `TrayService` outputs: it uses `bar.tray` config and has a Spotify exception that keeps passive Spotify visible. It currently performs its own Fcitx filter plus pinned/unpinned filters over the same source list. Build one local partition preserving the Material-specific pin namespace and Spotify rule rather than incorrectly reusing the generic/Waffle result. | Low–Medium. The Spotify passive exception, Fcitx ownership, bar-specific pin list, invertPins and overflow-close behavior are hard contracts. | None. | Low transient allocation/CPU reduction on every Material tray invalidation; avoids repeated lowercase/classification work. | 0%. |
 
+| `services/Network.qml` | **HIGH-CONFIDENCE process candidate — remove shell/head/awk wrappers from connected-network detail refresh while preserving current row-order semantics.** Network is already event-driven via `nmcli monitor` + 200 ms debounce, but active-link detail refresh still runs `sh -c "nmcli ... | head -1"` for connection name and `sh -c "nmcli ... | awk ..."` for Wi-Fi signal. Run the same two `nmcli` queries directly and move the trivial text selection into QML. | Low–Medium. Name must remain first active-connection line. Signal parser must reproduce the current awk+SplitParser semantics: every row beginning `*` is emitted in source order and the **last emitted active row wins** if more than one appears. Preserve failure/stale-clear behavior and do not alter the monitor cadence. | None. | Low transient process-memory reduction; up to **4 intermediary child processes removed per connected-Wi-Fi detail refresh** (two shells + `head` + `awk`) while the two required nmcli queries remain. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -161,6 +163,7 @@ Rules:
 33. **TrayService one-pass partition** — migrate the revalidated archived tray classifier into current canonical work.
 34. **Material SysTray one-pass partition** — independently preserve `bar.tray` + Spotify semantics; do not alias it blindly to the Waffle/generic service result.
 35. **Minimized app-count allocation removal** — low-risk micro follow-up after the larger MinimizedWindows selector proof.
+36. **Network direct-argv detail refresh** — remove shell/head/awk wrappers only after row-order and failure-state parser parity is covered.
 
 ## Explicit non-candidates from this pass
 
@@ -2131,5 +2134,170 @@ Required Material oracle:
 Longer-term unification into one shared parameterized classifier may be useful,
 but only after both service/Waffle and Material snapshots have parity tests.
 Do not merge config namespaces or Spotify policy as part of the optimization.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+
+## Research continuation — round 18
+
+Baseline: `dev` at `ec13cf37718991f79a2c7b8b253c20d638ef0cd0`.
+
+This round revalidated the archived Network helper-process candidate and corrected
+one semantic detail before promotion into the canonical ledger. It also checked a
+separate first-run shell wrapper and deliberately left that lower-value path
+unpromoted.
+
+Current source identities:
+
+- `services/Network.qml`: `a20c4c1edf1fbeb2f2a8285518af053bf72a09dc`;
+- `services/FirstRunExperience.qml`: `1b58bea64a235c24ea69b7afc260a69ea6c004f9`.
+
+### R18.1 — Network's architecture is already event-driven; the remaining debt is helper fan-out
+
+The broad canonical conclusion remains correct: Network uses one long-lived
+`nmcli monitor`, coalesces bursts through a 200 ms one-shot debounce, and does
+not need a new polling redesign.
+
+However, after each successful connected-state reconciliation it may launch two
+secondary detail paths:
+
+```text
+connection name:
+  sh
+   └─ nmcli ...
+       └─ head -1
+
+Wi-Fi strength:
+  sh
+   └─ nmcli ...
+       └─ awk ...
+```
+
+Those shell/text-filter helpers are not required for lifecycle ownership. QML
+already collects/parses stdout elsewhere in the same service.
+
+### R18.2 — Connection name can be direct argv with first-line parsing
+
+Current source:
+
+```qml
+command: ["sh", "-c", "nmcli -t -f NAME c show --active | head -1"]
+onStreamFinished: root.networkName = text.trim()
+```
+
+Strict-lossless direction:
+
+1. execute directly:
+   `nmcli -t -f NAME c show --active`;
+2. collect stdout;
+3. select the first output line exactly as `head -1` does;
+4. apply the same surrounding trim before publishing `networkName`.
+
+Do not sort, prefer Wi-Fi, or select by active device. The current contract is
+simply the first row emitted by `nmcli connection show --active`.
+
+Required cases:
+
+- zero/one/multiple active connections;
+- Wi-Fi + Ethernet + VPN combinations;
+- names containing spaces;
+- empty first line / trailing newline fixtures;
+- nonzero nmcli exit;
+- transition to no active link, preserving the existing explicit stale-name
+  clear performed by the parent status path.
+
+### R18.3 — Archived Wi-Fi-strength note needed a row-order correction
+
+Current source:
+
+```qml
+command: ["sh", "-c",
+    "nmcli -f IN-USE,SIGNAL,SSID device wifi | awk '/^\\*/{if (NR!=1) {print $2}}'"]
+stdout: SplitParser {
+    onRead: data => root.networkStrength = parseInt(data)
+}
+```
+
+The older archived note described this as a first-active-row selection. That is
+not exact. The awk program prints **every** row whose first character is `*`
+(except a hypothetical matching row at NR=1), and `SplitParser.onRead` assigns
+`networkStrength` once per emitted line. If several active rows are present,
+the **last emitted active row wins**.
+
+A correct direct-argv replacement therefore should not arbitrarily stop at the
+first active row.
+
+Safe shape:
+
+1. run directly:
+   `nmcli -f IN-USE,SIGNAL,SSID device wifi`;
+2. collect/iterate output lines in original order;
+3. for every line beginning exactly with `*`, parse the same second
+   whitespace-delimited field;
+4. assign/update the candidate strength for every match so the final matching
+   row wins, matching today's SplitParser effect;
+5. if no active row is present, retain the current parent-path ownership of
+   stale clearing rather than inventing a new value transition.
+
+An alternate terse nmcli format may be possible, but it widens the parser proof
+and is not necessary to remove the shell and awk processes.
+
+Required oracle:
+
+- one active AP;
+- multiple visible APs with one active row;
+- fixture with multiple active-marker rows proving **last-match** behavior;
+- no active row;
+- signal 0 and 100;
+- malformed/non-numeric signal;
+- SSID with spaces and punctuation;
+- localized/header variants (current row matching depends on the literal active
+  marker, not the header text);
+- nonzero nmcli exit;
+- exact final `networkStrength` value and publication timing relative to the
+  parent status reconciliation.
+
+### R18.4 — Structural process saving
+
+For a connected Wi-Fi detail refresh, these two helpers currently account for:
+
+```text
+name:     shell + nmcli + head = 3 processes
+strength: shell + nmcli + awk  = 3 processes
+```
+
+Direct argv keeps the two required nmcli processes and removes the four
+intermediaries:
+
+```text
+name:     nmcli = 1
+strength: nmcli = 1
+```
+
+So this specific subpath falls from six processes to two: **4 fewer helper
+processes per detail refresh**. This is a bounded structural count, not a
+whole-shell CPU percentage.
+
+Do not mix this patch with the larger `updateConnectionType` shell pipeline,
+which intentionally sequences three nmcli commands and has partial-failure/radio
+fallback semantics. That deserves a separate proof if researched later.
+
+### R18.5 — First-run wallpaper discovery shell wrapper is valid but too low leverage to promote now
+
+`FirstRunExperience.qml` currently uses:
+
+```text
+/bin/sh -c 'find <wallpaper-dir> ...'
+```
+
+The shell could theoretically be removed by expressing the same `find` argv
+directly through Process. That would save one helper process, but this path runs
+only when the first-run marker is absent and wallpaper discovery is required.
+It is therefore much lower leverage than the recurring Network detail path.
+
+Leave it unpromoted unless a broader startup-helper cleanup is later assembled.
+Any direct-find change must preserve stderr suppression, extension predicate,
+path handling, completion/failure timing and deterministic final wallpaper
+selection after the existing QML sort.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.

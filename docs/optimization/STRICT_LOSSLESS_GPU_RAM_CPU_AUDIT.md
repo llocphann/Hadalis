@@ -178,6 +178,10 @@ Rules:
 | `services/Autostart.qml` + both Autostart settings pages | **HIGH-CONFIDENCE CPU candidate — derive exact managed/external app membership indexes when parsed state changes, making `isAppEnabled()`, `isAppExternal()`, `isAppOn()` and `appEntrySource()` O(1).** Current helpers rescan managed entries and external spawn lines for every app-row/status query. Build exact-semantics indexes from `entries` and `externalLines`, preserving first managed duplicate ownership, enabled-only external lines and current gtk-launch/raw-executable normalization. | Low–Medium. Duplicate managed ids, case sensitivity and external token normalization are strict contracts; indexes must rebuild after every entries/externalLines mutation, not only file reload. | None. | Low–Medium CPU reduction across Material/Waffle Autostart filtering and per-row bindings; small bounded index RAM proportional to startup directives. | 0%. |
 | `modules/settings/DockConfig.qml` | **HIGH-CONFIDENCE interactive CPU/allocation candidate — prepare the Add Applications search projection when AppSearch/pinned state changes instead of rebuilding haystacks + alphabetic sort on every query edit.** Current `filteredAddApps()` rebuilds a lowercase pinned Set, joins/lowercases name+genericName+comment+id for every app, then sorts the result for every search binding evaluation. Build a private unpinned prepared list once per AppSearch/pinned revision with original app reference + lowercase haystack, sorted with the exact current comparator; query edits then only filter it. | Low. Preserve fallback name/id ordering, pinned-id case folding, original app identity, and immediate updates when pins/AppSearch change. | None. | Low–Medium transient string/array/sort CPU reduction while searching the add-app dialog. | 0%. |
 
+| `services/ShellLayoutController.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — keep public descriptor copies but stop JSON deep-cloning static descriptors inside private controller paths.** `_descriptors` is a readonly literal, yet `currentState()`, `legalSlots()`, `validatePlacement()`, `setProperty()` and `resetSurface()` reach it through `descriptor()`, which serializes/parses a fresh copy even though those paths only read descriptor fields. Add a private first-match descriptor reference helper for internal read-only use; retain `descriptor()` / `surfacesForFamily()` fresh-copy semantics and the fresh `legalSlots()` array returned to callers. | Very low. Public mutation isolation, unknown-surface behavior, family filtering/order and fresh returned arrays/objects must remain identical. | None. | Low transient JS allocation/GC reduction; no persistent-state reduction claimed. | 0%. |
+| `services/DesktopWidgetLayout.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — prepare read-side output/screen indexes at their revision boundaries.** Every `enabled()` call currently rebuilds configured + connected monitor arrays in `outputAllowed()`, then linearly scans `records` through `widgetOverride()`; `effectiveEnabled()` additionally deep-normalizes/clones all records merely to recover saved output names. Keep mutation-time `_normalizedRecords()`, but derive first-record-by-output, ordered unique saved-output names and configured/connected membership once per relevant Config/screens revision for the read path. | Low–Medium. Duplicate-output first-match semantics, trimmed record output names, untrimmed configured names, stale/disconnected fallback behavior, hotplug reactivity and original override-object identity are strict contracts. | None. | Low transient array/deep-clone reduction, with a tiny bounded retained index proportional to outputs. | 0%. |
+| `services/DateTime.qml` | **HIGH-CONFIDENCE CPU micro-candidate — decouple date-only locale formatting from second/minute clock precision.** `shortDate`, `date` and `collapsedCalendarFormat` all bind directly to `clock.date`; when second precision is enabled or the screen is locked, the shared clock advances every second even though these three strings normally change only when the calendar day/format/locale changes. Guard those three conversions behind an exact day/format/locale key while leaving `time`, `timeDisplay` and minute-based uptime refresh untouched. | Low–Medium. Must preserve midnight rollover, manual wall-clock/date jumps, timezone/locale changes and live date-format config changes at the same observable tick. | None. | Negligible persistent RAM; low recurring CPU/string-allocation reduction, larger only while the shared clock is at 1 Hz. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -256,6 +260,10 @@ Rules:
 74. **Autostart stable enabled/disabled partition** — evaluate `isAppOn()` once per filtered app and preserve AppSearch alphabetical order instead of comparator-time rescans.
 75. **Autostart managed/external membership indexes** — move exact startup-line matching to entries/externalLines rebuild boundaries so row/status lookups are O(1).
 76. **Dock Add Applications prepared search projection** — precompute unpinned search haystacks/order outside the keystroke path.
+
+77. **ShellLayoutController internal descriptor references** — retain public fresh-copy isolation but eliminate JSON serialize/parse from internal read-only state/validation paths.
+78. **DesktopWidgetLayout revision-scoped read indexes** — stop rebuilding monitor arrays, linear output scans and deep normalized records across repeated widget/output enable checks.
+79. **DateTime day-key formatting guard** — keep 1 Hz time where requested while avoiding three date-only locale conversions on unchanged calendar days.
 
 ## Explicit non-candidates from this pass
 
@@ -4635,3 +4643,239 @@ interaction rather than recurring large-list work. No source-only high-value
 candidate is added from those files in this round.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+## Research continuation — round 31
+
+Baseline: `dev` at `e5f7e26345fd10b5c8256f9297155f1044220975`.
+
+This round deliberately moves away from the search/indexing cluster covered by
+rounds 28–30. The strongest new work is in shared shell-layout/widget-layout read
+paths that allocate or normalize immutable/revision-scoped data repeatedly. A
+smaller DateTime candidate removes formatting work that inherits the global
+clock's highest precision without needing that precision itself.
+
+Current source identities:
+
+- `services/ShellLayoutController.qml`:
+  `88820adc872f6f0d5f54ed45e178251b87503d9b`;
+- `services/DesktopWidgetLayout.qml`:
+  `a2e472cb702fdeb69fcdb758f4aa63ebdce1bf22`;
+- `services/DateTime.qml`:
+  `6e99a0a319dbbd84635492c0ca6fcd617c2f175c`;
+- `services/DailyNoteTodoBackend.qml`:
+  `b43c4daaee1c6fc6c99a154bc9cbde168b72edfb`.
+
+### R31.1 — ShellLayoutController deep-clones static descriptors on internal read paths
+
+`_descriptors` is a readonly five-record literal. Public `descriptor()` and
+`surfacesForFamily()` intentionally return deep copies through:
+
+```qml
+JSON.parse(JSON.stringify(value))
+```
+
+That is a sensible mutation-isolation boundary for callers. The controller's own
+read-only paths currently cross the same boundary unnecessarily:
+
+```text
+currentState()       -> descriptor()
+legalSlots()         -> descriptor() -> clone(desc.slots)
+validatePlacement()  -> descriptor() -> currentState() ...
+setProperty()        -> descriptor()
+resetSurface()       -> descriptor()
+```
+
+This matters because the controller is used from persistent/reactive surfaces:
+sidebar hosts and Abyss perimeter bindings call `currentState()`, Settings and
+the live layout editor call state/slot helpers, and validation can nest multiple
+state lookups. A single placement validation can therefore serialize/parse the
+same tiny immutable descriptor more than once before doing the actual config
+work.
+
+Strict-lossless shape:
+
+1. add a private `_descriptorRef(surfaceId)` that returns the first matching
+   object in `_descriptors`;
+2. keep public `descriptor()` as a deep-copy wrapper around that reference;
+3. keep `surfacesForFamily()` returning fresh cloned descriptors;
+4. use the private reference only inside controller code that does not mutate
+   descriptor fields;
+5. keep `legalSlots()` returning a fresh array, so callers cannot mutate the
+   canonical `slots` array.
+
+Required oracle:
+
+- all five known ids and one unknown id;
+- both `ii` and `waffle` family filtering/order;
+- mutate every nested array in a returned public descriptor, then prove a later
+  `descriptor()` / `surfacesForFamily()` call is unchanged;
+- prove repeated public calls still return fresh object/array identities;
+- exact `currentState()` output for sidebar, bar, dock and Waffle bar states;
+- exact `legalSlots()` values/order plus fresh-array identity;
+- `validatePlacement()`, `moveSurface()`, `setProperty()`, `resetSurface()`
+  and `diagnosticState()` output parity across valid/invalid inputs.
+
+This is a pure serialization/allocation removal. No config, geometry, visual,
+input or output-ownership behavior needs to change.
+
+### R31.2 — DesktopWidgetLayout rebuilds output-policy structures for repeated widget reads
+
+The read path is currently intentionally reactive but recomputes more structure
+than its answers require.
+
+`enabled(output, widget, fallback)` does:
+
+```text
+outputAllowed(output)
+  -> read Config.revision
+  -> rebuild configured output array
+  -> rebuild connected-screen name array
+  -> includes/some membership scans
+
+value(output, widget, "enable", fallback)
+  -> widgetOverride()
+  -> outputRecord()
+  -> linear scan of outputOverrides
+```
+
+This is called from the desktop Background, Widget Manager, monitor-visibility
+Settings and the Waffle background clock. A Config revision can therefore make
+multiple widget/output bindings repeat the same configured-screen normalization,
+connected-screen projection and output-record scan.
+
+There is a second avoidable read-side cost:
+
+```text
+effectiveEnabled()
+  -> savedOutputNames()
+  -> _normalizedRecords()
+       -> deep clone records/widgets
+       -> merge duplicate output records
+  -> map(output)
+  -> enabled() for saved outputs
+```
+
+`_normalizedRecords()` is appropriate for mutation paths because those paths
+need a detached, merge-safe structure before writing Config. It is stronger than
+necessary just to obtain the ordered unique output names used by
+`effectiveEnabled()`.
+
+Strict-lossless shape:
+
+- retain `_normalizedRecords()` for writes;
+- derive a private **first raw record by normalized output** index for
+  `outputRecord()` so current first-match behavior is preserved exactly;
+- derive ordered unique saved-output names directly from raw records without
+  deep cloning widget payloads;
+- derive configured-output and connected-output membership snapshots from their
+  actual Config/screens invalidation boundaries;
+- ensure the snapshots themselves depend on `Config.revision` where the
+  current code deliberately uses it to force reevaluation;
+- keep `widgetOverride()` returning the original stored override object, not a
+  clone, because current callers may observe that identity.
+
+Important malformed/legacy contracts:
+
+- `outputRecord()` currently returns the **first** raw record whose trimmed
+  `record.output` equals the trimmed query;
+- `_normalizedRecords()` merges later duplicate records for mutation output,
+  which is a different contract and must not be substituted for the read index;
+- configured `screenList` entries are stringified but not trimmed;
+- if configured outputs exist but none are currently connected,
+  `outputAllowed()` falls back to allowing the queried output;
+- empty/malformed records and widget maps must keep current fallback behavior.
+
+Required oracle:
+
+- empty records and empty screen list;
+- one/many outputs and widgets;
+- duplicate raw records for one output with conflicting override values;
+- leading/trailing whitespace in record output names;
+- leading/trailing whitespace in configured screen-list entries;
+- missing/null/non-object widget maps;
+- one configured connected output, multiple connected outputs and no matching
+  connected configured output;
+- hotplug/remove while bindings are live;
+- unrelated `Config.revision` changes;
+- exact original override-object identity;
+- `effectiveEnabled()` ordering/result parity;
+- all mutation functions still publish the same normalized Config payload.
+
+The expected gain is repeated CPU/allocation reduction, especially on
+multi-widget/multi-output config updates. The tiny derived maps/sets are a
+bounded RAM trade, not a RAM-saving claim.
+
+### R31.3 — DateTime's date-only strings inherit 1 Hz invalidation
+
+The shared clock currently selects:
+
+```qml
+precision: secondPrecision || screenLocked
+    ? SystemClock.Seconds
+    : SystemClock.Minutes
+```
+
+Five formatted string bindings then depend directly on `clock.date`. Two need
+time precision, but these three are calendar-only:
+
+- `shortDate`;
+- `date`;
+- `collapsedCalendarFormat`.
+
+With second precision enabled—or simply while the screen is locked—those three
+bindings can run locale date formatting on every second tick even when the
+calendar day is unchanged.
+
+A conservative replacement does **not** add another clock or reduce the shared
+clock precision. Instead, keep observing the same `clock.date` and maintain a
+private key such as:
+
+```text
+year / month / day
++ shortDateFormat
++ dateFormat
++ effective locale identity
+```
+
+Only when that key changes should the three date-only strings be reformatted.
+`time`, `timeDisplay`, and the existing `onMinutesChanged()` uptime refresh
+remain untouched.
+
+Required oracle:
+
+- minute precision and second precision;
+- lock/unlock precision transitions;
+- 23:59:59 -> midnight rollover;
+- manual clock jump across a date boundary;
+- timezone change crossing the local calendar day;
+- date-format changes while the day is unchanged;
+- locale change if supported live by the session;
+- exact strings before/after plus unchanged `time`, `timeDisplay` and
+  `uptime` notification cadence.
+
+This is a CPU/string-allocation micro-optimization, not a priority above the two
+layout-service candidates.
+
+### R31.4 — DailyNoteTodoBackend's 60 s timer is not a minute scan
+
+A timer/process pass inspected `DailyNoteTodoBackend.qml` because it owns both a
+60 s repeating timer and a Python scanner. Static inspection shows they are not
+coupled on every tick.
+
+The repeating timer only:
+
+1. formats today's `yyyy-MM-dd`;
+2. compares it to `sourceDate`;
+3. schedules a refresh only when the date changed.
+
+Actual note edits are already watched by `FileView.watchChanges` and coalesced
+through `scanDebounce`. The Python scanner is therefore **not** launched once
+per minute by the steady-state timer.
+
+Replacing this with a computed “next midnight” one-shot timer would add
+suspend/resume, wall-clock jump and timezone-change edge cases for very small
+wake-up savings. Do not promote this path without profiler evidence that the
+single active minute comparison is material.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+

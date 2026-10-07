@@ -149,6 +149,14 @@ grep -Fq 'readonly property bool arrangementChromeVisible: !embeddedArrangementO
     || { printf 'FAIL: embedded Monitor Arrangement chrome gate missing\n' >&2; exit 1; }
 grep -Fq 'showHeader: root.arrangementChromeVisible' "$monitor_config" \
     || { printf 'FAIL: embedded Monitor Arrangement still exposes its drop-down header\n' >&2; exit 1; }
+for token in \
+    'embeddedArrangementOnly ? 252 : 292' \
+    'embeddedArrangementOnly ? 0.92 : 1.0' \
+    'fitScale * root.arrangementVisualScale' \
+    'implicitWidth: root.embeddedArrangementOnly ? 30 : 34'; do
+    grep -Fq "$token" "$monitor_config" \
+        || { printf 'FAIL: compact embedded Monitor Arrangement contract missing: %s\n' "$token" >&2; exit 1; }
+done
 grep -Fq 'property bool showHeader: true' "$settings_section" \
     || { printf 'FAIL: reusable Settings section cannot suppress embedded header chrome\n' >&2; exit 1; }
 

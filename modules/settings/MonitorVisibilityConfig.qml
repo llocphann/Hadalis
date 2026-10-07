@@ -13,6 +13,12 @@ ContentPage {
     property bool embeddedArrangementOnly: false
     embedded: embeddedArrangementOnly
     readonly property bool arrangementChromeVisible: !embeddedArrangementOnly
+    // Keep the Utilities monitor page visually in line with the other compact
+    // tabs. Settings still uses the full-size arrangement editor.
+    readonly property real arrangementCanvasHeight:
+        embeddedArrangementOnly ? 252 : 292
+    readonly property real arrangementVisualScale:
+        embeddedArrangementOnly ? 0.92 : 1.0
 
     property string activeSection: "outputs"
 
@@ -1210,7 +1216,7 @@ ContentPage {
             Rectangle {
                 id: monitorLayoutCanvas
                 Layout.fillWidth: true
-                implicitHeight: 292
+                implicitHeight: root.arrangementCanvasHeight
                 radius: Appearance.rounding.normal
                 color: Appearance.colors.colLayer1
                 border.width: 1
@@ -1232,7 +1238,8 @@ ContentPage {
                     const usableHeight = Math.max(1, height - innerPadding * 2)
                     return Math.min(usableWidth / Math.max(1, bounds.width), usableHeight / Math.max(1, bounds.height))
                 }
-                readonly property real canvasScale: Math.max(0.025, fitScale)
+                readonly property real canvasScale: Math.max(
+                    0.025, fitScale * root.arrangementVisualScale)
                 readonly property point canvasOffset: Qt.point(
                     (width - bounds.width * canvasScale) / 2 - bounds.minX * canvasScale,
                     (height - bounds.height * canvasScale) / 2 - bounds.minY * canvasScale)
@@ -1281,8 +1288,8 @@ ContentPage {
                     anchors.top: parent.top
                     anchors.right: parent.right
                     anchors.margins: Appearance.sizes.spacingSmall
-                    implicitWidth: 34
-                    implicitHeight: 34
+                    implicitWidth: root.embeddedArrangementOnly ? 30 : 34
+                    implicitHeight: implicitWidth
                     buttonRadius: Appearance.rounding.full
                     colBackground: Appearance.colors.colLayer1
                     colBackgroundHover: Appearance.colors.colLayer1Hover

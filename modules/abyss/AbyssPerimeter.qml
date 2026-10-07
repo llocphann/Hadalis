@@ -237,6 +237,7 @@ Scope {
                         records:scene.records?.slice(0,256),blockers:scene.blockers?.slice(0,128),
                         surfaces:scene.surfaces?.slice(0,40)},
                     presence:{qualified:companionPresence.qualified,
+                        portalActive:companionPresence.portalActive,portalProgress:companionPresence.portalProgress,
                         visitActive:companionPresence.visitActive,
                         traveling:companionPresence.traveling,mode:companionPresence.mode,
                         dragging:companionPresence.dragging,arc:companionPresence.arc,
@@ -249,7 +250,7 @@ Scope {
                     turns:{enabled:root.alternatingCompanions,active:companionTurns.active,paired:companionTurns.paired,
                         incoming:companionTurns.active ? companionTurns.incoming : ""},
                     actor:{character:companion.character,visible:companion.visible,inputReady:companion.inputReady,
-                        moving:companion.moving,walking:companion.walking,flying:companion.flying,
+                        moving:companion.moving,walking:companion.walking,rolling:companion.rolling,flying:companion.flying,
                         presentation:companion.presentation,opacity:companion.opacity,
                         x:companion.x,y:companion.y}}
             }
@@ -622,6 +623,20 @@ Scope {
                         window.transientPopupHoverKind = ""
                 }
             }
+            WullPortals {presence:companionPresence;z:23}
+            Loader {
+                id:waterImmersion
+                active:window.companionHostActive && field.ready && companion.visible && companion.leaving
+                    && ["sink","pulled"].includes(companion.hideClip) && companion.presentation<.999
+                z:24
+                x:companionPresence.position().x-48*root.companionScale
+                y:companionPresence.position().y-100*root.companionScale
+                width:208*root.companionScale;height:298*root.companionScale
+                sourceComponent:field.immersionComponent
+                Binding {target:waterImmersion.item;property:"bodyItem";value:companion;when:waterImmersion.active && !!waterImmersion.item}
+                Binding {target:waterImmersion.item;property:"renderRect";value:Qt.vector4d(waterImmersion.x,waterImmersion.y,waterImmersion.width,waterImmersion.height);when:waterImmersion.active && !!waterImmersion.item}
+                Binding {target:waterImmersion.item;property:"renderScale";value:window.modelData?.devicePixelRatio ?? 1;when:waterImmersion.active && !!waterImmersion.item}
+            }
             AbyssCompanion {
                 id: companion
                 character:root.companionCharacter
@@ -640,7 +655,8 @@ Scope {
                 motionScale: WullPreferences.motionScale(root.companionPreferences.personality)
                 renderQuality: AbyssRenderPolicy.wullQuality
                 translucency: root.companionPreferences.translucency
-                travelEnabled: companionPresence.traveling
+                travelEnabled: companionPresence.traveling && !companionPresence.portalActive
+                portalReveal:companionPresence.portalReveal
                 travelMode: companionPresence.mode
                 surfaceSupported: companionPresence.grounded
                 travelDuration: companionPresence.duration
@@ -658,6 +674,7 @@ Scope {
                 travelNormalX: companionPresence.normalX
                 travelNormalY: companionPresence.normalY
                 connectedWater: true
+                curvedImmersion:waterImmersion.active && !!waterImmersion.item && waterImmersion.item.status!==ShaderEffect.Error
                 reveal: companionPresence.renderedReveal
                 pointerFresh: window.companionPointerFresh
                     && Math.hypot(window.companionPointerX-(x+width/2),window.companionPointerY-(y+height/2))<companionPresence.pointerNoticeRadius

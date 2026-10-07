@@ -7,6 +7,8 @@ layout(std140,binding=0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
     vec4 viewport;
+    vec4 renderRect;
+    float maskOnly;
     vec4 insets;
     vec4 material;
     vec4 liquidContact;
@@ -137,14 +139,21 @@ float field(vec2 p) {
     d=record(d,p,rect36); d=record(d,p,rect37); d=record(d,p,rect38); d=record(d,p,rect39);
     return d;
 }
+layout(binding=3) uniform sampler2D bodyTexture;
 void main() {
-    vec2 p=qt_TexCoord0*viewport.xy;
+    vec2 p=renderRect.xy+qt_TexCoord0*renderRect.zw;
     vec2 wave=waveProfile(p);
     vec2 interaction=waterInteraction(p);
     float d=field(p)-wave.x-interaction.x;
     // Derivatives are evaluated before any divergent early return.
     vec2 gradient=vec2(dFdx(d),dFdy(d));
     float aa=max(0.6,fwidth(d)*0.6);
+    if(maskOnly>.5) {
+        // Keep exactly the workspace side of the live liquid contour. The
+        // bounded capture exists only while a body is sinking into that field.
+        fragColor=texture(bodyTexture,qt_TexCoord0)*smoothstep(-aa,aa,d)*qt_Opacity;
+        return;
+    }
     if(d>24.0) { fragColor=vec4(0.0); return; }
     float coverage=1.0-smoothstep(-aa,aa,d);
     float depth=exp(-abs(d)*0.045);

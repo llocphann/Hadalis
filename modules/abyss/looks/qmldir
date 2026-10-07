@@ -2,6 +2,7 @@ module qs.modules.abyss.looks
 singleton AbyssStyle 1.0 AbyssStyle.qml
 singleton AbyssRenderPolicy 1.0 AbyssRenderPolicy.qml
 AbyssField 1.0 AbyssField.qml
+AbyssFieldImmersion 1.0 AbyssFieldImmersion.qml
 AbyssButton 1.0 AbyssButton.qml
 AbyssLabel 1.0 AbyssLabel.qml
 AbyssSeparator 1.0 AbyssSeparator.qml

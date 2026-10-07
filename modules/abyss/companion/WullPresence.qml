@@ -1,5 +1,6 @@
 import QtQuick
 import "WullScene.js" as Scene
+import "WullTravel.js" as Travel
 
 // One controller per existing output window; only the permitted output acts.
 // Native visit/wander events plus one sustained-surface deadline drive choices.
@@ -26,6 +27,12 @@ Item {
     property real renderedReveal: 0
     property bool visitActive: false
     property bool traveling: false
+    property bool portalActive: false
+    property real portalProgress: 0
+    property bool portalHopped: false
+    property var portalSource: null
+    property var portalDestination: null
+    readonly property real portalReveal: portalActive ? Travel.reveal(portalProgress) : 1
     property bool dragging: false
     property bool retreating: false
     property bool releasedFlight: false
@@ -49,7 +56,7 @@ Item {
     readonly property real nearbyClickRadius: 460*(scene?.scale ?? 1)
     readonly property bool pointerNearby: pointerFresh && pointerReactionsEnabled
         && permitted && visitActive && motionEnabled && !interactionHeld
-        && !handoffActive && !dragging && !retreating && !traveling && !directed
+        && !handoffActive && !dragging && !retreating && !traveling && !portalActive && !directed
         && actor && !actor.gesturing && actor.reactionExpression!=="angry"
         && actor.presentation>.99 && requestedReveal>.99
         && Math.hypot(pointerX-actor.x+(actor.scale-1)*actor.width/2-(scene?.hostWidth ?? 0)/2,
@@ -82,10 +89,10 @@ Item {
     property bool initialized: false
     readonly property bool qualified: Scene.valid(scene) && placement.qualified
     readonly property bool ballistic: traveling && ["jump","fall"].includes(mode)
-    readonly property bool grounded: !dragging && (!traveling || ["walk","run"].includes(mode)) && !!placement.grounded
+    readonly property bool grounded: !dragging && (portalActive || !traveling || ["walk","run","roll"].includes(mode)) && !!placement.grounded
     readonly property string emergenceEdge: placement.support?.edge ?? placement.edge ?? "top"
     readonly property bool canExplore: permitted && visitActive && requestedReveal>.99
-        && motionEnabled && !interactionHeld && !handoffActive && !dragging && !retreating && Date.now()>=hiddenUntil
+        && motionEnabled && !interactionHeld && !handoffActive && !dragging && !retreating && !portalActive && Date.now()>=hiddenUntil
         && actor && !actor.hovered && actor.presentation>.99
     readonly property string surfaceKey: (scene?.surfaces ?? []).map(s=>s.key).join("|")
     signal resetRequested(real x, real y, string edge)
@@ -147,6 +154,10 @@ Item {
             y:actor.y-(actor.scale-1)*actor.height/2} : {x:targetX,y:targetY}
     }
     function clearMotion(): void {
+        if (portalActive) {
+            portalTween.stop();portalActive=false
+            const here=position();targetX=here.x;targetY=here.y
+        }
         stopRequested()
         traveling=false; releasedFlight=false; throwSpeed=0; throwArc=0; waypoints=[]; waypoint=0
     }
@@ -215,6 +226,10 @@ Item {
         if (requestedReveal<.99) pause()
     }
     function pause(force = false): void {
+        if (portalActive) {
+            if (force || interactionHeld || !motionEnabled || !permitted || requestedReveal<.99) clearMotion()
+            return
+        }
         if (!traveling || retreating || (!force && (ballistic || directed || releasedFlight))) return
         const here=position(), support=Scene.supportAt(scene,here)
         targetX=here.x; targetY=here.y
@@ -243,13 +258,15 @@ Item {
         if (revealed) {disturb("emerge",placement);renderedReveal=requestedReveal;scheduleSurface()}
     }
     function moveTo(selected, exit, preferredMode = ""): bool {
-        if (handoffActive || !permitted || !actor || actor.presentation<.99 || dragging || (peekIntro && !exit)) return false
-        const here=Object.assign(position(),{edge:emergenceEdge}), route=Scene.path(scene,here,selected)
+        if (handoffActive || portalActive || !permitted || !actor || actor.presentation<.99 || dragging || (peekIntro && !exit)) return false
+        const here=Object.assign(position(),{edge:emergenceEdge})
+        if (motionEnabled && Travel.usePortal(here,selected,scene?.scale) && startPortal(here,selected,exit)) return true
+        const route=Scene.path(scene,here,selected)
         if (!route.qualified) return false
         disturb("depart",Scene.annotate(scene,here,placement.edge,placement.kind,placement.key))
         clearMotion()
         destination=selected; mode=exit ? "fly" : route.mode
-        if (!exit && route.mode==="walk" && ["run","jump"].includes(preferredMode)) {
+        if (!exit && route.mode==="walk" && ["run","jump","roll"].includes(preferredMode)) {
             if (preferredMode!=="jump" || Scene.clearArc(scene,here,selected,42*scene.scale,placement.support?.nx ?? 0,placement.support?.ny ?? -1)) mode=preferredMode
         } else if (!exit && preferredMode==="fall" && route.points.length===1
                 && Math.abs(here.x-selected.x)<.1 && selected.y>here.y) mode="fall"
@@ -258,6 +275,31 @@ Item {
         advance()
         return true
     }
+    function portalDestinationValid(): bool {
+        if (!Scene.valid(scene) || !portalDestination?.qualified || !Scene.clearAt(scene,portalDestination)) return false
+        const support=Scene.supportAt(scene,portalDestination,portalDestination.support?.edge ?? portalDestination.edge)
+        return !!support && support.key===portalDestination.support?.key && support.edge===portalDestination.support?.edge
+    }
+    function startPortal(here, selected, exit): bool {
+        if (!Scene.valid(scene) || !Scene.clearAt(scene,here)) return false
+        const landing=Scene.annotate(scene,selected,selected.edge,selected.kind,selected.key)
+        if (!landing.qualified || !landing.grounded || !Scene.clearAt(scene,landing)) return false
+        clearMotion()
+        portalSource=Scene.annotate(scene,here,emergenceEdge,placement.kind,placement.key)
+        portalDestination=landing;destination=landing
+        portalHopped=false;portalProgress=0;retreating=!!exit;mode="portal"
+        disturb("depart",portalSource)
+        portalActive=true;traveling=true;portalTween.restart()
+        return true
+    }
+    function portalStep(): void {
+        if (!portalActive || portalHopped || portalProgress<.5) return
+        if (!permitted || !motionEnabled || !portalDestinationValid()) {clearMotion();reconcileScene();return}
+        portalHopped=true
+        placement=portalDestination;targetX=placement.x;targetY=placement.y
+        actor.adoptTo(targetX+(actor.scale-1)*actor.width/2,targetY+(actor.scale-1)*actor.height/2,emergenceEdge,renderedReveal)
+    }
+    onPortalProgressChanged:portalStep()
     function advance(): void {
         if (!traveling || !permitted || !Scene.valid(scene)) return
         if (waypoint>=waypoints.length) {
@@ -290,7 +332,7 @@ Item {
         directionX=next.x-here.x; directionY=next.y-here.y
         const speed=releasedFlight
             ? Math.max(220*scene.scale,Math.min(950*scene.scale,throwSpeed*1000))
-            : (retreating ? 300 : mode==="walk" ? 16 : mode==="run" ? 32 : 105)*scene.scale
+            : (retreating ? 300 : mode==="walk" ? 16 : mode==="run" ? 32 : mode==="roll" ? 46 : 105)*scene.scale
         normalX=mode==="jump" ? placement.support?.nx ?? 0 : 0
         normalY=mode==="jump" ? placement.support?.ny ?? -1 : -1
         arc=releasedFlight ? throwArc : mode==="jump" ? 42*scene.scale : mode==="fly" && !retreating
@@ -303,7 +345,7 @@ Item {
         if (Math.abs(here.x-next.x)<.1 && Math.abs(here.y-next.y)<.1) Qt.callLater(root.arrived)
     }
     function arrived(): void {
-        if (!traveling || dragging || !actor || actor.presentation<.99) return
+        if (!traveling || portalActive || dragging || !actor || actor.presentation<.99) return
         const here=position()
         if (Math.abs(here.x-targetX)>.2 || Math.abs(here.y-targetY)>.2) return
         advance()
@@ -338,7 +380,8 @@ Item {
             support.edge,placement.kind,placement.key)
         if (selected.qualified && Scene.distance(here,selected)>10*scene.scale) {
             const gait=random(), length=Scene.distance(here,selected)
-            const movement=length>=35*scene.scale && length<=160*scene.scale && gait<.22 ? "jump"
+            const movement=length>=35*scene.scale && gait<.18 ? "roll"
+                : length>=35*scene.scale && length<=160*scene.scale && gait<.35 ? "jump"
                 : personality!=="calm" && gait<(personality==="energetic" ? .78 : .48) ? "run" : "walk"
             moveTo(selected,false,movement)
         }
@@ -377,6 +420,10 @@ Item {
     function reconcileScene(): void {
         if (!permitted || !Scene.valid(scene)) {hideImmediately();return}
         if (handoffActive) return
+        if (portalActive) {
+            if (!portalDestinationValid() || !Scene.clearAt(scene,position())) {clearMotion();recoverSupport()}
+            return
+        }
         if (!visitActive && requestedReveal>0 && !retreating) {if(Date.now()>=hiddenUntil)appear();return}
         if (!visitActive || dragging) return
         let from=position()
@@ -628,6 +675,15 @@ Item {
         }
     }
     Timer {id:fullVisitDeadline;objectName:"wullFullVisitDeadline";repeat:false;onTriggered:root.synchronize()}
+    NumberAnimation {
+        id:portalTween;target:root;property:"portalProgress";from:0;to:1;duration:1800
+        onFinished:{
+            root.portalStep()
+            if (!root.portalActive) return
+            root.portalActive=false;root.traveling=true;root.waypoints=[];root.waypoint=0
+            root.advance()
+        }
+    }
     Timer {id:reactionDeadline;interval:3000;onTriggered:if(root.actor) root.actor.reactionExpression=""}
     Timer {
         id: pointerNotice

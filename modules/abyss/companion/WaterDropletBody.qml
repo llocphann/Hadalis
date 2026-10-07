@@ -49,6 +49,8 @@ Item {
     property real orientationAngle: 0
     property real viewYaw: -15
     property real viewPitch: 0
+    property real rollingAngle: 0
+    readonly property real modelRoll:gait.roll+rollingAngle
     readonly property real modelYaw: viewYaw+gait.yaw
     readonly property real modelPitch: viewPitch+gait.pitch
     // These three angles feed five ShaderEffect instances (torso + four
@@ -56,7 +58,7 @@ Item {
     // repeating identical degree-to-radian work in every consumer.
     readonly property real modelYawRadians: modelYaw * Math.PI / 180
     readonly property real modelPitchRadians: modelPitch * Math.PI / 180
-    readonly property real modelRollRadians: gait.roll * Math.PI / 180
+    readonly property real modelRollRadians: modelRoll * Math.PI / 180
     // Shader uniforms below are identical across repeated limb/droplet
     // delegates. Construct each shared QVector4D once per input revision.
     readonly property vector4d materialRenderingUniform: Qt.vector4d(qualityLevel, translucency, 0, 0)
@@ -69,7 +71,7 @@ Item {
     readonly property vector4d limbOpticsUniform: Qt.vector4d(modelYawRadians, 3, 0, 0)
     readonly property vector4d limbPoseUniform: Qt.vector4d(modelPitchRadians, modelRollRadians, 0, 0)
     readonly property vector4d dropletMotionUniform: Qt.vector4d(shimmer, 0, pulse, 0)
-    readonly property var poseRotation: Pose.rotation(modelYaw,modelPitch,gait.roll)
+    readonly property var poseRotation: Pose.rotation(modelYaw,modelPitch,modelRoll)
     readonly property real poseScaleX: gait.scaleX
     readonly property real poseScaleY: gait.scaleY
     function project(x,y,z): var {return Pose.project(poseRotation,x,y,z,poseScaleX,poseScaleY)}

@@ -25,7 +25,7 @@ Item {
     readonly property vector4d contact: neck>.001
         ? Qt.vector4d(origin.x,origin.y,origin.scale,neck) : Qt.vector4d(0,0,0,0)
     readonly property vector4d contactNormal: neck>.001
-        ? Qt.vector4d(origin.nx,origin.ny,actor.leaving && actor.hideClip==="sink" ? 1 : 0,
+        ? Qt.vector4d(origin.nx,origin.ny,actor.leaving && ["sink","pulled"].includes(actor.hideClip) ? 1 : 0,
             actor.leaving ? 1-actor.presentation : actor.presentation) : Qt.vector4d(0,0,0,0)
     readonly property vector4d ripple: enabledPolicy && impact && phase<1
         ? Qt.vector4d(impact.x,impact.y,phase,strength) : Qt.vector4d(0,0,1,0)

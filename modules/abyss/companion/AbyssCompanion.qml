@@ -5,6 +5,7 @@ import qs.modules.common
 import "WullExpressions.js" as Expressions
 import "CompanionMotion.js" as Motion
 import "WullAttention.js" as Attention
+import "WullTravel.js" as Travel
 
 Item {
     id: root
@@ -13,6 +14,7 @@ Item {
     property real gripProgress: 0
     readonly property var curves: Motion.forCharacter(character)
     property bool presentationManaged: false
+    property real portalReveal: 1
     property string pairedAction: ""
     property real pairedProgress: -1
     property string edge: "top"
@@ -80,6 +82,7 @@ Item {
     property string emergenceEdge: edge
     property bool upright: false
     property bool connectedWater: false
+    property bool curvedImmersion: false
     property real presentation: 0
     readonly property bool peeking: reveal>0 && reveal<.99
     property real floorAlignment: upright && surfaceSupported ? (height/2-34.3)*Math.cos(standingAngle*Math.PI/180) : 0
@@ -93,13 +96,14 @@ Item {
     property string activeEmergenceEdge: emergenceEdge
     property bool leaving: false
     readonly property bool relocating: relocation.running
-    readonly property bool inputReady: presentation > 0.99 && reveal > 0.99 && !relocating
+    readonly property bool inputReady: presentation > 0.99 && reveal > 0.99 && portalReveal>.99 && !relocating
         && !hardResetting && (dragging || !managedPlacement || travelEnabled || (Math.abs(x-targetX)<0.1 && Math.abs(y-targetY)<0.1))
     readonly property bool materialReady: droplet.materialReady
     readonly property bool softwareFallback: droplet.softwareFallback
     readonly property bool moving: travelTween.running
     readonly property bool walking: moving && surfaceSupported && ["walk","run"].includes(travelMode)
-    readonly property bool flying: dragging || (moving && !walking)
+    readonly property bool rolling: moving && surfaceSupported && travelMode==="roll"
+    readonly property bool flying: dragging || (moving && !walking && !rolling)
     readonly property bool gesturing: gestureTween.running
     readonly property real viewCos: Math.cos(standingAngle*Math.PI/180)
     readonly property real viewSin: Math.sin(standingAngle*Math.PI/180)
@@ -320,7 +324,7 @@ Item {
         // Keep the underwater half hidden, but leave the visible half-plane
         // and tangent direction large enough for faceplant/buttplant/launch
         // poses and the full water-to-landing arc.
-        clip: root.presentation < .999 && root.emergenceNormal >= 0
+        clip: !root.curvedImmersion && root.presentation < .999 && root.emergenceNormal >= 0
 
         Item {
             id: emergenceLayer
@@ -360,8 +364,9 @@ Item {
             translucency: root.translucency
             walking: root.walking
             flying: root.flying
+            rollingAngle:root.rolling ? Travel.rollingAngle(Math.hypot(root.travelToX-root.travelFromX,root.travelToY-root.travelFromY),root.travelPhase,root.tangentDirection,root.scale) : 0
             motionAction: root.motionAction
-            motionProgress: root.pairedProgress>=0 ? root.pairedProgress : root.moving && ["jump","fall"].includes(root.travelMode) ? root.travelPhase
+            motionProgress: root.pairedProgress>=0 ? root.pairedProgress : root.moving && ["jump","fall","roll"].includes(root.travelMode) ? root.travelPhase
                 : root.gesture ? root.gesturePhase : root.presentationAction ? root.leaving ? 1-root.presentation : root.presentation : -1
             grounded: root.surfaceSupported && !root.flying
             dragging: root.dragging
@@ -382,7 +387,7 @@ Item {
             expression: root.faceExpression
             reveal: 1
             enabled: root.interactive && root.inputReady
-            opacity: Math.min(1, root.presentation * 4)
+            opacity: Math.min(1, root.presentation * 4)*root.portalReveal
             orientationAngle: root.upright ? root.standingAngle : root.edge === "left" ? 90 : root.edge === "right" ? -90 : root.edge === "bottom" ? 180 : 0
             // Centered bounds contain the rotated clickable body for all four
             // output edges. Verified in the offscreen four-edge prototype; keep

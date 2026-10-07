@@ -31,6 +31,9 @@ Item {
         function onFrameSwapped(): void { root.framePresented = true }
     }
     readonly property string diagnostic: pass.log
+    readonly property Component immersionComponent:Component {
+        AbyssFieldImmersion {sourcePass:pass}
+    }
     function packed(index) {
         const r = root.records[index]?.surface
         return r ? Qt.vector4d(r.x,r.y,r.width,r.height) : Qt.vector4d(0,0,0,0)
@@ -49,6 +52,9 @@ Item {
         anchors.fill: parent
         fragmentShader: Qt.resolvedUrl("AbyssField.frag.qsb")
         readonly property vector4d viewport: Qt.vector4d(root.width,root.height,0,0)
+        readonly property vector4d renderRect:Qt.vector4d(0,0,root.width,root.height)
+        readonly property real maskOnly:0
+        readonly property var bodyTexture:wallpaperImage
         readonly property vector4d insets: Qt.vector4d(root.edgeInsets.left,root.edgeInsets.top,root.edgeInsets.right,root.edgeInsets.bottom)
         readonly property vector4d material: Qt.vector4d(AbyssStyle.perimeterRadius,AbyssStyle.connectionDepth,AbyssStyle.neckRadius,AbyssStyle.highlightStrength)
         readonly property vector4d liquidContact: root.waterLink?.contact ?? Qt.vector4d(0,0,0,0)

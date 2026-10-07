@@ -203,6 +203,11 @@ Rules:
 | `services/deferred/HyprlandXkb.qml` | **HIGH-CONFIDENCE process/lookup candidate — read and index XKB `base.lst` once per file revision instead of spawning `cat` for every uncached layout description.** Current layout changes clear the visible code, spawn `cat /usr/share/X11/xkb/rules/base.lst`, split the entire file and `find` the first matching layout/variant line. Use a read-only watched `FileView`, build description→code in source order, and answer later layout changes O(1). | Low–Medium. Preserve exact first-match ordering, the current variant code concatenation, empty/missing-file behavior, cache invalidation when the rules file changes on disk, and immediate clearing of the previous layout code while a new description is unresolved. | Small map for the XKB rules file. | Low transient CPU/process reduction and faster layout switching after initialization; eliminates one `cat` child process plus a full-file split/search for each first-seen layout description. | 0%. |
 | `services/InternalTodoBackend.qml` | **HIGH-CONFIDENCE transport candidate pending a focused FileView fixture — use a dedicated read-only `FileView` for externally edited `todo.txt` instead of spawning `cat` after every debounced file change.** The existing warning is specifically about reusing the writer FileView after `setText()`; Quickshell documents `watchChanges + reload()` as the normal read path. Keep the writer FileView for writes/watch invalidation, add a second reader that never calls `setText`, reload it after the existing 300 ms debounce, and parse only after `loaded`. | Medium until fixture-proven. Preserve startup lock, self-write no-op behavior, 300 ms debounce, fresh-disk semantics, file-not-found/error behavior, list equality, and JSON write ordering. Atomic rename/write watcher behavior needs an explicit oracle before implementation. | One small FileView object; no retained duplicate task model required. | Low recurring process/RSS reduction for users who externally edit/auto-save the text mirror; removes one `cat` child process per debounced external change. | 0%. |
 
+| `services/deferred/LauncherSearch.qml` | **HIGH-CONFIDENCE process candidate — remove math scheduling side effects from the reactive `results` binding.** Every non-empty non-Clipboard/non-Emoji result rebuild currently executes `mathTimer.restart()`. The binding also depends on `mathResult`, so a `qalc` response can re-evaluate `results` and schedule the same expression again. Move scheduling to the debounced-query invalidation boundary (plus live math-prefix changes) while leaving result composition unchanged. | Low. Preserve arbitrary qalc expressions, including expressions that do not start with a digit; preserve the configured non-app delay, prefix stripping, process cancellation/restart semantics and result ordering. Do not infer “not math” from app-looking text unless UI semantics are changed separately. | None. | Low–Medium transient CPU/process reduction in launcher search; removes self-rescheduling and unrelated reactive rebuild-triggered qalc launches. | 0%. |
+| `services/YtMusic.qml` + `modules/common/Config.qml` | **HIGH-CONFIDENCE write/churn candidate — skip the five-second resume persistence transaction when the exact resume snapshot has not changed.** `_resumeSaveTimer` runs whenever a video ID is loaded, including indefinitely while paused, and `_persistResume()` always calls `Config.setNestedValues()`. Config does not equality-dedupe: every call records reload mutations, restarts the write timer, bumps global revision and emits `configChanged`. Track a local dirty revision across the nine resume fields and let the existing 5 s checkpoint clear it after persistence. | Low–Medium. Preserve the current five-second maximum checkpoint cadence while playback position advances, immediate explicit persist calls, destruction flush, track/playlist metadata, pause/play state and crash-resume payload. Do not globally change Config mutation semantics. | One bool/revision counter; negligible. | Medium local reduction during paused/unchanged loaded tracks: avoids up to one full Config mutation/write schedule every 5 s, plus downstream global Config listeners. | 0%. |
+| `services/deferred/Emojis.qml` | **HIGH-CONFIDENCE per-keystroke CPU candidate — extend the existing prepared-entry cache with the lowercase key used by sloppy/Levenshtein mode.** Normal fuzzy mode already prepares `Fuzzy.prepare(entry)` once per list revision. Sloppy mode still calls `entry.toLowerCase()` for up to the first 100 entries on every query. Store `lower` beside `name`/entry and reuse it in both limited top-K and unlimited sloppy branches. | Very low. Preserve the first-100 bound, score threshold, binary insertion tie behavior, full-sort behavior when limit ≤ 0, source object/string identity and list-revision invalidation. | Tiny bounded extra string cache for emoji entries. | Low but repeated CPU/allocation reduction on every sloppy emoji query keystroke. | 0%. |
+| `modules/bar/UtilButtons.qml` | **HIGH-CONFIDENCE micro-candidate — derive the active utility order once and reuse it for count/index/placement.** The file has at most 11 utility IDs, but every visible Loader computes row/column through `utilityIndex(id)`, which filters the full ordered list and re-runs `utilityActive()`; `visibleUtilityCount` performs the same filter independently. Publish one reactive `activeUtilityOrder = utilityOrder.filter(utilityActive)`, use its length and `indexOf()`, and keep Loader activation semantics unchanged. | Very low. Preserve configured order normalization, dynamic Privacy/Audio/Niri availability dependencies, inactive-loader behavior and `Math.max(0, index)` fallback. | One small derived array replacing repeated temporary arrays. | Low allocation/CPU reduction on bar utility-state/config changes; mainly removes repeated dependency evaluation and filter arrays. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -305,6 +310,11 @@ Rules:
 93. **Hyprland largest-window workspace index** — build first-strict-maximum workspace ownership during client publication and reuse it from Bar consumers.
 94. **Hyprland XKB watched rules index** — parse `base.lst` once per file revision and remove per-layout `cat` + full-file scans.
 95. **Internal Todo dedicated FileView reader** — after a focused stale-buffer/watch fixture, replace external-edit `cat` transport without touching the writer FileView contract.
+
+96. **Launcher math scheduling outside results binding** — one qalc schedule per relevant debounced query invalidation, never as a side effect of result recomputation/mathResult publication.
+97. **YtMusic resume dirty checkpoint** — retain the 5 s crash-resume checkpoint while suppressing unchanged Config mutations/writes and their global revision fan-out.
+98. **Emoji sloppy-search lowercase preparation** — reuse per-list-revision lowercase keys instead of lowercasing up to 100 entries per query.
+99. **Bar utility active-order projection** — compute the ordered active utility list once and reuse it for count/index/layout placement.
 
 ## Explicit non-candidates from this pass
 
@@ -6058,6 +6068,336 @@ not a performance candidate.
 full-screen blur effects, but unlike panel glass they actually present the full
 output. The existing bounded-wallpaper-capture candidate cannot claim an
 area reduction there without changing the effect itself.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+## Research continuation — round 36
+
+Baseline: `dev` at `998239aaca31a33d270af278bc2a705679ff3aee`.
+
+Round 36 deliberately moved away from the Hyprland/Todo cluster used in round 35.
+Five concurrent Wull/Abyss commits landed after that round and a final Abyss
+documentation commit moved `dev` to the baseline above. Those commits do not
+modify the LauncherSearch, YtMusic, Config, Emojis or Bar UtilButtons sources
+used below.
+
+Current source identities:
+
+- `services/deferred/LauncherSearch.qml`:
+  `c745ca2ef404433ced39384766479461f12806bd`;
+- `services/YtMusic.qml`:
+  `063ef1bd591d222d9a60b240dec218c1c4171213`;
+- `modules/common/Config.qml`:
+  `673b17d2eded53385ba456783fe7d297ecb8ef4e`;
+- `services/deferred/Emojis.qml`:
+  `c4e164bb2d7ad2abf3ad241b320e53842e8a600d`;
+- `modules/bar/UtilButtons.qml`:
+  `5a81a3162e5a9a16280fb4fe7f926acbed26ba4f`;
+- `modules/sidebarLeft/widgets/QuickWallpaper.qml`:
+  `b8e6bf35ee224fee0a88e9071875a6c5b57b783f`;
+- `services/ObsidianTheme.qml`:
+  `4617b0d15a89251684a922b8ad5a926cca97c01b`;
+- `scripts/integrations/obsidian_theme.py`:
+  `41ff3accaaa579b4db5cd7cbe99082fc313926cf`.
+
+### R36.1 — Launcher math work is scheduled from a reactive output binding
+
+Launcher query text first passes through the existing 80 ms debounce:
+
+```qml
+onTriggered: root._debouncedQuery = root.query
+```
+
+The problem is later in `results`:
+
+```qml
+property list<var> results: {
+    const q = root._debouncedQuery
+    ...
+    mathTimer.restart()
+    ...
+    const mathObj = ({
+        name: root.mathResult,
+        ...
+    })
+}
+```
+
+That binding is not an event handler. It can re-run because any dependency it
+reads changes. One of those dependencies is `mathResult`, populated by qalc:
+
+```qml
+stdout: SplitParser {
+    onRead: data => root.mathResult = data
+}
+```
+
+Therefore the normal sequence can be:
+
+```text
+debounced query changes
+ -> results binding evaluates
+ -> mathTimer.restart()
+ -> qalc runs
+ -> mathResult changes
+ -> results binding evaluates again
+ -> mathTimer.restart() again
+```
+
+The second qalc result often equals the first and therefore stops the chain, but
+the extra process is still avoidable. Other unrelated dependencies of
+`results` can also restart the timer while the query itself is unchanged.
+
+The strict-lossless change is about **ownership of scheduling**, not about
+reducing calculator capability:
+
+1. `results` becomes a pure derivation with no timer mutation;
+2. when `_debouncedQuery` changes, schedule one math calculation using today's
+   exact delay and prefix stripping;
+3. when the configured math prefix changes while the same query is resident,
+   perform the same re-evaluation/schedule that the current binding dependency
+   would have caused;
+4. preserve `mathProc.calculateExpression()` stopping a prior in-flight
+   process before starting the new expression;
+5. leave current result composition/fallback visibility unchanged.
+
+Do **not** optimize by assuming only queries beginning with a number or `=` are
+valid qalc expressions. qalc accepts expressions/functions/units whose textual
+shape can differ, and the current launcher deliberately exposes a default math
+fallback.
+
+Required oracle:
+
+- empty query clears immediately;
+- normal app-like text;
+- numeric expression;
+- explicit math prefix;
+- shell/web/action/app prefixes;
+- arbitrary valid qalc text not beginning with a digit;
+- rapid typing faster/slower than the 80 ms debounce;
+- new query while qalc is still running;
+- qalc success/error/empty output;
+- live math-prefix and non-app-delay config changes;
+- exact launcher result ordering/content before/after;
+- instrumented process count proving at most one scheduled calculation per
+  corresponding query/prefix invalidation.
+
+### R36.2 — YtMusic writes the same resume payload every five seconds while paused
+
+YtMusic keeps a crash-resume checkpoint with:
+
+```qml
+Timer {
+    interval: 5000
+    repeat: true
+    running: root.currentVideoId !== ""
+    onTriggered: root._persistResume()
+}
+```
+
+The timer remains live while a track is merely loaded and paused.
+
+`_persistResume()` always submits the same nine-key Config transaction:
+
+- video ID;
+- title;
+- artist;
+- thumbnail;
+- URL;
+- position;
+- `wasPlaying`;
+- active playlist;
+- current index;
+- active playlist source.
+
+Config's batching API does **not** compare old/new values before publishing the
+mutation:
+
+```text
+for every key:
+  record reload mutation
+  apply nested key
+  update JSON mirror
+
+then:
+  fileWriteTimer.restart()
+  revision++
+  configChanged()
+```
+
+So an unchanged paused track can cause a global Config revision +
+`configChanged` publication and disk-write schedule every five seconds. At the
+current cadence that is up to twelve mutation schedules per minute while no
+resume state changes.
+
+A local dirty checkpoint is safer than globally changing Config semantics:
+
+1. maintain a private dirty bool/revision for the exact resume fields;
+2. relevant property changes mark it dirty;
+3. the existing five-second timer remains the checkpoint clock;
+4. on a tick, persist only if dirty, then clear the dirty state;
+5. explicit existing persistence sites remain immediate;
+6. destruction retains the current force-persist + `Config.flushWrites()`;
+7. stop/clear keeps the current explicit resume reset.
+
+During normal playback, `currentPosition` changes and therefore keeps the
+five-second persistence behavior. During a stable pause, the timer may still
+wake, but it no longer causes Config/disk/global-listener churn.
+
+This is deliberately narrower than changing the timer to `running: isPlaying`.
+Stopping the timer on pause would require proving exact residual-time and pause
+transition persistence semantics; the dirty guard avoids that timing change.
+
+Required oracle:
+
+- no video loaded;
+- track start and metadata arrival ordering;
+- playing for > 15 s -> checkpoints remain at the existing cadence;
+- pause and remain paused for > 30 s -> no repeated identical Config mutation;
+- seek while paused;
+- play/pause transitions;
+- playlist reorder/current-index/source changes;
+- thumbnail/title/artist/URL updates after initial playback;
+- currentPosition changes from MPRIS and IPC fallback;
+- stop/clear resume;
+- service destruction with force flush;
+- restore after simulated shell crash at each checkpoint boundary;
+- exact persisted JSON values and max playback-position staleness equal to
+  current behavior.
+
+### R36.3 — Emoji sloppy search bypasses the cache normal fuzzy search already owns
+
+The emoji service already has the correct source-revision cache for normal
+fuzzy search:
+
+```qml
+prepared[i] = {
+    name: Fuzzy.prepare(`${entry}`),
+    entry: entry
+}
+```
+
+and rebuilds only when `list` changes.
+
+When `search.sloppy` is enabled, however, both sloppy branches do this on
+every query:
+
+```qml
+const entry = root.list[i]
+const score = Levendist.computeTextMatchScore(
+    entry.toLowerCase(), searchLower)
+```
+
+The path is bounded to the first 100 entries, which keeps the issue small, but
+it is still repeated normalization on every keystroke even though the emoji
+catalog is static for the entire list revision.
+
+Extend the existing prepared record:
+
+```text
+{
+  name: Fuzzy.prepare(entry),
+  lower: entry.toLowerCase(),
+  entry
+}
+```
+
+and let sloppy mode use the first `min(100, prepared.length)` entries from that
+cache.
+
+Required oracle:
+
+- empty/non-empty query;
+- sloppy on/off switch at runtime;
+- catalog shorter/equal/longer than 100;
+- limit 0/negative/positive;
+- score exactly at/below/above threshold;
+- equal-score rows and current insertion order;
+- limited top-K path and full-sort path;
+- list reload invalidates both fuzzy and lowercase preparations;
+- exact returned original entry identity/order.
+
+### R36.4 — Bar utility ordering repeatedly rebuilds the same active subset
+
+UtilButtons owns an ordered set of at most eleven utility IDs. Their active
+status can depend on:
+
+- individual util-button config switches;
+- Niri layout availability;
+- Privacy microphone state;
+- Audio microphone access;
+- Niri screen-cast support;
+- power-profile support;
+- compact Utilities policy.
+
+Current derived state is split:
+
+```qml
+readonly property int visibleUtilityCount:
+    root.utilityOrder.filter(id => root.utilityActive(id)).length
+
+function utilityIndex(id): int {
+    return Math.max(0, root.utilityOrder.filter(
+        candidate => root.utilityActive(candidate)).indexOf(id))
+}
+```
+
+Every Loader then calls `utilityActive(id)` for activation and calls
+`utilityIndex(id)` for row/column placement. Thus one reactive input change can
+re-evaluate the same full active predicate set repeatedly and allocate multiple
+temporary filtered arrays.
+
+Prepare once:
+
+```text
+activeUtilityOrder = utilityOrder.filter(utilityActive)
+visibleUtilityCount = activeUtilityOrder.length
+utilityIndex(id) = max(0, activeUtilityOrder.indexOf(id))
+```
+
+Loader `active` can remain bound to the existing exact predicate or use
+membership in the prepared list after dependency-parity testing. The first patch
+need not change Loader activation at all to obtain most of the allocation win.
+
+Required oracle:
+
+- default/configured custom order;
+- invalid and duplicate configured IDs;
+- every show/hide switch;
+- keyboard-layout multiplicity changes;
+- mic config + live Privacy/Audio access combinations;
+- Niri vs non-Niri screen-cast state;
+- performance-profile availability;
+- compact/expanded Utilities;
+- horizontal and vertical layout;
+- exact visible count and row/column index for all active items.
+
+The list is intentionally small, so this is a low-priority micro-candidate.
+
+### R36.5 — Paths deliberately not promoted
+
+**QuickWallpaper directory scan:** the widget runs a direct `find` scan on
+construction/sidebar open and sorts by file ctime. The central Wallpapers
+service has a FolderListModel, but that model is user-navigable/searchable and
+its active directory can differ from the default wallpaper directory; its
+sorting/file-type contract is also not identical to QuickWallpaper's static
+image/ctime list. Reusing it directly is therefore not a strict-lossless
+centralization. A future shared immutable default-folder catalog would need its
+own ownership/lifetime proof.
+
+**ObsidianTheme appearance watcher:** enabling the Hadalis snippet can cause the
+appearance-file watcher to debounce one follow-up apply after the helper itself
+adds the snippet. The Python helper is idempotent and does not rewrite an
+unchanged appearance/snippet payload. That extra process is bounded to snippet
+membership changes, not a recurring loop; suppressing self-events adds state and
+race handling around external Obsidian writes for little current gain. Keep
+unless process traces show meaningful churn.
+
+**Images.thumbnailSizeNameForDimensions():** it currently allocates
+`Object.keys(thumbnailSizes)` for each call. Replacing that with a constant
+ordered name list is safe but too small to promote ahead of the four candidates
+above; callers usually re-evaluate on geometry/DPR changes rather than every
+frame.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
 

@@ -55,6 +55,6 @@ The shell is configurable through Settings and `config.json`. Persistent writes 
 | Wallpapers and theming | [Wallpaper](WALLPAPER), [Theming](THEMING_ARCHITECTURE) |
 | Desktop references | [Managed desktop items](DESKTOP_ITEMS) |
 | Compositor support | [Compositors](COMPOSITORS) |
-| Performance | [Optimization](OPTIMIZATION) |
+| Performance | [Optimization research](optimization/STRICT_LOSSLESS_GPU_RAM_CPU_AUDIT.md) |
 
 If the wiki disagrees with the current shell, the shell wins. Then the wiki gets fixed.

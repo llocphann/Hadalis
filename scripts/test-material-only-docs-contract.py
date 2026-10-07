@@ -10,7 +10,7 @@ docs = {
     "ARCHITECTURE.md": ROOT / "ARCHITECTURE.md",
     "ARCHITECTURE_OVERVIEW.md": ROOT / "docs" / "ARCHITECTURE_OVERVIEW.md",
     "PANEL_FAMILIES.md": ROOT / "docs" / "PANEL_FAMILIES.md",
-    "OPTIMIZATION.md": ROOT / "docs" / "OPTIMIZATION.md",
+    "OPTIMIZATION.md": ROOT / "to-do" / "cloud-bot" / "OPTIMIZATION.md",
     "WALLPAPER.md": ROOT / "docs" / "WALLPAPER.md",
     "SHELL_SURFACE_CONTRACTS.md": ROOT / "docs" / "SHELL_SURFACE_CONTRACTS.md",
     "PROJECT_MAP.md": ROOT / "docs" / "PROJECT_MAP.md",

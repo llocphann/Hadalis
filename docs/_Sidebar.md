@@ -35,5 +35,5 @@
 - [Runtime](RUNTIME)
 - [Packages](PACKAGES)
 - [Compositors](COMPOSITORS)
-- [Optimization](OPTIMIZATION)
+- [Optimization research](optimization/STRICT_LOSSLESS_GPU_RAM_CPU_AUDIT.md)
 - [NixOS](NIXOS)

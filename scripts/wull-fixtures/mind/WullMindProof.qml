@@ -20,6 +20,7 @@ Window {
     }
     AbyssCompanion {id:actor;x:570;y:550;reveal:1;motionEnabled:false;upright:true;interactive:true}
     WullTalkCloud {id:cloud;actor:actor;outputWidth:root.width;outputHeight:root.height;allowed:true}
+    WullCloudActions {id:actions;actor:actor;outputWidth:root.width;outputHeight:root.height;allowed:true}
     CompanionConfig {id:settings;visible:false;width:800;height:700;activeSection:"overview"}
     TestCase {
         id:input;when:false;optional:true
@@ -54,6 +55,14 @@ Window {
                     "Todo/Agenda reminders incorrectly require Obsidian")
                 WullMind.hostVisible=true;WullMind.hostIdle=true
                 check(!WullMind.busy && WullMind.history.length===0,"opening Settings started inference")
+                mouseMove(actor,actor.width/2,actor.height/2);wait(100)
+                check(actions.visible && !WullMind.conversationOpen,"hover opened chat instead of cloud actions")
+                mouseClick(root.named(actions,"wullObsidianAction"));wait(70)
+                check(WullMind.contextOpen && !WullMind.conversationOpen,"Obsidian cloud opened chat input")
+                WullMind.dismiss();mouseMove(actor,actor.width/2,actor.height/2);wait(70)
+                mouseClick(root.named(actions,"wullAiAction"));wait(70)
+                check(WullMind.conversationOpen && !WullMind.contextOpen,"AI cloud did not open explicit chat")
+                tryCompare(WullMind,"busy",false,4000);WullMind.dismiss()
                 WullMind.askCheckIn("mood");wait(80)
                 check(cloud.visible && !cloud.editing && !WullMind.conversationOpen,"automatic talk stole conversation focus")
                 const field=root.named(cloud,"wullChatInput"),background=root.named(cloud,"wullCloudBackground")
@@ -186,6 +195,13 @@ Window {
                         expectedContextKey:journalContextKey,
                         error:WullMind.errorMessage}))
                 check(WullMind.checkInStage==="" && !root.named(cloud,"wullenergy-high").visible,"completed check-in retained choices")
+                WullMind.openContext();wait(80)
+                check(WullMind.contextOpen && WullMind.checkInStage==="" && !field.visible,"repeat context asked for the same daily choices")
+                WullMind.clearConversation();tryCompare(WullMind,"historyClearPending",false,4000)
+                check(WullMind.userMood==="good" && WullMind.userEnergy==="high"
+                    && Persistent.states.wullCheckIn.date===WullMind.today(),"clearing chat erased the daily check-in")
+                WullMind.askCheckIn("mood");wait(30)
+                check(WullMind.checkInStage==="","completed daily check-in was asked again")
                 check(!WullMind.setCheckInChoice("energy","anything"),"invalid choice accepted")
                 field.text="saved draft"
                 WullMind.openChat();wait(80)
@@ -198,7 +214,7 @@ Window {
                 mouseClick(root.contentItem,20,720);wait(30)
                 check(root.outsideClicks===1,"speech guard blocked clicks outside the cloud")
                 WullMind.dismiss();check(!cloud.visible,"dismiss retained speech input")
-                console.log("WULL_MIND=PASS actualProcess sharedModelReadiness EnglishReply borderlessCloud noCheckInInput separateQuestions journalWrites stableJournalContext explicitChatFocus modelEffortSelector compactEffortRow activeModelContrast stagedEffortModelPicker enterSend sendOnlyControl persistentHistory reminderSources proactiveCadences scaledTalkCloudAnchor idleChatRelease retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint unavailableModel settingsAI noReferenceVault")
+                console.log("WULL_MIND=PASS actualProcess sharedModelReadiness EnglishReply hoverCloudActions dailyChoices readOnlyContext borderlessCloud noCheckInInput separateQuestions journalWrites stableJournalContext explicitChatFocus modelEffortSelector compactEffortRow activeModelContrast stagedEffortModelPicker enterSend sendOnlyControl persistentHistory reminderSources proactiveCadences scaledTalkCloudAnchor idleChatRelease retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint unavailableModel settingsAI noReferenceVault")
             } catch(e) {console.error("WULL_MIND=FAIL "+e+" "+e.stack)}
             shutdown.start()
         }

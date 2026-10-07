@@ -17,7 +17,7 @@ Item {
     // 0 = closed, 1 = thinking effort, 2 = model picker.
     property int profileStage: 0
     readonly property bool editing: visible && WullMind.conversationOpen
-    readonly property bool controlsVisible: visible && (editing || WullMind.checkInStage.length>0)
+    readonly property bool controlsVisible: visible && (editing || WullMind.contextOpen || WullMind.checkInStage.length>0)
     width: Math.min(380, Math.max(220, outputWidth - 32))
     height: editing ? Math.min(430, Math.max(230, outputHeight - 48)) : content.implicitHeight + 24
     readonly property real actorVisualScale: Math.max(.1, Number(actor.scale) || 1)
@@ -33,7 +33,7 @@ Item {
     y: actorVisualTop - height - anchorGap >= 12
         ? actorVisualTop - height - anchorGap
         : Math.min(outputHeight - height - 12, actorVisualBottom + anchorGap)
-    visible: allowed && actor.visible && actor.inputReady && (WullMind.text.length > 0 || WullMind.conversationOpen)
+    visible: allowed && actor.visible && actor.inputReady && (WullMind.text.length > 0 || WullMind.conversationOpen || WullMind.contextOpen)
     z: 240
     function containsScenePoint(point): bool {
         const local = root.mapFromItem(null, point.x, point.y)
@@ -84,6 +84,12 @@ Item {
         x: 12; y: 12; width: parent.width - 24
         height: root.editing ? root.height - 24 : implicitHeight
         spacing: 7
+        RowLayout {
+            visible: WullMind.contextOpen && !root.editing
+            Layout.fillWidth: true
+            StyledText { Layout.fillWidth:true; text:Translation.tr("Today"); font.weight:Font.DemiBold }
+            DialogButton { objectName:"wullContextClose"; buttonText:Translation.tr("Close"); onClicked:WullMind.dismiss() }
+        }
         StyledText {
             Layout.fillWidth: true
             visible: !root.editing
@@ -91,7 +97,29 @@ Item {
             textFormat: Text.PlainText
             wrapMode: Text.WordWrap
             font.pixelSize: Appearance.font.pixelSize.small
-            Accessible.description: WullMind.source === "local" ? "Local AI" : "Companion message"
+            Accessible.description: WullMind.source === "ai" ? "AI reply" : "Companion message"
+        }
+        ColumnLayout {
+            visible:WullMind.contextOpen && !root.editing && WullMind.checkInComplete
+            Layout.fillWidth:true
+            StyledText {
+                Layout.fillWidth:true
+                text:Translation.tr("Mood")+": "+WullMind.userMood+"  ·  "+Translation.tr("Energy")+": "+WullMind.userEnergy
+                wrapMode:Text.WordWrap; color:Appearance.colors.colSubtext
+            }
+            Repeater {
+                model: WullMind.contextOpen ? WullMind.reminderRows(DateTime.clock.date).slice(0,6) : []
+                StyledText {
+                    required property var modelData
+                    Layout.fillWidth:true
+                    text:String(Math.floor(modelData.start/60)).padStart(2,"0")+":"+String(modelData.start%60).padStart(2,"0")+" · "+modelData.title
+                    elide:Text.ElideRight; font.pixelSize:Appearance.font.pixelSize.small
+                }
+            }
+            DialogButton {
+                visible:WullMind.journal.journalPath.length>0
+                buttonText:Translation.tr("Open journal"); onClicked:WullMind.openJournal()
+            }
         }
         Item {
             visible: root.editing && WullMind.historyLoaded && WullMind.history.length===0
@@ -239,7 +267,7 @@ Item {
                         StyledText {
                             visible: !WullMind.thinkingSupported
                             Layout.fillWidth: true
-                            text: "This model uses instant mode. Tap the effort control again to choose another model."
+                            text: "This model uses its provider default. Tap the effort control again to choose another model."
                             wrapMode: Text.WordWrap
                             font.pixelSize: Appearance.font.pixelSize.smallest
                             color: Appearance.colors.colSubtext

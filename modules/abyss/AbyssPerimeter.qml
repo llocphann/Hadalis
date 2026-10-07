@@ -234,7 +234,7 @@ Scope {
                         x:companion.x,y:companion.y}}
             }
             readonly property bool companionHoverHeld: window.companionHostActive
-                && companion.interactive && (companion.hovered || companion.dragging || talkCloud.controlsVisible || WullMind.conversationOpen)
+                && companion.interactive && (companion.hovered || cloudActions.hovered || cloudActions.visible || companion.dragging || talkCloud.controlsVisible || WullMind.conversationOpen)
             onCompanionHoverHeldChanged: if (root.companionTargetOutput===window.outputName && companionBridge.ready)
                 companionBridge.sendEvent("hover",window.companionHoverHeld)
             WullPresence {
@@ -477,6 +477,7 @@ Scope {
                 Region { x: popup.inputBounds.x; y: popup.inputBounds.y; width: window.presented && field.ready ? popup.inputBounds.width : 0; height: popup.inputBounds.height }
                 Region { x: dock.inputBounds.x; y: dock.inputBounds.y; width: window.presented && field.ready ? dock.inputBounds.width : 0; height: dock.inputBounds.height }
                 Region { item:talkCloud.visible ? talkCloud : emptyInput }
+                Region { item:cloudActions.visible ? cloudActions : emptyInput }
                 Region { item:corners.notesAvailable ? corners.notesAnchor : emptyInput }
                 Region { item:corners.centerAvailable ? corners.centerAnchor : emptyInput }
                 Region { regions:corners.sidebarRegions }
@@ -660,6 +661,11 @@ Scope {
                 outputWidth:window.width;outputHeight:window.height
                 allowed:window.companionHostActive && root.companionInteractive
                 onControlsVisibleChanged: if (controlsVisible) companionCuriosity.interrupt()
+            }
+            WullCloudActions {
+                id:cloudActions;actor:companion
+                outputWidth:window.width;outputHeight:window.height
+                allowed:window.companionHostActive && root.companionInteractive
             }
             Item {
                 id: revealTrigger

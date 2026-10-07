@@ -51,6 +51,7 @@ Singleton {
     property string text: ""
     property string source: "built-in"
     property bool conversationOpen: false
+    property bool contextOpen: false
     property bool busy: false
     property bool draining: false
     property string connectionStatus: "disconnected"
@@ -89,8 +90,10 @@ Singleton {
     property double lastContextAttempt: 0
     property int conversationIdleTimeout: 120000
     property double lastCheckIn: 0
-    property string userMood: ""
-    property string userEnergy: ""
+    readonly property string currentDay: Qt.formatDateTime(DateTime.clock.date,"yyyy-MM-dd")
+    readonly property string userMood: Persistent.states.wullCheckIn.date===currentDay ? Persistent.states.wullCheckIn.mood : ""
+    readonly property string userEnergy: Persistent.states.wullCheckIn.date===currentDay ? Persistent.states.wullCheckIn.energy : ""
+    readonly property bool checkInComplete: userMood.length>0 && userEnergy.length>0
     property string checkInStage: ""
     property string checkInDate: ""
     property double lastPlayful: Date.now()
@@ -119,7 +122,7 @@ Singleton {
         if (connectionStatus==="generating" || connectionStatus==="connecting") connectionStatus="disconnected"
     }
     function dispatch(action, extra = null, automatic = false): bool {
-        if (busy || draining || worker.running || (automatic && (!hostVisible || !hostIdle || conversationOpen))) return false
+        if (busy || draining || worker.running || (automatic && (!hostVisible || conversationOpen || contextOpen))) return false
         if (["chat","probe"].includes(action)) return false
         const request=Object.assign(payload(action),extra ?? {})
         const serial=++epoch
@@ -182,6 +185,7 @@ Singleton {
     function openChat(): void {
         if (!talkEnabled) return
         ensureAi()
+        contextOpen=false
         checkInStage=""
         conversationOpen=true;expiry.stop();text="";touchConversation()
         if (!historyLoaded) loadHistory(false)
@@ -191,11 +195,11 @@ Singleton {
         if (text) {expiry.interval=18000;expiry.restart()}
     }
     function dismiss(): void {
-        conversationOpen=false;conversationExpiry.stop();checkInStage="";text="";expiry.stop()
+        contextOpen=false;conversationOpen=false;conversationExpiry.stop();checkInStage="";text="";expiry.stop()
         if(pending?.automatic) cancel()
     }
     function clearConversation(): void {
-        cancel();history=[];historyLoaded=true;historyHasMore=false;text="";userMood="";userEnergy=""
+        cancel();history=[];historyLoaded=true;historyHasMore=false;text=""
         historyClearPending=true;historyClearRetry.restart()
     }
     function resolvePendingUser(id = 0, failed = false): void {
@@ -264,24 +268,43 @@ Singleton {
         function onFinished(token,text,error): void {root.completeAi(token,text,error)}
     }
     function today(): string {
-        const now=new Date()
-        return now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0")
+        return currentDay
+    }
+    function contextualPhrase(): string {
+        if (!checkInComplete) return "Your daily check-in is waiting here whenever you feel like it."
+        const gentle=["drained","low"].includes(userEnergy) || ["terrible","bad"].includes(userMood)
+        return gentle ? "A gentle day is still a day well lived. Small steps, a little water, and room to breathe."
+            : ["high","peak"].includes(userEnergy) ? "A bright mood and a little extra energy! One good thing at a time; I'll bring the bubbles."
+            : "Steady little ripples today. You're doing okay; keep a comfortable pace."
+    }
+    function openContext(): void {
+        if (!talkEnabled) return
+        conversationOpen=false;conversationExpiry.stop();contextOpen=true;expiry.stop()
+        if (obsidianEnabled && !busy) refreshJournal()
+        if (!checkInComplete) askCheckIn(userMood ? "energy" : "mood")
+        else {checkInStage="";say(contextualPhrase());expiry.stop()}
     }
     function askCheckIn(field = "mood"): void {
         if (busy || !talkEnabled) return
+        if (checkInComplete) {checkInStage="";say(contextualPhrase());return}
+        if (field==="mood" && userMood) field="energy"
         conversationOpen=false;checkInDate=today();checkInStage=field
         say(field==="energy" ? "And how's your energy? Tiny spark or full splash?" : "Tiny check-in! How are you feeling today?")
         expiry.interval=45000;expiry.restart()
     }
     function choiceSaved(field, value): void {
-        if (field==="mood") userMood=value
-        else userEnergy=value
+        if (Persistent.states.wullCheckIn.date!==checkInDate) {
+            Persistent.states.wullCheckIn.mood="";Persistent.states.wullCheckIn.energy=""
+            Persistent.states.wullCheckIn.date=checkInDate
+        }
+        if (field==="mood") Persistent.states.wullCheckIn.mood=value
+        else Persistent.states.wullCheckIn.energy=value
         journal=Object.assign({},journal,{[field]:value})
         if (checkInStage!==field) return
         if (field==="mood") askCheckIn("energy")
         else {
             checkInStage="";lastCheckIn=Date.now()
-            say("Noted, little human. I'll bring the bubbles; you bring you!")
+            say(contextualPhrase())
             reactionRequested("happy")
         }
     }
@@ -314,8 +337,8 @@ Singleton {
         return rows
     }
     function offerAutomatic(): void {
-        if (!hostVisible || !hostIdle || !idleMonitor.isIdle || !talkEnabled || !proactiveIdleEnabled
-                || conversationOpen || busy || Date.now()-startedAt<90000 || text) return
+        if (!hostVisible || !talkEnabled || !proactiveIdleEnabled
+                || conversationOpen || contextOpen || busy || Date.now()-startedAt<90000 || text) return
         const nowMs=Date.now()
         if (obsidianEnabled && nowMs-lastContext>120000 && nowMs-lastContextAttempt>120000) {
             lastContextAttempt=nowMs
@@ -332,10 +355,15 @@ Singleton {
                 : next.kind==="cardio" ? "Cardio time! You run; I'll provide emotional splashes."
                 : "Psst! "+next.title
             say(cheer+" · "+String(Math.floor(next.start/60)).padStart(2,"0")+":"+String(next.start%60).padStart(2,"0"),"schedule")
+            if (!reminderPopup.running) {
+                reminderPopup.command=["notify-send","--app-name=Wull","--icon=obsidian","--expire-time=12000","Schedule",text]
+                reminderPopup.running=true
+            }
             reactionRequested("happy")
-        } else if (Date.now()-lastCheckIn>proactiveCheckInInterval) {
+        } else if (!hostIdle || !idleMonitor.isIdle) return
+        else if (checkInComplete && Date.now()-lastCheckIn>proactiveCheckInInterval) {
             lastCheckIn=Date.now()
-            askCheckIn("mood")
+            say(contextualPhrase())
         } else if (Date.now()-lastPlayful>proactivePlayfulInterval) {
             lastPlayful=Date.now()
             const lines=["I tried counting my bubbles. One escaped. Suspicious.",
@@ -407,6 +435,15 @@ Singleton {
             historyClearPending=false;history=[];historyLoaded=true;historyHasMore=false
         } else if (job.action==="context") {
             journal=result;lastContext=Date.now();lastContextAttempt=lastContext
+            if (result.date===currentDay && ["terrible","bad","okay","good","great"].includes(String(result.mood).toLowerCase())
+                    && ["drained","low","medium","high","peak"].includes(String(result.energy).toLowerCase()) && !checkInComplete) {
+                Persistent.states.wullCheckIn.date=currentDay
+                Persistent.states.wullCheckIn.mood=String(result.mood).toLowerCase()
+                Persistent.states.wullCheckIn.energy=String(result.energy).toLowerCase()
+                checkInStage=""
+                if(contextOpen)say(contextualPhrase())
+            }
+            if(contextOpen && !checkInComplete)askCheckIn(userMood ? "energy" : "mood")
             if (job.automatic) Qt.callLater(root.offerAutomatic)
         } else if (job.action==="check_in") {
             if(result.saved===true && result.date===checkInDate) {
@@ -432,13 +469,13 @@ Singleton {
     onModelChanged: {if(pending?.action==="ai_chat")cancel();connectionStatus=available ? "ready" : "model-unavailable"}
     onContextKeyChanged: {if(pending) cancel();journal=({schedule:[],mood:"",energy:"",journalPath:""});lastContext=0;lastContextAttempt=0}
     onProactiveChanged: if(!proactiveIdleEnabled && pending?.automatic)cancel()
-    onHostVisibleChanged: if (!hostVisible) {if(pending?.automatic) cancel();if(!conversationOpen){text="";checkInStage=""}}
-    onHostIdleChanged: if(!hostIdle && pending?.automatic)cancel()
+    onHostVisibleChanged: if (!hostVisible) {if(pending?.automatic) cancel();if(!conversationOpen){text="";checkInStage="";contextOpen=false}}
     onTalkEnabledChanged: if(!talkEnabled) {cancel();dismiss()}
     IdleMonitor {id:idleMonitor;enabled:root.hostVisible && root.talkEnabled && root.proactiveIdleEnabled;timeout:60;respectInhibitors:true}
-    Timer {interval:60000;repeat:true;running:root.hostVisible && root.hostIdle && root.talkEnabled
-        && root.proactiveIdleEnabled && idleMonitor.isIdle && !root.conversationOpen;onTriggered:root.offerAutomatic()}
-    Timer {id:expiry;repeat:false;onTriggered:if(!root.conversationOpen){root.text="";root.checkInStage=""}}
+    Timer {interval:60000;repeat:true;running:root.hostVisible && root.talkEnabled
+        && root.proactiveIdleEnabled && !root.conversationOpen;onTriggered:root.offerAutomatic()}
+    Timer {id:expiry;repeat:false;onTriggered:if(!root.conversationOpen && !root.contextOpen){root.text="";root.checkInStage=""}}
+    Process { id:reminderPopup }
     Timer {id:conversationExpiry;repeat:false;interval:root.conversationIdleTimeout;onTriggered:root.closeChat()}
     Timer {id:deadline;interval:35000;repeat:false;onTriggered:{root.cancel();root.errorMessage="Local model request timed out.";root.connectionStatus="error"}}
     Timer {id:historyClearRetry;interval:100;repeat:false;onTriggered:{

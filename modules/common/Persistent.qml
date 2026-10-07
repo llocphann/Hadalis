@@ -92,6 +92,12 @@ Singleton {
                 property string promptName: ""
             }
 
+            property JsonObject wullCheckIn: JsonObject {
+                property string date: ""
+                property string mood: ""
+                property string energy: ""
+            }
+
             property JsonObject cheatsheet: JsonObject {
                 property int tabIndex: 0
             }

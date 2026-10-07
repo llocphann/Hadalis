@@ -126,6 +126,10 @@ Rules:
 
 | `services/Network.qml` | **HIGH-CONFIDENCE process candidate — remove shell/head/awk wrappers from connected-network detail refresh while preserving current row-order semantics.** Network is already event-driven via `nmcli monitor` + 200 ms debounce, but active-link detail refresh still runs `sh -c "nmcli ... | head -1"` for connection name and `sh -c "nmcli ... | awk ..."` for Wi-Fi signal. Run the same two `nmcli` queries directly and move the trivial text selection into QML. | Low–Medium. Name must remain first active-connection line. Signal parser must reproduce the current awk+SplitParser semantics: every row beginning `*` is emitted in source order and the **last emitted active row wins** if more than one appears. Preserve failure/stale-clear behavior and do not alter the monitor cadence. | None. | Low transient process-memory reduction; up to **4 intermediary child processes removed per connected-Wi-Fi detail refresh** (two shells + `head` + `awk`) while the two required nmcli queries remain. | 0%. |
 
+| `services/AppSearch.qml` + all `resolveWindowIdentity()` consumers | **HIGH-CONFIDENCE CPU/allocation candidate — invalidate compiled identity rules on the narrow config signal instead of serializing the entire rule list for every window lookup.** `_parseIdentityRules()` currently computes `JSON.stringify(Config.options.windows.appIdentityRules)` on every call, even cache hits. `resolveWindowIdentity()` is invoked inside Taskbar, Dock, Bar preview, both AltSwitchers and Waffle Task View collection passes. Keep the compiled rule array resident and rebuild on initial use/Config-ready plus `appIdentityRulesChanged`. | Low–Medium. Must preserve first-match ordering, malformed-rule skip behavior, nested JsonObject replacement/reload handling and lazy desktop-entry resolution. | None. | Low transient allocation + CPU reduction multiplied by window count × number of consumers; persistent RAM unchanged except the already-retained compiled rules. | 0%. |
+| `modules/bar/BarTaskbar.qml` | **HIGH-CONFIDENCE CPU candidate — precompute first-occurrence pinned rank once per rebuild.** In separate-pinned mode the running-app sort comparator performs `pinnedApps.findIndex(...)` for both operands on every comparison, then publication performs another `pinnedApps.some(...)` per running group. Build one lowercase rank Map that preserves the **first** case-insensitive occurrence, use it for comparator rank and membership, and keep the current alphabetical fallback for unpinned apps. | Low. Duplicate/case-variant pins are the key oracle: naïve Map overwrite would retain the last rank and change order. | None. | Low CPU/allocation reduction; removes repeated O(P) scans from O(R log R) comparisons and final O(R·P) membership checks. | 0%. |
+| `services/TaskbarApps.qml` | **STRICT-LOSSLESS companion cleanup — remove the dead `_identityRulesRevision` read/counter after AppSearch owns rule invalidation.** The revision is incremented on `appIdentityRulesChanged` and read into a local inside imperative `computeApps()`, but the value is never consumed; the same handler already restarts the refresh timer. | Very low. Keep the actual refresh restart and AppSearch invalidation intact. | None. | Negligible standalone; removes dead state/read and avoids presenting it as a required dependency token. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -164,6 +168,9 @@ Rules:
 34. **Material SysTray one-pass partition** — independently preserve `bar.tray` + Spotify semantics; do not alias it blindly to the Waffle/generic service result.
 35. **Minimized app-count allocation removal** — low-risk micro follow-up after the larger MinimizedWindows selector proof.
 36. **Network direct-argv detail refresh** — remove shell/head/awk wrappers only after row-order and failure-state parser parity is covered.
+37. **AppSearch identity-rule signal invalidation** — remove per-window JSON serialization after config-reload/replacement parity is proven.
+38. **BarTaskbar first-occurrence pinned-rank Map** — eliminate comparator-time pinned-list scans while preserving duplicate/case ordering.
+39. **TaskbarApps dead identity revision cleanup** — fold into #37; do not treat as an independent performance project.
 
 ## Explicit non-candidates from this pass
 
@@ -2299,5 +2306,165 @@ Leave it unpromoted unless a broader startup-helper cleanup is later assembled.
 Any direct-find change must preserve stderr suppression, extension predicate,
 path handling, completion/failure timing and deterministic final wallpaper
 selection after the existing QML sort.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+
+## Research continuation — round 19
+
+Baseline: `dev` at `48459a53a76b785c2927b4834b53a27112378a43`.
+
+This round revalidated two archived collection-hot-path findings against current
+source and promoted them into the canonical ledger. Their current blobs match
+the archived research identities, so the original structural observations still
+apply.
+
+Current source identities:
+
+- `services/AppSearch.qml`: `74ea3c9e92860af62f10850c89118d79b7837543`;
+- `services/TaskbarApps.qml`: `b05b0b39988a40faf7fa3cb84e6b0c747cf4a3ee`;
+- `modules/bar/BarTaskbar.qml`: `3aca1b63e2633584c86f75c6a2e5eb2ebaebfdb3`;
+- `modules/dock/DockApps.qml`: `11b3ea8cc17c91a1cf3b6a1f41f64f392d4dfcc9`.
+
+### R19.1 — AppSearch identity-rule cache still fingerprints on every lookup
+
+Current source keeps a compiled rule cache but validates it with:
+
+```qml
+const rules = Config.options?.windows?.appIdentityRules ?? []
+const key = JSON.stringify(rules)
+if (root._identityRulesKey === key)
+    return root._identityRules
+```
+
+That means a logical cache hit still serializes the complete rule list.
+`resolveWindowIdentity()` calls this path once per non-empty window identity.
+
+Current repository search confirms collection-pass callers in:
+
+- `services/TaskbarApps.qml`;
+- `modules/dock/DockApps.qml`;
+- `modules/bar/BarTaskbar.qml`;
+- `modules/bar/BarTaskbarPreview.qml`;
+- `modules/altSwitcher/AltSwitcher.qml`;
+- `modules/altSwitcher/AltSwitcherNoVisual.qml`;
+- `modules/waffle/taskview/WaffleTaskViewContent.qml`.
+
+So one compositor snapshot can cause the same unchanged rule list to be
+serialized repeatedly across multiple N-window passes.
+
+Strict-lossless direction:
+
+1. keep `_identityRules` as the compiled resident representation;
+2. split parsing into an explicit rebuild helper;
+3. rebuild once on initial demand/Config-ready;
+4. bind a `Connections` target to the current
+   `Config.options?.windows` object and rebuild on
+   `appIdentityRulesChanged`;
+5. if config reload can replace the nested JsonObject instance, ensure the bound
+   target follows that replacement and performs one rebuild against the new
+   object;
+6. let `resolveWindowIdentity()` read the resident compiled list directly with
+   no per-window JSON fingerprint.
+
+Behavior oracle:
+
+- empty/missing rule list;
+- app-id-only rule;
+- title-only rule;
+- both-regex rule;
+- malformed app-id/title regex;
+- malformed rule followed by valid rule;
+- multiple matches proving first-rule ownership;
+- case-insensitive matches;
+- empty window app id early return;
+- live rule mutation;
+- config file reload and nested-object replacement;
+- desktop entries becoming available after rule compilation, proving the
+  configured `desktopId` remains a string and is not eagerly resolved.
+
+Compare every returned identity string and malformed-rule behavior against the
+current implementation.
+
+### R19.2 — Taskbar's local identity revision is not a real dependency
+
+Current TaskbarApps owns:
+
+```qml
+property int _identityRulesRevision: 0
+
+function onAppIdentityRulesChanged() {
+    root._identityRulesRevision++
+    refreshApps.restart()
+}
+
+function computeApps() {
+    const identityRulesRevision = root._identityRulesRevision
+    ...
+}
+```
+
+The local variable is never used after assignment. Because `computeApps()` is
+called imperatively from the one-shot timer, this read does not establish a
+binding dependency for `apps`. The same signal handler already restarts the
+actual refresh path.
+
+Once R19.1 gives AppSearch explicit rule invalidation, remove the counter/read
+but keep `refreshApps.restart()`. Treat this only as companion cleanup.
+
+The nearby ignored-app RegExp compilation remains lower priority. TaskbarApps
+recompiles configured ignored regexes on every model rebuild, but invalid regex
+patterns currently emit a warning each time. A cache that silently remembers a
+failure would change diagnostic log frequency, so do not bundle that behavior
+into R19.1.
+
+### R19.3 — BarTaskbar repeats pinned-list scans inside its sort comparator
+
+In separate-pinned mode, BarTaskbar sorts running groups with:
+
+```qml
+const aIndex = pinnedApps.findIndex(p => p.toLowerCase() === a.lowerAppId)
+const bIndex = pinnedApps.findIndex(p => p.toLowerCase() === b.lowerAppId)
+...
+return a.lowerAppId.localeCompare(b.lowerAppId)
+```
+
+and later publishes:
+
+```qml
+pinned: pinnedApps.some(p => p.toLowerCase() === lowerAppId)
+```
+
+For R running groups and P pins, the sort performs repeated O(P) scans during
+O(R log R) comparator calls, then publication adds another O(R·P) pass.
+
+The sibling Dock path already demonstrates the intended structural shape with a
+precomputed rank/membership map. Bar cannot copy Dock blindly because the
+fallback order differs: Bar deliberately keeps unpinned running apps
+alphabetical.
+
+Strict-lossless Bar algorithm:
+
+1. build `Map<lowercaseId, firstIndex>` once from `pinnedApps`;
+2. **only set a key if absent**, matching current `findIndex` first-occurrence
+   behavior for exact/case-variant duplicates;
+3. use map membership/rank for pinned-vs-unpinned and pinned-order comparison;
+4. preserve `lowerAppId.localeCompare()` for two unpinned groups;
+5. publish the `pinned` field from map membership;
+6. leave pinned-only item creation, separator placement, focused state and
+   toplevel grouping unchanged.
+
+Required oracle:
+
+- empty pin list;
+- one/many running groups;
+- all pinned/all unpinned/mixed;
+- exact duplicate pins;
+- case-variant duplicate pins;
+- pinned id with no installed desktop entry;
+- case normalization;
+- alphabetical fallback among unpinned groups;
+- focused/running flags and separator placement;
+- exact final item identity/order.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.

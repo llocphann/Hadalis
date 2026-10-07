@@ -193,6 +193,11 @@ Rules:
 | `modules/background/Background.qml` + clock/widget diagnostic paths | **HIGH-CONFIDENCE normal-session CPU/allocation candidate — make desktop-clock diagnostic serialization demand-driven instead of continuously reactive.** Background says the clock diagnostics are bounded/inert, but production wiring observes `ClockWidget.debugPaletteReport` and `editControlsGeometryReport` unconditionally. That keeps nested `JSON.stringify`, `JSON.parse(clockSurface.surfaceReport)`, contrast calculations, CookieClock diagnostic serialization and an extra edit-control geometry solve live during ordinary clock/style/position changes. Preserve the documented `background clockDebugState` IPC response by building the same payload on demand when that function is called rather than maintaining serialized strings continuously. | Low–Medium. `clockDebugState` is documented even when `INIR_REGION_DEBUG` is not set; only mutating debug functions are env-gated. Preserve exact payload fields, disabled-state behavior, unloaded-clock behavior and any last-known snapshot semantics. | None. | Low–Medium transient JS/string allocation and avoidable geometry/diagnostic CPU reduction in normal sessions, especially during desktop-clock dragging/style changes. | 0%. |
 | `modules/abyss/bar/AbyssBar.qml` + `modules/abyss/looks/AbyssLayout.js` | **HIGH-CONFIDENCE micro-candidate — compare normalized module IDs element-by-element instead of JSON-serializing both arrays.** `syncModuleIds()` currently computes enabled placement IDs and calls `JSON.stringify(next) !== JSON.stringify(moduleIds)` on every placements publication. `AbyssLayout.normalize()` already canonicalizes every accepted placement ID with `String(...)`, so length + ordered strict string comparison is equivalent before deciding whether to republish `moduleIds`. | Very low. Preserve enabled-only filtering, placement order, duplicate rejection performed by normalize, and no-op publication suppression. The proof depends on normalized string IDs; do not apply the helper to unnormalized editor drafts elsewhere. | None. | Low transient string/allocation/CPU reduction across per-edge/output AbyssBar placement updates; most useful during editor/layout churn. | 0%. |
 
+| Hotspot quick-toggle family — common/Waffle + Classic + Android | **HIGH-CONFIDENCE process/wakeup candidate — move hotspot status/actions into one shared state owner with surface-demand leasing.** Waffle can instantiate one common `HotspotToggle` as the Action Center button model and a second one inside `HotspotControl`; each instance owns its own 5 s `nmcli connection show --active` poll while the same Action Center is open. Classic/Android variants duplicate the same transport again for their own sidebar surfaces. Centralize status/start/stop processes and expose one reactive hotspot state; keep presentation/notifications local. | Low–Medium. Preserve the exact external-change freshness bound, initial/open refresh, action completion refresh, start delete-then-create transaction, stop semantics, config-derived SSID/password and failure notifications. Demand must be reference-counted so one closing surface cannot stop another live consumer. | None. | Low recurring CPU/transient RAM plus child-process reduction whenever multiple hotspot controls coexist; Waffle button+menu is a source-proven duplicate owner. | 0%. |
+| `modules/abyss/content/AbyssClipboardContent.qml` + `services/deferred/Cliphist.qml` | **HIGH-CONFIDENCE interactive CPU/allocation candidate — prepare exact clipboard row metadata on source revision, not on every search keystroke.** The current `rows` binding maps all pins and up to 400 history entries into new row objects, reparses previews and lowercases every preview before filtering whenever `search.text` changes. Cache source metadata keyed by `Cliphist.pinned` / `Cliphist.entries`; query changes should only lowercase the query, filter prepared keys, and publish fresh matched row records if fresh model identity is required. | Low–Medium. Preserve pins-before-history order, `pinPreview()`, the exact raw history preview after the first tab, case-insensitive substring semantics, image-entry values and all pin/unpin/delete/copy behavior. Do not substitute `Cliphist.filterEntries()` because its cleanup/display semantics differ. | Small bounded prepared-row cache while the Abyss clipboard surface is resident. | Low–Medium CPU/allocation reduction during typing; turns per-keystroke source normalization from O(P+H) string/object construction into source-revision work plus O(P+H) comparisons. | 0%. |
+| `modules/sidebar/SidebarHost.qml` | **HIGH-CONFIDENCE failure/cold-load wakeup candidate — gate the 16 ms presentation frame ticker on readiness signals instead of polling Loader/geometry readiness.** `presentationTimer` repeats every 16 ms after a presentation request, while `tryPresent()` simply returns if the Loader is not Ready or geometry is zero. A slow cold load therefore polls readiness every frame, and Loader.Error/never-valid geometry can leave the ticker running indefinitely. Stop the ticker while prerequisites are false; re-arm from Loader status/geometry changes, then preserve the existing one warm / two cold 16 ms ready-frame settle before showing. | Medium. QML signal ordering and the compositor's required closed-frame contract are sensitive. Preserve cold/warm frame counts, resume remap, editor presentation, close cancellation, loader recovery and exact first-visible timing once prerequisites become valid. | None. | Low normal cold-open CPU/wakeup reduction; high failure-path protection by eliminating a possible ~62.5 Hz unbounded readiness poll. | 0%; presentation timing after readiness must remain identical. |
+| `modules/common/widgets/NotificationGroup.qml` | **HIGH-CONFIDENCE micro-candidate — do not reverse an entire notification group when collapsed UI displays only the newest two.** Current collapsed model evaluates `notifications.slice().reverse().slice(0, 2)`. Use only the final two source elements and reverse that tiny slice; keep the expanded full reverse unchanged. | Very low. Preserve newest-first ordering, fresh-array behavior, 0/1/2-item cases and opacity of the second collapsed item when the group has more than two notifications. | None. | Low transient CPU/allocation reduction for large app notification groups while collapsed: O(N) copy+reverse becomes O(1) bounded copy/reverse. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -285,6 +290,11 @@ Rules:
 85. **Overview redundant workspace-sort removal** — rely on the verified sorted `NiriService.allWorkspaces` publication invariant and keep output filtering/order exact.
 86. **Desktop-clock diagnostics on-demand serialization** — keep `clockDebugState` byte/field semantics but stop continuously maintaining diagnostic JSON/geometry during normal rendering.
 87. **AbyssBar module-ID direct equality** — replace dual JSON serialization with ordered string-array equality after Layout normalization.
+
+88. **Shared Hotspot state/process owner** — coalesce duplicate 5 s status polls and start/stop transport across common/Waffle/Classic/Android controls while preserving per-surface demand and five-second external-state freshness.
+89. **Abyss Clipboard source-revision search preparation** — parse/lowercase pin/history previews only when clipboard sources change, not on every query character.
+90. **Sidebar presentation readiness-gated frame ticker** — stop 16 ms polling while Loader/geometry prerequisites are unavailable and preserve the existing one/two-frame settle only after readiness.
+91. **NotificationGroup collapsed latest-two projection** — slice the final two source notifications before reversing instead of reversing the whole group.
 
 ## Explicit non-candidates from this pass
 
@@ -5477,6 +5487,298 @@ observable. Candidate research paths are:
 
 Any event-driven replacement must prove the same external-change visibility,
 failure recovery and first-visible refresh behavior.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+## Research continuation — round 34
+
+Baseline: `dev` at `4bbb3bbbaff5a4dccdf2ef0facc179f830f8fd6c`.
+
+This round began after the Round 33 documentation commit and reconciled two
+concurrent feature commits before writing:
+
+- `0c804b5ac511733958ad9ac1fd1073b215264f75` reorganized Settings and added the
+  consolidated Integrations page;
+- `4bbb3bbbaff5a4dccdf2ef0facc179f830f8fd6c` composed the Abyss on-screen keyboard into the connected
+  output field.
+
+Neither commit modified the Hotspot, Abyss Clipboard, SidebarHost or
+NotificationGroup sources underlying the promoted findings. The second commit
+did touch Abyss Perimeter/GlobalStates, so the Abyss candidate was revalidated
+against current `dev` rather than inferred from an older code-search snapshot.
+
+Current source identities:
+
+- common `modules/common/models/quickToggles/HotspotToggle.qml`:
+  `129d9ed0148dde14d1d12f98aaab1c698177c1fe`;
+- Waffle `ActionCenterTogglesDelegateChooser.qml`:
+  `9e36f70c7b2f97d84ebbb99ea9a375b3c529a3d5`;
+- Waffle `hotspot/HotspotControl.qml`:
+  `4adab074147681052d00c23749ef70a0720bb61c`;
+- Classic `quickToggles/classicStyle/HotspotToggle.qml`:
+  `e3b2bf13eb566a18bfa299d001cee61f34ee49a0`;
+- Android `AndroidHotspotToggle.qml`:
+  `72e8598bee293151528d4eb22d40c6527f577f7e`;
+- `modules/abyss/content/AbyssClipboardContent.qml`:
+  `1a2e0a9ccbf7100d354ada0ccc2c969b5b1789c5`;
+- `services/deferred/Cliphist.qml`:
+  `edfcd8969d5fcb2fd0bcda7ae8269fbe21d924b1`;
+- `modules/sidebar/SidebarHost.qml`:
+  `d4a23a437453beac90881b40772091eff293ad51`;
+- `modules/common/widgets/NotificationGroup.qml`:
+  `dd579e3aab8f4d73b3764b653d27fff89cede7ec`;
+- `modules/common/widgets/PopupToolTip.qml`:
+  `d1acfd15cec4645bd3a8e438a88b3db3c105a32e`;
+- `services/deferred/EasyEffects.qml`:
+  `b20be1b930b93622f43803b12eaa68415b32917a`;
+- `modules/settings/NiriConfig.qml`:
+  `ffdcf546f099b8666ac076f159c3e31313b08f8a`.
+
+### R34.1 — Hotspot state/process ownership is duplicated, including inside one Waffle Action Center
+
+Round 28 already established that the recurring hotspot status command is
+appropriately direct argv:
+
+```qml
+["nmcli", "-t", "-f", "NAME", "connection", "show", "--active"]
+```
+
+and that the remaining shell used to start a hotspot performs a real ordered
+delete-then-create transaction. Round 34 therefore does **not** reopen shell
+removal.
+
+The new issue is ownership duplication.
+
+The common Hotspot model owns:
+
+- one status `Process`;
+- start and stop `Process` objects;
+- a repeating 5 s status timer;
+- an initial refresh;
+- action-completion refresh.
+
+Its timer is live whenever either Sidebar Right or the Waffle Action Center is
+open.
+
+Waffle then creates that model twice in one feature flow:
+
+```qml
+ActionCenterToggleButton {
+    toggleModel: HotspotToggle {}
+    menu: Component { HotspotControl {} }
+}
+```
+
+and `HotspotControl` contains another:
+
+```qml
+HotspotToggle { id: hotspotToggle }
+```
+
+When the menu is materialized while the Action Center remains open, both
+instances satisfy the same `waffleActionCenterOpen` timer condition and both
+can issue the same external status query every five seconds.
+
+Classic and Android quick-toggle implementations independently duplicate the
+same status/action transport as well. Those style surfaces are usually mutually
+exclusive, but the architectural duplication makes process ownership depend on
+component residency rather than on hotspot demand.
+
+Strict-lossless direction:
+
+1. create one shared hotspot state/action owner;
+2. keep the current direct `nmcli` status parser and start/stop transaction
+   semantics;
+3. let each visible surface acquire/release status demand;
+4. run one five-second reconciliation cadence while demand count is nonzero;
+5. refresh immediately on first demand and after start/stop completion;
+6. expose the same `available/toggled/busy/error` facts needed by the existing
+   presentation components;
+7. keep visual styling and surface-specific notification wording outside the
+   transport owner when they differ.
+
+Required oracle:
+
+- neither sidebar nor Action Center open -> no recurring status poll;
+- each surface individually;
+- Waffle button plus opened Hotspot menu simultaneously;
+- switch between Classic/Android/Compact sidebar styles;
+- externally start/stop Hotspot and observe within the current five-second
+  freshness bound;
+- open a surface with externally active Hotspot -> immediate correct state;
+- start with stale `Hotspot` connection profile;
+- start success/failure and stop success/failure;
+- one surface closes while another still demands state;
+- rapid toggle while a status/action process is already running;
+- exact SSID/password/config and user notification behavior.
+
+This is process coalescing, not a change to network policy or status cadence.
+
+### R34.2 — Abyss Clipboard rebuilds all display/search metadata on every query character
+
+`AbyssClipboardContent.rows` currently contains both source preparation and
+query filtering in one binding:
+
+```qml
+const query = search.text.toLowerCase()
+const pins = Cliphist.pinned.map(text => ({
+    pin: true,
+    value: text,
+    preview: Cliphist.pinPreview(text)
+}))
+const history = Cliphist.entries.map(entry => ({
+    pin: false,
+    value: entry,
+    preview: String(entry).slice(String(entry).indexOf("\t") + 1)
+}))
+return pins.concat(history)
+    .filter(row => row.preview.toLowerCase().includes(query))
+```
+
+Because the binding reads `search.text`, every query edit also repeats every
+pin/history map, preview extraction, object construction, concat and lowercase.
+
+`Cliphist` bounds history to 400 entries and already demonstrates the desired
+pattern elsewhere: it keeps revision-scoped prepared caches for fuzzy/filter
+searches. Abyss should use the same ownership principle, but **not** reuse those
+prepared rows directly because their cleanup/markup semantics are intentionally
+different from Abyss' raw preview.
+
+Strict-lossless shape:
+
+1. prepare Abyss-specific source metadata only when `Cliphist.pinned` or
+   `Cliphist.entries` changes;
+2. retain pins first, then history;
+3. store the exact current preview plus a lowercase search key;
+4. on query change, filter only by the stored lowercase key;
+5. if delegate/model-data fresh identity is part of current QML behavior,
+   publish fresh matched `{pin,value,preview}` records from the prepared
+   metadata rather than exposing the cache objects themselves.
+
+Required oracle:
+
+- empty sources/query;
+- empty query returns every pin then every history entry;
+- one/many pins and up to the 400-entry history bound;
+- mixed-case query and preview;
+- history with no tab, one tab and several tabs;
+- binary/image history rows remain byte-identical as `value`;
+- pin preview remains exactly `Cliphist.pinPreview(text)`;
+- pin/unpin/delete/wipe/refresh while a query is active;
+- keyboard current-index reset/navigation and Enter copy;
+- exact visible row text/order and image classification.
+
+### R34.3 — Sidebar presentation readiness is polled at 16 ms even when readiness cannot advance
+
+`SidebarHost.requestPresentation()` marks the request pending and starts:
+
+```qml
+Timer {
+    id: presentationTimer
+    interval: 16
+    repeat: true
+    onTriggered: root.tryPresent()
+}
+```
+
+`tryPresent()` then checks:
+
+1. request still pending and presentation is open;
+2. window/content geometry is positive;
+3. Loader status is `Loader.Ready`;
+4. after readiness, one warm or two cold timer frames have elapsed.
+
+The last step is an intentional compositor contract and should remain.
+
+The first three are readiness conditions, not frame-by-frame work. While a cold
+Loader is still Loading, every 16 ms tick merely returns. More importantly,
+`Loader.Error` or geometry that never becomes positive has no terminal branch,
+so a pending open can retain an unbounded ~62.5 Hz timer.
+
+A strict redesign does not remove the ready-frame delay. It changes only how the
+timer reaches that phase:
+
+- while Loader/geometry prerequisites are false, stop the frame ticker;
+- Loader status and relevant geometry changes re-evaluate the pending request;
+- once prerequisites are valid, start the same 16 ms timer;
+- require the same one warm / two cold successful ready frames;
+- any regression back to not-ready stops/reset the ready-frame phase;
+- close/role change/resume paths retain their explicit cancellation behavior.
+
+This also makes a Loader error quiescent rather than a permanent heartbeat while
+still allowing a later status/geometry recovery signal to re-arm the pending
+presentation.
+
+Required oracle:
+
+- warm open and cold open;
+- Loader Loading -> Ready;
+- Loader Error and later recovery if supported;
+- zero -> positive window/content dimensions;
+- close while waiting;
+- close during the one/two-frame settle;
+- editor presentation without role open;
+- idle resume / lock-unlock remap;
+- plugin-role change;
+- animations enabled/disabled;
+- exact frame count between first fully-ready state and `_sidebarShown`.
+
+### R34.4 — Collapsed NotificationGroup reverses an entire group to show two records
+
+The notification body model is currently:
+
+```qml
+root.expanded
+    ? root.notifications.slice().reverse()
+    : root.notifications.slice().reverse().slice(0, 2)
+```
+
+The collapsed result is mathematically just the last two source records in
+reverse order. Reversing a fresh copy of the entire group first therefore does
+O(N) copy/reverse work even though the UI consumes at most two elements.
+
+Strict-lossless collapsed projection:
+
+```text
+start = max(0, notifications.length - 2)
+notifications.slice(start).reverse()
+```
+
+Keep the expanded branch exactly as it is.
+
+Required oracle:
+
+- 0, 1, 2 and many notifications;
+- exact newest-first object identity/order;
+- source mutation while collapsed;
+- collapse/expand transitions;
+- second-row opacity when total count > 2;
+- dismiss/action/timeout behavior;
+- popup and sidebar layouts.
+
+This is a deliberately low-priority micro-candidate and does not replace the
+larger Notification service derived-state candidate already in the ledger.
+
+### R34.5 — Rejected / measure-first paths from this pass
+
+**PopupToolTip 50 ms anchor heartbeat:** the repeating timer is active only while
+the tooltip is actually presented, and the source explicitly uses it to follow
+anchors whose geometry moves through layout/animation without a reliable single
+change signal at the tooltip boundary. Do not replace it with a slower timer
+from source inspection alone. An event-driven replacement first needs an oracle
+covering animated parents, window mapping and cross-item coordinates.
+
+**EasyEffects active-state verification:** the service already runs its fast
+five-second poll only while Sidebar Right/Action Center is visible and slows to
+30 seconds when EasyEffects remains active in the background. Repository
+performance tests explicitly protect that slow background verification because
+EasyEffects may be stopped externally. Do not remove it without a trustworthy
+process/D-Bus lifecycle subscription plus bounded fallback.
+
+**NiriConfig:** current Settings code already loads only the active Niri section
+plus validation/customization metadata on initial page construction. Most other
+processes are explicit apply/persist/open-folder transactions. No new recurring
+process candidate is promoted from its size alone.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
 

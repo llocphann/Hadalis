@@ -241,6 +241,9 @@ Rules:
 | `scripts/images/least_busy_region.py` + desktop-widget auto-placement callers | **HIGH-CONFIDENCE image-analysis CPU/memory candidate — least_busy_region processed-grayscale reuse.** In normal and largest-region modes the script decodes the wallpaper as grayscale, rescales/crops it for the region search, then later `get_region_brightness()` decodes and rescales/crops the same grayscale image again for the chosen region. Keep the current color decode for dominant-color clustering, but retain the exact already-processed grayscale array from the search pass and run the existing clamp/slice + `np.mean/std` brightness calculation on that array. | Low. Preserve `cv2.IMREAD_GRAYSCALE`, Lanczos resize dimensions, center-crop arithmetic, coordinate clamping, `np.mean/std` rounding and all JSON fields. Keep `--color-only` on its current independent read path and do not derive grayscale from the color decode, which could change codec/conversion pixels. Treat in-place wallpaper-file mutation during one invocation as outside the parity claim unless explicitly fixture-tested. | One already-existing scaled grayscale array lives slightly longer within the same process; eliminates a second decoded/resized grayscale image allocation. | **Medium local CPU/memory-bandwidth reduction per normal/largest image-analysis invocation**: removes one full grayscale decode + scale/crop pass while leaving search, color clustering and output unchanged. Benefits both generic desktop widgets and Waffle clock callers. | 0%. |
 | `modules/waffle/background/WaffleBackgroundClock.qml` + `services/DesktopWidgetLayout.qml` | **HIGH-CONFIDENCE process/fan-out candidate — Waffle clock records-change process narrowing.** Every `DesktopWidgetLayout.recordsChanged` currently calls `refreshPlacementIfNeeded()` on every per-output Waffle clock. In auto-placement mode this launches the OpenCV least/busiest-region subprocess even when the changed record belongs to another widget or another output. The only per-output record fields the clock reads are `enable`, `placementStrategy`, `x` and `y`: `onClockEnabledChanged` and `onPlacementStrategyChanged` already refresh auto-placement, while `x/y` matter only in free mode and are handled by `syncFreePositionFromConfig()`. Remove the unconditional direct image-analysis refresh from `onRecordsChanged`; keep free-position sync and let the exact derived-property/geometry/wallpaper handlers own real placement invalidation. | Low–Medium. QML binding/signal ordering must be fixture-tested so same-record `enable`/`placementStrategy` edits still trigger exactly one eventual analysis; preserve free-mode x/y sync, initial Config-ready behavior, wallpaper/size-triggered analysis, force-center gating and multi-output independence. | None. | **Potentially high transient process/CPU reduction while editing desktop-widget layout**, especially multi-output: unrelated output/widget record writes stop launching one Python/OpenCV analysis per resident auto-placed Waffle clock. | 0%. |
 
+| `scripts/images/least_busy_region.py` | **HIGH-CONFIDENCE image-analysis CPU candidate — least_busy_region padded-integral hot loop.** Both least/busiest and largest-region scans immediately drop OpenCV integral images\' zero border with `[1:,1:]`, then call a Python `region_sum()` twice per candidate window; that helper branches on `x1 > 0` / `y1 > 0` to reconstruct the missing border. Keep the native `(h+1)×(w+1)` integral arrays and compute each inclusive rectangle from the same four operands in the same subtract/subtract/add order: `I[y2+1,x2+1] - I[y2+1,x1] - I[y1,x2+1] + I[y1,x1]`. This removes per-window boundary branches without changing candidate order or variance math; in largest-region mode also hoist constant `region_w*region_h` outside the inner scan. | Very low. Preserve exact candidate ranges, out-of-bounds `continue`, row-major first-match/tie semantics, float64 integral depth and arithmetic order. Oracle exact sum/squared-sum/variance and chosen coordinates including x/y=0, padding-adjusted tiny images, least/busiest and largest-region binary-search steps. | None in practice: the current sliced integral views already keep the full OpenCV base arrays alive. | **Medium local Python CPU reduction inside the sliding-window search**, especially large screens/small stride: removes two helper calls and up to six boundary tests per candidate window, plus a loop-invariant multiply in largest-region scans. | 0%. |
+| `modules/settings/CustomThemeEditor.qml` | **HIGH-CONFIDENCE interactive CPU candidate — CustomTheme quick-adjustment prepared HSL baseline.** Saturation/brightness/temperature sliders debounce at 50 ms. `captureOriginalColors()` already freezes one deep-cloned baseline for the whole adjustment session, but every debounce tick repeats `Object.keys`, `m3`/hex validation, `Qt.color()` parsing and HSL extraction for every baseline color before applying only new slider factors. When the baseline is first captured, prepare the same ordered valid-color rows as `{key,h,s,l,a}` once; each later tick only performs factor math + `Qt.hsla(...).toString()` and builds the same update object. Reset the prepared rows exactly whenever `originalColors` is reset today. | Very low–Low. Preserve `Object.keys` enumeration order, current `m3` + `startsWith("#")` eligibility, Qt color parsing semantics (including malformed/edge color strings), hue wrapping, clamping, alpha, update insertion order, 50 ms debounce and today\'s intentionally frozen baseline semantics if unrelated theme values change mid-session. | Tiny O(valid m3 colors) numeric metadata for the active quick-adjustment session, alongside the baseline object already retained. | **Low–Medium interactive CPU reduction during slider drags**: removes repeated key filtering/color parsing/HSL extraction at up to the existing 20 Hz debounce cadence. Theme application/config publication cost remains unchanged. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -373,6 +376,8 @@ Rules:
 120. **Settings static prepared family-routed search index** — cache the family-routed static Settings search snapshot and its normalized text fields per translation/family epoch instead of rebuilding them on every query edit.
 121. **least_busy_region processed-grayscale reuse** — reuse the exact scaled/cropped grayscale search image for final brightness statistics instead of decoding/resizing it a second time in the same invocation.
 122. **Waffle clock records-change process narrowing** — stop global desktop-widget record writes from directly launching Waffle clock image analysis; rely on the clock's actual enable/strategy/geometry/wallpaper invalidations.
+123. **least_busy_region padded-integral hot loop** — retain OpenCV's zero border so every sliding-window sum uses the same four integral operands without Python boundary branches; hoist largest-region area from the inner loop.
+124. **CustomTheme quick-adjustment prepared HSL baseline** — parse/filter the frozen custom-theme baseline once per adjustment session and reuse ordered HSL metadata across 50 ms slider ticks.
 
 ## Explicit non-candidates from this pass
 
@@ -8657,6 +8662,236 @@ threshold.
 position-refresh ownership question already represented by candidate #58.
 Do not assign a second candidate from another visible consumer until signal
 timing/freshness measurement defines the shared ticker contract.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
+before/after measurement.
+
+## Research continuation — round 47
+
+Baseline: `dev` at `f843d78e46eec124896c7552edfc0da938499e09`.
+
+This round continued the image-analysis audit one level deeper, then moved to a
+separate interactive Settings path. The Python candidate changes neither search
+algorithm nor image pixels; it removes avoidable Python control flow around the
+existing integral-image math. The theme candidate moves immutable baseline
+parsing to the session boundary already present in the editor.
+
+Current source identities:
+
+- `scripts/images/least_busy_region.py`:
+  `d93dd6c596370c2dbcc22d5e21e52497c535a906`;
+- `modules/settings/CustomThemeEditor.qml`:
+  `958aab18b34578b4d80b0dad86288db3c5f11578`;
+- `modules/abyss/AbyssSurfaceController.qml`:
+  `1fbbe81d2c9f62827c2e6835600caec01e24227f`;
+- `services/Notepad.qml`:
+  `6f17567be8417cef499086138db5884336e2eb3f`;
+- `modules/waffle/background/WaffleBackground.qml`:
+  `6e9bcbdf8daef77c9f8169ed998c44bc72b94fa6`.
+
+### R47.1 — region sums discard OpenCV's free zero border and rebuild it with Python branches
+
+Both `find_least_busy_region()` and `find_largest_region()` currently build
+their integral images as:
+
+```python
+integral = cv2.integral(arr, sdepth=cv2.CV_64F)[1:,1:]
+integral_sq = cv2.integral(arr**2, sdepth=cv2.CV_64F)[1:,1:]
+```
+
+OpenCV originally returns the conventional one-pixel zero border. The slices
+discard that logical border, although the NumPy views still keep the full base
+arrays alive.
+
+The code then compensates for the missing border with a helper:
+
+```python
+def region_sum(ii, x1, y1, x2, y2):
+    total = ii[y2, x2]
+    if x1 > 0:
+        total -= ii[y2, x1-1]
+    if y1 > 0:
+        total -= ii[y1-1, x2]
+    if x1 > 0 and y1 > 0:
+        total += ii[y1-1, x1-1]
+    return total
+```
+
+Each candidate window calls it twice: once for the ordinary integral and once
+for the squared integral.
+
+The full padded integral already encodes those boundary cases as literal zeros.
+For the same inclusive source rectangle `[x1..x2] × [y1..y2]`, the exact
+corresponding operands are:
+
+```text
+current trimmed[y2, x2]       == full[y2+1, x2+1]
+current trimmed[y2, x1-1]     == full[y2+1, x1]
+current trimmed[y1-1, x2]     == full[y1,   x2+1]
+current trimmed[y1-1, x1-1]   == full[y1,   x1]
+```
+
+Therefore the branch-free strict replacement can execute in the **same numeric
+operation order** as today:
+
+```python
+total  = ii[y2 + 1, x2 + 1]
+total -= ii[y2 + 1, x1]
+total -= ii[y1,     x2 + 1]
+total += ii[y1,     x1]
+```
+
+When `x1 == 0` or `y1 == 0`, the relevant padded value is exactly zero, so
+the result is the same without a branch.
+
+Strict-lossless direction:
+
+1. retain the full result of both existing `cv2.integral(..., CV_64F)` calls;
+2. use one small branch-free padded-integral helper or inline the four accesses;
+3. keep the four arithmetic operations in the current
+   initial/subtract-x/subtract-y/add-corner order;
+4. keep candidate x/y ranges and current out-of-bounds guard unchanged;
+5. keep the row-major loops and `<` / `>` min/max comparisons unchanged so
+   equal-variance ties still choose the same first encountered candidate;
+6. in `find_largest_region()`, compute `area = region_w * region_h` once per
+   binary-search size, before the x/y loops, rather than once per candidate.
+
+Required oracle:
+
+- direct current-vs-proposed rectangle sums over random grayscale arrays for
+  every valid rectangle, including x1/y1 zero;
+- exact squared sums;
+- exact variance bit/value parity for scanned candidates;
+- default stride and stride 1/2/large;
+- horizontal/vertical padding zero and nonzero;
+- tiny images after padding reduction;
+- requested region size clamping;
+- least-busy and busiest ties;
+- largest-region threshold just below/equal/above a candidate variance;
+- exact binary-search decisions and final center/size/variance;
+- the R46 grayscale-reuse oracle, proving both candidates compose.
+
+This is not a vectorization proposal. Vectorizing whole rows/grids could change
+temporary-memory footprint and floating operation behavior. R47.1 keeps the
+same Python scan and comparison order while removing only avoidable helper
+branches/calls.
+
+### R47.2 — quick theme sliders reparse a frozen baseline up to every 50 ms
+
+`CustomThemeEditor` already defines a useful semantic boundary:
+
+```qml
+function captureOriginalColors() {
+    if (!originalColors) {
+        originalColors =
+            JSON.parse(JSON.stringify(
+                Config.options?.appearance?.customTheme ?? {}))
+    }
+}
+```
+
+The three quick-adjustment sliders call this and restart a 50 ms debounce.
+Therefore one drag session intentionally applies every slider position relative
+to the **same frozen original theme**, not relative to the output of the previous
+tick.
+
+However `applyQuickAdjustments()` repeats invariant work every debounce:
+
+```qml
+const colorKeys = Object.keys(originalColors)
+for (const key of colorKeys) {
+    if (!key.startsWith("m3"))
+        continue
+    const original = originalColors[key]
+    if (typeof original !== "string" || !original.startsWith("#"))
+        continue
+    let c = Qt.color(original)
+    ...
+    let newColor = Qt.hsla(newHue, newSat, newLight, c.a)
+}
+```
+
+For the lifetime of that baseline:
+
+- key enumeration/order is unchanged;
+- m3 eligibility is unchanged;
+- original strings are unchanged;
+- each `Qt.color(original)` result and its HSL/alpha values are unchanged.
+
+Strict-lossless direction:
+
+1. when `originalColors` is first captured, enumerate
+   `Object.keys(originalColors)` once;
+2. apply the exact current `m3`, type and leading-`#` predicates in that same
+   order;
+3. call `Qt.color(original)` once for each accepted row;
+4. store private ordered metadata
+   `{ key, h: c.hslHue, s: c.hslSaturation, l: c.hslLightness, a: c.a }`;
+5. on every debounce tick, iterate only that prepared array, preserving current
+   saturation/lightness clamps, temperature target/shift, hue wrapping and
+   `Qt.hsla(...).toString()`;
+6. clear the prepared metadata whenever the code sets `originalColors = null`
+   today, so preset/import boundaries still capture a fresh baseline.
+
+Do not automatically refresh the prepared baseline merely because some other
+theme property changes while `originalColors` is non-null. Current behavior is
+explicitly baseline-relative and would overwrite such an intervening edit on
+the next slider tick from the old snapshot. The optimization must preserve that
+behavior rather than silently improve it.
+
+Required oracle:
+
+- all three sliders independently and simultaneously;
+- 50 ms coalescing under rapid pointer movement;
+- saturation 0/100/200;
+- brightness -50/0/+50;
+- temperature -50/0/+50;
+- hue values around wrap boundaries 0 and 1;
+- alpha-bearing colors;
+- black/white/gray achromatic colors;
+- malformed/edge `#...` strings accepted by the current predicate;
+- non-m3 and non-string keys remain excluded;
+- exact update-key insertion order and resulting strings;
+- preset load and import reset baseline/sliders;
+- intervening manual color edit while a baseline exists retains current frozen
+  baseline semantics;
+- exact `Config.setNestedValues()` payload and `applyToShell()` cadence.
+
+The optimization deliberately leaves the potentially larger cost of applying
+the theme to the shell on every debounce unchanged. Reducing that cadence would
+change interactive presentation semantics and requires separate UX/latency
+authority.
+
+### R47.3 — Paths deliberately not promoted
+
+**OpenCV `integral2`:** it may be possible to replace the separate
+`cv2.integral(arr)` and `cv2.integral(arr**2)` construction with a single
+OpenCV squared-integral call, also avoiding the full `arr**2` temporary.
+However this changes the OpenCV execution path and possibly numeric
+accumulation details. Promote only after an exact randomized sum/variance oracle
+proves equality for the supported image-size range.
+
+**Whole-grid NumPy vectorization:** potentially much faster than Python nested
+loops, but it introduces large temporary arrays and may change floating
+evaluation/tie details. It is not a strict-lossless source-only candidate yet.
+
+**Notepad copy-on-write:** text edits copy the tabs array and one changed tab
+object, but the service already coalesces persistence while a FileView write is
+in flight: later edits set `_saveQueued` before serialization. Avoiding the
+small array/object publication would require a different QML reactivity model
+and is below the promotion threshold without profiling.
+
+**AbyssSurfaceController unified participant snapshot:** placement requests,
+vacancy roles, geometry and input bounds are currently separate derived
+properties. A single combined snapshot would share `Object.keys(participants)`
+work but would also make every participant field invalidate every downstream
+consumer, broadening the reactive graph and potentially increasing work.
+Do not trade narrow dependency ownership for fewer source loops without runtime
+measurement.
+
+**Waffle Background Niri occupancy:** rediscovered while checking resident
+background work, but the per-output active-workspace/window derivation is
+already owned by R22.3. No new promotion.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
 before/after measurement.

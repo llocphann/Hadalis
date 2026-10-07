@@ -51,6 +51,7 @@ ShellRoot {
     property var _windowPreviewService
     property var _weatherService
     property var _voiceSearchService
+    property var _obsidianThemeService
     property var _cavaThemeService
     // Screen Time must exist for the whole enabled session so the Material
     // notification-center Activity tab has history before it is first opened.
@@ -80,6 +81,8 @@ ShellRoot {
             return
         if (Config.options?.bar?.weather?.enable ?? false)
             root._weatherService = Weather
+        if (Config.options?.integrations?.obsidian?.autoTheme ?? false)
+            root._obsidianThemeService = ObsidianTheme
         // CavaTheme also owns the optional cover-art -> external CAVA config
         // side effect, so keep it resident when that feature is explicitly enabled.
         if (Config.options?.appearance?.wallpaperTheming?.enableCava ?? false)
@@ -93,6 +96,11 @@ ShellRoot {
             root._calendarSyncService = CalendarSync
         if (Config.options?.appearance?.typography?.syncWithSystem ?? true)
             root._fontSyncService = FontSyncService
+    }
+
+    Connections {
+        target:Config.options?.integrations?.obsidian ?? null
+        function onAutoThemeChanged():void {root._ensureDeferredFeatureServices()}
     }
 
     // Boot phase timing (ms since epoch). Written to ~/.cache/inir/last-boot.json

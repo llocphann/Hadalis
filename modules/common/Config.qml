@@ -2977,6 +2977,15 @@ Singleton {
                     property bool closeOnSelect: false
                 }
             }
+            property JsonObject integrations: JsonObject {
+                property JsonObject obsidian: JsonObject {
+                    property bool autoTheme: false
+                    property string configPath: ""
+                    property string applicationConfigPath: ""
+                    property string applicationPath: "obsidian"
+                }
+            }
+
             property JsonObject todo: JsonObject {
                 property string backend: "internal"
                 property JsonObject obsidian: JsonObject {

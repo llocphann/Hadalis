@@ -29,3 +29,4 @@ FcitxInputSettings 1.0 FcitxInputSettings.qml
 MonitorVisibilityConfig 1.0 MonitorVisibilityConfig.qml
 CompanionConfig 1.0 CompanionConfig.qml
 IntegrationsConfig 1.0 IntegrationsConfig.qml
+ObsidianThemeSettings 1.0 ObsidianThemeSettings.qml

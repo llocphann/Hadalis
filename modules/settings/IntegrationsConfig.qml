@@ -24,6 +24,7 @@ ContentPage {
   onSelected:value=>root.activeSection=value
   options:[{displayName:"Obsidian",icon:"diamond",value:"obsidian"},{displayName:"Calendar",icon:"calendar_month",value:"calendar"},{displayName:"Applications",icon:"apps",value:"apps"}]
  }
+    ObsidianThemeSettings {settingsTaskSection:"obsidian";visible:root.activeSection === "obsidian"}
     SettingsCardSection {
         settingsTaskSection: "obsidian"
         visible: root.activeSection === "obsidian"
@@ -156,7 +157,7 @@ ContentPage {
                 spacing: 6
 
                 StyledText {
-                    text: Translation.tr("Vault path")
+                    text: Translation.tr("Obsidian vault folder")
                     color: Appearance.colors.colOnSurfaceVariant
                     font.pixelSize: Appearance.font.pixelSize.small
                 }
@@ -164,6 +165,7 @@ ContentPage {
                 MaterialTextField {
                     id: todoObsidianVaultPath
                     Layout.fillWidth: true
+                    wrapMode: TextInput.NoWrap
                     placeholderText: ""
                     font.pixelSize: Appearance.font.pixelSize.small
                     color: Appearance.colors.colOnSurface

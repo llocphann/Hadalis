@@ -7,6 +7,8 @@ ROOT=Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory(prefix='hadalis-settings-hierarchy-') as name:
  folder=Path(name)
  for entry in ['modules','services','GlobalStates.qml','qmldir','assets','scripts','defaults','translations','settings.qml','waffleSettings.qml']:(folder/entry).symlink_to(ROOT/entry)
+ vault=folder/'vault/.obsidian';vault.mkdir(parents=True)
+ (vault/'appearance.json').write_text(json.dumps({'cssTheme':'Border','enabledCssSnippets':['user-snippet'],'ownerSetting':42}))
  (folder/'shell.qml').write_text(r"""
 import QtQuick
 import QtTest
@@ -14,6 +16,7 @@ import Quickshell
 import qs
 import qs.modules.common
 import qs.modules.settings
+import qs.services
 Window {
  id:root;visible:true;width:1120;height:820;color:"#111820"
  Component.onCompleted:Quickshell.watchFiles=false
@@ -42,6 +45,10 @@ Window {
    check(overlay.navGroup==="apps","deep link did not reveal its parent")
    overlay.pageHost.currentItem.activateSettingsSearchSection("To-do & Quick Notes")
    check(overlay.pageHost.currentItem.activeSection==="obsidian","legacy data search lost its destination")
+   Config.setNestedValues({"todo.obsidian.vaultPath":Quickshell.env("OBSIDIAN_VAULT"),"integrations.obsidian.autoTheme":true})
+   tryVerify(()=>ObsidianTheme.info.enabled===true && !ObsidianTheme.busy,5000)
+   check(ObsidianTheme.info.activeTheme==="Border","automatic theming changed the active theme")
+   ObsidianTheme.restore();tryVerify(()=>!ObsidianTheme.enabled && ObsidianTheme.info.enabled===false && !ObsidianTheme.busy,5000)
    overlay.navEditMode=true;wait(100)
    check(overlay.visibleNavItems.length===overlay.navPageOrder.length,"navigation editor lost full page order")
    overlay.navEditMode=false;overlay.settingsOpen=false;wait(200)
@@ -76,8 +83,9 @@ Window {
   if env is None:print('SKIP: Settings native navigation requires private Niri');raise SystemExit(0)
   conf=folder/'config/illogical-impulse';conf.mkdir(parents=True,exist_ok=True)
   value=json.loads((ROOT/'defaults/config.json').read_text());value['panelFamily']='abyss';(conf/'config.json').write_text(json.dumps(value))
-  env.update(QT_QUICK_BACKEND='software')
+  env.update(QT_QUICK_BACKEND='software',OBSIDIAN_VAULT=str(vault.parent))
   result=run_qs(folder,env,timeout=40);output=result.stdout
   if result.returncode or 'SETTINGS_HIERARCHY_NATIVE_PASS' not in output or any(e in output for e in ['SETTINGS_HIERARCHY_NATIVE_FAIL','ReferenceError:','TypeError:','Unable to assign','Binding loop','Failed to load configuration']):print(output);raise SystemExit(1)
+  final=json.loads((vault/'appearance.json').read_text());assert final=={'cssTheme':'Border','enabledCssSnippets':['user-snippet'],'ownerSetting':42},'restore lost unrelated preferences'
   for line in output.splitlines():
    if 'SETTINGS_HIERARCHY_NATIVE_PASS' in line:print(line)

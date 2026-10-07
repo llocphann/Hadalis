@@ -148,6 +148,12 @@ Rules:
 | `services/MprisController.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — memoize the final MPRIS-specific `_desktopEntryForHint()` result after AppSearch fallback.** Direct AppSearch misses currently fall into a full DesktopEntries fuzzy scan/tokenization path, and the same cleaned hint can be resolved repeatedly by player/stream display-name/icon helpers. Cache final `DesktopEntry|null` by exact cleaned hint and invalidate immediately on DesktopEntries changes. | Low–Medium. Preserve every score/tie/threshold rule and direct-AppSearch precedence. | None. | Low transient allocation + CPU reduction, especially for repeated hints that miss AppSearch and enter the catalog-wide fallback. | 0%. |
 | `services/Notifications.qml` + `modules/dock/DockAppButton.qml` | **HIGH-CONFIDENCE CPU candidate — derive normalized notification-badge lookup once per popup-group rebuild.** Each Dock button currently normalizes caller ids, then scans all popup groups and normalizes every group app name. Build a private normalized key→{first-rank,count} index alongside `_cachedPopupGroupsByAppName`, preserving the current “first group in object order matching any caller id wins” semantics. | Low. Do not sum collisions or let caller-identifier order replace current popup-group order. | None. | Low CPU/allocation reduction scaling from roughly D×G normalized group scans to small per-button key lookups after each group snapshot rebuild. | 0%. |
 
+| `services/Notifications.qml` | **HIGH-CONFIDENCE CPU candidate — reuse notification objects already owned by timeout/read callers instead of re-looking them up by ID.** `timeoutNotification()` does one `findIndex` then calls `cancelTimeout(id)`, which scans again; `timeoutAll()` already iterates `popupList` objects but calls the ID helper for each; `markReadForApp()` already has each matching object but triggers another list scan. Add a private object-based timer cancel helper and keep the public ID helper for external callers. | Very low. Preserve timer stop/destroy/null, timeout signal count/order, popup mutation phase ordering and final `triggerListChange()`. | None. | Low transient allocation/CPU reduction; removes P×N lookup work from timeout-all/read-heavy histories. | 0%. |
+| `services/Weather.qml` | **HIGH-CONFIDENCE process candidate — execute primary wttr.in curl directly instead of through Bash.** The primary request constructs one URL and runs `bash -c "curl ..."`; no shell feature is required, while fallback/AQI paths already use direct curl argv. | Very low. Preserve URL construction, query encoding, request-generation ownership, retry/failover counters and empty/error parsing. | None. | Low transient RAM/CPU; exactly one fewer Bash process per primary weather request/retry. | 0%. |
+| `services/ScreenTime.qml` | **HIGH-CONFIDENCE startup process candidate — use the already-owned `todayFileView` for the startup day read instead of `bash -c 'test -f && cat || echo'`.** The service already persists today's file through FileView. Route startup `Loaded` / `FileNotFound` into the existing `_finishStartupRead()` contract while retaining all other failure behavior. | Low–Medium. FileView error/timing parity, reentrancy and startup-before-first-write assumptions must be covered. Do not replace the batched history range reader. | None. | Low transient process-memory/CPU; removes one Bash plus cat/test pipeline on ScreenTime initialization. | 0%. |
+| `modules/regionSelector/RegionSelection.qml` | **HIGH-CONFIDENCE process/quoting candidate — remove avoidable outer `bash -c` layers for recording and content-region detection.** Recorder start can exec `record.sh --region <region> [--sound]` directly; content-region detection can invoke `bash find-regions-venv.sh --image ...` as interpreter+script argv, retaining one required Bash for the wrapper but removing the extra command-string parser. | Low. Preserve exact region/image argv, wrapper startup failure, RecorderStatus quick-check timing and current detached-process behavior. Do not touch screenshot/copy/OCR/search/edit branches that use real shell composition. | None. | Low transient process/CPU reduction on explicit region actions; removes one shell from recorder start and one extra `-c` shell layer from region detection. | 0%. |
+| MPRIS position-refresh producers across Bar / media controls / Sidebar / Lock / Waffle / VolumeMixer | **MEASURE THEN ADAPT — share one demand-leased position ticker per player identity instead of independent surface timers.** Current source still has ten `positionChanged()` occurrences: nine producer-style timers plus LyricsService listener. Producers request 500 ms, 1 s or configured ~3 s cadences and can target the same `MprisPlayer`. A per-player lease owner can run at the minimum requested interval while any consumer is active. | Medium–High timing risk. Raw `positionChanged()` signal phase/count is observable and `triggeredOnStart` semantics matter. Requires trace/oracle before promotion to strict-lossless. | None directly. | Potentially meaningful wakeup/CPU reduction when multiple media surfaces for the same player coexist; RAM negligible. | Expected pixels 0%; event timing changes unless explicitly normalized. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -203,6 +209,11 @@ Rules:
 51. **AppSearch DesktopEntry hit/miss memo** — cache exact lookup results per DesktopEntries epoch with immediate invalidation.
 52. **MPRIS desktop-entry hint memo** — cache the expensive post-AppSearch fuzzy resolver by cleaned hint.
 53. **Notification badge normalized-group index** — move app-name normalization/group scanning to the popup-group rebuild boundary.
+54. **Notification object-reference timer cancellation** — remove redundant ID scans inside callers that already own the notification object.
+55. **Weather primary direct curl argv** — remove one Bash process from every wttr.in primary request/retry.
+56. **ScreenTime startup FileView read** — retire the one-shot test/cat shell while keeping range-history batching unchanged.
+57. **Region Selector direct argv cleanup** — remove avoidable outer shells only from recorder/content-region branches.
+58. **MPRIS per-player demand-leased position ticker** — MEASURE/ADAPT only until signal timing/freshness contract is defined.
 
 ## Explicit non-candidates from this pass
 
@@ -3204,5 +3215,241 @@ KeyboardIndicators and WindowPreviewService.
   request bursts; no new high-confidence saving was established in this pass.
 
 These are intentionally not promoted merely to increase candidate count.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+
+## Research continuation — round 24
+
+Baseline: `dev` at `dc6813ff2ebf7fddff2d62c5fe18980918922316`.
+
+This round revalidated four strict-lossless process/collection findings plus one
+higher-leverage timer-ownership idea that remains timing-sensitive. Existing
+canonical entries for MPRIS grace state and default-off startup probes were
+found and deliberately not duplicated.
+
+Current source identities:
+
+- `services/Notifications.qml`: `a05c6744c123d8ed96ee19c8d04cccdbcdeeae0e`;
+- `services/Weather.qml`: `53ef5db3a161e6df18a29b1e6a7c6192d2e35a79`;
+- `services/ScreenTime.qml`: `1eabb174c464bf0a1e372ebbe8a43f671d2e9d89`;
+- `modules/regionSelector/RegionSelection.qml`: `05fe24280c78cfe065dc70660827dedb68f316c0`.
+
+Current MPRIS producer identities were also re-read on this baseline:
+
+- Bar media: `7286bbfaa8bac3b29ee7e818cd937d60405556e8`;
+- Vertical Bar media: `f95416165769171cf98031cb115cbfd7dc59cf0e`;
+- BarMediaPlayerItem: `bb51644c4558b3362105ea262a1b41c4b865b920`;
+- PlayerControl: `db9881c7ed6b20d7b26b1503c9256e8529a3677b`;
+- PlayerBase: `df900423be11198b5aaf34474f2c2b2cc8dc7f41`;
+- Sidebar MediaPlayerWidget: `e29709da3645e344fd302f2f37ff9d8f58aa4b81`;
+- Control Panel MediaSection: `5abcef65e7c66160b3742d9c0abfaf48fb8043a9`;
+- LockMediaWidget: `9e5d2434d656457568eac7578973061385ecc4f6`;
+- Waffle MediaPaneContent: `dfea7b4e2cfb5a0629f8b77911dd56e7c883c354`;
+- VolumeMixer: `612903a3b1d8cdd5ebb933a53abd90c79aa93f7b`.
+
+### R24.1 — Notification timer paths rediscover objects they already own
+
+Current public helper:
+
+```qml
+function cancelTimeout(id) {
+    const index = root.list.findIndex(notif => notif.notificationId === id)
+    ... stop/destroy/null timer ...
+}
+```
+
+That helper remains useful when a caller owns only an ID, but several internal
+paths already own the authoritative notification object.
+
+**timeoutNotification(id)**
+
+It first performs `findIndex`, then immediately calls `cancelTimeout(id)`,
+which performs the same lookup again. Preserve the first lookup, retain the
+object, cancel its timer directly, then keep popup mutation/list-change/signal
+order unchanged.
+
+**timeoutAll()**
+
+`popupList` already contains the live objects. Current code does one ID lookup
+per popup solely to reach each object's timer. For P popups in a retained
+history list of N notifications, this can add P full-list scans.
+
+**markReadForApp()**
+
+The function already iterates `root.list`. Each matching object again calls the
+ID helper, creating a nested scan.
+
+Strict-lossless shape:
+
+- introduce a private object helper such as `_cancelTimerForNotification(notif)`;
+- stop, destroy and null the timer exactly as today;
+- retain `cancelTimeout(id)` for external/ID-only paths and have it delegate to
+  the object helper after its single lookup;
+- in object-owning paths call the private helper directly;
+- preserve `timeout(id)` signal order and the current two-pass popup clearing in
+  `timeoutAll()` unless an oracle explicitly proves phase collapse equivalent.
+
+Required oracle:
+
+- one popup / long history;
+- many popups;
+- notification without timer;
+- missing ID;
+- `timeoutNotification`;
+- `timeoutAll` exact timeout-signal sequence;
+- `markReadForApp` zero/one/many matches;
+- final timer=null, popup flags, group snapshots and list-change count.
+
+### R24.2 — Weather primary provider carries an unnecessary Bash process
+
+Current primary path builds:
+
+```qml
+const cmd = `curl -s --max-time 15 'https://wttr.in/${query}?format=j1'`
+fetcher.command = ["/usr/bin/bash", "-c", cmd]
+```
+
+There is no pipe, redirect, conditional or shell expansion needed. The same
+Weather service already invokes curl by direct argv for Open-Meteo fallback and
+air-quality requests.
+
+Strict-lossless replacement:
+
+```text
+["/usr/bin/curl", "-s", "--max-time", "15",
+ "https://wttr.in/" + query + "?format=j1"]
+```
+
+Keep query calculation and encoding exactly as current source. This removes one
+Bash process for each primary request or retry while retaining curl itself.
+
+Required oracle:
+
+- lat/lon request;
+- city with spaces and non-ASCII characters;
+- request-generation cancellation;
+- curl nonzero exit;
+- empty/non-JSON/valid JSON;
+- three primary failures and existing Open-Meteo bypass window;
+- force-refresh during another provider request;
+- exact URL argument parity with the shell command's effective curl argv.
+
+The GPS Geoclue path still uses a real parsing pipeline and is not included.
+
+### R24.3 — ScreenTime already owns the file primitive needed for startup
+
+ScreenTime persists today's state with `todayFileView.setText()`, but its startup
+read separately spawns:
+
+```text
+bash -c 'test -f PATH && cat PATH || echo __NOFILE__'
+```
+
+The FileView can own this read as well:
+
+1. when `_loadTodayFromFile()` begins, set `todayFileView.path` to the resolved
+   current-day file URL;
+2. retain the existing `_loadingToday` guard;
+3. on FileView loaded, call `_finishStartupRead(todayFileView.text())` only for
+   the active startup load;
+4. map FileNotFound to `_finishStartupRead("__NOFILE__")`;
+5. map other failures to the same current fallback behavior;
+6. remove `startupReadProc` only after start/load failure parity is tested.
+
+Important boundary: do not mechanically replace `rangeReadProc`. It batches
+multiple history files into one ordered shell read; converting that path into
+many FileViews could increase event-loop work and change ordering.
+
+Required oracle:
+
+- valid/missing/empty/malformed current-day file;
+- enable/disable around initialization;
+- duplicate load request while pending;
+- first persistence after missing/valid startup;
+- day rollover;
+- non-FileNotFound FileView error;
+- exact `ready`, `_todayData`, `_dirty`, session state and `dataChanged()`
+  timing/order.
+
+### R24.4 — Region Selector has two shell-string boundaries that do not need shell composition
+
+Recorder start currently emits:
+
+```qml
+bash -c "<recordScript> --region '<region>' [--sound]"
+```
+
+The same record script is already directly exec'd for `--stop`, so executable
+ownership is established. Start can use direct argv:
+
+```text
+[recordScriptPath, "--region", slurpRegion]
+[recordScriptPath, "--region", slurpRegion, "--sound"]
+```
+
+Content-region detection currently uses an outer `bash -c` around a Bash
+wrapper. Keep one interpreter because the wrapper is a Bash script, but pass the
+script and args directly:
+
+```text
+["/usr/bin/bash", find-regions-venv.sh,
+ "--image", screenshotPath,
+ "--max-width", ...,
+ "--max-height", ...]
+```
+
+This removes command-string parsing and quoting without changing the wrapper.
+
+Required oracle:
+
+- normal/negative-coordinate region if supported;
+- record with/without sound;
+- startup failure;
+- exact region argument observed by fixture;
+- image path with spaces/Unicode;
+- exact max-width/max-height values;
+- malformed detector output;
+- RecorderStatus quick-check scheduling;
+- detached process behavior.
+
+Do not apply this mechanically to Copy/Edit/Search/OCR/screenshot capture paths;
+those branches use real pipelines/conditionals or depend on temp-directory
+ownership.
+
+### R24.5 — Shared MPRIS ticker is higher leverage but not raw-signal-lossless yet
+
+Current repository search still finds ten `positionChanged()` occurrences in the
+media path: nine producer-style refresh owners plus LyricsService's listener.
+Independent producers use roughly three cadence classes:
+
+- PlayerBase: 500 ms;
+- rich media surfaces: 1000 ms;
+- Bar/VerticalBar/VolumeMixer: configured resource interval, commonly ~3000 ms.
+
+Multiple visible surfaces can target the same `MprisPlayer`. The fastest timer
+already emits that player's signal frequently enough for all attached bindings,
+while slower timers can add redundant emissions and wakeups.
+
+Candidate architecture:
+
+- one lease owner per player identity;
+- each visible/demanding consumer requests its current interval;
+- ticker interval is the minimum active lease;
+- zero leases stops the ticker;
+- lease acquisition performs the equivalent of current `triggeredOnStart`;
+- multi-player surfaces create one logical ticker per player, not one global
+  active-player ticker;
+- non-MPRIS/YtMusic direct playback paths remain outside this mechanism.
+
+This remains **MEASURE THEN ADAPT**, because independent timers currently have
+separate phases and signal count/timing is observable. A shared minimum-cadence
+ticker could make positions fresher while still changing listener callbacks.
+
+Capture signal/value traces for Bar-only, popup-only, Bar+popup,
+Sidebar/ControlPanel, Lock transition, Waffle Action Center, two-player surface,
+open/close, pause/resume and a non-default resource interval before deciding the
+parity contract. The correct target is likely visible progress freshness and
+bounded wakeups, not identical raw signal count, but that must be explicit.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.

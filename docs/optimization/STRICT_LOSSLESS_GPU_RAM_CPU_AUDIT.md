@@ -230,6 +230,9 @@ Rules:
 | `modules/cheatsheet/CheatsheetKeybinds.qml` + `NiriKeybinds.qml` / `HyprlandKeybinds.qml` | **HIGH-CONFIDENCE interactive CPU/allocation candidate — Cheatsheet lazy prepared search fields.** `allKeybinds` already clones the compositor snapshot once, but every search keystroke lowercases `key`, every modifier, `comment` and `category` again for every row. Lazily prepare separate lowercase fields on the first non-empty search for the current `allKeybinds` snapshot and reuse them across subsequent keystrokes; return the existing cloned keybind objects rather than wrapper objects. | Very low. Do not concatenate fields into one haystack because that can create cross-field false matches. Preserve optional-field behavior, per-modifier `some()` semantics, first-search malformed-data behavior, fresh filtered-array identity, result order and Niri/Hyprland reload invalidation. Clear/rebuild the prepared cache when `allKeybinds` changes; it may be dropped again when search becomes empty. | Temporary O(keybind text) lowercase cache only during an active search session if cleared on exit. | **Low–Medium interactive CPU/allocation reduction**, scaling with keybind count/modifier count and query length; stable strings are normalized once per search session instead of once per keystroke. | 0%. |
 | `services/Ai.qml` + `modules/sidebarLeft/aiChat/AiModelSelector.qml` | **HIGH-CONFIDENCE interactive/catalog CPU candidate — AI recommendation pre-score + query-independent recommendation set.** `recommendedModelIds()` currently calls `_profileScore()` twice per sort comparison, rebuilding/lowercasing model labels repeatedly; the selector then calls the complete recommendation pipeline from inside its `entries` binding, so changing only search text can re-filter/sort recommendations even though recommendation inputs did not change. Decorate each allowed runnable model with its score once before the same stable descending sort, and expose a recommendation Set/property that invalidates only with the exact runnable-model/model-field readiness inputs, not `filter` text. Non-recommended catalog modes should not compute the set at all if it is not otherwise needed. | Low. Preserve `_profileAllows` rules, exact numeric score/coercion, input-order tie stability, minimum-limit behavior, model-id identity, credential/policy/provider readiness invalidation and default-model selection. Do not cache complete selector entries because `ready`, `hasKey` and provider status have independent reactive lifetimes. | Small O(R) transient decorated score records during recommendation rebuild; optional Set of at most the requested recommendation count. | **Medium local CPU reduction for large discovered catalogs and repeated model-search typing**, especially under the default Recommended filter; scoring work changes from comparator-multiplied calls to once per candidate and recommendation sorting leaves the text-query hot path. | 0%. |
 
+| `modules/bar/weather/LiquidOrbitalField.qml` | **HIGH-CONFIDENCE Canvas-fallback CPU candidate — Liquid Orbital Canvas per-frame node preparation.** The animated Canvas fallback calls `liquidSample()` for 120 contour samples, up to one active glow sample, one sample per hour pod, and 4×19 moving-streak samples. With 8 hours that is up to 205 `liquidSample()` calls/frame; each currently loops all 8 nodes and recomputes each node\'s fixed-for-that-frame angle ellipse frame and breathing radius. Prepare `{angle, frame, radius, active}` once per node at the start of the paint and pass that transient array through every sample path, while keeping the sample-angle ellipse frame calculation unchanged. | Low–Medium. This is fallback-renderer math, so compare exact generated coordinates/raster across animated/frozen times, node counts, active indexes, geometry changes and shader compile handoff. Preserve arithmetic order inside signed-arc/profile/thickness calculations and do not alter the compiled ShaderEffect path. | Tiny O(node count) transient frame-local array; no persistent cache or QML NOTIFY state. | **Medium–High CPU reduction on the Canvas fallback path only**, especially Software/Null graphics backends: repeated node frame/radius preparation falls from roughly O(samples×nodes) to O(nodes) per paint while the actual liquid sample math remains. Compiled GPU shader path is unchanged. | 0%. |
+| `modules/bar/weather/OrbitalWeather.qml` + `modules/dashboard/DashWeather.qml` | **HIGH-CONFIDENCE interactive geometry CPU candidate — OrbitalWeather per-quadrant arc-length table reuse.** The non-liquid Dashboard orbit maps each hourly label to an equal-arc position by rebuilding the same 72-sample cumulative ellipse-length table independently for every hour. Within one `hourAngles` evaluation, `orbitRadiusX/Y` and each quadrant\'s start/end angles are identical; only the target fraction differs. Build the exact existing table at most once per used quadrant and resolve every hour from that transient table with the same target/search/interpolation math. Keep liquid mode\'s direct parametric angle path unchanged. | Low. Preserve `hourFromLabel()` parsing, quadrant/fraction mapping, 72-sample arithmetic, linear interpolation, invalid-label fallback and exact hour ordering. Do not exploit ellipse symmetry or change `orbitAngleForHour()` fallback semantics unless separately proven. | At most four short transient cumulative-length arrays during one binding evaluation; no retained cache required. | **Low–Medium CPU reduction during Material Dashboard weather geometry/resizes**: an 8-hour model avoids rebuilding a 72-sample table eight times and instead builds only the quadrants actually used. Weather popup liquid mode is unaffected. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -355,6 +358,8 @@ Rules:
 113. **Wallpaper Launcher prepared relative-path search keys** — normalize each published wallpaper relative path once per library snapshot instead of once per entry per keystroke.
 114. **Cheatsheet lazy prepared search fields** — keep separate lowercase key/modifier/comment/category fields only for the active search session and reuse them across query edits.
 115. **AI recommendation pre-score + query-independent recommendation set** — score allowed runnable models once per recommendation rebuild and remove the recommendation sort from model-search text edits.
+116. **Liquid Orbital Canvas per-frame node preparation** — prepare each hour node's angle ellipse frame and breathing radius once per Canvas paint, then reuse them across contour, glow, pod and moving-streak samples.
+117. **OrbitalWeather per-quadrant arc-length table reuse** — build the exact 72-sample cumulative ellipse table once per used quadrant during a non-liquid `hourAngles` evaluation instead of once per hour.
 
 ## Explicit non-candidates from this pass
 
@@ -7786,6 +7791,231 @@ source before promotion.
 normal theme counts are much smaller than wallpaper/keybind/model catalogs.
 Keep this below the promotion line unless profiling shows the settings search
 path is material.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
+before/after measurement.
+
+## Research continuation — round 43
+
+Baseline: `dev` at `e44dfec306f0cd4b7257e5560d8caef18e7a9dbc`.
+
+This round moved from interactive list/search work into weather rendering and
+geometry preparation. Every promoted finding was re-read by exact current-dev
+SHA; default-branch code-search hits that could not be fetched from this SHA
+were rejected as evidence.
+
+Current source identities:
+
+- `modules/bar/weather/LiquidOrbitalField.qml`:
+  `1883b6877a02f6013fcacc7e30142e5f522b6165`;
+- `modules/bar/weather/OrbitalWeather.qml`:
+  `1a341d0102095971212f06903365cf572b7bad6b`;
+- `modules/bar/weather/AbyssOrbitalWeather.qml`:
+  `642f72c2f5156e66debb1917b613cdeed8e75dbd`;
+- `modules/dashboard/DashWeather.qml`:
+  `243aab28a3d51934980ae90a78da54457dbf8cbf`;
+- Waffle `WifiControl.qml`:
+  `08b6b7e4af2f08f61940ea443a3a7f527c38ca2b`;
+- classic `WifiDialog.qml`:
+  `0a1239bf078d52a7a7b3cdc55ddd22c3a217031a`;
+- `services/Network.qml`:
+  `a20c4c1edf1fbeb2f2a8285518af053bf72a09dc`;
+- `services/BluetoothStatus.qml`:
+  `43da62258e210755c5a89dfecd36fc2e151ba356`;
+- Overlay `Recorder.qml`:
+  `0bd8c4314cc72b2ce39cf3d3acc98e7b8dab2b98`;
+- Overlay `OverlayContent.qml`:
+  `64a277d10a8d89b58ec8d4b040a859d0424db488`;
+- Overlay `StyledOverlayWidget.qml`:
+  `64a5ef8176811b2c15b542238a3fe0d80b80eb70`;
+- shared `CloudflareWarpToggle.qml`:
+  `0ec62b42e71e805b3c18f2cbfc9ffb5cd78b0e3c`.
+
+### R43.1 — Canvas liquid orbit repeats node-invariant geometry inside every sample
+
+The normal weather popup prefers the compiled `ShaderEffect`. When that path
+is unavailable or still compiling, `LiquidOrbitalField` renders the accepted
+continuous liquid sheet through its Canvas fallback.
+
+The Canvas has `sampleCount: 120` and its paint currently invokes
+`liquidSample(angle, time)` from four families:
+
+- 120 main contour samples;
+- up to 1 active-node glow sample;
+- one sample for each painted hour pod, currently up to 8;
+- 4 moving streaks × 19 points = 76 samples.
+
+With eight hourly nodes, the maximum visible paint therefore performs:
+
+```text
+120 + 1 + 8 + 76 = 205 liquidSample() calls/frame
+```
+
+That is a structural source count, not a benchmark.
+
+Each `liquidSample()` then loops every node and calls `nodeGeometry()`.
+Today every `nodeGeometry()` repeats:
+
+```qml
+const nodeAngle = Number(root.hourAngles[nodeIndex] ?? 0)
+const nodeFrame = root.ellipseFrame(nodeAngle)
+...
+const radius = root.nodeRadius(nodeIndex, time)
+```
+
+For eight nodes, the paths above can therefore cause roughly
+`205 × 8 = 1640` node-geometry preparations in one fallback paint before
+counting the rest of the liquid arithmetic. The node angle, its ellipse frame
+and its radius are all constant for a given node during that paint because
+width/radii, active index and `time` are sampled once by the paint.
+
+Strict-lossless shape:
+
+1. at the start of `onPaint`, after reading the current `time`, create one
+   transient prepared record per current node:
+   `{angle, frame: ellipseFrame(angle), radius: nodeRadius(i,time), active}`;
+2. let the sample helper consume that prepared array instead of recomputing
+   node angle/frame/radius for every sample;
+3. keep `ellipseFrame(angle)` for the **sample angle** inside each
+   `liquidSample` unchanged because that geometry genuinely varies by sample;
+4. reuse the prepared active node radius in the pod pass rather than calling
+   `nodeRadius()` a second time;
+5. pass the same prepared records to contour, active glow, pod and streak
+   sampling;
+6. keep all signed-arc, circular-support, smooth-max, drift, gradient and path
+   calculations in the existing order.
+
+No QML-visible cache is necessary. Preparation can live entirely inside one
+Canvas paint invocation, so width/height/node/active/time invalidation ownership
+does not change.
+
+Required oracle:
+
+- 0 through 8 hourly nodes;
+- `activeIndex` -1, first, middle, last and out-of-range;
+- animation running and frozen `timeSeconds === 0.73`;
+- node width/height changes;
+- orbit radius and Canvas size changes;
+- ordinary hardware path while the shader is compiling;
+- ShaderEffect Compiled transition, proving Canvas release/handoff is unchanged;
+- Software and Null graphics APIs where Canvas is the permanent renderer;
+- exact outer/inner/mid path coordinates for fixed timestamps and geometries;
+- glow center/radius, pod centers/radii and every streak point;
+- image/raster parity against current fallback for representative frames.
+
+This candidate intentionally claims no saving on the compiled shader path. Its
+value is that the CPU fallback is exactly the environment where repeated
+JavaScript geometry work is most expensive relative to available rendering
+headroom.
+
+### R43.2 — Dashboard orbital hour placement rebuilds the same arc table per hour
+
+The shared `OrbitalWeather` has two placement modes.
+
+Liquid popup mode uses the direct reference geometry:
+
+```qml
+return -Math.PI / 2 + shiftedHour * Math.PI / 12
+```
+
+The non-liquid Material Dashboard path instead preserves equal **arc-length**
+placement around an ellipse. For each hour, `arcAngle()` builds a 72-sample
+cumulative length table between that hour's quadrant boundaries:
+
+```text
+start angle
+ -> 72 ellipse points
+ -> cumulative segment lengths
+ -> target = total × fraction
+ -> linear interpolation inside the matching segment
+```
+
+The current `hourAngles` binding calls `orbitAngleForHour()` independently
+for every hourly record. During one binding evaluation:
+
+- `orbitRadiusX` and `orbitRadiusY` are the same for every record;
+- a quadrant has the same start/end angle for every hour inside it;
+- only the target fraction within that quadrant differs.
+
+So multiple hours in one quadrant rebuild an identical 72-sample table.
+
+Strict-lossless direction:
+
+1. in one non-liquid `hourAngles` evaluation, keep a local table keyed by the
+   existing quadrant integer;
+2. on first use of a quadrant, execute the **same current 72-sample loop** and
+   store its cumulative lengths and total;
+3. for every hour in that quadrant, compute the same `target = total*fraction`,
+   first matching sample, local interpolation and final parametric angle;
+4. discard the tables when that binding evaluation returns;
+5. leave liquid mode on its current direct formula;
+6. keep the existing public/helper `orbitAngleForHour()` behavior available
+   for the delegate fallback unless a later patch proves it can be folded
+   without changing dependency behavior.
+
+Do not use quarter-ellipse symmetry to synthesize other quadrants. Although an
+ideal ellipse is symmetric, the strict target here is to reuse the exact table
+that the current arithmetic would have built for that specific start/end range,
+not to introduce a numerically different derivation.
+
+Required oracle:
+
+- 0 through 8 hours;
+- all hours in one quadrant;
+- hours spread across 2/3/4 quadrants;
+- exact quadrant-boundary hours;
+- malformed/empty labels and minute parsing;
+- positive/negative/very small orbit radii under current clamping;
+- horizontal/vertical Dashboard resize;
+- compact and wide weather cards;
+- panel-family Material/Abyss switching;
+- exact `hourAngles` values and node x/y positions before/after;
+- liquid Weather popup proving its direct placement remains unchanged.
+
+For an eight-hour model, the present non-liquid path can build eight
+72-sample tables in one geometry evaluation. The strict projection builds at
+most the number of quadrants actually touched, never more than four. This is a
+local geometry saving, not a whole-Dashboard or whole-shell percentage claim.
+
+### R43.3 — Paths deliberately not promoted
+
+**Wi-Fi shared sorted projection:** classic `WifiDialog` and Waffle
+`WifiControl` currently use the same active-first/strength comparator.
+However they belong to different shell-family presentation paths that are not
+proven to be simultaneously resident consumers. Moving the sort eagerly into
+the resident `Network` singleton could make every network publication pay for
+a projection even when no Wi-Fi list is visible. A lazy shared cache would also
+need to preserve the current list-mutation/update timing. Do not promote source
+duplication as runtime duplication without that lifecycle proof.
+
+**Bluetooth shared sort:** not equivalent even at source level. Waffle sorts
+connected -> paired -> name. The classic dialog additionally moves MAC-like
+names after meaningful names. A common sorted list would change one surface.
+
+**BluetoothStatus connected-device scan:** the singleton currently does one
+`find(connected)` plus one `filter(connected).length`. A one-pass summary is
+valid in principle, but Bluetooth device counts are normally small and the
+saving is below the promotion threshold without profiling.
+
+**Overlay Recorder disk-free polling:** the Recorder runs `df` every 10 s
+while `GlobalStates.overlayOpen`. Owner tracing shows the Recorder delegate
+exists only when `Persistent.states.overlay.open` includes `recorder`;
+`StyledOverlayWidget` then makes it visible whenever the Overlay is open (or
+when pinned). The poll therefore serves a presented free-space label rather
+than a hidden retained tab. Slowing it would change freshness semantics.
+
+**Cloudflare WARP central polling:** Round 25 already owns the proven
+strict-lossless improvement: remove the unnecessary shell around
+`warp-cli status`. A stronger singleton polling owner would need evidence that
+multiple WARP toggle implementations are live at the same time and a parity
+contract for their slightly different visible/available semantics. Do not
+re-promote the same 5 s polling family under a new name.
+
+**YtMusic liked-song membership:** a liked-id Set could remove repeated
+`likedSongs.some()` calls, but the service documentation marks YtMusic as a
+legacy compatibility backend while LocalMusic is the current user-facing music
+route. Keep this below active optimization work unless that route becomes
+product-relevant again.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
 before/after measurement.

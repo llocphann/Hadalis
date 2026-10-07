@@ -103,6 +103,9 @@ Rules:
 | `services/TimerService.qml` | **NO IMMEDIATE OPTIMIZATION — broad Pomodoro sync is intentionally cheap.** Every Config change copies four validated integers into service properties. No process, file I/O, model rebuild or list scan follows solely from that sync. Keep the simple reliable listener unless profiling identifies it. | — | None. | Negligible. | 0%. |
 | `shell.qml` deferred-feature Config listener | **NO IMMEDIATE OPTIMIZATION — broad checks are idempotent feature admission, not repeated heavy work.** On Config changes shell re-evaluates ScreenTime/Weather/CavaTheme/CalendarSync/FontSync eligibility; assignments are one-way singleton materialization and expensive service work retains its own lifecycle. Narrow only if a runtime trace shows this bookkeeping itself matters. | — | None. | Negligible. | 0%. |
 
+| `modules/common/widgets/CliphistImage.qml` + `Favicon.qml` + `modules/settings/QuickWallpaperItem.qml` + `NotificationAppIcon.qml` + taskbar preview images | **HIGH-CONFIDENCE CANDIDATE — replace simple non-inverted rounded-mask FBOs with scene-graph clipping.** These leaf/image paths still enable an `OpacityMask` whose mask is only a same-bounds rounded rectangle/circle. The repository already treats `Quickshell.Widgets.ClippingRectangle` as the preferred no-mask-FBO primitive for equivalent media/thumbnail clipping. Start only with masks that have no inversion, transformed mask, blur contribution outside the clip, or topology-dependent shape. | Low–Medium. Edge antialiasing, subpixel/fractional-scale coverage, animated radius and ready/error transitions need raster parity; do not bulk-convert complex masks. | Medium aggregate on list/grid/preview surfaces; structurally removes one offscreen mask/effect layer per visible converted instance. | Low–Medium transient/persistent texture reduction depending on delegate count and lifetime. | Target 0%; if edge raster differs, require <1% global normalized error plus explicit edge-band/max-channel checks before promotion. |
+| `modules/sidebarLeft/SidebarLeftContent.qml` and other lifecycle-gated full-surface rounded clips | **SECOND-PHASE CANDIDATE — extend the same scene-graph clipping proof to large content surfaces.** The left Sidebar SwipeView currently keeps a same-bounds rounded `OpacityMask` only while the panel is visible. If the leaf oracle proves `ClippingRectangle` parity, test the full-sidebar case separately; one avoided full-panel FBO is structurally larger than an icon mask. Do not remove child masks merely because a parent also clips until every alternate host is proven. | Medium. SwipeView transitions, current/adjacent Loader ownership, animated radius, pointer clipping and alternate embedding paths are behavior contracts. | Medium–High local potential while such a panel is open; zero idle gain when its current lifecycle gate is closed. | Medium local texture potential from removing a panel-sized offscreen layer. | Target 0%; require open/close, swipe-transition, fractional-scale and rounded-edge raster/input parity. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -1277,3 +1280,143 @@ Those functions check a small set of booleans/panel membership and assign single
 
 This broad check also allows an option enabled at runtime to materialize its service without requiring shell restart. It is therefore a good example where narrowing the listener is unnecessary unless actual traces attribute cost to it.
 
+
+
+## Research continuation — round 12
+
+Baseline: `dev` at `6230f4ba74a6218515f3f26743f9e830cfa19253`.
+
+This round reconciled the newest canonical cross-repo handoff before promoting
+anything. The Settings World Clock process fan-out and Clipboard decode
+in-flight ownership are already documented there, so they are not counted as
+new findings here.
+
+Current source identities at this baseline:
+
+- `modules/common/widgets/CliphistImage.qml`: `85f316c00c9dfebd6f792d779cb21c6a3e6ba6d2`;
+- `modules/common/widgets/Favicon.qml`: `3d7e24e97236e53a174c977736d75e5ed850871d`;
+- `modules/settings/QuickWallpaperItem.qml`: `6c9485c0344dc6e9c64c4ff45f24b689eb0bb3df`;
+- `modules/common/widgets/NotificationAppIcon.qml`: `b7af10d8c4d9395ed3c4930d1ed86bf025590cbb`;
+- `modules/bar/BarTaskbarWindowPreview.qml`: `6ef94fe54845b57f4562620226c519f94ebdee86`;
+- `modules/waffle/bar/tasks/WindowPreview.qml`: `3dd610cf20f402ca0bc1f76a9162dd2e41c8573a`;
+- `modules/sidebarLeft/SidebarLeftContent.qml`: `06c8e5aa355b97d14d606f7d152123d29a8b36ab`;
+- `scripts/test-performance-lifecycle.sh`: `dcbbc9b28ce2258589df2daee5d1d7daa4c439c6`.
+
+### R12.1 — Simple rounded-mask FBO sweep has an in-tree scene-graph precedent
+
+Several current leaf/image components still use the same render shape:
+
+```text
+image/content item
+  -> layer.enabled
+  -> OpacityMask
+       -> same-bounds Rectangle with only radius
+```
+
+Examples include Clipboard thumbnails, favicons, classic/Waffle taskbar window
+previews, quick-wallpaper thumbnails and notification app images. Their masks
+are not arbitrary alpha geometry; they are ordinary rounded rectangles or
+circles.
+
+Hadalis already has a stronger local precedent than a generic Qt performance
+recommendation. `scripts/test-performance-lifecycle.sh` explicitly requires
+`MediaCrossSlideImage` and InnerTune thumbnails to use
+`Quickshell.Widgets.ClippingRectangle`, and rejects restoring an
+`OpacityMask`/permanent rounded-mask FBO on those paths. That makes a bounded
+conversion sweep worth testing rather than treating every remaining rounded
+mask as unavoidable.
+
+Strict-lossless first phase:
+
+1. select only a non-inverted, same-bounds rounded rectangle/circle mask;
+2. keep image source, decode size, cache policy, async behavior, visibility,
+   opacity and lifecycle unchanged;
+3. replace only the offscreen mask/effect ownership with the existing
+   scene-graph clipping primitive;
+4. preserve the exact effective radius, including any radius animation;
+5. do not include masks that combine blur, transformed coordinates, inverse
+   holes, unions, connected-surface topology, ripple-only clipping or any shape
+   whose contribution extends outside the clip.
+
+Structural claim only: each proven conversion can remove one mask/effect
+layer/FBO for that visible instance. The aggregate value is larger in list/grid
+surfaces such as quick-wallpaper and notification delegates than in a single
+small avatar. This is not a whole-GPU or whole-RAM percentage.
+
+Required raster/lifecycle oracle:
+
+- transparent-edge and opaque images;
+- radius 0, small rounded radius and full/circular radius;
+- odd/even item sizes;
+- integer and subpixel placement;
+- DPR/fractional-scale cases representative of 1.0, 1.25, 1.5 and 2.0;
+- ready -> error/fallback and source replacement;
+- the animated-radius notification path;
+- QuickWallpaper effects enabled/disabled;
+- classic and Waffle taskbar preview arrival/removal;
+- Clipboard blur overlay and hidden/reused delegate transitions;
+- global normalized image error plus an edge-band/max-channel comparison so a
+  tiny antialiasing regression cannot be hidden by a large transparent frame.
+
+Target strict-lossless result is exact visible parity. If Qt's two clipping
+paths rasterize edge antialiasing differently, the candidate must be reclassified
+as a measured visual substitution and remain below the audit's <1% budget before
+promotion.
+
+### R12.2 — Full-surface rounded clipping is a larger second phase, not a bulk rewrite
+
+`SidebarLeftContent.qml` already has the correct lifecycle discipline:
+its SwipeView mask is enabled only while the panel is presented and Game Mode
+has not disabled the effect. However, while open, the full content surface is
+still rendered through a same-bounds rounded `OpacityMask` layer.
+
+If R12.1 proves the primitive itself on leaf/image cases, the next experiment is
+one full-surface host using the same `ClippingRectangle` strategy. This has a
+larger local FBO footprint than an icon/thumbnail mask, but also a wider
+behavioral boundary:
+
+- current/next/previous SwipeView loaders must stay warm exactly as today;
+- swipe animation and clipping must not change;
+- pointer/touch routing must be identical;
+- animated corner radius must match at intermediate frames;
+- closing the panel must retain the current zero-residency behavior;
+- child content may be embedded elsewhere, so no child mask is removed merely
+  because this parent clips in one host.
+
+Do not combine the full-surface experiment with child-mask deduplication. Prove
+one render-primitive substitution first, then audit host reachability separately.
+
+### R12.3 — Findings deliberately not promoted from this pass
+
+- **Settings World Clock process fan-out:** already present in the newest
+  `CROSS_REPO_OPTIMIZATION_HANDOFF.md`; it is not a new candidate for this
+  audit. The canonical direction is the existing one-Bash/`printf %(...)T`
+  approach rather than another independent proposal.
+- **Clipboard decode dedupe:** still relevant on current source, but already
+  owned by earlier cross-repo/audit research. The current component still
+  acknowledges simultaneous surfaces and retains one process per component;
+  do not double-count it as R12 work.
+- **`AppLauncher._configRevision` removal:** rejected. The revision looks local
+  in `AppLauncher.qml`, but current Settings/Niri configuration code consumes it
+  as an explicit reactive dependency. It is not dead state.
+- **Downscaling Clipboard decode via `sourceSize`:** not a strict-lossless
+  cleanup under the current contract. Native Clipboard regression checks use the
+  decoded image's intrinsic dimensions during preview sizing; changing decode
+  dimensions would alter those observations unless the sizing contract is
+  redesigned separately.
+- **`modules/sidebarLeft/Wallhaven.qml` persistent mask:** source inspection
+  found the old-looking ungated mask, but current Sidebar composition does not
+  establish that file as a live owner. Do not claim a saving until reachability
+  is proven rather than inferred from a filename.
+- **Abyss/Wull automatic render-quality policy:** intentionally changes visual
+  fidelity according to user/power policy. It is a product-controlled quality
+  tradeoff, not a strict-lossless optimization and must not be credited here.
+
+### R12.4 — Ranking implication
+
+The leaf rounded-mask sweep is lower risk than replacing blur/shadow algorithms
+because it reuses a clipping primitive already protected by Hadalis performance
+regressions. It should nevertheless start with a focused raster oracle, not a
+repository-wide mechanical replacement. If parity holds, prioritize repeated
+list/grid instances first, then the full-sidebar surface; leave complex/inverted
+masks under their existing specialized research owners.

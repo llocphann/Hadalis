@@ -133,6 +133,11 @@ Rules:
 | `services/GameMode.qml` + fullscreen consumers | **HIGH-CONFIDENCE CPU candidate — derive fullscreen state once per Niri snapshot and answer per-output queries from a cached snapshot.** Current `hasAnyFullscreenWindow`, `hasVisibleFullscreenWindow` and `hasFullscreenOnOutput()` independently rescan `NiriService.windows`, and `hasFullscreenOnOutput()` is consumed by many simultaneously resident Bar/ScreenEdge/Background/Sidebar/Abyss/WidgetPowerManager paths. Build one derived `{any, visible, activeOutputs}` snapshot from the same windows/workspaces/output semantics and make reads O(1). | Low–Medium. Preserve the current distinction where “any fullscreen” may use the single-output fallback even when workspace metadata is temporarily missing, while visible/per-output queries require a resolved active workspace. | None. | Low transient allocation + potentially meaningful CPU reduction on window/workspace/layout publications: O(C·N) repeated scans -> one O(N) derivation + O(1) consumer reads. | 0%. |
 | `services/DesktopItems.qml` + `modules/background/Background.qml` | **HIGH-CONFIDENCE RAM/allocation candidate — publish one read-only cloned item-list snapshot per items revision instead of cloning the complete item set once per output.** `DesktopItems.listItems()` clones every item into a fresh array; Background calls it from each output's desktop-item model and then filters by output. With M outputs and I items, one revision can allocate roughly M·I cloned records before filtering. Maintain a shared presentation snapshot rebuilt only when `items` changes and let Background perform only the per-output filter. | Low–Medium. Must preserve item order, invalid-record hiding, stale-output/focused-output fallback and the defensive-copy contract for callers that still require mutable results. | None. | Low–Medium transient RAM/allocation reduction on multi-output desktops; persistent RAM adds one bounded shared read snapshot but removes repeated per-output clones. | 0%. |
 
+| `services/NiriService.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — maintain a private layout-sorted window view and stop re-running `sortWindowsByLayout(windows)` inside every `sortToplevels()` call.** Public `windows` is already layout-sorted on normal window publication and output-geometry changes, but workspace topology changes can alter sort keys without reassigning `windows`; that is why a naïve direct iteration is not strict-lossless. Refresh a private sorted view on every actual sort-key source change and keep public signal counts unchanged. | Low–Medium. Must preserve `windowsChanged` / `windowOrderChanged` counts, workspace idx/output topology effects and output geometry order. | None. | Low transient allocation + CPU reduction: removes one repeated map→sort→map preparation per compositor toplevel sort pass. | 0%. |
+| `modules/common/widgets/SettingsSearchRegistry.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — pre-normalize immutable search fields at registration.** `registerOption()` already snapshots label/description/page/section/keywords, but every keystroke lowercases/join-normalizes all of them again for every live entry. Store private normalized fields beside the existing raw fields once per registration and keep scoring/order unchanged. | Low. Registry lifecycle/re-registration and translated text-at-registration semantics must remain identical. | None. | Low transient allocation + CPU reduction proportional to registry size × keystrokes. | 0%. |
+| `modules/common/widgets/SettingsSearchRegistry.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — generate highlight markup only after score/sort/top-50 selection.** Current search creates highlighted label/description strings for every match before sorting, then discards everything after the first 50. Highlight markup does not influence score or ordering, so retain raw text + matched terms through ranking and call the same highlighter only for the selected top 50. | Low. Preserve exact matched-term order, overlap markup, scores, tie order and every returned field. | None. | Low–Medium transient string/allocation reduction for broad queries with >50 matches. | 0%. |
+| `modules/settings/ThemesConfig.qml` | **HIGH-CONFIDENCE process candidate — collapse saved-theme polling fan-out to one Bash + one jq per poll.** While the custom-theme editor is expanded, the 2 s poll starts one Bash and then one external `basename` plus one `jq` per saved JSON file. Derive basename with shell parameter expansion and invoke one jq over the ordered file list while preserving one compact output object per input file. | Low–Medium. Preserve glob order, invalid-file warning/skip behavior, filenames with spaces/dots and same model reset/publication timing. | None. | Low transient RAM/CPU process reduction. Per poll, process count changes from roughly `1 + 2T` to `2` for T saved themes. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -176,6 +181,10 @@ Rules:
 39. **TaskbarApps dead identity revision cleanup** — fold into #37; do not treat as an independent performance project.
 40. **GameMode fullscreen derived snapshot** — collapse repeated per-consumer Niri fullscreen scans while preserving any/visible/output fallback distinctions.
 41. **DesktopItems shared presentation snapshot** — stop cloning the entire item set once per output on every items revision.
+42. **Niri private layout-sorted window view** — remove redundant sort preparation from `sortToplevels()` without changing public window notification behavior.
+43. **Settings search normalized registration fields** — eliminate repeated lowercase/join normalization on every keystroke.
+44. **Settings search post-top-50 highlighting** — avoid generating discarded highlight markup.
+45. **Saved-theme catalog process batching** — reduce `1 + 2T` child processes per visible-editor poll to one Bash + one jq.
 
 ## Explicit non-candidates from this pass
 
@@ -2635,5 +2644,178 @@ Any older section that says a finding is “owned by the cross-repo handoff” i
 historical wording only. `docs/archive/optimization/CROSS_REPO_OPTIMIZATION_HANDOFF.md`
 is evidence/history, not an active owner. A still-valid candidate must appear in
 this canonical audit to be considered active research.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+
+## Research continuation — round 21
+
+Baseline: `dev` at `da982e25fdb13bcee446a7332b98d4c913e10cd1`.
+
+This round continues the post-consolidation promotion pass. Three archived
+findings were revalidated against current source; all three source blobs are
+unchanged from their archived research baselines, so they are now active in the
+canonical ledger rather than remaining history-only.
+
+Current source identities:
+
+- `services/NiriService.qml`: `4c8194493fd380bf0ad8c51bc62990ad0c232738`;
+- `modules/common/widgets/SettingsSearchRegistry.qml`: `836c9c061039bae7508aa6b44973722409ddf1dd`;
+- `modules/settings/ThemesConfig.qml`: `fa617e33a5a4672e970a46ee19c2a3dae2c309be`.
+
+### R21.1 — Niri layout sort is repeated at the toplevel-match boundary
+
+Normal window publication already does:
+
+```qml
+const nextWindows = sortWindowsByLayout(_pendingWindows)
+windows = nextWindows
+```
+
+and output changes re-sort `windows` as well. Yet `sortToplevels()` starts from:
+
+```qml
+for (const niriWindow of sortWindowsByLayout(windows)) {
+    ...
+}
+```
+
+so every compositor sort pass allocates another enriched array, sorts it, maps
+it back, and only then begins the Niri↔foreign-toplevel match.
+
+A direct replacement with `for (const niriWindow of windows)` is **not**
+strict-lossless because `handleWorkspacesChanged()` can change workspace
+`idx` or `output`—both layout sort keys—without reassigning public
+`windows`. It emits `windowOrderChanged()` instead. The extra sort inside
+`sortToplevels()` currently repairs that derived order.
+
+Strict-lossless direction:
+
+1. maintain a private layout-sorted window view;
+2. rebuild it on normal batched window publication;
+3. rebuild it on `WorkspacesChanged`;
+4. rebuild it on output geometry/topology changes and initial output fetch;
+5. keep public `windows` assignments and `windowsChanged` signal count exactly
+   as today;
+6. keep `windowOrderChanged()` emissions unchanged;
+7. let `sortToplevels()` iterate the private sorted view directly.
+
+This composes with the existing Niri app-id bucket research: cached layout order
+removes repeated O(W log W) preparation while app-id bucketing removes
+impossible cross-app match comparisons.
+
+Required oracle:
+
+- open/close/change publication;
+- focus-only changes;
+- `WindowLayoutsChanged`;
+- `WorkspacesChanged` changing idx;
+- workspace moving outputs;
+- `OutputsChanged` changing logical x/y;
+- initial output fetch arriving after windows;
+- zero-window transition;
+- exact `windowsChanged`, `windowOrderChanged` and `activeWindowChanged`
+  counts/order;
+- complete `sortToplevels()` identity/order parity.
+
+Do not switch `filterCurrentWorkspace()` to this private view as part of the
+same patch. Its current ordering after workspace-only topology changes is a
+separate correctness question, not an optimization entitlement.
+
+### R21.2 — Settings search normalizes snapshot metadata again on every keystroke
+
+`SettingsSearchRegistry.registerOption(meta)` already snapshots the searchable
+metadata associated with a live control. There is no update-in-place API for
+those search strings; lifecycle changes unregister/re-register entries.
+
+Despite that, each `buildResults(query)` recreates normalized forms for every
+entry:
+
+```text
+label.toLowerCase()
+description.toLowerCase()
+pageName.toLowerCase()
+section.toLowerCase()
+keywords.join(" ").toLowerCase()
+```
+
+Strict-lossless direction is to compute those private normalized strings once
+when the entry is registered while retaining all current raw/public fields.
+Search then reads the precomputed strings.
+
+Required oracle:
+
+- empty query;
+- one/multiple terms;
+- case variants;
+- exact/prefix/mid-string matches;
+- generated and provided keywords;
+- page/section/description-only matches;
+- unregister/re-register;
+- page/control destruction/recreation;
+- translated label/description as captured at registration time;
+- exact score, matchedTerms and final result ordering.
+
+Do not add a debounce. Immediate per-keystroke observability is part of current
+behavior.
+
+### R21.3 — Highlight markup is built before the top-50 cutoff
+
+Current `buildResults()` computes highlighted label/description fields for every
+matched entry, then sorts and returns only `out.slice(0, 50)`.
+
+Highlight strings do not participate in scoring or sort order. A strict-lossless
+pipeline can therefore:
+
+1. score all entries exactly as today;
+2. retain raw label/description and matchedTerms;
+3. perform the identical sort;
+4. take the exact same first 50;
+5. call the existing `highlightTerms()` only for those returned entries.
+
+The proof must compare the complete result object, not only count/order:
+IDs, scores, matchedTerms, raw strings and generated markup all need parity.
+Include overlapping terms and term-order-sensitive highlight cases.
+
+### R21.4 — Saved-theme polling has O(T) child-process fan-out every two seconds
+
+While the custom-theme editor is visible/expanded, ThemesConfig runs a repeating
+2 s refresh. Current command shape:
+
+```text
+Bash
+  for every saved *.json:
+    basename
+    jq
+```
+
+For T saved themes, an unchanged poll therefore starts approximately
+`1 + 2T` processes.
+
+The same output can be produced with:
+
+- Bash parameter expansion for `name.json -> name`;
+- a single jq process over the complete ordered input-file list, using
+  `input_filename` (or equivalent explicit filename input) to derive the name;
+- one compact JSON object per valid source file on stdout for the existing QML
+  parser.
+
+That bounds each poll to roughly one Bash + one jq regardless of T.
+
+Required oracle:
+
+- zero/one/many themes;
+- spaces/dots/Unicode filenames;
+- deterministic glob/output order;
+- invalid JSON mixed with valid JSON;
+- file deleted/replaced during scan;
+- exact id/name/description/tags/colors parity;
+- current warning/skip behavior;
+- `savedThemePresets = []` reset and incremental SplitParser publication timing.
+
+The larger idea—replace the fixed 2 s poll with filesystem-driven updates—is a
+separate follow-up. Add/remove watchers are insufficient by themselves because
+same-name overwrite must also be detected. Do not remove polling until overwrite
+semantics are proven.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.

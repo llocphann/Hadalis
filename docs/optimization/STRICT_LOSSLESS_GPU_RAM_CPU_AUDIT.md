@@ -198,6 +198,11 @@ Rules:
 | `modules/sidebar/SidebarHost.qml` | **HIGH-CONFIDENCE failure/cold-load wakeup candidate — gate the 16 ms presentation frame ticker on readiness signals instead of polling Loader/geometry readiness.** `presentationTimer` repeats every 16 ms after a presentation request, while `tryPresent()` simply returns if the Loader is not Ready or geometry is zero. A slow cold load therefore polls readiness every frame, and Loader.Error/never-valid geometry can leave the ticker running indefinitely. Stop the ticker while prerequisites are false; re-arm from Loader status/geometry changes, then preserve the existing one warm / two cold 16 ms ready-frame settle before showing. | Medium. QML signal ordering and the compositor's required closed-frame contract are sensitive. Preserve cold/warm frame counts, resume remap, editor presentation, close cancellation, loader recovery and exact first-visible timing once prerequisites become valid. | None. | Low normal cold-open CPU/wakeup reduction; high failure-path protection by eliminating a possible ~62.5 Hz unbounded readiness poll. | 0%; presentation timing after readiness must remain identical. |
 | `modules/common/widgets/NotificationGroup.qml` | **HIGH-CONFIDENCE micro-candidate — do not reverse an entire notification group when collapsed UI displays only the newest two.** Current collapsed model evaluates `notifications.slice().reverse().slice(0, 2)`. Use only the final two source elements and reverse that tiny slice; keep the expanded full reverse unchanged. | Very low. Preserve newest-first ordering, fresh-array behavior, 0/1/2-item cases and opacity of the second collapsed item when the group has more than two notifications. | None. | Low transient CPU/allocation reduction for large app notification groups while collapsed: O(N) copy+reverse becomes O(1) bounded copy/reverse. | 0%. |
 
+| `services/HyprlandData.qml` | **HIGH-CONFIDENCE process candidate — route Hyprland raw events to the minimum snapshot refresh set instead of calling `updateAll()` for every event.** Today every raw event can request `hyprctl clients -j`, `monitors -j`, `layers -j`, `workspaces -j` and `activeworkspace -j` together. The socket event contract already separates window/workspace/monitor/layer/input classes. Keep `updateAll()` for startup, config reload, monitor topology and unknown events; route known window events to clients, layer events to layers, workspace/focus events to workspace+monitor state, and ignore input-only events for this service. | Medium. Exact event→snapshot ownership must be trace-tested against the Hyprland versions Hadalis supports. Unknown names must fall back to `updateAll()`; do not trust a closed enum. Preserve the current queued-refresh behavior when a domain process is already running. | None. | Potentially high transient CPU/process reduction on Hyprland: common window/title/focus/layer events can drop from up to five `hyprctl` child processes to the one or two snapshots they can actually invalidate. | 0%. |
+| `services/HyprlandData.qml` + Bar workspace/active-window consumers | **HIGH-CONFIDENCE CPU/allocation candidate — derive largest-window-by-workspace during the existing clients publication pass.** `biggestWindowForWorkspace()` currently allocates a filtered array and reduces the full workspace subset every call. Bar Workspaces can call it once per workspace while ActiveWindow calls it independently. Build a private workspace-id→largest-window index while `windowList` is parsed, reusing the same pass that already builds `windowByAddress`; `addresses` can be pushed in that loop too instead of a second `map`. | Low–Medium. Preserve loose numeric/string workspace-id compatibility, **first strictly-largest wins**, and the current quirk where an all-zero-area workspace returns `null` because the reducer starts at null/area 0 and uses `>`, not `>=`. Preserve exact published window object identity. | Small private index; no extra cloned window records. | Low–Medium CPU/allocation reduction on window snapshot changes and Bar workspace recomputation; removes repeated O(N) filter arrays and area scans per workspace. | 0%. |
+| `services/deferred/HyprlandXkb.qml` | **HIGH-CONFIDENCE process/lookup candidate — read and index XKB `base.lst` once per file revision instead of spawning `cat` for every uncached layout description.** Current layout changes clear the visible code, spawn `cat /usr/share/X11/xkb/rules/base.lst`, split the entire file and `find` the first matching layout/variant line. Use a read-only watched `FileView`, build description→code in source order, and answer later layout changes O(1). | Low–Medium. Preserve exact first-match ordering, the current variant code concatenation, empty/missing-file behavior, cache invalidation when the rules file changes on disk, and immediate clearing of the previous layout code while a new description is unresolved. | Small map for the XKB rules file. | Low transient CPU/process reduction and faster layout switching after initialization; eliminates one `cat` child process plus a full-file split/search for each first-seen layout description. | 0%. |
+| `services/InternalTodoBackend.qml` | **HIGH-CONFIDENCE transport candidate pending a focused FileView fixture — use a dedicated read-only `FileView` for externally edited `todo.txt` instead of spawning `cat` after every debounced file change.** The existing warning is specifically about reusing the writer FileView after `setText()`; Quickshell documents `watchChanges + reload()` as the normal read path. Keep the writer FileView for writes/watch invalidation, add a second reader that never calls `setText`, reload it after the existing 300 ms debounce, and parse only after `loaded`. | Medium until fixture-proven. Preserve startup lock, self-write no-op behavior, 300 ms debounce, fresh-disk semantics, file-not-found/error behavior, list equality, and JSON write ordering. Atomic rename/write watcher behavior needs an explicit oracle before implementation. | One small FileView object; no retained duplicate task model required. | Low recurring process/RSS reduction for users who externally edit/auto-save the text mirror; removes one `cat` child process per debounced external change. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -295,6 +300,11 @@ Rules:
 89. **Abyss Clipboard source-revision search preparation** — parse/lowercase pin/history previews only when clipboard sources change, not on every query character.
 90. **Sidebar presentation readiness-gated frame ticker** — stop 16 ms polling while Loader/geometry prerequisites are unavailable and preserve the existing one/two-frame settle only after readiness.
 91. **NotificationGroup collapsed latest-two projection** — slice the final two source notifications before reversing instead of reversing the whole group.
+
+92. **Hyprland event-scoped snapshot refresh** — replace unconditional five-process `updateAll()` fan-out with domain-specific refreshes for known raw events plus a safe unknown/config/topology fallback.
+93. **Hyprland largest-window workspace index** — build first-strict-maximum workspace ownership during client publication and reuse it from Bar consumers.
+94. **Hyprland XKB watched rules index** — parse `base.lst` once per file revision and remove per-layout `cat` + full-file scans.
+95. **Internal Todo dedicated FileView reader** — after a focused stale-buffer/watch fixture, replace external-edit `cat` transport without touching the writer FileView contract.
 
 ## Explicit non-candidates from this pass
 
@@ -5779,6 +5789,275 @@ process/D-Bus lifecycle subscription plus bounded fallback.
 plus validation/customization metadata on initial page construction. Most other
 processes are explicit apply/persist/open-folder transactions. No new recurring
 process candidate is promoted from its size alone.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+## Research continuation — round 35
+
+Baseline: `dev` at `5f257833f337c1424a8a607b8c3be022bacc98f8`.
+
+This round started from the Round 34 documentation commit and then reconciled one
+concurrent integrations commit:
+
+- `5f257833f337c1424a8a607b8c3be022bacc98f8` adds Obsidian theme-follow
+  integration and touches Config/Settings/shell registration only.
+
+It does not modify the HyprlandData, HyprlandXkb, Bar workspace/active-window or
+Internal Todo sources underlying the findings below.
+
+Current source identities:
+
+- `services/HyprlandData.qml`:
+  `8bf55cb5fa688fcc0eebef53da2b0f0bf8f4d0eb`;
+- `modules/bar/ActiveWindow.qml`:
+  `7b6edafc7d90adc58c399f672d02a334eec385e1`;
+- `modules/bar/Workspaces.qml`:
+  `f7c51bb42b984ba8d3da078652a36ca75bd2db71`;
+- `services/deferred/HyprlandXkb.qml`:
+  `80ccd5ce450eaa1c9be3146c88285880ad69e425`;
+- `services/InternalTodoBackend.qml`:
+  `1ef24e7967ca04c4bbb94fb4a0d4fd8f3cfedadb`.
+
+### R35.1 — HyprlandData refreshes every snapshot after every raw event
+
+The current raw-event handler is intentionally simple:
+
+```qml
+function onRawEvent(event) {
+    updateAll()
+}
+```
+
+and `updateAll()` starts four refresh domains:
+
+```text
+updateWindowList()   -> hyprctl clients -j
+updateMonitors()     -> hyprctl monitors -j
+updateLayers()       -> hyprctl layers -j
+updateWorkspaces()   -> hyprctl workspaces -j
+                      + hyprctl activeworkspace -j
+```
+
+So one raw event can request five external child processes.
+
+The service already has per-domain in-flight queue flags, which prevents
+unbounded parallel spawning, but that does not solve ownership fan-out: an event
+arriving while processes are active marks the unrelated domains for another
+refresh too.
+
+The Hyprland event stream itself distinguishes the invalidation classes. Hadalis
+already consumes examples such as:
+
+- `activewindowv2` / `windowtitlev2` in the anti-flashbang path;
+- `workspacev2`;
+- `activelayout`;
+- `configreloaded`.
+
+A conservative strict-lossless router can therefore begin with:
+
+- window lifecycle/focus/title/fullscreen/floating/pin/group events -> clients;
+- layer open/close -> layers;
+- workspace create/destroy/move/rename/activate and focused-monitor events ->
+  workspaces/activeworkspace and monitor state as required;
+- monitor add/remove and `configreloaded` -> full refresh;
+- keyboard-layout/submap/screencast events -> no HyprlandData snapshot refresh;
+- **unknown event name -> full refresh**.
+
+The unknown fallback is important because Hyprland adds events over time and
+Hadalis must not silently stop observing a new state mutation.
+
+Do not combine this with a debounce in the first patch. Event-specific routing
+already removes unnecessary work without adding a new freshness delay.
+
+Required oracle:
+
+- record a current Hyprland socket event trace and snapshot hashes before/after
+  each event class;
+- open/close/focus/title/fullscreen/float/pin/move windows;
+- create/destroy/rename/move/switch normal and special workspaces;
+- focus another monitor;
+- layer open/close;
+- monitor add/remove and mode/layout change;
+- config reload;
+- keyboard layout, submap and screencast events;
+- unknown synthetic event -> verify full fallback;
+- event bursts while each process is already running -> preserve current
+  queued-one-more-refresh semantics;
+- compare published `windowList`, `windowByAddress`, `addresses`,
+  `monitors`, `layers`, `workspaces`, `workspaceById`,
+  `workspaceIds` and `activeWorkspace` after the system settles.
+
+This candidate targets process fan-out, not Hyprland feature removal.
+
+### R35.2 — biggestWindowForWorkspace repeats an allocative O(N) scan per consumer/workspace
+
+Current helper:
+
+```qml
+const windowsInThisWorkspace = HyprlandData.windowList.filter(
+    w => w?.workspace?.id == workspaceId)
+
+return windowsInThisWorkspace.reduce((maxWin, win) => {
+    const maxArea = (maxWin?.size?.[0] ?? 0) * (maxWin?.size?.[1] ?? 0)
+    const winArea = (win?.size?.[0] ?? 0) * (win?.size?.[1] ?? 0)
+    return winArea > maxArea ? win : maxWin
+}, null)
+```
+
+Bar Workspaces invokes this by workspace, and ActiveWindow invokes it for the
+monitor's active workspace. For W visible workspaces and N windows, the Bar can
+therefore cause repeated full `windowList` scans and temporary filter arrays
+after one client snapshot publication.
+
+`HyprlandData` already walks every published window to construct
+`windowByAddress`, then separately executes:
+
+```qml
+root.addresses = root.windowList.map(win => win.address)
+```
+
+A single publication pass can instead produce:
+
+- the existing `windowByAddress`;
+- the existing ordered `addresses` array;
+- a private `largestWindowByWorkspace` index.
+
+Strict parity detail: the current reducer starts with `null`, treats its area
+as 0 and replaces only on `winArea > maxArea`. Therefore a workspace
+containing only zero-area windows returns **null**, not its first window. Equal
+positive areas keep the first strictly-largest record. Preserve both behaviors.
+
+Workspace ids are compared with loose `==` today. A string-keyed private map
+covers the normal numeric/string schema, but an implementation oracle should
+include 0, positive/negative ids and numeric strings before relying on that
+normalization.
+
+Required oracle:
+
+- empty window list;
+- missing/null workspace id;
+- one/many workspaces;
+- numeric id vs numeric-string query;
+- zero-area-only workspace -> null;
+- negative/zero workspace ids;
+- equal-area ties -> first winner;
+- later strictly larger window;
+- malformed/missing size arrays -> current 0-area behavior;
+- exact object identity returned to ActiveWindow/Workspaces;
+- exact `addresses` ordering if the companion loop fusion is implemented.
+
+### R35.3 — HyprlandXkb rereads and reparses base.lst once per first-seen layout description
+
+When `currentLayoutName` is not cached, HyprlandXkb:
+
+1. clears `currentLayoutCode`;
+2. spawns `cat /usr/share/X11/xkb/rules/base.lst`;
+3. splits the complete file;
+4. searches lines in source order;
+5. caches only the requested description.
+
+That means switching through several new layouts pays one child process plus one
+full-file parse/search for each distinct description.
+
+A stronger strict-lossless boundary is the rules-file revision:
+
+1. own one read-only `FileView` for `base.lst`;
+2. watch disk changes and reload/rebuild on revision;
+3. parse lines once in source order into description -> code;
+4. on layout change, clear the visible previous code exactly as today, then
+   resolve from the current index;
+5. if the file is missing/unreadable or no row matches, keep the code empty.
+
+The index must reproduce **first matching line wins**. Layout rows and variant
+rows use different extraction rules; a later duplicate description must not
+overwrite an earlier match if the current `find()` would have stopped there.
+
+Quickshell's FileView contract explicitly supports watched read-only files via
+`watchChanges` plus `reload()`, so this does not require polling.
+
+Required oracle:
+
+- missing/unreadable `base.lst`;
+- empty layout name;
+- simple layout line;
+- variant line and exact existing concatenation;
+- duplicate descriptions proving first-row ownership;
+- comments/blank/malformed lines;
+- rapid layout changes while a file load/rebuild is in flight;
+- rules file replacement/edit while running;
+- Hyprland and Niri synchronization paths;
+- exact visible uppercase code in ii/Waffle lock surfaces and keyboard
+  indicators.
+
+### R35.4 — Internal Todo uses cat only because the writer FileView owns stale write state
+
+The Internal Todo backend correctly documents why it does **not** read external
+changes back through `txtFileView`:
+
+> `FileView.setText()` caches content internally; subsequent
+> `reload()+text()` on that writer can return its cached buffer rather than
+> fresh disk bytes.
+
+So after the existing 300 ms external-edit debounce it currently runs:
+
+```qml
+Process {
+    command: ["cat", root.txtFilePath]
+    ...
+}
+```
+
+The restriction applies to the **writer instance**, not to the concept of
+FileView as a reader. Quickshell's documented watched-file pattern is a
+read-only FileView with `watchChanges: true` and `reload()` on disk changes.
+
+Candidate shape:
+
+- keep `txtFileView` as the writer and current watch/invalidation source;
+- keep the startup lock and 300 ms debounce unchanged;
+- create a second FileView that never calls `setText()` or `setData()`;
+- when the debounce fires, reload the reader;
+- only in its successful `onLoaded` path read `text()`, parse, compare and
+  update JSON exactly as the current `cat` collector does;
+- keep load failure explicit and do not treat an asynchronous old buffer as new
+  disk content.
+
+This should be fixture-proven before promotion to implementation because
+self-writes use atomic replacement and both FileViews point at the same path.
+The test must demonstrate that the reader observes the final disk bytes, not a
+pre-rename/truncated or writer-cached state.
+
+Required oracle:
+
+- startup with missing/existing JSON and txt files;
+- Hadalis UI write -> txt watcher -> no semantic self-reimport;
+- external editor overwrite;
+- atomic rename-style save;
+- rapid multiple external saves inside/outside 300 ms;
+- empty file, comments, checkbox and plain-text parsing;
+- file deletion/recreation;
+- simultaneous JSON persistence in flight;
+- exact list/persistenceBusy/readiness outcomes.
+
+### R35.5 — Rejected / lower-priority paths from this pass
+
+**LockContext fingerprint capability shell:** the deferred Lock component starts
+one Bash chain that checks `fprintd-list` and resolves `whoami`. It can
+probably be reduced to a smaller direct process sequence, but it is a one-shot
+capability probe and identity/error semantics are security-adjacent. It is lower
+value than the Hyprland event fan-out and is not promoted in this round.
+
+**Settings search code duplication:** Focus/Rail/Waffle settings surfaces contain
+similar search orchestration, but they are alternative presentations rather
+than simultaneously active search engines. The canonical ledger already tracks
+the runtime-important normalized-search and post-limit-highlighting work. A
+shared helper may improve maintainability, but duplicate source text alone is
+not a performance candidate.
+
+**Full-screen task/session blur:** several full-screen surfaces still own
+full-screen blur effects, but unlike panel glass they actually present the full
+output. The existing bounded-wallpaper-capture candidate cannot claim an
+area reduction there without changing the effect itself.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
 

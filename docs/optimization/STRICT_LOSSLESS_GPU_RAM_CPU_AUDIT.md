@@ -106,6 +106,8 @@ Rules:
 | `modules/common/widgets/CliphistImage.qml` + `Favicon.qml` + `modules/settings/QuickWallpaperItem.qml` + `NotificationAppIcon.qml` + taskbar preview images | **HIGH-CONFIDENCE CANDIDATE — replace simple non-inverted rounded-mask FBOs with scene-graph clipping.** These leaf/image paths still enable an `OpacityMask` whose mask is only a same-bounds rounded rectangle/circle. The repository already treats `Quickshell.Widgets.ClippingRectangle` as the preferred no-mask-FBO primitive for equivalent media/thumbnail clipping. Start only with masks that have no inversion, transformed mask, blur contribution outside the clip, or topology-dependent shape. | Low–Medium. Edge antialiasing, subpixel/fractional-scale coverage, animated radius and ready/error transitions need raster parity; do not bulk-convert complex masks. | Medium aggregate on list/grid/preview surfaces; structurally removes one offscreen mask/effect layer per visible converted instance. | Low–Medium transient/persistent texture reduction depending on delegate count and lifetime. | Target 0%; if edge raster differs, require <1% global normalized error plus explicit edge-band/max-channel checks before promotion. |
 | `modules/sidebarLeft/SidebarLeftContent.qml` and other lifecycle-gated full-surface rounded clips | **SECOND-PHASE CANDIDATE — extend the same scene-graph clipping proof to large content surfaces.** The left Sidebar SwipeView currently keeps a same-bounds rounded `OpacityMask` only while the panel is visible. If the leaf oracle proves `ClippingRectangle` parity, test the full-sidebar case separately; one avoided full-panel FBO is structurally larger than an icon mask. Do not remove child masks merely because a parent also clips until every alternate host is proven. | Medium. SwipeView transitions, current/adjacent Loader ownership, animated radius, pointer clipping and alternate embedding paths are behavior contracts. | Medium–High local potential while such a panel is open; zero idle gain when its current lifecycle gate is closed. | Medium local texture potential from removing a panel-sized offscreen layer. | Target 0%; require open/close, swipe-transition, fractional-scale and rounded-edge raster/input parity. |
 
+| `services/NiriService.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — reuse the already-sorted workspace projection on activation/urgency events.** `handleWorkspaceActivated()` and `handleWorkspaceUrgencyChanged()` rebuild `root.workspaces`, then call `Object.values(updatedWorkspaces).sort((a,b) => a.idx-b.idx)` even though those event types do not change workspace membership or `idx`. Build the same updated workspace objects/map, then project them through the existing `allWorkspaces` order; fold focused-index discovery into that pass. Keep full sort only for authoritative `WorkspacesChanged`/topology events. | Low–Medium. Must preserve stable equal-`idx` tie order, per-record object identity choices, malformed/missing workspace behavior, property-notify timing and current-output quirks. | None directly. | Low transient allocation reduction; persistent state unchanged. CPU gain scales with workspace-switch frequency and workspace count by removing an O(W log W) sort plus a temporary `Object.values` array on activation/urgency. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -132,6 +134,7 @@ Rules:
 22. **Workspace config snapshot guard** — prevent every unrelated Config write from scheduling per-output O(windows) occupancy reconstruction.
 23. **MPRIS expired grace pruning** — low-risk cumulative session cleanup; fold pruning into existing lifecycle updates with no timer.
 24. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
+25. **Niri workspace ordered-projection reuse** — remove redundant all-workspace re-sorts from activation/urgency events while preserving record identity and equal-index ordering.
 
 ## Explicit non-candidates from this pass
 
@@ -1420,3 +1423,148 @@ regressions. It should nevertheless start with a focused raster oracle, not a
 repository-wide mechanical replacement. If parity holds, prioritize repeated
 list/grid instances first, then the full-sidebar surface; leave complex/inverted
 masks under their existing specialized research owners.
+
+
+## Research continuation — round 13
+
+Baseline: `dev` at `e139c9c148766068ccb9ed5e448c7fd444fa6a2a`.
+
+This round first reconciled the newest cross-repo handoff. Calendar bucketing,
+LocalMusic payload/search work, WorldClock catalog lifecycle, Background
+workspace occupancy, Hyprland collection passes, GameMode fullscreen snapshots,
+DesktopItems snapshots and Niri toplevel app-id bucketing are already owned
+there, so none is double-counted here.
+
+Current source identity:
+
+- `services/NiriService.qml`: `4c8194493fd380bf0ad8c51bc62990ad0c232738`.
+
+### R13.1 — Workspace activation re-sorts an order whose sort key did not change
+
+The authoritative full-workspace event correctly rebuilds and sorts:
+
+```qml
+root.workspaces = newWorkspaces
+allWorkspaces = Object.values(newWorkspaces).sort((a, b) => a.idx - b.idx)
+```
+
+That is necessary when `WorkspacesChanged` can alter membership, output,
+indices or topology.
+
+The same sort is also executed by `handleWorkspaceActivated()`. That handler
+changes only activation/focus flags on existing workspace records:
+
+```text
+is_active
+is_focused
+```
+
+It does not add/remove workspaces and does not assign `idx`. Therefore the
+previous `allWorkspaces` array is already in exactly the order required by the
+same `a.idx - b.idx` comparator.
+
+A strict-lossless replacement can keep the existing workspace-map construction
+and existing per-record clone/reference choices, but derive the next ordered
+array by walking the previous sorted projection:
+
+```text
+nextAll = []
+for each old ordered workspace:
+    next = updatedWorkspaces[old.id]
+    append next
+    track focused index from next.is_focused
+```
+
+This removes:
+
+- one `Object.values(updatedWorkspaces)` array materialization;
+- one stable O(W log W) sort;
+- the later standalone O(W) `findIndex(w => w.is_focused)`, because focused
+  index can be observed while publishing the ordered projection.
+
+The existing `updateCurrentOutputWorkspaces()` filter can remain unchanged in
+the first patch. Folding that filter into the same operation is possible, but it
+would widen the proof surface for little additional value.
+
+### R13.2 — Workspace urgency has the same redundant ordering rebuild
+
+`handleWorkspaceUrgencyChanged()` replaces exactly one workspace record with a
+copy whose `is_urgent` value changed, republishes `root.workspaces`, and then
+again executes:
+
+```qml
+allWorkspaces = Object.values(updatedWorkspaces).sort((a, b) => a.idx - b.idx)
+```
+
+Urgency does not change membership or `idx`. The already-sorted projection can
+therefore be remapped by id without sorting. This path has lower frequency than
+workspace activation, but it is the same proof and should share one helper if
+implemented.
+
+### R13.3 — Identity/tie constraints make this narrower than “skip the sort”
+
+The optimization must preserve more than values.
+
+Current `handleWorkspaceActivated()` may clone workspace records even when a
+particular record's final booleans equal their previous values. A proposed
+optimization must initially keep those exact clone/reference decisions rather
+than opportunistically retaining old records. QML consumers can observe object
+identity indirectly, and strict-lossless research should not assume those
+fresh objects are irrelevant.
+
+Equal `idx` values also need an explicit oracle. JavaScript sort is stable on
+the deployed runtime, so the old code preserves the pre-sort `Object.values`
+tie order. Reusing the prior `allWorkspaces` order is equivalent only if:
+
+- workspace membership is unchanged;
+- ids still address the same records;
+- `idx` is unchanged for every record;
+- the previous projection was produced by the same canonical ordering.
+
+Those conditions hold for the two targeted event handlers by current source,
+but the helper must not be used for `WorkspacesChanged` or any future event
+that can change `idx`/membership.
+
+### R13.4 — Required oracle
+
+Before promotion, compare old/new public state and notification behavior for:
+
+- one workspace;
+- many workspaces on one output;
+- multiple outputs;
+- focused and non-focused activation events;
+- activation of the already-active workspace;
+- equal/duplicate `idx` values and unusual id ordering;
+- missing activation id (current early return);
+- no focused workspace after update, including the current quirk where
+  `focusedWorkspaceId` is cleared but `currentOutput` is not explicitly
+  cleared in that branch;
+- urgency true/false changes;
+- untouched workspace object references versus records that current code
+  clones;
+- `allWorkspaces`, `focusedWorkspaceIndex`, `focusedWorkspaceId`,
+  `currentOutput` and `currentOutputWorkspaces` value/order equality;
+- signal/binding counts needed by Bar/Overview/Background/workspace consumers.
+
+A useful structural benchmark should run repeated synthetic activation events
+at workspace counts such as 10, 50 and 200 and report JS wall time/allocation
+counts separately from whole-shell CPU. Real desktops normally have far fewer
+workspaces, so this remains a targeted event-path reduction rather than a claim
+of a large universal speedup.
+
+### R13.5 — Adjacent ideas deliberately not promoted
+
+- **Clone only records whose booleans actually changed:** values would usually
+  match, but it changes workspace-object identity relative to current behavior.
+  Keep that as a separate oracle-backed refinement, not part of the sort
+  removal.
+- **Mutate `root.workspaces` in place:** rejected for the first pass. The map is
+  public reactive state; replacing it currently supplies a dependable property
+  notification boundary.
+- **Remove the full sort from `handleWorkspacesChanged()`:** rejected. That is
+  the authoritative topology snapshot and can change membership/`idx`.
+- **Optimize `MinimizedWindows` filter/sort selectors in the same round:**
+  those paths are explicit minimize/restore actions and lower priority than the
+  recurring workspace-activation event path.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.

@@ -30,6 +30,10 @@ Item {
         spacing: AbyssStyle.sectionSpacing/2
         RowLayout {
             AbyssLabel { text: "Applications & workspaces"; font.bold: true; Layout.fillWidth: true }
+            AbyssLabel {
+                text: "Wull · "+AbyssRenderPolicy.wullQualityLabel
+                color: AbyssStyle.textColorMuted
+            }
             AbyssButton { glyph: "close"; description: "Close launcher"; onClicked: root.closeRequested() }
         }
         AbyssWorkspaces { Layout.fillWidth: true; Layout.preferredHeight: 36; outputName: root.outputName; vertical: false }

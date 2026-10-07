@@ -29,7 +29,7 @@ Item {
     property bool motionEnabled: AbyssStyle.motionEnabled
     property bool effectsEnabled: Appearance.effectsEnabled && AbyssStyle.quality !== "performance"
     property real motionScale: 1
-    property string renderQuality: "balanced"
+    property string renderQuality: "quality"
     property real translucency: 0.16
     property bool travelEnabled: false
     property string travelMode: "walk"

@@ -2,14 +2,14 @@
 
 var personalities = ["calm", "balanced", "energetic"]
 var frequencies = ["always", "frequent", "occasional", "rare"]
-var qualities = ["performance", "balanced", "quality"]
+var qualities = ["performance", "quality"]
 
 function defaults() {
     return {
         enabled: false, output: "", edge: "auto", along: 0.72, size: 1,
         interactive: true, soundEnabled: false, personality: "balanced",
         appearanceFrequency: "always", animationsEnabled: true,
-        effectsEnabled: true, hideInFullscreen: false, renderQuality: "balanced",
+        effectsEnabled: true, hideInFullscreen: false, renderQuality: "quality", autoQuality: false,
         translucency: 0.16, exploreFeatures: true
     }
 }
@@ -22,7 +22,7 @@ function bounded(value, fallback, minimum, maximum) {
 function normalize(options) {
     const source = options ?? {}
     const result = defaults()
-    for (const key of ["enabled", "interactive", "soundEnabled", "animationsEnabled", "effectsEnabled", "hideInFullscreen", "exploreFeatures"])
+    for (const key of ["enabled", "interactive", "soundEnabled", "animationsEnabled", "effectsEnabled", "hideInFullscreen", "exploreFeatures", "autoQuality"])
         if (typeof source[key] === "boolean") result[key] = source[key]
     // Older persisted placement values are tolerated but no longer pin Wull.
     // Keep schema compatibility while geometry chooses every visit dynamically.
@@ -30,7 +30,7 @@ function normalize(options) {
     result.translucency = bounded(source.translucency, result.translucency, 0, 0.35)
     result.personality = personalities.includes(source.personality) ? source.personality : "balanced"
     result.appearanceFrequency = frequencies.includes(source.appearanceFrequency) ? source.appearanceFrequency : "always"
-    result.renderQuality = qualities.includes(source.renderQuality) ? source.renderQuality : "balanced"
+    result.renderQuality = source.renderQuality === "performance" ? "performance" : "quality"
     return result
 }
 
@@ -40,6 +40,5 @@ function motionScale(personality) {
 
 function renderTier(quality, shellQuality) {
     if (shellQuality === "performance") return 0
-    const tier = qualities.indexOf(quality)
-    return tier < 0 ? 1 : tier
+    return quality === "performance" ? 0 : 1
 }

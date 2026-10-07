@@ -316,8 +316,15 @@ ColumnLayout {
     SettingsCardSection {
         title:"Performance";icon:"speed";settingsTaskSection:"performance"
         visible:root.activeSection==="performance"
+        SettingsSwitch {
+            text:"Follow power profile"
+            description:"Use Performance in Power Saver, Balanced in Balanced, and Quality in Performance."
+            autoToggle:false;checked:Config.options?.abyss?.autoQuality ?? false
+            onToggledByUser:checked=>Config.setNestedValue("abyss.autoQuality",checked)
+        }
         SettingsGroup {
             ConfigSelectionArray {
+                enabled:!(Config.options?.abyss?.autoQuality ?? false)
                 currentValue:Config.options?.abyss?.quality ?? "balanced"
                 options:[{displayName:"Performance",value:"performance"},{displayName:"Balanced",value:"balanced"},{displayName:"Quality",value:"quality"}]
                 onSelected:value=>Config.setNestedValue("abyss.quality",value)

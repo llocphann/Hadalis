@@ -604,7 +604,7 @@ Scope {
                 effectsEnabled: root.companionPreferences.effectsEnabled && Appearance.effectsEnabled
                     && AbyssStyle.quality!=="performance"
                 motionScale: WullPreferences.motionScale(root.companionPreferences.personality)
-                renderQuality: root.companionPreferences.renderQuality
+                renderQuality: AbyssRenderPolicy.wullQuality
                 translucency: root.companionPreferences.translucency
                 travelEnabled: companionPresence.traveling
                 travelMode: companionPresence.mode

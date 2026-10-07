@@ -524,6 +524,7 @@ Singleton {
 
             property JsonObject abyss: JsonObject {
                 property string quality: "balanced"
+                property bool autoQuality: false
                 property list<var> positions: []
                 property JsonObject sidebars: JsonObject {
                     property bool hoverEnabled: true
@@ -551,7 +552,8 @@ Singleton {
                     property bool animationsEnabled: true
                     property bool effectsEnabled: true
                     property bool hideInFullscreen: false
-                    property string renderQuality: "balanced"
+                    property string renderQuality: "quality"
+                    property bool autoQuality: false
                     property real translucency: 0.16
                     property bool exploreFeatures: true
                 }

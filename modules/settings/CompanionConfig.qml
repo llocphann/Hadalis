@@ -32,7 +32,6 @@ ContentPage {
     ]
     readonly property var qualityOptions: [
         { displayName: Translation.tr("Performance"), value: "performance" },
-        { displayName: Translation.tr("Balanced"), value: "balanced" },
         { displayName: Translation.tr("Quality"), value: "quality" }
     ]
     readonly property var expressionOptions: [
@@ -175,7 +174,7 @@ ContentPage {
                     motionEnabled: root.preferences.animationsEnabled && AbyssStyle.motionEnabled && visible
                     effectsEnabled: root.preferences.effectsEnabled && Appearance.effectsEnabled
                         && AbyssStyle.quality !== "performance"
-                    renderQuality: root.preferences.renderQuality
+                    renderQuality: AbyssRenderPolicy.wullQuality
                     translucency: root.preferences.translucency
                 }
             }
@@ -319,10 +318,22 @@ ContentPage {
             ChoiceRow {
                 objectName: "companionQuality"
                 label: Translation.tr("Rendering quality")
-                description: Translation.tr("Performance keeps lighting simple. Balanced adds reflected detail. Quality adds deeper refraction and richer liquid light. Follows the shell performance policy.")
+                description: Translation.tr("Performance keeps lighting simple. Quality adds reflected liquid detail.")
+                enabled: !root.preferences.autoQuality
                 options: root.qualityOptions
                 currentValue: root.preferences.renderQuality
                 onSelected: value => root.setPreference("renderQuality", value)
+            }
+            SettingsSwitch {
+                text: Translation.tr("Follow power profile")
+                description: Translation.tr("Use Performance in Power Saver and Quality in Balanced or Performance.")
+                autoToggle: false
+                checked: root.preferences.autoQuality
+                onToggledByUser: checked => root.setPreference("autoQuality",checked)
+            }
+            StyledText {
+                text: Translation.tr("Current render quality")+": "+AbyssRenderPolicy.wullQualityLabel
+                color: Appearance.colors.colSubtext
             }
             PercentageRow {
                 objectName: "companionTranslucency"

@@ -2095,11 +2095,13 @@
             "animationsEnabled": true,
             "effectsEnabled": true,
             "hideInFullscreen": false,
-            "renderQuality": "balanced",
+            "renderQuality": "quality",
+            "autoQuality": false,
             "translucency": 0.16,
             "exploreFeatures": true
         },
         "quality": "balanced",
+        "autoQuality": false,
         "positions": [],
         "spectrum": {"configured": false, "enabled": false, "strength": 0.45, "edge": "bar", "multiMonitorMode": "primary"},
         "perimeter": {

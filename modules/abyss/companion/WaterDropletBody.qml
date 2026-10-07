@@ -24,7 +24,7 @@ Item {
     property bool motionEnabled: AbyssStyle.motionEnabled && visible
     property real motionScale: 1
     property bool effectsEnabled: Appearance.effectsEnabled && AbyssStyle.quality !== "performance"
-    property string renderQuality: "balanced"
+    property string renderQuality: "quality"
     property real translucency: 0.16
     readonly property int qualityLevel: Preferences.renderTier(renderQuality, AbyssStyle.quality)
     readonly property bool detailedEffects: effectsEnabled && qualityLevel > 0

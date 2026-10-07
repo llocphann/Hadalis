@@ -5591,5 +5591,9 @@
   "Scanning model folders…": "Scanning model folders…",
   "No downloaded GGUF models found": "No downloaded GGUF models found",
   "Use in Wull": "Use in Wull",
-  "llama.cpp runtime not found": "llama.cpp runtime not found"
+  "llama.cpp runtime not found": "llama.cpp runtime not found",
+    "Performance keeps lighting simple. Quality adds reflected liquid detail.": "Performance keeps lighting simple. Quality adds reflected liquid detail.",
+    "Follow power profile": "Follow power profile",
+    "Use Performance in Power Saver and Quality in Balanced or Performance.": "Use Performance in Power Saver and Quality in Balanced or Performance.",
+    "Current render quality": "Current render quality"
 }

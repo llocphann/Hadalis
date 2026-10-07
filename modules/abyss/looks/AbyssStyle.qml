@@ -6,7 +6,7 @@ import qs.modules.common.functions
 
 Singleton {
     readonly property var options: Config.options?.abyss
-    readonly property string quality: ["performance", "balanced", "quality"].includes(options?.quality) ? options.quality : "balanced"
+    readonly property string quality: AbyssRenderPolicy.abyssQuality
     readonly property real perimeterThickness: Math.max(3, Math.min(40, options?.perimeter?.thickness ?? 16))
     readonly property real perimeterRadius: Math.max(12, Math.min(64, options?.perimeter?.radius ?? 34))
     readonly property real surfaceTension: Math.max(0, Math.min(1, options?.surface?.tension ?? 0.5))

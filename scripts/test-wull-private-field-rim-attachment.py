@@ -40,6 +40,8 @@ DEPS = {
 # perimeter above. Preserve every reviewed hash and the helper's drift guard;
 # production's new shared water has independent current-source coverage.
 FROZEN_FIELDS = {
+    "modules/abyss/looks/AbyssLayout.js": ROOT / "scripts/wull-fixtures/historical/pre-edge-width-layout.snapshot",
+    "modules/abyss/looks/AbyssStyle.qml": ROOT / "scripts/wull-fixtures/historical/pre-power-profile-style.snapshot",
     "modules/abyss/looks/AbyssField.frag": ROOT / "scripts/wull-fixtures/historical/pre-shared-water-field-frag.snapshot",
     "modules/abyss/looks/AbyssField.qml": ROOT / "scripts/wull-fixtures/historical/pre-shared-water-field-qml.snapshot",
     "modules/abyss/looks/AbyssField.frag.qsb": ROOT / "scripts/wull-fixtures/historical/pre-shared-water-field-qsb.snapshot",

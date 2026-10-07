@@ -78,3 +78,133 @@ These are checkpoint tasks and may have been superseded by newer `dev` commits; 
 - Do not confuse source-complete checkboxes with owner-live acceptance.
 - The separate optimization program has its own [research checklist](OPTIMIZATION.md); never implement research findings without maintainer authorization.
 
+
+
+## Maintainer product redesign — 2026-10-07
+
+The maintainer authorized implementation of the following 21 requirements.
+This resumes product work in one agent context. The earlier Dashboard draft and
+its stop checkpoint remain historical evidence; reconcile current source before
+reusing it. The maintainer has lifted the earlier automation exclusion; preserve concurrent work.
+Use native/local regression tests and the canonical maintainer validator; record
+exact source SHA and keep owner-session desktop acceptance separate.
+
+The checkboxes below now mean **source implemented with focused local/native
+contracts**, not owner-session visual/hardware acceptance. Canonical validation
+is the next gate; earlier unresolved owner reports above remain open.
+
+1. [x] Replace existing wallpaper picker presentations with one Caelestia-like
+   selector rendered through Abyss connected surfaces; preserve selection,
+   folders, format previews, output targeting and existing wallpaper backend.
+2. [x] Use the current iNiR liquid wallpaper transition and its presented-frame
+   priming/ownership guarantees; compare pinned upstream sources.
+3. [x] Use the AI tab's providers/catalog/auth/request path for Wull chat. The
+   Wull page adds only model selection and thinking effort for its AI controls.
+4. [x] Configure physical Screen Edge width independently for top/right/bottom/
+   left. Each Edge chooses thickness-only or inherited Edge/module sizing;
+   preserve per-output editor drafts, explicit custom sizes and Cancel/Done.
+5. [x] Present Abyss Panel Style before Waffle Style in Settings.
+6. [x] Offer automatic Abyss and Wull render quality following power profile;
+   retain an explicit manual mode and react to profile changes without reload.
+7. [x] Wull has two render levels: Performance and Quality. Quality uses the
+   former Balanced rendering; migrate old Balanced/Quality safely.
+8. [x] Never automatically open Wull chat input. Hover offers two cloud actions:
+   Obsidian (energy/mood/schedule/etc.) and AI (chatbox). Daily mood/energy is
+   chosen once; later bubbles show contextual read-only phrases. Schedule/todo
+   reminders use appropriate popup notifications.
+9. [x] Fix Clipboard History copied-image rendering, decoding and delegate
+   lifecycle; exercise native binary ingress and actual image display.
+10. [x] Wull uses water portals for long-distance travel, with destination
+    clearance, cancellation and bounded visual lifetime.
+11. [x] Add rolling locomotion alongside existing walk/run behavior.
+12. [x] Fix the clipped Wull/quicksand boundary during Dock disappearance;
+    exercise the real paint/input bounds and opening/closing frames.
+13. [x] Rework Settings into compact grouped navigation with subsidiary pages,
+    inspired by iOS; retain stable keys, migration, search and deep links.
+14. [x] Traveling Abyss waves attenuate crest height continuously with distance,
+    while preserving stability, interaction and idle sleep.
+15. [x] Show Wull's effective render quality in the Launcher popup.
+16. [x] Rework the Onscreen Keyboard popup into Abyss connected presentation,
+    preserving typing, dragging/pin and keyboard focus behavior.
+17. [x] Add Obsidian auto-theming with vault/application and configuration path
+    selection. Resolve the active theme and derive a palette mapping from the
+    maintainer's current theme; preserve theme choice and unrelated config.
+18. [x] Give third-party application integrations one Settings destination with
+    focused subsidiary sections (including Obsidian theming).
+19. [x] Place Notes add/remove actions beside the Notes indicator in one group.
+20. [x] Repair Notes and Timers Screen Edge pin/hold-open ownership.
+21. [x] Ensure Niri test/debug windows and helper backgrounds are dark before
+    their first presented frame; retain isolated tests and owner-session scope.
+
+
+### Implemented source and bounded validation
+
+- **Wallpaper / style order (1, 2, 5):** `42e0855aa` consolidates picker routes,
+  compatibility IPC and II/Waffle content into one connected carousel. Five
+  rounded thumbnails, an enlarged center, extension-free captions and the lower
+  search pill follow the supplemental image. `inirMelt` has presented-frame
+  texture priming, final-request coalescing, reduced-motion/error fallback and
+  one wallpaper owner. Pinned references: [Caelestia shell](https://github.com/caelestia-dots/shell)
+  `6f7ce62b7a6ff9e37b66526065643ca6e9d65783` and
+  [iNiR wallpaper](https://github.com/snowarch/iNiR/wiki/WALLPAPER)
+  `db2233ce73e827373943aabd170f2ada8bf28471`. Native carousel/cache/melt and
+  migration/mode contracts passed. Actual owner wallpaper/video/multi-output
+  acceptance remains open.
+- **Shared AI / companion interaction (3, 6, 7, 8, 15):** `8ab2d0914`,
+  `6230f4ba7` and `e139c9c14` share the AI catalog/auth/transport while preserving
+  separate chat state, bounded inference, cancel/timeouts and no automatic chat
+  requests. Hover cloud actions, once-per-day check-in, read-only context and
+  deterministic task/calendar reminders have owned native tests. Power policy
+  and two render tiers have contract coverage; actual hardware profile changes
+  and resource savings are not claimed.
+- **Clipboard / Notes (9, 19, 20):** `e62791eb7`, `33b9afaab` and `2052838e2`
+  cover binary image decode/dimensions/cache, actual Image.Ready rows and
+  delegate reuse, grouped Notes actions and pinned Notes/Timers hold-open with
+  editor ownership. Native fake-ingress/click/pin/reopen checks passed.
+- **Edges / waves (4, 14):** `93319fa22` and `8df930178` add independent physical
+  widths and per-Edge module inheritance, and continuous travel attenuation.
+  Per-output/custom-size policy and finite/monotone solver contracts passed;
+  owner recordings and editor acceptance across outputs/scales remain open.
+- **Settings / integrations (13, 18):** `0c804b5ac` preserves existing numeric
+  routes, search/deep links, hidden/custom order and Waffle while introducing
+  parent/child navigation and one Integrations destination. Actual native
+  parent/child/Back/search/edit navigation, standalone/Waffle opening and a
+  missing initial Persistent state file passed. Loader status readback also
+  removes a native loading binding loop.
+- **OSK (16):** `4bbb3bbba` composes the keyboard within the existing output
+  field, with per-output edge/position, bounded drag, pin and key release.
+  Actual native key clicks used an owned fake ydotool backend; live typing into
+  owner applications is still a separate acceptance gate.
+- **Obsidian (17):** `5f257833f` adds vault config/application path controls and
+  optional automatic coloring through one owned CSS snippet. Read-only owner
+  inspection identified Border/Carbon Cyan's 14-stop ramp; shell background,
+  text and accent follow its gradient weights. Active theme, fonts, unrelated
+  preferences and snippets are preserved. Ten filesystem contracts and actual
+  Settings automatic-apply/restore passed. No owner vault was changed during
+  validation. [Obsidian CSS snippets](https://obsidian.md/help/snippets) supplies
+  the supported theme-preserving application mechanism.
+- **Water travel / immersion (10, 11, 12):** `7bb4fe9ad` adds two finite portal
+  openings for long supported travel, a hidden midpoint transfer, live
+  destination proof/cancellation and whole-rotation rolling. It preserves the
+  Aqua/Octo cast and its `f0e70dd98` handoff. Immersion masks the bounded body
+  capture with the same field geometry/waves/contact, including pulled and sink
+  actions, instead of the old rectangular plane. Native portal cancellation,
+  roll and curved alpha pixels on all four Edges plus Dock passed. The capture
+  is released at rest; this visual feature is not a strict-lossless performance
+  optimization or a measured RAM/FPS improvement.
+- **Dark debug hosts (21):** `3f98729f9` sets an initial dark clear in 21 active
+  Qt test hosts. Actual first-frame requests on the owned nested output passed
+  for Window and FloatingWindow. Historical/frozen benchmark fixture blobs and
+  consumed evidence were preserved.
+
+### Remaining acceptance
+
+**NOT_COMPLETE: canonical validation pending for this source series.** Run
+`bash scripts/validate-maintainer-local.sh` and record its printed exact SHA,
+result, failures and skips. Focused contracts do not imply canonical PASS.
+
+Owner-session wallpaper application, populated connectivity lists, physical
+keyboard input, multi-output/hotplug/fractional scaling, fullscreen/lock/focus,
+live Obsidian reload and actual power transitions remain unqualified. Earlier
+owner reports and whole-repo CPU/RAM/GPU/frame measurements above remain open.
+No savings percentage or CI qualification is inferred from these source changes.

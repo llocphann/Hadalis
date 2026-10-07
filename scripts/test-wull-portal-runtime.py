@@ -67,6 +67,11 @@ Window {
    check(!presence.portalActive && actor.portalReveal===1 && actor.inputReady,"reduced motion left a hidden actor")
    source=put(.15);presence.moveTo(Scene.edgePoint(root.scene,"bottom",.9),false);wait(300);root.held=true;wait(150)
    check(!presence.portalActive && actor.inputReady,"interaction did not cancel portal")
+   source=put(.15);presence.moveTo(Scene.edgePoint(root.scene,"bottom",.9),false);wait(300)
+   presence.beginTurn("pulled");wait(100)
+   check(!presence.portalActive && !actor.inputReady,"cast handoff retained an active portal or input")
+   wait(1600);check(Scene.distance(presence.position(),source)<.2,"cast handoff retained a delayed teleport")
+   presence.handoffActive=false
    source=put(.3);dest=Scene.annotate(root.scene,{x:source.x+70,y:source.y},"bottom","edge","bottom")
    check(presence.moveTo(dest,false,"roll"),"grounded roll rejected")
    wait(350)
@@ -74,7 +79,7 @@ Window {
    check(actor.rolling && !actor.flying && presence.grounded && Math.abs(body.rollingAngle)>20,"roll did not rotate the native body on its surface")
    tryCompare(presence,"traveling",false,presence.duration+700)
    check(!actor.rolling && body.rollingAngle===0 && actor.inputReady && Scene.distance(presence.position(),dest)<.2,"roll did not finish upright at destination")
-   console.info("WULL_PORTAL_NATIVE_PASS hidden-handover destination-invalidation bounded-lifetime motion-cancel interaction-cancel grounded-roll")
+   console.info("WULL_PORTAL_NATIVE_PASS hidden-handover destination-invalidation bounded-lifetime motion-cancel interaction-cancel cast-cancel grounded-roll")
   }catch(e){console.error("WULL_PORTAL_NATIVE_FAIL",e.message,e.stack)}Qt.quit()}
  }
  Timer {interval:100;running:true;onTriggered:test.runChecks()}

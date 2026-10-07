@@ -229,7 +229,6 @@ for token in (
     "height: root.compactPresentation ? 22 : 26",
     "id: editorStage",
     "id: noteRail",
-    "Layout.preferredWidth: 18",
     "id: editorCard",
     "id: compactActionRail",
     "id: primaryNoteActions",
@@ -276,7 +275,7 @@ require(inline_block, "visible: !root.compactPresentation",
         "Sidebar-only Add action must not consume compact Quick Notes height")
 for compact_action in ('icon: "close"', "root.displayedTabIndex"):
     forbid(inline_block, compact_action,
-           "Compact Add/Remove actions must live in the right-side vertical rail")
+           "Compact Add/Remove actions must not duplicate the full tab toolbar")
 
 primary_start = notepad.find("id: primaryNoteActions", action_rail_pos)
 secondary_start = notepad.find("id: secondaryNoteActions", action_rail_pos)
@@ -290,7 +289,10 @@ for token in (
     "root.removeTabSafely(root.displayedTabIndex)",
 ):
     require(primary_block, token,
-            "Quick Notes primary Add/Remove actions must stay vertical on the right")
+            "Compact presentations without note dots keep their lifecycle controls")
+
+require(primary_block, "visible: !root.verticalDotNavigation",
+        "note-dot presentation must not duplicate Add/Remove on the opposite side")
 
 for token in (
     'icon: "content_copy"',

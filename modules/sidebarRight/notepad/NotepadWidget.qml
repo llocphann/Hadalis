@@ -453,8 +453,7 @@ Item {
             }
 
             // Full Sidebar presentation keeps Add beside the tabs. Compact
-            // Quick Notes surfaces move both Add and Remove to the right-side
-            // vertical rail so this row contributes only the centered tabs.
+            // Quick Notes surfaces keep Add/Remove with their note indicators.
             NotepadToolButton {
                 visible: !root.compactPresentation
                 icon: "add"
@@ -537,13 +536,15 @@ Item {
                 // the editor visually clean while preserving fast note switching.
                 Item {
                     id: noteRail
+                    objectName: "quickNotesIndicatorGroup"
                     visible: root.verticalDotNavigation
-                    Layout.preferredWidth: 18
+                    Layout.preferredWidth: 24
                     Layout.fillHeight: true
 
                     Flickable {
                         id: noteRailFlick
                         anchors.fill: parent
+                        anchors.bottomMargin: groupedNoteActions.height + 4
                         contentWidth: width
                         contentHeight: noteDotColumn.implicitHeight
                         boundsBehavior: Flickable.StopAtBounds
@@ -592,6 +593,28 @@ Item {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    Column {
+                        id: groupedNoteActions
+                        anchors.bottom: parent.bottom
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        spacing: 1
+                        NotepadToolButton {
+                            objectName: "quickNotesAdd"
+                            icon: "add"
+                            tooltipText: Translation.tr("New tab")
+                            enabled: Notepad.ready
+                            onClicked: root.addTabSafely()
+                        }
+                        NotepadToolButton {
+                            objectName: "quickNotesRemove"
+                            visible: root.tabCount > 1
+                            icon: "close"
+                            tooltipText: Translation.tr("Remove current note")
+                            enabled: Notepad.ready && root.displayedTabIndex >= 0
+                            onClicked: root.removeTabSafely(root.displayedTabIndex)
                         }
                     }
 
@@ -734,6 +757,7 @@ Item {
 
                     Column {
                         id: primaryNoteActions
+                        visible: !root.verticalDotNavigation
                         anchors.top: parent.top
                         anchors.horizontalCenter: parent.horizontalCenter
                         spacing: 1

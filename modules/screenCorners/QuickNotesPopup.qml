@@ -112,7 +112,10 @@ Bar.StyledPopup {
     }
 
     onRequestClose: {
-        root.popupPinned = false
+        // An outside click releases keyboard editing, not the user's pin.
+        // Allocator/owner loss uses dismissPresentation() and revokes both.
+        if (root._liquidDismissed)
+            root.popupPinned = false
         root.leaveEditorMode()
         if (todoViewLoader.item)
             todoViewLoader.item.showAddDialog = false
@@ -176,8 +179,13 @@ Bar.StyledPopup {
         Shortcut {
             sequences: [StandardKey.Cancel]
             context: Qt.WindowShortcut
-            enabled: root.presentationActive && root.editorFocused
-            onActivated: root.leaveEditorMode()
+            enabled: root.presentationActive && (root.editorFocused || root.popupPinned)
+            onActivated: {
+                if (root.editorFocused)
+                    root.leaveEditorMode()
+                else
+                    root.dismissPresentation()
+            }
         }
 
         // Settings describe the visible popup body, not just its inner
@@ -237,6 +245,9 @@ Bar.StyledPopup {
 
                 IconToolbarButton {
                     id: popupPinButton
+                    objectName: "quickNotesPopupPin"
+                    width: 32
+                    height: 32
                     anchors.right: parent.right
                     anchors.verticalCenter: mainTabs.verticalCenter
                     text: "push_pin"

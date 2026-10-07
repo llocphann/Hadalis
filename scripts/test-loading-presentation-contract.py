@@ -68,8 +68,6 @@ assert "RotationAnimation on rotation" not in page, "Ring must remain static"
 host = read("modules/settings/SettingsPageHost.qml")
 assert 'import "SettingsPageLoadingState.js" as PageLoadState' in host
 assert "PageLoadState.shouldShow(" in host
-assert "currentLoader?.status ?? Loader.Null" in host
-assert "pendingLoader?.status ?? Loader.Null" in host
 
 for path, name in (
     ("settings.qml", "pagesStack"),
@@ -105,12 +103,20 @@ const cases = [
     ['missing source', [true,3,4,false,-1,2,1,3,2,1], false],
     ['invalid index', [true,-1,4,true,-1,2,1,-1,0,1], false]
 ];
-for (const [name, args, expected] of cases)
+const hostSource=fs.readFileSync(process.argv[2], 'utf8');
+const loading=hostSource.match(/readonly property bool loading:\s*\{([\s\S]*?)\n    \}/)[1];
+for (const [name, args, expected] of cases) {
     assert.equal(context.shouldShow(...args), expected, name);
+    const statuses={};statuses[args[5]]=args[6];statuses[args[7]]=args[8];
+    const inputs={PageLoadState:context,Loader:{Null:0,Ready:1},loadEnabled:args[0],requestedIndex:args[1],pages:Array(args[2]),
+        _sourceFor:()=>args[3] ? '/test.qml' : '',_errorIndex:args[4],_currentIndex:args[5],_pendingIndex:args[7],_pageStatuses:statuses,
+        _loaderFor:()=>{throw Error('Loading binding must not create/read a Loader')}};
+    assert.equal(vm.runInNewContext('(function(){'+loading+'})()',inputs),expected,'host binding: '+name);
+}
 console.log('Settings requested-page loading policy: PASS (' + cases.length + ' cases)');
 """
 subprocess.run(["node", "-e", policy_test,
-                str(ROOT / "modules/settings/SettingsPageLoadingState.js")], check=True)
+                str(ROOT / "modules/settings/SettingsPageLoadingState.js"),str(ROOT / "modules/settings/SettingsPageHost.qml")], check=True)
 
 for path in (
     "settings.qml",

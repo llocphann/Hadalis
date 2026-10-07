@@ -7,6 +7,7 @@ import Quickshell.Io
 import qs
 import qs.services
 import qs.modules.common
+import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.abyss.looks
 
@@ -88,7 +89,8 @@ FocusScope {
                 entries:root.entries;searchText:search.text;currentWallpaperPath:root.currentWallpaperPath;monitorName:root.selectionMonitorName
                 onApplyRequested:path=>root.applyPath(path)
             }
-            AbyssLabel {anchors.centerIn:parent;visible:carousel.count===0;text:root.loading ? "Loading wallpapers…" : "No matching wallpapers"}
+            LoadingText {anchors.centerIn:parent;visible:carousel.count===0 && root.loading}
+            AbyssLabel {anchors.centerIn:parent;visible:carousel.count===0 && !root.loading;text:"No matching wallpapers"}
         }
         Item {
             Layout.fillWidth:true;Layout.preferredHeight:44

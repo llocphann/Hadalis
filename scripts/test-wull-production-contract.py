@@ -53,8 +53,13 @@ for path in (ROOT / "modules/abyss/companion").glob("*.qml"):
     text = path.read_text(errors="ignore").lower()
     assert "assets/images/mascot" not in text, path
     # A development grabToImage export is evidence, not runtime pose loading.
+    # The cloud's optional Obsidian action icon is UI, not a character pose.
+    # Only that action component may use an ordinary Image; animated media
+    # remain forbidden throughout the production companion module.
+    media = "animatedimage|animatedsprite|spritesequence|video"
+    if path.name != "WullCloudActions.qml": media = "image|" + media
     assert not re.search(
-        r"\b(?:image|animatedimage|animatedsprite|spritesequence|video)\s*\{",
+        r"\b(?:" + media + r")\s*\{",
         text), path
 
 # The input mask and reveal both derive from companionHostActive. Readiness

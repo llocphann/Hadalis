@@ -245,3 +245,40 @@ keyboard input, multi-output/hotplug/fractional scaling, fullscreen/lock/focus,
 live Obsidian reload and actual power transitions remain unqualified. Earlier
 owner reports and whole-repo CPU/RAM/GPU/frame measurements above remain open.
 No savings percentage or CI qualification is inferred from these source changes.
+
+## Maintainer additions — 2026-10-07
+
+The maintainer resumes implementation and reopens Dashboard acceptance. The
+earlier 21-group source checklist does not close these newly reported problems.
+
+- [ ] **DSP presentation isolation:** a non-Flat EQ preset must keep playing
+  uninterrupted when opening/reopening any popup, Sidebar or Dashboard. Trace
+  DSP writes and analyzer restarts; presentation changes must not reapply a
+  preset or reconstruct the audio pipeline.
+- [ ] **Finish Dashboard editing:** the Abyss editor controls belong above the
+  Dashboard in the existing connected field. Entering edit mode must preserve
+  the actual widget workspace and dimensions. Qualify packed/empty layouts,
+  move/resize/collision, Add, undo/cancel/save and narrow outputs on the composed
+  native surface, not only an isolated toolbar.
+- [ ] **Research-backed optimization:** implement the highest-value current
+  candidates in `docs/optimization/STRICT_LOSSLESS_GPU_RAM_CPU_AUDIT.md` after
+  current-source verification and behavior parity. Prefer strict lossless. Any
+  justified small tradeoff requires a measured large gain and one cumulative
+  budget below 1%; independent small losses must not silently accumulate.
+- [ ] **Light warm readiness:** reduce unnecessary RAM/CPU/GPU work and heavy
+  residency while preserving prompt open/reopen. Separate retained lightweight
+  state from expensive running work; do not cold-start every surface on demand.
+  Record lifecycle and latency evidence without extrapolating synthetic counts
+  to whole-shell resource percentages.
+- [ ] **Individual Edge 0px:** each physical edge accepts zero width. Preserve
+  independent per-edge edge-only/module-inheritance controls and per-output
+  drafts. The new iRiS reference shows thin bare edges and local module bulges:
+  a zero-width bare edge must not erase separately sized modules or their input.
+- [ ] **Audio Spectrum bounce and cost:** compare the old iNiR upstream wave,
+  restore its responsive bounce, and remove avoidable analyzer/solver/render
+  churn. Keep one shared analyzer, finite idle teardown and fast warm reopen.
+
+Reference: `codex-clipboard-16fe5201-4a20-4c62-973e-553a2cafe08e.png`, supplied by
+the maintainer; it illustrates edge/module geometry rather than authorizing
+unrelated wallpaper or desktop changes. These additions are **IN_PROGRESS**;
+the existing exact-SHA validation result above remains historical evidence.

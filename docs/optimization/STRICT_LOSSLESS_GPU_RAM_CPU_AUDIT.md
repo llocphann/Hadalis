@@ -213,6 +213,10 @@ Rules:
 | `services/WidgetPowerManager.qml` + `modules/background/widgets/AbstractBackgroundWidget.qml` | **HIGH-CONFIDENCE duplicate-work candidate — compute per-output widget pause state once per widget instead of twice.** Every `AbstractBackgroundWidget` currently binds `powerActive` through `widgetsActiveForOutput()` and `powerReduced` through `reducedModeForOutput()`; both call the same `shouldPauseForOutput()`, whose window-presence branch rebuilds active-workspace state and scans Niri windows. Because the public results are exact complements, derive `powerReduced: !powerActive` while keeping the authoritative service call for `powerActive`. | Very low. Verify every trigger: output eligibility, edit mode, manual GameMode, fullscreen, windows-present policy, Niri/non-Niri and multi-output workspaces. Preserve all existing animation/effect bindings and exact complement semantics. | None. | Low–Medium aggregate CPU/allocation reduction across multiple resident desktop widgets; removes one duplicate output-policy/workspace/window evaluation per widget invalidation. | 0%. |
 | `services/deferred/Cliphist.qml` | **HIGH-CONFIDENCE per-keystroke CPU candidate — add the lowercase sloppy-search key to the existing revision-keyed prepared clipboard entry cache.** Normal fuzzy search already prepares entries once per `entries` revision and the classic filter path already has its own prepared display keys, but sloppy/Levenshtein mode still calls `entry.toLowerCase()` for up to the first 100 history rows on every query. Cache the exact lowercase raw-entry string alongside the existing fuzzy-prepared record and reuse it in both limited top-K and unlimited sloppy branches. | Very low. Preserve the first-100/maxEntries bound, score threshold, equal-score insertion order, limit semantics, exact raw entry identity and cache invalidation on every `entries` replacement. | Tiny bounded extra lowercase-string cache. | Low but repeated CPU/allocation reduction for sloppy clipboard search; same proven class as Emoji #98. | 0%. |
 
+| `services/deferred/AnimeService.qml` + `modules/sidebarLeft/animeSchedule/AnimeScheduleView.qml` | **HIGH-CONFIDENCE network/parse candidate — coalesce only exact same-day schedule requests that are already in flight.** The singleton schedules `fetchSchedule("today")` from its own `Component.onCompleted`, while the view calls the same request from its `Component.onCompleted`; before the first response fills the 10-minute per-day cache, both can POST the same 50-item AniList query and independently normalize the same payload. Track in-flight state by resolved target day so a second request for that exact day reuses the pending work. Keep requests for different days independent to preserve today's per-day freshness/ordering semantics. The same cleanup can remove the dead `dayNum` and unused legacy `query` string currently constructed before `scheduleQuery`. | Low. Do not globally coalesce different weekdays or pre-mark their caches valid: that would change freshness and response ordering. Preserve error/loading semantics, NSFW request variable, target-day resolution and exact normalized list/object order. | Tiny bounded in-flight-day state. | Low–Medium startup/network/JSON-normalization reduction when the Anime view instantiates; also suppresses repeated same-day clicks while a request is pending. | 0% final visual output; loading/signal cadence must be oracle-tested. |
+| `services/deferred/NewsService.qml` + `scripts/test-news-service-contract.sh` | **HIGH-CONFIDENCE strict CPU/allocation candidate — reject stale successful XHRs before RSS parsing, not after it.** A 200 response currently runs the full regex-based `_parseRss(xhr.responseText)` and only then checks `generation !== _requestGeneration`. Stale results are already forbidden from mutating cache/timestamps/articles, so the parse has no observable product effect. Move the generation guard ahead of `_parseRss`; update the contract test to require stale rejection before parsing while still proving no stale cache mutation. | Very low. Preserve current status/error behavior for the active generation, last-request-wins semantics, cache writes and exact parser output for non-stale responses. Pay attention to stale 200 vs active non-200 races. | None. | Low–Medium transient CPU/allocation reduction during rapid board/feed changes or duplicate surface fetches; completely removes regex/date/object construction for stale 200 bodies. | 0%. |
+| `modules/sidebarLeft/anime/BooruImage.qml` + `BooruResponse.qml` + `modules/common/Directories.qml` | **HIGH-CONFIDENCE process-fan-out candidate — give manual preview downloads one shared directory-readiness owner instead of running external `mkdir -p` inside every image delegate.** Manual providers (`danbooru`, `waifu.im`, `t.alcy.cc`) instantiate one `BooruImage` per response image; every delegate starts Bash whose first child is `mkdir -p previewDownloadPath`, then performs the existing cache-file test and optional curl. `Directories` already owns an ordered cleanup/recreate bootstrap for `booruPreviews`, but that bootstrap is asynchronous, so simply deleting delegate mkdir calls would create a startup race. Expose/reuse one explicit directory-ready gate (session- or response-scoped), then let all delegates retain the exact `[ -f cache ] || curl` behavior after readiness. | Low–Medium. Immediate-sidebar-open during bootstrap, failed directory creation, multiple historical responses, duplicate filenames and provider switches must be tested. Do not replace manual local-file rendering with direct remote Image URLs, and do not introduce a serial download queue in the first patch because that would change arrival timing. | One tiny readiness flag/process owner; no new image cache. | Low–Medium child-process reduction on manual-provider result pages: N per-thumbnail mkdir children collapse to one readiness operation while cache/download semantics stay unchanged. | 0% pixels; thumbnail arrival timing must remain acceptably equivalent. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -325,6 +329,10 @@ Rules:
 101. **LocalMusic timed-lyrics binary lookup** — exploit the producer-guaranteed sorted LRC timeline to replace reactive O(N) active-line scans with exact upper-bound O(log N) lookup.
 102. **Background widget power-state complement reuse** — call the per-output pause computation once per widget and derive reduced state as the exact inverse.
 103. **Cliphist sloppy-search lowercase preparation** — reuse source-revision lowercase raw-entry keys instead of normalizing up to 100 clipboard rows per query.
+
+104. **Anime schedule same-day in-flight coalescing** — suppress duplicate AniList schedule POST/normalization only when the exact resolved weekday is already pending; keep cross-day freshness independent.
+105. **News stale-response pre-parse guard** — move generation rejection ahead of RSS regex parsing so stale 200 bodies do zero parse/allocation work.
+106. **Booru manual-preview shared directory readiness** — replace per-thumbnail `mkdir -p` children with one race-safe readiness owner while retaining cache-test/curl/local-file semantics.
 
 ## Explicit non-candidates from this pass
 
@@ -6731,4 +6739,294 @@ entries revision. The remaining sloppy-search raw lowercase gap belongs in the
 shared Cliphist service (R37.4), not as another panel-local cache.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+## Research continuation — round 38
+
+Baseline: `dev` at `8c8988f532963954944ab802e44a1c730a36a226`.
+
+This round focused on asynchronous network/process work that had not appeared in
+the canonical ledger. The key constraint was stricter than "these calls look
+duplicated": a candidate was promoted only when the current source exposes an
+exact boundary where work can be removed without changing the authoritative
+data or visual result. That excludes attractive but freshness-changing schemes
+such as sharing one Anime schedule snapshot across all seven weekdays.
+
+Current source identities:
+
+- `services/deferred/AnimeService.qml`:
+  `fcbc0c1c47ccb137161b5a43054ecc220c0c9bc5`;
+- `modules/sidebarLeft/animeSchedule/AnimeScheduleView.qml`:
+  `4023dc68759dd68d245cced7b01ef1d4a33400b1`;
+- `services/deferred/NewsService.qml`:
+  `59e6de2a6fd856ffd9f26eeaa9c3c743af12086a`;
+- `scripts/test-news-service-contract.sh`:
+  `cf168ab8e6299d9fb7101db884e6a9727960a157`;
+- `modules/sidebarLeft/anime/BooruImage.qml`:
+  `69e9db92e3a900c0295f6eee309e900f30a503b6`;
+- `modules/sidebarLeft/anime/BooruResponse.qml`:
+  `413ac078b642828cb27d6d169df35dd9482de153`;
+- `modules/common/Directories.qml`:
+  `0fb9ae0b8ce77bb5b280c3aef16c9b3d22d73f27`;
+- `services/Booru.qml`:
+  `952e5af0962dcfd913f7aa62c020cfb3263889b2`;
+- `services/deferred/CavaService.qml`:
+  `8f343598ec100a3f98e4fc41746a82cfbbef6e6c`;
+- `services/TlpRuntimeCapabilities.qml`:
+  `a5cff8cba0f14473d6676c416946507ebd0a0c01`;
+- `services/TlpSettingsService.qml`:
+  `72eb106e8b2334d1e3a1734ad822de941235972b`;
+- `scripts/test-performance-lifecycle.sh`:
+  `dcbbc9b28ce2258589df2daee5d1d7daa4c439c6`;
+- `services/Translation.qml`:
+  `3d26f05cb1fdd4ac6bc3cd792e4834ef11e28c54`;
+- `translations/en_US.json`:
+  `137668675855e7769df9bfb2d844d54b938a5363`;
+- `services/DisplayMode.qml`:
+  `dee42cadbac0ff4dd583909836fb23644b694c55`.
+
+### R38.1 — Anime Schedule can issue the same "today" request twice during construction
+
+`AnimeService` owns a 10-minute cache keyed by resolved weekday, but the cache
+does not help while the first request is still in flight.
+
+The singleton performs:
+
+```qml
+Component.onCompleted: {
+    if (Config.options?.sidebar?.animeSchedule?.enable) {
+        Qt.callLater(() => root.fetchSchedule("today"))
+    }
+}
+```
+
+while `AnimeScheduleView` independently performs:
+
+```qml
+Component.onCompleted: {
+    AnimeService.fetchSchedule("today")
+}
+```
+
+Both resolve `"today"` to the same `root.currentDay`. If the view is created
+before the call-later request completes, or vice versa, the cache timestamp is
+still absent and both calls POST the same `scheduleQuery`. Both responses then:
+
+1. parse the same GraphQL JSON;
+2. walk up to 50 `RELEASING` media rows;
+3. construct a Date for every row with a next airing episode;
+4. resolve weekday;
+5. normalize every row matching the same target day;
+6. write the same per-day cache/output.
+
+Repeated clicks on the same weekday during a slow request have the same shape.
+
+The strict candidate is deliberately narrow:
+
+```text
+if scheduleInFlight[targetDay]:
+    return existing pending work
+else:
+    mark targetDay in flight
+    issue the existing GraphQL request
+    clear targetDay on every completion/error path
+```
+
+This does **not** make all weekdays share one cache validity window. Although the
+network query itself is identical for every weekday, current behavior requests
+a fresh snapshot when a different day's cache is missing. Pre-populating all
+seven day caches from one earlier response could make a later weekday up to ten
+minutes older than it is today; that is not strict-lossless and is therefore
+not promoted.
+
+The same function also constructs two values that are never consumed:
+
+```qml
+const dayNum = root._dayToNum[targetDay] ?? 1
+const query = `query ($day: Int, $isAdult: Boolean) { ... }`
+```
+
+Actual transport uses `scheduleQuery`, which has only `$isAdult`. Removing
+that dead integer lookup and large legacy query-string allocation is safe, but
+it is a small secondary cleanup rather than a separate promotion.
+
+Required oracle:
+
+- feature disabled vs enabled;
+- service construction without view construction;
+- view construction before/after the singleton's call-later callback;
+- two/three rapid calls for the exact same resolved day;
+- simultaneous requests for two **different** weekdays remain independent;
+- cache hit during no in-flight request;
+- successful/HTTP/API/parse error paths always clear only the relevant in-flight key;
+- NSFW false/true;
+- exact `schedule`, `_scheduleCache[targetDay]`, cache timestamp and normalized
+  row order/identity shape;
+- loading/error state and refresh-button lifecycle;
+- manual refresh after cache expiry.
+
+### R38.2 — NewsService fully parses successful stale bodies before rejecting them
+
+`NewsService.fetch()` already has last-request-wins generation semantics.
+For a 200 response the current order is:
+
+```qml
+const parsed = root._parseRss(xhr.responseText)
+if (generation !== root._requestGeneration)
+    return
+root._cache[url] = parsed
+root._cacheTimestamps[url] = Date.now()
+root.articles = parsed
+```
+
+The existing regression contract intentionally proves that stale responses
+cannot mutate cache/timestamps/articles, but it currently encodes
+`parse < generation guard < cache write`.
+
+That ordering leaves pure waste on the stale branch. `_parseRss()`:
+
+- runs a global `<item>` regex over the RSS document;
+- extracts title/link/date/source with four additional regexes per item;
+- decodes entities;
+- parses timestamps;
+- allocates up to 30 article objects.
+
+After all of that, the stale generation returns without publishing any result.
+
+Moving the generation test before parsing is unusually strong strict-lossless
+evidence: current source already declares that a stale response has no authority
+to mutate any public state. Skipping computation whose result is guaranteed to
+be discarded cannot change the active-generation output.
+
+The focused regression should be strengthened rather than removed:
+
+```text
+DONE + status 200
+  -> generation guard
+  -> parse only if current
+  -> cache
+  -> timestamp
+  -> articles
+```
+
+Required oracle:
+
+- one successful fetch;
+- cache hit;
+- A starts -> B starts -> A(200) completes -> no parse/publication from A;
+- A starts -> B starts -> A(non-200) completes -> no active error overwrite;
+- stale malformed 200 body must not surface a parse error;
+- active malformed 200 body keeps today's parser/error behavior;
+- B success publishes exact same articles/order/timestamps;
+- local-city URL changes while an old local feed is in flight;
+- rapid topic-board changes and return to a cached board.
+
+A separate same-URL in-flight coalescer may also be useful because NewsTicker
+and NewsView can request the same configured feed. It is **not** promoted in
+this round because a robust design must preserve the current A -> B -> A
+last-request-wins semantics when multiple XHRs overlap. The pre-parse guard gives
+a deterministic win without introducing request ownership state.
+
+### R38.3 — Manual Booru previews repeat directory creation once per thumbnail
+
+For `danbooru`, `waifu.im` and `t.alcy.cc`, `BooruResponse` enables
+`manualDownload`. Each image delegate then creates:
+
+```qml
+Process {
+    command: ["/usr/bin/bash", "-c",
+        `mkdir -p '${root.previewDownloadPath}'
+         && [ -f ${root.filePath} ]
+         || curl -sSL '...' -o '${root.filePath}'`]
+}
+```
+
+and starts that process from the delegate's `Component.onCompleted`.
+
+A normal Booru request defaults to 20 images, so one response can create many
+Bash processes and, inside each Bash, an external `mkdir` child before the
+existing cache-file test. Missing cache entries then additionally launch curl.
+
+Hadalis already has central directory ownership. `Directories.qml` performs
+one ordered bootstrap command that:
+
+1. removes transient `booruPreviews` along with other transient media trees;
+2. recreates `booruPreviews` with the required cache/state directories.
+
+That bootstrap is asynchronous. Therefore this is **not** a license to simply
+delete every delegate's `mkdir`: an owner who opens the sidebar immediately
+after shell startup could race the bootstrap.
+
+The strict direction is to turn directory readiness into one explicit owner:
+
+1. the shared Directories/bootstrap owner, or a response-scoped manual-preview
+   owner, runs/observes the one required directory creation;
+2. it publishes a ready/failure state;
+3. manual preview delegates start their unchanged cache-test/curl path only
+   after readiness;
+4. on a directory failure, delegates preserve a bounded failure state rather
+   than each retrying an uncontrolled mkdir;
+5. ordinary providers that render remote preview URLs directly remain untouched.
+
+This collapses the directory-preparation part from O(images) child processes to
+one while preserving why those three providers use local manual previews.
+
+Do **not** mechanically reuse `ImageDownloaderProcess.qml` in the first patch.
+That component also validates files through ImageMagick and uses temporary-file
+rename semantics, adding work and changing the current Booru cache contract.
+Likewise, do not introduce a serial/bounded download queue yet: changing
+concurrency changes thumbnail arrival timing and needs a separate UI/performance
+oracle.
+
+Required oracle:
+
+- cold shell + immediate sidebar open before directory bootstrap completion;
+- warm shell after directory ready;
+- 0/1/20 manual-provider images;
+- cached preview file -> no curl and exact existing image source;
+- uncached preview -> one curl per missing file and exact local destination;
+- directory creation failure;
+- duplicate filenames/URLs across historical responses;
+- provider switch manual -> ordinary -> manual;
+- response destruction while downloads are active;
+- sidebar close/reopen;
+- exact final image pixels/file names/cache paths and context-menu actions.
+
+### R38.4 — Paths deliberately not promoted
+
+**Cross-day Anime snapshot reuse:** the schedule GraphQL query is identical for
+every weekday, so one response could technically be partitioned into all seven
+days. Doing so would also make later weekday requests reuse the earlier
+snapshot within the ten-minute cache window. That changes freshness relative to
+current per-day cache timestamps, so it is not strict-lossless.
+
+**CavaService:** the shared CAVA owner already keeps one process, writes parsed
+bars into a reused frame buffer, suppresses unchanged frame publication and
+uses lifecycle consumers. The remaining high-frequency details such as watchdog
+restarts are tied to exact no-data timeout semantics; no new change is promoted
+without profiling.
+
+**TLP runtime/settings safety timers:** both services retain a 30-minute safety
+refresh, and `scripts/test-performance-lifecycle.sh` explicitly requires that
+cadence. Those are intentional sparse correctness probes, not missed busy
+polling.
+
+**Translation runtime:** `Translation.tr()` is extremely high fan-out, but the
+5,613-line English catalog currently contains only two `/*keep*/` values.
+Scanning/pre-normalizing the whole catalog during startup merely to avoid a tiny
+`endsWith()` branch on ordinary lookups is not proven to be a net win. Keep it
+unpromoted until profile evidence says translation lookup matters.
+
+**DisplayMode mirror probe:** the `wl-mirror` availability check is a one-shot
+probe owned by the display-mode singleton, whose concrete consumer is the Abyss
+Utilities display page. It is not a recurring poll and no source evidence shows
+material steady-state cost.
+
+**Booru `responseFinished()` ready-state emissions:** the signal is currently
+emitted from the XHR ready-state callback and is consumed by the Bar ping
+indicator. Restricting it to `DONE` may be semantically cleaner, but it changes
+observable notification timing. Treat that as a correctness/API-contract issue,
+not a strict-lossless performance candidate.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
+before/after measurement.
 

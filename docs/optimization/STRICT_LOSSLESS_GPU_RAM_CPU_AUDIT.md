@@ -172,6 +172,9 @@ Rules:
 | `services/AppCatalog.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — pre-normalize immutable catalog search metadata once when the JSON catalog loads.** Current `filteredCatalog` lowercases name/description and every tag for every catalog entry on every search-query edit. Store private normalized name/description/tag text alongside the loaded records (or in a parallel search index), then keep the exact current substring predicate and original result objects/order. | Low. Preserve null/default behavior, category-first filtering, tag semantics and exact original object identity returned to delegates. | None. | Low–Medium transient string/allocation and CPU reduction proportional to catalog size × keystrokes. | 0%. |
 | `services/AppCatalog.qml` + `modules/sidebarLeft/SoftwareView.qml` | **HIGH-CONFIDENCE reactive CPU candidate — remove the dummy `installedPackages` dependency from `filteredCatalog`.** The binding reads `const _installed = root.installedPackages` but never uses it to include/exclude/order apps. Install status is independently bound per `AppCard` through `AppCatalog.isInstalled(app.id)`, which reads the authoritative map. Installed-status refresh therefore does not need to rebuild the whole filtered model/Repeater. | Low–Medium. Prove QML dependency capture through `isInstalled()` updates every badge/action without a model reset; preserve list identity/order and empty-state behavior. | None. | Low CPU/allocation and delegate churn reduction after package-status refresh/install/remove checks. | 0%. |
 
+| `modules/waffle/startMenu/AllAppsContent.qml` | **HIGH-CONFIDENCE interactive CPU/allocation candidate — split alphabetically sorted app snapshot from per-keystroke filtering/grouping.** Current `groupedApps` starts from `DesktopEntries.applications.values`, filters, then sorts all matches by name on every `filterText` edit; `flatApps` then flattens the groups again solely for Enter-to-activate. Maintain one sorted visible-app base projection per DesktopEntries revision, filter that ordered snapshot per query, group without re-sorting, and let `flatApps` reuse the filtered array. | Low. Preserve immediate DesktopEntries update timing, noDisplay filtering, exact localeCompare order/stability, section lettering and original DesktopEntry object identity. Do not silently switch to AppSearch.list unless its 500 ms rebuild debounce is explicitly accepted. | None. | Low–Medium transient array/sort/string CPU reduction on interactive filtering; removes O(A log A) sort from every keystroke and one flatten pass. | 0%. |
+| Material + Waffle Autostart settings (`AutostartConfig.qml`, `WAutostartPage.qml`) | **HIGH-CONFIDENCE CPU candidate — replace filter+sort comparator status scans with one stable enabled/disabled partition.** Both pages start from already alphabetically sorted `AppSearch.list`, filter by name/genericName, then sort again by `Autostart.isAppOn()` first and name second. `isAppOn()` scans managed entries and, on miss, external spawn lines; the comparator can call it repeatedly O(A log A) times. In one pass, test each filtered app once and append to enabled/disabled arrays; concatenate them to preserve enabled-first + alphabetical-within-group order. | Low. Depends on AppSearch's documented/name-sorted list; verify duplicate equal-name stability and all external-spawn matching semantics. | None. | Low–Medium CPU reduction in Settings search/rebuilds; changes repeated status scans + sort into one status evaluation per app and O(A) stable partition. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -246,6 +249,8 @@ Rules:
 70. **Niri focus-only enriched refresh** — MEASURE/PROVE FIRST; instrument Niri + foreign-toplevel triggers before any fast path.
 71. **AppCatalog normalized search index** — move name/description/tag lowercase work from every keystroke to catalog-load time.
 72. **AppCatalog install-status model isolation** — stop package-status refreshes from rebuilding an unchanged filtered app model.
+73. **Waffle All Apps sorted-base projection** — sort DesktopEntries only on source revision, then filter/group without per-keystroke resort/flatten.
+74. **Autostart stable enabled/disabled partition** — evaluate `isAppOn()` once per filtered app and preserve AppSearch alphabetical order instead of comparator-time rescans.
 
 ## Explicit non-candidates from this pass
 
@@ -4236,5 +4241,182 @@ it is not equivalent to the WARP direct-argv cleanup.
 also re-read. They are event-driven/bounded; ConflictKiller already consolidates
 startup conflict detection into one deferred /proc scan. No promotion from this
 pass.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+
+## Research continuation — round 29
+
+Baseline: `dev` at `9e45af654d13f4591a30cbd0d2d40d164eabfc9a`.
+
+This round audits interactive collection transforms that had not appeared in the
+canonical ledger. Two source-proven candidates are promoted; Wi-Fi/Bluetooth
+list sorting was inspected but deliberately not promoted because the collections
+are normally small and the family comparators are not identical.
+
+Current source identities:
+
+- Waffle `AllAppsContent.qml`:
+  `50966e997860a152816487dca16900e64fd30577`;
+- `services/AppSearch.qml`:
+  `74ea3c9e92860af62f10850c89118d79b7837543`;
+- Material `AutostartConfig.qml`:
+  `643b5e1d2eee312986aa2cbc04c136ce8d061ad3`;
+- Waffle `WAutostartPage.qml`:
+  `ebc34416e01e1a0a8b940bd8626e2784bb5f9f2a`;
+- `services/Autostart.qml`:
+  `f94fa382ed7fed199f416106940817f5cdf31ea6`.
+
+### R29.1 — Waffle All Apps re-sorts the desktop-entry catalog on every filter edit
+
+Current `groupedApps` performs:
+
+```qml
+const all = DesktopEntries.applications.values
+    .filter(e => !e.noDisplay
+        && (filter.length === 0
+            || (e.name || "").toLowerCase().includes(filter)))
+    .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
+```
+
+then groups that sorted list alphabetically. A second property, `flatApps`, walks
+all groups and reconstructs the flat list solely so Enter can launch the first
+filtered application.
+
+The alphabetic order depends on DesktopEntries membership/name changes, not on
+the query. Search edits only remove elements from an already ordered set.
+
+Strict-lossless projection shape:
+
+1. derive one private base list whenever
+   `DesktopEntries.applications.values` changes:
+   - keep only `!noDisplay` entries;
+   - sort with the exact current
+     `(a.name || "").localeCompare(b.name || "")` comparator;
+   - optionally pair the original object with its lowercase name once;
+2. for every `filterText` edit, linearly filter that already sorted projection;
+3. build letter groups from the filtered ordered array without a second sort;
+4. let `flatApps` be the same filtered array (or a direct alias/reference),
+   rather than flattening the groups;
+5. keep grouping/letter derivation exactly as current source.
+
+Do **not** simply replace the source with `AppSearch.list` in the first patch.
+AppSearch is indeed already alphabetically sorted, but it intentionally rebuilds
+500 ms after DesktopEntries `valuesChanged`. All Apps currently reacts directly
+to the source collection, so that substitution would alter update latency.
+A local/source-revision projection preserves today's timing.
+
+Required oracle:
+
+- empty app catalog;
+- no filter;
+- every-keystroke filter sequence;
+- leading/trailing spaces and mixed case;
+- equal-name apps proving stable tie order;
+- noDisplay entry add/remove/toggle if mutable in fixtures;
+- DesktopEntry insert/remove/rename while page is resident;
+- non-ASCII/locale-sensitive names;
+- section letters and letter-index scrolling;
+- Enter launches exactly the same first app;
+- exact original DesktopEntry object identity/order.
+
+Structural work changes from filter + O(M log M) sort + grouping + flatten on a
+query update to ordered filter + grouping, where M is the query-matching subset.
+
+### R29.2 — Autostart settings sort invokes a list-scanning status predicate inside the comparator
+
+Both Material and Waffle settings pages currently implement the same logical
+pipeline:
+
+```text
+AppSearch.list
+  -> filter by lowercase name/genericName
+  -> sort:
+       Autostart.isAppOn(a)
+       Autostart.isAppOn(b)
+       enabled first
+       then localeCompare(name)
+```
+
+`AppSearch.list` is already rebuilt alphabetically:
+
+```qml
+Array.from(DesktopEntries.applications.values)
+    .sort((a, b) => a.name.localeCompare(b.name))
+```
+
+so the second alphabetical sort is only needed because the comparator is also
+partitioning enabled apps ahead of disabled apps.
+
+More importantly, `Autostart.isAppOn(app)` is not an O(1) field read. It:
+
+1. calls `isAppEnabled(app.id)`, which scans managed `entries`;
+2. if not enabled there, calls `isAppExternal(app)`, which scans external
+   startup lines and performs token matching.
+
+Calling that predicate for both operands across O(A log A) comparator calls can
+therefore multiply managed/external scans substantially.
+
+Strict-lossless replacement:
+
+```text
+enabled = []
+disabled = []
+for app in already-alphabetical AppSearch.list:
+    if query does not match: continue
+    if Autostart.isAppOn(app): enabled.push(app)
+    else: disabled.push(app)
+return enabled + disabled
+```
+
+This evaluates `isAppOn()` exactly once per filtered app. Because the input is
+already alphabetically ordered, each partition preserves that order. JavaScript's
+current stable sort likewise preserves source order for equal names/status, so a
+stable partition reproduces duplicate-name ordering.
+
+Required oracle for both Material and Waffle pages:
+
+- no apps / no startup entries;
+- managed enabled/disabled entry;
+- external `gtk-launch` match;
+- external raw executable match;
+- same app represented by managed + external lines;
+- disabled external line;
+- search by name and genericName;
+- mixed case and empty query;
+- duplicate/equal app names;
+- Autostart entries/externalLines changed while page is visible;
+- exact app object identity/order;
+- per-row `isOn` and `isExternal` behavior unchanged.
+
+A future service-side index for managed/external app membership may further
+reduce `isAppOn()` cost, but that has a broader parser/invalidation contract.
+The one-pass UI partition is already valuable without adding retained service
+state.
+
+### R29.3 — Wi-Fi/Bluetooth sort duplication is not promoted from static analysis
+
+Waffle and classic Wi-Fi surfaces currently use the same active-first,
+strength-descending comparator. Centralizing that projection might remove a
+second sort if both surfaces are resident, but Network device sets are usually
+small and moving the sort into the always-resident Network singleton can also
+create work while no list surface is visible. No demand/lifecycle proof yet
+shows a net strict-lossless win.
+
+Bluetooth is even less suitable for a mechanical shared sort:
+
+- Waffle orders connected -> paired -> alphabetical;
+- classic dialog additionally places meaningful names before MAC-like names.
+
+Do not merge those policies merely to share computation. Revisit only if a
+trace shows list sorting is material in dense-device environments.
+
+### R29.4 — Deferred search services are already doing the important preparation
+
+`services/deferred/Cliphist.qml` and the emoji search path were inspected in
+this collection pass. Cliphist already maintains revision-keyed prepared fuzzy
+entries, bounded top-K insertion for limited queries and equality suppression on
+list refresh. Those are precisely the kinds of transforms this audit would
+otherwise propose. No new high-confidence optimization is promoted there.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.

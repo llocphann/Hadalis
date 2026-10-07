@@ -112,6 +112,10 @@ Rules:
 
 | `services/NiriService.qml` + AltSwitcher consumers | **ORACLE-REQUIRED CPU/allocation candidate — suppress provably no-op MRU republish on duplicate focus events.** `handleWindowFocusChanged()` always constructs and assigns a fresh `mruWindowIds` array for every non-null focus event. When the focused id is already first and has no duplicate later in the array, the value produced by the current filter+unshift algorithm is element-for-element identical, yet the fresh `var` assignment can notify `onMruWindowIdsChanged` consumers and trigger AltSwitcher snapshot rebuild work. Guard only this canonical no-op case; keep all window/workspace focus normalization and duplicate cleanup unchanged. | Medium until notification parity is proven. The value is identical, but current consumers can observe the change signal itself; repeated same-id focus events must not be an intentional refresh channel. | None. | Low transient allocation reduction plus avoided AltSwitcher rebuild allocation/CPU on duplicate focus events; persistent RAM unchanged. | 0%. |
 
+| `services/CalendarSync.qml` + `modules/dashboard/DashAgenda.qml` + Waffle notification-center Calendar | **HIGH-CONFIDENCE CPU/allocation candidate — finish migration from per-day external-event scans to the existing batch bucket helper.** Current `CalendarSync._getEventBucketsForDates()` already preserves per-day inclusion semantics and is used by several 14/30-day consumers, but DashAgenda still calls `getEventsForDate()` once for each of 14 days and Waffle upcoming events does the same for 3 days. Build the identical ordered date list once, call the existing batch helper once, then keep all later filtering/cloning/sorting/caps unchanged. | Low. Must preserve RFC5545 exclusive-DTEND behavior, repeated appearance of multi-day all-day events in every matching day bucket, today/past filtering and output order. | None. | Low transient allocation reduction; persistent RAM unchanged. CPU gain removes repeated full external-event list scans/date parsing from these view rebuilds. | 0%. |
+| `modules/sidebarRight/calendar/CalendarWidget.qml` + `modules/waffle/notificationCenter/CalendarWidget.qml` + `services/Events.qml` / `CalendarSync.qml` | **HIGH-CONFIDENCE local CPU candidate — build one bounded visible-date metadata snapshot instead of scanning both event lists twice per day cell.** Classic Sidebar materializes 42 cells; each count/color pair performs 2 local-list scans and 2 external-list scans. Waffle's shared CalendarView materializes 10 weeks × 7 days = 70 delegates, with the same query shape, so one full invalidation can drive up to 140 local and 140 external full-list scans before rendering dots/counts. Build exact local/external buckets once for the visible dates, then derive count/color metadata with O(1) cell lookup. | Low–Medium. Preserve local notified/all-day semantics, external multi-day inclusion, unique source-color encounter order, previous/current/next-month dates and the existing event/month invalidation boundary. | None. | Low bounded metadata RAM in exchange for large transient allocation/date-object reduction; persistent event storage unchanged. | 0%. |
+| `scripts/scan-widgets.sh` | **HIGH-CONFIDENCE strict-lossless process candidate — remove three avoidable child processes per custom-widget manifest.** The scanner is already one bounded shell owner, but its loop executes external `dirname`, `basename` and `cat` for every `widget.json`. The glob shape makes directory/id extraction expressible with Bash parameter expansion, and Bash's `$(<file)` reads the manifest without spawning `cat`. Preserve the same unreadable-file `continue`, trailing-newline command-substitution behavior and JSON text. | Low. Oracle unusual paths, unreadable manifests and exact output bytes before changing the script. | None. | Low transient process-memory reduction. CPU/process gain is exactly up to 3 fewer child processes per discovered manifest while retaining the single scanner process. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -140,6 +144,9 @@ Rules:
 24. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
 25. **Niri workspace ordered-projection reuse** — remove redundant all-workspace re-sorts from activation/urgency events while preserving record identity and equal-index ordering.
 26. **Niri MRU no-op publish suppression** — only after proving duplicate same-id focus events do not intentionally use `mruWindowIdsChanged` as a refresh signal.
+27. **Calendar remaining-view batch migration** — reuse the existing `_getEventBucketsForDates()` helper for DashAgenda/Waffle upcoming paths with exact multi-day all-day parity.
+28. **Calendar visible-date metadata snapshot** — collapse the 42/70-cell repeated local/external list scans only after count/color/invalidation parity is oracle-covered.
+29. **Custom-widget scanner shell builtins** — remove per-manifest `dirname`/`basename`/`cat` child processes after byte/output oracle coverage.
 
 ## Explicit non-candidates from this pass
 
@@ -1650,5 +1657,173 @@ render/process work.
 `handleWindowClosed()` similarly republishes a filtered MRU array even when the
 closed id was never present. Do not bundle that path until R14.1 establishes the
 notification contract; then extend the same oracle deliberately.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+
+## Research continuation — round 15
+
+Baseline: `dev` at `c51490a438e2534d1f980ce247f5b1786726c5a3`.
+
+This round deliberately revalidated one useful historical finding from the
+archived handoff before promoting it into the canonical ledger, then added a
+new shell-process candidate. The archived note is not treated as active by
+itself; current source identities were checked first.
+
+Current source identities:
+
+- `services/CalendarSync.qml`: `6e0b89c56eda5ee612be8438d9c20d4851a09617`;
+- `services/Events.qml`: `dcc3671e7c6d640fdbe5d3ee8dce45bc412148e7`;
+- `modules/dashboard/DashAgenda.qml`: `222f16088cf07d53c0ad606d1cc8a68d3abe717c`;
+- `modules/sidebarRight/calendar/CalendarWidget.qml`: `4b5c53bc6392e7ce5f99df8e2643029969cdb98e`;
+- `modules/waffle/notificationCenter/CalendarWidget.qml`: `820a50373bd475e583e8ce4cd9b66515a4acba01`;
+- `modules/common/widgets/CalendarView.qml`: `767c8d6c9345f92925ad395b489be45262b62e72`;
+- `modules/common/widgets/WeekRow.qml`: `e95df323efdbf6fbcc5f3e6e855e1450fa869507`;
+- `scripts/scan-widgets.sh`: `d1176e3508335d0ad8d18fc884a4382fcd6a63a6`;
+- `services/CustomWidgets.qml`: `fe4b1ef553fe7ed437b4e0de947615eee83752c9`.
+
+### R15.1 — CalendarSync already has the exact batch primitive; two remaining views still bypass it
+
+`CalendarSync.getEventsForDate(date)` performs a full `root.events.filter()`
+and reparses event dates for every queried day. Current source already contains
+`_getEventBucketsForDates(dates)`, which accepts an ordered date list and
+constructs corresponding buckets while preserving the per-day multi-day/all-day
+membership semantics.
+
+Three current consumers have already moved to that helper:
+
+- EventsWidget: 30 dates;
+- CompactSidebarRightContent: 14 dates;
+- CalendarUpcomingWidget: 30 dates.
+
+Two remaining paths still perform repeated full external-list scans:
+
+- DashAgenda loops over `lookaheadDays = 14` and calls
+  `CalendarSync.getEventsForDate()` for every date;
+- Waffle notification-center upcoming events repeats the same pattern for 3
+  dates.
+
+The strict-lossless migration is intentionally narrow: construct the same dates
+in the same order, call `_getEventBucketsForDates()` once, then leave every
+existing per-day clone, past-event filter, per-day sort, global merge and cap
+unchanged.
+
+Do **not** replace these loops with `getUpcomingEvents(days)`. Range semantics
+are not identical: a multi-day all-day event is intentionally present in every
+matching per-day bucket, whereas the range helper returns the event object once.
+
+Required oracle:
+
+- timed events;
+- single-day all-day fallback with absent/degenerate DTEND;
+- exclusive RFC5545 DTEND;
+- multi-day all-day event repeated into every matching day;
+- today with an already-past timed event;
+- month/year boundary;
+- empty list;
+- exact object identity/order entering the existing downstream sort/cap.
+
+### R15.2 — Visible calendar grids multiply the same list-wide work
+
+The classic Sidebar month view computes exactly six weeks × seven days = 42
+cells. For every cell it derives both count and dot colors:
+
+```text
+count
+  -> Events.getEventsForDate()
+  -> CalendarSync.getEventsForDate()
+
+colors
+  -> Events.getEventsForDate()
+  -> CalendarSync.getSourceColorsForDate()
+       -> CalendarSync.getEventsForDate()
+```
+
+Therefore a complete 42-cell invalidation can perform up to:
+
+- **84 full local-event list scans**;
+- **84 full external-event list scans**.
+
+The Waffle notification-center Calendar is even broader. The shared
+`CalendarView` uses `totalWeeks = 6 + paddingWeeks * 2` with default
+`paddingWeeks = 2`, so it instantiates **10 WeekRow objects**. `WeekRow` builds
+7 day delegates each, giving **70 day delegates**. Each delegate independently
+binds both `eventCount` and `sourceColors` through the same pair of local and
+external queries. A full event-trigger invalidation can therefore drive up to:
+
+- **140 local full-list scans**;
+- **140 external full-list scans**;
+- **280 aggregate list scans** before count/dot rendering.
+
+Those are structural upper counts for one full binding recomputation, not
+measured CPU percentages.
+
+Strict-lossless direction:
+
+1. derive the exact ordered visible dates already owned by each calendar;
+2. batch external events with the existing CalendarSync helper;
+3. build equivalent local buckets from `Events.list` in one bounded pass, or
+   add a narrowly specified local batch helper with exactly
+   `Events.getEventsForDate()` semantics;
+4. derive per-date metadata once: local count, external count, local-accent
+   presence and ordered-unique external source colors;
+5. bind cells/delegates to that private metadata snapshot;
+6. invalidate on exactly the existing event triggers and month/week navigation.
+
+The local path must preserve the current rule that notified timed events are
+hidden but all-day events remain visible. External source-color order must remain
+first-encounter order with duplicate source ids removed. Previous/current/next
+month spill cells must use their actual resolved dates, not just day numbers.
+
+Keep this snapshot widget-local first. A service-wide long-lived date cache would
+introduce a larger invalidation/lifetime proof with no need for the initial gain.
+
+### R15.3 — Custom-widget manifest scanning spawns avoidable per-entry helpers
+
+`services/CustomWidgets.qml` owns one scanner process:
+
+```text
+scan-widgets.sh <widgets-dir>
+```
+
+That ownership is already bounded. The avoidable fan-out is inside the shell
+loop in `scripts/scan-widgets.sh`:
+
+```bash
+wdir="$(dirname "$manifest")"
+wid="$(basename "$wdir")"
+content="$(cat "$manifest" 2>/dev/null)" || continue
+```
+
+For each discovered manifest this launches three child programs in addition to
+the scanner shell. The input glob is fixed to `$dir/*/widget.json`, so the same
+values can be derived in Bash itself:
+
+```text
+wdir = manifest minus trailing /widget.json
+wid  = final path component of wdir
+content = Bash direct file read
+```
+
+This does not require changing QML service ownership, manifest validation,
+config seeding, reload behavior or the public widget list. It is a process-only
+cleanup with a bounded saving of **up to three child processes per manifest**.
+
+Required byte/behavior oracle:
+
+- missing widget directory;
+- empty directory;
+- one and many manifests;
+- spaces and Unicode in directory/widget names;
+- unreadable manifest preserves the existing skip/failure behavior;
+- manifest with and without trailing newline;
+- malformed JSON remains malformed in the same way for the QML parser;
+- exact scanner stdout for normal fixtures;
+- CustomWidgets resulting `widgets` list/config seeding equality.
+
+Do not combine this with deferred CustomWidgets service materialization in the
+same patch. Background currently references CustomWidgets for live custom widget
+ownership, and changing when the service scans/seeds config is a separate
+behavior/lifecycle problem.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.

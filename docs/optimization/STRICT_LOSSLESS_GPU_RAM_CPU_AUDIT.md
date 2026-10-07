@@ -217,6 +217,9 @@ Rules:
 | `services/deferred/NewsService.qml` + `scripts/test-news-service-contract.sh` | **HIGH-CONFIDENCE strict CPU/allocation candidate — reject stale successful XHRs before RSS parsing, not after it.** A 200 response currently runs the full regex-based `_parseRss(xhr.responseText)` and only then checks `generation !== _requestGeneration`. Stale results are already forbidden from mutating cache/timestamps/articles, so the parse has no observable product effect. Move the generation guard ahead of `_parseRss`; update the contract test to require stale rejection before parsing while still proving no stale cache mutation. | Very low. Preserve current status/error behavior for the active generation, last-request-wins semantics, cache writes and exact parser output for non-stale responses. Pay attention to stale 200 vs active non-200 races. | None. | Low–Medium transient CPU/allocation reduction during rapid board/feed changes or duplicate surface fetches; completely removes regex/date/object construction for stale 200 bodies. | 0%. |
 | `modules/sidebarLeft/anime/BooruImage.qml` + `BooruResponse.qml` + `modules/common/Directories.qml` | **HIGH-CONFIDENCE process-fan-out candidate — give manual preview downloads one shared directory-readiness owner instead of running external `mkdir -p` inside every image delegate.** Manual providers (`danbooru`, `waifu.im`, `t.alcy.cc`) instantiate one `BooruImage` per response image; every delegate starts Bash whose first child is `mkdir -p previewDownloadPath`, then performs the existing cache-file test and optional curl. `Directories` already owns an ordered cleanup/recreate bootstrap for `booruPreviews`, but that bootstrap is asynchronous, so simply deleting delegate mkdir calls would create a startup race. Expose/reuse one explicit directory-ready gate (session- or response-scoped), then let all delegates retain the exact `[ -f cache ] || curl` behavior after readiness. | Low–Medium. Immediate-sidebar-open during bootstrap, failed directory creation, multiple historical responses, duplicate filenames and provider switches must be tested. Do not replace manual local-file rendering with direct remote Image URLs, and do not introduce a serial download queue in the first patch because that would change arrival timing. | One tiny readiness flag/process owner; no new image cache. | Low–Medium child-process reduction on manual-provider result pages: N per-thumbnail mkdir children collapse to one readiness operation while cache/download semantics stay unchanged. | 0% pixels; thumbnail arrival timing must remain acceptably equivalent. |
 
+| `modules/ii/overlay/OverlayTaskbar.qml` | **HIGH-CONFIDENCE transient GPU/texture-RAM candidate — bound the Angel taskbar wallpaper blur to the visible taskbar instead of materializing a full-output effect layer.** The retained taskbar is only content-sized, but `taskbarBlurWallpaper` is sized and decoded to `Quickshell.screens[0]`, then gets a `MultiEffect` blur before the parent clips/masks it back to the taskbar. Reuse the existing screen-aligned PreserveAspectCrop transform and materialize only taskbar bounds plus the exact 64 px blur support. | Low–Medium. Preserve the current `screen[0]` sampling contract, screen-relative x/y alignment, rounded mask, content-width changes and the full open→fade-out lifetime owned by `presentationActive`. | **High local potential while Overlay is visible in Angel mode; zero expected idle gain once the retained taskbar has faded out.** | **High local transient potential.** A full-screen RGBA8 layer is ~7.9 MiB at 1920×1080 and ~31.6 MiB at 3840×2160 before effect intermediates; the strict candidate should allocate only taskbar+blur-padding surfaces. These are texture-size calculations, not measured RSS savings. | Target 0%; exact crop A/B must include every taskbar edge through the 64 px blur reach, fractional scale and wallpaper crop alignment. |
+| `modules/waffle/altSwitcher/WaffleAltSwitcher.qml` + `WaffleAltSwitcherContent.qml` | **HIGH-CONFIDENCE transient render-pass candidate — collapse the Waffle skew preset per-slice mask capture into one analytic parallelogram mask/pass.** Every instantiated skew delegate enables a content layer while `cardVisible`, then applies `MultiEffect` masking whose mask is another `ShaderEffectSource`/layer containing a white `Shape`. The same delegate already owns the exact parallelogram equation for `containmentMask`, so mask geometry is not unknown. Keep preview capture, ListView geometry and the Canvas shadow unchanged in the first experiment; replace only the duplicated content+mask offscreen chain. | Medium. AA edge coverage, 4×/1× layer-sample behavior, current expanded-slice animation, preview arrival, focus/navigation and rapid close must remain identical. | **Medium–High local potential while the skew switcher is visible**, multiplied by visible/cached slice delegates; zero expected gain for other presets or while closed. | Low–Medium transient texture reduction from removing one or more per-delegate offscreen mask/content surfaces. | Target 0% for an exact mask-only collapse; otherwise require <1% global error plus a stricter alpha/edge-band comparison on the slanted edges. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -333,6 +336,8 @@ Rules:
 104. **Anime schedule same-day in-flight coalescing** — suppress duplicate AniList schedule POST/normalization only when the exact resolved weekday is already pending; keep cross-day freshness independent.
 105. **News stale-response pre-parse guard** — move generation rejection ahead of RSS regex parsing so stale 200 bodies do zero parse/allocation work.
 106. **Booru manual-preview shared directory readiness** — replace per-thumbnail `mkdir -p` children with one race-safe readiness owner while retaining cache-test/curl/local-file semantics.
+107. **Overlay taskbar bounded Angel blur** — crop the screen-aligned Angel wallpaper/effect source to the taskbar plus exact blur support instead of allocating a full-output layer for a small retained taskbar.
+108. **Waffle skew Alt Switcher single-pass parallelogram mask** — keep the existing skew geometry/preview/shadow contracts while eliminating the per-delegate content-layer + captured mask chain.
 
 ## Explicit non-candidates from this pass
 
@@ -7030,3 +7035,142 @@ not a strict-lossless performance candidate.
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
 before/after measurement.
 
+## Research continuation — round 39
+
+Baseline: `dev` at `7ec2321994de87f3d32c094668f7bd71a150e919`.
+
+This round deliberately moved away from the network/process work in round 38 and
+looked for active render paths that were absent from the canonical ledger. The
+search was cross-checked against current `dev`; candidates already covered by
+the Bar/Dock glass work, Waffle Task View CPU grouping, classic AltSwitcher, or
+wallpaper-selector research were not re-promoted under new names.
+
+Current source identities:
+
+- `modules/ii/overlay/OverlayTaskbar.qml`: `bb432c65ea7256030767aacdc0c1879104c6340e`;
+- `modules/ii/overlay/OverlayContent.qml`: `64a277d10a8d89b58ec8d4b040a859d0424db488`;
+- `modules/waffle/altSwitcher/WaffleAltSwitcher.qml`: `00a169d62a31d4b3ae12aba6d6ab85f995b9fbd9`;
+- `modules/waffle/altSwitcher/WaffleAltSwitcherContent.qml`: `2f4c8a398d6d4bf515a0f002c43dacf1d8772132`;
+- `modules/waffle/taskview/WaffleTaskView.qml`: `37ddd9d8318efab3b435e23e2b5dfd4f8baa785d`;
+- `modules/waffle/taskview/WaffleTaskViewContent.qml`: `8ee8ff511dafab601a840ebc0475e18563b41034`;
+- `modules/waffle/taskview/WorkspaceThumbnail.qml`: `1d18942c2480d04b426e2ff537d4411dbba2d48d`;
+- `modules/common/widgets/EscalonadoShadow.qml`: `ecc4d46d5aef91a9893cdc045ec00d2ef925685f`;
+- `modules/dashboard/DashWeather.qml`: `243aab28a3d51934980ae90a78da54457dbf8cbf`;
+- `services/ConflictKiller.qml`: `b6ebab2f51b0ec00c19bddb5e3704a6739e0a001`;
+- `services/Idle.qml`: `ee6eed98adaa4164a9bc0cb891159c805e3f8507`.
+
+### R39.1 — Overlay taskbar still blurs a full output to paint a small retained strip
+
+`OverlayTaskbar` is a missed sibling of the already documented Bar/Dock bounded
+wallpaper-blur family. The taskbar itself is content-sized, yet its Angel path
+creates an image at the dimensions of `Quickshell.screens[0]`, requests the
+same full-screen source size, and enables a `MultiEffect` blur on that image.
+The surrounding taskbar then clips and masks the result back to its rounded
+content-sized geometry.
+
+The expensive resources are lifecycle-gated correctly: `presentationActive`
+keeps them alive while the Overlay is open or the taskbar is still fading, then
+releases the image source/effect after opacity reaches the retained threshold.
+Therefore the candidate is not to shorten that lifetime. The strict direction
+is to reduce only the raster area:
+
+1. preserve the exact screen-aligned `PreserveAspectCrop` transform;
+2. derive the taskbar rectangle in the same screen coordinate space;
+3. expand that rectangle by the exact support required by `blurMax: 64`;
+4. materialize/capture only that padded area;
+5. present the same cropped pixels through the existing rounded owner mask;
+6. keep `presentationActive`, opacity animation, content sizing and widget state unchanged.
+
+This is structurally the same class as the canonical Bar/Dock candidate but has
+a separate transient owner and was not named by the existing ledger. A full
+RGBA8 output is about 7.9 MiB at 1920×1080 and 31.6 MiB at 3840×2160 before
+effect intermediates. Those figures describe texture dimensions only; they are
+not whole-shell RAM or GPU savings.
+
+Required oracle:
+
+- Angel style with effects on/off;
+- Overlay closed, opening, fully open, closing and the final retained fade frame;
+- narrow/wide taskbar content, battery present/absent and multiple widget-button counts;
+- 1920×1080, 4K, fractional scale and multi-output layouts;
+- taskbar at non-zero screen-relative x/y;
+- wallpapers with strong edge/detail patterns that expose crop misalignment;
+- exact corner/edge alpha through the full blur support;
+- identical input/focus/pinned-widget behavior because the render optimization must not touch Overlay ownership.
+
+Target 0% pixel deviation for the crop-only path.
+
+### R39.2 — Waffle skew Alt Switcher builds a captured mask surface for every slice
+
+The Waffle skew preset has a stronger structural signal than a generic
+`MultiEffect` search. Each ListView delegate already defines the same
+parallelogram three ways: its width/skew constants, an analytic
+`containmentMask.contains(point)` equation, and a white `ShapePath` used only as
+the visual mask. Despite that known geometry, the visible path currently does:
+
+- `maskedBody.layer.enabled: root.cardVisible`;
+- 4× MSAA when effects are enabled, otherwise 1×;
+- `MultiEffect { maskEnabled: true }` on that content layer;
+- a `ShaderEffectSource` mask whose source item enables another layer;
+- a white antialiased parallelogram Shape inside that captured mask.
+
+The ListView is configured for twelve visible skew positions and an additional
+`cacheBuffer` equal to the expanded slice width. The exact number of instantiated
+delegates is runtime-dependent, so this round does not invent an FBO count, but
+the offscreen chain is unquestionably per delegate while the skew card is visible.
+
+The strict first experiment should leave the Canvas shadow, preview Image,
+WindowPreviewService capture, slice width animation and ListView lifecycle
+untouched. Only the parallelogram clipping step should be replaced by one
+analytic mask/render pass using the existing skew equation. This isolates the
+render-pass saving from shadow appearance and preview timing.
+
+Required oracle:
+
+- 1, 2, 12 and more windows;
+- current expanded slice versus narrow non-current slices;
+- first/last visible slices and delegates entering/leaving the cache buffer;
+- preview missing, preview arriving during the 30 ms card reveal, and preview already cached;
+- effects enabled (4× samples) and disabled (1×);
+- rapid Alt cycling, close during preview capture and reopen;
+- focus/currentIndex/navigation and exact containment hit-testing;
+- fractional scale and width-animation frames;
+- global raster comparison plus a dedicated alpha/edge-band comparison on both slanted sides.
+
+Target 0% for an exact mask-only collapse. If the AA implementation differs,
+the candidate remains unpromoted until global normalized visual error is below
+1% and the slanted-edge oracle also passes.
+
+### R39.3 — Paths deliberately not promoted
+
+**Waffle Task View root blur:** `WaffleTaskView.qml` already captures only the
+horizontal `blurStrip` with `ShaderEffectSource.sourceRect` before applying its
+`MultiEffect`. It is a useful positive baseline for R39.1, not another missed
+full-screen-blur candidate.
+
+**Waffle workspace thumbnails:** carousel mode can show one blurred/masked
+wallpaper per workspace, so sharing a prepared wallpaper texture may have
+value. Centered mode already suppresses wallpaper presentation for non-selected
+workspaces, however, and moving blur ownership to a shared texture could change
+first-presentation timing or AA/mask behavior. Keep this at measure-first until
+GPU/FBO evidence and a raster oracle justify a concrete ownership design. The
+existing round-32 `WaffleTaskViewContent` CPU grouping candidate remains
+separate and must not be duplicated.
+
+**EscalonadoShadow:** the component contains the same screen-sized glass-blur
+shape, but current code search finds no runtime instantiation outside its own
+definition/qmldir/config/tests. Optimizing an unused helper cannot produce a
+demonstrated runtime win; do not promote it unless an active owner appears.
+
+**DashWeather:** its 30 s timer updates the date object only while visible.
+Changing it to a coarser/day-boundary wakeup would save very little and changes
+the exact date-flip observation boundary. No candidate is promoted without
+profile evidence.
+
+**ConflictKiller and Idle:** ConflictKiller performs one deferred consolidated
+`/proc` conflict scan after config readiness. Idle is event/config driven and
+uses a bounded 30 s retry only after `swayidle` failure. Neither is a recurring
+healthy-state hot path worth complicating.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
+before/after measurement.

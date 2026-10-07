@@ -12,8 +12,9 @@ Window {
         {action:"",phase:0,quality:"quality",amber:true}]
     WaterDropletBody {
         id:body;anchors.centerIn:parent;enabled:false;hoverAmount:0
-        character:root.step<root.states.length ? "aqua" : "octo"
-        readonly property var state:root.states[root.step%root.states.length]
+        character:root.step<root.states.length || root.step>=root.states.length*2 ? "aqua" : "octo"
+        readonly property var state:root.step>=root.states.length*2 ? {action:"",phase:0,quality:"quality"} : root.states[root.step%root.states.length]
+        tentacleGrip:root.step===root.states.length*2;gripProgress:.6
         accentColor:state.amber ? "#faaa52" : "#25b8fa"
         motionEnabled:true;effectsEnabled:true;renderQuality:state.quality;translucency:.16
         motionAction:state.action;motionProgress:state.phase
@@ -26,7 +27,7 @@ Window {
     function save():void {
         const material=named(body,"wullVolumeMaterial"),gait=named(body,"wullLocomotion")
         const arms=Array.from({length:4},(_,i)=>named(body,"octoTentacle"+i))
-        if(!body.materialReady || arms.filter(Boolean).length!==(body.octopus ? 4 : 0)
+        if(!body.materialReady || arms.filter(Boolean).length!==((body.octopus || body.tentacleGrip) ? 4 : 0)
                 || named(body,"octoTentacle4") || !!named(body,"wullHand0")===body.octopus
                 || !!named(body,"wullFoot1")===body.octopus
                 || (body.state.action && (Math.abs(body.modelPitch)<60 || gait.scaleY<.95))) {
@@ -36,6 +37,17 @@ Window {
         if((body.detailedEffects && (!reflection.sourceItem || !reflection.live))
                 || material.optics.y!==(body.octopus ? 4 : 0)) {
             console.error("COMPANION_VOLUME=FAIL optical source");Qt.quit();return
+        }
+        if(root.step>=root.states.length*2) {
+            const front=named(body,"octoGripFront"),back=named(body,"octoGripBack")
+            if(body.tentacleGrip && (!front || !back || front.parent.z<=material.parent.z || back.parent.z>=material.parent.z)) {
+                console.error("COMPANION_VOLUME=FAIL grip depth layers");Qt.quit();return
+            }
+            body.grabToImage(result=>{
+                result.saveToFile(Quickshell.env("COMPANION_VOLUME_OUTPUT")+(body.tentacleGrip ? "/gripped.png" : "/ungripped.png"))
+                root.advance()
+            },Qt.size(512,512))
+            return
         }
         material.grabToImage(result=>{
             if(!result.saveToFile(Quickshell.env("COMPANION_VOLUME_OUTPUT")+"/pose-"+root.step+".png")){
@@ -54,7 +66,7 @@ Window {
         },Qt.size(256,256))
     }
     function advance():void {
-        if(root.step===root.states.length*2-1){console.log("COMPANION_VOLUME=PASS bothRigs fourPlumpOpaqueTentacles reflection twoTiers themeRetint spatialFalls");shutdown.start()}
+        if(root.step===root.states.length*2+1){console.log("COMPANION_VOLUME=PASS bothRigs fourPlumpOpaqueTentacles reflection twoTiers themeRetint spatialFalls frontBackGrip");shutdown.start()}
         else {root.step++;delay.start()}
     }
     Timer {interval:800;running:true;onTriggered:root.save()}

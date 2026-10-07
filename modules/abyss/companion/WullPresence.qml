@@ -235,12 +235,12 @@ Item {
         const revealed=permitted && requestedReveal>0
         placement=selected;destination=selected;targetX=selected.x;targetY=selected.y
         hideClip="dive";appearClip="emerge";appearanceOffsetX=0;appearanceOffsetY=0
-        retreating=false;visitActive=revealed;renderedReveal=revealed ? requestedReveal : 0
+        retreating=false;visitActive=revealed;renderedReveal=0
         actor.reactionExpression=""
         actor.adoptTo(targetX+(actor.scale-1)*actor.width/2,targetY+(actor.scale-1)*actor.height/2,emergenceEdge,renderedReveal)
         handoffActive=false
-        fullyPresentSince=revealed && renderedReveal>.99 ? Date.now() : 0
-        if (revealed) scheduleSurface()
+        fullyPresentSince=0
+        if (revealed) {disturb("emerge",placement);renderedReveal=requestedReveal;scheduleSurface()}
     }
     function moveTo(selected, exit, preferredMode = ""): bool {
         if (handoffActive || !permitted || !actor || actor.presentation<.99 || dragging || (peekIntro && !exit)) return false

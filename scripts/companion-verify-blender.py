@@ -45,7 +45,7 @@ def verify(output,render):
             arms=[o for o in bpy.data.objects if o.name.startswith('Tentacle ')];cups=[o for o in bpy.data.objects if o.name.startswith('Suction cup ')]
             assert len(arms)==4 and len(cups)==16
             assert not any('water arm' in o.name or 'water foot' in o.name for o in bpy.data.objects)
-            assert all(len(a.data.shape_keys.key_blocks)==4 for a in arms)
+            assert all(len(a.data.shape_keys.key_blocks)==7 for a in arms)
             surface=next(n for n in arms[0].data.materials[0].node_tree.nodes if n.type=='BSDF_PRINCIPLED')
             assert surface.inputs['Transmission Weight'].default_value<.051
             assert surface.inputs['Alpha'].default_value==1
@@ -57,8 +57,15 @@ def verify(output,render):
             extended=arms[0].evaluated_get(graph).to_mesh();movement=(extended.vertices[-1].co-rest_tip).length;arms[0].evaluated_get(graph).to_mesh_clear()
             cup_movement=(cups[0].evaluated_get(graph).location-cup_rest).length
             assert movement>25 and cup_movement>3,'Blender tube/cup failed to follow the pull'
+            bpy.context.scene.frame_set(1+round(5600*.06*.6));graph=bpy.context.evaluated_depsgraph_get()
+            assert rig['gripWrap']>.99 and rig['gripRise']>.99
+            wrapping=arms[0].evaluated_get(graph).to_mesh()
+            tip=sum((v.co for v in wrapping.vertices[-16:]),Vector())/16
+            arms[0].evaluated_get(graph).to_mesh_clear()
+            assert (tip-Vector((28,-22,0))).length<.001,'saved front coil did not cross the victim'
             info.update(tentacles=4,suctionCups=16,pullTipTravel=movement,pullCupTravel=cup_movement,
-                tentacleTransmission=surface.inputs['Transmission Weight'].default_value,tentacleOpacity=1)
+                tentacleTransmission=surface.inputs['Transmission Weight'].default_value,tentacleOpacity=1,
+                gripWrapVerified=True,frontCoilTip=list(tip))
         receipt['characters'][character]=info
         if render:
             rig.animation_data.action=bpy.data.actions[character+' — Walk'];bpy.context.scene.frame_set(1)

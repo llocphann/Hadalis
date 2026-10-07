@@ -36,6 +36,13 @@ for(let i=0;i<rig.geometry.tentacles;i++){
     assert.ok(octo.clips.walk.tracks[`tentacle${i}Curl`]);assert.ok(octo.clips.fly.tracks[`tentacle${i}Lift`]);
 }
 assert.ok(octo.sample('walk','tentacle0Lift',.75)>0);assert.equal(octo.sample('walk','tentacle1Lift',.75),0);
-assert.ok(octo.sample('pull','tentacle0Reach',.3)>30);assert.ok(octo.sample('wave','tentacle0Lift',.5)>14);
+assert.equal(octo.sample('pull','gripRise',.6),1);assert.equal(octo.sample('pull','gripWrap',.6),1);
+for(let i=0;i<4;i++)for(let p=0;p<=1;p+=.01){
+    const c=rig.gripControls(i,octo.sample('pull','gripRise',p),octo.sample('pull','gripWrap',p));
+    assert.ok(c.every(v=>['x','y','z','r'].every(k=>Number.isFinite(v[k]))));
+}
+assert.ok(rig.gripControls(0,1,1)[3].x>20 && rig.gripControls(3,1,1)[3].x<-20);
+assert.ok(rig.gripControls(0,1,1)[2].z>30 && rig.gripControls(1,1,1)[2].z<0);
+assert.ok(octo.sample('wave','tentacle0Lift',.5)>14);
 assert.ok(octo.sample('buttplant','pitch',.6)<-60);assert.ok(aqua.sample('buttplant','pitch',.6)<-60);
 console.log(`COMPANION_CAST_CURVES_PREFS_RIG_PASS Aqua=30 Octo=30 sampled=${sampled}`);

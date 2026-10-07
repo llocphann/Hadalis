@@ -20,6 +20,7 @@ ROOT=Path(__file__).resolve().parents[1]
 DATA=ROOT/'modules/abyss/companion'
 HANDOFF=5600
 GEOMETRY=json.loads(re.search(r'var geometry=(.*)\n',(DATA/'OctoRig.js').read_text())[1])
+GRIP_WRAP=json.loads(re.search(r'var gripWrapPoints=(.*)\n',(DATA/'OctoRig.js').read_text())[1])
 TENTACLES=GEOMETRY['tentacles']
 
 def controls(index,curl=1,lift=0,reach=0):
@@ -30,6 +31,13 @@ def controls(index,curl=1,lift=0,reach=0):
 def point(points,t):
     u=1-t;weights=(u**3,3*u*u*t,3*u*t*t,t**3)
     return Vector(tuple(sum(p[k]*w for p,w in zip(points,weights)) for k in range(3)))
+
+def grip_controls(index,rise=0,wrap=0):
+    sign=-1 if index<2 else 1
+    base=[(sign*16,-42,-10),(sign*25,-42,-14),(sign*26,-40,-14),(sign*23,-38,-14)]
+    raised=[(sign*16,-42,-10),(sign*44,-17,-8),(sign*42,18,-8),(sign*34,28,-2)]
+    return [tuple(base[i][k]+(raised[i][k]-base[i][k])*rise+(GRIP_WRAP[index][i][k]-raised[i][k])*wrap for k in range(3))
+        +(GEOMETRY['rootRadius']+(GEOMETRY['tipRadius']-GEOMETRY['rootRadius'])*i/3,) for i in range(4)]
 
 def tube(name,points,material,body,rig,index):
     rings=25;sides=16;vertices=[];faces=[]
@@ -60,6 +68,17 @@ def tube(name,points,material,body,rig,index):
                 v=key.data[j*sides+k].co;v.x+=delta.x;v.y-=delta.z;v.z+=delta.y
         f=key.driver_add('value');var=f.driver.variables.new();var.name='v';var.targets[0].id=rig;var.targets[0].data_path='["tentacle'+str(index)+channel+'"]'
         f.driver.expression='1-v' if channel=='Curl' else 'v/8' if channel=='Lift' else 'v/35'
+    for channel,previous,new in [('GripBase',points,grip_controls(index)),
+            ('GripRise',grip_controls(index),grip_controls(index,1)),
+            ('GripWrap',grip_controls(index,1),grip_controls(index,1,1))]:
+        key=arm.shape_key_add(name=channel)
+        for j in range(rings):
+            delta=point(new,j/(rings-1))-point(previous,j/(rings-1))
+            for k in range(sides):
+                v=key.data[j*sides+k].co;v.x+=delta.x;v.y-=delta.z;v.z+=delta.y
+        f=key.driver_add('value');var=f.driver.variables.new();var.name='v';var.targets[0].id=rig
+        var.targets[0].data_path='["'+{'GripBase':'gripActive','GripRise':'gripRise','GripWrap':'gripWrap'}[channel]+'"]'
+        f.driver.expression='v'
     # Real shallow concave suction cups, retained in the editable mesh scene.
     for n,t in enumerate((.32,.47,.62,.77)):
         p=point(points,t);radius=(points[0][3]*(1-t)+points[3][3]*t)*.7
@@ -73,9 +92,13 @@ def tube(name,points,material,body,rig,index):
             f=sucker.driver_add('location',axis);f.driver.type='SCRIPTED'
             for name,channel in [('c','Curl'),('l','Lift'),('r','Reach')]:
                 var=f.driver.variables.new();var.name=name;var.targets[0].id=rig;var.targets[0].data_path=f'["tentacle{index}{channel}"]'
+            for name,channel in [('g','gripActive'),('u','gripRise'),('w','gripWrap')]:
+                var=f.driver.variables.new();var.name=name;var.targets[0].id=rig;var.targets[0].data_path=f'["{channel}"]'
             neutral=point(controls(index,0,0,0),t)[native_axis]*sign+offset
             increments=[(point(controls(index,*args),t)[native_axis]-point(controls(index,0,0,0),t)[native_axis])*sign for args in [(1,0,0),(0,1,0),(0,0,1)]]
-            f.driver.expression=f'{neutral:.9f}+c*{increments[0]:.9f}+l*{increments[1]:.9f}+r*{increments[2]:.9f}'
+            grip_deltas=[(point(new,t)[native_axis]-point(old,t)[native_axis])*sign for old,new in
+                [(points,grip_controls(index)),(grip_controls(index),grip_controls(index,1)),(grip_controls(index,1),grip_controls(index,1,1))]]
+            f.driver.expression=f'{neutral:.9f}+c*{increments[0]:.9f}+l*{increments[1]:.9f}+r*{increments[2]:.9f}+g*{grip_deltas[0]:.9f}+u*{grip_deltas[1]:.9f}+w*{grip_deltas[2]:.9f}'
     return arm
 
 def export_actions(rig,clips,label):
@@ -155,17 +178,18 @@ def main(receipt):
             eye.scale.x*=.9;eye.scale.y*=.9
         for o in list(bpy.data.objects):
             if ' water arm' in o.name or ' water foot' in o.name:bpy.data.objects.remove(o,do_unlink=True)
-        octo=json.loads(json.dumps(base));octo['pull']={'duration':HANDOFF,'tracks':{'roll':[[0,0],[.25,-8],[.6,4],[1,0]],'eyeOpen':[[0,1],[.35,.2],[.6,1],[1,1]]}}
+        octo=json.loads(json.dumps(base));octo['pull']={'duration':HANDOFF,'tracks':{'roll':[[0,0],[.25,-8],[.6,4],[1,0]],'eyeOpen':[[0,1],[.35,.2],[.6,1],[1,1]],
+            'gripActive':[[0,1],[1,1]],'gripRise':[[0,0],[.13,.5],[.23,1],[.8,1],[1,0]],
+            'gripWrap':[[0,0],[.18,0],[.32,.55],[.43,1],[.8,1],[1,0]]}}
         for name,clip in octo.items():
             clip['tracks']={k:v for k,v in clip['tracks'].items() if not k.startswith(('arm','foot'))}
             for i in range(TENTACLES):
                 amplitude=5 if name=='walk' else 8 if name in ('run','fly','balance') else 3
                 clip['tracks'][f'tentacle{i}Curl']=[[0,1],[.25,1.35 if i%2 else .55],[.5,1],[.75,.55 if i%2 else 1.35],[1,1]]
                 clip['tracks'][f'tentacle{i}Lift']=[[0,0],[.25,amplitude if i%2 else 0],[.5,0],[.75,0 if i%2 else amplitude],[1,0]]
-                if name=='pull' and i in (0,TENTACLES-1):
-                    clip['tracks'][f'tentacle{i}Curl']=[[0,1],[.15,.35],[.3,.2],[.45,1.6],[.85,1.5],[1,1]]
-                    clip['tracks'][f'tentacle{i}Reach']=[[0,0],[.18,72],[.38,72],[.8,12],[1,0]]
-                    clip['tracks'][f'tentacle{i}Lift']=[[0,0],[.18,4],[.38,0],[.60,-28],[.84,-38],[1,0]]
+                if name=='pull':
+                    clip['tracks'][f'tentacle{i}Curl']=[[0,1],[1,1]]
+                    clip['tracks'][f'tentacle{i}Lift']=[[0,0],[1,0]]
                 elif name in ('launch','stuckLaunch','fall','pulled','sink'):
                     clip['tracks'][f'tentacle{i}Curl']=[[0,1],[.2,.25],[.4,1.7],[.6,.3],[.8,1.5],[1,1]]
                 elif name in ('press','reach') and i in (0,3):

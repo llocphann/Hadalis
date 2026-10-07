@@ -14,6 +14,8 @@ Item {
     id: root
     objectName: "wullLiquidBody"
     property string character: "aqua"
+    property bool tentacleGrip: false
+    property real gripProgress: 0
     readonly property bool octopus: character==="octo"
     readonly property var curves: Motion.forCharacter(character)
     readonly property var headCenter: project(0,OctoRig.geometry.headOffset,0)
@@ -131,6 +133,13 @@ Item {
         progress: root.motionProgress
         direction: Math.abs(root.walkingDirection)>.05 ? root.walkingDirection : 1
         motionEnabled: root.motionEnabled && root.visible
+    }
+    WullMotion {
+        id: gripMotion
+        character: "octo"
+        action: root.tentacleGrip ? "pull" : ""
+        progress: root.gripProgress
+        motionEnabled: root.tentacleGrip && root.motionEnabled && root.visible
     }
 
     // Preserve placement and native input bounds. The body itself is square.
@@ -289,6 +298,24 @@ Item {
             sourceComponent: OctoTentacles {
                 body: root
                 motion: gait
+            }
+        }
+        Loader {
+            active: root.tentacleGrip && !root.octopus
+            z: -.5
+            sourceComponent: OctoTentacles {
+                body: root;motion: gripMotion;gripping: true;tentacleIndices: [1,2]
+                objectName: "octoGripBack"
+                opacity: Math.min(1,gripMotion.sample("gripRise")*4)
+            }
+        }
+        Loader {
+            active: root.tentacleGrip && !root.octopus
+            z: .5
+            sourceComponent: OctoTentacles {
+                body: root;motion: gripMotion;gripping: true;tentacleIndices: [0,3]
+                objectName: "octoGripFront"
+                opacity: Math.min(1,gripMotion.sample("gripRise")*4)
             }
         }
         Item {

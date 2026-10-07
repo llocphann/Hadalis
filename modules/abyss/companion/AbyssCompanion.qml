@@ -9,6 +9,8 @@ import "WullAttention.js" as Attention
 Item {
     id: root
     property string character: "aqua"
+    property bool tentacleGrip: false
+    property real gripProgress: 0
     readonly property var curves: Motion.forCharacter(character)
     property bool presentationManaged: false
     property string pairedAction: ""
@@ -345,6 +347,8 @@ Item {
         WaterDropletBody {
             id: droplet
             character: root.character
+            tentacleGrip: root.tentacleGrip
+            gripProgress: root.gripProgress
             width: 76; height: 92
             visible: root.visible
             gazeX: root.attention.x

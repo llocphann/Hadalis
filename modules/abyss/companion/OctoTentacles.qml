@@ -8,15 +8,19 @@ Item {
     id: root
     required property var body
     required property var motion
+    property bool gripping: false
+    property var tentacleIndices: [0,1,2,3]
     width: body.width; height: body.height
     Repeater {
-        model: Rig.geometry.tentacles
+        model: root.tentacleIndices
         Item {
             id: arm
-            required property int index
+            required property int modelData
+            readonly property int index: modelData
             objectName: "octoTentacle"+index
-            readonly property var curve: Rig.controls(index,root.motion.curl(index),
-                root.motion.sample("tentacle"+index+"Lift"),root.motion.sample("tentacle"+index+"Reach")*root.motion.direction)
+            readonly property var curve: root.gripping
+                ? Rig.gripControls(index,root.motion.sample("gripRise"),root.motion.sample("gripWrap"))
+                : Rig.controls(index,root.motion.curl(index),root.motion.sample("tentacle"+index+"Lift"),root.motion.sample("tentacle"+index+"Reach")*root.motion.direction)
             readonly property var points: curve.map(p=>root.body.project(p.x,p.y,p.z))
             readonly property var bounds: {
                 const radius=(Rig.geometry.rootRadius+1)*Math.max(root.body.poseScaleX,root.body.poseScaleY,1/(root.body.poseScaleX*root.body.poseScaleY))

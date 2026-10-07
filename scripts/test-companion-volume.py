@@ -51,4 +51,10 @@ with tempfile.TemporaryDirectory(prefix='companion-volume-') as temporary:
         w,h,alpha=decode((private/f'arm-{index}.png').read_bytes())
         painted=sum(a>=128 for a in alpha);opaque=sum(a==255 for a in alpha)
         assert painted>1000 and opaque>=painted*.95,'front tentacle exposes the one behind it'
-    print('COMPANION_GPU_VOLUME_PASS Aqua/Octo roundFalls clearOcto opaqueTentacles liveReflection twoTiers themeRetint areas='+str(counts))
+    rgba=runpy.run_path(str(ROOT/'scripts/wull-existing-matrix-evidence.py'))['rgba_verified']
+    _,_,gripped=rgba((private/'gripped.png').read_bytes());_,_,ungripped=rgba((private/'ungripped.png').read_bytes())
+    # Actual painted coils must cross the middle of the victim's opaque core.
+    changed=sum(gripped[(y*512+x)*4:(y*512+x+1)*4]!=ungripped[(y*512+x)*4:(y*512+x+1)*4]
+        for y in range(190,355) for x in range(145,370))
+    assert changed>1500,'tentacles failed to wrap across Aqua'
+    print('COMPANION_GPU_VOLUME_PASS Aqua/Octo roundFalls clearOcto opaqueTentacles liveReflection twoTiers themeRetint frontBackGrip changedCore='+str(changed)+' areas='+str(counts))

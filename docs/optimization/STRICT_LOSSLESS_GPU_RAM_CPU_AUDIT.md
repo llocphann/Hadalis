@@ -175,6 +175,9 @@ Rules:
 | `modules/waffle/startMenu/AllAppsContent.qml` | **HIGH-CONFIDENCE interactive CPU/allocation candidate — split alphabetically sorted app snapshot from per-keystroke filtering/grouping.** Current `groupedApps` starts from `DesktopEntries.applications.values`, filters, then sorts all matches by name on every `filterText` edit; `flatApps` then flattens the groups again solely for Enter-to-activate. Maintain one sorted visible-app base projection per DesktopEntries revision, filter that ordered snapshot per query, group without re-sorting, and let `flatApps` reuse the filtered array. | Low. Preserve immediate DesktopEntries update timing, noDisplay filtering, exact localeCompare order/stability, section lettering and original DesktopEntry object identity. Do not silently switch to AppSearch.list unless its 500 ms rebuild debounce is explicitly accepted. | None. | Low–Medium transient array/sort/string CPU reduction on interactive filtering; removes O(A log A) sort from every keystroke and one flatten pass. | 0%. |
 | Material + Waffle Autostart settings (`AutostartConfig.qml`, `WAutostartPage.qml`) | **HIGH-CONFIDENCE CPU candidate — replace filter+sort comparator status scans with one stable enabled/disabled partition.** Both pages start from already alphabetically sorted `AppSearch.list`, filter by name/genericName, then sort again by `Autostart.isAppOn()` first and name second. `isAppOn()` scans managed entries and, on miss, external spawn lines; the comparator can call it repeatedly O(A log A) times. In one pass, test each filtered app once and append to enabled/disabled arrays; concatenate them to preserve enabled-first + alphabetical-within-group order. | Low. Depends on AppSearch's documented/name-sorted list; verify duplicate equal-name stability and all external-spawn matching semantics. | None. | Low–Medium CPU reduction in Settings search/rebuilds; changes repeated status scans + sort into one status evaluation per app and O(A) stable partition. | 0%. |
 
+| `services/Autostart.qml` + both Autostart settings pages | **HIGH-CONFIDENCE CPU candidate — derive exact managed/external app membership indexes when parsed state changes, making `isAppEnabled()`, `isAppExternal()`, `isAppOn()` and `appEntrySource()` O(1).** Current helpers rescan managed entries and external spawn lines for every app-row/status query. Build exact-semantics indexes from `entries` and `externalLines`, preserving first managed duplicate ownership, enabled-only external lines and current gtk-launch/raw-executable normalization. | Low–Medium. Duplicate managed ids, case sensitivity and external token normalization are strict contracts; indexes must rebuild after every entries/externalLines mutation, not only file reload. | None. | Low–Medium CPU reduction across Material/Waffle Autostart filtering and per-row bindings; small bounded index RAM proportional to startup directives. | 0%. |
+| `modules/settings/DockConfig.qml` | **HIGH-CONFIDENCE interactive CPU/allocation candidate — prepare the Add Applications search projection when AppSearch/pinned state changes instead of rebuilding haystacks + alphabetic sort on every query edit.** Current `filteredAddApps()` rebuilds a lowercase pinned Set, joins/lowercases name+genericName+comment+id for every app, then sorts the result for every search binding evaluation. Build a private unpinned prepared list once per AppSearch/pinned revision with original app reference + lowercase haystack, sorted with the exact current comparator; query edits then only filter it. | Low. Preserve fallback name/id ordering, pinned-id case folding, original app identity, and immediate updates when pins/AppSearch change. | None. | Low–Medium transient string/array/sort CPU reduction while searching the add-app dialog. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -251,6 +254,8 @@ Rules:
 72. **AppCatalog install-status model isolation** — stop package-status refreshes from rebuilding an unchanged filtered app model.
 73. **Waffle All Apps sorted-base projection** — sort DesktopEntries only on source revision, then filter/group without per-keystroke resort/flatten.
 74. **Autostart stable enabled/disabled partition** — evaluate `isAppOn()` once per filtered app and preserve AppSearch alphabetical order instead of comparator-time rescans.
+75. **Autostart managed/external membership indexes** — move exact startup-line matching to entries/externalLines rebuild boundaries so row/status lookups are O(1).
+76. **Dock Add Applications prepared search projection** — precompute unpinned search haystacks/order outside the keystroke path.
 
 ## Explicit non-candidates from this pass
 
@@ -4418,5 +4423,215 @@ this collection pass. Cliphist already maintains revision-keyed prepared fuzzy
 entries, bounded top-K insertion for limited queries and equality suppression on
 list refresh. Those are precisely the kinds of transforms this audit would
 otherwise propose. No new high-confidence optimization is promoted there.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+
+## Research continuation — round 30
+
+Baseline: `dev` at `d0e554030d3962c9080bd95db54c0c04d85dcc8f`.
+
+This round follows the previous collection-pass work one level deeper. Autostart
+has an authoritative parse/mutation boundary suitable for exact membership
+indexes, while Dock Settings has immutable-per-revision app metadata suitable for
+a prepared search projection.
+
+Current source identities:
+
+- `services/Autostart.qml`:
+  `f94fa382ed7fed199f416106940817f5cdf31ea6`;
+- Material `AutostartConfig.qml`:
+  `643b5e1d2eee312986aa2cbc04c136ce8d061ad3`;
+- Waffle `WAutostartPage.qml`:
+  `ebc34416e01e1a0a8b940bd8626e2784bb5f9f2a`;
+- `modules/settings/DockConfig.qml`:
+  `b8c63a0e49425c038e99812b6cd01668622304ca`;
+- `services/AppSearch.qml`:
+  `74ea3c9e92860af62f10850c89118d79b7837543`.
+
+### R30.1 — Autostart status reads repeatedly scan already-parsed startup state
+
+Current public helpers are scan-based:
+
+```text
+isAppEnabled(id)
+  -> scan entries until first matching app desktopId
+
+isAppExternal(app)
+  -> scan externalLines
+       -> enabled?
+       -> _appMatchesTokens(app, tokens)
+
+isAppOn(app)
+  -> isAppEnabled
+  -> if false, isAppExternal
+
+appEntrySource(app)
+  -> scan entries for any managed match
+  -> if none, isAppExternal
+```
+
+Those helpers are used by both Autostart settings families for list partitioning
+and again by each row's `isOn` / `isExternal` bindings.
+
+The source data changes only at clear authoritative boundaries:
+
+- startup-file parse/reload publishes `entries` and `externalLines`;
+- managed mutations replace `entries` through add/remove/toggle/setAppEnabled;
+- external lines change only through file reload.
+
+That makes lookup indexes safer and cheaper than repeated view-local memoization.
+
+### R30.2 — Exact managed index must preserve first-match behavior, not merely membership
+
+Current `isAppEnabled(desktopId)` walks `entries` from index 0 and returns the
+**first** matching managed app's `enabled` flag. That matters if malformed or
+hand-edited managed content contains duplicate desktop ids.
+
+Current `appEntrySource(app)`, in contrast, returns `managed` if **any** managed
+entry exists for the exact desktop id, regardless of enabled state.
+
+Therefore one boolean Set is insufficient. A strict index can keep:
+
+```text
+managedPresence[exactDesktopId] = true
+managedFirstEnabled[exactDesktopId] = first matching entry.enabled === true
+```
+
+Keys must remain exact/case-sensitive because current managed lookup compares:
+
+```qml
+e.desktopId === String(desktopId ?? "")
+```
+
+Do not lowercase managed ids as a convenience.
+
+Rebuild/update this index after every `entries` replacement. The simplest proof
+surface is a derived/rebuild helper called at the same assignments rather than
+trying to maintain many incremental branches first.
+
+### R30.3 — External matching can be indexed without changing its token semantics
+
+Current `_appMatchesTokens()` lowercases external tokens/app identity and has two
+forms.
+
+For enabled `gtk-launch` lines:
+
+```text
+tokens[0].toLowerCase() == "gtk-launch"
+key = tokens[1].toLowerCase().replace(/\.desktop$/, "")
+match iff key == app.id.toLowerCase()
+```
+
+For every other enabled external spawn line:
+
+```text
+t0 = lowercase(tokens[0])
+b0 = lowercase(basename(tokens[0]))
+match iff app.idLower == t0 || app.idLower == b0
+      || app.command0BasenameLower == t0
+      || app.command0BasenameLower == b0
+```
+
+Equivalent derived indexes are therefore:
+
+```text
+externalGtkLaunchIds = Set(normalized t1)
+externalRawKeys      = Set(t0 and b0 for enabled non-gtk lines)
+```
+
+Then `isAppExternal(app)` checks at most:
+
+- normalized app id in `externalGtkLaunchIds`;
+- normalized app id in `externalRawKeys`;
+- normalized command-0 basename in `externalRawKeys`.
+
+Disabled external lines must never enter either set.
+
+This changes repeated O(E) scans into bounded key lookups while preserving the
+current matching language exactly.
+
+Required Autostart oracle:
+
+- empty state;
+- one/many managed entries;
+- duplicate managed ids with first entry enabled/disabled permutations;
+- exact-case and case-variant managed ids;
+- external enabled/disabled `gtk-launch`;
+- `.desktop` suffix stripping on external gtk-launch only;
+- external raw absolute executable path;
+- raw basename match against app id;
+- raw basename match against app command basename;
+- managed+external match where managed source still wins;
+- every add/remove/setEntryEnabled/setAppEnabled operation before file-save
+  completion;
+- external file edit/reload;
+- identical `isAppEnabled`, `isAppExternal`, `isAppOn` and
+  `appEntrySource` results for all fixtures.
+
+R29's stable partition and this service index compose cleanly: R29 ensures one
+status query per app during list construction, and R30 makes that query O(1).
+
+### R30.4 — Dock Add Applications rebuilds stable searchable metadata on each query edit
+
+Current `DockConfig.filteredAddApps()` performs on every binding evaluation:
+
+1. lowercase every configured pinned id and create a Set;
+2. walk all `AppSearch.list` apps;
+3. skip pinned ids;
+4. build for every remaining app:
+
+```text
+(name + " " + genericName + " " + comment + " " + id).toLowerCase()
+```
+
+5. substring-filter by query;
+6. sort results by `name ?? id`.
+
+App metadata and pin membership do not change on every keystroke. Prepare them at
+their actual invalidation boundaries instead.
+
+Strict-lossless shape:
+
+1. when `AppSearch.list` or `dock.pinnedApps` changes, build an unpinned
+   projection containing:
+   - original app object;
+   - exact lowercase haystack from today's four fields;
+2. sort that prepared projection once with the exact current comparator:
+   `String(name ?? id ?? "").localeCompare(...)`;
+3. on `pinnedAppSearchField.text` change, lowercase/trim the query once and
+   filter the prepared projection;
+4. return original app references only.
+
+Even though AppSearch itself is alphabetically sorted, retain Dock's explicit
+`name ?? id` comparator during preparation for strict parity with unusual
+entries missing a name.
+
+Required Dock oracle:
+
+- zero/many apps;
+- zero/many pins;
+- case-variant pinned ids;
+- missing name/generic/comment/id fields;
+- match from each searchable field;
+- query whitespace/case;
+- pin add/remove while dialog is open;
+- AppSearch list revision while open;
+- duplicate/equal sort keys;
+- exact original object identity/order and Add button behavior.
+
+### R30.5 — TLP/monitor-settings pass did not justify a new canonical candidate yet
+
+The current TLP Settings service performs substantial schema grouping/filtering,
+but those transforms mix runtime capability filtering, version adaptation,
+pending/stale value preservation and label generation. A simple “cache all
+lowercase labels” patch would have a broader invalidation surface than the
+AppCatalog/SettingsSearch cases. Profile before promoting another retained
+schema index.
+
+Monitor visibility/Niri settings paths were also inspected. Their collections
+are bounded by monitor/workspace configuration size and are dominated by user
+interaction rather than recurring large-list work. No source-only high-value
+candidate is added from those files in this round.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.

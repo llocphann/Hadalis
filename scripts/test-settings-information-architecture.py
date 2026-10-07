@@ -40,7 +40,7 @@ def main() -> None:
         page_indices = [index for group in groups for index in group["pages"]]
         assert len(page_indices) == len(set(page_indices)), "duplicate default page"
         if family == "abyss":
-            excluded = {11, 18, 19, 20, 21, 26, 27, 28, 30, 31, 35, 36}
+            excluded = {18, 19, 20, 21, 26, 27, 28, 30, 31, 35, 36}
             expected = set(range(38)) - excluded
         else:
             excluded = {18, 19, 20, 21, 27, 28}

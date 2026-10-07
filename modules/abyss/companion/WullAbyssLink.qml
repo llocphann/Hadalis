@@ -36,13 +36,13 @@ Item {
                 || point.scale<=0 || Math.abs(Math.hypot(point.nx,point.ny)-1)>.001) return
         pulse.stop()
         impact=point
-        strength=action==="sink" || action==="dive" ? 1 : action==="emerge" ? .85 : action==="peek" ? .5 : .32
-        pulse.duration=action==="sink" ? 5800 : 1450
+        strength=["sink","pulled","dive"].includes(action) ? 1 : action==="emerge" ? .85 : action==="peek" ? .5 : .32
+        pulse.duration=action==="sink" || action==="pulled" ? 5800 : 1450
         phase=0;eventCount++
         pulse.start()
         // The same circular solver that responds to Popup/Sidebar entry carries
         // a small disturbance through the parent screen edge, if waves are on.
-        const closing=action==="sink" || action==="dive" || action==="depart"
+        const closing=["sink","pulled","dive","depart"].includes(action)
         controller?.impulse(point.sourceEdge,point.sourceAlong,point.span,
             (closing ? -.25 : .3)*strength,1,closing ? "close" : "open")
     }

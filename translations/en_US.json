@@ -5599,5 +5599,14 @@
   "Providers and connections are shared with AI settings.": "Providers and connections are shared with AI settings.",
   "AI settings": "AI settings",
   "Open chat": "Open chat",
-  "This model uses its provider default. Choose a supported reasoning model to set effort.": "This model uses its provider default. Choose a supported reasoning model to set effort."
+  "This model uses its provider default. Choose a supported reasoning model to set effort.": "This model uses its provider default. Choose a supported reasoning model to set effort.",
+  "Add floating bubbles, sparkle and the liquid reflection beneath your companion. Performance uses a simpler floor effect. Respects the shell effects setting.": "Add floating bubbles, sparkle and the liquid reflection beneath your companion. Performance uses a simpler floor effect. Respects the shell effects setting.",
+  "Chat with %1": "Chat with %1",
+  "Highlight on hover, react to clicks, and drag your companion around the screen.": "Highlight on hover, react to clicks, and drag your companion around the screen.",
+  "Keep your companion small or give it a little more room.": "Keep your companion small or give it a little more room.",
+  "Let your companion join the desktop. Right-click to open these settings.": "Let your companion join the desktop. Right-click to open these settings.",
+  "Occasionally open and explore panels, then close them. Your companion leaves them open when you start using them.": "Occasionally open and explore panels, then close them. Your companion leaves them open when you start using them.",
+  "Scheduled visits last 20 seconds. Your companion stays while you interact or a task is running.": "Scheduled visits last 20 seconds. Your companion stays while you interact or a task is running.",
+  "Take turns on the desktop": "Take turns on the desktop",
+  "Aqua and Octo appearance, personality and movement": "Aqua and Octo appearance, personality and movement"
 }

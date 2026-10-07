@@ -8,6 +8,7 @@ const calls=[];
 const window={outputName:'DP-1',companionPermission:true,companionOccluded:false,
     dockHovered:false,companionCuriosityDockRequested:false};
 const scope=vm.createContext({window,GlobalStates:state,liquid:{popupsOpen:false},
+    companionTurns:{active:false},
     utility:{open:false},barHover:{hovered:false},revealHover:{hovered:false}});
 for (const name of ['companionFeaturesIdle','openCompanionFeature','ownsCompanionFeature','closeCompanionFeature','releaseCompanionFeature']) {
     const start=source.indexOf('            function '+name+'(');
@@ -51,7 +52,7 @@ for (const blocker of ['sidebarLeftOpen','sidebarRightOpen','settingsOverlayOpen
     assert.equal(window.openCompanionFeature({kind:'clock',popup:mature()}),false);
     assert.equal(JSON.stringify(state),before,'curiosity replaced existing human UI');cases++;
 }
-for (const [object,key] of [[scope.liquid,'popupsOpen'],[scope.utility,'open'],[scope.barHover,'hovered'],[scope.revealHover,'hovered'],[window,'dockHovered'],[window,'companionOccluded']]){
+for (const [object,key] of [[scope.companionTurns,'active'],[scope.liquid,'popupsOpen'],[scope.utility,'open'],[scope.barHover,'hovered'],[scope.revealHover,'hovered'],[window,'dockHovered'],[window,'companionOccluded']]){
     reset();object[key]=true;assert.equal(window.openCompanionFeature({kind:'clock',popup:mature()}),false);object[key]=false;cases++;
 }
 reset();window.companionPermission=false;assert.equal(window.openCompanionFeature({kind:'clock',popup:mature()}),false);window.companionPermission=true;
@@ -84,7 +85,7 @@ scope.WlrKeyboardFocus={None:0,OnDemand:1,Exclusive:2};
 scope.field={ready:true};scope.PolkitService={active:false};scope.companionCuriosity={owned:false};
 scope.talkCloud={editing:false};
 window.presented=true;window.overviewDragging=false;window.editorOpen=false;
-for (const id of ['popup','dialogBody','aux','clipboardBody','settings','dashboardBody','controls','leftPanel','rightPanel','notification'])
+for (const id of ['popup','dialogBody','aux','wallpaperBody','clipboardBody','settings','dashboardBody','controls','leftPanel','rightPanel','notification'])
     scope[id]={presented:false,ready:true,open:false,contentItem:{item:{keyboardFocus:false}}};
 const focus=()=>vm.runInContext(expression,scope);
 scope.settings.presented=true;assert.equal(focus(),2);

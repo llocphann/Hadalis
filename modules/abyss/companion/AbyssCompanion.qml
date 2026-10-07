@@ -3,11 +3,16 @@ import QtQuick.Shapes
 import qs.modules.abyss.looks
 import qs.modules.common
 import "WullExpressions.js" as Expressions
-import "WullMotionData.js" as Curves
+import "CompanionMotion.js" as Motion
 import "WullAttention.js" as Attention
 
 Item {
     id: root
+    property string character: "aqua"
+    readonly property var curves: Motion.forCharacter(character)
+    property bool presentationManaged: false
+    property string pairedAction: ""
+    property real pairedProgress: -1
     property string edge: "top"
     property real edgeOffset: 120
     property real reveal: 1
@@ -58,7 +63,7 @@ Item {
     property string gesture: ""
     property real gesturePhase: 1
     readonly property string presentationAction: presentation<.999 && !peeking ? (leaving ? hideClip : appearClip) : ""
-    readonly property string motionAction: dragging ? "drag" : moving ? travelMode : gesture || presentationAction
+    readonly property string motionAction: pairedAction || (dragging ? "drag" : moving ? travelMode : gesture || presentationAction)
     readonly property string faceExpression: Expressions.resolve(reactionExpression || expression,mood,activity)
     property real travelDirection: 1
     property real travelDirectionY: 0
@@ -105,8 +110,8 @@ Item {
         peeking && emergenceEdge==="top" ? .3 : peeking && emergenceEdge==="bottom" ? -.3 : gazeY,
         faceExpression,moving ? tangentDirection : Math.abs(droplet.viewYaw)>=25 ? droplet.viewYaw : 0)
     readonly property real emergenceNormal: leaving
-        ? Curves.sample(hideClip, "normal", 1-presentation)
-        : Curves.sample(peeking ? "emerge" : appearClip, "normal", presentation)
+        ? curves.sample(hideClip, "normal", 1-presentation)
+        : curves.sample(peeking ? "emerge" : appearClip, "normal", presentation)
     readonly property bool verticalEdge: !upright && (edge === "left" || edge === "right")
     readonly property bool hovered: droplet.hovered
     signal chatRequested()
@@ -120,14 +125,14 @@ Item {
     function stopTravel(): void { travelTween.stop() }
     function stopGesture(): void { gestureTween.stop(); gesture="";gesturePhase=1 }
     function perform(action): bool {
-        if (!visible || !motionEnabled || !Curves.clips[action] || dragging || moving) return false
+        if (!visible || !motionEnabled || !curves.clips[action] || dragging || moving) return false
         stopGesture();gesture=action;gesturePhase=0
-        gestureTween.duration=Curves.clips[action].duration;gestureTween.start()
+        gestureTween.duration=curves.clips[action].duration;gestureTween.start()
         return true
     }
     function updateTravel(): void {
-        const t=travelMode==="jump" ? Curves.sample("jump","journey",travelPhase) : travelPhase
-        const height=travelArc>0 ? Curves.sample(travelMode==="jump" ? "jump" : "fly","height",travelPhase)*travelArc : 0
+        const t=travelMode==="jump" ? curves.sample("jump","journey",travelPhase) : travelPhase
+        const height=travelArc>0 ? curves.sample(travelMode==="jump" ? "jump" : "fly","height",travelPhase)*travelArc : 0
         x=travelFromX+(travelToX-travelFromX)*t
         y=travelFromY+(travelToY-travelFromY)*t+height*travelNormalY
         x+=height*travelNormalX
@@ -139,7 +144,7 @@ Item {
         if (!motionEnabled || hardResetting) {presentation=value;return}
         presentationTween.from=value>.99 && presentation<.99 && !leaving && appearClip!=="emerge" ? 0 : presentation
         presentationTween.to=value
-        presentationTween.duration=leaving ? Curves.clips[hideClip].duration : peeking ? 480 : Curves.clips[appearClip].duration
+        presentationTween.duration=leaving ? curves.clips[hideClip].duration : peeking ? 480 : curves.clips[appearClip].duration
         presentationTween.start()
     }
     function carryTo(px,py): void {
@@ -156,7 +161,13 @@ Item {
         // reveal's value. Re-arm emergence even when that binding is unchanged.
         Qt.callLater(root.synchronizePresentation)
     }
-    function synchronizePresentation(): void { present(reveal) }
+    function adoptTo(px,py,sourceEdge,value): void {
+        hardResetting=true
+        stopTravel();stopGesture();relocation.stop();presentationTween.stop()
+        x=px;y=py;activeEmergenceEdge=sourceEdge;leaving=false;presentation=value
+        hardResetting=false
+    }
+    function synchronizePresentation(): void { if (!presentationManaged) present(reveal) }
     function checkArrival(): void {
         if (initialized && travelEnabled && !moving && !dragging && !relocating
                 && presentation>.99 && Math.abs(x-targetX)<.1 && Math.abs(y-targetY)<.1)
@@ -199,23 +210,23 @@ Item {
     // the directional emergence viewport below.
     clip: false
 
-    onRevealChanged: if (initialized) {
+    onRevealChanged: if (initialized && !presentationManaged) {
         if (reveal <= 0) {
             stopTravel(); stopGesture(); relocation.stop()
             // Arrival changes the selected water edge after the last target
             // position. Dive through that edge, not the old drag/visit origin.
             activeEmergenceEdge=emergenceEdge
         }
-        present(reveal)
+        if (!presentationManaged) present(reveal)
     }
     onTravelEnabledChanged: if (!travelEnabled) stopTravel(); else Qt.callLater(root.place)
     Component.onCompleted: {
         initialized = true
         if (managedPlacement) { x=targetX; y=targetY }
         activeEmergenceEdge = emergenceEdge
-        present(reveal)
+        if (!presentationManaged) present(reveal)
     }
-    onMotionEnabledChanged: if (!motionEnabled) { stopTravel(); stopGesture(); relocation.stop(); present(reveal) }
+    onMotionEnabledChanged: if (!motionEnabled) { stopTravel(); stopGesture(); relocation.stop(); synchronizePresentation() }
     // Standalone animation nodes can really be stopped at their current value.
     // Behavior's nested nodes reject stop(), breaking hover/drag interruption.
     NumberAnimation { id: presentationTween; target: root; property: "presentation" }
@@ -279,7 +290,7 @@ Item {
     SequentialAnimation {
         id: relocation
         ScriptAction { script: root.leaving = true }
-        NumberAnimation { target: root; property: "presentation"; to: 0; duration: Curves.clips.dive.duration }
+        NumberAnimation { target: root; property: "presentation"; to: 0; duration: curves.clips.dive.duration }
         ScriptAction {
             script: {
                 root.activeEmergenceEdge = root.emergenceEdge
@@ -287,7 +298,7 @@ Item {
                 root.leaving = false
             }
         }
-        NumberAnimation { target: root; property: "presentation"; to: root.reveal; duration: Curves.clips.emerge.duration }
+        NumberAnimation { target: root; property: "presentation"; to: root.reveal; duration: curves.clips.emerge.duration }
     }
 
     Item {
@@ -327,12 +338,13 @@ Item {
             },
             Scale {
                 origin.x: emergenceLayer.width / 2; origin.y: emergenceLayer.height / 2
-                xScale: root.presentationAction ? 1 : Curves.sample("emerge", "scaleX", root.presentation)
-                yScale: root.presentationAction ? 1 : Curves.sample("emerge", "scaleY", root.presentation)
+                xScale: root.presentationAction ? 1 : curves.sample("emerge", "scaleX", root.presentation)
+                yScale: root.presentationAction ? 1 : curves.sample("emerge", "scaleY", root.presentation)
             }
         ]
         WaterDropletBody {
             id: droplet
+            character: root.character
             width: 76; height: 92
             visible: root.visible
             gazeX: root.attention.x
@@ -345,7 +357,7 @@ Item {
             walking: root.walking
             flying: root.flying
             motionAction: root.motionAction
-            motionProgress: root.moving && ["jump","fall"].includes(root.travelMode) ? root.travelPhase
+            motionProgress: root.pairedProgress>=0 ? root.pairedProgress : root.moving && ["jump","fall"].includes(root.travelMode) ? root.travelPhase
                 : root.gesture ? root.gesturePhase : root.presentationAction ? root.leaving ? 1-root.presentation : root.presentation : -1
             grounded: root.surfaceSupported && !root.flying
             dragging: root.dragging
@@ -359,8 +371,8 @@ Item {
             stateLean: root.motionEnabled ? root.bodyLean : 0
             stateTip: root.motionEnabled ? root.bodyTip : 0
             ripple: root.ripple
-            eyeOpen: root.motionEnabled ? (Curves.clips[root.motionAction]?.tracks.eyeOpen
-                ? Curves.sample(root.motionAction,"eyeOpen",root.gesture ? root.gesturePhase : root.leaving ? 1-root.presentation : root.presentation) : root.eyeOpen) : 1
+            eyeOpen: root.motionEnabled ? (curves.clips[root.motionAction]?.tracks.eyeOpen
+                ? curves.sample(root.motionAction,"eyeOpen",root.pairedProgress>=0 ? root.pairedProgress : root.gesture ? root.gesturePhase : root.leaving ? 1-root.presentation : root.presentation) : root.eyeOpen) : 1
             mouthCurve: root.mouthCurve
             pulse: root.pulse
             expression: root.faceExpression

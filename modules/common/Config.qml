@@ -541,6 +541,8 @@ Singleton {
                 }
                 property JsonObject companion: JsonObject {
                     property bool enabled: false
+                    property string character: "aqua"
+                    property bool alternateCompanions: false
                     property string output: ""
                     property string edge: "auto"
                     property real along: 0.72

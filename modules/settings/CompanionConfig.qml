@@ -162,6 +162,7 @@ ContentPage {
                 Layout.preferredHeight: 232
                 WaterDropletBody {
                     id: preview
+                    character: root.preferences.character
                     objectName: "companionPreview"
                     anchors.centerIn: parent
                     width: 76; height: 92
@@ -181,7 +182,7 @@ ContentPage {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 12
-                StyledText { text: "Wull"; font.pixelSize: 26; font.weight: Font.DemiBold }
+                StyledText { text: root.preferences.character === "octo" ? "Octo" : "Aqua"; font.pixelSize: 26; font.weight: Font.DemiBold }
                 StyledText {
                     Layout.fillWidth: true
                     text: Translation.tr("A little liquid companion for your desktop.")
@@ -231,10 +232,24 @@ ContentPage {
         icon: "water_drop"
         SettingsGroup {
             enabled: Config.ready
+            ChoiceRow {
+                objectName: "companionCharacter"
+                label: Translation.tr("Companion")
+                options: [{displayName:"Aqua",value:"aqua"},{displayName:"Octo",value:"octo"}]
+                currentValue: root.preferences.character
+                onSelected: value => root.setPreference("character",value)
+            }
+            SettingsSwitch {
+                objectName: "companionAlternate"
+                text: Translation.tr("Take turns on the desktop")
+                autoToggle: false
+                checked: root.preferences.alternateCompanions
+                onToggledByUser: checked => root.setPreference("alternateCompanions",checked)
+            }
             SettingsSwitch {
                 objectName: "companionEnabled"
                 text: Translation.tr("Enable Companion")
-                description: Translation.tr("Let Wull join your desktop. Right-click Wull to open these settings.")
+                description: Translation.tr("Let your companion join the desktop. Right-click to open these settings.")
                 autoToggle: false
                 checked: root.preferences.enabled
                 onToggledByUser: checked => root.setPreference("enabled", checked)
@@ -242,7 +257,7 @@ ContentPage {
             SettingsSwitch {
                 objectName: "companionInteractive"
                 text: Translation.tr("Respond to pointer interactions")
-                description: Translation.tr("Highlight on hover, react to clicks, and drag Wull around your screen.")
+                description: Translation.tr("Highlight on hover, react to clicks, and drag your companion around the screen.")
                 autoToggle: false
                 checked: root.preferences.interactive
                 onToggledByUser: checked => root.setPreference("interactive", checked)
@@ -276,7 +291,7 @@ ContentPage {
             ChoiceRow {
                 objectName: "companionFrequency"
                 label: Translation.tr("Appearance frequency")
-                description: Translation.tr("Scheduled visits last 20 seconds. Wull stays while you interact or a task is running.")
+                description: Translation.tr("Scheduled visits last 20 seconds. Your companion stays while you interact or a task is running.")
                 options: root.frequencyOptions
                 currentValue: root.preferences.appearanceFrequency
                 onSelected: value => root.setPreference("appearanceFrequency", value)
@@ -284,7 +299,7 @@ ContentPage {
             SettingsSwitch {
                 objectName: "companionExploreFeatures"
                 text: Translation.tr("Explore Abyss features")
-                description: Translation.tr("Occasionally open and explore panels, then close them. Wull leaves them open when you start using them.")
+                description: Translation.tr("Occasionally open and explore panels, then close them. Your companion leaves them open when you start using them.")
                 autoToggle: false
                 checked: root.preferences.exploreFeatures
                 onToggledByUser: checked => root.setPreference("exploreFeatures", checked)
@@ -310,7 +325,7 @@ ContentPage {
             PercentageRow {
                 objectName: "companionSize"
                 label: Translation.tr("Companion size")
-                description: Translation.tr("Keep Wull small or give it a little more room.")
+                description: Translation.tr("Keep your companion small or give it a little more room.")
                 value: root.preferences.size
                 minimum: 0.65; maximum: 1.5
                 onMoved: value => root.setPreference("size", value)
@@ -347,7 +362,7 @@ ContentPage {
             SettingsSwitch {
                 objectName: "companionEffects"
                 text: Translation.tr("Bubbles and floor reflections")
-                description: Translation.tr("Add floating bubbles, sparkle and the liquid reflection beneath Wull. Performance uses a simpler floor effect. Respects the shell effects setting.")
+                description: Translation.tr("Add floating bubbles, sparkle and the liquid reflection beneath your companion. Performance uses a simpler floor effect. Respects the shell effects setting.")
                 autoToggle: false
                 checked: root.preferences.effectsEnabled
                 onToggledByUser: checked => root.setPreference("effectsEnabled", checked)

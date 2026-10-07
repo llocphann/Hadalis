@@ -227,7 +227,7 @@ Singleton {
             +JSON.stringify({mood:userMood || journal.mood,energy:userEnergy || journal.energy,
                 schedule:(journal.schedule ?? []).slice(0,12)}).slice(0,2000) : ""
         const instruction="You are "+(character==="octo" ? "Octo, a small friendly octopus" : "Aqua, a small water droplet")
-            +", a Wull desktop companion. Answer in one or two brief, warm English sentences. "
+            +", a desktop companion. Answer in one or two brief, warm English sentences. "
             +"Do not execute commands, alter settings or invent actions or appointments. "
             +"Reply as JSON with text and expression (idle, happy, excited, thinking, working, surprised, sleepy, sad or alert)."
             +context
@@ -356,7 +356,7 @@ Singleton {
                 : "Psst! "+next.title
             say(cheer+" · "+String(Math.floor(next.start/60)).padStart(2,"0")+":"+String(next.start%60).padStart(2,"0"),"schedule")
             if (!reminderPopup.running) {
-                reminderPopup.command=["notify-send","--app-name=Wull","--icon=obsidian","--expire-time=12000","Schedule",text]
+                reminderPopup.command=["notify-send","--app-name="+(character==="octo" ? "Octo" : "Aqua"),"--icon=obsidian","--expire-time=12000","Schedule",text]
                 reminderPopup.running=true
             }
             reactionRequested("happy")

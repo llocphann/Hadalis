@@ -7,6 +7,7 @@ Item {
     id: root
     property var scene: null
     property var actor: null
+    property bool handoffActive: false
     property bool permitted: false
     property real requestedReveal: 0
     property bool motionEnabled: true
@@ -48,7 +49,7 @@ Item {
     readonly property real nearbyClickRadius: 460*(scene?.scale ?? 1)
     readonly property bool pointerNearby: pointerFresh && pointerReactionsEnabled
         && permitted && visitActive && motionEnabled && !interactionHeld
-        && !dragging && !retreating && !traveling && !directed
+        && !handoffActive && !dragging && !retreating && !traveling && !directed
         && actor && !actor.gesturing && actor.reactionExpression!=="angry"
         && actor.presentation>.99 && requestedReveal>.99
         && Math.hypot(pointerX-actor.x+(actor.scale-1)*actor.width/2-(scene?.hostWidth ?? 0)/2,
@@ -84,13 +85,14 @@ Item {
     readonly property bool grounded: !dragging && (!traveling || ["walk","run"].includes(mode)) && !!placement.grounded
     readonly property string emergenceEdge: placement.support?.edge ?? placement.edge ?? "top"
     readonly property bool canExplore: permitted && visitActive && requestedReveal>.99
-        && motionEnabled && !interactionHeld && !dragging && !retreating && Date.now()>=hiddenUntil
+        && motionEnabled && !interactionHeld && !handoffActive && !dragging && !retreating && Date.now()>=hiddenUntil
         && actor && !actor.hovered && actor.presentation>.99
     readonly property string surfaceKey: (scene?.surfaces ?? []).map(s=>s.key).join("|")
     signal resetRequested(real x, real y, string edge)
     signal stopRequested()
     signal settled()
     signal waterInteraction(var contact, string action)
+    signal handoffRequested()
     function disturb(action, selected): void {
         const contact=selected?.contact ?? null
         if (permitted && motionEnabled && contact) waterInteraction(contact,action)
@@ -186,6 +188,7 @@ Item {
     function synchronize(): void {
         if (!initialized) return
         if (!permitted || !Scene.valid(scene)) {hideImmediately();return}
+        if (handoffActive) return
         if (hiddenUntil>Date.now()) {
             if(!recoveryDeadline.running){recoveryDeadline.interval=Math.round(hiddenUntil-Date.now());recoveryDeadline.restart()}
             if (visitActive && !retreating) retreat()
@@ -218,8 +221,29 @@ Item {
         clearMotion()
         placement=Scene.annotate(scene,here,placement.edge,placement.kind,placement.key)
     }
+    function beginTurn(clip): void {
+        handoffActive=true
+        clearMotion();peekDeadline.stop();surfaceDeadline.stop();fullVisitDeadline.stop()
+        peekIntro=false;peekOnly=false;fullyPresentSince=0
+        hideClip=clip
+        setReaction("panicked",5600)
+        disturb(clip==="sink" ? "sink" : clip==="pulled" ? "pulled" : "dive",placement)
+        renderedReveal=0
+    }
+    function finishTurn(selected): void {
+        if (!actor) return
+        const revealed=permitted && requestedReveal>0
+        placement=selected;destination=selected;targetX=selected.x;targetY=selected.y
+        hideClip="dive";appearClip="emerge";appearanceOffsetX=0;appearanceOffsetY=0
+        retreating=false;visitActive=revealed;renderedReveal=revealed ? requestedReveal : 0
+        actor.reactionExpression=""
+        actor.adoptTo(targetX+(actor.scale-1)*actor.width/2,targetY+(actor.scale-1)*actor.height/2,emergenceEdge,renderedReveal)
+        handoffActive=false
+        fullyPresentSince=revealed && renderedReveal>.99 ? Date.now() : 0
+        if (revealed) scheduleSurface()
+    }
     function moveTo(selected, exit, preferredMode = ""): bool {
-        if (!permitted || !actor || actor.presentation<.99 || dragging || (peekIntro && !exit)) return false
+        if (handoffActive || !permitted || !actor || actor.presentation<.99 || dragging || (peekIntro && !exit)) return false
         const here=Object.assign(position(),{edge:emergenceEdge}), route=Scene.path(scene,here,selected)
         if (!route.qualified) return false
         disturb("depart",Scene.annotate(scene,here,placement.edge,placement.kind,placement.key))
@@ -241,13 +265,15 @@ Item {
             placement=destination; targetX=placement.x; targetY=placement.y
             traveling=false; releasedFlight=false; waypoints=[]
             if (exiting) {
+                handoffRequested()
+                if (handoffActive) return
                 if (motionEnabled && exitAttempts===0 && random()<.14 && actor.perform("ice")) {
                     exitAttempts=1;iceOpening=placement;setReaction("surprised",2200);return
                 }
                 const exitRoll=random()
-                hideClip=exitRoll<.40 ? "sink" : exitRoll<.64 ? "fallVanish" : "diveJump"
+                hideClip=actor.character==="octo" && exitRoll<.40 ? "sink" : exitRoll<.64 ? "fallVanish" : "diveJump"
                 const n=Scene.normal(placement.edge)
-                if(hideClip==="diveJump" && !Scene.clearArc(scene,placement,placement,.38*Math.max(scene.hostWidth,scene.hostHeight),n.nx,n.ny)) hideClip="sink"
+                if(hideClip==="diveJump" && !Scene.clearArc(scene,placement,placement,.38*Math.max(scene.hostWidth,scene.hostHeight),n.nx,n.ny)) hideClip="dive"
                 if (hideClip==="sink" || hideClip==="fallVanish") setReaction("panicked",hideClip==="sink" ? 5600 : 3100)
                 disturb(hideClip==="sink" ? "sink" : "dive",placement)
                 visitActive=false; renderedReveal=0; surfaceDeadline.stop()
@@ -350,6 +376,7 @@ Item {
     }
     function reconcileScene(): void {
         if (!permitted || !Scene.valid(scene)) {hideImmediately();return}
+        if (handoffActive) return
         if (!visitActive && requestedReveal>0 && !retreating) {if(Date.now()>=hiddenUntil)appear();return}
         if (!visitActive || dragging) return
         let from=position()
@@ -561,7 +588,7 @@ Item {
         if (action==="ice" && retreating && (requestedReveal<=0 || hiddenUntil>Date.now())) {
             const water=Scene.nearestWater(scene,position(),iceOpening)
             if (water.qualified && moveTo(water.placement,true)) return
-            hideClip="sink";disturb("dive",placement);visitActive=false;renderedReveal=0;return
+            hideClip="dive";disturb("dive",placement);visitActive=false;renderedReveal=0;return
         }
         if (action==="startle" && pendingReaction==="evade") {pendingReaction="";evade()}
         if (action==="balance" && permitted && !dragging && random()<.18) {

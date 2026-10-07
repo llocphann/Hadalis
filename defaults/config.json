@@ -2084,6 +2084,8 @@
         },
         "companion": {
             "enabled": false,
+            "character": "aqua",
+            "alternateCompanions": false,
             "output": "",
             "edge": "auto",
             "along": 0.72,

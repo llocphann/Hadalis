@@ -32,6 +32,7 @@ Window {
                 Text {x:16;y:12;z:10;text:({riseJump:"Jump out",launch:"Water launch",stuckLaunch:"Stuck → push",faceplant:"Faceplant",diveJump:"Dive back",sink:"Quicksand",ice:"Icy landing",balance:"Keep balance",startle:"Startled",delight:"Delighted",walk:"Slow walk",fly:"Propelled flight"})[cell.modelData];color:"#94eaff";font.pixelSize:18}
                 Rectangle {x:12;y:223;width:288;height:2;radius:1;color:"#3789b5"}
                 WaterDropletBody {
+                    character:cell.modelData==="sink" ? "octo" : "aqua"
                     id:body
                     x:118;y:89+cell.normal*98*1.7;width:76;height:92;scale:1.7
                     motionEnabled:true;effectsEnabled:true;renderQuality:"quality";translucency:.22

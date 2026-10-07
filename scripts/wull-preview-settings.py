@@ -22,6 +22,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--section", choices=("overview", "behavior", "rendering", "ai"), default="behavior")
     parser.add_argument("--quality", choices=("performance", "balanced", "quality"), default="quality")
+    parser.add_argument("--character", choices=("aqua", "octo"), default="aqua")
     parser.add_argument("--width", type=int, default=1040)
     parser.add_argument("--height", type=int, default=960)
     parser.add_argument("--roundtrip", action="store_true")
@@ -42,7 +43,7 @@ def main():
         options = json.loads(config.read_text())
         options["panelFamily"] = "abyss"
         if args.legacy_config:
-            for key in ("personality", "appearanceFrequency", "animationsEnabled", "effectsEnabled", "hideInFullscreen", "renderQuality", "translucency", "exploreFeatures"):
+            for key in ("character", "alternateCompanions", "personality", "appearanceFrequency", "animationsEnabled", "effectsEnabled", "hideInFullscreen", "renderQuality", "translucency", "exploreFeatures"):
                 options["abyss"]["companion"].pop(key, None)
         config.write_text(json.dumps(options))
         env = core["private_env"](xdg, output)
@@ -50,13 +51,15 @@ def main():
         env.update({
             "WULL_SETTINGS_CAPTURE": str(output), "WULL_SETTINGS_WIDTH": str(args.width),
             "WULL_SETTINGS_HEIGHT": str(args.height), "WULL_SETTINGS_SECTION": args.section,
-            "WULL_SETTINGS_QUALITY": args.quality,
+            "WULL_SETTINGS_QUALITY": "performance" if args.quality == "performance" else "quality",
+            "QT_QUICK_CONTROLS_STYLE": "Basic", "QT_QPA_PLATFORMTHEME": "generic", "QT_NO_XDG_DESKTOP_PORTAL": "1",
             "QT_QPA_PLATFORM": "wayland", "QSG_RHI_BACKEND": "opengl", "QT_QUICK_BACKEND": "rhi",
             "QT_QUICK_CONTROLS_STYLE": "Basic", "XDG_RUNTIME_DIR": os.environ["XDG_RUNTIME_DIR"],
             "WAYLAND_DISPLAY": os.environ["WAYLAND_DISPLAY"],
         })
         for phase in (["write", "read"] if args.roundtrip else ["preview"]):
             env["WULL_SETTINGS_PHASE"] = phase
+            env["COMPANION_SETTINGS_CHARACTER"] = args.character
             log_path = Path(temporary) / (phase + ".log")
             with log_path.open("w") as log:
                 process = subprocess.Popen(["dbus-run-session", "--", "qs", "--path", str(shell / "shell.qml")],
@@ -76,6 +79,7 @@ def main():
                 raise SystemExit("Companion settings QML proof failed: " + phase)
             if phase == "write":
                 saved = json.loads(config.read_text())["abyss"]["companion"]
+                assert saved["character"] == "octo" and saved["alternateCompanions"]
                 assert saved["personality"] == "calm" and saved["appearanceFrequency"] == "occasional"
                 assert saved["enabled"] and not saved["animationsEnabled"] and not saved["effectsEnabled"]
                 assert not saved["exploreFeatures"]

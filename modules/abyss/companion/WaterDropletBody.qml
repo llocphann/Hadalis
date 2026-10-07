@@ -6,12 +6,18 @@ import qs.modules.common
 import qs.modules.common.functions
 import "WullExpressions.js" as Expressions
 import "WullPreferences.js" as Preferences
-import "WullMotionData.js" as Curves
+import "CompanionMotion.js" as Motion
 import "WullPose.js" as Pose
+import "OctoRig.js" as OctoRig
 
 Item {
     id: root
     objectName: "wullLiquidBody"
+    property string character: "aqua"
+    readonly property bool octopus: character==="octo"
+    readonly property var curves: Motion.forCharacter(character)
+    readonly property var headCenter: project(0,OctoRig.geometry.headOffset,0)
+    readonly property real headSize: OctoRig.geometry.headSize
     property string expression: "idle"
     property color accentColor: AbyssStyle.accent
     property real hoverAmount: hovered ? 1 : 0
@@ -33,7 +39,7 @@ Item {
     property real sway: 0
     property real shimmer: 0
     property real orbitPhase: 0
-    readonly property real orbitAngle: Curves.sample("orbit", "angle", orbitPhase)
+    readonly property real orbitAngle: curves.sample("orbit", "angle", orbitPhase)
     property real stateSquash: 0
     property real stateStretch: 0
     property real stateLean: 0
@@ -79,7 +85,7 @@ Item {
     property real pulse: 0
     property real reveal: 1
     property real reactionPhase: 1
-    readonly property real reactionLift: Curves.sample("hop", "lift", reactionPhase) * 0.6
+    readonly property real reactionLift: curves.sample("hop", "lift", reactionPhase) * 0.6
     property real reactionRipple: 0
     property real shine: 0
     property real tapPhase: 1
@@ -118,6 +124,7 @@ Item {
 
     WullMotion {
         id: gait
+        character: root.character
         walking: root.walking
         flying: root.flying
         action: root.motionAction
@@ -225,7 +232,7 @@ Item {
         // Exactly two side arms and two ground feet, with distinct rig tracks.
         Repeater {
             objectName: "wullWaterLimbs"
-            model: 4
+            model: root.octopus ? 0 : 4
             Item {
                 id: waterFoot
                 required property int index
@@ -277,14 +284,31 @@ Item {
                 }
             }
         }
+        Loader {
+            active: root.octopus
+            sourceComponent: OctoTentacles {
+                body: root
+                motion: gait
+            }
+        }
         Item {
             id: torso
             width: root.width; height: root.height
             y: gait.lift + root.reactionLift * root.motionAmount
             // Rounded vector fallback for software/error; volume optics require a GPU.
+            Rectangle {
+                visible:root.octopus && (root.softwareFallback || material.status===ShaderEffect.Error)
+                x:material.x;y:material.y;width:material.width;height:material.height
+                radius:width/2
+                gradient:Gradient {
+                    GradientStop {position:0;color:Qt.darker(root.liquidAccent,1.7)}
+                    GradientStop {position:.6;color:root.liquidAccent}
+                    GradientStop {position:1;color:root.reflectionColor}
+                }
+            }
             Shape {
                 x: 0; y: 7; width: 76; height: 76
-                visible: GraphicsInfo.api === GraphicsInfo.Software || material.status === ShaderEffect.Error
+                visible: !root.octopus && (GraphicsInfo.api === GraphicsInfo.Software || material.status === ShaderEffect.Error)
                 opacity: 1 - Math.max(0, Math.min(0.35, root.translucency)) * 0.55
                 antialiasing: true
                 preferredRendererType: Shape.CurveRenderer
@@ -308,13 +332,15 @@ Item {
             ShaderEffect {
                 id: material
                 objectName:"wullVolumeMaterial"
-                x: 0; y: 7; width: 76; height: 76
+                x: root.octopus ? 38+root.headCenter.x-root.headSize/2 : 0
+                y: root.octopus ? 46.14-root.headCenter.y-root.headSize/2 : 7
+                width: root.octopus ? root.headSize : 76; height: width
                 visible: GraphicsInfo.api !== GraphicsInfo.Software
                 property color accent: root.liquidAccent
                 property color specular: root.reflectionColor
                 property vector4d motion: Qt.vector4d(root.shimmer, root.stateTip + root.sway * 0.25,
                     Math.max(root.pulse,root.tapPulse*.65) + root.hoverAmount*.16, root.effectsEnabled ? 1 : 0)
-                property vector4d optics: Qt.vector4d(root.modelYawRadians, 0, 0, 0)
+                property vector4d optics: Qt.vector4d(root.modelYawRadians, root.octopus ? 4 : 0, 0, 0)
                 property vector4d rendering: root.materialRenderingUniform
                 property vector4d pose:Qt.vector4d(root.modelPitchRadians,root.modelRollRadians,root.poseScaleX-1,root.poseScaleY-1)
                 fragmentShader: Qt.resolvedUrl("WaterDropletMaterial.frag.qsb")
@@ -374,13 +400,18 @@ Item {
                 opacity:Math.max(0,Math.min(1,root.poseRotation[8]*5))
                 transform:Matrix4x4 {
                     matrix: {
-                        const m=Pose.faceMatrix(root.poseRotation,root.poseScaleX,root.poseScaleY)
+                        const m=Pose.faceMatrix(root.poseRotation,root.poseScaleX,root.poseScaleY,38,46.14,root.octopus ? 24 : 26)
                         return Qt.matrix4x4(m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8],m[9],m[10],m[11],m[12],m[13],m[14],m[15])
                     }
                 }
                 WaterDropletFace {
-                    anchors.fill: parent
+                    width: parent.width; height: parent.height
+                    y: root.octopus ? -7 : 0
+                    scale: root.octopus ? .9 : 1
+                    transformOrigin: Item.TopLeft
+                    transform: Translate {x:root.octopus ? 3.8 : 0;y:root.octopus ? 5.4 : 0}
                     expression: root.expression
+                    cheeksVisible: !root.octopus
                     viewYaw: root.modelYaw
                     accent: root.liquidAccent
                     eyeOpen: root.eyeOpen
@@ -511,8 +542,8 @@ Item {
     }
     ParallelAnimation {
         id: reactionBounce
-        NumberAnimation { target: root; property: "reactionPhase"; from: 0; to: 1; duration: Curves.clips.hop.duration }
-        NumberAnimation { target: root; property: "reactionRipple"; from: 1; to: 0; duration: Curves.clips.hop.duration; easing.type: Easing.OutCubic }
+        NumberAnimation { target: root; property: "reactionPhase"; from: 0; to: 1; duration: curves.clips.hop.duration }
+        NumberAnimation { target: root; property: "reactionRipple"; from: 1; to: 0; duration: curves.clips.hop.duration; easing.type: Easing.OutCubic }
     }
     SequentialAnimation {
         id: shineBurst
@@ -536,7 +567,7 @@ Item {
     }
     NumberAnimation on orbitPhase {
         running: root.motionEnabled && root.visible && root.effectsEnabled
-        from: 0; to: 1; duration: Curves.clips.orbit.duration
+        from: 0; to: 1; duration: curves.clips.orbit.duration
         loops: Animation.Infinite
     }
 }

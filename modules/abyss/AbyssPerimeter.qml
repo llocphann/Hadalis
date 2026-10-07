@@ -21,6 +21,16 @@ Scope {
     property string largeTargetOutput: GlobalStates.resolveOutputName("",[])
     readonly property var companionOptions: Config.options?.abyss?.companion
     readonly property var companionPreferences: WullPreferences.normalize(companionOptions)
+    readonly property string selectedCompanion: companionPreferences.character
+    readonly property bool alternatingCompanions: companionPreferences.alternateCompanions
+    property string companionCharacter: selectedCompanion
+    Binding {target:WullMind;property:"character";value:root.companionCharacter}
+    function resetCompanionCast(): void {
+        companionCharacter=selectedCompanion
+        for (const window of outputWindows.instances) window.resetCompanionCast()
+    }
+    onSelectedCompanionChanged: Qt.callLater(root.resetCompanionCast)
+    onAlternatingCompanionsChanged: if (!alternatingCompanions) Qt.callLater(root.resetCompanionCast)
     readonly property bool companionEnabled: Config.ready && companionPreferences.enabled
     Binding {target:WullMind;property:"hostVisible";value:root.companionSessionVisible && companionBridge.ready && companionBridge.visibility==="present"}
     Binding {target:WullMind;property:"hostIdle";value:companionBridge.activity==="idle"}
@@ -200,11 +210,17 @@ Scope {
             readonly property bool companionHostActive: window.companionPermission && companionPresence.qualified
             function requestCompanionChat(): void {
                 if(!window.companionPermission) return
+                companionTurns.cancel()
                 companionCuriosity.interrupt()
                 companionPresence.hiddenUntil=0
                 if(!companionPresence.visitActive || companionPresence.retreating)companionPresence.appear()
                 companionPresence.peekOnly=false;companionPresence.peekIntro=false;companionPresence.renderedReveal=1
                 WullMind.openChat()
+            }
+            function resetCompanionCast(): void {
+                companionTurns.cancel()
+                companionPresence.hideImmediately()
+                Qt.callLater(companionPresence.synchronize)
             }
             function companionStatus() {
                 const scene=window.companionScene
@@ -228,7 +244,9 @@ Scope {
                     curiosity:{enabled:root.companionPreferences.exploreFeatures,
                         stage:companionCuriosity.stage,owned:companionCuriosity.owned,
                         feature:companionCuriosity.feature?.kind ?? ""},
-                    actor:{visible:companion.visible,inputReady:companion.inputReady,
+                    turns:{enabled:root.alternatingCompanions,active:companionTurns.active,paired:companionTurns.paired,
+                        incoming:companionTurns.active ? companionTurns.incoming : ""},
+                    actor:{character:companion.character,visible:companion.visible,inputReady:companion.inputReady,
                         moving:companion.moving,walking:companion.walking,flying:companion.flying,
                         presentation:companion.presentation,opacity:companion.opacity,
                         x:companion.x,y:companion.y}}
@@ -266,8 +284,18 @@ Scope {
                 controller: liquid
                 allowed: window.companionHostActive
             }
+            CompanionTurns {
+                id:companionTurns
+                presence:companionPresence;actor:companion
+                allowed:window.companionHostActive && companionBridge.ready
+                alternating:root.alternatingCompanions
+                interactionHeld:companionPresence.interactionHeld || companionCuriosity.busy
+                onStarting:companionCuriosity.interrupt()
+                onCharacterChosen:character=>root.companionCharacter=character
+            }
+            CompanionChallenger {turns:companionTurns;actor:companion;z:24}
             function companionFeaturesIdle(): bool {
-                return window.companionPermission && !window.companionOccluded
+                return !companionTurns.active && window.companionPermission && !window.companionOccluded
                     && !liquid.popupsOpen && !GlobalStates.abyssPopupKind
                     && !GlobalStates.sidebarLeftOpen && !GlobalStates.sidebarRightOpen
                     && !GlobalStates.settingsOverlayOpen && !GlobalStates.overviewOpen
@@ -592,6 +620,7 @@ Scope {
             }
             AbyssCompanion {
                 id: companion
+                character:root.companionCharacter
                 z: 24
                 opacity: companionBridge.ready ? 1 : 0
                 edge: companionPresence.emergenceEdge

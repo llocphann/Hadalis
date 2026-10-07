@@ -9,13 +9,13 @@ layout(std140,binding=0) uniform buf {
     vec4 accent;
     vec4 specular;
     vec4 motion; // shimmer, tip bend, pulse, effects gate
-    vec4 optics; // yaw (radians), body/sphere/cornea/foot variant, eye gaze x/y
+    vec4 optics; // yaw (radians), body/sphere/cornea/foot/round-head variant, eye gaze x/y
     vec4 rendering; // quality tier 0..2, liquid translucency 0..0.35
     vec4 pose; // pitch, roll (radians), local X/Y scale minus one
 };
 const float BOTTOM=-0.87, TOP=0.99, DEPTH=0.91;
-float verticalScale() { return optics.y>2.5 ? 0.40 : 1.0; }
-float depthScale() { return optics.y>2.5 ? 0.55 : DEPTH; }
+float verticalScale() { return optics.y>2.5 && optics.y<3.5 ? 0.40 : 1.0; }
+float depthScale() { return optics.y>2.5 && optics.y<3.5 ? 0.55 : DEPTH; }
 float radiusAt(float y) {
     if (optics.y>0.5) {
         y/=verticalScale();
@@ -91,7 +91,9 @@ bool frontInterface(vec2 q, out vec3 surface, out float distance) {
     }
     float bound=1.15*max(max(modelScale().x,modelScale().y),modelScale().z);
     float circle=dot(q,q)-bound*bound;
-    if(circle>0.0){distance=sqrt(dot(q,q))-bound;surface=vec3(q,0);return false;}
+    // The bounding sphere is a search cull, not a liquid interface. Giving
+    // it an edge distance painted a detached halo during spatial falls.
+    if(circle>0.0){distance=10.0;surface=vec3(q,0);return false;}
     float start=sqrt(max(0.0,-circle)),previous=start;
     distance=10.0;bool hit=false;float inside=0.0;
     int steps=rendering.x>1.5 ? 40 : rendering.x>0.5 ? 32 : 24;
@@ -253,7 +255,7 @@ void main() {
         return;
     }
     vec3 normal=normalAt(surface);
-    if (optics.y<0.5 && motion.w>0.5) {
+    if ((optics.y<0.5 || optics.y>3.5) && motion.w>0.5) {
         // A small tangent perturbation bends the reflected light like a
         // settling liquid surface while keeping the round silhouette smooth.
         vec3 p=modelPoint(surface);
@@ -302,8 +304,8 @@ void main() {
     vec3 waterLight=vec3(hue.r,sqrt(hue.g*max(hue.g,hue.b)),hue.b);
     through+=volumeHue*(1.0-exp(-travel*0.95))*0.28;
     through*=mix(1.0,0.62,smoothstep(-0.10,0.50,q.y));
-    through+=mix(waterLight,white,0.015)*core*(1.45+motion.z*0.25)*(optics.y>0.5 ? 0.15 : 1.0);
-    if (rendering.x>0.5 && optics.y<0.5) {
+    through+=mix(waterLight,white,0.015)*core*(1.45+motion.z*0.25)*(optics.y>0.5 && optics.y<3.5 ? 0.15 : 1.0);
+    if (rendering.x>0.5 && (optics.y<0.5 || optics.y>3.5)) {
         float focus=liquidFocus(middle);
         if (rendering.x>1.5) {
             focus+=liquidFocus(modelPoint(surface+internal*travel*0.25))*0.55;
@@ -311,7 +313,7 @@ void main() {
         }
         through+=mix(waterLight,white,0.04)*focus*(1.0-exp(-travel))*0.20;
     }
-    if (optics.y>2.5) {
+    if (optics.y>2.5 && optics.y<3.5) {
         // Flattened water pods share the body's interfaces and light rig.
         // A shallow luminous core and bottom catch give the tiny feet depth.
         vec3 footCore=middle/vec3(0.85,0.24,0.65);
@@ -326,7 +328,7 @@ void main() {
     vec3 color=reflected*f+through*(1.0-f);
     float grazing=1.0-clamp(normal.z,0.0,1.0);
     color+=waterLight*pow(grazing,2.6)*1.25+white*pow(grazing,5.0)*0.55;
-    if (motion.w>0.5 && optics.y<0.5) {
+    if (motion.w>0.5 && (optics.y<0.5 || optics.y>3.5)) {
         int candidates=rendering.x>1.5 ? 48 : rendering.x>0.5 ? 18 : 0;
         for (int i=0;i<48;i++) {
             if (i>=candidates) break;
@@ -350,7 +352,8 @@ void main() {
     // edges while the illuminated liquid core and bright catches stay dense.
     float opacity=mix(optics.y>0.5 && optics.y<1.5 ? 0.60 : 0.82,
         0.98,clamp(travel*0.55,0.0,1.0));
-    opacity*=1.0-clamp(rendering.y,0.0,0.35)*0.55;
+    if(optics.y>3.5)opacity=mix(.94,.995,clamp(travel*.55,0.0,1.0));
+    opacity*=1.0-clamp(rendering.y,0.0,0.35)*(optics.y>3.5 ? .30 : .55);
     float reflectedPeak=max(reflected.r,max(reflected.g,reflected.b))*f;
     opacity=mix(opacity,0.995,clamp(f*0.80+reflectedPeak*0.20,0.0,1.0));
     float alpha=cover*opacity;

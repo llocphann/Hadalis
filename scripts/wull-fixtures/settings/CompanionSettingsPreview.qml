@@ -17,7 +17,7 @@ ApplicationWindow {
     width: previewWidth
     height: previewHeight
     visible: true
-    title: "Wull Companion settings preview"
+    title: "Companion settings preview"
     color: Appearance.colors.colLayer1Base
     readonly property string phase: Quickshell.env("WULL_SETTINGS_PHASE") || "preview"
     readonly property string capturePath: Quickshell.env("WULL_SETTINGS_CAPTURE") || ""
@@ -61,6 +61,7 @@ ApplicationWindow {
 
     function verifySaved(): void {
         const saved = page.preferences
+        root.require(saved.character === "octo" && saved.alternateCompanions, "cast selection did not persist")
         root.require(saved.enabled && !saved.interactive && saved.hideInFullscreen, "switches did not persist")
         root.require(saved.personality === "calm" && saved.appearanceFrequency === "occasional", "behavior did not persist")
         root.require(!saved.animationsEnabled && !saved.effectsEnabled, "render policy did not persist")
@@ -72,6 +73,7 @@ ApplicationWindow {
         for (const name of ["companionOutput","companionEdge","companionPosition"])
             root.require(root.control(page,name)===null,"fixed placement control remains")
         const preview = root.control(page, "companionPreview")
+        root.require(preview.character === "octo", "preview character binding lost")
         root.require(!preview.motionEnabled && !preview.effectsEnabled && preview.motionScale === 0.55, "preview did not follow persisted policy")
         root.require(Math.abs(preview.translucency - 0.24) < 0.001, "preview translucency binding lost")
         root.require(SettingsPageRegistry.pageIndexForKey("companion") === 37, "stable route missing")
@@ -113,11 +115,13 @@ ApplicationWindow {
             if (root.phase === "write") {
                 root.require(page.preferences.personality === "balanced"
                     && page.preferences.appearanceFrequency === "always"
-                    && page.preferences.renderQuality === "balanced"
+                    && page.preferences.renderQuality === "quality"
                     && page.preferences.translucency === 0.16
                     && page.preferences.animationsEnabled && page.preferences.effectsEnabled && page.preferences.exploreFeatures,
                     "new defaults were not available to existing configurations")
                 root.toggle("companionEnabled", true)
+                root.choose("companionCharacter", 1)
+                root.toggle("companionAlternate", true)
                 root.toggle("companionInteractive", false)
                 root.toggle("companionFullscreen", true)
                 root.choose("companionPersonality", 0)
@@ -125,7 +129,7 @@ ApplicationWindow {
                 root.toggle("companionMotion", false)
                 root.toggle("companionExploreFeatures", false)
                 root.toggle("companionEffects", false)
-                root.choose("companionQuality", 2)
+                root.choose("companionQuality", 1)
                 root.slide("companionTranslucency", 0.24)
                 root.slide("companionSize", 1.27)
                 // Simulate an old persisted config; it must no longer pin Wull.
@@ -143,15 +147,17 @@ ApplicationWindow {
                     root.control(page, "companionReset").clicked()
                 }
                 Qt.callLater(() => {
-                    root.require(!page.preferences.enabled && page.preferences.personality === "balanced"
+                    root.require(page.preferences.character === "aqua" && !page.preferences.alternateCompanions
+                        && !page.preferences.enabled && page.preferences.personality === "balanced"
                         && page.preferences.appearanceFrequency === "always" && page.preferences.effectsEnabled
                         && page.preferences.translucency === 0.16,
                         "reset/default policy mismatch")
                     page.activeSection = Quickshell.env("WULL_SETTINGS_SECTION") || "behavior"
+                    root.choose("companionCharacter", Quickshell.env("COMPANION_SETTINGS_CHARACTER") === "octo" ? 1 : 0)
                     root.choose("companionPersonality", 2)
                     root.choose("companionFrequency", 2)
                     const quality = Quickshell.env("WULL_SETTINGS_QUALITY") || "quality"
-                    root.choose("companionQuality", ["performance", "balanced", "quality"].indexOf(quality))
+                    root.choose("companionQuality", quality === "performance" ? 0 : 1)
                     capture.start()
                 })
             }

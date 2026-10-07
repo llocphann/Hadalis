@@ -1,4 +1,7 @@
 module qs.modules.abyss.companion
+OctoTentacles 1.0 OctoTentacles.qml
+CompanionTurns 1.0 CompanionTurns.qml
+CompanionChallenger 1.0 CompanionChallenger.qml
 AbyssCompanion 1.0 AbyssCompanion.qml
 AbyssCompanionProof 1.0 AbyssCompanionProof.qml
 CompanionBridge 1.0 CompanionBridge.qml

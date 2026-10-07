@@ -9,6 +9,7 @@ Item {
     id: root
     objectName: "wullFace"
     property string expression: "idle"
+    property bool cheeksVisible: true
     property real eyeOpen: 1
     property real mouthCurve: 0.12
     property real gazeX: 0
@@ -172,6 +173,7 @@ Item {
     Repeater {
         model: 2
         Shape {
+            visible: root.cheeksVisible
             required property int index
             x: (index === 0 ? 12.5 : 53.5) * root.unit; y: 60 * root.unit
             width: 9 * root.unit; height: 9 * root.unit

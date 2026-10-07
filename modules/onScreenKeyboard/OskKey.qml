@@ -1,6 +1,7 @@
 import qs.services
 import qs.services.deferred
 import qs.modules.common
+import qs.modules.abyss.looks
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import QtQuick
@@ -55,13 +56,14 @@ RippleButton {
         }
     }
 
+    readonly property bool abyss:Config.options?.panelFamily === "abyss"
     // Material keycaps use the canonical layer/primary interaction colors.
-    colBackground: shape == "empty"
+    colBackground: abyss ? (shape === "empty" ? "transparent" : showPhysicalPress ? Qt.alpha(AbyssStyle.accent,.22) : AbyssStyle.surfaceRaised) : shape == "empty"
         ? ColorUtils.transparentize(Appearance.colors.colLayer1)
         : showPhysicalPress
             ? Appearance.colLayer1Active
             : Appearance.colors.colLayer1
-    colBackgroundToggled: Appearance.colors.colPrimary
+    colBackgroundToggled: abyss ? AbyssStyle.accent : Appearance.colors.colPrimary
     buttonRadius: Appearance.rounding.small
     implicitWidth: baseWidth * widthMultiplier[shape] || baseWidth
     implicitHeight: baseHeight * heightMultiplier[shape] || baseHeight
@@ -137,7 +139,7 @@ RippleButton {
             (isBackspace || isEnter) ? Appearance.font.pixelSize.huge :
             Appearance.font.pixelSize.large
         horizontalAlignment: Text.AlignHCenter
-        color: root.toggled
+        color: root.abyss ? (root.toggled ? AbyssStyle.surface : AbyssStyle.textColor) : root.toggled
             ? Appearance.colors.colOnPrimary
             : Appearance.colors.colOnLayer1
         text: root.isBackspace ? "backspace" : root.isEnter ? "subdirectory_arrow_left" :

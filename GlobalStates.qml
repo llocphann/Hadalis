@@ -181,6 +181,9 @@ Singleton {
 
     property bool osdKeyboardLayoutOpen: false
     property bool oskOpen: false
+    property string oskTargetMonitor: ""
+    onOskOpenChanged: if (oskOpen)
+        oskTargetMonitor=focusedScreen?.name ?? primaryScreen?.name ?? ""
     property bool overlayOpen: false
     property bool overviewOpen: false
     property string overviewMode: "default"

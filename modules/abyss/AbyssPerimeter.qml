@@ -18,6 +18,7 @@ import "companion/WullPreferences.js" as WullPreferences
 
 Scope {
     id: root
+    readonly property var outputHosts:outputWindows.instances
     property string largeTargetOutput: GlobalStates.resolveOutputName("",[])
     readonly property var companionOptions: Config.options?.abyss?.companion
     readonly property var companionPreferences: WullPreferences.normalize(companionOptions)
@@ -181,6 +182,7 @@ Scope {
         model: Quickshell.screens
         PanelWindow {
             id: window
+            objectName:"abyssOutputHost_"+modelData.name
             required property var modelData
             readonly property string outputName: modelData?.name ?? ""
             function presentation(kind) { return Presentation.resolve(Config.options?.abyss?.positions,kind,outputName) }
@@ -449,7 +451,7 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
-            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || wallpaperBody.open || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || talkCloud.editing || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || wallpaperBody.open || (keyboardBody.open && (Config.options?.osk?.keepOnTop ?? false)) || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || talkCloud.editing || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
             WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging || companionCuriosity.owned
                 ? WlrKeyboardFocus.None
                 : (talkCloud.editing || window.editorOpen || (utility.presented && utility.ready) || liquid.popupExclusiveFocus || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (wallpaperBody.presented && wallpaperBody.ready) || (clipboardBody.presented && clipboardBody.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive
@@ -516,6 +518,7 @@ Scope {
                 Region { x: controls.inputBounds.x; y: controls.inputBounds.y; width: window.presented && field.ready ? controls.inputBounds.width : 0; height: controls.inputBounds.height }
                 Region { x: settings.inputBounds.x; y: settings.inputBounds.y; width: window.presented && field.ready && !GlobalStates.settingsNativeDialogOpen ? settings.inputBounds.width : 0; height: settings.inputBounds.height }
                 Region { x: aux.inputBounds.x; y: aux.inputBounds.y; width: window.presented && field.ready ? aux.inputBounds.width : 0; height: aux.inputBounds.height }
+                Region {x:keyboardBody.inputBounds.x;y:keyboardBody.inputBounds.y;width:window.presented && field.ready ? keyboardBody.inputBounds.width : 0;height:keyboardBody.inputBounds.height}
                 Region { x:wallpaperBody.inputBounds.x;y:wallpaperBody.inputBounds.y;width:window.presented && field.ready ? wallpaperBody.inputBounds.width : 0;height:wallpaperBody.inputBounds.height }
                 Region { x: clipboardBody.inputBounds.x; y: clipboardBody.inputBounds.y; width: window.presented && field.ready ? clipboardBody.inputBounds.width : 0; height: clipboardBody.inputBounds.height }
             }
@@ -1060,6 +1063,45 @@ Scope {
                 HoverHandler { id: dockRevealHover; onHoveredChanged: { if (hovered) { dockClose.stop(); window.dockHovered = true } else dockClose.restart() } }
             }
             Timer { id: dockClose; interval: 260; repeat: false; onTriggered: if (!dockRevealHover.hovered && !dockHover.hovered) window.dockHovered = false }
+            AbyssBodyHost {
+                id:keyboardBody;identity:"keyboard"
+                controller:liquid;anchors.fill:parent;outputName:window.outputName
+                z:(Config.options?.osk?.keepOnTop ?? false) ? 10000 : 0
+                property string draftEdge:""
+                property real draftAlong:NaN
+                property real dragOriginX:0
+                property real dragOriginY:0
+                property bool dragActive:false
+                edge:draftEdge || (["top","bottom"].includes(window.positionEdge(identity,"bottom")) ? window.positionEdge(identity,"bottom") : "bottom")
+                open:window.presented && field.ready && GlobalStates.oskOpen
+                    && (Config.options?.enabledPanels ?? []).includes("iiOnScreenKeyboard")
+                    && GlobalStates.resolveOutputName(GlobalStates.oskTargetMonitor,[])===window.outputName
+                edgeInsets:window.bodyInsets(edge,along,span)
+                span:Math.min(1010,window.width*.94);depth:Math.min(440,window.height*.72)
+                placementCanResize:false
+                along:Number.isFinite(draftAlong) ? draftAlong : window.positionAlong(identity,edge,span,window.width/2-span/2)
+                source:"../onScreenKeyboard/AbyssKeyboardContent.qml"
+                function beginKeyboardDrag():void {
+                    dragActive=true;animatePlacementChanges=false
+                    dragOriginX=inputBounds.x+inputBounds.width/2
+                    dragOriginY=inputBounds.y+inputBounds.height/2
+                }
+                function moveKeyboardDrag(dx,dy):void {
+                    if(!dragActive)return
+                    draftEdge=dragOriginY+dy<window.height/2 ? "top" : "bottom"
+                    draftAlong=Math.max(window.nativeInsets.left,Math.min(window.width-window.nativeInsets.right-span,dragOriginX+dx-span/2))
+                }
+                function finishKeyboardDrag():void {
+                    if(!dragActive)return
+                    dragActive=false;animatePlacementChanges=true
+                    const start=window.nativeInsets.left,end=Math.max(start,window.width-window.nativeInsets.right-span)
+                    Config.setNestedValue("abyss.positions",Presentation.save(Config.options?.abyss?.positions,identity,outputName,
+                        {edge:edge,alignment:"custom",position:end>start ? Math.max(0,Math.min(1,(along-start)/(end-start))) : .5}))
+                    draftEdge="";draftAlong=NaN
+                }
+                onOpenChanged:if(!open){dragActive=false;draftEdge="";draftAlong=NaN;animatePlacementChanges=true}
+                onCloseRequested:GlobalStates.oskOpen=false
+            }
             AbyssBodyHost {
                 id:wallpaperBody;identity:"wallpaper"
                 controller:liquid;anchors.fill:parent;outputName:window.outputName

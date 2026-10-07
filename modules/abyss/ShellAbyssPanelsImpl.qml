@@ -25,6 +25,5 @@ Item {
     DemandPanel { identifier: "iiOverlay"; open: GlobalStates.overlayOpen || OverlayContext.hasPinnedWidgets || OverlayContext.nativeDialogOpen; source: "../ii/overlay/Overlay.qml" }
     DemandPanel { identifier: "iiRegionSelector"; open: GlobalStates.regionSelectorOpen; source: "../regionSelector/RegionSelector.qml" }
     DemandPanel { identifier: "iiTilingOverlay"; open: GlobalStates.tilingOverlayPickerOpen || GlobalStates.tilingOverlayOsdOpen; source: "../tilingOverlay/TilingOverlay.qml" }
-    DemandPanel { identifier: "iiOnScreenKeyboard"; open: GlobalStates.oskOpen; source: "../onScreenKeyboard/OnScreenKeyboard.qml" }
     DemandPanel { identifier: "iiRecordingOsd"; open: RecorderStatus.isRecording; source: "../recordingOsd/RecordingOsd.qml" }
 }

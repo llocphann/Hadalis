@@ -238,6 +238,9 @@ Rules:
 
 | `modules/settings/SettingsPageRegistry.qml` + `SettingsPageRegistryData.qml` + static Settings search consumers | **HIGH-CONFIDENCE interactive CPU/allocation candidate — Settings static prepared family-routed search index.** `SettingsPageRegistryData.searchIndex()` already caches the translation-expanded raw static index, but every non-empty Settings query calls wrapper `SettingsPageRegistry.searchIndex()`, which re-filters legacy slots, runs `FamilyPolicy.settingsRoute()` for every entry, clones redirected entries, then each consumer lowercases `label`, `description`, `pageName`, `section` and `keywords.join(" ")` again. Prepare the routed static snapshot plus private normalized fields once per exact family/translation epoch; query edits then only run the existing term/scoring predicates. | Low. Invalidate on Translation index rebuild and every `panelFamily` change; preserve hidden-legacy filtering, Abyss page-name/route substitutions, raw object fields, consumer-specific `isPageApplicable`/allowed filtering, score/order/tie behavior and immediate family-switch observability. Do not fold dynamic control entries into this cache; candidates #43/#44 already own that separate lifecycle. | Bounded O(static search text) normalized strings and routed entry references for one active family epoch. | **Low–Medium interactive CPU/allocation reduction across standalone Settings, SettingsOverlay and SettingsFocus**: eliminates per-keystroke full-index route/filter/map/clones and repeated static metadata normalization. | 0%. |
 
+| `scripts/images/least_busy_region.py` + desktop-widget auto-placement callers | **HIGH-CONFIDENCE image-analysis CPU/memory candidate — least_busy_region processed-grayscale reuse.** In normal and largest-region modes the script decodes the wallpaper as grayscale, rescales/crops it for the region search, then later `get_region_brightness()` decodes and rescales/crops the same grayscale image again for the chosen region. Keep the current color decode for dominant-color clustering, but retain the exact already-processed grayscale array from the search pass and run the existing clamp/slice + `np.mean/std` brightness calculation on that array. | Low. Preserve `cv2.IMREAD_GRAYSCALE`, Lanczos resize dimensions, center-crop arithmetic, coordinate clamping, `np.mean/std` rounding and all JSON fields. Keep `--color-only` on its current independent read path and do not derive grayscale from the color decode, which could change codec/conversion pixels. Treat in-place wallpaper-file mutation during one invocation as outside the parity claim unless explicitly fixture-tested. | One already-existing scaled grayscale array lives slightly longer within the same process; eliminates a second decoded/resized grayscale image allocation. | **Medium local CPU/memory-bandwidth reduction per normal/largest image-analysis invocation**: removes one full grayscale decode + scale/crop pass while leaving search, color clustering and output unchanged. Benefits both generic desktop widgets and Waffle clock callers. | 0%. |
+| `modules/waffle/background/WaffleBackgroundClock.qml` + `services/DesktopWidgetLayout.qml` | **HIGH-CONFIDENCE process/fan-out candidate — Waffle clock records-change process narrowing.** Every `DesktopWidgetLayout.recordsChanged` currently calls `refreshPlacementIfNeeded()` on every per-output Waffle clock. In auto-placement mode this launches the OpenCV least/busiest-region subprocess even when the changed record belongs to another widget or another output. The only per-output record fields the clock reads are `enable`, `placementStrategy`, `x` and `y`: `onClockEnabledChanged` and `onPlacementStrategyChanged` already refresh auto-placement, while `x/y` matter only in free mode and are handled by `syncFreePositionFromConfig()`. Remove the unconditional direct image-analysis refresh from `onRecordsChanged`; keep free-position sync and let the exact derived-property/geometry/wallpaper handlers own real placement invalidation. | Low–Medium. QML binding/signal ordering must be fixture-tested so same-record `enable`/`placementStrategy` edits still trigger exactly one eventual analysis; preserve free-mode x/y sync, initial Config-ready behavior, wallpaper/size-triggered analysis, force-center gating and multi-output independence. | None. | **Potentially high transient process/CPU reduction while editing desktop-widget layout**, especially multi-output: unrelated output/widget record writes stop launching one Python/OpenCV analysis per resident auto-placed Waffle clock. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -368,6 +371,8 @@ Rules:
 118. **ShapeCanvas allocation-free morph streaming** — stream interpolated cubic segments through one reusable mutable cubic while retaining the exact final-anchor closure rule.
 119. **Connected iRiS shared shape-uniform packet** — prepare the common shape/smoothing uniform vectors once per snapshot and share them between visible and shadow-mask iRiS fields.
 120. **Settings static prepared family-routed search index** — cache the family-routed static Settings search snapshot and its normalized text fields per translation/family epoch instead of rebuilding them on every query edit.
+121. **least_busy_region processed-grayscale reuse** — reuse the exact scaled/cropped grayscale search image for final brightness statistics instead of decoding/resizing it a second time in the same invocation.
+122. **Waffle clock records-change process narrowing** — stop global desktop-widget record writes from directly launching Waffle clock image analysis; rely on the clock's actual enable/strategy/geometry/wallpaper invalidations.
 
 ## Explicit non-candidates from this pass
 
@@ -8418,6 +8423,240 @@ hot path.
 `AutomationConfig.qml` path, but fetching that file and the guessed Automation
 services from this exact `dev` SHA returns 404. Search-index hits that cannot be
 reproduced from current `dev` are not optimization evidence.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
+before/after measurement.
+
+## Research continuation — round 46
+
+Baseline: `dev` at `587778963ea08215dc374c2f9f28c1d3bc14ec57`.
+
+This round moved from Settings search into process-heavy desktop-widget
+auto-placement. The strongest source-proven work is complementary: reduce the
+cost of each image-analysis invocation, then stop Waffle from launching that
+invocation for unrelated desktop-widget record writes.
+
+Current source identities:
+
+- `scripts/images/least_busy_region.py`:
+  `d93dd6c596370c2dbcc22d5e21e52497c535a906`;
+- `scripts/images/least-busy-region-venv.sh`:
+  `48a956bb8e52c2eddf8a363895b7c10456a02b23`;
+- `modules/waffle/background/WaffleBackgroundClock.qml`:
+  `9ae299d5e17249c3b177ffa5e3d76eba1dd5d156`;
+- `modules/waffle/background/WaffleBackground.qml`:
+  `6e9bcbdf8daef77c9f8169ed998c44bc72b94fa6`;
+- `modules/background/widgets/AbstractBackgroundWidget.qml`:
+  `16603c04327503fad558fb6886e61a7738295b73`;
+- `services/DesktopWidgetLayout.qml`:
+  `a2e472cb702fdeb69fcdb758f4aa63ebdce1bf22`;
+- `killDialog.qml`:
+  `1df0740c6d540d66f89728aedfd1f3711d794e87`;
+- `modules/lock/LockMediaWidget.qml`:
+  `9e5d2434d656457568eac7578973061385ecc4f6`;
+- horizontal `modules/bar/Media.qml`:
+  `7286bbfaa8bac3b29ee7e818cd937d60405556e8`;
+- vertical `modules/verticalBar/VerticalMedia.qml`:
+  `f95416165769171cf98031cb115cbfd7dc59cf0e`.
+
+### R46.1 — least_busy_region decodes and resizes the same grayscale wallpaper twice
+
+The auto-placement helper is shared by the generic desktop-widget framework and
+the Waffle background clock through `least-busy-region-venv.sh`.
+
+In ordinary least/busiest mode the current process does:
+
+1. `find_least_busy_region()`:
+   - `cv2.imread(..., IMREAD_GRAYSCALE)`;
+   - scale with `INTER_LANCZOS4`;
+   - center-crop to screen size;
+   - build integral + squared-integral images;
+   - scan candidate regions;
+2. `get_dominant_color()`:
+   - independently decode color pixels and scale/crop them;
+3. `get_region_brightness()`:
+   - **decode grayscale again**;
+   - **repeat the same scale/crop**;
+   - slice the already-selected region and run `np.mean/std`.
+
+Largest-region mode has the same repeated grayscale path after its search.
+
+The strict opportunity does not require changing any math in the region search
+or dominant-color clustering:
+
+1. factor the existing grayscale decode + exact resize/crop arithmetic into a
+   helper that returns the processed grayscale array;
+2. let normal/largest search consume that array rather than reloading internally
+   (or return the processed array alongside the current search result through a
+   private helper);
+3. after the final region is known, apply the current brightness clamp/slice and
+   exact `np.mean(region)` / `np.std(region)` to that same array;
+4. retain the independent color `cv2.imread()` used by
+   `get_dominant_color()`;
+5. keep public helper compatibility if any direct callers/tests depend on the
+   existing signatures.
+
+Do **not** optimize by reading color once and converting it to grayscale.
+`cv2.imread(path, IMREAD_GRAYSCALE)` is the current pixel source and codec
+conversion; deriving grayscale from the color decode can introduce pixel-level
+differences.
+
+Likewise keep `--color-only` unchanged in the first patch. That mode performs
+one color read and one grayscale read for two genuinely different
+representations; it has no duplicate grayscale search image to reuse.
+
+Required oracle:
+
+- PNG/JPEG/WebP wallpapers with different aspect ratios;
+- exact-size image (no resize);
+- fill and fit screen modes;
+- screen crop in horizontal and vertical directions;
+- least-busy and `--busiest`;
+- largest-region mode;
+- region clamped by horizontal/vertical padding;
+- requested region larger than feasible space;
+- 1×1/small edge cases;
+- exact selected coordinates/size/variance;
+- exact brightness and brightness_std JSON values after current rounding;
+- exact dominant color;
+- missing/unreadable file behavior;
+- visual-output mode remains independent unless separately optimized.
+
+The normal strict-parity fixture should keep the source wallpaper immutable for
+one invocation. Current code can theoretically observe two different file
+versions because it reads grayscale twice; that incidental mid-process
+replacement race is not a useful product contract and should not be silently
+used as an optimization oracle without a dedicated requirement.
+
+This candidate removes one full grayscale decode and one potentially
+screen-sized Lanczos resize/crop per normal/largest invocation. It does not
+claim reduced subprocess count; R46.2 addresses avoidable invocations.
+
+### R46.2 — every desktop-widget records write can launch one Waffle image-analysis process per output
+
+A Waffle background owns one `WaffleBackgroundClock` for every screen.
+
+The clock reads these per-output values from `DesktopWidgetLayout`:
+
+```text
+enable
+placementStrategy
+x
+y
+```
+
+It already owns exact change handlers:
+
+```qml
+onPlacementStrategyChanged: {
+    syncFreePositionFromConfig()
+    refreshPlacementIfNeeded()
+}
+onClockEnabledChanged: {
+    syncFreePositionFromConfig()
+    refreshPlacementIfNeeded()
+}
+onWallpaperPathChanged: refreshPlacementIfNeeded()
+onWidthChanged: refreshPlacementIfNeeded()
+onHeightChanged: refreshPlacementIfNeeded()
+```
+
+Free-mode `x/y` are consumed by `syncFreePositionFromConfig()`.
+
+Nevertheless every global desktop-widget record replacement also does:
+
+```qml
+Connections {
+    target: DesktopWidgetLayout
+    function onRecordsChanged(): void {
+        root.syncFreePositionFromConfig()
+        root.refreshPlacementIfNeeded()
+    }
+}
+```
+
+When this clock is in `leastBusy` or `mostBusy`, the second call starts
+`least-busy-region-venv.sh`, which activates Python/OpenCV and scans the
+wallpaper. The subprocess command itself contains no DesktopWidgetLayout record
+payload. Its effective inputs are:
+
+- scaled screen width/height;
+- current clock content width/height;
+- screen-derived paddings;
+- wallpaper path;
+- least versus busiest strategy.
+
+Therefore an edit to a weather widget, another background widget, or another
+output can make **every** auto-placed Waffle clock rerun the same image analysis
+even though none of those command inputs changed.
+
+Strict-lossless ownership can be narrower:
+
+1. retain `onRecordsChanged` only for
+   `syncFreePositionFromConfig()`, because free x/y may change without a
+   dedicated scalar signal;
+2. remove its unconditional direct `refreshPlacementIfNeeded()`;
+3. continue relying on `onClockEnabledChanged` and
+   `onPlacementStrategyChanged` for the two record fields that can change
+   whether/which auto-placement analysis is needed;
+4. retain wallpaper, width and height handlers exactly;
+5. retain the Config-ready initial refresh;
+6. do not add a debounce or slower timer.
+
+The key proof is QML notification ordering. A record replacement that changes
+`enable` or `placementStrategy` must still reevaluate the derived property
+and fire its change handler even though the broad `recordsChanged` callback no
+longer forces the process directly.
+
+Required oracle:
+
+- one and multiple screens;
+- Waffle family active and retained/inactive family lifecycle;
+- unrelated widget record update on same output -> zero Waffle clock analysis;
+- unrelated widget record update on another output -> zero analysis on all
+  unaffected clocks;
+- free-mode x/y write -> exact immediate position sync, no analysis;
+- auto-mode stored x/y-only write -> no analysis and no visual change;
+- enable false -> true and true -> false;
+- free -> leastBusy -> mostBusy -> free;
+- simultaneous enable + strategy record update;
+- wallpaper path change;
+- clock style/time/date/scale changes that alter width/height;
+- screen resize/hotplug;
+- lock force-center enter/exit;
+- exact final targetX/targetY/dominantColor and process-launch count.
+
+This composes directly with R46.1: R46.2 reduces the number of expensive
+invocations, while R46.1 removes duplicate grayscale work inside every
+invocation that remains.
+
+### R46.3 — Paths deliberately not promoted
+
+**DesktopWidgetLayout output-record index:** rediscovered while tracing Waffle
+records, but it is already canonical candidate R31.2. No new promotion.
+
+**Generic AbstractBackgroundWidget request serialization:** its auto-placement
+path also toggles `leastBusyRegionProc.running` false/true, while its color-only
+path has explicit serialization and stale-result rejection. Extending that
+policy to auto-placement may improve correctness/process churn, but it can
+change transient result ordering. Keep it outside strict-lossless promotion
+until an oracle defines whether intermediate stale placement updates are
+observable contract or a bug.
+
+**Waffle request-key memoization:** caching completed image-analysis results by
+command arguments could avoid repeated width combinations, but a pathname does
+not prove the wallpaper file bytes are unchanged. Do not introduce a persistent
+result cache without a file-revision identity.
+
+**killDialog conflict probing:** the standalone dialog owns two one-shot
+`pidof` processes (kded6 and notification-daemon group). Batching two startup
+probes would save at most one short child process and is below the promotion
+threshold.
+
+**Bar/Vertical/Lock media position timers:** these belong to the broader MPRIS
+position-refresh ownership question already represented by candidate #58.
+Do not assign a second candidate from another visible consumer until signal
+timing/freshness measurement defines the shared ticker contract.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
 before/after measurement.

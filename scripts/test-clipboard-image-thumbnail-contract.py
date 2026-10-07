@@ -23,11 +23,11 @@ for token in (
 
 for token in (
     "// Lazy decode: only start when visible",
-    "if [ -s '${imageDecodeFilePath}' ]; then",
-    "_tmp='${imageDecodeFilePath}'.$$",
-    "/usr/bin/mv -f",
-    "maxWidth / imageWidth",
-    "maxHeight / imageHeight",
+    "function startDecode()",
+    "Cliphist.decodeCommand(_decodingEntry)",
+    "root.entry!==root._decodingEntry",
+    "image.implicitWidth > 0",
+    "image.implicitHeight > 0",
 ):
     require(IMAGE, token, "mature lazy thumbnail decode/cache contract missing")
 

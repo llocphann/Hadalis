@@ -15,7 +15,7 @@ for needle in [
     assert needle in service, needle
 
 assert 'root.entry.match(/^\\s*(\\d+)(?:\\t|\\s+)/)' in image
-assert 'Cliphist.decodeCommand(root.entry)' in image
+assert 'Cliphist.decodeCommand(_decodingEntry)' in image
 assert 'active: root.imageEntry' in item
 assert 'visible: !root.imageEntry' in item
 

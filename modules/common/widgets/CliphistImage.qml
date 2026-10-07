@@ -17,7 +17,7 @@ Rectangle {
     property string blurText: "Image hidden"
 
     property string imageDecodePath: Directories.cliphistDecode
-    property string imageDecodeFileName: `${entryNumber}`
+    property string imageDecodeFileName: Cliphist.entryId(root.entry)
     property string imageDecodeFilePath: `${imageDecodePath}/${imageDecodeFileName}`
     property string source
 
@@ -27,61 +27,57 @@ Rectangle {
         const match = root.entry.match(/^\s*(\d+)(?:\t|\s+)/);
         return match ? parseInt(match[1]) : 0;
     }
-    property int imageWidth: {
-        if (!root.entry)
-            return 0;
-        const match = root.entry.match(/(\d+)x(\d+)/);
-        return match ? parseInt(match[1]) : 0;
-    }
-    property int imageHeight: {
-        if (!root.entry)
-            return 0;
-        const match = root.entry.match(/(\d+)x(\d+)/);
-        return match ? parseInt(match[2]) : 0;
-    }
-    property real scale: {
-        return Math.min(root.maxWidth / imageWidth, root.maxHeight / imageHeight, 1);
-    }
+    readonly property var dimensions: String(root.entry).match(/(\d+)\s*[x×]\s*(\d+)/)
+    readonly property real imageWidth: image.implicitWidth > 0 ? image.implicitWidth
+        : dimensions ? Number(dimensions[1]) : Math.max(1,root.maxWidth)
+    readonly property real imageHeight: image.implicitHeight > 0 ? image.implicitHeight
+        : dimensions ? Number(dimensions[2]) : Math.max(1,root.maxHeight)
+    readonly property real previewScale: Math.max(0,Math.min(
+        Math.max(1,root.maxWidth)/Math.max(1,imageWidth),
+        Math.max(1,root.maxHeight)/Math.max(1,imageHeight),1))
 
     color: Appearance.colors.colLayer1
     radius: Appearance.rounding.small
-    implicitHeight: imageHeight * scale
-    implicitWidth: imageWidth * scale
+    implicitHeight: imageHeight * previewScale
+    implicitWidth: imageWidth * previewScale
 
     // Lazy decode: only start when visible (avoids mass-spawning processes)
     property bool _decoded: false
-    onVisibleChanged: {
-        if (visible && !_decoded && root.entry) {
-            _decoded = true;
-            decodeImageProcess.running = true;
-        }
+    property string _decodingEntry: ""
+    property string _decodingPath: ""
+    property var _decodeCommand: []
+    function startDecode(): void {
+        if (!visible || _decoded || !imageDecodeFileName || decodeImageProcess.running) return
+        _decodingEntry=entry;_decodingPath=imageDecodeFilePath;_decoded=true
+        const quote=value=>"'"+StringUtils.shellSingleQuoteEscape(String(value))+"'"
+        // Metadata may omit dimensions; decode independently of preview size.
+        // mkdir and private temporary publication also cover a cold startup.
+        _decodeCommand=["/usr/bin/bash","-c",
+            "set -o pipefail; mkdir -p "+quote(imageDecodePath)+" || exit 1; "
+            +"if [ -s "+quote(_decodingPath)+" ]; then exit 0; fi; "
+            +"_tmp=$(mktemp "+quote(imageDecodePath+"/.decode.XXXXXX")+") || exit 1; "
+            +"trap 'rm -f -- \"$_tmp\"' EXIT; "
+            +"if "+Cliphist.decodeCommand(_decodingEntry)+" > \"$_tmp\" && [ -s \"$_tmp\" ]; then "
+            +"mv -f -- \"$_tmp\" "+quote(_decodingPath)+"; else exit 1; fi"]
+        decodeImageProcess.running=true
     }
-    Component.onCompleted: {
-        if (visible && root.entry) {
-            _decoded = true;
-            decodeImageProcess.running = true;
-        }
+    onVisibleChanged: if (visible) root.startDecode()
+    onEntryChanged: {
+        root._decoded=false;root.source=""
+        if (decodeImageProcess.running) decodeImageProcess.signal(15)
+        else Qt.callLater(root.startDecode)
     }
+    Component.onCompleted: root.startDecode()
 
     Process {
         id: decodeImageProcess
         // Multiple clipboard surfaces can render the same entry concurrently.
         // Decode through a per-process temporary file and publish it atomically;
         // the shared session cache is cleaned once by Directories on shell start.
-        command: ["/usr/bin/bash", "-c", `
-            if [ -s '${imageDecodeFilePath}' ]; then
-                exit 0
-            fi
-            _tmp='${imageDecodeFilePath}'.$$
-            if ${Cliphist.decodeCommand(root.entry)} > "$_tmp" && [ -s "$_tmp" ]; then
-                /usr/bin/mv -f "$_tmp" '${imageDecodeFilePath}'
-            else
-                /usr/bin/rm -f "$_tmp"
-                exit 1
-            fi
-        `]
+        command: root._decodeCommand
         onExited: (exitCode, exitStatus) => {
-            root.source = exitCode === 0 ? imageDecodeFilePath : ""
+            if (root.entry!==root._decodingEntry) {Qt.callLater(root.startDecode);return}
+            root.source = exitCode === 0 ? root._decodingPath : ""
         }
     }
 
@@ -96,6 +92,7 @@ Rectangle {
 
     StyledImage {
         id: image
+        objectName: "clipboardDecodedImage"
         anchors.fill: parent
 
         source: Qt.resolvedUrl(root.source)
@@ -103,10 +100,8 @@ Rectangle {
         antialiasing: true
         asynchronous: true
 
-        width: root.imageWidth * root.scale
-        height: root.imageHeight * root.scale
-        sourceSize.width: width
-        sourceSize.height: height
+        // Read intrinsic size after decode; requesting a zero-sized texture
+        // before metadata is known can make the preview permanently empty.
     }
 
     Loader {

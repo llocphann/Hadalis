@@ -104,6 +104,11 @@ function travel(state, edge, along, span, strength, mass) {
 function clearTravel(state) {
     state.traveling=[];state.travelTargets.fill(0);state.hasTravelTargets=false;
 }
+function travelEnvelope(traveled, distance) {
+    if (!Number.isFinite(traveled) || !Number.isFinite(distance) || distance<=0) return 0;
+    var fraction=Math.max(0,Math.min(1,traveled/distance)),remaining=1-fraction;
+    return remaining*remaining*Math.exp(-fraction);
+}
 function advanceTravel(state, elapsed) {
     if(!state.traveling.length && !state.hasTravelTargets) return;
     state.travelTargets.fill(0);
@@ -115,7 +120,7 @@ function advanceTravel(state, elapsed) {
         if(packet.traveled>=packet.distance) continue;
         state.traveling[kept++]=packet;state.hasTravelTargets=true;
         packet.center=((packet.origin+packet.direction*packet.traveled)%state.length+state.length)%state.length;
-        var fade=Math.min(1,(packet.distance-packet.traveled)/Math.max(packet.width*4,packet.distance*.18));
+        var fade=travelEnvelope(packet.traveled,packet.distance);
         var center=Math.round(packet.center/dx),radius=Math.min(Math.ceil(packet.width*2.5/dx),Math.floor(state.count/4));
         // Evaluate only the compact packet's support, rather than every sample
         // for every popup. Scratch targets and acceleration arrays are reused.

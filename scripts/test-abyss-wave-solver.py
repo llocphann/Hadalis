@@ -5,6 +5,17 @@ import subprocess
 root = Path(__file__).resolve().parents[1]
 program = (root / "modules/abyss/looks/AbyssWave.js").read_text() + r"""
 const assert=require('node:assert/strict');
+assert.equal(travelEnvelope(0,1000),1);
+let envelope=1;
+for(let distance=1;distance<=1000;distance++) {
+ const next=travelEnvelope(distance,1000);
+ assert(next<envelope,'traveling crest attenuates continuously from its source');
+ envelope=next;
+}
+assert.equal(envelope,0);assert.equal(travelEnvelope(1500,1000),0);
+assert.equal(travelEnvelope(NaN,1000),0);assert.equal(travelEnvelope(2,0),0);
+assert(travelEnvelope(100,1000)<.8,'attenuation is visible well before the end of travel');
+
 // Mechanical fixtures have explicit settings; named preset tuning is checked
 // independently below and must not silently change this stress workload.
 const p=parameters({preset:'custom',...customDefaults});

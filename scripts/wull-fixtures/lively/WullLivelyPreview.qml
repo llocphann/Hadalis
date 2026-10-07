@@ -18,7 +18,8 @@ Window {
     property string testPhase: "motion"
     readonly property var scene: Scene.fromParticipants({width:width,height:height,
         hostWidth:112,hostHeight:98,scale:1,insets:{top:20,right:20,bottom:20,left:20}},
-        featureOpen ? {popup:{surfaceSettled:true,geometry:{edge:"top",surface:{x:430,y:160,width:280,height:220}}}} : {}, [])
+        // Keep a complete arrival + inspection inside the real 3 s UI lease.
+        featureOpen ? {popup:{surfaceSettled:true,geometry:{edge:"top",surface:{x:280,y:160,width:280,height:220}}}} : {}, [])
     function named(item,name) {
         if (item.objectName===name) return item
         for (const child of item.data ?? item.children ?? []) {const found=named(child,name);if(found)return found}
@@ -56,7 +57,8 @@ Window {
         width:112;height:98;managedPlacement:true;upright:true;connectedWater:true
         reveal:presence.renderedReveal;motionEnabled:root.animate;effectsEnabled:false
         edge:presence.emergenceEdge;emergenceEdge:presence.emergenceEdge
-        travelEnabled:presence.traveling;travelMode:presence.mode;travelDuration:presence.duration
+        travelEnabled:presence.traveling && !presence.portalActive;travelMode:presence.mode;travelDuration:presence.duration
+        portalReveal:presence.portalReveal
         travelArc:presence.arc;surfaceSupported:presence.grounded
         standingAngle:presence.standingAngle;appearClip:presence.appearClip;hideClip:presence.hideClip
         appearanceOffsetX:presence.appearanceOffsetX;appearanceOffsetY:presence.appearanceOffsetY
@@ -73,6 +75,9 @@ Window {
     WullCuriosity {
         id: curiosity
         presence:presence;actor:actor;adapter:root
+        // Exercise the complete visit at the production lease's upper bound.
+        // Its default randomized 1-3 s policy is covered by the adapter proof.
+        ownedLifetimeMin:3000;ownedLifetimeMax:3000
         allowed:root.allowed && root.animate;idle:true
         features:[{kind:"clock",key:"popup",edge:"top",along:400,openGesture:"press",gesture:"inspect"}]
     }

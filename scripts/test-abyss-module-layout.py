@@ -7,6 +7,23 @@ root = Path(__file__).resolve().parents[1]
 program = (root / "modules/abyss/looks/AbyssLayout.js").read_text() + r"""
 const assert = require('node:assert/strict');
 for (const edge of ['top','right','bottom','left']) {
+ const placements=normalize([{kind:'clock',edge},{kind:'battery',edge}],edge);
+ const off={edgeThickness:16,edgeThicknesses:{[edge]:0}};
+ assert.equal(edgeThickness(off,edge),0,'zero is a real off width');
+ assert.equal(geometry(placements,1920,1080,off,1).length,0,'coupled zero releases inherited modules');
+ assert.equal(edgeInsetsForModules(placements,off,1,16,48,true)[edge],0,'hidden modules reserve no space');
+ const independent={...off,edgeWidthAffectsModules:{[edge]:false}};
+ const records=geometry(placements,1920,1080,independent,1);
+ assert.equal(records.length,2,'edge-only zero preserves foreground modules');
+ assert.equal(edgeInsetsForModules(placements,independent,1,16,48,false)[edge],0,'bare edge stays off');
+ assert.equal(localSurfaces(records,1920,1080,independent,1,48).length,2,'modules retain local backing');
+ assert(edgeInsetsForModules(placements,independent,1,16,48,true)[edge]>=48,'module input remains protected');
+ const custom=placements.map(p=>({...p,customSize:true,size:1.2}));
+ assert.equal(localSurfaces(geometry(custom,1920,1080,off,1),1920,1080,off,1,48).length,2,'custom modules remain independent at zero');
+ const writes=saveProfile({},'A',placements,8,true,undefined,undefined,undefined,{[edge]:0},{[edge]:false});
+ assert.equal(optionsForOutput({outputLayouts:writes['abyss.modules.outputLayouts']},'A').edgeThicknesses[edge],0,'output save keeps zero');
+}
+for (const edge of ['top','right','bottom','left']) {
  const shared={edge,size:1,customSize:false}, custom={...shared,size:1.3,customSize:true};
  assert.equal(moduleSize(shared,{edgeThickness:32}),2,'thicker Edge scales shared modules');
  assert.equal(moduleSize(shared,{edgeThickness:10}),.625,'narrower Edge scales shared modules');

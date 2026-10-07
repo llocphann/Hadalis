@@ -106,7 +106,7 @@ ColumnLayout {
                 onToggledByUser:checked=>Config.setNestedValue("abyss.surface.opacity",checked ? .78 : 1)
             }
             Percent { text:"Surface opacity";configKey:"abyss.surface.opacity";fallback:.78;minimum:0 }
-            Percent { text:"Screen Edge depth";configKey:"abyss.perimeter.thickness";fallback:16;minimum:10;maximum:40 }
+            Percent { text:"Screen Edge depth";configKey:"abyss.perimeter.thickness";fallback:16;minimum:0;maximum:40 }
             Percent { text:"Curvature";configKey:"abyss.perimeter.radius";fallback:34;minimum:12;maximum:64 }
             Percent { text:"Fusion softness";configKey:"abyss.surface.softness";fallback:24;minimum:4;maximum:48 }
             ConfigSwitch {

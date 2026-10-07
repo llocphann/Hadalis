@@ -73,6 +73,11 @@ ShellRoot {
                     const thickRecord=layer.layoutRecords[0]
                     const thickCross=["top","bottom"].includes(edge) ? thickRecord.content.height : thickRecord.content.width
                     if(!root.check(Math.abs(thickCross-cross*2)<.1 && editor.edgeInsets[edge]===32,"physical px thickness updates the actual "+edge+" module and resting Edge")) return
+                    editor.edgeWidthAffectsModules=Object.assign({},editor.edgeWidthAffectsModules,{[edge]:false})
+                    editor.edgeThicknesses=Object.assign({},editor.edgeThicknesses,{[edge]:0})
+                    if(!root.check(editor.edgeInsets[edge]===0 && layer.layoutRecords.length===1 && layer.deformations.length===1,"zero bare "+edge+" retains independent module and backing")) return
+                    editor.edgeThicknesses=Object.assign({},editor.edgeThicknesses,{[edge]:32})
+                    editor.edgeWidthAffectsModules=Object.assign({},editor.edgeWidthAffectsModules,{[edge]:true})
                     if(!root.check((Config.options.abyss.modules.edgeThicknesses[edge] ?? -1)===-1,"thickness slider stays in draft")) return
                 }
                 editor.move("clock",editor.width*.6,10)

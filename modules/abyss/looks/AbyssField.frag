@@ -63,6 +63,7 @@ vec2 waveProfile(vec2 p) {
     vec4 distances=vec4(p.y,viewport.x-p.x,viewport.y-p.y,p.x);
     float nearest=min(min(distances.x,distances.y),min(distances.z,distances.w));
     vec4 weights=exp(-max(vec4(0.0),distances-nearest)/28.0);
+    weights*=step(vec4(0.001),vec4(insets.y,insets.z,insets.w,insets.x));
     vec4 arcs=vec4(p.x,viewport.x+p.y,2.0*viewport.x+viewport.y-p.x,2.0*(viewport.x+viewport.y)-p.y);
     vec2 result=vec2(0.0);
     // Only nearby sides contribute; the corner blend shares the circular field.
@@ -70,7 +71,7 @@ vec2 waveProfile(vec2 p) {
     if(weights.y>0.001) result+=waveAt(arcs.y)*weights.y;
     if(weights.z>0.001) result+=waveAt(arcs.z)*weights.z;
     if(weights.w>0.001) result+=waveAt(arcs.w)*weights.w;
-    return result/dot(weights,vec4(1.0))*smoothstep(0.0,10.0,nearest);
+    return result/max(0.000001,dot(weights,vec4(1.0)))*smoothstep(0.0,10.0,nearest);
 }
 // Local surface tension and two traveling crests are evaluated in the same
 // distance/material pass. Zero uniforms preserve the resting field exactly.
@@ -124,8 +125,14 @@ float record(float d, vec2 p, vec4 rect) {
     if(rect.z <= 0.0 || rect.w <= 0.0) return d;
     return fuse(d,roundedBox(p,rect,material.z));
 }
+vec4 workspaceRect() {
+    // A disabled Edge lies outside the render target, including its AA/rim
+    // support. Local module/body records still join the field independently.
+    vec4 edges=mix(vec4(-64.0),insets,step(vec4(0.001),insets));
+    return vec4(edges.xy,viewport.xy-edges.xy-edges.zw);
+}
 float field(vec2 p) {
-    vec4 hole=vec4(insets.xy,viewport.xy-insets.xy-insets.zw);
+    vec4 hole=workspaceRect();
     float d=-roundedBox(p,hole,material.x);
     d=record(d,p,rect0); d=record(d,p,rect1); d=record(d,p,rect2); d=record(d,p,rect3);
     d=record(d,p,rect4); d=record(d,p,rect5); d=record(d,p,rect6); d=record(d,p,rect7);
@@ -159,7 +166,7 @@ void main() {
     float depth=exp(-abs(d)*0.045);
     // Bodies occupy the workspace side of the resting Edge. Blend their
     // independent material into the same union pass at each attachment neck.
-    float bodyBlend=smoothstep(0.0,24.0,-roundedBox(p,vec4(insets.xy,viewport.xy-insets.xy-insets.zw),material.x));
+    float bodyBlend=smoothstep(0.0,24.0,-roundedBox(p,workspaceRect(),material.x));
     float opacity=mix(surface.a,contentMaterial.x,bodyBlend);
     float blurRadius=mix(effects.x,contentMaterial.y,bodyBlend);
     vec4 tint=vec4(surface.rgb/max(surface.a,0.0001)*opacity,opacity);

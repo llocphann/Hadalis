@@ -145,7 +145,9 @@ function smoothUnion(a, b, k) {
     return Math.min(a,b)-h*h*k*0.25;
 }
 function distance(x, y, width, height, insets, radius, records, softness, recordRadius) {
-    var d = -roundedDistance(x,y,{x:insets.left,y:insets.top,width:width-insets.left-insets.right,height:height-insets.top-insets.bottom},radius);
+    var left=insets.left>0 ? insets.left : -64, top=insets.top>0 ? insets.top : -64;
+    var right=insets.right>0 ? insets.right : -64, bottom=insets.bottom>0 ? insets.bottom : -64;
+    var d = -roundedDistance(x,y,{x:left,y:top,width:width-left-right,height:height-top-bottom},radius);
     for (var i=0;i<records.length;i++) {
         var rec=records[i];
         if (rec.surface.width>0 && rec.surface.height>0)

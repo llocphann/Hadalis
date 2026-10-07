@@ -67,9 +67,9 @@ function optionsForOutput(options, outputName) {
 }
 function edgeSize(options, edge) { return bounded(options?.edgeSizes?.[edge],1,.6,1.8); }
 function edgeThickness(options, edge, fallback) {
-    var inherited=bounded(fallback ?? options?.edgeThickness,16,10,40);
+    var inherited=bounded(fallback ?? options?.edgeThickness,16,0,40);
     var value=options?.edgeThicknesses?.[edge];
-    return Number.isFinite(Number(value)) && Number(value)>=0 ? bounded(value,inherited,10,40) : inherited;
+    return Number.isFinite(Number(value)) && Number(value)>=0 ? bounded(value,inherited,0,40) : inherited;
 }
 function moduleSize(placement, options) {
     var inheritedWidth=options?.edgeWidthAffectsModules?.[placement.edge]===false
@@ -140,14 +140,15 @@ function saveProfile(options, outputName, placements, gap, outputOnly, edgeSizes
 }
 function stripDepth(placements, edge, options, fontScale) {
     return placements.filter(function(p) { return p.enabled && p.edge===edge; }).reduce(function(depth,p) {
-        return Math.max(depth,32*bounded(fontScale,1,.7,2)*moduleSize(p,options)*p.depth+16);
-    },48);
+        return moduleSize(p,options)>0
+            ? Math.max(depth,32*bounded(fontScale,1,.7,2)*moduleSize(p,options)*p.depth+16) : depth;
+    },0);
 }
 function edgeInsetsForModules(placements, options, fontScale, thickness, minimum, reservation) {
     var insets = {};
     ["top","right","bottom","left"].forEach(function(edge) {
         insets[edge]=edgeThickness(options,edge,thickness);
-        var enabled = placements.filter(function(p) { return p.enabled && p.edge===edge; });
+        var enabled = placements.filter(function(p) { return p.enabled && p.edge===edge && moduleSize(p,options)>0; });
         if (!enabled.length) return;
         // Wayland reserves a whole edge. Local paint still reserves enough room
         // for its module so application windows cannot obscure that foreground.
@@ -159,7 +160,7 @@ function edgeInsetsForModules(placements, options, fontScale, thickness, minimum
 }
 function localSurfaces(records, width, height, options, fontScale, minimum) {
     return records.filter(function(p) {
-        return options?.edgeWidthAffectsModules?.[p.edge]===false || options?.singleModuleExpansion?.[p.edge]==="local"
+        return edgeThickness(options,p.edge)===0 || options?.edgeWidthAffectsModules?.[p.edge]===false || options?.singleModuleExpansion?.[p.edge]==="local"
             && records.filter(function(other) { return other.edge===p.edge; }).length===1;
     }).map(function(p) {
         // Geometry records express depth in pixels, unlike placement depth's
@@ -186,7 +187,7 @@ function geometry(placements, width, height, options, fontScale) {
         var horizontal = edge === "top" || edge === "bottom";
         var length = horizontal ? width : height;
         var margin = Math.min(34,length/12), gap = bounded(options?.gap,8,0,32);
-        var list = placements.filter(function(p) { return p.enabled && p.edge === edge; })
+        var list = placements.filter(function(p) { return p.enabled && p.edge === edge && moduleSize(p,options)>0; })
             .sort(function(a,b) { return a.position-b.position || a.id.localeCompare(b.id); });
         var sizes = list.map(function(p) {
             var measured = options?.extents?.[p.id];

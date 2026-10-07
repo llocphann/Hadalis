@@ -555,7 +555,7 @@ Item {
 
                     AbyssLabel { text:"Edge width" }
                     AbyssSlider {
-                        unit:"px";from:10;to:40;stepSize:1
+                        unit:"px";from:0;to:40;stepSize:1
                         Layout.fillWidth:true
                         value:Placement.edgeThickness(
                             root.draftOptions,root.editingEdge)
@@ -577,7 +577,7 @@ Item {
                 AbyssButton {
                     visible:!root.editingPopups;Layout.fillWidth:true
                     text:"Width affects modules";glyph:"width"
-                    description:"Scale inherited modules with this Edge, or change only the physical Edge. Custom module sizes stay independent."
+                    description:"Scale inherited modules with this Edge (0px hides them), or change only the bare Edge and retain local module bulges. Custom module sizes stay independent."
                     checkable:true;checked:root.edgeWidthAffectsModules[root.editingEdge]!==false
                     onToggled:root.edgeWidthAffectsModules=Object.assign({},root.edgeWidthAffectsModules,{[root.editingEdge]:checked})
                 }

@@ -5,6 +5,14 @@ import subprocess
 root = Path(__file__).resolve().parents[1]
 program = (root / "modules/abyss/looks/AbyssGeometry.js").read_text() + r"""
 const assert = require('node:assert/strict');
+for(const edge of ['top','right','bottom','left']) {
+ const ins={left:16,top:16,right:16,bottom:16,[edge]:0};
+ const x=edge==='left'?0.5:edge==='right'?1919.5:960;
+ const y=edge==='top'?0.5:edge==='bottom'?1199.5:600;
+ assert(distance(x,y,1920,1200,ins,34,[],24,24)>24,'disabled edge has no residual rim/shadow');
+}
+for(const [x,y] of [[.5,.5],[1919.5,.5],[.5,1199.5],[1919.5,1199.5],[960,600]])
+ assert(distance(x,y,1920,1200,{left:0,top:0,right:0,bottom:0},34,[],24,24)>24,'all-off includes corners');
 for(const owner of ['top','right','bottom','left']) {
   for(const adjacent of horizontal(owner)?['left','right']:['top','bottom']) {
     const ins=insets(16,owner,48,true);

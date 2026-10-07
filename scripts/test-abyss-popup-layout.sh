@@ -37,6 +37,7 @@ ShellRoot {
         return null
     }
     FloatingWindow {
+        color: "#111820"
         visible: true; implicitWidth: 1200; implicitHeight: 900
         AbyssPopupContent { id: popup; width:desiredWidth; height:desiredHeight }
     }

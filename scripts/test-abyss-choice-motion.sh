@@ -16,6 +16,7 @@ ShellRoot {
     id:root;property int step:0;property bool finished:false
     function check(ok,message): bool { if(ok)return true;console.error("CHOICE_FAIL",message);finished=true;return false }
     FloatingWindow {
+        color: "#111820"
         visible:true;implicitWidth:400;implicitHeight:160
         SelectionGroupButton { id:choice;width:160;height:40;buttonText:"Deep";toggled:true }
         RippleButton { id:tab;x:180;width:160;height:40;buttonText:"Settings" }

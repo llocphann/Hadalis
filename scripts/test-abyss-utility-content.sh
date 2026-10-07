@@ -30,6 +30,7 @@ ShellRoot {
         console.error("ABYSS_UTILITY_FAIL",message);root.finished=true;return false
     }
     FloatingWindow {
+        color: "#111820"
         id: window
         visible:true;implicitWidth:1200;implicitHeight:900
         AbyssUtilityContent { id: content;anchors.fill:parent }

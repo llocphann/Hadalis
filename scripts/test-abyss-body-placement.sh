@@ -55,6 +55,8 @@ ShellRoot {
     }
 
     FloatingWindow {
+
+        color: "#111820"
         visible: true
         implicitWidth: 1100
         implicitHeight: 800

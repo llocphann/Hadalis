@@ -22,6 +22,7 @@ ShellRoot {
     }
     function check(ok,message): bool { if(ok)return true;console.error("DOCK_REVEAL_FAIL",message);finished=true;return false }
     FloatingWindow {
+        color: "#111820"
         visible:true;implicitWidth:1100;implicitHeight:800
         Item {
         id:viewport;width:1100;height:800

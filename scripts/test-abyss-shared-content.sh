@@ -21,6 +21,7 @@ ShellRoot {
     property int step: 0
     readonly property var sources: ["AbyssDashboardContent","AbyssControlContent","AbyssOverviewContent","AbyssLeftContent","AbyssRightContent","AbyssNotificationsContent"]
     FloatingWindow {
+        color: "#111820"
         visible: true; implicitWidth: 1380; implicitHeight: 900
         Loader {
             id: content; anchors.fill: parent

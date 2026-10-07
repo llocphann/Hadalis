@@ -80,6 +80,7 @@ ShellRoot {
     }
     AbyssSurfaceController { id: liquid;outputName:Quickshell.screens[0].name;presentationItem:scene;popupHost:body;outputWidth:scene.width;outputHeight:scene.height }
     FloatingWindow {
+        color: "#111820"
         id: window;visible:true;implicitWidth:1200;implicitHeight:900
         Item {
             id: scene;anchors.fill:parent

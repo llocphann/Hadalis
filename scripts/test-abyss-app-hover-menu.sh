@@ -37,6 +37,7 @@ ShellRoot {
         property var toplevelsByUniqueId:({})
     }
     FloatingWindow {
+        color: "#111820"
         visible:true;implicitWidth:800;implicitHeight:600
         DockAppButton { id:dock;x:220;y:400;width:50;height:50;appListRoot:owner;appToplevel:({appId:"org.quickshell",originalAppId:"org.quickshell",uniqueId:"qa",toplevels:[]}) }
         BarTaskbarButton { id:bar;x:340;y:80;width:50;height:40;taskbarRoot:barOwner;appEntry:({appId:"org.quickshell",originalAppId:"org.quickshell",toplevels:[]}) }

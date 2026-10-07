@@ -32,6 +32,7 @@ ShellRoot {
     AbyssSurfaceController { id: first; presentationItem: scene; popupHost: body; outputWidth:scene.width;outputHeight:scene.height }
     AbyssSurfaceController { id: second; presentationItem: scene; popupHost: body; outputWidth:scene.width;outputHeight:scene.height }
     FloatingWindow {
+        color: "#111820"
         id: window
         visible:true;implicitWidth:1200;implicitHeight:900
         Item {

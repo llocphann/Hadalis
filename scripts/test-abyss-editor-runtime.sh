@@ -30,6 +30,7 @@ ShellRoot {
     }
     AbyssSurfaceController { id: liquid }
     FloatingWindow {
+        color: "#111820"
         visible: true;implicitWidth:1000;implicitHeight:700
         AbyssBar {
             id: layer;anchors.fill:parent;outputName:"A";edge:"top"

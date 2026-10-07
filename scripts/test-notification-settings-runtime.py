@@ -40,7 +40,7 @@ ShellRoot {
   return null
  }
  function editor() {return root.find(page.item,i=>i.allowedKinds?.length===1 && i.allowedKinds[0]==="notifications")}
- FloatingWindow {visible:true;implicitWidth:1100;implicitHeight:850
+ FloatingWindow {visible:true;implicitWidth:1100;implicitHeight:850;color:"#111820"
   Loader {id:page;anchors.fill:parent}
  }
  Timer {interval:150;running:!root.failed;repeat:true;onTriggered:{

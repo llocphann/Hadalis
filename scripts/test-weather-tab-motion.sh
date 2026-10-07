@@ -29,6 +29,7 @@ ShellRoot {
   console.error("WEATHER_TABS_FAIL",message);root.finished=true;return false
  }
  FloatingWindow {
+     color: "#111820"
   visible:true;implicitWidth:700;implicitHeight:500
   WeatherPopupContent { id:weather;width:390;height:root.bodyHeight }
  }

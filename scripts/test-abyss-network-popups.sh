@@ -89,6 +89,7 @@ ShellRoot {
         outputWidth: 960; outputHeight: 720
     }
     FloatingWindow {
+        color: "#111820"
         visible: true; implicitWidth: 960; implicitHeight: 720
         Item {
             width:960;height:720

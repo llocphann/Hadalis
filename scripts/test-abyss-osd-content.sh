@@ -28,6 +28,7 @@ ShellRoot {
         console.error("ABYSS_OSD_FAIL",message);Qt.quit();return false
     }
     FloatingWindow {
+        color: "#111820"
         id: window
         visible:true;implicitWidth:700;implicitHeight:300
         AbyssOsdContent { id: content;anchors.centerIn:parent;width:desiredWidth;height:desiredHeight }

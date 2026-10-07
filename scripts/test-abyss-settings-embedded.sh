@@ -43,6 +43,7 @@ ShellRoot {
         return null
     }
     FloatingWindow {
+        color: "#111820"
         visible: true; implicitWidth: 1280; implicitHeight: 900
         AbyssBodyHost {
             id: body; anchors.fill: parent

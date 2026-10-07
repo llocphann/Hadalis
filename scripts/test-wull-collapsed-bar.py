@@ -19,6 +19,7 @@ import "modules/abyss/companion/WullScene.js" as Scene
 ShellRoot {
     Window {
         id: window
+        color: "#111820"
         width: 1920; height: 1200; visible: true
         property bool allowed: true
         // Two collapsed tray entries observed on the affected live output.

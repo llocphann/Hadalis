@@ -24,6 +24,7 @@ ShellRoot {
     }
     AbyssSurfaceController { id: liquid; dialogHost: dialogHost }
     FloatingWindow {
+        color: "#111820"
         visible: true; implicitWidth: 1000; implicitHeight: 750
         AbyssBodyHost {
             id: original; anchors.fill: parent; edge: "left"; controller: liquid; identity: "owner"

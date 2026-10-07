@@ -26,6 +26,7 @@ ShellRoot {
         console.error("ABYSS_DOCK_CONTENT_FAIL",message);Qt.quit();return false
     }
     FloatingWindow {
+        color: "#111820"
         visible: true; implicitWidth: 1000; implicitHeight: 700
         AbyssDockContent { id: dock; width: 800; height: 50 }
     }

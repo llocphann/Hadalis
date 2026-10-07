@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import re, subprocess
 
 root = Path(__file__).resolve().parents[1]
 editor = (root / "modules/abyss/AbyssEdgeEditor.qml").read_text()
@@ -34,8 +35,19 @@ for needle in [
     'text:"This output only"',
     'text:"Custom size"',
     '"Join "+root.nearbyCorner+" Edge"',
-    'text:"Join nearby corner"',
 ]:
     assert needle in editor, needle
+
+# Exercise the real binding for both the unjoined and nearby-Edge states;
+# whitespace or a multiline conditional must not change this contract.
+label=re.search(r'text:\s*(root\.nearbyCorner\s*\?[\s\S]*?)\n\s*checked:',editor)
+assert label, "join action must expose a contextual text binding"
+subprocess.run(["node","-e",r'''
+const assert=require('node:assert/strict'),vm=require('node:vm');
+for(const nearbyCorner of ['', 'top', 'right', 'bottom', 'left']) {
+ const actual=vm.runInNewContext(process.argv[1],{root:{nearbyCorner}},{timeout:100});
+ assert.equal(actual,nearbyCorner ? 'Join '+nearbyCorner+' Edge' : 'Join nearby corner');
+}
+''',label.group(1)],check=True)
 
 print("abyss editor compact action density contract: ok")

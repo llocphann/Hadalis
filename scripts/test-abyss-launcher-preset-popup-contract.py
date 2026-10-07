@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import json,re,subprocess
 
 r = Path(__file__).resolve().parents[1]
 bar_module = (r / "modules/abyss/bar/AbyssBarModule.qml").read_text()
@@ -39,7 +40,32 @@ assert "implicitHeight: 34" in content
 assert "AbyssButton" not in content
 assert "import qs.services" in content
 
-assert 'Config.setNestedValue("abyss.quality", value)' in content
-assert 'updates["abyss.waves." + key]' in content
+# Run the actual QML method bodies with a recorded Config boundary. Manual
+# quality must leave Wull's policy alone and turn off automatic Abyss quality;
+# wave selection must persist every preset value without changing enablement.
+methods={}
+for method in ['applyQuality','applyWavePreset']:
+ match=re.search(r'function '+method+r'\(value\):\s*void\s*\{([\s\S]*?)\n    \}',content)
+ assert match,method
+ methods[method]=match.group(1)
+subprocess.run(['node','-e',r'''
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const methods=JSON.parse(process.argv[1]),Wave=vm.createContext({});
+vm.runInContext(fs.readFileSync(process.argv[2],'utf8').replace(/^\.pragma.*$/mg,''),Wave);
+let changes=[];
+const Config={setNestedValues:updates=>changes.push(JSON.parse(JSON.stringify(updates)))};
+const context=vm.createContext({Config,Wave});
+for(const [name,body] of Object.entries(methods))vm.runInContext('function '+name+'(value){'+body+'}',context);
+for(const quality of ['performance','balanced','quality']) {
+ changes=[];context.applyQuality(quality);
+ assert.deepEqual(changes,[{'abyss.quality':quality,'abyss.autoQuality':false}]);
+}
+for(const preset of ['calm','balanced','fluid','deep']) {
+ changes=[];context.applyWavePreset(preset);
+ const expected={'abyss.waves.preset':preset};
+ for(const [key,value] of Object.entries(Wave.presets[preset]))expected['abyss.waves.'+key]=value;
+ assert.deepEqual(changes,[expected]);assert(!('abyss.waves.enabled' in changes[0]));
+}
+''',json.dumps(methods),str(r/'modules/abyss/looks/AbyssWave.js')],check=True)
 
 print("abyss launcher mature-popup + text/icon contract: ok")

@@ -169,6 +169,9 @@ Rules:
 | `modules/background/Background.qml` | **HIGH-CONFIDENCE low-priority companion — mutate the private 64-entry wallpaper-size LRU in place.** `cacheWallpaperSize()` clones cache + key list for every successful `magick identify`; repository search finds no external/binding consumer of their identities. | Very low. Preserve lookup answers and exact LRU ordering/eviction. | None. | Low transient JS allocation reduction; smaller leverage than Wallhaven because writes are sparse and limit is 64. | 0%. |
 | `services/CompositorService.qml` + `services/NiriService.qml` | **MEASURE / PROVE FIRST — focus-only enriched-toplevel refresh.** Niri `onActiveWindowChanged` currently schedules the same full `sortToplevels()` matching path as structural window-order changes. A pure focus change should only flip `activated` in the already matched ordered array, but Quickshell may also emit `ToplevelManager.valuesChanged` on focus transitions. Instrument trigger coalescing first; only add a focus-only fast path when no structural full sort is pending. | Medium due undocumented external signal behavior. Never let the fast path supersede a pending structural sort or membership/title/app/workspace change. | None. | Potential low–medium CPU/allocation reduction on frequent focus switching if active-window events commonly arrive without foreign-toplevel structural changes. | 0% visual; event/update timing must remain equivalent. |
 
+| `services/AppCatalog.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — pre-normalize immutable catalog search metadata once when the JSON catalog loads.** Current `filteredCatalog` lowercases name/description and every tag for every catalog entry on every search-query edit. Store private normalized name/description/tag text alongside the loaded records (or in a parallel search index), then keep the exact current substring predicate and original result objects/order. | Low. Preserve null/default behavior, category-first filtering, tag semantics and exact original object identity returned to delegates. | None. | Low–Medium transient string/allocation and CPU reduction proportional to catalog size × keystrokes. | 0%. |
+| `services/AppCatalog.qml` + `modules/sidebarLeft/SoftwareView.qml` | **HIGH-CONFIDENCE reactive CPU candidate — remove the dummy `installedPackages` dependency from `filteredCatalog`.** The binding reads `const _installed = root.installedPackages` but never uses it to include/exclude/order apps. Install status is independently bound per `AppCard` through `AppCatalog.isInstalled(app.id)`, which reads the authoritative map. Installed-status refresh therefore does not need to rebuild the whole filtered model/Repeater. | Low–Medium. Prove QML dependency capture through `isInstalled()` updates every badge/action without a model reset; preserve list identity/order and empty-state behavior. | None. | Low CPU/allocation and delegate churn reduction after package-status refresh/install/remove checks. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -241,6 +244,8 @@ Rules:
 68. **Wallhaven bounded-cache in-place mutation** — remove O(K) cache/order cloning for private 64/256-entry caches.
 69. **Background wallpaper-size cache in-place mutation** — same safe class, lower leverage.
 70. **Niri focus-only enriched refresh** — MEASURE/PROVE FIRST; instrument Niri + foreign-toplevel triggers before any fast path.
+71. **AppCatalog normalized search index** — move name/description/tag lowercase work from every keystroke to catalog-load time.
+72. **AppCatalog install-status model isolation** — stop package-status refreshes from rebuilding an unchanged filtered app model.
 
 ## Explicit non-candidates from this pass
 
@@ -4066,5 +4071,170 @@ Measurement/oracle:
 
 This remains lower priority than already source-proven Niri app-id bucketing and
 private layout-sort reuse.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+
+## Research continuation — round 28
+
+Baseline: `dev` at `3dfb4305258d754e92fa4976fc3ebfe7a360956d`.
+
+This round moved from archived findings to a fresh source audit. The strongest
+new result is in AppCatalog's interactive search/reactive model path. Several
+other files were inspected and deliberately not promoted when their current
+lifecycle already bounded the work or when the only optimization would alter
+persistence semantics.
+
+Current source identities:
+
+- `services/AppCatalog.qml`:
+  `93d5902401311e3bdf68b49196e5d80a23a3ed61`;
+- `modules/sidebarLeft/SoftwareView.qml`:
+  `0ac749b6e09d09f3f2e4b326129dbda6e85c2351`;
+- `modules/sidebarLeft/widgets/CryptoWidget.qml`:
+  `c122a7d6f46ba669b0ce673205e6512e44ffa216`;
+- `modules/sidebarLeft/plugins/PluginsTab.qml`:
+  `8a0ece31a439468d2793a09669295da01b41f71a`;
+- `modules/sidebarLeft/SidebarLeftContent.qml`:
+  `06c8e5aa355b97d14d606f7d152123d29a8b36ab`.
+
+### R28.1 — AppCatalog repeats immutable string normalization on every keystroke
+
+Current search binding:
+
+```qml
+const _q = root.searchQuery.toLowerCase().trim()
+...
+result = result.filter(app =>
+    app.name.toLowerCase().includes(_q)
+    || app.description.toLowerCase().includes(_q)
+    || (app.tags ?? []).some(t => t.toLowerCase().includes(_q)))
+```
+
+The curated catalog is loaded from one JSON file and those searchable strings do
+not mutate during a normal AppCatalog session. The current implementation
+therefore recreates the same lowercase strings for every query state.
+
+Strict-lossless direction:
+
+1. when the catalog JSON loads successfully, build private normalized search
+   metadata once per entry;
+2. preserve the public `root.catalog` records unchanged;
+3. normalize with the exact current operations:
+   - `name.toLowerCase()`;
+   - `description.toLowerCase()`;
+   - each tag's `toLowerCase()`;
+4. preserve category filtering before text filtering;
+5. for matched results return the original catalog record references in their
+   original order;
+6. rebuild the private index if catalog data is ever reloaded/replaced.
+
+A parallel representation can be as small as:
+
+```text
+{id/reference, nameLower, descriptionLower, tagsLower[]}
+```
+
+or one exact-equivalent searchable structure. Do not introduce token/fuzzy
+ranking or concatenate fields if that would change the current per-field
+substring semantics.
+
+Required oracle:
+
+- empty query;
+- leading/trailing spaces;
+- mixed case;
+- name-only, description-only and tag-only matches;
+- multiple matching fields;
+- category + query combination;
+- no result;
+- duplicate names/tags;
+- exact result object identity/order;
+- catalog reload/parse failure behavior.
+
+### R28.2 — installedPackages currently forces an unchanged model to rebuild
+
+`filteredCatalog` explicitly contains:
+
+```qml
+const _installed = root.installedPackages
+```
+
+but never uses `_installed` in the filtering or ordering result. This makes
+package-status refreshes invalidate the entire filtered model anyway.
+
+SoftwareView separately binds every card's installed state through:
+
+```qml
+readonly property bool isInstalled:
+    AppCatalog.isInstalled(card.app?.id ?? "")
+```
+
+and `isInstalled()` directly reads:
+
+```qml
+root.installedPackages[appId]
+```
+
+So installed state has its own narrow reactive read at the presentation leaf.
+The app list itself is determined only by:
+
+- catalog;
+- selected category;
+- search query.
+
+Strict-lossless direction:
+
+1. remove the dummy `installedPackages` read from `filteredCatalog`;
+2. leave `AppCard.isInstalled` and `AppCatalog.isInstalled()` unchanged;
+3. leave package detection/refresh timing unchanged;
+4. verify installed-map publication still updates badges/action icons/button
+   behavior without replacing the Repeater model;
+5. preserve list identity/order across installed-status refresh.
+
+This matters after AppCatalog's package probe, manual refresh and the delayed
+post-install/remove refresh. An installed-state change should update status
+bindings, not rebuild an otherwise identical search/category projection.
+
+Required oracle:
+
+- package map empty -> populated;
+- one app toggling installed/uninstalled;
+- many statuses changing in one publication;
+- active category/search during refresh;
+- badge text/color/action icon/click behavior;
+- exact Repeater item order and no false empty-state transition;
+- explicit proof that QML dependency capture through `isInstalled()` fires on
+  `installedPackages` reassignment.
+
+### R28.3 — Fresh-source paths deliberately not promoted
+
+**CryptoWidget** is already presentation-gated and uses direct curl argv. One
+refresh writes its FileView cache after the price response and again after each
+successful coin sparkline. Coalescing those writes could reduce JSON/disk churn,
+but it changes crash/restart durability: today a completed intermediate
+sparkline is persisted immediately and each write advances the persisted cache
+timestamp. This is not a free strict-lossless cleanup. Only revisit with an
+explicit cache-durability contract.
+
+**PluginsTab** contains a 30-second Python rescan while Sidebar Left is open, but
+current Sidebar composition has the Web Apps tab/component commented out and the
+qmldir notes webapps are disabled pending quickshell-webengine rebuild. The file
+is therefore not proven live/reachable in current production composition. Do
+not claim runtime saving from changing its timer.
+
+**NewsTickerWidget** uses only an in-process 12-second headline rotation timer
+that is gated by visible + powerActive + not-paused and delegates network data to
+the shared NewsService. No new child-process or hidden-work candidate was found.
+
+**Hotspot toggles** already use direct `nmcli ... show --active` argv for the
+recurring 5-second status poll. The remaining shell on hotspot start performs a
+real ordered delete-then-create transaction with safe positional parameters, so
+it is not equivalent to the WARP direct-argv cleanup.
+
+**Idle**, **DeviceStatePersistence**, **DankSocket** and **ConflictKiller** were
+also re-read. They are event-driven/bounded; ConflictKiller already consolidates
+startup conflict detection into one deferred /proc scan. No promotion from this
+pass.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.

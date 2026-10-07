@@ -130,6 +130,9 @@ Rules:
 | `modules/bar/BarTaskbar.qml` | **HIGH-CONFIDENCE CPU candidate — precompute first-occurrence pinned rank once per rebuild.** In separate-pinned mode the running-app sort comparator performs `pinnedApps.findIndex(...)` for both operands on every comparison, then publication performs another `pinnedApps.some(...)` per running group. Build one lowercase rank Map that preserves the **first** case-insensitive occurrence, use it for comparator rank and membership, and keep the current alphabetical fallback for unpinned apps. | Low. Duplicate/case-variant pins are the key oracle: naïve Map overwrite would retain the last rank and change order. | None. | Low CPU/allocation reduction; removes repeated O(P) scans from O(R log R) comparisons and final O(R·P) membership checks. | 0%. |
 | `services/TaskbarApps.qml` | **STRICT-LOSSLESS companion cleanup — remove the dead `_identityRulesRevision` read/counter after AppSearch owns rule invalidation.** The revision is incremented on `appIdentityRulesChanged` and read into a local inside imperative `computeApps()`, but the value is never consumed; the same handler already restarts the refresh timer. | Very low. Keep the actual refresh restart and AppSearch invalidation intact. | None. | Negligible standalone; removes dead state/read and avoids presenting it as a required dependency token. | 0%. |
 
+| `services/GameMode.qml` + fullscreen consumers | **HIGH-CONFIDENCE CPU candidate — derive fullscreen state once per Niri snapshot and answer per-output queries from a cached snapshot.** Current `hasAnyFullscreenWindow`, `hasVisibleFullscreenWindow` and `hasFullscreenOnOutput()` independently rescan `NiriService.windows`, and `hasFullscreenOnOutput()` is consumed by many simultaneously resident Bar/ScreenEdge/Background/Sidebar/Abyss/WidgetPowerManager paths. Build one derived `{any, visible, activeOutputs}` snapshot from the same windows/workspaces/output semantics and make reads O(1). | Low–Medium. Preserve the current distinction where “any fullscreen” may use the single-output fallback even when workspace metadata is temporarily missing, while visible/per-output queries require a resolved active workspace. | None. | Low transient allocation + potentially meaningful CPU reduction on window/workspace/layout publications: O(C·N) repeated scans -> one O(N) derivation + O(1) consumer reads. | 0%. |
+| `services/DesktopItems.qml` + `modules/background/Background.qml` | **HIGH-CONFIDENCE RAM/allocation candidate — publish one read-only cloned item-list snapshot per items revision instead of cloning the complete item set once per output.** `DesktopItems.listItems()` clones every item into a fresh array; Background calls it from each output's desktop-item model and then filters by output. With M outputs and I items, one revision can allocate roughly M·I cloned records before filtering. Maintain a shared presentation snapshot rebuilt only when `items` changes and let Background perform only the per-output filter. | Low–Medium. Must preserve item order, invalid-record hiding, stale-output/focused-output fallback and the defensive-copy contract for callers that still require mutable results. | None. | Low–Medium transient RAM/allocation reduction on multi-output desktops; persistent RAM adds one bounded shared read snapshot but removes repeated per-output clones. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -171,6 +174,8 @@ Rules:
 37. **AppSearch identity-rule signal invalidation** — remove per-window JSON serialization after config-reload/replacement parity is proven.
 38. **BarTaskbar first-occurrence pinned-rank Map** — eliminate comparator-time pinned-list scans while preserving duplicate/case ordering.
 39. **TaskbarApps dead identity revision cleanup** — fold into #37; do not treat as an independent performance project.
+40. **GameMode fullscreen derived snapshot** — collapse repeated per-consumer Niri fullscreen scans while preserving any/visible/output fallback distinctions.
+41. **DesktopItems shared presentation snapshot** — stop cloning the entire item set once per output on every items revision.
 
 ## Explicit non-candidates from this pass
 
@@ -2466,5 +2471,169 @@ Required oracle:
 - alphabetical fallback among unpinned groups;
 - focused/running flags and separator placement;
 - exact final item identity/order.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+
+## Research continuation — round 20
+
+Baseline: `dev` at `43b5ab1a6417d7f566822c6e6d731b3eed3b5cf6`.
+
+This round repairs a post-consolidation ownership gap. Round 13 said several
+findings were “already owned” by the then-active cross-repo handoff. That handoff
+is now archived by design, so high-confidence findings that still match current
+source must be promoted into this canonical ledger rather than remaining only in
+history.
+
+Current source identities:
+
+- `services/GameMode.qml`: `692f3e200b7c46835f44f152c88f231e2d0bd2b5`;
+- `services/DesktopItems.qml`: `415be57a15cfe34f373c8d2290e481bf978643ae`;
+- `modules/background/Background.qml`: `29bd40236ba9579077d361fb1012d4f994ef4a3a`;
+- `modules/background/desktopItems/DesktopItemDelegate.qml`: `88000b9820fb3b68cee5a007cec6a698b50948ba`.
+
+### R20.1 — GameMode recomputes the same fullscreen facts for many consumers
+
+Current GameMode exposes three related reads over the same published Niri state:
+
+- `hasAnyFullscreenWindow`;
+- `hasVisibleFullscreenWindow`;
+- `hasFullscreenOnOutput(outputName)`.
+
+The first two are derived properties/functions in the singleton itself, while
+`hasFullscreenOnOutput()` is called from many resident consumers. Current
+repository search finds consumers in Bar, Screen Edges, Screen Corners, classic
+Background, Waffle Background, SidebarHost, Abyss Perimeter,
+WidgetPowerManager and family work-area guards.
+
+Each consumer can therefore rescan the same `NiriService.windows` snapshot after
+one windows/workspaces/outputs publication.
+
+Strict-lossless derived state:
+
+```text
+fullscreenSnapshot = {
+    any: bool,
+    visible: bool,
+    activeOutputs: { outputName: true, ... }
+}
+```
+
+Build it once from the same authoritative inputs already used today.
+
+For each window:
+
+1. resolve its workspace from `NiriService.workspaces[workspace_id]`;
+2. evaluate fullscreen with the existing fullscreen helper logic;
+3. update `any` using the exact current fallback rules;
+4. only for a resolved active workspace, update `visible`;
+5. for a resolved active workspace with a known output, set that output in
+   `activeOutputs`.
+
+Then:
+
+- `hasAnyFullscreenWindow` reads `snapshot.any`;
+- `hasVisibleFullscreenWindow` reads `snapshot.visible`;
+- `hasFullscreenOnOutput("")` returns `snapshot.visible`, matching current
+  empty-name semantics;
+- `hasFullscreenOnOutput(name)` becomes an O(1) output lookup.
+
+The critical semantic boundary is missing workspace metadata. Current “any”
+fullscreen detection can still become true through the service's single-output
+fallback even when the workspace record is temporarily unavailable. Visible and
+per-output state do **not** inherit that fallback: they require a resolved active
+workspace. The snapshot must preserve that asymmetry exactly.
+
+Do not merge focused-window auto-detection into this patch. GameMode's focused
+window path handles ordering/freshness details separately; this candidate only
+removes duplicate secondary scans.
+
+Required oracle:
+
+- zero outputs/windows;
+- one output with temporarily missing workspace metadata;
+- fullscreen on inactive workspace;
+- fullscreen on active workspace;
+- two outputs with one or both fullscreen;
+- direct `is_fullscreen` path;
+- size-heuristic path and ±2 px tolerance;
+- layout update before workspace update;
+- output geometry change;
+- active/inactive workspace transition;
+- fullscreen exit;
+- empty and named output query parity;
+- complete boolean parity for every existing consumer after each source update.
+
+Structural saving is one O(N) derivation per relevant source snapshot instead of
+O(C·N) scans for C fullscreen-query consumers.
+
+### R20.2 — DesktopItems clones the full model once per output
+
+`DesktopItems.items` is stored as an id->record object. Current `listItems()`
+returns a fresh array of fresh shallow clones:
+
+```qml
+return Object.keys(root.items).map(itemId =>
+    Object.assign({ id: itemId }, root.items[itemId]))
+```
+
+Classic Background renders one desktop-item model per output. Its per-output
+helper begins from `DesktopItems.listItems()` and only then filters the result to
+that output. Therefore every output independently clones the entire item set.
+
+For M outputs and I items, a single items revision can create approximately
+M·I presentation record clones before output filtering. The repeated full-list
+copy is unnecessary because current DesktopItemDelegate does not mutate its
+`itemData` object directly; writes go back through explicit service operations
+such as update/remove/repair and drag persistence.
+
+Strict-lossless direction:
+
+1. let DesktopItems own one derived read snapshot:
+   `[{id, ...record}, ...]`;
+2. rebuild it only when `root.items` changes;
+3. let Background consume that snapshot and perform only its existing
+   per-output/fallback filter;
+4. retain `listItems()` as a defensive-copy API if any imperative caller relies
+   on receiving independent mutable records;
+5. do not expose invalid storage-only records through the shared presentation
+   snapshot.
+
+A later service-level output-bucket cache is possible but unnecessary for the
+first strict-lossless step because it would pull screen/focus invalidation into
+the persistence service.
+
+Required oracle:
+
+- zero/one/many items;
+- one/multiple outputs;
+- create/update/remove/undo;
+- rename/lock/layer changes;
+- drag persistence;
+- cross-output move;
+- saved output that is no longer connected;
+- focused-output fallback for orphaned items;
+- invalid-record preservation remains storage-only;
+- exact Repeater item order and identity after every `items` reassignment;
+- proof that current presentation delegates never mutate shared snapshot records.
+
+### R20.3 — DesktopItems grid-candidate sort remains MEASURE-FIRST
+
+The archived DesktopItems research also noted that `arrangePosition()` builds
+and sorts all grid candidates by squared distance before searching for the first
+collision-free cell. That path is not promoted here.
+
+It runs on bounded interaction/layout events rather than pointer-frame updates,
+and the candidate count is constrained by the desktop-item pitch. Replacing the
+sort with a custom nearest-cell traversal could change tie/order behavior for
+small practical gain. Keep it MEASURE-FIRST until profiling shows arrangement
+CPU matters on realistic grids.
+
+### R20.4 — Canonical ownership rule after consolidation
+
+Any older section that says a finding is “owned by the cross-repo handoff” is now
+historical wording only. `docs/archive/optimization/CROSS_REPO_OPTIMIZATION_HANDOFF.md`
+is evidence/history, not an active owner. A still-valid candidate must appear in
+this canonical audit to be considered active research.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.

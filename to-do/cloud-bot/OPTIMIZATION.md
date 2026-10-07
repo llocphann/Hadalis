@@ -1,12 +1,14 @@
 # Cloud Bot — continuous strict-lossless optimization research
 
-Canonical active objective migrated from `agent/WORK.md`. Historical checkpoint: [`../../docs/archive/AUTONOMOUS_WORK_BEFORE_TODO_2026-09-30.md`](../../docs/archive/AUTONOMOUS_WORK_BEFORE_TODO_2026-09-30.md). **Always re-fetch current `dev` and read the latest tail of [`../../docs/CROSS_REPO_OPTIMIZATION_HANDOFF.md`](../../docs/CROSS_REPO_OPTIMIZATION_HANDOFF.md); never trust an old round number.**
+Active documentation is centralized at [`../../docs/optimization/README.md`](../../docs/optimization/README.md). This task file is routing/checklist state only; do not duplicate the research ledger here.
+
+Canonical active objective migrated from `agent/WORK.md`. Historical checkpoint: [`../../docs/archive/AUTONOMOUS_WORK_BEFORE_TODO_2026-09-30.md`](../../docs/archive/AUTONOMOUS_WORK_BEFORE_TODO_2026-09-30.md). **Always re-fetch current `dev` and read the latest tail of [`../../docs/optimization/STRICT_LOSSLESS_GPU_RAM_CPU_AUDIT.md`](../../docs/optimization/STRICT_LOSSLESS_GPU_RAM_CPU_AUDIT.md); never trust an old round number.**
 
 - [ ] Continue evidence-driven, strict-lossless **research only** across rounds; do not change runtime QML/native/services/product behavior absent explicit maintainer authorization.
 - [ ] Audit current `dev` deltas and search earlier research for duplicate/ALREADY/CLOSED/SUPERSEDED candidates before promoting a new finding.
-- [ ] At consolidation, Round 60 documented the guarded X-axis subset in `modules/dashboard/DashboardLayout.js` (§74.1). On continuation, read the actual newest handoff and diversify into a distinct high-value hot path.
+- [ ] At consolidation, Round 60 documented the guarded X-axis subset in `modules/dashboard/DashboardLayout.js` (§74.1). On continuation, read the actual newest canonical audit and diversify into a distinct high-value hot path.
 - [ ] Round 59 §73.2 active-only responsive overlap scan was HIGH CONFIDENCE **pending malformed-state oracle**; do not silently promote it to CONFIRMED.
-- [ ] Record proven findings and exact constraints in `docs/CROSS_REPO_OPTIMIZATION_HANDOFF.md`. A completed round must CONTINUE, not DONE. Never fabricate whole-Hadalis speedup percentages.
+- [ ] Record proven findings and exact constraints only in `docs/optimization/STRICT_LOSSLESS_GPU_RAM_CPU_AUDIT.md`. A completed round must CONTINUE, not DONE. Never fabricate whole-Hadalis speedup percentages.
 - [ ] For necessary local validation, run focused repository tests and the canonical maintainer validator against an exact source SHA; record bounded evidence and keep environment-owned desktop acceptance separate.
 
 ## Maintainer-scoped Abyss audit — 2026-09-30
@@ -37,7 +39,7 @@ research only. Existing technical notes are hypotheses, not specifications.
   input/focus, hotplug, fullscreen, lock/suspend and fractional scaling.
 
 Technical findings and the acceptance boundary:
-[`STRICT_LOSSLESS_OPTIMIZATION_AUDIT_2026-09-30.md`](../../docs/abyss/STRICT_LOSSLESS_OPTIMIZATION_AUDIT_2026-09-30.md).
+[`STRICT_LOSSLESS_OPTIMIZATION_AUDIT_2026-09-30.md`](../../docs/optimization/ABYSS_STRICT_LOSSLESS_AUDIT_2026-09-30.md).
 The general research program remains active; this scoped implementation is not
 a release-readiness declaration.
 
@@ -95,7 +97,7 @@ development and unrelated historical evidence are preserved.
   regression and source milestone: `e6d6f9083`.
 
 Product changes and retained evidence:
-[`PRODUCT_REPAIR_LOSSLESS_2026-10-04.md`](../../docs/abyss/PRODUCT_REPAIR_LOSSLESS_2026-10-04.md).
+[`PRODUCT_REPAIR_LOSSLESS_2026-10-04.md`](../../docs/archive/optimization/PRODUCT_REPAIR_LOSSLESS_2026-10-04.md).
 
 ## Maintainer connected popup continuation — 2026-10-04
 

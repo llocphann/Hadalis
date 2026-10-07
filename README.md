@@ -102,8 +102,7 @@ future perimeter/connected-surface optimization, read
 `docs/IRIS_INTEGRATION_COMPLETE.md`. New work should focus on optimization,
 bug fixing and refinement rather than reopening the migration.
 
-A ready-to-use fresh-chat prompt for that phase is stored at
-`docs/NEXT_CHAT_OPTIMIZATION_PROMPT.md`.
+Optimization research is centralized under `docs/optimization/`; the active task entry is `to-do/cloud-bot/OPTIMIZATION.md`. Superseded chat handoffs are retained only under `docs/archive/optimization/`.
 
 **Fullscreen Bar lifecycle lock (maintainer-approved 2026-09-19):**
 

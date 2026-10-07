@@ -4,6 +4,8 @@ Audit baseline: `dev` at `1155e37093781a27e64a9caa100a52ac1ab60d15`.
 
 Scope: find remaining optimization opportunities that are either strict-lossless or can be held to a measured visual deviation below 1%. This is research only. It does not authorize runtime changes by itself.
 
+**Canonical status:** this is the sole active optimization research ledger. See [the optimization index](README.md). Superseded handoffs and dated implementation journals live under [`docs/archive/optimization/`](../archive/optimization/); do not append new research to them.
+
 Rules:
 
 - Do not claim whole-Hadalis CPU/GPU/RAM/FPS percentages without before/after measurement.
@@ -108,6 +110,8 @@ Rules:
 
 | `services/NiriService.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — reuse the already-sorted workspace projection on activation/urgency events.** `handleWorkspaceActivated()` and `handleWorkspaceUrgencyChanged()` rebuild `root.workspaces`, then call `Object.values(updatedWorkspaces).sort((a,b) => a.idx-b.idx)` even though those event types do not change workspace membership or `idx`. Build the same updated workspace objects/map, then project them through the existing `allWorkspaces` order; fold focused-index discovery into that pass. Keep full sort only for authoritative `WorkspacesChanged`/topology events. | Low–Medium. Must preserve stable equal-`idx` tie order, per-record object identity choices, malformed/missing workspace behavior, property-notify timing and current-output quirks. | None directly. | Low transient allocation reduction; persistent state unchanged. CPU gain scales with workspace-switch frequency and workspace count by removing an O(W log W) sort plus a temporary `Object.values` array on activation/urgency. | 0%. |
 
+| `services/NiriService.qml` + AltSwitcher consumers | **ORACLE-REQUIRED CPU/allocation candidate — suppress provably no-op MRU republish on duplicate focus events.** `handleWindowFocusChanged()` always constructs and assigns a fresh `mruWindowIds` array for every non-null focus event. When the focused id is already first and has no duplicate later in the array, the value produced by the current filter+unshift algorithm is element-for-element identical, yet the fresh `var` assignment can notify `onMruWindowIdsChanged` consumers and trigger AltSwitcher snapshot rebuild work. Guard only this canonical no-op case; keep all window/workspace focus normalization and duplicate cleanup unchanged. | Medium until notification parity is proven. The value is identical, but current consumers can observe the change signal itself; repeated same-id focus events must not be an intentional refresh channel. | None. | Low transient allocation reduction plus avoided AltSwitcher rebuild allocation/CPU on duplicate focus events; persistent RAM unchanged. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -135,6 +139,7 @@ Rules:
 23. **MPRIS expired grace pruning** — low-risk cumulative session cleanup; fold pruning into existing lifecycle updates with no timer.
 24. **TimerService consumer-gated stopwatch presentation refresh** — only after all consumers are enumerated.
 25. **Niri workspace ordered-projection reuse** — remove redundant all-workspace re-sorts from activation/urgency events while preserving record identity and equal-index ordering.
+26. **Niri MRU no-op publish suppression** — only after proving duplicate same-id focus events do not intentionally use `mruWindowIdsChanged` as a refresh signal.
 
 ## Explicit non-candidates from this pass
 
@@ -1566,5 +1571,84 @@ of a large universal speedup.
 - **Optimize `MinimizedWindows` filter/sort selectors in the same round:**
   those paths are explicit minimize/restore actions and lower priority than the
   recurring workspace-activation event path.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+
+## Research continuation — round 14
+
+Baseline: `dev` at `33b9afaab5878defe6108fcf72587d9d8d5f9c5c`.
+
+This round also consolidates all active optimization documentation under
+`docs/optimization/`; superseded handoffs and completed/scoped journals move to
+`docs/archive/optimization/`. Future optimization findings are written only to
+this canonical audit.
+
+Current source identities:
+
+- `services/NiriService.qml`: `4c8194493fd380bf0ad8c51bc62990ad0c232738`;
+- `modules/altSwitcher/AltSwitcher.qml`: `313928e4d55afca9ff188d9323f7de959f68f3ea`;
+- `modules/altSwitcher/AltSwitcherNoVisual.qml`: `d362feb228a20227c726a85aac24382a505a71da`;
+- `modules/waffle/altSwitcher/WaffleAltSwitcher.qml`: `00a169d62a31d4b3ae12aba6d6ab85f995b9fbd9`.
+
+### R14.1 — MRU value can be republished even when its order is unchanged
+
+Current `handleWindowFocusChanged()` rebuilds a fresh MRU array for every
+non-null focus id. If that id is already at index 0 and does not occur later,
+the produced array is element-for-element identical to the current value.
+
+Qt QML `var` properties use reassignment as the change-notification boundary,
+so assigning the fresh JS array can wake consumers even though the logical MRU
+order did not change. The ii AltSwitcher explicitly listens to
+`onMruWindowIdsChanged` in its closed/no-visual event-driven path and schedules
+snapshot reconstruction; visual/Waffle switcher paths consume the same MRU
+state when building their item order.
+
+Strict-lossless direction:
+
+1. keep the rest of `handleWindowFocusChanged()` unchanged;
+2. prove the current MRU is already the exact output of the existing algorithm:
+   index 0 equals the focused id and no later duplicate exists;
+3. only in that exact case skip MRU array construction/reassignment;
+4. if a later duplicate exists, retain the existing rebuild so duplicate cleanup
+   stays identical;
+5. do not skip window-focus normalization or workspace active-window
+   reconciliation in the same patch.
+
+A bounded guard can scan for a later duplicate. Worst-case inspection remains
+O(N), but the no-op case avoids a new array, one public property publication and
+any downstream rebuild caused solely by that publication.
+
+### R14.2 — Notification parity is the blocker
+
+Skipping a property publication changes signal count even if the value is
+identical. The candidate is therefore not CONFIRMED until an oracle proves a
+duplicate same-id `WindowFocusChanged` event carries no semantic refresh duty
+that is delivered solely by the MRU signal.
+
+Required oracle:
+
+- first focus with empty MRU;
+- A -> B -> A ordering;
+- duplicate A -> A with canonical MRU;
+- malformed MRU containing duplicate A later in the list;
+- null/undefined focus id;
+- clean and pending window batches;
+- stale/missing workspace active-window metadata;
+- ii visual AltSwitcher closed/open;
+- ii no-visual mode and its event-driven snapshot refresh;
+- Waffle AltSwitcher;
+- Game Mode gating;
+- exact MRU/item ordering and signal/rebuild counts.
+
+Trace Niri as well: if duplicate same-id focus events are rare, retain this as a
+correct micro-candidate but rank it below Round 13 and higher-leverage
+render/process work.
+
+### R14.3 — Close-event no-op is adjacent but separate
+
+`handleWindowClosed()` similarly republishes a filtered MRU array even when the
+closed id was never present. Do not bundle that path until R14.1 establishes the
+notification contract; then extend the same oracle deliberately.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.

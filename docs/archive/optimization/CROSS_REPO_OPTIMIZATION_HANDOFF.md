@@ -1,5 +1,7 @@
 # Cross-repo optimization handoff
 
+> **ARCHIVED / SUPERSEDED — 2026-10-07.** Active optimization research now lives in [`docs/optimization/STRICT_LOSSLESS_GPU_RAM_CPU_AUDIT.md`](../../optimization/STRICT_LOSSLESS_GPU_RAM_CPU_AUDIT.md). Preserve this file as historical research/evidence; do not append new rounds here.
+
 ## 2026-10-06 — Maintainer-scoped Screen Edge analytic renderer
 
 The maintainer explicitly prioritized Screen Edges before Wull and authorized

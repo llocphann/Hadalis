@@ -17,7 +17,7 @@ ChatGPT is the only reasoning agent. Local components are deterministic transpor
 - GitHub is the authoritative source of truth.
 - Research only unless the maintainer explicitly authorizes implementation.
 - Do not modify runtime QML/native/service/product code as part of optimization research.
-- Proven research findings are recorded in `docs/CROSS_REPO_OPTIMIZATION_HANDOFF.md`.
+- Proven research findings are recorded in `docs/optimization/STRICT_LOSSLESS_GPU_RAM_CPU_AUDIT.md`.
 - Re-fetch current `dev` HEAD every turn and before every write.
 - Read the newest handoff tail and audit intervening commits.
 - Search the handoff before promoting candidates to avoid duplicates, ALREADY, CLOSED, or SUPERSEDED findings.

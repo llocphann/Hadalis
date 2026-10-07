@@ -693,7 +693,7 @@ Use this section as a routing index.
 - `docs/IPC.md`
 - `docs/PACKAGES.md`
 - `docs/LIMITATIONS.md`
-- `docs/OPTIMIZATION.md`
+- `docs/optimization/README.md`
 
 ### Installer and distribution surface
 

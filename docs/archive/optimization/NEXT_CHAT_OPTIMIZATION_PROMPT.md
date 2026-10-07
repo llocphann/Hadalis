@@ -1,3 +1,5 @@
+> **ARCHIVED / SUPERSEDED — 2026-10-07.** Active optimization routing is now `to-do/cloud-bot/OPTIMIZATION.md` plus `docs/optimization/README.md`. This dated prompt is retained only for history.
+
 # Prompt — Next Chat: Optimization / Bug Fix / Refinement
 
 Continue work on the GitHub repository `llocphann/Hadalis`, branch `dev`.

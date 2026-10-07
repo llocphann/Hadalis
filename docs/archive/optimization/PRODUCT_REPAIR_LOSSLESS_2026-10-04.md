@@ -1,5 +1,7 @@
 # Abyss widget editing, Settings, Waves and lossless Wull — 2026-10-04
 
+> **ARCHIVED IMPLEMENTATION JOURNAL — 2026-10-07.** The scoped repair/lossless work recorded here is historical. Any still-open product acceptance/work is routed through current `to-do/` state and retained evidence, not this document.
+
 The maintainer requested four product changes: connect desktop Edit Widget
 controls to Abyss and avoid nearby widgets; reconcile the forty reported local
 validation failures and duplicate Settings tabs; begin lossless optimization;
@@ -85,7 +87,7 @@ retained; a new canonical run verifies the integrated source independently.
 
 Original frozen source: `901e98864157211dd8a857e320efc5c1ac041d20` —
 372 PASS, 40 FAIL, 2 SKIP. The
-[original summary](../wull-visual/abyss-water-20261004/canonical-summary.txt)
+[original summary](../../wull-visual/abyss-water-20261004/canonical-summary.txt)
 and its evidence remain unchanged.
 
 | Original failures | Disposition |
@@ -112,18 +114,18 @@ The first clean canonical run at
 failure was an anti-flashbang fixture that assumed the owner's entire output
 stayed white; the controlled real-Qt-pixel fixture repair is `e7952384f`.
 The failed run remains recorded in its
-[summary](../evidence/abyss-product/20261004-151e86a5b/canonical-summary.txt)
-and [validation record](../evidence/abyss-product/20261004-151e86a5b/canonical-validation.json).
+[summary](../../evidence/abyss-product/20261004-151e86a5b/canonical-summary.txt)
+and [validation record](../../evidence/abyss-product/20261004-151e86a5b/canonical-validation.json).
 
 A fresh clean canonical run at
 `e6d6f9083be1e251c958e7c9fa6228fcd60bc9c7` includes the brightness fixture
 repair, both notification repairs and concurrent Wull development.
 It completed with **415 PASS, 0 FAIL, 11 SKIP**, including strict Qt 6.11.2
 parsing PASS. The exact result is retained in the
-[summary](../evidence/abyss-product/20261004-e6d6f9083/canonical-summary.txt),
-[validation record](../evidence/abyss-product/20261004-e6d6f9083/canonical-validation.json)
-and [complete log](../evidence/abyss-product/20261004-e6d6f9083/canonical-run.txt).
-The [forty-failure reconciliation](../evidence/abyss-product/20261004-e6d6f9083/original-failure-reconciliation.json)
+[summary](../../evidence/abyss-product/20261004-e6d6f9083/canonical-summary.txt),
+[validation record](../../evidence/abyss-product/20261004-e6d6f9083/canonical-validation.json)
+and [complete log](../../evidence/abyss-product/20261004-e6d6f9083/canonical-run.txt).
+The [forty-failure reconciliation](../../evidence/abyss-product/20261004-e6d6f9083/original-failure-reconciliation.json)
 records every active PASS and every explicit phase/manual exclusion.
 Nix remains deferred/non-blocking. This PASS applies to the printed source;
 later concurrent Wull changes and subsequent product requests require their
@@ -135,22 +137,22 @@ remaining-time resume, arriving notifications, delegate destruction, history,
 critical/persistent policy and transient expiry. The Settings fixture covers
 the actual free-position editor, per-output storage/reset, timeout preference
 and family switching. Successful exact-SHA canonical output is retained in the
-[focused manifest](../evidence/abyss-product/20261004-e6d6f9083/canonical-focused-outputs.json).
+[focused manifest](../../evidence/abyss-product/20261004-e6d6f9083/canonical-focused-outputs.json).
 
 Focused native editor interaction passed four edges, narrow-output reachability,
 manager/grid callbacks, input release and family/output lifecycle. Its captured
 images use an isolated fixture theme and do not represent the owner's installed
 desktop palette. The four captures are
-[bottom](../evidence/abyss-product/20261004-151e86a5b/bottom.png),
-[top](../evidence/abyss-product/20261004-151e86a5b/top.png),
-[left](../evidence/abyss-product/20261004-151e86a5b/left.png) and
-[right](../evidence/abyss-product/20261004-151e86a5b/right.png).
+[bottom](../../evidence/abyss-product/20261004-151e86a5b/bottom.png),
+[top](../../evidence/abyss-product/20261004-151e86a5b/top.png),
+[left](../../evidence/abyss-product/20261004-151e86a5b/left.png) and
+[right](../../evidence/abyss-product/20261004-151e86a5b/right.png).
 Full owner-session acceptance for multi-output, hotplug,
 suspend, scaling, fullscreen and input/focus remains **HOLD / NOT_COMPLETE**.
 
 No automation files, jobs, state, profiles or services were changed or controlled.
 Concurrent Wull work and unrelated MEGA evidence were preserved. The active
-entry point remains [to-do/cloud-bot/OPTIMIZATION.md](../../to-do/cloud-bot/OPTIMIZATION.md).
+entry point remains [to-do/cloud-bot/OPTIMIZATION.md](../../../to-do/cloud-bot/OPTIMIZATION.md).
 
 
 ## Maintainer stop checkpoint — 2026-10-05
@@ -163,7 +165,7 @@ through `069d148f799f795281f3d37614a49e5fe6893a71`. Its new canonical run is pen
 
 The external Dashboard editor is **NOT_COMPLETE**. Its fourteen-file draft,
 exact base/file hashes, partial native passes and failed composed fixture are
-preserved in the [stop checkpoint](../evidence/abyss-product/20261005-dashboard-editor-draft/README.md).
+preserved in the [stop checkpoint](../../evidence/abyss-product/20261005-dashboard-editor-draft/README.md).
 The draft was archived out of the runtime source tree. Resume only after a new
 maintainer instruction, refetch/reconcile current `dev`, finish field/narrow
 input/lifecycle and rendering checks, and validate a new committed SHA.

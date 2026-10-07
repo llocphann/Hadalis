@@ -4,6 +4,25 @@ from pathlib import Path
 import os, re, shutil, signal, subprocess, time
 
 
+def run_qs(folder: Path, env: dict, timeout: int = 25):
+    """Bound and clean up the test's whole process group, retaining diagnostics."""
+    command = ["dbus-run-session", "--", "qs", "-p", str(folder), "--no-color"]
+    log = folder / "native-test-qs.log"
+    with log.open("wb") as stream:
+        process = subprocess.Popen(command, env=env, stdout=stream,
+                                   stderr=subprocess.STDOUT, start_new_session=True)
+    try:
+        code = process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        if process.poll() is None:
+            os.killpg(process.pid, signal.SIGTERM)
+            try: process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                os.killpg(process.pid, signal.SIGKILL); process.wait(timeout=3)
+        code = 124
+    return subprocess.CompletedProcess(command, code, log.read_text(errors="replace"), "")
+
+
 @contextmanager
 def private_wayland(folder: Path):
     niri = shutil.which("niri")

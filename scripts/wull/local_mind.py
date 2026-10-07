@@ -246,6 +246,20 @@ def clear_chat_history():
     except history_store.HistoryError:raise MindError('history_unavailable','Wull chat history is unavailable')
     return {'cleared':True}
 
+def append_chat_history(options):
+    """Persist a reply produced by the shared AI service; no inference here."""
+    prompt=options.get('prompt')
+    reply=options.get('reply')
+    if not isinstance(prompt,str) or not isinstance(reply,str) or not prompt.strip() or not reply.strip():
+        raise MindError('invalid_request','A chat exchange needs two text messages')
+    if len(prompt)>1200 or len(reply)>6000:
+        raise MindError('request_too_large','Chat exchange exceeded the history limit')
+    try:
+        user_id,assistant_id=history_store.append_exchange(prompt,reply,str(options.get('model',''))[:240])
+    except history_store.HistoryError:
+        raise MindError('history_unavailable','Wull chat history could not be saved')
+    return {'userMessageId':user_id,'assistantMessageId':assistant_id}
+
 def chat(options):
     base=endpoint(options.get('endpoint','http://127.0.0.1:11434')) if not options.get('modelPath') else ''
     model=str(options.get('model','')).strip()
@@ -323,6 +337,7 @@ def dispatch(payload):
     if action=='chat':return chat(payload)
     if action=='history':return chat_history(payload)
     if action=='history_clear':return clear_chat_history()
+    if action=='history_append':return append_chat_history(payload)
     if action=='check_in':return check_in(payload)
     raise MindError('invalid_action','Unsupported Wull request')
 

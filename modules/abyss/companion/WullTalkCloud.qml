@@ -385,7 +385,7 @@ Item {
                                 }
                                 StyledText {
                                     id: effortLabel
-                                    text: WullMind.thinkingEffortLabel
+                                    text: WullMind.thinkingEffortShortLabel
                                     elide: Text.ElideRight
                                     font.pixelSize: Appearance.font.pixelSize.smallest
                                 }

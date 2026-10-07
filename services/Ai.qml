@@ -9,6 +9,7 @@ import Quickshell.Wayland
 import QtQuick
 import qs.services.ai
 import qs.services.deferred
+import "ai/AiReasoning.js" as Reasoning
 
 /**
  * Multi-provider LLM chat orchestration.
@@ -29,6 +30,7 @@ Singleton {
 
     property Component aiMessageComponent: AiMessageData {}
     property Component aiModelComponent: AiModel {}
+    property Component textSessionComponent: AiTextSession { ai: root }
     property Component geminiApiStrategy: GeminiApiStrategy {}
     property Component openaiApiStrategy: OpenAiApiStrategy {}
     property Component openaiResponseApiStrategy: OpenAiResponseApiStrategy {}
@@ -38,6 +40,43 @@ Singleton {
     readonly property string apiKeyEnvVarName: "API_KEY"
 
     signal responseFinished()
+
+    function createTextSession(owner): var {
+        root.ensureInitialized()
+        return textSessionComponent.createObject(owner)
+    }
+    function createStrategy(owner, format): var {
+        const component = ({openai:openaiApiStrategy, gguf:openaiApiStrategy,
+            "openai-response":openaiResponseApiStrategy, gemini:geminiApiStrategy,
+            mistral:mistralApiStrategy, anthropic:anthropicApiStrategy})[format]
+        return component ? component.createObject(owner) : null
+    }
+    function supportsThinking(model): bool { return Reasoning.supported(model) }
+    function buildChatRequest(model, strategy, messages, prompt, temperature, tools, filePath, effort = "off"): var {
+        return Reasoning.apply(model, strategy.buildRequestData(model, messages, prompt,
+            temperature, tools, filePath), effort)
+    }
+    function localRequestForModel(model, data, effort = "off"): var {
+        return {modelPath:model.gguf_path, runtimePath:model.runtime_path,
+            messages:data.messages, thinkingEffort:root.supportsThinking(model) ? effort : "off"}
+    }
+    function textTransport(model, strategy, data, effort = "off"): var {
+        if (model.api_format === "gguf") return {
+            command:["/usr/bin/python3", Quickshell.shellPath("scripts/wull/gguf_runtime.py")],
+            environment:({}), payload:root.localRequestForModel(model, data, effort)}
+        const endpoint = String(strategy.buildEndpoint(model))
+        const queryKey = endpoint.endsWith("${API_KEY}")
+        const environment = {AI_ENDPOINT:queryKey ? endpoint.slice(0,-10) : endpoint}
+        if (model.requires_key) environment[root.apiKeyEnvVarName] = root.credentialForModel(model)
+        const status = String.fromCharCode(37) + "{http_code}"
+        const auth = root.authorizationHeaderForModel(model, strategy)
+        const url = queryKey ? '"${AI_ENDPOINT}${API_KEY}"' : '"${AI_ENDPOINT}"'
+        return {command:["/usr/bin/bash", "-c",
+            'IFS= read -r ai_payload; printf \'%s\' "$ai_payload" | curl -sS --no-buffer --max-time 75'
+            + ' --url ' + url + ' -H \'Content-Type: application/json\''
+            + (auth ? " " + auth : "") + " --data @- --write-out '\\n__INIR_HTTP_STATUS__:"+status+"\\n'"],
+            environment:environment, payload:data}
+    }
 
     IpcHandler {
         target: "ai"
@@ -776,12 +815,12 @@ Singleton {
     }
 
     property var apiStrategies: {
-        "openai": openaiApiStrategy.createObject(this),
-        "gguf": openaiApiStrategy.createObject(this),
-        "openai-response": openaiResponseApiStrategy.createObject(this),
-        "gemini": geminiApiStrategy.createObject(this),
-        "mistral": mistralApiStrategy.createObject(this),
-        "anthropic": anthropicApiStrategy.createObject(this),
+        "openai": openaiApiStrategy.createObject(root),
+        "gguf": openaiApiStrategy.createObject(root),
+        "openai-response": openaiResponseApiStrategy.createObject(root),
+        "gemini": geminiApiStrategy.createObject(root),
+        "mistral": mistralApiStrategy.createObject(root),
+        "anthropic": anthropicApiStrategy.createObject(root),
     }
     property ApiStrategy currentApiStrategy: apiStrategies[models[currentModelId]?.api_format || "openai"]
 
@@ -797,7 +836,8 @@ Singleton {
                 local:true,free:true,provider_id:"local-gguf",api_format:"gguf",gguf_path:found.path,
                 runtime_path:LocalModels.runtimePath,endpoint:"",input_modalities:["text"],context_tokens:2048,
                 max_output_tokens:180,catalog_source:found.source,catalog_status:LocalModels.runtimePath ? "available" : "runtime-unavailable",
-                capabilities:{chat:"supported",vision:"unsupported",toolCalling:"unsupported",webSearch:"unsupported",structuredOutput:"supported"}})
+                capabilities:{chat:"supported",vision:"unsupported",toolCalling:"unsupported",webSearch:"unsupported",structuredOutput:"supported",
+                    reasoning:found.thinking===true ? "supported" : "unsupported"}})
             root._loadedLocalModelIds.push(found.id)
         }
         root.modelList=Object.keys(root.models);root._syncCurrentModel()
@@ -984,8 +1024,11 @@ Singleton {
     property string pendingFilePath: ""
 
     function ensureInitialized(): void {
-        if (root._initialized)
+        if (root._initialized) {
+            if (!KeyringStorage.loaded && root.modelList.some(id=>root.models[id]?.requires_key))
+                KeyringStorage.fetchKeyringData()
             return;
+        }
         root._initialized = true;
 
         root._syncExtraModels()
@@ -993,6 +1036,8 @@ Singleton {
         root.syncDownloadedModels()
         AiProviderCatalog.ensureInitialized()
         root._syncCatalogModels()
+        if (!KeyringStorage.loaded && root.modelList.some(id=>root.models[id]?.requires_key))
+            KeyringStorage.fetchKeyringData()
         getDefaultPrompts.running = true
         getUserPrompts.running = true
         getSavedChats.running = true
@@ -1005,6 +1050,7 @@ Singleton {
     Connections {
         target: KeyringStorage
         function onLoadedChanged() {
+            if (KeyringStorage.loaded && root._initialized) root._syncCurrentModel()
             if (KeyringStorage.loaded && root._pendingRequest) {
                 root._pendingRequest = false;
                 requester.makeRequest();
@@ -1038,7 +1084,7 @@ Singleton {
     }
 
     function addModel(modelName, data) {
-        root.models[modelName] = aiModelComponent.createObject(this, data);
+        root.models[modelName] = aiModelComponent.createObject(root, data);
     }
 
     Process {
@@ -1378,7 +1424,7 @@ Singleton {
             const messageArray = root.messageIDs.map(id => root.messageByID[id]);
             const filteredMessageArray = messageArray.filter(message =>
                 message.role !== Ai.interfaceRole && !message.requestFailed)
-            const data = root.currentApiStrategy.buildRequestData(model, filteredMessageArray, root.systemPrompt, root.temperature, root.toolsForRequest(model.api_format, root.currentTool), root.pendingFilePath);
+            const data = root.buildChatRequest(model, root.currentApiStrategy, filteredMessageArray, root.systemPrompt, root.temperature, root.toolsForRequest(model.api_format, root.currentTool), root.pendingFilePath);
             // console.log("[Ai] Request data: ", JSON.stringify(data, null, 2));
 
             let requestHeaders = {
@@ -1398,7 +1444,7 @@ Singleton {
             root.messageIDs = [...root.messageIDs, id];
             root.messageByID[id] = requester.message;
             if(model.api_format==="gguf") {
-                requester.localPayload={modelPath:model.gguf_path,runtimePath:model.runtime_path,messages:data.messages}
+                requester.localPayload=root.localRequestForModel(model,data)
                 root.pendingFilePath=""
                 requester.command=["/usr/bin/python3",Quickshell.shellPath("scripts/wull/gguf_runtime.py")]
                 Qt.callLater(()=>{requester.running=true})

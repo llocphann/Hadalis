@@ -5595,5 +5595,9 @@
     "Performance keeps lighting simple. Quality adds reflected liquid detail.": "Performance keeps lighting simple. Quality adds reflected liquid detail.",
     "Follow power profile": "Follow power profile",
     "Use Performance in Power Saver and Quality in Balanced or Performance.": "Use Performance in Power Saver and Quality in Balanced or Performance.",
-    "Current render quality": "Current render quality"
+    "Current render quality": "Current render quality",
+  "Providers and connections are shared with AI settings.": "Providers and connections are shared with AI settings.",
+  "AI settings": "AI settings",
+  "Open chat": "Open chat",
+  "This model uses its provider default. Choose a supported reasoning model to set effort.": "This model uses its provider default. Choose a supported reasoning model to set effort."
 }

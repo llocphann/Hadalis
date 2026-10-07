@@ -7,6 +7,7 @@ import qs.modules.settings
 import qs.modules.abyss.companion
 Window {
     id:root;visible:true;width:900;height:750;color:"#061521"
+    Component.onCompleted: Quickshell.watchFiles=false
     property int outsideClicks: 0
     PointHandler {
         parent:root.contentItem
@@ -19,16 +20,21 @@ Window {
     }
     AbyssCompanion {id:actor;x:570;y:550;reveal:1;motionEnabled:false;upright:true;interactive:true}
     WullTalkCloud {id:cloud;actor:actor;outputWidth:root.width;outputHeight:root.height;allowed:true}
-    CompanionConfig {id:settings;visible:false;width:800;height:700;activeSection:"ai"}
+    CompanionConfig {id:settings;visible:false;width:800;height:700;activeSection:"overview"}
     TestCase {
         id:input;when:false;optional:true
         function check(value,message):void {if(!value)throw new Error(message)}
         function runChecks():void {
             try {
                 tryCompare(Config,"ready",true,4000)
-                Config.setNestedValues({"abyss.companionMind.aiEnabled":true,"abyss.companionMind.proactive":"manual",
-                    "abyss.companionMind.endpoint":Quickshell.env("WULL_TEST_ENDPOINT"),"abyss.companionMind.model":"tiny:local",
-                    "abyss.companionMind.obsidianEnabled":false})
+                Ai._initialized=true
+                Ai.addModel("tiny:local",{name:"Tiny fixture",model:"tiny:local",local:true,
+                    requires_key:false,api_format:"openai",endpoint:Quickshell.env("WULL_TEST_ENDPOINT")+"/v1/chat/completions",
+                    capabilities:{chat:"supported",reasoning:"unsupported"}})
+                Ai.modelList=Object.keys(Ai.models);Ai.currentModelId="tiny:local"
+                settings.activeSection="ai"
+                Config.setNestedValues({"abyss.companionMind.proactive":"manual",
+                    "abyss.companionMind.model":"tiny:local","abyss.companionMind.obsidianEnabled":false})
                 wait(80)
                 const cadences=WullMind.proactiveProfiles
                 check(WullMind.proactive==="manual" && !WullMind.proactiveIdleEnabled
@@ -62,7 +68,7 @@ Window {
                 check(cloud.height===collapsedHeight,"check-in changed size while answering")
                 check(WullMind.testConnection(),"probe rejected")
                 tryCompare(WullMind,"busy",false,6000)
-                check(WullMind.connectionStatus==="ready" && WullMind.models.length===1,"local probe not ready")
+                check(WullMind.connectionStatus==="ready" && WullMind.selectableModels.some(entry=>entry.name==="tiny:local"),"shared AI model not ready")
                 mouseMove(root.contentItem,20,720);WullMind.openChat();wait(100)
                 check(cloud.editing,"explicit chat did not open editor")
                 tryCompare(WullMind,"busy",false,3000)
@@ -113,7 +119,7 @@ Window {
                     && !root.named(cloud,"wullMessageSource") && !root.named(cloud,"wullCloudDismiss"),
                     "quick chat did not retain exactly the send control")
                 tryCompare(WullMind,"busy",false,6000)
-                check(WullMind.source==="local" && WullMind.text.indexOf("Splish!")===0 && WullMind.history.length===2
+                check(WullMind.source==="ai" && WullMind.text.indexOf("Splish!")===0 && WullMind.history.length===2
                     && WullMind.history[0].role==="user" && WullMind.history[1].role==="assistant",
                     "local reply/history not presented")
                 WullMind.closeChat();WullMind.history=[];WullMind.historyLoaded=false;WullMind.openChat()
@@ -130,13 +136,17 @@ Window {
                 WullMind.completed(JSON.stringify({ok:true,result:{text:"STALE",expression:"happy"}}),0,stale)
                 check(WullMind.text!=="STALE" && WullMind.history.length===0,"stale reply applied after cancellation")
                 tryVerify(()=>!WullMind.draining,3000)
-                Config.setNestedValue("abyss.companionMind.endpoint","http://127.0.0.1:0");wait(50)
-                check(WullMind.testConnection(),"invalid endpoint probe not dispatched")
+                Ai.models["tiny:local"].endpoint="http://127.0.0.1:0";wait(50)
+                check(WullMind.sendMessage("Invalid connection"),"failure request not dispatched")
                 tryCompare(WullMind,"busy",false,4000)
-                check(WullMind.connectionStatus==="error" && WullMind.errorMessage.length>0,"invalid local endpoint looked ready")
-                Config.setNestedValue("abyss.companionMind.aiEnabled",false);wait(40)
-                WullMind.clearConversation();WullMind.openChat();WullMind.sendMessage("Hi!")
-                check(WullMind.source==="built-in" && !WullMind.busy && WullMind.text.indexOf("local model")>=0,"offline companion pretended inference")
+                check(WullMind.connectionStatus==="error" && WullMind.errorMessage.length>0,"invalid AI endpoint looked ready")
+                Ai.models["tiny:local"].local=false;Config.setNestedValue("policies.ai",2);wait(40)
+                WullMind.clearConversation();WullMind.openChat()
+                check(!WullMind.sendMessage("Hi!") && WullMind.errorMessage.length>0,"unavailable AI pretended inference")
+                Ai.addModel("tiny:local",{name:"Tiny fixture",model:"tiny:local",local:true,
+                    requires_key:false,api_format:"openai",endpoint:Quickshell.env("WULL_TEST_ENDPOINT")+"/v1/chat/completions",
+                    capabilities:{chat:"supported",reasoning:"unsupported"}})
+                Ai.modelList=Object.keys(Ai.models);Ai.currentModelId="tiny:local"
                 WullMind.dismiss()
                 const testVault=Quickshell.env("WULL_TEST_VAULT")
                 Config.setNestedValues({"abyss.companionMind.obsidianEnabled":true,"todo.obsidian.vaultPath":testVault})
@@ -188,8 +198,8 @@ Window {
                 mouseClick(root.contentItem,20,720);wait(30)
                 check(root.outsideClicks===1,"speech guard blocked clicks outside the cloud")
                 WullMind.dismiss();check(!cloud.visible,"dismiss retained speech input")
-                console.log("WULL_MIND=PASS actualProcess localProbe EnglishReply borderlessCloud noCheckInInput separateQuestions journalWrites stableJournalContext explicitChatFocus modelEffortSelector compactEffortRow activeModelContrast stagedEffortModelPicker enterSend sendOnlyControl persistentHistory reminderSources proactiveCadences scaledTalkCloudAnchor idleChatRelease retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint offlineMessage settingsAI noReferenceVault")
-            } catch(e) {console.error("WULL_MIND=FAIL "+e)}
+                console.log("WULL_MIND=PASS actualProcess sharedModelReadiness EnglishReply borderlessCloud noCheckInInput separateQuestions journalWrites stableJournalContext explicitChatFocus modelEffortSelector compactEffortRow activeModelContrast stagedEffortModelPicker enterSend sendOnlyControl persistentHistory reminderSources proactiveCadences scaledTalkCloudAnchor idleChatRelease retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint unavailableModel settingsAI noReferenceVault")
+            } catch(e) {console.error("WULL_MIND=FAIL "+e+" "+e.stack)}
             shutdown.start()
         }
     }

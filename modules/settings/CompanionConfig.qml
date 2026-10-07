@@ -15,7 +15,7 @@ ContentPage {
     settingsPageIndex: 37
     settingsPageName: Translation.tr("Companion")
     property string activeSection: "overview"
-    onActiveSectionChanged: if (activeSection === "ai") LocalModels.ensureInitialized()
+    onActiveSectionChanged: if (activeSection === "ai") Ai.ensureInitialized()
     property string previewExpression: "idle"
     property string previewMotion: ""
     readonly property var preferences: Preferences.normalize(Config.options?.abyss?.companion)
@@ -386,34 +386,14 @@ ContentPage {
                 currentValue:WullMind.proactive
                 onSelected:value=>Config.setNestedValue("abyss.companionMind.proactive",value)
             }
-            SettingsSwitch {
-                text:Translation.tr("Enable local AI")
-                autoToggle:false;checked:WullMind.aiEnabled
-                onToggledByUser:checked=>Config.setNestedValue("abyss.companionMind.aiEnabled",checked)
-            }
-            StyledText {text:WullMind.downloadedModel ? Translation.tr("Connection: Local LLM (llama.cpp)") : Translation.tr("Connection: Local LLM (Ollama)");Layout.fillWidth:true}
-            MaterialTextField {
-                objectName:"wullLocalEndpoint";Layout.fillWidth:true
-                visible:!WullMind.downloadedModel
-                placeholderText:Translation.tr("Local endpoint")
-                text:WullMind.endpoint
-                onEditingFinished:Config.setNestedValue("abyss.companionMind.endpoint",text.trim())
-            }
-            MaterialTextField {
-                objectName:"wullLocalModel";Layout.fillWidth:true
-                visible:!WullMind.downloadedModel
-                placeholderText:Translation.tr("Installed model name")
-                text:WullMind.model
-                onEditingFinished:Config.setNestedValue("abyss.companionMind.model",text.trim())
-            }
             StyledText {
                 Layout.fillWidth:true;wrapMode:Text.WordWrap
-                text:Translation.tr("Status")+": "+WullMind.connectionStatus+(WullMind.errorMessage ? " · "+WullMind.errorMessage : "")
+                text:Translation.tr("Providers and connections are shared with AI settings.")
                 color:Appearance.colors.colSubtext
             }
             RowLayout {
-                DialogButton {buttonText:Translation.tr("Test connection");enabled:!WullMind.busy;onClicked:WullMind.testConnection()}
-                DialogButton {buttonText:Translation.tr("Chat with Wull");enabled:root.preferences.enabled;onClicked:WullMind.openChat()}
+                DialogButton {buttonText:Translation.tr("AI settings");onClicked:SettingsPageRegistry.navigateToKey("ai")}
+                DialogButton {buttonText:Translation.tr("Open chat");enabled:root.preferences.enabled;onClicked:WullMind.openChat()}
                 DialogButton {buttonText:Translation.tr("Clear conversation");onClicked:WullMind.clearConversation()}
             }
             StyledText {
@@ -426,8 +406,8 @@ ContentPage {
                 Layout.fillWidth:true
                 model:WullMind.selectableModels
                 textRole:"label"
-                currentIndex:WullMind.selectableModels.findIndex(item=>item.name===WullMind.model)
-                displayText:currentIndex>=0 ? (WullMind.selectableModels[currentIndex].label ?? WullMind.selectableModels[currentIndex].name) : "Choose a local model"
+                currentIndex:Math.max(0,WullMind.selectableModels.findIndex(item=>item.name===String(Config.options?.abyss?.companionMind?.model ?? "")))
+                displayText:currentIndex>=0 ? (WullMind.selectableModels[currentIndex].label ?? WullMind.selectableModels[currentIndex].name) : "Use the AI tab model"
                 onActivated:index=>{
                     const item=WullMind.selectableModels[index]
                     if(item)WullMind.selectModel(item)
@@ -453,7 +433,7 @@ ContentPage {
             StyledText {
                 visible:WullMind.model.length>0 && !WullMind.thinkingSupported
                 Layout.fillWidth:true;wrapMode:Text.WordWrap
-                text:"This model uses instant mode. Choose a reasoning-capable model to set effort."
+                text:Translation.tr("This model uses its provider default. Choose a supported reasoning model to set effort.")
                 color:Appearance.colors.colSubtext
             }
             SettingsSwitch {

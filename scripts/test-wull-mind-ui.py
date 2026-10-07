@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Owned QML + real one-shot helper against a controlled local HTTP fixture."""
 import importlib.util
+import json
 import os
 from pathlib import Path
 import runpy
@@ -14,6 +15,15 @@ ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('mind_test',ROOT/'scripts/test-wull-local-mind.py')
 fixture=importlib.util.module_from_spec(spec);spec.loader.exec_module(fixture)
 class Handler(fixture.Handler):
+    def do_POST(self):
+        if self.path!='/v1/chat/completions':return super().do_POST()
+        data=json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+        if 'slow' in data['messages'][-1]['content']:time.sleep(.3)
+        self.send_response(200);self.send_header('Content-Type','text/event-stream');self.end_headers()
+        reply={'text':'Splish! Hello from shared AI.','expression':'happy'}
+        payload={'choices':[{'delta':{'content':json.dumps(reply)},'finish_reason':'stop'}]}
+        try:self.wfile.write(('data: '+json.dumps(payload)+'\n\ndata: [DONE]\n\n').encode())
+        except (BrokenPipeError,ConnectionResetError):pass
     def respond(self,value,status=200):
         if self.path=='/api/chat' and 'slow' in self.calls[-1][1]['messages'][-1]['content']:time.sleep(.3)
         try:super().respond(value,status)

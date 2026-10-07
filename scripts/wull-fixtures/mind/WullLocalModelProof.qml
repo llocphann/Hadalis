@@ -7,6 +7,7 @@ import qs.modules.common
 
 Window {
     id:root;visible:true;width:640;height:350;color:"#051521"
+    Component.onCompleted: Quickshell.watchFiles=false
     TestCase {
         id:input;when:false;optional:true
         function check(value,message):void {if(!value)throw new Error(message)}
@@ -29,12 +30,12 @@ Window {
                 check(Ai.messageIDs.length===2 && new Set(Ai.messageIDs).size===2,"local assistant appeared twice")
                 check(Ai.messageByID[Ai.messageIDs[1]].content==="Tiny fixture reply.","AI local reply not presented")
                 WullMind.hostVisible=true;WullMind.hostIdle=true
-                WullMind.selectDownloaded();wait(50)
-                check(WullMind.model===local.id && WullMind.available,"Wull did not adopt downloaded model")
+                WullMind.ensureAi();wait(50)
+                check(WullMind.model===Ai.currentModelId && WullMind.available,"Wull did not follow the AI tab's downloaded model")
                 check(WullMind.sendMessage("Hello Wull!"),"Wull GGUF request rejected")
                 tryCompare(WullMind,"busy",false,6000)
-                check(WullMind.source==="local" && WullMind.text==="Splish!" && WullMind.history.length===2,"Wull local reply did not survive process boundary")
-                console.log("WULL_GGUF_UI=PASS localInventory aiCatalog aiSelection singleAssistant sharedSupervisor wullAutomaticSelection wullJSONReply")
+                check(WullMind.source==="ai" && WullMind.text==="Tiny fixture reply." && WullMind.history.length===2,"Wull local reply did not survive the shared process boundary")
+                console.log("WULL_GGUF_UI=PASS localInventory aiCatalog aiSelection singleAssistant sharedSupervisor wullFollowsAi boundedWullReply")
             } catch(e){console.error("WULL_GGUF_UI=FAIL "+e)}
             shutdown.start()
         }

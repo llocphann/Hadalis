@@ -5,6 +5,7 @@ import Quickshell
 import qs.services
 import qs.services.deferred
 import qs.modules.common
+import qs.modules.common.widgets
 import qs.modules.abyss.looks
 
 Item {
@@ -59,10 +60,20 @@ Item {
                 required property var modelData
                 required property int index
                 width: list.width
+                readonly property bool imageEntry: !modelData.pin && Cliphist.entryIsImage(modelData.value)
+                CliphistImage {
+                    objectName:"abyssClipboardImage"
+                    visible:row.imageEntry
+                    Layout.preferredWidth:visible ? Math.min(180,implicitWidth) : 0
+                    Layout.preferredHeight:visible ? implicitHeight : 0
+                    maxWidth:180;maxHeight:108
+                    entry:row.imageEntry ? row.modelData.value : ""
+                    TapHandler {onTapped:root.copyRow(row.modelData)}
+                }
                 AbyssButton {
                     Layout.fillWidth: true
-                    text: row.modelData.preview
-                    glyph: row.modelData.pin ? "keep" : "content_paste"
+                    text: row.imageEntry ? "Copied image" : row.modelData.preview
+                    glyph: row.modelData.pin ? "keep" : row.imageEntry ? "image" : "content_paste"
                     checked: row.index === list.currentIndex
                     onClicked: root.copyRow(row.modelData)
                 }

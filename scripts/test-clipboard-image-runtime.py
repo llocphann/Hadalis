@@ -31,8 +31,11 @@ import Quickshell
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services.deferred
+import qs.modules.abyss.content
 ShellRoot {
  id:root
+ Component.onCompleted:Quickshell.watchFiles=false
+ function named(item,name){if(item.objectName===name)return item;for(const child of item.data ?? item.children ?? []){const result=named(child,name);if(result)return result}return null}
  property int step:0
  property int ticks:0
  function check(ok,message): bool {
@@ -40,14 +43,15 @@ ShellRoot {
   console.error("CLIPBOARD_IMAGE_FAIL",message);Qt.quit();return false
  }
  FloatingWindow {
-  visible:true;implicitWidth:400;implicitHeight:250;color:"#111820"
+  visible:true;implicitWidth:600;implicitHeight:500;color:"#111820"
   CliphistImage {
    id:preview
-   anchors.centerIn:parent
+   x:100;y:20
    width:implicitWidth;height:implicitHeight
    maxWidth:160;maxHeight:100
    imageDecodePath:Quickshell.env("CLIPBOARD_IMAGE_CACHE")
   }
+  AbyssClipboardContent {id:abyss;x:0;y:130;width:600;height:350}
  }
  Timer {
   interval:80;repeat:true;running:true
@@ -68,7 +72,13 @@ ShellRoot {
     preview.entry="2\t[[ binary data png ]]";root.step++
    }else if(root.step===4 && image.status===Image.Ready && String(preview.source).endsWith('/2')){
     if(!root.check(image.implicitWidth===64 && preview.width<=160 && preview.height<=100,"reused delegate never publishes a stale image"))return
-    console.info("CLIPBOARD_IMAGE_PASS native-binary Unicode-metadata intrinsic-size delegate-reuse bounded-preview")
+    Cliphist.entries=["2\t[[ binary data image/png ]]"];root.step++
+   }else if(root.step===5){
+    const rendered=root.named(abyss,"abyssClipboardImage")
+    const decoded=rendered ? root.named(rendered,"clipboardDecodedImage") : null
+    if(!decoded || decoded.status!==Image.Ready)return
+    if(!root.check(rendered.visible && rendered.width>0 && rendered.height>0 && decoded.implicitWidth===64,"Abyss clipboard did not display the copied image"))return
+    console.info("CLIPBOARD_IMAGE_PASS native-binary Unicode-metadata intrinsic-size delegate-reuse bounded-preview Abyss-history")
     Qt.quit()
    }
   }

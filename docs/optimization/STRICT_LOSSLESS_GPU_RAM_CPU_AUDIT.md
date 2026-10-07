@@ -188,6 +188,11 @@ Rules:
 | `services/WullMind.qml` | **HIGH-CONFIDENCE micro-candidate — select the next eligible proactive reminder in one stable pass instead of materializing and sorting all reminder rows every minute.** `offerAutomatic()` calls `reminderRows()`, which copies journal schedule rows, appends bounded Todo/calendar rows, sorts the whole array by start minute, then immediately `find()`s the first unreminded item in the ±10-minute window. For the automatic path only, scan sources in today's existing source order and retain the earliest eligible item; on equal start minute keep the first encountered row to match stable-sort + find semantics. Keep `reminderRows()` itself for any direct callers/tests. | Low. Source ordering, invalid-time rejection, Todo/calendar bounds, reminder-key construction, stable equal-time tie behavior and the existing Obsidian context-refresh-before-reminder ordering must remain exact. | None. | Low transient JS allocation/CPU reduction on the one-minute proactive cadence; intentionally low priority. | 0%. |
 | `modules/abyss/companion/OctoTentacles.qml` + `WaterDropletBody.qml` + `WullPresence.qml` | **MEASURE FIRST — new companion render/state-machine paths are not source-only optimization candidates yet.** Octo now owns one liquid ShaderEffect per tentacle. Aqua's floor reflection is already a bounded 76×82 `ShaderEffectSource`, only live while visible, grounded and detailed effects are enabled. Presence timers inspected in this pass are bounded one-shot deadlines, not recurring idle polls. Profile GPU/frame cost and capture current Aqua/Octo A/B fixtures before changing shader fidelity, tentacle count, reflection behavior or state timing. | High if optimized by assumption. These are highly visible character/motion contracts and were concurrently changed in the current dev sequence. | Unknown until measured. | Low/unknown. | No promoted visual substitution; any later renderer candidate needs a deterministic <1% A/B oracle. |
 
+| `services/TaskbarApps.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — compile ignored-app regexes only when the ignored pattern list changes.** `computeApps()` runs behind a 16 ms coalescing timer and is retriggered by compositor/toplevel/AppSearch/config events, yet every run rebuilds the fixed system-pattern array, copies user patterns and constructs every `RegExp` again. Keep the compiled list resident and rebuild it on initial demand plus the existing `ignoredAppRegexesChanged`/config-replacement boundary. | Low. Preserve `_stringArray()` normalization, user-before-system pattern order, case-insensitive flags and the current `_compileRegexes()` behavior that logs/skips invalid regexes. Config reload/object replacement must not leave stale patterns. | None. | Low transient JS allocation/CPU reduction multiplied by every Waffle taskbar rebuild; persistent RAM is the same small compiled array already alive during each computation. | 0%. |
+| `modules/overview/OverviewNiriWidget.qml` + `modules/overview/Overview.qml` + `services/NiriService.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — remove redundant per-output workspace sorts from Overview.** Every current assignment to `NiriService.allWorkspaces` already publishes the array sorted ascending by `idx`. JavaScript `filter()` preserves source order, but OverviewNiriWidget and both classic Overview Left/Right key paths filter that array by output and sort it by the same comparator again. Remove only those second sorts and retain the filter/find/index logic unchanged. | Very low. The source-order invariant must be regression-covered at every `allWorkspaces` publication site, including equal-`idx` stable ordering, activation and urgency updates. | None. | Low transient array/sort CPU reduction: O(W log W) follow-up sorts become O(W) filters on Overview recomputation/navigation. | 0%. |
+| `modules/background/Background.qml` + clock/widget diagnostic paths | **HIGH-CONFIDENCE normal-session CPU/allocation candidate — make desktop-clock diagnostic serialization demand-driven instead of continuously reactive.** Background says the clock diagnostics are bounded/inert, but production wiring observes `ClockWidget.debugPaletteReport` and `editControlsGeometryReport` unconditionally. That keeps nested `JSON.stringify`, `JSON.parse(clockSurface.surfaceReport)`, contrast calculations, CookieClock diagnostic serialization and an extra edit-control geometry solve live during ordinary clock/style/position changes. Preserve the documented `background clockDebugState` IPC response by building the same payload on demand when that function is called rather than maintaining serialized strings continuously. | Low–Medium. `clockDebugState` is documented even when `INIR_REGION_DEBUG` is not set; only mutating debug functions are env-gated. Preserve exact payload fields, disabled-state behavior, unloaded-clock behavior and any last-known snapshot semantics. | None. | Low–Medium transient JS/string allocation and avoidable geometry/diagnostic CPU reduction in normal sessions, especially during desktop-clock dragging/style changes. | 0%. |
+| `modules/abyss/bar/AbyssBar.qml` + `modules/abyss/looks/AbyssLayout.js` | **HIGH-CONFIDENCE micro-candidate — compare normalized module IDs element-by-element instead of JSON-serializing both arrays.** `syncModuleIds()` currently computes enabled placement IDs and calls `JSON.stringify(next) !== JSON.stringify(moduleIds)` on every placements publication. `AbyssLayout.normalize()` already canonicalizes every accepted placement ID with `String(...)`, so length + ordered strict string comparison is equivalent before deciding whether to republish `moduleIds`. | Very low. Preserve enabled-only filtering, placement order, duplicate rejection performed by normalize, and no-op publication suppression. The proof depends on normalized string IDs; do not apply the helper to unnormalized editor drafts elsewhere. | None. | Low transient string/allocation/CPU reduction across per-edge/output AbyssBar placement updates; most useful during editor/layout churn. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -275,6 +280,11 @@ Rules:
 81. **Waffle Task View one-pass workspace projection** — group windows once per refresh and reuse per-slot arrays/counts for drag/navigation.
 82. **Niri published-window ID index** — O(1) first-match lookups for consumers of the committed `windows` snapshot; never substitute it for pending-window logic.
 83. **Wull proactive reminder one-pass selection** — low-priority stable minimum selection that avoids minute-cadence array construction/sort.
+
+84. **TaskbarApps ignored-regex signal cache** — stop recompiling unchanged user/system regexes on every Waffle taskbar computation while preserving invalid-pattern skip/log behavior.
+85. **Overview redundant workspace-sort removal** — rely on the verified sorted `NiriService.allWorkspaces` publication invariant and keep output filtering/order exact.
+86. **Desktop-clock diagnostics on-demand serialization** — keep `clockDebugState` byte/field semantics but stop continuously maintaining diagnostic JSON/geometry during normal rendering.
+87. **AbyssBar module-ID direct equality** — replace dual JSON serialization with ordered string-array equality after Layout normalization.
 
 ## Explicit non-candidates from this pass
 
@@ -5159,6 +5169,314 @@ profile Aqua vs Octo frame time/GPU activity at identical presentation states
 and retain the existing production/fixture visual oracles. A later shader
 candidate must prove deterministic visual error below the audit budget rather
 than assuming fewer passes is acceptable.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+## Research continuation — round 33
+
+Baseline: `dev` at `42e0855aa762218eaff9bb0f91c94bbe09184cc2`.
+
+Round 33 started from the Round 32 documentation commit, then reconciled one
+concurrent wallpaper/carousel commit before writing. That commit touched
+wallpaper infrastructure, `GlobalStates`, Config defaults and related tests,
+but did not modify the TaskbarApps, Overview, NiriService, desktop-clock
+diagnostic, AbyssBar or Fcitx sources used by the findings below. The only
+overlap was `defaults/config.json`, which does not affect the verified
+`AbyssLayout.normalize()` string-ID invariant.
+
+Current source identities:
+
+- `services/TaskbarApps.qml`:
+  `b05b0b39988a40faf7fa3cb84e6b0c747cf4a3ee`;
+- `modules/bar/BarTaskbar.qml`:
+  `3aca1b63e2633584c86f75c6a2e5eb2ebaebfdb3`;
+- `modules/dock/DockApps.qml`:
+  `11b3ea8cc17c91a1cf3b6a1f41f64f392d4dfcc9`;
+- `services/NiriService.qml`:
+  `4c8194493fd380bf0ad8c51bc62990ad0c232738`;
+- `modules/overview/OverviewNiriWidget.qml`:
+  `79ac2d4d96937d6874fa5fa5a53066e89c1b86f0`;
+- `modules/overview/Overview.qml`:
+  `431e4443dbde6afc00b2e88a0d9db55e3dbe11b4`;
+- `modules/background/Background.qml`:
+  `29bd40236ba9579077d361fb1012d4f994ef4a3a`;
+- `modules/background/widgets/clock/ClockWidget.qml`:
+  `dc15f302bdf78fe161b1565e9c6dbeb95cc09f62`;
+- `modules/background/widgets/clock/CookieClock.qml`:
+  `9f92f22494a4baea5b0091b591b280e17288aa95`;
+- `modules/background/widgets/WidgetSurface.qml`:
+  `f574f968a97cf548ac255a6e1e847a6b400347d6`;
+- `modules/background/widgets/AbstractBackgroundWidget.qml`:
+  `16603c04327503fad558fb6886e61a7738295b73`;
+- `modules/abyss/bar/AbyssBar.qml`:
+  `b9d91627734d0cfdf3057d598f7ec600649be45c`;
+- `modules/abyss/looks/AbyssLayout.js`:
+  `a8fa6cac478f90376041da5e00d53017f78bd019`;
+- `modules/settings/FcitxInputSettings.qml`:
+  `61181ca2589bbbf496898c92f02290935b998888`;
+- `scripts/input-method/fcitx5-settings.py`:
+  `606cd57c0b5d640099f2b96ef850f70bb41ae06b`.
+
+### R33.1 — Waffle Taskbar recompiles unchanged ignored-app regexes on every rebuild
+
+`TaskbarApps.computeApps()` is intentionally imperative and coalesced through a
+16 ms timer. It can be scheduled by:
+
+- compositor sorted-toplevel changes;
+- foreign-toplevel changes;
+- AppSearch list changes;
+- pinned/ignored-app config changes;
+- broad Config options/readiness changes;
+- app-identity-rule changes.
+
+Every computation nevertheless repeats:
+
+```qml
+const ignoredRegexStrings = root._stringArray(
+    Config.options?.dock?.ignoredAppRegexes)
+const systemIgnored = [
+    "^$", "^portal$", "^x-run-dialog$", "^kdialog$",
+    "^org.freedesktop.impl.portal.*"
+]
+const ignoredRegexes =
+    root._compileRegexes(ignoredRegexStrings.concat(systemIgnored))
+```
+
+The compiled regexes depend only on the ignored-pattern config, not on windows,
+pins, AppSearch or compositor order. `_compileRegexes()` also has an important
+contract: each invalid pattern is caught, warned about and skipped rather than
+aborting the whole list.
+
+Strict-lossless direction:
+
+1. retain a private compiled ignored-regex list;
+2. rebuild it on first use and when the actual ignored pattern list changes;
+3. cover Config readiness/nested-object replacement so a reload cannot strand a
+   stale compiled list;
+4. leave `computeApps()` window/pin/identity semantics untouched;
+5. preserve user-pattern order followed by the five fixed system patterns;
+6. preserve per-pattern try/catch and warning behavior.
+
+Classic `BarTaskbar` and `DockApps` contain a related but smaller issue:
+their compiled lists are already cached, yet every rebuild fingerprints both
+current and cached arrays with `JSON.stringify`. They also construct regexes
+directly rather than through TaskbarApps' tolerant helper. Do not unify these
+three implementations merely for deduplication; their malformed-pattern
+behavior is currently different. A later cleanup may replace the fingerprint
+with narrow invalidation locally while preserving each owner's error policy.
+
+Required oracle:
+
+- empty user pattern list;
+- one/many patterns and duplicate patterns;
+- case-insensitive matching;
+- user pattern ordering before system defaults;
+- one or several invalid patterns among valid patterns;
+- config ready transition and full Config reload/object replacement;
+- unrelated compositor/AppSearch/config updates do not compile regexes again;
+- exact final taskbar app identities/order/pinned state.
+
+### R33.2 — Overview sorts output workspaces that NiriService already sorted
+
+Current NiriService publishes `allWorkspaces` from every observed assignment
+site as:
+
+```qml
+Object.values(updatedWorkspaces).sort((a, b) => a.idx - b.idx)
+```
+
+The same invariant is maintained for the full workspace snapshot, activation
+updates and urgency updates. `updateCurrentOutputWorkspaces()` already relies
+on `filter()` preserving that source order.
+
+Two Overview paths still redo the same ordering:
+
+```qml
+// OverviewNiriWidget
+NiriService.allWorkspaces
+    .filter(workspace => workspace.output === outputName)
+    .sort((a, b) => a.idx - b.idx)
+
+// Overview.qml — independently in Left and Right key handlers
+NiriService.allWorkspaces
+    .filter(workspace => workspace.output === outputName)
+    .sort((a, b) => a.idx - b.idx)
+```
+
+JavaScript `filter()` is stable and preserves source order. Removing only the
+second `sort()` therefore changes neither selected workspace nor presentation
+order while eliminating a temporary sorting pass.
+
+Do not generalize this into “all Niri consumers may assume arbitrary maps are
+sorted.” The invariant applies specifically to the public `allWorkspaces`
+array. The keyed `workspaces` object and pending window state have different
+contracts.
+
+Required oracle:
+
+- zero/one/many outputs and workspaces;
+- interleaved outputs in the pre-sort map;
+- equal `idx` values preserve current stable source order;
+- workspace snapshot replacement;
+- focus/activation changes;
+- urgency changes;
+- Overview current slot and preferred-workspace slot;
+- classic Overview Left/Right boundary behavior;
+- exact workspace ids selected before/after.
+
+### R33.3 — Desktop clock diagnostics perform production work even when nobody asks
+
+`Background.qml` describes the desktop-clock diagnostics as bounded/inert
+unless `INIR_REGION_DEBUG=1`. The mutating IPC functions are indeed guarded,
+but the data-production path is not.
+
+The normal ClockWidget instance is wired unconditionally:
+
+```qml
+onDebugPaletteReportChanged:
+    backgroundScope.clockDebugPaletteReport = debugPaletteReport
+onEditControlsGeometryReportChanged:
+    backgroundScope.clockDebugControlsReport = editControlsGeometryReport
+```
+
+That makes the diagnostic properties observed reactive outputs. Their dependency
+chain currently includes:
+
+- `ClockWidget.debugPaletteReport`: builds a nested object and
+  `JSON.stringify`s it;
+- `WidgetSurface.surfaceReport`: separately `JSON.stringify`s surface state,
+  then ClockWidget parses that JSON again to embed it;
+- CookieClock's `diagnosticReport`, copied through
+  `onDiagnosticReportChanged`;
+- contrast-ratio calculations included only for the diagnostic payload;
+- `AbstractBackgroundWidget.editControlsGeometryReport`: invokes
+  `_resolveEditControlsGeometry()` for diagnostic coordinates and serializes
+  the result whenever relevant geometry changes.
+
+This work is not required to paint the clock.
+
+However, the read-only IPC contract must remain intact. `docs/IPC.md` documents
+`clockDebugState` as returning palette, renderer and quick-control geometry
+diagnostics, and only the **mutating** diagnostic functions are documented as
+requiring `INIR_REGION_DEBUG=1`. Therefore simply disabling diagnostic
+properties when the environment flag is absent is not strict-lossless.
+
+Safer direction:
+
+1. stop continuously copying serialized diagnostic strings into Background;
+2. expose on-demand builders that read the same current raw properties;
+3. when `clockDebugState()` is invoked, build the same palette/surface/cookie
+   and geometry objects at that moment and serialize once;
+4. keep `enabled`, config, injected-region and snapshot fields identical;
+5. keep all mutating debug functions and their env guard unchanged;
+6. explicitly define/preserve behavior when the clock widget is disabled,
+   unloaded or between loader transitions before implementation.
+
+This converts diagnostics from a render-time/reactive workload into a diagnostic
+request workload without weakening the documented read IPC.
+
+Required oracle:
+
+- debug env unset/set;
+- digital and cookie styles;
+- static/adaptive wallpaper color modes;
+- surface on/off and every supported surface dialect used by the payload;
+- clock enabled/disabled and loader transition states;
+- quick controls closed/open;
+- diagnostic layout probe active/inactive;
+- region injection active/inactive;
+- exact `clockDebugState()` parsed object before/after for all cases;
+- zero changes to rendered clock geometry/colors and normal edit controls.
+
+### R33.4 — AbyssBar serializes two string arrays just to suppress a no-op publish
+
+Each AbyssBar owns:
+
+```qml
+property var moduleIds: []
+
+function syncModuleIds(): void {
+    const next = placements.filter(p => p.enabled).map(p => p.id)
+    if (JSON.stringify(next) !== JSON.stringify(moduleIds))
+        moduleIds = next
+}
+```
+
+This runs whenever `placements` changes and is useful because avoiding a
+no-op `moduleIds` assignment prevents unnecessary Repeater churn. The no-op
+guard itself, however, allocates two JSON strings.
+
+The type proof is stronger than it first appears. All production placements
+reach `AbyssLayout.normalize()`, which:
+
+- rejects unknown module kinds;
+- deduplicates by normalized id;
+- publishes `id: String(p.id || p.kind)`.
+
+The fallback seed also enters `normalize()`. Thus `moduleIds` is an ordered
+array of canonical strings. Equality can be:
+
+```text
+same length
+AND every next[i] === moduleIds[i]
+```
+
+with no JSON serialization.
+
+Keep this optimization local to normalized AbyssBar placements. Editor draft
+objects elsewhere may not have passed through the same canonicalization boundary
+and should not inherit the assumption automatically.
+
+Required oracle:
+
+- no enabled modules;
+- one/many modules;
+- enable/disable without order change;
+- reorder/move while id order stays same;
+- reorder that changes id order;
+- configured placements and output-specific profiles;
+- duplicate/malformed raw ids normalize to the same current canonical result;
+- exact Repeater item count/order and unchanged no-op publication suppression.
+
+### R33.5 — Fcitx Settings polling is real process work, but timing is a product contract
+
+`FcitxInputSettings.qml` performs a status refresh every five seconds while the
+settings section is visible:
+
+```qml
+Timer {
+    interval: 5000
+    repeat: true
+    running: root.visible
+    onTriggered: root.refresh()
+}
+
+Process {
+    command: ["python3", fcitx5-settings.py, "status"]
+}
+```
+
+The Python status action is not process-free. When Fcitx is installed it invokes
+`fcitx5-remote` once for state and, when running, again with `-n` for the
+current input-method name. It also probes executable/file/config state.
+
+This means a visible settings page can launch one Python process plus one or two
+helper processes every five seconds. The work is bounded and user-visible
+settings-only, so it is not a startup/system-idle problem.
+
+Do **not** promote “remove polling” as strict-lossless yet. External Fcitx state
+can change outside Hadalis, and the existing five-second freshness window is
+observable. Candidate research paths are:
+
+- split static installation/config-file probes from dynamic daemon/input-method
+  state so unchanged static data is not rediscovered every poll;
+- investigate a D-Bus/event subscription for dynamic state while keeping a
+  bounded fallback reconciliation;
+- or retain polling if profiler evidence shows the visible-settings cost is
+  immaterial.
+
+Any event-driven replacement must prove the same external-change visibility,
+failure recovery and first-visible refresh behavior.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
 

@@ -144,6 +144,10 @@ Rules:
 | `modules/background/Background.qml` | **HIGH-CONFIDENCE Hyprland CPU/allocation candidate — replace `relevantWindows.filter(...).sort(...)` plus later `some()` with one summary pass.** The sorted array is only used for min workspace id, max workspace id and current-workspace occupancy. Derive `{first,last,hasCurrent}` directly in one scan while preserving the existing falsy-id fallback semantics. | Low. Workspace id 0 is currently permitted by the filter but then treated as falsy by `|| 1/10`; preserve that quirk rather than “fixing” it here. | None. | Low transient allocation + CPU reduction: remove one filtered array, O(N log N) sort and later O(N) occupancy scan per relevant update/output. | 0%. |
 | `modules/background/Background.qml` + `modules/screenCorners/ScreenCorners.qml` | **HIGH-CONFIDENCE secondary Hyprland candidate — replace nested fullscreen `filter().filter()[0]` allocations with one `find/some` pass.** Both paths only ask whether this monitor's active workspace contains a fullscreen Wayland window. | Low. Preserve loose monitor-name equality, active-workspace requirement, Wayland-only fullscreen detection and false/undefined behavior when data is absent. | None. | Low transient allocation/CPU reduction on Hyprland workspace/toplevel updates. | 0%. |
 
+| `services/AppSearch.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — memoize final `lookupDesktopEntry(appId)` hit/miss per DesktopEntries epoch.** The helper already has reverse maps, but every call restarts heuristic lookup, normalization candidates, suffix stripping and potentially token-overlap scans. Many Taskbar/Dock/AltSwitcher/settings/media paths ask for the same ids repeatedly. Cache exact-input `DesktopEntry|null`, distinguish cached miss, and invalidate immediately on DesktopEntries change. | Low–Medium. Immediate invalidation must occur before the existing 500 ms reverse-map rebuild so a newly installed/removed desktop entry is observable with today's timing. | None. | Low transient allocation + potentially meaningful CPU reduction for repeated misses/unusual Electron/AppImage ids. Small bounded memo RAM. | 0%. |
+| `services/MprisController.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — memoize the final MPRIS-specific `_desktopEntryForHint()` result after AppSearch fallback.** Direct AppSearch misses currently fall into a full DesktopEntries fuzzy scan/tokenization path, and the same cleaned hint can be resolved repeatedly by player/stream display-name/icon helpers. Cache final `DesktopEntry|null` by exact cleaned hint and invalidate immediately on DesktopEntries changes. | Low–Medium. Preserve every score/tie/threshold rule and direct-AppSearch precedence. | None. | Low transient allocation + CPU reduction, especially for repeated hints that miss AppSearch and enter the catalog-wide fallback. | 0%. |
+| `services/Notifications.qml` + `modules/dock/DockAppButton.qml` | **HIGH-CONFIDENCE CPU candidate — derive normalized notification-badge lookup once per popup-group rebuild.** Each Dock button currently normalizes caller ids, then scans all popup groups and normalizes every group app name. Build a private normalized key→{first-rank,count} index alongside `_cachedPopupGroupsByAppName`, preserving the current “first group in object order matching any caller id wins” semantics. | Low. Do not sum collisions or let caller-identifier order replace current popup-group order. | None. | Low CPU/allocation reduction scaling from roughly D×G normalized group scans to small per-button key lookups after each group snapshot rebuild. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -196,6 +200,9 @@ Rules:
 48. **Niri active-workspace occupancy snapshot** — share output occupancy across classic/Waffle Background instead of rescanning windows/workspaces per output.
 49. **Hyprland Background one-pass workspace summary** — replace filter+sort+some with one scan while preserving id-0 fallback behavior.
 50. **Hyprland active-fullscreen find/some** — secondary allocation cleanup for Background/ScreenCorners.
+51. **AppSearch DesktopEntry hit/miss memo** — cache exact lookup results per DesktopEntries epoch with immediate invalidation.
+52. **MPRIS desktop-entry hint memo** — cache the expensive post-AppSearch fuzzy resolver by cleaned hint.
+53. **Notification badge normalized-group index** — move app-name normalization/group scanning to the popup-group rebuild boundary.
 
 ## Explicit non-candidates from this pass
 
@@ -3028,5 +3035,174 @@ Preserve loose monitor-name equality, active-workspace requirement and
 Wayland-only fullscreen detection. Keep Niri on the GameMode authority path.
 This ranks below R22.4 because it removes smaller temporary arrays rather than an
 entire sort pipeline.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+
+## Research continuation — round 23
+
+Baseline: `dev` at `cb5d11621cb793c06a10ee19c72b7e40cbfb4031`.
+
+This round promotes three archived memo/index findings whose current source
+blobs still match the archived research identities exactly. All three move work
+from frequent read paths to existing authoritative rebuild/invalidation
+boundaries.
+
+Current source identities:
+
+- `services/AppSearch.qml`: `74ea3c9e92860af62f10850c89118d79b7837543`;
+- `services/MprisController.qml`: `3a8184f9308f0816ea395ea26f182bb5a3fbcf15`;
+- `services/Notifications.qml`: `a05c6744c123d8ed96ee19c8d04cccdbcdeeae0e`;
+- `modules/dock/DockAppButton.qml`: `e82cf611338e518d70f8c95e45808217c7b90934`.
+
+### R23.1 — AppSearch repeats the complete desktop-entry resolution chain for stable ids
+
+`lookupDesktopEntry(appId)` already benefits from reverse maps, but each call
+still re-enters the resolution chain from the top:
+
+1. `DesktopEntries.heuristicLookup(appId)`;
+2. direct lowercase/kebab/reverse-map probes;
+3. scoped/reverse-domain normalization candidates;
+4. suffix stripping;
+5. last-resort token-overlap scans across desktop-id/startup-class maps.
+
+The same app identity is requested repeatedly from Taskbar, Dock, Bar/Waffle
+buttons, AltSwitcher, MPRIS hint resolution, ScreenTime repair, Settings and
+other icon/desktop-entry helpers.
+
+Strict-lossless memo:
+
+- key by the **exact incoming appId string**;
+- cache the final `DesktopEntry` object or an explicit miss sentinel;
+- check the memo before running the existing chain;
+- invalidate the entire memo immediately in
+  `DesktopEntries.applications.onValuesChanged`;
+- keep the existing debounced reverse-map rebuild unchanged.
+
+Immediate invalidation is essential. Today a new/removed desktop entry can be
+observed by `DesktopEntries.heuristicLookup()` before the 500 ms local map
+rebuild completes. If memo invalidation waited for `_cacheRevision`, an old
+hit/miss would remain stale during that window.
+
+Required oracle:
+
+- exact desktop id/stem;
+- StartupWMClass;
+- executable basename;
+- whitespace/kebab normalization;
+- scoped ids;
+- reverse-domain ids;
+- suffix stripping;
+- token-overlap fallback;
+- no match;
+- case variants;
+- repeated hit/miss;
+- DesktopEntry add/remove/change between calls, including lookup before the
+  debounced map rebuild fires;
+- exact returned object identity/null parity.
+
+### R23.2 — MPRIS has a second expensive resolver after AppSearch misses
+
+`MprisController._desktopEntryForHint()` first tries AppSearch. On a miss it
+runs an MPRIS-specific fuzzy resolver across DesktopEntries, inspecting fields
+such as id/name/genericName/startupClass/command and performing normalization,
+substring/token scoring.
+
+The same hint can be resolved repeatedly while building:
+
+- player display names;
+- stream desktop entries;
+- stream display names;
+- stream icons;
+- volume-mixer/media reactive bindings.
+
+The R23.1 AppSearch memo accelerates only the first stage. It does not eliminate
+this MPRIS-specific catalog scan after an AppSearch miss.
+
+Strict-lossless memo:
+
+1. clean the incoming hint with the existing helper;
+2. key by that exact cleaned hint;
+3. cache the **final** `DesktopEntry|null` result;
+4. invalidate immediately on DesktopEntries changes;
+5. leave every score, threshold, token and first-best/tie rule untouched.
+
+Required oracle:
+
+- direct AppSearch hit;
+- exact fallback-field match;
+- substring match;
+- token-overlap match;
+- below-threshold miss;
+- equal-score candidates proving current tie behavior;
+- empty/malformed hint;
+- case/whitespace/version-suffix variants;
+- repeated hit/miss;
+- DesktopEntry add/remove/change between calls;
+- exact `streamDisplayName()` and `streamIconName()` parity for representative
+  players/nodes.
+
+### R23.3 — Notification badge lookup repeats group normalization once per Dock app
+
+Current Dock button badge code calls:
+
+```text
+Notifications.countForApp([originalAppId/appId, desktopEntry.name])
+```
+
+The helper normalizes its small identifier list, then walks every popup group
+and normalizes each group appName again on every call.
+
+Popup groups already have a clear authoritative rebuild boundary in
+`Notifications._updateGroups()`. Derive a private normalized lookup in the same
+transaction as `_cachedPopupGroupsByAppName`.
+
+Parity rule is subtle: current semantics are **not** “sum every normalized
+collision” and not “first caller identifier wins”. The outer iteration is popup
+group order. Therefore the first popup group in current object enumeration order
+that matches any normalized caller id wins.
+
+Strict-lossless index should retain, for every normalized group key:
+
+- the earliest group rank/order;
+- that group's notification count.
+
+When caller identifiers map to multiple normalized keys, choose the candidate
+with the lowest stored group rank.
+
+Required oracle:
+
+- empty groups/identifiers;
+- app-id versus display-name match;
+- punctuation/case normalization;
+- two caller ids matching different groups;
+- two distinct group names normalizing to the same key;
+- no match;
+- timeout/read transition;
+- group insertion/order change;
+- exact count parity after every popup-group rebuild.
+
+This composes with existing notification timer/object-reuse research but remains
+a separate patch and oracle.
+
+### R23.4 — New-service pass deliberately produced no promotion
+
+A separate current-dev audit covered BluetoothStatus, Updates, RecorderStatus,
+KeyboardIndicators and WindowPreviewService.
+
+- **Updates** already uses the real `checkupdates` spawn as its availability
+  probe instead of a duplicate command-v helper; its long-interval poll and
+  timeout are intentional service behavior.
+- **RecorderStatus** already separates 15/30 s idle polling, 1 s visible-demand
+  polling and 1 s active-recording polling; it is substantially demand-gated.
+- **KeyboardIndicators** prefers the native/event-driven lock-state monitor and
+  uses coarse sysfs discovery only as fallback.
+- **BluetoothStatus** performs two small connected-device scans, but normal
+  Bluetooth device counts are tiny and static analysis does not justify adding
+  another retained snapshot solely to save that micro-work.
+- **WindowPreviewService** already bounds/caches capture ownership and coalesces
+  request bursts; no new high-confidence saving was established in this pass.
+
+These are intentionally not promoted merely to increase candidate count.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.

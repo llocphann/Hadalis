@@ -2,6 +2,9 @@
 """Regression contract for the v1.0 Material-only global style boundary."""
 
 from pathlib import Path
+import json
+import re
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 APPEARANCE = ROOT / "modules" / "common" / "Appearance.qml"
@@ -678,12 +681,25 @@ def main() -> None:
         "horizontalPadding: 11",
         "verticalPadding: 6",
         "readonly property bool showZzzPreview: false",
-        'colBackground: Config.options?.panelFamily === "abyss" ? Qt.alpha(Appearance.colors.colPrimary,.1) : Appearance.colors.colSecondaryContainer',
-        'colBackgroundHover: Config.options?.panelFamily === "abyss" ? Qt.alpha(Appearance.colors.colPrimary,.18) : Appearance.colors.colSecondaryContainerHover',
-        'colBackgroundActive: Config.options?.panelFamily === "abyss" ? Qt.alpha(Appearance.colors.colPrimary,.26) : Appearance.colors.colSecondaryContainerActive',
         "buttonPreviewKind",
     ):
         require(selection_group_button, token, "SelectionGroupButton.qml")
+    bindings = {}
+    for name in ("colBackground", "colBackgroundHover", "colBackgroundActive"):
+        binding = re.search(r"^    " + name + r": (.*(?:\n        .*)*)", selection_group_button, re.M)
+        assert binding, f"SelectionGroupButton missing palette binding: {name}"
+        bindings[name] = binding[1]
+    subprocess.run(["node", "-e", r"""
+const vm=require('node:vm'),assert=require('node:assert/strict');
+const bindings=JSON.parse(process.argv[1]);
+const states=[['colBackground',.1,'colSecondaryContainer'],['colBackgroundHover',.18,'colSecondaryContainerHover'],['colBackgroundActive',.26,'colSecondaryContainerActive']];
+for(const family of ['abyss','ii','waffle'])for(const optIn of [true,false])for(const [name,alpha,fallback] of states){
+ const colors={colPrimary:'primary',colSecondaryContainer:'normal',colSecondaryContainerHover:'hover',colSecondaryContainerActive:'pressed'};
+ const result=vm.runInNewContext(bindings[name],{root:{useAbyssPillShape:optIn},Config:{options:{panelFamily:family}},Appearance:{colors},Qt:{alpha:(color,a)=>color+':'+a}});
+ assert.equal(result,optIn && family==='abyss' ? 'primary:'+alpha : colors[fallback],family+' '+optIn+' '+name);
+}
+console.log('Selection group palette: PASS (18 family/shape/state cases)');
+""", json.dumps(bindings)], check=True)
     for token in ("ZzzCornerPreview", "cornerPreview", "Appearance.zzz."):
         forbid(selection_group_button, token, "SelectionGroupButton.qml")
     for token in (
@@ -969,13 +985,29 @@ def main() -> None:
         "readonly property bool _needsHighContrast: false",
         "property color colLayer1Base: m3colors.m3surfaceContainerLow",
         "property color colPrimary: m3colors.m3primary",
-        "property color colOnSurface: m3colors.m3onSurface",
         "property color colOutline: m3colors.m3outline",
         "property color colError: m3colors.m3error",
         "property color colSuccess: m3colors.m3success",
         "property color colWarningContainer: m3colors.m3tertiaryContainer",
     ):
         require(colors_contract, token, "Appearance.qml colors")
+    ink_bindings = {}
+    for name in ("colOnSurface", "colOnSurfaceVariant"):
+        binding = re.search(r"^        property color " + name + r": (.*(?:\n            .*)*)", colors_contract, re.M)
+        assert binding, f"Appearance missing surface ink binding: {name}"
+        ink_bindings[name] = binding[1]
+    subprocess.run(["node", "-e", r"""
+const vm=require('node:vm'),assert=require('node:assert/strict');
+const bindings=JSON.parse(process.argv[1]);
+for(const darkmode of [true,false])for(const name of Object.keys(bindings)){
+ const variant=name.endsWith('Variant'),calls=[];
+ const inputs={m3colors:{darkmode,m3onSurface:'surfaceInk',m3onSurfaceVariant:'variantInk',m3surface:'surface',m3surfaceContainer:'container'},_lightInk:'lightInk',_lightInkVariant:'lightVariant',ColorUtils:{ensureReadable:(ink,bg,ratio)=>{calls.push([ink,bg,ratio]);return ink+'Readable'}}};
+ const result=vm.runInNewContext(bindings[name],inputs);
+ assert.equal(result,darkmode ? (variant ? 'variantInkReadable' : 'surfaceInkReadable') : (variant ? 'lightVariant' : 'lightInk'));
+ assert.deepEqual(calls,darkmode ? [[variant ? 'variantInk' : 'surfaceInk',variant ? 'container' : 'surface',4.5]] : []);
+}
+console.log('Material surface ink: PASS (dark readability and light palette)');
+""", json.dumps(ink_bindings)], check=True)
 
     typography_start = appearance.index("// Typography scale factor from config", rounding_start)
     rounding_contract = appearance[rounding_start:typography_start]
@@ -1937,10 +1969,11 @@ def main() -> None:
         "rippleEnabled: true",
         "buttonRadius: Math.min(width, height) / 2",
         "colBackgroundHover: Appearance.colors.colLayer1Hover",
-        "id: sharedNavIndicator",
-        "color: Appearance.colors.colPrimaryContainer",
+        "colBackgroundToggled: Appearance.colors.colPrimaryContainer",
+        "colBackgroundToggledHover: Appearance.colors.colPrimaryContainerHover",
     ):
         require(nav_chrome, token, "SettingsOverlay.qml navigation rail")
+    forbid(nav_chrome, "id: sharedNavIndicator", "SettingsOverlay.qml compact navigation rail")
 
     actions_start = settings_overlay.index("id: overlayNavActions")
     content_start = settings_overlay.index("id: overlayContentContainer", actions_start)
@@ -2027,10 +2060,11 @@ def main() -> None:
         "rippleEnabled: true",
         "buttonRadius: Math.min(width, height) / 2",
         "colBackgroundHover: Appearance.colors.colLayer1Hover",
-        "id: sharedNavIndicator",
-        "color: Appearance.colors.colPrimaryContainer",
+        "colBackgroundToggled: Appearance.colors.colPrimaryContainer",
+        "colBackgroundToggledHover: Appearance.colors.colPrimaryContainerHover",
     ):
         require(window_nav, token, "settings.qml navigation rail")
+    forbid(window_nav, "id: sharedNavIndicator", "settings.qml compact navigation rail")
 
     # The standalone Settings window is now collapsed entirely to its Material
     # fallbacks, not just root/search/navigation chrome.
@@ -2134,10 +2168,7 @@ def main() -> None:
     ):
         require(on_screen_keyboard, token, "onScreenKeyboard/OnScreenKeyboard.qml")
     for token in (
-        "colBackground: shape == \"empty\"",
         ": Appearance.colors.colLayer1",
-        "colBackgroundToggled: Appearance.colors.colPrimary",
-        "buttonRadius: Appearance.rounding.small",
         "? Appearance.colors.colOnPrimary",
         ": Appearance.colors.colOnLayer1",
         "PhysicalKeyboardFeedback.pressedKeycodes",
@@ -2146,6 +2177,23 @@ def main() -> None:
         "Ydotool.releaseShiftKeys()",
     ):
         require(osk_key, token, "onScreenKeyboard/OskKey.qml")
+    osk_bindings = {}
+    for name in ("colBackground", "colBackgroundToggled", "buttonRadius"):
+        binding = re.search(r"^    " + name + r": (.*(?:\n        .*)*)", osk_key, re.M)
+        assert binding, f"Onscreen keyboard missing key binding: {name}"
+        osk_bindings[name] = binding[1]
+    subprocess.run(["node", "-e", r"""
+const vm=require('node:vm'),assert=require('node:assert/strict');
+const bindings=JSON.parse(process.argv[1]);
+for(const panelFamily of ['abyss','ii','waffle'])for(const shape of ['empty','normal'])for(const showPhysicalPress of [true,false]){
+ const abyss=panelFamily==='abyss';const inputs={abyss,shape,showPhysicalPress,Appearance:{colors:{colLayer1:'material',colPrimary:'materialAccent'},colLayer1Active:'materialPressed',rounding:{small:8}},AbyssStyle:{surfaceRaised:'abyss',accent:'accent'},ColorUtils:{transparentize:color=>color+'Transparent'},Qt:{alpha:(color,a)=>color+':'+a}};
+ const expected=shape==='empty' ? abyss ? 'transparent' : 'materialTransparent' : abyss ? showPhysicalPress ? 'accent:0.22' : 'abyss' : showPhysicalPress ? 'materialPressed' : 'material';
+ assert.equal(vm.runInNewContext(bindings.colBackground,inputs),expected);
+ assert.equal(vm.runInNewContext(bindings.colBackgroundToggled,inputs),abyss ? 'accent' : 'materialAccent');
+ assert.equal(vm.runInNewContext(bindings.buttonRadius,inputs),8);
+}
+console.log('Onscreen keyboard palette and key shape: PASS (12 cases)');
+""", json.dumps(osk_bindings)], check=True)
 
     # ScreenCorners is interaction-only; physical corner paint belongs to ScreenEdges.
     for token in legacy_style_tokens:

@@ -254,3 +254,4 @@ for token in (
 
 print("PASS: Media DSP updates the live active Equalizer without pipeline reload, with integrated CAVA response graph and compact transport UI")
 PY
+python3 "$script_dir/test-equalizer-presentation-runtime.py"

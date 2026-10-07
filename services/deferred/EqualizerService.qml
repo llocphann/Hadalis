@@ -92,8 +92,17 @@ Singleton {
 
     function unregisterConsumer() {
         root._consumerCount = Math.max(0, root._consumerCount - 1)
-        if (root._consumerCount === 0)
+        // A presentation lease must never interrupt a user-authorized DSP
+        // transaction halfway through its live band writes.
+        if (root._consumerCount === 0 && !root.busy)
             root.enabled = false
+    }
+
+    function _releaseAfterApply() {
+        Qt.callLater(() => {
+            if (root._consumerCount === 0 && !root.busy)
+                root.enabled = false
+        })
     }
 
     function startBackend() {
@@ -415,6 +424,7 @@ Singleton {
         property int generation: 0
 
         onExited: (exitCode, exitStatus) => {
+            root._releaseAfterApply()
             if (!root.enabled || generation !== root._lifecycleGeneration)
                 return
             if (exitCode !== 0) {

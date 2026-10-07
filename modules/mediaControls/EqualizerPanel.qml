@@ -580,6 +580,7 @@ Item {
 
                             Slider {
                                 id: bandSlider
+                                property bool userMoved: false
                                 z: 2
                                 anchors {
                                     top: parent.top
@@ -603,9 +604,11 @@ Item {
 
                                 onPressedChanged: {
                                     if (pressed) {
+                                        userMoved = false
                                         root.beginBandLightning(
                                             bandDelegate.index, value)
-                                    } else if (enabled) {
+                                    } else if (userMoved && enabled) {
+                                        userMoved = false
                                         const rounded = Math.round(value)
                                         EqualizerService.setDspBandGain(
                                             bandDelegate.index, rounded)
@@ -616,6 +619,13 @@ Item {
 
                                 onMoved: {
                                     value = Math.round(value)
+                                    userMoved = pressed
+                                    // Keyboard/wheel changes emit moved without
+                                    // a pointer press. Backend/model/visibility
+                                    // updates never emit this user-only signal.
+                                    if (!pressed)
+                                        EqualizerService.setDspBandGain(
+                                            bandDelegate.index, value)
                                     root.previewBandLightning(
                                         bandDelegate.index, value)
                                 }

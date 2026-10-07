@@ -68,7 +68,7 @@ Window {
                 const field=root.named(cloud,"wullChatInput"),background=root.named(cloud,"wullCloudBackground")
                 mouseMove(root.contentItem,20,720);wait(80)
                 check(cloud.controlsVisible && !field.visible && !field.activeFocus,"automatic check-in exposed input")
-                check(background.border.width===0 && field.placeholderText==="","speech retained border or input hint")
+                check(background.border.width>0 && background.border.color.a>0 && field.placeholderText==="","speech lacks its border or retained an input hint")
                 check(!root.named(settings,"wullReferenceVault"),"removed reference-vault control remains")
                 const collapsedHeight=cloud.height
                 mouseMove(cloud,cloud.width/2,14);wait(100)
@@ -214,7 +214,7 @@ Window {
                 mouseClick(root.contentItem,20,720);wait(30)
                 check(root.outsideClicks===1,"speech guard blocked clicks outside the cloud")
                 WullMind.dismiss();check(!cloud.visible,"dismiss retained speech input")
-                console.log("WULL_MIND=PASS actualProcess sharedModelReadiness EnglishReply hoverCloudActions dailyChoices readOnlyContext borderlessCloud noCheckInInput separateQuestions journalWrites stableJournalContext explicitChatFocus modelEffortSelector compactEffortRow activeModelContrast stagedEffortModelPicker enterSend sendOnlyControl persistentHistory reminderSources proactiveCadences scaledTalkCloudAnchor idleChatRelease retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint unavailableModel settingsAI noReferenceVault")
+                console.log("WULL_MIND=PASS actualProcess sharedModelReadiness EnglishReply hoverCloudActions dailyChoices readOnlyContext borderedCloud noCheckInInput separateQuestions journalWrites stableJournalContext explicitChatFocus modelEffortSelector compactEffortRow activeModelContrast stagedEffortModelPicker enterSend sendOnlyControl persistentHistory reminderSources proactiveCadences scaledTalkCloudAnchor idleChatRelease retainedDraft escapeClose boundedHistory cancel staleReply invalidEndpoint unavailableModel settingsAI noReferenceVault")
             } catch(e) {console.error("WULL_MIND=FAIL "+e+" "+e.stack)}
             shutdown.start()
         }

@@ -18,6 +18,8 @@ Item {
     property int profileStage: 0
     readonly property bool editing: visible && WullMind.conversationOpen
     readonly property bool controlsVisible: visible && (editing || WullMind.contextOpen || WullMind.checkInStage.length>0)
+    readonly property color cloudColor: Qt.alpha(AbyssStyle.surface, .96)
+    readonly property color cloudBorderColor: Qt.alpha(AbyssStyle.accent, .48)
     width: Math.min(380, Math.max(220, outputWidth - 32))
     height: editing ? Math.min(430, Math.max(230, outputHeight - 48)) : content.implicitHeight + 24
     readonly property real actorVisualScale: Math.max(.1, Number(actor.scale) || 1)
@@ -44,8 +46,9 @@ Item {
         objectName: "wullCloudBackground"
         anchors.fill: parent
         radius: 18
-        border.width: 0
-        color: Qt.alpha(AbyssStyle.surface, .96)
+        border.width: 1
+        border.color: root.cloudBorderColor
+        color: root.cloudColor
     }
 
     component CheckInRow: ColumnLayout {
@@ -463,12 +466,13 @@ Item {
         x: Math.max(18, Math.min(root.width - 36, actor.x + actor.width / 2 - root.x - 9))
         y: root.y < actor.y ? root.height - 1 : -11
         rotation: root.y < actor.y ? 0 : 180
+        Rectangle { x:1; y:-1; width:16; height:2; color:root.cloudColor }
         ShapePath {
-            strokeColor: "transparent"; strokeWidth: 0
-            fillColor: Qt.alpha(AbyssStyle.surface, .96)
+            strokeColor: root.cloudBorderColor; strokeWidth: 1
+            fillColor: root.cloudColor
             startX: 0; startY: 0
-            PathLine { x: 9; y: 12 }
-            PathLine { x: 18; y: 0 }
+            PathCubic { x:9;y:11;control1X:5;control1Y:2;control2X:6;control2Y:10 }
+            PathCubic { x:18;y:0;control1X:12;control1Y:10;control2X:13;control2Y:2 }
         }
     }
 }

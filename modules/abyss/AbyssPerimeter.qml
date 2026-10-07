@@ -508,7 +508,8 @@ Scope {
                 Region { x: popup.inputBounds.x; y: popup.inputBounds.y; width: window.presented && field.ready ? popup.inputBounds.width : 0; height: popup.inputBounds.height }
                 Region { x: dock.inputBounds.x; y: dock.inputBounds.y; width: window.presented && field.ready ? dock.inputBounds.width : 0; height: dock.inputBounds.height }
                 Region { item:talkCloud.visible ? talkCloud : emptyInput }
-                Region { item:cloudActions.visible ? cloudActions : emptyInput }
+                Region { item:cloudActions.visible ? cloudActions.obsidianTarget : emptyInput }
+                Region { item:cloudActions.visible ? cloudActions.aiTarget : emptyInput }
                 Region { item:corners.notesAvailable ? corners.notesAnchor : emptyInput }
                 Region { item:corners.centerAvailable ? corners.centerAnchor : emptyInput }
                 Region { regions:corners.sidebarRegions }

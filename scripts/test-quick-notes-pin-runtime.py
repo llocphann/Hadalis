@@ -26,6 +26,7 @@ import qs.modules.abyss
 import qs.services
 ShellRoot {
  id: root
+ Component.onCompleted: Quickshell.watchFiles=false
  property int step: 0
  property int ticks: 0
  property bool hovering: false

@@ -19,7 +19,7 @@ with tempfile.TemporaryDirectory(prefix="wull-presence-test-") as temporary:
     shell, xdg = core["staged"](private)
     (shell / "shell.qml").write_text((ROOT / "wullPresence.qml").read_text())
     env = core["private_env"](xdg, private / "result.json")
-    env.update({"WULL_PRESENCE_TEST": "1", "QT_QUICK_BACKEND": "software", "QT_QUICK_CONTROLS_STYLE": "Basic", "QT_QPA_PLATFORMTHEME": "generic"})
+    env.update({"WULL_PRESENCE_TEST": "1", "QT_QUICK_BACKEND": "software", "QT_QUICK_CONTROLS_STYLE": "Basic", "QT_QPA_PLATFORMTHEME": "generic", "QT_NO_XDG_DESKTOP_PORTAL":"1"})
     logfile = private / "test.log"
     with logfile.open("w") as output:
         process = subprocess.Popen(["dbus-run-session", "--", "qs", "--path", str(shell / "shell.qml")],

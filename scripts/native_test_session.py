@@ -9,7 +9,7 @@ def run_qs(folder: Path, env: dict, timeout: int = 25):
     command = ["dbus-run-session", "--", "qs", "-p", str(folder), "--no-color"]
     log = folder / "native-test-qs.log"
     with log.open("wb") as stream:
-        process = subprocess.Popen(command, env=env, stdout=stream,
+        process = subprocess.Popen(command, env=dict(env,QT_NO_XDG_DESKTOP_PORTAL="1"), stdout=stream,
                                    stderr=subprocess.STDOUT, start_new_session=True)
     try:
         code = process.wait(timeout=timeout)

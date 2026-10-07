@@ -116,6 +116,9 @@ Rules:
 | `modules/sidebarRight/calendar/CalendarWidget.qml` + `modules/waffle/notificationCenter/CalendarWidget.qml` + `services/Events.qml` / `CalendarSync.qml` | **HIGH-CONFIDENCE local CPU candidate — build one bounded visible-date metadata snapshot instead of scanning both event lists twice per day cell.** Classic Sidebar materializes 42 cells; each count/color pair performs 2 local-list scans and 2 external-list scans. Waffle's shared CalendarView materializes 10 weeks × 7 days = 70 delegates, with the same query shape, so one full invalidation can drive up to 140 local and 140 external full-list scans before rendering dots/counts. Build exact local/external buckets once for the visible dates, then derive count/color metadata with O(1) cell lookup. | Low–Medium. Preserve local notified/all-day semantics, external multi-day inclusion, unique source-color encounter order, previous/current/next-month dates and the existing event/month invalidation boundary. | None. | Low bounded metadata RAM in exchange for large transient allocation/date-object reduction; persistent event storage unchanged. | 0%. |
 | `scripts/scan-widgets.sh` | **HIGH-CONFIDENCE strict-lossless process candidate — remove three avoidable child processes per custom-widget manifest.** The scanner is already one bounded shell owner, but its loop executes external `dirname`, `basename` and `cat` for every `widget.json`. The glob shape makes directory/id extraction expressible with Bash parameter expansion, and Bash's `$(<file)` reads the manifest without spawning `cat`. Preserve the same unreadable-file `continue`, trailing-newline command-substitution behavior and JSON text. | Low. Oracle unusual paths, unreadable manifests and exact output bytes before changing the script. | None. | Low transient process-memory reduction. CPU/process gain is exactly up to 3 fewer child processes per discovered manifest while retaining the single scanner process. | 0%. |
 
+| `services/LocalMusic.qml` | **HIGH-CONFIDENCE RAM-retention candidate — stop retaining dead `folderCollections` state in QML.** Current snapshot application stores `payload.tracks`, `payload.playlists` and `payload.folders`, but the live Songs browser derives folder navigation directly from `LocalMusic.libraryTracks`; current repository search finds no consumer of `LocalMusic.folderCollections`. Remove the property and assignment only, leaving native/Python snapshot shape unchanged. | Low. Re-run a dev-wide reference search and LocalMusic navigation/selection/playback oracle immediately before implementation. | None. | Medium potential for large libraries because the parsed `payload.folders` subtree duplicates track metadata by folder and can become collectible after snapshot application instead of being retained. Exact RSS needs measurement. | 0%. |
+| `native/inir-mpdd/src/main.rs` + `scripts/local_music_mpd.py` | **COMPATIBILITY-GATED higher-value follow-up — stop constructing/serializing the duplicate `folders` snapshot field only if the stable MPD snapshot contract is intentionally revised or a lean mode is added.** Rust currently clones track objects into folder buckets; Python emits the equivalent second representation. The shell does not need it after the QML dead-retention cleanup, but current deep benchmark contracts explicitly include `folders` among stable snapshot fields. | Medium–High contract risk. Do not silently remove from only one backend or break native/Python parity/manual callers. | None. | Potentially medium transport/transient RAM reduction for large libraries; also removes folder grouping/cloning/serialization CPU. No credit until compatibility is resolved. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -147,6 +150,8 @@ Rules:
 27. **Calendar remaining-view batch migration** — reuse the existing `_getEventBucketsForDates()` helper for DashAgenda/Waffle upcoming paths with exact multi-day all-day parity.
 28. **Calendar visible-date metadata snapshot** — collapse the 42/70-cell repeated local/external list scans only after count/color/invalidation parity is oracle-covered.
 29. **Custom-widget scanner shell builtins** — remove per-manifest `dirname`/`basename`/`cat` child processes after byte/output oracle coverage.
+30. **LocalMusic dead `folderCollections` retention** — remove the QML-retained duplicate after a final current-dev reference/behavior oracle.
+31. **LocalMusic lean snapshot mode / schema revision** — only if stable `folders` compatibility is explicitly preserved or versioned.
 
 ## Explicit non-candidates from this pass
 
@@ -1825,5 +1830,129 @@ Do not combine this with deferred CustomWidgets service materialization in the
 same patch. Background currently references CustomWidgets for live custom widget
 ownership, and changing when the service scans/seeds config is a separate
 behavior/lifecycle problem.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+
+## Research continuation — round 16
+
+Baseline: `dev` at `5aeaf5cff9acd48e46059937ff976e20b33a726f`.
+
+This round revalidated a historical LocalMusic memory/transport finding against
+current source and current contract tests before promoting it into the canonical
+ledger.
+
+Current source identities are unchanged from the archived research baseline:
+
+- `services/LocalMusic.qml`: `88263668b48d85323a576c4c3645d9f40909f466`;
+- `modules/sidebarLeft/LocalMusicView.qml`: `d5b1880d5a1a3796f0faefe343cf3f2f9909953a`;
+- `native/inir-mpdd/src/main.rs`: `1c63b8e5281dad2a28e88ea3cb660f7cc0c0cb88`;
+- `scripts/local_music_mpd.py`: `0e05af4f8a308072fbed7bed96994559b66bf6f1`.
+
+### R16.1 — QML retains a duplicate folder tree that the live Songs browser does not use
+
+`LocalMusic._applyPayload(..., includeLibrary=true)` currently retains:
+
+```qml
+libraryTracks = payload.tracks ?? []
+playlists = payload.playlists ?? []
+folderCollections = payload.folders ?? []
+```
+
+The live Songs browser does not consume that pre-grouped folder structure.
+`LocalMusicView.qml` derives folder navigation, child counts, folder selection
+and folder track sets directly from `LocalMusic.libraryTracks`.
+
+Current repository search returns `folderCollections` only from
+`services/LocalMusic.qml`, while the explicit qualified search for
+`LocalMusic.folderCollections` returns no consumer. Because the service/view
+blobs also match the archived research identities exactly, the earlier
+no-consumer conclusion remains strongly supported at this baseline.
+
+Strict-lossless first step:
+
+1. remove the `folderCollections` property;
+2. stop assigning `payload.folders` in `_applyPayload()`;
+3. leave `libraryTracks`, `playlists`, queue/status/current-track state and every
+   backend payload byte unchanged;
+4. leave Songs folder derivation exactly as it is today.
+
+This is deliberately smaller than changing the MPD snapshot protocol. The JSON
+parser may still materialize `payload.folders` transiently, but after
+`_applyPayload()` returns the subtree no longer has an intentional QML root and
+can become collectible.
+
+Why the retained subtree can be substantial:
+
+- Rust builds a `BTreeMap<String, Vec<Value>>` and pushes
+  `Value::Object(track.clone())` into folder buckets;
+- Python groups the already-built track dictionaries into `folders_map` and
+  emits a `folders` list;
+- the payload therefore carries `tracks` plus another folder-organized
+  representation proportional to library size.
+
+No RSS percentage is claimed: actual V4/JSON representation, sharing and GC
+need measurement.
+
+Required oracle before implementation:
+
+- current-dev reference search for unqualified and qualified
+  `folderCollections` usage;
+- empty/small/large libraries;
+- nested folders and same-name leaf folders;
+- root/child Songs navigation;
+- search results;
+- Ctrl/Shift selection and folder bulk actions;
+- playlists and queue playback;
+- refresh/rescan and MPD reconnect;
+- QML warnings/property references;
+- compare all public LocalMusic state except the intentionally removed dead
+  property.
+
+### R16.2 — Removing `folders` from the transport is a separate contract decision
+
+After R16.1, the shell frontend no longer needs `payload.folders`, but the
+backend field cannot simply be deleted under strict compatibility assumptions.
+
+Current Rust snapshot generation:
+
+```text
+tracks
+  -> group by folder
+  -> clone each track object into folder buckets
+  -> sort/build folder objects
+  -> serialize tracks + playlists + folders
+```
+
+Python builds the equivalent `folders_map/folders` representation.
+
+More importantly, current regression infrastructure explicitly treats
+`folders` as a stable deep-snapshot field. The native benchmark contract checks:
+
+```text
+[connected, musicRoot, tracks, playlists, folders]
+```
+
+Therefore the higher-value backend optimization is **compatibility-gated**, not
+a free cleanup.
+
+Safe promotion options are:
+
+1. formally revise the stable snapshot schema and update Rust/Python/tests in one
+   contract change after proving no supported external/manual caller needs
+   `folders`; or
+2. add a lean/internal snapshot mode used by LocalMusic while retaining the
+   legacy full snapshot shape for compatibility/deep parity.
+
+Do not remove `folders` from only Rust or only Python. Native/fallback parity is
+part of the maintained selector contract.
+
+If a lean mode is adopted, measure:
+
+- serialized stdout bytes versus track count;
+- backend CPU time for grouping/cloning/serialization;
+- transient process RSS;
+- QML parse time/RSS;
+- identical frontend library, folder-navigation and playback state.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.

@@ -14,6 +14,7 @@ import Qt5Compat.GraphicalEffects
 import Quickshell
 import qs.services
 import qs.modules.settings
+import "modules/settings/SettingsHierarchy.js" as Hierarchy
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions as CF
@@ -58,26 +59,22 @@ ApplicationWindow {
         }
     }
 
-    onCurrentPageChanged: root._persistCurrentPage()
+    onCurrentPageChanged: {
+        root._persistCurrentPage()
+        root.navGroup=Hierarchy.parentKey(root.pages[root.currentPage])
+    }
 
     property bool uiReady: Config.ready
 
-    // Easy mode filters the same flat tab list down to essential pages.
-    readonly property bool easyMode: Config.options?.settingsUi?.easyMode ?? false
-
-    readonly property var visibleNavItems: {
-        const items = []
-        for (const index of SettingsPageRegistry.navigationPageIndexes(root.easyMode)) {
-            const page = pages[index]
-            if (!page) continue
-            const entry = Object.assign({}, page)
-            entry.realIndex = index
-            items.push(entry)
-        }
-        return items
+    property string navGroup: ""
+    readonly property var navPageOrder: SettingsPageRegistry.navigationPageIndexes(false)
+    readonly property var visibleNavItems: Hierarchy.entries(pages, navPageOrder,
+        navGroup, currentPage, navEditMode)
+    function activateNavigation(entry): void {
+        if (entry.back) { navGroup="";return }
+        if (entry.groupKey) navGroup=entry.groupKey
+        root.currentPage=entry.realIndex
     }
-
-    readonly property var navPageOrder: visibleNavItems.map(entry => entry.realIndex)
 
     function nextNavPage(current) {
         var idx = navPageOrder.indexOf(current);
@@ -88,19 +85,6 @@ ApplicationWindow {
         var idx = navPageOrder.indexOf(current);
         if (idx < 0) return navPageOrder.length > 0 ? navPageOrder[navPageOrder.length - 1] : 0;
         return navPageOrder[(idx - 1 + navPageOrder.length) % navPageOrder.length];
-    }
-
-    function setEasyMode(enabled) {
-        Config.setNestedValue("settingsUi.easyMode", enabled === true);
-    }
-
-    // Auto-bounce off non-essential pages when easy mode is enabled
-    onEasyModeChanged: {
-        if (easyMode) {
-            var current = pages[currentPage];
-            if (current && current.essential !== true) currentPage = 0;
-        }
-        if (settingsSearchText.length > 0) recomputeSettingsSearchResults();
     }
 
     // Global settings search
@@ -132,7 +116,7 @@ ApplicationWindow {
         // Check if waffle family is active
         var isWaffleActive = Config.options?.panelFamily === "waffle";
         var wafflePageIndex = getWaffleSettingsPageIndex();
-        var easyOn = root.easyMode;
+        var easyOn = false;
 
         // 1. Buscar en el índice estático de secciones (para navegación rápida a secciones)
         const settingsSearchIndex = SettingsPageRegistry.searchIndex();
@@ -903,26 +887,11 @@ ApplicationWindow {
                     spacing: 4
 
                     RippleButton {
-                        buttonRadius: Appearance.rounding.full
-                        implicitWidth: 35
-                        implicitHeight: 35
-                        onClicked: root.setEasyMode(!root.easyMode)
-                        contentItem: MaterialSymbol {
-                            anchors.centerIn: parent
-                            horizontalAlignment: Text.AlignHCenter
-                            text: root.easyMode ? "school" : "tune"
-                            iconSize: 20
-                            color: root.easyMode ? Appearance.colors.colPrimary : Appearance.colors.colOnSurfaceVariant
-                            Behavior on color {
-                                enabled: Appearance.animationsEnabled
-                                animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                            }
-                        }
-                        StyledToolTip {
-                            text: root.easyMode
-                                ? Translation.tr("Easy mode — click to show all settings")
-                                : Translation.tr("Advanced mode — click to switch to Easy mode (essentials only)")
-                        }
+                        visible:Config.options?.panelFamily === "abyss"
+                        buttonRadius:Appearance.rounding.full;implicitWidth:35;implicitHeight:35
+                        onClicked:Quickshell.execDetached([Quickshell.shellPath("scripts/inir"),"ipc","call","abyss","editLayout"])
+                        contentItem:MaterialSymbol {anchors.centerIn:parent;text:"dashboard_customize";iconSize:20}
+                        StyledToolTip {text:Translation.tr("Edit Abyss Layout")}
                     }
 
                     RippleButton {
@@ -1006,6 +975,7 @@ ApplicationWindow {
 
                             delegate: RippleButton {
                                 id: navBtn
+                                objectName:"settingsNav_"+(modelData.groupKey || modelData.key || "back")
                                 required property int index
                                 required property var modelData
                                 Layout.fillWidth: true
@@ -1013,12 +983,12 @@ ApplicationWindow {
                                 rippleEnabled: true
                                 buttonRadius: Math.min(width, height) / 2
                                 readonly property int pageRealIndex: modelData.realIndex
-                                toggled: root.currentPage === pageRealIndex
+                                toggled: Hierarchy.selected(modelData,root.pages,root.currentPage)
                                 colBackground: "transparent"
                                 colBackgroundToggled: Appearance.colors.colPrimaryContainer
                                 colBackgroundToggledHover: Appearance.colors.colPrimaryContainerHover
                                 colBackgroundHover: Appearance.colors.colLayer1Hover
-                                onClicked: root.currentPage = pageRealIndex
+                                onClicked: root.activateNavigation(modelData)
 
                                 contentItem: RowLayout {
                                     anchors.fill: parent
@@ -1052,6 +1022,7 @@ ApplicationWindow {
                                             ColorAnimation { duration: Appearance.animation.elementMoveFast.duration }
                                         }
                                     }
+                                    MaterialSymbol {visible:!!navBtn.modelData.groupKey;text:"chevron_right";iconSize:18;color:Appearance.colors.colOnSurfaceVariant}
                                 }
                             }
                         }

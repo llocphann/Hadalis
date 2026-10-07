@@ -64,7 +64,13 @@ Singleton {
         watchChanges: true
         onFileChanged: fileReloadTimer.restart()
         onAdapterUpdated: fileWriteTimer.restart()
-        onSaved: root._completeWrite()
+        onSaved: {
+            // FileView starts without a watched inode on a fresh installation.
+            // Read back the first successful write to publish readiness and
+            // establish the ordinary watch before Settings waits on it.
+            if (!root.ready) root._pendingReload = true
+            root._completeWrite()
+        }
         onSaveFailed: error => {
             console.warn("[Persistent] Save failed:", error);
             root._completeWrite();

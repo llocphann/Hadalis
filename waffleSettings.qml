@@ -137,6 +137,8 @@ ApplicationWindow {
             icon: "battery-saver",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WTlpPage.qml")
         }
+        ,{key: "integrations",name:Translation.tr("Integrations"),icon:"apps",
+          component:Qt.resolvedUrl("modules/waffle/settings/pages/WIntegrationsPage.qml")}
     ]
     
     property int currentPage: 0

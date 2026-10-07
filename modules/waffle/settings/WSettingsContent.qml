@@ -33,7 +33,7 @@ Item {
         { label: Translation.tr("Appearance"), keys: ["themes", "wallpaper", "gowall", "effects"] },
         { label: Translation.tr("Desktop & Layout"), keys: ["monitors", "shell-layout", "bar", "workspace-strip", "panels", "waffle-style", "modules"] },
         { label: Translation.tr("System"), keys: ["system", "power", "autostart"] },
-        { label: Translation.tr("Features & Services"), keys: ["ai", "mascot"] },
+        { label: Translation.tr("Features & Services"), keys: ["ai", "mascot", "integrations"] },
         { label: Translation.tr("Advanced & Help"), keys: ["shortcuts", "about"] }
     ]
     property var expandedNavGroups: ({})
@@ -108,6 +108,8 @@ Item {
     }    
     // Complete search index with all individual options + targetLabel for spotlight
     property var searchIndex: [
+        {pageIndex:19,pageName:"Integrations",section:"Obsidian",label:"Obsidian",description:"Vault, theming, notes and tasks",keywords:["obsidian","vault","theme","integrations","tasks"]},
+        {pageIndex:19,pageName:"Integrations",section:"Calendar",label:"External calendars",description:"ICS/iCal sources",keywords:["calendar","ics","ical","integrations"]},
         { pageIndex: 18, pageName: "Battery", section: "Power management", label: "Battery and TLP settings", targetLabel: "Configuration categories", keywords: ["tlp", "power", "battery", "cpu", "processor", "disk", "pcie", "usb", "radio", "energy", "profile"] },
         { pageIndex: 18, pageName: "Battery", section: "Battery Care", label: "Charge limit", targetLabel: "Hardware-aware charge care", keywords: ["tlp", "battery", "charge", "limit", "threshold", "thinkpad", "conservation"] },
         { pageIndex: 17, pageName: "Shell Layout", section: "Live shell layout", label: "Edit live", targetLabel: "Edit live", keywords: ["layout", "move", "position", "taskbar", "output", "edit", "live"] },
@@ -912,7 +914,6 @@ Item {
                          active: root.loadEnabled && Math.abs(index - root.currentPage) <= pageStack.keepRadius
                         asynchronous: index !== root.currentPage
                         source: root.pages[index].component
-                        onLoaded: if (index === 19) root.applyPendingCloudSection()
                         visible: index === root.currentPage && status === Loader.Ready
                         opacity: visible ? 1 : 0
                         // Disabled pages must not intercept mouse events even at opacity 0

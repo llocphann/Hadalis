@@ -24,14 +24,11 @@ Item {
         return loader?.item ?? null
     }
     readonly property bool loading: {
-        void(_statusRevision)
-        const currentLoader = _loaderFor(_currentIndex)
-        const pendingLoader = _loaderFor(_pendingIndex)
         return PageLoadState.shouldShow(
             loadEnabled, requestedIndex, pages.length,
             _sourceFor(requestedIndex) !== "",
-            _errorIndex, _currentIndex, currentLoader?.status ?? Loader.Null,
-            _pendingIndex, pendingLoader?.status ?? Loader.Null, Loader.Ready)
+            _errorIndex, _currentIndex, _pageStatuses[_currentIndex] ?? Loader.Null,
+            _pendingIndex, _pageStatuses[_pendingIndex] ?? Loader.Null, Loader.Ready)
     }
 
     property int _currentIndex: -1
@@ -40,6 +37,7 @@ Item {
     property bool _transitionRunning: false
     property var _retainedIndices: []
     property var _lruIndices: []
+    property var _pageStatuses: ({})
     property int _statusRevision: 0
     property int _errorIndex: -1
     // Invalidate deferred page work whenever navigation/reset moves on. A
@@ -220,6 +218,9 @@ Item {
     }
 
     function _handleStatus(index, status) {
+        const statuses=Object.assign({},_pageStatuses)
+        statuses[index]=status
+        _pageStatuses=statuses
         _statusRevision++
 
         if (status === Loader.Error && (index === _currentIndex || index === _pendingIndex)) {

@@ -28,6 +28,7 @@ Singleton {
     function isPageApplicable(index: int): bool {
         if (index < 0 || index >= root.pages.length
                 || root.isHiddenLegacyIndex(index) || !root.pages[index]) return false
+        if (index === 38) return true
         if (root.abyssFamily)
             return ![11,26].includes(index)
         if (root.waffleFamily)
@@ -88,8 +89,8 @@ Singleton {
     readonly property var hiddenPages: SettingsPageRegistryData.hiddenPages.filter(
         index => !root.isHiddenLegacyIndex(index))
 
-    // The public Settings rail is flat. Persisted groups may still carry the
-    // user's ordering, but their labels never become visual headings.
+    // Keep the complete saved page order for search, shortcuts and navigation
+    // editing. SettingsHierarchy derives the compact parent/child presentation.
     function navigationPageIndexes(essentialOnly = false): var {
         const order = []
         const seen = new Set()

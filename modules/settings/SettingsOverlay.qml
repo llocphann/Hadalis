@@ -9,6 +9,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import qs.services
 import qs.modules.settings
+import "SettingsHierarchy.js" as Hierarchy
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.perimeter
@@ -1137,6 +1138,7 @@ Scope {
 
                                         delegate: RippleButton {
                                             id: navBtn
+                                objectName:"settingsNav_"+(modelData.groupKey || modelData.key || "back")
                                             required property int index
                                             required property var modelData
                                             Layout.fillWidth: true
@@ -1144,12 +1146,12 @@ Scope {
                                             rippleEnabled: true
                                             buttonRadius: Math.min(width, height) / 2
                                             readonly property int pageRealIndex: modelData.realIndex
-                                            toggled: overlayCurrentPage === pageRealIndex
+                                            toggled: Hierarchy.selected(modelData,root.overlayPages,root.overlayCurrentPage)
                                             colBackground: "transparent"
                                             colBackgroundToggled: Appearance.colors.colPrimaryContainer
                                             colBackgroundToggledHover: Appearance.colors.colPrimaryContainerHover
                                             colBackgroundHover: Appearance.colors.colLayer1Hover
-                                            onClicked: overlayCurrentPage = pageRealIndex
+                                            onClicked: root.activateNavigation(modelData)
 
                                             contentItem: RowLayout {
                                                 anchors.fill: parent
@@ -1183,6 +1185,7 @@ Scope {
                                                         ColorAnimation { duration: Appearance.animation.elementMoveFast.duration }
                                                     }
                                                 }
+                                                MaterialSymbol {visible:!!navBtn.modelData.groupKey;text:"chevron_right";iconSize:18;color:Appearance.colors.colOnSurfaceVariant}
                                             }
                                         }
                                     }
@@ -1512,6 +1515,7 @@ Scope {
         root._slideDir = root.overlayCurrentPage > root._prevPage ? 1 : -1
         root._prevPage = root.overlayCurrentPage
         root._persistOverlayPage()
+        root.navGroup=Hierarchy.parentKey(root.overlayPages[root.overlayCurrentPage])
         // Published for settingsNav, which shell.qml owns for both chromes.
         GlobalStates.settingsOverlayCurrentPage = root.overlayCurrentPage
     }
@@ -1531,19 +1535,15 @@ Scope {
         return entry
     })
 
-    readonly property var visibleNavItems: {
-        const items = []
-        for (const index of SettingsPageRegistry.navigationPageIndexes(false)) {
-            const page = overlayPages[index]
-            if (!page) continue
-            const entry = Object.assign({}, page)
-            entry.realIndex = index
-            items.push(entry)
-        }
-        return items
+    property string navGroup: ""
+    readonly property var navPageOrder: SettingsPageRegistry.navigationPageIndexes(false)
+    readonly property var visibleNavItems: Hierarchy.entries(overlayPages, navPageOrder,
+        navGroup, overlayCurrentPage, navEditMode)
+    function activateNavigation(entry): void {
+        if (entry.back) { navGroup="";return }
+        if (entry.groupKey) navGroup=entry.groupKey
+        root.overlayCurrentPage=entry.realIndex
     }
-
-    readonly property var navPageOrder: visibleNavItems.map(entry => entry.realIndex)
 
     function nextNavPage(current) {
         var idx = navPageOrder.indexOf(current);

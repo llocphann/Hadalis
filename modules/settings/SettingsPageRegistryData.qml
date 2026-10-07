@@ -229,6 +229,7 @@ Singleton {
                         null,
                 null,
         {key:"companion",name:Translation.tr("Companion"),icon:"water_drop",desc:Translation.tr("Aqua and Octo appearance, personality and movement"),essential:true,component:"modules/settings/CompanionConfig.qml"}
+        ,{key: "integrations",name:Translation.tr("Integrations"),icon:"extension",desc:Translation.tr("Obsidian, calendar and connected applications"),essential:false,component:"modules/settings/IntegrationsConfig.qml"}
     ]
 
     // v7 information architecture: navigation reflects the user's intent,
@@ -240,7 +241,7 @@ Singleton {
         { label: Translation.tr("Appearance"), pages: [4, 3, 25, 8] },
         { label: Translation.tr("Desktop & Layout"), pages: Config.options?.panelFamily === "abyss" ? [15,5,14,29,10,11] : [15,26,2,22,23,5,16,14,29,10,11] },
         { label: Translation.tr("System"), pages: [1, 12, 17] },
-        { label: Translation.tr("Features & Services"), pages: [24, 7, 6] },
+        { label: Translation.tr("Features & Services"), pages: [24, 38, 7, 6] },
         { label: Translation.tr("Advanced & Help"), pages: [9, 13] }
     ]
 
@@ -267,13 +268,15 @@ Singleton {
             return _staticSearchIndex
 
         _staticSearchIndex = [
+        {pageIndex:38,pageName:root.pages[38].name,section:"Calendar Sync",label:"External calendars",description:"ICS/iCal sources",keywords:["calendar","ics","ical","integrations"]},
+        {pageIndex:38,pageName:root.pages[38].name,section:"Obsidian",label:"Obsidian theming",description:"Active theme and vault paths",keywords:["obsidian","theme","vault","config","integration"]},
         {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Overview"),label:Translation.tr("Enable Companion"),description:Translation.tr("Aqua and Octo appearance, personality and movement"),keywords:["aqua","octo","wull","companion","droplet","pet","mascot","fullscreen","interactive"]},
         {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Rendering"),label:Translation.tr("Companion size"),description:Translation.tr("Keep your companion small or give it a little more room."),keywords:["aqua","octo","wull","companion","size","liquid"]},
         {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Behavior"),label:Translation.tr("Personality"),description:Translation.tr("Appearance frequency"),keywords:["aqua","octo","wull","companion","calm","balanced","energetic","hyperactive","frequency","visits","animations","reflection","bubbles"]},
         {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("Rendering"),label:Translation.tr("Rendering quality"),description:Translation.tr("Bubbles and floor reflections"),keywords:["aqua","octo","wull","companion","rendering","performance","balanced","quality","glass","liquid","refraction","reflection","transparency"]},
         {pageIndex:37,pageName:root.pages[37].name,section:Translation.tr("AI"),label:Translation.tr("Enable local AI"),description:Translation.tr("Check-ins and reminders"),keywords:["aqua","octo","wull","companion","ai","local","llm","ollama","chat","obsidian","mood","energy","schedule"]},
         {
-            pageIndex: 7, pageName: root.pages[7].name,
+            pageIndex: 38, pageName: root.pages[38].name,
             section: Translation.tr("To-do & Quick Notes"),
             label: Translation.tr("To-do & Quick Notes"),
             description: Translation.tr("Shared vault for tasks and Zettelkasten notes"),
@@ -1176,7 +1179,7 @@ Singleton {
             keywords: ["voice", "mic", "microphone", "dictate", "speech", "transcribe", "recording"]
         },
         {
-            pageIndex: 7, pageName: root.pages[7].name,
+            pageIndex: 38, pageName: root.pages[38].name,
             section: Translation.tr("Music Recognition"),
             label: Translation.tr("Music Recognition"),
             description: Translation.tr("Song recognition timeout and interval"),

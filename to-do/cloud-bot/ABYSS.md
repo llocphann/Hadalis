@@ -8,7 +8,7 @@ This is a consolidation of the former root README runtime/unfinished checklists;
 
 ## Other runtime findings needing reconciliation
 
-- [ ] **Settings navigation indicator:** still unresolved. Expanding/collapsing **Headings** can make the active task-tab indicator jump downward. The previous attempt is not accepted; re-audit/replace the failed geometry or lifecycle approach rather than stacking another workaround.
+- [ ] **Settings navigation visual acceptance:** the old shared indicator jumped when Headings expanded/collapsed. `0c804b5ac` replaces that presentation with compact parent/child navigation and selection owned by each button. Native parent/child/Back, stable routes, custom order, hidden-page restore and integration deep links pass in the canonical `3881227eb` run. Verify the new presentation on the owner desktop before closing this visual gate; the rejected shared-indicator geometry is retired.
 - [ ] **System Monitor popup refinement:** source-side two-digit CPU Load width reservation and RPM/Level Material icons are present; live-validate that one/two-digit CPU changes no longer resize the popup and fan metrics remain aligned/readable.
 - [ ] **Shell boot integrity:** the installed/runtime shell must remain free of `Type ... unavailable`, duplicate-identifier and singleton-construction failures on the exact candidate.
 - [ ] **Connected-surface acceptance:** Popup, Left/Right Sidebar, Dashboard, Settings, Dock and OSK still require live Niri validation for contact geometry, seam/gap behavior, edge ownership, hover transfer/retract, fractional scale and multi-output.
@@ -91,7 +91,8 @@ exact source SHA and keep owner-session desktop acceptance separate.
 
 The checkboxes below now mean **source implemented with focused local/native
 contracts**, not owner-session visual/hardware acceptance. Canonical validation
-is the next gate; earlier unresolved owner reports above remain open.
+passed on the exact source SHA recorded below; earlier owner-session gates
+above remain open.
 
 1. [x] Replace existing wallpaper picker presentations with one Caelestia-like
    selector rendered through Abyss connected surfaces; preserve selection,
@@ -197,11 +198,47 @@ is the next gate; earlier unresolved owner reports above remain open.
   for Window and FloatingWindow. Historical/frozen benchmark fixture blobs and
   consumed evidence were preserved.
 
+### Canonical validation — 2026-10-07
+
+Both runs used the default remote clean-clone mode of
+`bash scripts/validate-maintainer-local.sh`. The failed log was preserved.
+
+- **Initial FAIL:** `998239aaca31a33d270af278bc2a705679ff3aee`,
+  368 PASS / 17 FAIL / 3 SKIP.
+  Local log: `/tmp/hadalis-maintainer-validation-redesign-20261007.log`.
+  SHA-256: `d4f74c2c01bb5bfd18859d78b233d4890f0832b497e3bd1e76579968490fe06f`.
+- **Final PASS:** `3881227eb8a626d470d05db1d68cdb2be04dab2b`,
+  386 PASS / 0 FAIL / 3 SKIP. The validated source tree remained clean.
+  Local log: `/tmp/hadalis-maintainer-validation-redesign-rerun-20261007.log`.
+  SHA-256: `f2a5af0f23988882978b84673fb57679436ce79d65b7e05259fca5f3734df57d`.
+- **Skipped/deferred:** the manual Wull perimeter test, the QML parser pass
+  because the installed qmlformat Qt version could not be determined, and the
+  dedicated Nix contract. Native Qt behavior tests did run; Nix remains in-tree
+  and non-blocking.
+
+The repair series preserves physical falls/jumps instead of substituting portals
+(`a6032978d`), keeps the native curiosity fixture inside the existing 1–3 s UI
+lease (`7358032e8`), fixes light-mode Launcher ink (`6e4027715`), restores shared
+wallpaper loading and query/unload behavior (`4d712c01c`), and resolves moved
+Services integration links before lazy navigation (`a200be741`). Behavior tests
+exercise the current palettes, compact navigation, editor labels and batched
+presets (`1d2c5fff4`, `77ea6a968`). `7cae1d951` preserves the original dependency
+blobs of an inert historical rim proof; no consumed native benchmark was rerun.
+`3881227eb` repairs documentation/task links. The complete canonical rerun also
+passes notification timeout, copied clipboard images, Notes/Timers pinning,
+Dashboard/Widget editing, wallpaper switching, shared AI/Obsidian, OSK, portal,
+rolling/immersion, Waffle, install/update and package lifecycle contracts.
+
+This PASS applies only to `3881227eb8a626d470d05db1d68cdb2be04dab2b`.
+Later documentation commits and concurrent work are separate evidence, not a
+new canonical qualification. Private logs remain local; this note records their
+identity and results rather than publishing desktop diagnostics.
+
 ### Remaining acceptance
 
-**NOT_COMPLETE: canonical validation pending for this source series.** Run
-`bash scripts/validate-maintainer-local.sh` and record its printed exact SHA,
-result, failures and skips. Focused contracts do not imply canonical PASS.
+**SOURCE_COMPLETE / LOCAL_VALIDATED:** all 21 source requirement groups above.
+**NOT_COMPLETE:** owner-session visual/hardware acceptance and comparable
+whole-repository resource measurements.
 
 Owner-session wallpaper application, populated connectivity lists, physical
 keyboard input, multi-output/hotplug/fractional scaling, fullscreen/lock/focus,

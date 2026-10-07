@@ -162,6 +162,13 @@ Rules:
 
 | Direct media-art `Image` / `StyledImage` paths in media presets, Waffle Action Center/Widgets/Lock and VolumeMixer | **HIGH-CONFIDENCE RAM/GPU candidate within the <1% visual budget — bound decode size to conservative presentation resolution instead of decoding arbitrary original cover dimensions.** Hadalis already uses a 2× presentation-size `sourceSize` policy in `MediaCrossSlideImage.qml`, but several direct cover-art paths still have no sourceSize and use `cache:false`. Start with small foreground slots (48/96/104/108 px) at a 2× or DPR-proven bound; separately tune card-sized blurred sources with enough oversampling to preserve blur/filtering. | Medium. This is not exact pixel-lossless by assumption: source downscaling can change filtering/blur slightly. Require <1% global/edge-detail error at 1.0/1.25/1.5/2.0 DPR plus visual sharpness review. | Low–Medium GPU/texture residency reduction when large covers are shown on several surfaces; may also reduce upload/decode pressure. | Potentially medium steady image RAM for large source artwork; illustrative 2000×2000 RGBA is ~16 MB versus ~0.18 MB for a 216×216 2× decode target, before backend-specific overhead. | <1% measured visual budget; reject or raise decode target if exceeded. |
 
+| `services/Wallpapers.qml` | **HIGH-CONFIDENCE JS allocation candidate — mutate private thumbnail pending/known maps in place instead of cloning the complete map on every insert/delete.** Current `_singleThumbPending` and `_knownThumbnailOutputs` are private imperative sets; repository-wide search finds no binding, change handler or external consumer of their property identity. Enqueue/drain/remember/forget currently copy all keys with `Object.assign`. Preserve membership answers and queue order while mutating the private objects directly. | Very low. Final proof is that no `...Changed` signal is used as a wakeup and repeated/distinct key behavior is identical. | None. | Low–Medium transient JS allocation/GC reduction when browsing large wallpaper sets; avoids quadratic-ish cumulative key copying while filling/draining private sets. | 0%. |
+| `scripts/thumbnails/thumbgen.py` + `services/Wallpapers.qml` + `ThumbnailImage.qml` | **HIGH-CONFIDENCE protocol candidate — publish per-file READY/FAILED from the batch generator so delegates can skip post-batch `test -f` child processes.** Generation is already centralized, but each `ThumbnailImage` may still spawn its own existence check. Extend machine progress so Python reports whether the expected output actually exists after each result; only READY enters the shared known-thumbnail set. | Low–Medium. Current `PROGRESS ... FILE` token is not a success signal; fresh-cache and failure can both return false. Preserve retry/fallback behavior and do not mark failed outputs known. | None. | Low transient process-memory/CPU; can remove one per-delegate `test -f` process after successful/fresh batch work across large galleries. | 0%. |
+| `services/Wallpapers.qml` | **HIGH-CONFIDENCE tiny session-RAM cleanup — clear `_ffPending[videoPath]` after successful first-frame cache publication.** Success already stores `videoFirstFrames[videoPath]`, so the stale pending key no longer influences behavior because success cache wins first. Failure-side deletion is intentionally excluded because it would change current no-retry-for-session behavior. | Very low for success path. Do not alter failure semantics without a separate correctness/backoff decision. | None. | Low cumulative JS map reduction for sessions visiting many distinct video wallpapers. | 0%. |
+| `services/Wallhaven.qml` | **HIGH-CONFIDENCE JS allocation candidate — mutate private bounded tag caches/order lists in place.** The 64/256-entry suggestion/count/tag caches currently clone the whole cache object and key-order array on every insertion/update/eviction. Repository search shows the structures are private and read imperatively. Preserve exact first-occurrence removal, append-newest ordering, TTL and eviction semantics. | Very low. Verify no property-change signal consumer and exact LRU order for same-key refresh/past-limit eviction. | None. | Low–Medium transient JS allocation/GC reduction during tag enrichment; avoids O(K) copies per insert and O(K²) cumulative filling work at K up to 256. | 0%. |
+| `modules/background/Background.qml` | **HIGH-CONFIDENCE low-priority companion — mutate the private 64-entry wallpaper-size LRU in place.** `cacheWallpaperSize()` clones cache + key list for every successful `magick identify`; repository search finds no external/binding consumer of their identities. | Very low. Preserve lookup answers and exact LRU ordering/eviction. | None. | Low transient JS allocation reduction; smaller leverage than Wallhaven because writes are sparse and limit is 64. | 0%. |
+| `services/CompositorService.qml` + `services/NiriService.qml` | **MEASURE / PROVE FIRST — focus-only enriched-toplevel refresh.** Niri `onActiveWindowChanged` currently schedules the same full `sortToplevels()` matching path as structural window-order changes. A pure focus change should only flip `activated` in the already matched ordered array, but Quickshell may also emit `ToplevelManager.valuesChanged` on focus transitions. Instrument trigger coalescing first; only add a focus-only fast path when no structural full sort is pending. | Medium due undocumented external signal behavior. Never let the fast path supersede a pending structural sort or membership/title/app/workspace change. | None. | Potential low–medium CPU/allocation reduction on frequent focus switching if active-window events commonly arrive without foreign-toplevel structural changes. | 0% visual; event/update timing must remain equivalent. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -228,6 +235,12 @@ Rules:
 62. **Settings World Clock one-Bash preview** — eliminate one external `date` process per configured timezone on every 20 s preview refresh.
 63. **Sidebar World Clock split metadata/display cadence** — oracle-gated, higher leverage when seconds are enabled.
 64. **Media artwork conservative decode bounds** — start with repeated small foreground slots, then card-sized blur sources under a <1% raster/resource oracle.
+65. **Wallpaper private thumbnail-map in-place mutation** — remove whole-map copies from pending/known sets after notification-observer proof.
+66. **Thumbnail batch READY/FAILED protocol** — let successful batch outputs seed the shared known set and eliminate delegate `test -f` fan-out.
+67. **Video first-frame successful-pending cleanup** — delete stale success-side `_ffPending` keys only; leave failure retry policy unchanged.
+68. **Wallhaven bounded-cache in-place mutation** — remove O(K) cache/order cloning for private 64/256-entry caches.
+69. **Background wallpaper-size cache in-place mutation** — same safe class, lower leverage.
+70. **Niri focus-only enriched refresh** — MEASURE/PROVE FIRST; instrument Niri + foreign-toplevel triggers before any fast path.
 
 ## Explicit non-candidates from this pass
 
@@ -3834,3 +3847,224 @@ Do not reduce these from static reasoning:
   preview-sizing regression contracts and are a separate non-candidate.
 
 No whole-Hadalis RAM/GPU percentage is claimed without measurement.
+
+
+## Research continuation — round 27
+
+Baseline: `dev` at `74701f6fc1e79a4259378bd0f9d4e5adce7971cd`.
+
+This round promotes the remaining wallpaper/private-cache findings that were
+still archive-only and carries the Niri focus-only idea into the active ledger
+at its correct MEASURE/PROVE confidence. Current source identities still match
+the archived research baselines.
+
+Current source identities:
+
+- `services/Wallpapers.qml`: `162dc98dcb742d7dec918a1da01659ef64265330`;
+- `modules/common/widgets/ThumbnailImage.qml`:
+  `64386a41505f5b1a3dc4942b2a549b04d0f0cf59`;
+- `scripts/thumbnails/thumbgen.py`:
+  `fdc9ce7e4557a4296e45e8d25aea9101caf90fa1`;
+- `services/Wallhaven.qml`: `ce28a24564a964df2de7748080f8f7893e788ef8`;
+- `modules/background/Background.qml`:
+  `29bd40236ba9579077d361fb1012d4f994ef4a3a`;
+- `services/CompositorService.qml`:
+  `017c1405d39a2a2f954bb8d90d350ca4d4356f1d`;
+- `services/NiriService.qml`:
+  `4c8194493fd380bf0ad8c51bc62990ad0c232738`.
+
+### R27.1 — Wallpapers private bookkeeping currently pays reactive-copy cost without reactive consumers
+
+Two wallpaper bookkeeping structures are imperative sets in practice:
+
+```qml
+property var _singleThumbPending: ({})
+property var _knownThumbnailOutputs: ({})
+```
+
+Current enqueue/remember paths clone the entire object, mutate one key, then
+reassign. Drain/forget paths clone again before delete.
+
+Repository-wide current-source search returns each private name only from
+`services/Wallpapers.qml`. No binding, `Connections`, change handler or external
+consumer depends on object identity. Public access to known outputs is through
+imperative helpers such as `hasKnownThumbnail()`, `rememberThumbnail()` and
+`forgetThumbnail()`.
+
+Strict-lossless direction:
+
+- set/delete keys directly on the private object;
+- retain `_singleThumbQueue` order and current one-process-at-a-time ownership;
+- retain duplicate-request suppression and every success/failure callback;
+- do not mutate `videoFirstFrames` in place because that map deliberately wakes
+  presentation bindings.
+
+For n distinct pending keys, copy-on-write insertion alone copies approximately
+0+1+...+(n-1) existing keys; draining repeats shrinking copies. This is a clear
+allocation/GC shape even though individual maps are session-bounded by actual
+requests.
+
+Required oracle:
+
+- repeated/distinct thumbnail requests;
+- queue success/failure interleaving;
+- pending membership before/during/after completion;
+- remember/forget/hasKnownThumbnail parity;
+- empty/malformed paths and multiple sizes;
+- explicit assertion that no private-map Changed signal is observed.
+
+### R27.2 — Batch thumbnail generation still leaves per-delegate existence-process fan-out
+
+`ThumbnailImage.reloadThumbnail()` checks the shared known set first. If the
+expected path is not known, an instantiated delegate can still launch:
+
+```text
+test -f <expected-thumbnail>
+```
+
+The bulk Python generator already centralizes expensive image/video creation and
+emits machine progress, but its current token is only progress:
+
+```text
+PROGRESS completed/total FILE source
+```
+
+It is not proof of output readiness. `make_thumbnail()` can return false for an
+already-fresh cache item and for failure, while the parent currently ignores the
+result.
+
+Strict-lossless protocol extension:
+
+1. after every worker result, Python checks expected-output existence in-process;
+2. emit a machine token such as `READY <source>` or `FAILED <source>`;
+3. QML converts READY source+size to the exact expected thumbnail path and calls
+   `rememberThumbnail()` before existing source notification/reload;
+4. affected delegates then satisfy the shared known-set branch with no child
+   `test`;
+5. FAILED never enters the known set and retains today's fallback/retry path;
+6. the shell fallback generator can keep end-of-directory reload checks until a
+   comparable per-file success protocol exists.
+
+Required fixture:
+
+- already-fresh item;
+- newly generated image;
+- newly generated video;
+- intentional decode/generation failure;
+- partial gallery with mixed results;
+- exact visible state/retry parity;
+- process-count trace for representative gallery open.
+
+### R27.3 — Video first-frame pending map has a success-side stale key
+
+`ensureVideoStill()/first-frame` ownership keeps `_ffPending[videoPath]` as an
+in-flight/no-retry marker. Current source does not remove the key after success.
+
+Once success publishes `videoFirstFrames[videoPath]`, the stale pending entry
+cannot change later answers because success cache is consulted first. Deleting
+the pending key at successful publication is therefore behaviorally redundant
+state removal.
+
+Do **not** extend this cleanup to failure. Today a failed path leaves pending
+true for the session and suppresses repeated ffmpeg attempts. Clearing it on
+failure would be a product/correctness change and could create retry loops.
+If retry behavior is ever repaired, model explicit failed/backoff state instead
+of silently repurposing the optimization.
+
+### R27.4 — Wallhaven's bounded private caches clone themselves on every insertion
+
+Current private caches include bounded suggestion/count/tag structures with
+limits up to 256. `_boundedCacheInsert()` performs:
+
+```text
+clone cache object
+clone key-order array
+remove existing key from order
+write value
+append key
+shift/delete until within limit
+reassign both properties
+```
+
+Current repository search finds the cache structures only inside
+`services/Wallhaven.qml`. Reads are imperative request/cache checks; there is no
+presentation binding on cache identity.
+
+An in-place helper can therefore preserve exact LRU semantics:
+
+1. if key already exists, remove its first key-order occurrence;
+2. write/update value;
+3. append key as newest;
+4. evict from the front until at limit;
+5. keep TTL/request queue/network behavior unchanged.
+
+This removes O(K) object+array copying for each insert/update. Filling a bounded
+cache from empty creates O(K²) cumulative copied entries today, even though K is
+capped.
+
+Required oracle:
+
+- empty insert;
+- same-key refresh moves key to newest position;
+- eviction exactly at/past limit;
+- repeated same key;
+- TTL hit/miss;
+- suggestion/count/detail request dedup;
+- no cache/key-array Changed observer.
+
+### R27.5 — Background wallpaper-size cache is the same safe class at lower leverage
+
+Background owns a private 64-entry LRU for `magick identify` results. Successful
+probes clone both object and key array before publishing one record. Current
+repository search finds no reader outside `Background.qml`, and local reads are
+imperative cache lookups.
+
+Use the same in-place LRU rule as R27.4 while keeping exact ordering and
+64-entry eviction. This ranks lower because wallpaper dimension writes are much
+less frequent than Wallhaven tag enrichment.
+
+Do not generalize in-place mutation to reactive/public maps such as
+`videoFirstFrames`, ScreenTime data, WindowPreview cache or GlobalStates lease
+maps. The qualification is specifically **private imperative cache with no
+identity/change observer**.
+
+### R27.6 — Niri focus-only fast path remains measurement-gated
+
+Current Niri compositor wiring schedules `scheduleSort()` for both:
+
+```qml
+onWindowOrderChanged()  -> scheduleSort()
+onActiveWindowChanged() -> scheduleSort()
+```
+
+and the 100 ms coalesced timer republishes:
+
+```qml
+sortedToplevels = NiriService.sortToplevels(ToplevelManager.toplevels.values)
+```
+
+A pure focus change should not alter membership, app id, title, workspace or
+layout order; it should only alter which enriched item reports `activated`.
+Structurally, rebuilding the already matched array by `niriWindowId` would be
+cheaper than rerunning full matching.
+
+Do not implement this from static reasoning alone. Quickshell may also emit
+`ToplevelManager.toplevels.valuesChanged` on activation changes, and that signal
+already schedules the full sort. If so, a separate focus fast path can be
+redundant or race a structural update.
+
+Measurement/oracle:
+
+- instrument ordinary focus switches;
+- count/order `activeWindowChanged`, `windowOrderChanged` and
+  `ToplevelManager.valuesChanged`;
+- record whether sort timer is scheduled once/coalesced or repeatedly;
+- only run a focus-only refresh when no full structural sort is already pending;
+- compare complete `sortedToplevels`: order, `_sourceKey`, `niriWindowId`,
+  title/appId, action functions and activated flags;
+- open/close/title/app/workspace/output changes must always keep the full path.
+
+This remains lower priority than already source-proven Niri app-id bucketing and
+private layout-sort reuse.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.

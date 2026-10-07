@@ -49,7 +49,14 @@ Singleton {
             && root.isPageApplicable(index))
     }
     function navigateToKey(key: string, section: string): bool {
-        const index = root.pageIndexForKey(key)
+        // Resolve moved Services sections before a lazy page is loaded. An old
+        // deep link must not depend on that page's retired search controls.
+        const label = String(section ?? "").toLowerCase()
+        const integration = key === "services" && (label.includes("todo")
+            || label.includes("to-do") || label.includes("obsidian")
+            || label.includes("zettelkasten") || label.includes("quick note")
+            || label.includes("calendar"))
+        const index = root.pageIndexForKey(integration ? "integrations" : key)
         if (index < 0) return false
         root.navigateRequested(index, root.abyssFamily && !section
             ? ({"shell-layout":"surface",bar:"bar"}[key] ?? "")

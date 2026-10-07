@@ -19,7 +19,7 @@ assert.equal(state.groups.filter(g=>g.label==='Abyss').length,1);
 assert.equal(state.groups.filter(g=>g.label==='More').length,1);
 assert.equal(state.groups.flatMap(g=>g.pages).length,5);
 assert.equal(new Set(state.groups.flatMap(g=>g.pages)).size,5);
-const SettingsPageRegistry={get categories(){return state.groups},get hiddenPages(){return state.hidden},defaultCategories:defaults};
+const SettingsPageRegistry={get categories(){return state.groups},get hiddenPages(){return state.hidden},defaultCategories:defaults,navigationPageIndexes:()=>state.groups.flatMap(g=>g.pages)};
 const SettingsPageRegistryData={legacyHiddenIndexes:[]};
 const Config={setNestedValue(key,value){assert.equal(key,'settingsUi.categories');state=arrange(value,defaults,5,[])}};
 const root={layoutSchemaVersion:11};
@@ -31,20 +31,21 @@ for match in re.finditer(r"    function (\w+)\(([^)]*)\)(?:: \w+)? \{",source):
     header="function "+match[1]+"("+re.sub(r": \w+","",match[2])+") "
     program+="\nroot."+match[1]+"="+header+source[a:b]+";"
 program+=r"""
-let from=state.groups.findIndex(g=>g.pages.includes(2)),to=state.groups.findIndex(g=>g.label==='System');
-assert(root.movePage(from,0,2,to,0));
-assert(state.groups[to].pages.includes(2),'dragged tab persists outside original heading');
-from=state.groups.findIndex(g=>g.label==='Abyss');
-assert(root.removeCategory(from),'nonempty heading can be removed');
-assert.equal(state.groups.filter(g=>g.label==='Abyss').length,0,'deleted heading is not injected again');
-assert.equal(new Set(state.groups.flatMap(g=>g.pages)).size,5,'deleting a heading preserves every settings page');
+let order=()=>SettingsPageRegistry.navigationPageIndexes(false);
+while(order().indexOf(2)<order().length-1)assert(root.movePageFlat(2,1));
+assert(state.groups.find(g=>g.label==='System').pages.includes(2),'adjacent moves persist across category boundaries');
+assert(!root.movePageFlat(2,1),'moving beyond the final page must be a no-op');
 for(let i=0;i<20;i++) {
-    from=state.groups.findIndex(g=>g.pages.includes(2));to=(from+1)%state.groups.length;
-    assert(root.movePage(from,state.groups[from].pages.indexOf(2),2,to,0));
-    assert.equal(state.groups.flatMap(g=>g.pages).filter(p=>p===2).length,1,'repeated moves never duplicate pages');
+ const index=order().indexOf(2),direction=index===0 ? 1 : index===order().length-1 ? -1 : i%2 ? 1 : -1;
+ assert(root.movePageFlat(2,direction));
+ assert.equal(order().filter(p=>p===2).length,1,'repeated moves never duplicate pages');
+ assert.equal(new Set(order()).size,5,'moving preserves every page');
 }
-assert(root.hidePage(to,0,2));assert(state.hidden.includes(2));
-assert(root.restorePage(2));assert(!state.hidden.includes(2));
-console.log('PASS: heading deletion, tab moves, deduplication, hidden-page restore and persisted navigation');
+assert(root.hidePageById(2));assert(state.hidden.includes(2));assert(!order().includes(2));
+assert(!root.hidePageById(2),'a hidden page cannot be hidden twice');
+assert(root.restorePage(2));assert(!state.hidden.includes(2));assert.equal(order().filter(p=>p===2).length,1);
+assert(!root.restorePage(2),'a visible page cannot be restored twice');
+root.reset();assert.equal(order().length,5);assert.equal(state.hidden.length,0);
+console.log('PASS: adjacent tab moves, boundary no-ops, deduplication, hidden-page restore and persisted navigation');
 """
 subprocess.run(["node","-e",program],check=True,cwd=root)

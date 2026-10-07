@@ -2,10 +2,12 @@
 """Guard unified To-do and Quick Notes Settings deep links from dashboard surfaces."""
 
 from pathlib import Path
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 states = (ROOT / "GlobalStates.qml").read_text(encoding="utf-8")
 services = (ROOT / "modules" / "settings" / "ServicesConfig.qml").read_text(encoding="utf-8")
+integrations = (ROOT / "modules" / "settings" / "IntegrationsConfig.qml").read_text(encoding="utf-8")
 registry = (ROOT / "modules" / "settings" / "SettingsPageRegistryData.qml").read_text(encoding="utf-8")
 overlay = (ROOT / "modules" / "settings" / "SettingsOverlay.qml").read_text(encoding="utf-8")
 focus = (ROOT / "modules" / "settings" / "SettingsFocus.qml").read_text(encoding="utf-8")
@@ -23,9 +25,11 @@ assert "function activateSettingsSearchSection(section: string): bool" in servic
 assert overlay.count("if (requestedPage < 0)") >= 1
 assert focus.count("if (requestedPage < 0)") >= 1
 assert 'label.includes("todo") || label.includes("to-do") || label.includes("obsidian")' in services
-assert 'root.activeSection = "data"' in services
+assert 'SettingsPageRegistry.navigateToKey("integrations",section)' in services
+assert 'settingsPageIndex:38' in integrations
+assert '"obsidian"' in integrations and '"calendar"' in integrations
 
-assert 'pageIndex: 7, pageName: root.pages[7].name' in registry
+assert 'pageIndex: 38, pageName: root.pages[38].name' in registry
 assert 'section: Translation.tr("To-do & Quick Notes")' in registry
 assert '"quick notes"' in registry and '"vault"' in registry
 
@@ -33,4 +37,24 @@ for name, source in (("rail", overlay), ("focus", focus)):
     assert "settingsOverlayRequestedSection" in source, f"{name} overlay lost section deep link"
     assert "consumeSettingsDeepLink" in source, f"{name} overlay lost deep-link consumer"
 
+subprocess.run(["node", "-e", r'''
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync(process.argv[1],'utf8');
+const body=source.match(/function navigateToKey\([^)]*\):\s*bool\s*\{([\s\S]*?)\n    \}/)[1];
+for(const abyssFamily of [true,false]){
+ const events=[];
+ const root={abyssFamily,pageIndexForKey:key=>({services:7,integrations:38,bar:34,'shell-layout':2}[key] ?? -1),navigateRequested:(...args)=>events.push(args)};
+ const context=vm.createContext({root});
+ const navigate=vm.runInContext('(function(key,section){'+body+'})',context);
+ for(const section of ['Todo','To-do & Quick Notes','Obsidian vault','Zettelkasten','Quick Notes','Calendar Sync','SERVICES · OBSIDIAN']){
+  assert.equal(navigate('services',section),true);assert.deepEqual(events.pop(),[38,section]);
+ }
+ for(const section of ['Data','Weather','System','Network','Updates','']){
+  assert.equal(navigate('services',section),true);assert.deepEqual(events.pop(),[7,section]);
+ }
+ assert.equal(navigate('integrations','Calendar Sync'),true);assert.deepEqual(events.pop(),[38,'Calendar Sync']);
+ assert.equal(navigate('missing','Obsidian'),false);assert.equal(events.length,0);
+}
+console.log('Moved Services deep links: PASS (30 routes, missing targets and both families)');
+''', str(ROOT / "modules/settings/SettingsPageRegistry.qml")], check=True)
 print("Todo/Obsidian settings deep-link contract: PASS")

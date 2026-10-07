@@ -5,6 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 README = (ROOT / "README.md").read_text(encoding="utf-8")
+INTEGRATIONS = (ROOT / "modules" / "settings" / "IntegrationsConfig.qml").read_text(encoding="utf-8")
 SERVICES = (ROOT / "modules" / "settings" / "ServicesConfig.qml").read_text(encoding="utf-8")
 OVERLAY = (ROOT / "modules" / "settings" / "SettingsOverlay.qml").read_text(encoding="utf-8")
 FOCUS = (ROOT / "modules" / "settings" / "SettingsFocus.qml").read_text(encoding="utf-8")
@@ -23,7 +24,7 @@ for token in (
     'title: Translation.tr("To-do & Quick Notes")',
     'title: Translation.tr("To-do")',
     'title: Translation.tr("Quick Notes")',
-    'Translation.tr("Vault path")',
+    'Translation.tr("Obsidian vault folder")',
     'Translation.tr("Note path pattern")',
     'Translation.tr("Heading")',
     'Translation.tr("Zettelkasten folder")',
@@ -31,7 +32,8 @@ for token in (
     'Translation.tr("Shared by To-do and Zettelkasten.")',
     'Translation.tr("Activate verified source.")',
 ):
-    assert token in SERVICES, f"combined Settings label/help lost: {token}"
+    assert token in INTEGRATIONS, f"combined Settings label/help lost: {token}"
+    assert token not in SERVICES, f"application integration duplicated in Services: {token}"
 
 for removed_copy in (
     'Translation.tr("One Markdown file and heading.")',
@@ -45,7 +47,7 @@ for removed_copy in (
     'Translation.tr("Uses the vault Zettelkasten template.")',
     'Translation.tr("Vault path override")',
 ):
-    assert removed_copy not in SERVICES, f"redundant Settings copy returned: {removed_copy}"
+    assert removed_copy not in INTEGRATIONS, f"redundant Settings copy returned: {removed_copy}"
 
 for stale in (
     "Use one Markdown note source. The path may be fixed or contain date tokens",
@@ -53,7 +55,7 @@ for stale in (
     "Dashboard Quick Notes are drafts until capture. A successful capture creates one filesystem-canonical Zettelkasten note, then clears the unchanged draft.",
     "The generated Markdown follows the vault's Zettelkasten schema:",
 ):
-    assert stale not in SERVICES, f"verbose/stale Settings copy returned: {stale}"
+    assert stale not in INTEGRATIONS, f"verbose/stale Settings copy returned: {stale}"
 
 overlay_start = OVERLAY.index("id: overlayContentContainer")
 overlay_end = OVERLAY.index("// ── Page header", overlay_start)

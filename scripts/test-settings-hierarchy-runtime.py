@@ -43,6 +43,8 @@ Window {
    check(SettingsPageRegistry.navigateToKey("integrations","Calendar Sync"),"integration deep link is unreachable")
    tryVerify(()=>overlay.pageHost?.currentIndex===38 && overlay.pageHost?.currentItem?.activeSection==="calendar",7000)
    check(overlay.navGroup==="apps","deep link did not reveal its parent")
+   check(SettingsPageRegistry.navigateToKey("services","To-do & Quick Notes"),"legacy Services deep link is unreachable")
+   tryVerify(()=>overlay.pageHost?.currentIndex===38 && overlay.pageHost?.currentItem?.activeSection==="obsidian",7000)
    overlay.pageHost.currentItem.activateSettingsSearchSection("To-do & Quick Notes")
    check(overlay.pageHost.currentItem.activeSection==="obsidian","legacy data search lost its destination")
    Config.setNestedValues({"todo.obsidian.vaultPath":Quickshell.env("OBSIDIAN_VAULT"),"integrations.obsidian.autoTheme":true})

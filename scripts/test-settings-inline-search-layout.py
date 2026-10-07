@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guard in-content Settings search and flat palette-tinted navigation."""
+"""Guard in-content Settings search and compact parent/child navigation."""
 
 from pathlib import Path
 
@@ -53,19 +53,20 @@ overlay = read("modules/settings/SettingsOverlay.qml")
 focus = read("modules/settings/SettingsFocus.qml")
 waffle = read("modules/waffle/settings/WSettingsContent.qml")
 for path, source, order_token in (
-    ("Window", window, "SettingsPageRegistry.navigationPageIndexes(root.easyMode)"),
+    ("Window", window, "SettingsPageRegistry.navigationPageIndexes(false)"),
     ("Overlay", overlay, "SettingsPageRegistry.navigationPageIndexes(false)"),
 ):
-    assert order_token in source, f"{path}: flat navigation order missing {order_token}"
+    assert order_token in source, f"{path}: persisted navigation order missing {order_token}"
     for token in (
-        "readonly property var navPageOrder: visibleNavItems.map",
+        "readonly property var visibleNavItems: Hierarchy.entries(",
+        "Hierarchy.selected(modelData,",
         "spacing: SettingsMaterialPreset.navItemSpacing",
         "implicitHeight: SettingsMaterialPreset.navItemHeight",
         "buttonRadius: Math.min(width, height) / 2",
         "SettingsMaterialPreset.navigationIconColor(",
         "colBackgroundToggled: Appearance.colors.colPrimaryContainer",
     ):
-        assert token in source, f"{path}: flat navigation contract missing {token}"
+        assert token in source, f"{path}: navigation contract missing {token}"
     for token in (
         'type: "header"',
         "function toggleNavGroup(",
@@ -73,7 +74,7 @@ for path, source, order_token in (
         "groupPageIndices",
         "sharedNavIndicator",
     ):
-        assert token not in source, f"{path}: grouped navigation returned: {token}"
+        assert token not in source, f"{path}: retired heading/indicator geometry returned: {token}"
 
 
 for token in ("settingsSearchOverlay", "searchResultsCard", "resultsListView",

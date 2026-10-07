@@ -4,7 +4,8 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-services = (ROOT / "modules" / "settings" / "ServicesConfig.qml").read_text(encoding="utf-8")
+services = (ROOT / "modules" / "settings" / "IntegrationsConfig.qml").read_text(encoding="utf-8")
+system_services = (ROOT / "modules" / "settings" / "ServicesConfig.qml").read_text(encoding="utf-8")
 facade = (ROOT / "services" / "Todo.qml").read_text(encoding="utf-8")
 internal = (ROOT / "services" / "InternalTodoBackend.qml").read_text(encoding="utf-8")
 
@@ -34,6 +35,7 @@ required = [
 ]
 for token in required:
     assert token in services, f"unified Todo settings contract lost: {token}"
+    assert token not in system_services, f"application integration duplicated in Services: {token}"
 
 todo_start = services.index('title: Translation.tr("To-do & Quick Notes")')
 todo_end = services.index('title: Translation.tr("Calendar Sync")', todo_start)

@@ -220,6 +220,9 @@ Rules:
 | `modules/ii/overlay/OverlayTaskbar.qml` | **HIGH-CONFIDENCE transient GPU/texture-RAM candidate — bound the Angel taskbar wallpaper blur to the visible taskbar instead of materializing a full-output effect layer.** The retained taskbar is only content-sized, but `taskbarBlurWallpaper` is sized and decoded to `Quickshell.screens[0]`, then gets a `MultiEffect` blur before the parent clips/masks it back to the taskbar. Reuse the existing screen-aligned PreserveAspectCrop transform and materialize only taskbar bounds plus the exact 64 px blur support. | Low–Medium. Preserve the current `screen[0]` sampling contract, screen-relative x/y alignment, rounded mask, content-width changes and the full open→fade-out lifetime owned by `presentationActive`. | **High local potential while Overlay is visible in Angel mode; zero expected idle gain once the retained taskbar has faded out.** | **High local transient potential.** A full-screen RGBA8 layer is ~7.9 MiB at 1920×1080 and ~31.6 MiB at 3840×2160 before effect intermediates; the strict candidate should allocate only taskbar+blur-padding surfaces. These are texture-size calculations, not measured RSS savings. | Target 0%; exact crop A/B must include every taskbar edge through the 64 px blur reach, fractional scale and wallpaper crop alignment. |
 | `modules/waffle/altSwitcher/WaffleAltSwitcher.qml` + `WaffleAltSwitcherContent.qml` | **HIGH-CONFIDENCE transient render-pass candidate — collapse the Waffle skew preset per-slice mask capture into one analytic parallelogram mask/pass.** Every instantiated skew delegate enables a content layer while `cardVisible`, then applies `MultiEffect` masking whose mask is another `ShaderEffectSource`/layer containing a white `Shape`. The same delegate already owns the exact parallelogram equation for `containmentMask`, so mask geometry is not unknown. Keep preview capture, ListView geometry and the Canvas shadow unchanged in the first experiment; replace only the duplicated content+mask offscreen chain. | Medium. AA edge coverage, 4×/1× layer-sample behavior, current expanded-slice animation, preview arrival, focus/navigation and rapid close must remain identical. | **Medium–High local potential while the skew switcher is visible**, multiplied by visible/cached slice delegates; zero expected gain for other presets or while closed. | Low–Medium transient texture reduction from removing one or more per-delegate offscreen mask/content surfaces. | Target 0% for an exact mask-only collapse; otherwise require <1% global error plus a stricter alpha/edge-band comparison on the slanted edges. |
 
+| `services/ai/AiProviderCatalog.qml` + `modules/settings/AiConfig.qml` | **HIGH-CONFIDENCE catalog-publication CPU/allocation candidate — publish with append-once storage and build one provider→models index instead of repeatedly copying/filtering the full model catalog.** `_publishModels()` currently grows `merged` through repeated `merged = merged.concat(bucket)` copies, sorts it, then each Material provider card calls `modelsFor(providerId)`, which filters the entire sorted catalog again. Current presets contain 11 providers. Fill one array with `push`, keep the exact existing sort comparator, build a stable private `Map` of provider buckets from that sorted result, and have `modelsFor()` return a fresh `slice()` of the bucket. Mutate the private Map before the single existing `models` publication so `modelsChanged` remains the authoritative UI invalidation. | Low. Preserve `Object.keys(_catalogByProvider)` pre-sort input order, stable equal-key sort behavior, exact model object identity, strict `providerId ===` membership semantics, fresh-array return behavior from `modelsFor()`, and current `modelsChanged`/`catalogUpdated` cadence. | Small O(M) resident reference index across the discovered model catalog. | Medium transient CPU/allocation reduction on catalog load/refresh and when the provider settings grid is live; removes repeated concat copies plus up to one full M-model filter per visible provider card. | 0%. |
+| `modules/sidebarRight/events/EventsWidget.qml` + `modules/background/widgets/calendar/CalendarUpcomingWidget.qml` | **HIGH-CONFIDENCE calendar CPU/allocation candidate — parse each merged event timestamp once before sorting instead of constructing two `Date` objects per comparator call.** Both 30-day merged-list builders clone local/external events and then sort with `new Date(a.dateTime || a.startDate) - new Date(b.dateTime || b.startDate)`. Prepare a private event→millisecond key while appending; reuse the already-created external `evtTime` where available; sort by numeric keys with the same stable source order for equal/invalid keys. | Low. Preserve the current local/external inclusion rules, all-day past-event exception, object clone shapes, equal-time stability, invalid-date comparator behavior (`NaN` acts as an equal comparison), full EventsWidget ordering, CalendarUpcoming `slice(0,maxEvents)`, and day-header grouping. | Tiny transient timestamp Map/parallel keys during rebuild; no persistent cache required. | Low–Medium CPU/allocation reduction on event/calendar refreshes, growing with the number of 30-day merged events; Date parsing falls from comparator-multiplied O(N log N) construction to O(N) preparation while the sort itself remains unchanged. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -338,6 +341,8 @@ Rules:
 106. **Booru manual-preview shared directory readiness** — replace per-thumbnail `mkdir -p` children with one race-safe readiness owner while retaining cache-test/curl/local-file semantics.
 107. **Overlay taskbar bounded Angel blur** — crop the screen-aligned Angel wallpaper/effect source to the taskbar plus exact blur support instead of allocating a full-output layer for a small retained taskbar.
 108. **Waffle skew Alt Switcher single-pass parallelogram mask** — keep the existing skew geometry/preview/shadow contracts while eliminating the per-delegate content-layer + captured mask chain.
+109. **AI catalog append-once publication + provider index** — eliminate repeated concat copies and per-provider full-catalog filters while preserving the single `models` publication boundary and fresh `modelsFor()` arrays.
+110. **Merged-calendar prepared sort timestamps** — parse local/external event timestamps once per 30-day list rebuild and sort by the prepared numeric keys instead of reparsing dates inside every comparator call.
 
 ## Explicit non-candidates from this pass
 
@@ -7171,6 +7176,180 @@ profile evidence.
 `/proc` conflict scan after config readiness. Idle is event/config driven and
 uses a bounded 30 s retry only after `swayidle` failure. Neither is a recurring
 healthy-state hot path worth complicating.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
+before/after measurement.
+
+## Research continuation — round 40
+
+Baseline: `dev` at `3081bbf461ca3f71cf0a0405f5cadc65f21d011d`.
+
+This round moved away from graphics and audited collection publication paths
+that are active only when their owning feature is used. Candidate promotion
+required both a current runtime owner and a removal boundary that preserves
+observable array order, object identity and notification timing.
+
+Current source identities:
+
+- `services/ai/AiProviderCatalog.qml`: `188a129bc2302b5d1af24dd8976332d7d4e174e0`;
+- `modules/common/AiProviderPresets.qml`: `3d3ba9eba45a58bbcaf4926d19e748aaa58e1da9`;
+- `modules/settings/AiConfig.qml`: `483e77ec09b09c99ffafd97c6e8365b8e38cf9ba`;
+- Waffle `WAiPage.qml`: `03992467529e32cff8af550a4375a6aad0dd61d5`;
+- `modules/sidebarRight/events/EventsWidget.qml`: `f505dc6331e2f1d56eac547dfe7c4b0e713a162a`;
+- `modules/background/widgets/calendar/CalendarUpcomingWidget.qml`: `a47d5740b2b6739106fb67b2ec3be8552b53430d`;
+- `services/Events.qml`: `dcc3671e7c6d640fdbe5d3ee8dce45bc412148e7`;
+- `services/CalendarSync.qml`: `6e0b89c56eda5ee612be8438d9c20d4851a09617`;
+- `modules/sidebarRight/calendar/CalendarDayDetail.qml`: `4deaddeed8ac427f8e4fe44cf8c0b7bbd942f0f5`;
+- `modules/overview/Overview.qml`: `431e4443dbde6afc00b2e88a0d9db55e3dbe11b4`;
+- `modules/overview/OverviewAllAppsGrid.qml`: `777fe6f79cd90e9585d19cdfd79fdd01b6b6c4d1`;
+- `modules/abyss/content/AbyssPopupContent.qml`: `0430fddb89baac3f0f7c5bf58e564bc42c722fec`;
+- `modules/abyss/content/AbyssLauncherContent.qml`: `5af7fb7b59fd8dfe4b6183218aafc67318314a87`;
+- `modules/dashboard/DashTodo.qml`: `7a18bf0693ad12e837cca44b95b82d2c89c9d425`;
+- Sidebar `TodoWidget.qml`: `84cb458f602ad40583cfa37282585d175426e5f6`.
+
+### R40.1 — AI model publication copies the catalog, then every provider card scans it again
+
+`AiProviderCatalog._publishModels()` currently assembles the discovered catalog
+with repeated immutable concatenation:
+
+```qml
+let merged = []
+for (const providerId of Object.keys(root._catalogByProvider))
+    merged = merged.concat(root._catalogByProvider[providerId] ?? [])
+merged.sort(existingComparator)
+root.models = merged
+```
+
+Each `concat` allocates a new array and copies every model already accumulated.
+With multiple non-empty providers, publication therefore performs avoidable
+prefix copies before the one sort that is actually required.
+
+The public helper then discards the provider ownership that was just traversed:
+
+```qml
+function modelsFor(providerId: string): var {
+    return root.models.filter(model => model.providerId === providerId)
+}
+```
+
+The Material AI Settings provider grid has one delegate per
+`AiProviderPresets.presets`; current source contains eleven presets, and every
+delegate owns `discoveredModels: AiProviderCatalog.modelsFor(preset.id)`.
+Therefore a single `models` publication can trigger multiple complete scans of
+the same catalog. Waffle also calls `modelsFor()` when opening a provider form.
+
+A strict implementation can retain today's single authoritative `models`
+publication:
+
+1. append every provider bucket into one `merged` array with `push`, preserving
+   `Object.keys(_catalogByProvider)` order and each bucket's order exactly;
+2. apply the current sort comparator unchanged;
+3. before assigning `root.models`, clear/fill a stable private JavaScript
+   `Map` from exact `providerId` values to arrays of references encountered in
+   that **sorted** result;
+4. assign `root.models = merged` exactly once as today;
+5. make `modelsFor(providerId)` deliberately read `root.models` to retain the
+   current QML dependency, then return `bucket.slice()` so callers still get a
+   fresh array on every call;
+6. do not reassign the private Map itself, so building the index does not add a
+   second QML NOTIFY wave before `modelsChanged`.
+
+This keeps exact model object identity and the global sort as the authority;
+the index only removes repeated membership scans.
+
+Required oracle:
+
+- zero providers/models;
+- one provider and many models;
+- all eleven current presets with empty/non-empty mixtures;
+- duplicate/equal display names proving stable sort ties keep source order;
+- local/free/name ordering exactly matches current output;
+- missing/null/unusual providerId values, preserving strict `===` membership;
+- `modelsFor()` unknown provider returns a new empty array;
+- repeated `modelsFor()` calls return equal contents but distinct array objects;
+- cache load, successful refresh, partial provider failure/stale catalog, and
+  queued refresh;
+- exact `modelsChanged`, provider-card update and `catalogUpdated` cadence;
+- Material provider form and Waffle provider form choose the same first model.
+
+### R40.2 — 30-day merged event lists parse dates inside every sort comparison
+
+`EventsWidget` and the desktop `CalendarUpcomingWidget` independently build
+30-day merged local + external event arrays. Both already do useful batching
+through `CalendarSync._getEventBucketsForDates()`, but after cloning records
+they sort with date parsing inside the comparator:
+
+```qml
+all.sort((a, b) =>
+    new Date(a.dateTime || a.startDate)
+    - new Date(b.dateTime || b.startDate))
+```
+
+A comparison sort invokes that expression many times. For N merged events this
+turns timestamp parsing/object construction into comparator-multiplied work even
+though each event's sort field is immutable within that rebuild.
+
+The strict direction is local preparation, not a new calendar cache:
+
+1. create one temporary timestamp map/parallel key set for the rebuild;
+2. when cloning a local event, parse its current `dateTime || startDate` once;
+3. for an external event, reuse the `evtTime` Date already created by the
+   existing past-event filter and store its millisecond value;
+4. sort the same event objects with `time[a] - time[b]`;
+5. leave publication/cloning/order and CalendarUpcoming's later
+   `slice(0, maxEvents)` unchanged;
+6. keep invalid timestamps as `NaN`: subtraction then still yields `NaN`, which
+   has the same comparator effect as the current invalid-Date subtraction.
+
+`Events.getUpcomingEvents(30)` already uses a private start-time Map for its own
+sort. This proposal does not change that service or assume its local ordering
+is enough after external records are merged.
+
+Required oracle:
+
+- zero/one/many local and external events;
+- all-day and timed events;
+- external event before `now`, including today's all-day exception;
+- equal timestamps from local/external sources and stable source order;
+- invalid/missing date strings;
+- timezone offsets and DST-boundary dates;
+- CalendarSync bucket order variations;
+- exact cloned fields (`_source`, normalized external `dateTime`, category and
+  priority in EventsWidget);
+- CalendarUpcoming maxEvents 0/1/3/5/8/12 and arbitrary configured values;
+- exact `_showDayHeader` sequence with grouping on/off;
+- midnight `_todayKey` rollover and both local/external update signals.
+
+### R40.3 — Paths deliberately not promoted
+
+**OverviewAllAppsGrid inactive-mode projection:** the component does eagerly
+build both alphabetical and category projections, so gating the unused mode
+would be source-safe *if the component were active*. Current `Overview.qml`,
+however, sets `allAppsGridLoader.dashboardMode: true` and requires
+`!dashboardMode` in `active`, making this loader unreachable at this HEAD.
+Optimizing an uninstantiated tree has no current runtime value. The contradictory
+loader gate is a product/correctness cleanup, not an optimization finding.
+
+**AbyssLauncherContent window/app filtering:** current runtime search finds this
+component only in its qmldir/docs. `AbyssPopupContent` maps kind `launcher` to
+`AbyssLauncherControlsPopup`, not `AbyssLauncherContent`. Do not promote list
+filter work from a component with no current runtime owner.
+
+**Todo projections:** Dashboard and Sidebar both partition `Todo.list` into done
+and unfinished records, and each could be reduced to one local loop. The lists
+are normally small and update on user/backend task mutations rather than a hot
+clock/compositor path. Keep this below the promotion line unless profiling or a
+large-task workload makes the allocation visible.
+
+**CalendarDayDetail:** the selected-day view also constructs Dates inside three
+time-group sort comparators. Its input is only one selected day, so the same
+prepared-key technique is valid but lower value than the two 30-day builders.
+Do not inflate the promoted scope without measurement.
+
+**AiProviderCatalog aggregate counters:** free/local/provider-health counts each
+use simple filters, but they update at catalog/provider-state cadence rather
+than an interactive hot loop. Folding them into publication could alter NOTIFY
+ordering for very small savings; leave them unchanged in the first optimization.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
 before/after measurement.

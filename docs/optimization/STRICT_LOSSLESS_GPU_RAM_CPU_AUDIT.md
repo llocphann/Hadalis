@@ -233,6 +233,9 @@ Rules:
 | `modules/bar/weather/LiquidOrbitalField.qml` | **HIGH-CONFIDENCE Canvas-fallback CPU candidate — Liquid Orbital Canvas per-frame node preparation.** The animated Canvas fallback calls `liquidSample()` for 120 contour samples, up to one active glow sample, one sample per hour pod, and 4×19 moving-streak samples. With 8 hours that is up to 205 `liquidSample()` calls/frame; each currently loops all 8 nodes and recomputes each node\'s fixed-for-that-frame angle ellipse frame and breathing radius. Prepare `{angle, frame, radius, active}` once per node at the start of the paint and pass that transient array through every sample path, while keeping the sample-angle ellipse frame calculation unchanged. | Low–Medium. This is fallback-renderer math, so compare exact generated coordinates/raster across animated/frozen times, node counts, active indexes, geometry changes and shader compile handoff. Preserve arithmetic order inside signed-arc/profile/thickness calculations and do not alter the compiled ShaderEffect path. | Tiny O(node count) transient frame-local array; no persistent cache or QML NOTIFY state. | **Medium–High CPU reduction on the Canvas fallback path only**, especially Software/Null graphics backends: repeated node frame/radius preparation falls from roughly O(samples×nodes) to O(nodes) per paint while the actual liquid sample math remains. Compiled GPU shader path is unchanged. | 0%. |
 | `modules/bar/weather/OrbitalWeather.qml` + `modules/dashboard/DashWeather.qml` | **HIGH-CONFIDENCE interactive geometry CPU candidate — OrbitalWeather per-quadrant arc-length table reuse.** The non-liquid Dashboard orbit maps each hourly label to an equal-arc position by rebuilding the same 72-sample cumulative ellipse-length table independently for every hour. Within one `hourAngles` evaluation, `orbitRadiusX/Y` and each quadrant\'s start/end angles are identical; only the target fraction differs. Build the exact existing table at most once per used quadrant and resolve every hour from that transient table with the same target/search/interpolation math. Keep liquid mode\'s direct parametric angle path unchanged. | Low. Preserve `hourFromLabel()` parsing, quadrant/fraction mapping, 72-sample arithmetic, linear interpolation, invalid-label fallback and exact hour ordering. Do not exploit ellipse symmetry or change `orbitAngleForHour()` fallback semantics unless separately proven. | At most four short transient cumulative-length arrays during one binding evaluation; no retained cache required. | **Low–Medium CPU reduction during Material Dashboard weather geometry/resizes**: an 8-hour model avoids rebuilding a 72-sample table eight times and instead builds only the quadrants actually used. Weather popup liquid mode is unaffected. | 0%. |
 
+| `modules/common/widgets/shapes/ShapeCanvas.qml` + `shapes/morph.js` + `shapes/cubic.js` | **HIGH-CONFIDENCE animation CPU/allocation candidate — ShapeCanvas allocation-free morph streaming.** Every Canvas paint calls `Morph.asCubics(progress)`. For M matched segments that routine allocates a result array, one interpolated `Cubic` per segment, two 8-slot arrays per interpolated segment (`Array.from(...).map(...)`), then an additional 8-slot array + closing `Cubic` so the final endpoint exactly equals the first anchor. ShapeCanvas repaints not only while `progress` animates but also for color/stroke changes, so the same geometry allocation can recur on color-only frames at stable progress. Extend the existing mutable interpolation path with a closed streaming iterator that reuses one `MutableCubic`, captures the first anchor, and overrides only the final endpoint exactly as `asCubics()` does today; stream directly into the Canvas path instead of materializing the cubic array. | Low–Medium. The final-segment closure rule is pixel-critical and the current `forEachCubic()` alone is **not** equivalent. Preserve interpolation arithmetic, segment order/count, progress overshoot, first/last anchor identity, fit-to-canvas transforms, stroke width compensation and all animation timing. | One reusable 8-number mutable cubic per ShapeCanvas instance instead of per-paint result/cubic/point arrays. | **Medium transient allocation + local CPU reduction** across shared Material Shape animations and color repaints; no change to MaterialShapes matching topology or pixels. | 0%. |
+| `modules/common/perimeter/ConnectedSurfaceIrisField.qml` + `ConnectedSurfaceIrisFrame.qml` | **HIGH-CONFIDENCE connected-surface CPU/allocation candidate — Connected iRiS shared shape-uniform packet.** A production frame owns two `ConnectedSurfaceIrisField` instances: the visible plate and the SDF shadow mask. Both consume the same five-shape snapshot and the same `smoothing: root.fuse`, yet each independently derives 20 shape vectors, 5 radius blocks, 5 fuse blocks and 10 join blocks (40 shape-derived `vector4d` values) plus the same id map and helper lookups. Prepare that immutable shape/smoothing packet once per snapshot and let both fields bind their named shader uniforms to the same prepared values; keep viewport/screen/tint/rim/edge field-local. | Low–Medium. Preserve capacity-20 zero fill, shape order, duplicate-id last-write map behavior, scalar coercion/fallbacks, non-array join wrapping, missing join names, exact update timing and every named ShaderEffect uniform value. Packet replacement must invalidate both fields in the same QML turn. Do not touch `IrisField.frag(.qsb)` or shadow-pass topology. | One shared O(capacity) prepared packet replaces two identical CPU-side preparations; each ShaderEffect still owns its uniform bindings/GPU uploads. | **Low–Medium CPU/allocation reduction during connected-popup geometry animation**, with zero claimed GPU-pass reduction. Distinct from Round 2.2 shadow-pass elimination research. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -360,6 +363,8 @@ Rules:
 115. **AI recommendation pre-score + query-independent recommendation set** — score allowed runnable models once per recommendation rebuild and remove the recommendation sort from model-search text edits.
 116. **Liquid Orbital Canvas per-frame node preparation** — prepare each hour node's angle ellipse frame and breathing radius once per Canvas paint, then reuse them across contour, glow, pod and moving-streak samples.
 117. **OrbitalWeather per-quadrant arc-length table reuse** — build the exact 72-sample cumulative ellipse table once per used quadrant during a non-liquid `hourAngles` evaluation instead of once per hour.
+118. **ShapeCanvas allocation-free morph streaming** — stream interpolated cubic segments through one reusable mutable cubic while retaining the exact final-anchor closure rule.
+119. **Connected iRiS shared shape-uniform packet** — prepare the common shape/smoothing uniform vectors once per snapshot and share them between visible and shadow-mask iRiS fields.
 
 ## Explicit non-candidates from this pass
 
@@ -8016,6 +8021,223 @@ re-promote the same 5 s polling family under a new name.
 legacy compatibility backend while LocalMusic is the current user-facing music
 route. Keep this below active optimization work unless that route becomes
 product-relevant again.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
+before/after measurement.
+
+## Research continuation — round 44
+
+Baseline: `dev` at `e96e30a49f1fdde17a32b43fce955a2a62adb111`.
+
+This round moved into shared animation primitives and the production connected
+surface shader feed. A concurrent Utilities UI commit advanced `dev` while the
+audit was in progress; the branch, canonical audit and every promoted source
+were re-fetched from the new HEAD before this round was written. The relevant
+source blobs were unchanged by that concurrent commit.
+
+Current source identities:
+
+- `modules/common/widgets/shapes/ShapeCanvas.qml`:
+  `c03d7b2ee1bb94048d43878ba47b4cd0c08a143d`;
+- `modules/common/widgets/shapes/shapes/morph.js`:
+  `ae149b9dff609286b93a59dc027bec73fcacde20`;
+- `modules/common/widgets/shapes/shapes/cubic.js`:
+  `1e3b0bdc5edd83447933ed2d47d800721c6d9cc1`;
+- `modules/common/widgets/MaterialShape.qml`:
+  `225fc41396c0aa0b9260d3bcad96b3cfb652425a`;
+- `modules/common/widgets/MaterialCookie.qml`:
+  `89e0e348548a1d67418fce606ab143f837191d91`;
+- `modules/common/widgets/CookiePlate.qml`:
+  `5183b71c47729c559357b1f63f9f2c558417e0b4`;
+- `modules/common/perimeter/ConnectedSurfaceIrisField.qml`:
+  `8accfa340c430cbb1b794b166527a6305c7fab52`;
+- `modules/common/perimeter/ConnectedSurfaceIrisFrame.qml`:
+  `e703046f2a527ad30afc1a83ccd71f5e5a78cba7`;
+- `modules/common/perimeter/ConnectedSurfaceConnector.qml`:
+  `0f755095820759ae741462a041e81f5e437fbfec`;
+- `modules/common/widgets/CavaWavyLine.qml`:
+  `6b31e221f1121fb3c6164838e4243322de77f189`;
+- `modules/common/widgets/CavaSpectrum.qml`:
+  `aa320a70be09ff47603d80fc16d290e511724c62`.
+
+### R44.1 — ShapeCanvas materializes an allocation-heavy cubic list on every paint
+
+`ShapeCanvas` is the shared renderer underneath `MaterialShape`,
+`MaterialCookie`, `CookiePlate` and many shell/dashboard/sidebar/lock
+consumers.
+
+Every paint currently begins with:
+
+```qml
+const cubics = root.morph.asCubics(root.progress)
+```
+
+`Morph.asCubics(progress)` constructs each interpolated segment as:
+
+```js
+new Cubic.Cubic(
+    Array.from({ length: 8 }).map((_, it) =>
+        Utils.interpolate(a.points[it], b.points[it], progress)))
+```
+
+For M matched cubic segments, one paint therefore structurally creates:
+
+- one returned `ret` array;
+- M `Array.from({length:8})` temporary arrays;
+- M mapped eight-number arrays;
+- M interpolated `Cubic` objects;
+- one additional eight-number array plus one additional `Cubic` for the final
+  closure segment.
+
+The last object is not redundant semantics. `asCubics()` deliberately
+replaces the final segment's endpoint with the **first interpolated anchor** so
+the closed path has no sub-pixel seam.
+
+The library already contains `Morph.forEachCubic(progress, mutableCubic,...)`,
+which proves mutable interpolation is supported, but using it directly is not
+strict-lossless because it does not perform that final-anchor repair.
+
+Strict-lossless direction:
+
+1. retain one `MutableCubic` with an eight-number backing array per
+   `ShapeCanvas`;
+2. add/derive a closed streaming iterator over `morphMatch`;
+3. interpolate the first segment into the mutable cubic and capture its
+   `anchor0X/anchor0Y`;
+4. stream every non-final segment directly to the Canvas with the exact current
+   control/end coordinates;
+5. for the final segment only, keep its interpolated anchor0/control0/control1
+   but overwrite the endpoint with the captured first anchor before issuing
+   `bezierCurveTo`;
+6. allocate no returned cubic list during paint.
+
+Do not rebuild or alter `morphMatch`; the expensive polygon feature matching
+already belongs to the shape-change boundary rather than each paint.
+
+This applies beyond geometry-progress animation. `ShapeCanvas` also calls
+`requestPaint()` from `onColorChanged`, `onStrokeColorChanged` and
+`onStrokeWidthChanged`. A Material shape whose geometry has already settled
+can therefore still recreate the complete cubic list on every color-animation
+frame even though `progress` is unchanged.
+
+Required oracle:
+
+- start shape === end shape;
+- unlike start/end shapes with different original polygon complexity;
+- progress 0, intermediate values, 1 and easing overshoot outside the nominal
+  0..1 range;
+- rapid shape changes before the previous morph settles;
+- reduced-motion duration 0;
+- color-only animation while progress is stable;
+- stroke-only changes;
+- normalized `MaterialShape`;
+- non-normalized aspect-aware `CookiePlate` with `fitToCanvas: true`;
+- width/height changes during morph;
+- exact cubic control points and segment order;
+- exact final endpoint == first interpolated anchor;
+- raster parity around the closing seam at fractional sizes/scales.
+
+The claim is allocation/local CPU reduction only. No whole-shell percentage is
+inferred from the broad consumer count.
+
+### R44.2 — Visible and shadow iRiS fields independently prepare identical shape uniforms
+
+`ConnectedSurfaceIrisFrame` owns two instances of the same production field:
+
+```text
+shadowMaskField: ConnectedSurfaceIrisField
+visible field:   ConnectedSurfaceIrisField
+```
+
+The shadow field explicitly uses:
+
+```qml
+shapes: field.shapes
+smoothing: root.fuse
+```
+
+and the visible field also uses `smoothing: root.fuse`. Therefore their
+shape-derived shader data are identical for every frame.
+
+Inside each `ConnectedSurfaceIrisField`, one shapes/smoothing update
+independently derives:
+
+- `shape0..shape19`: 20 `vector4d` values;
+- `radiiA..E`: 5 vectors, backed by 20 `blockValue()` reads;
+- `fuseA..E`: 5 vectors, backed by another 20 reads;
+- `joinA..E` + `alsoA..E`: 10 vectors, backed by 40 `joinValue()` calls;
+- one id -> index object for join resolution.
+
+That is 40 shape-derived vectors per field, plus the repeated object/list/index
+work. The production frame computes the same logical packet twice before the
+two ShaderEffects consume it.
+
+Strict-lossless direction:
+
+1. define one prepared packet from exactly `(shapes, smoothing)`;
+2. preserve the current capacity of 20 and zero-fill missing slots;
+3. build the id map with the same loop/order so duplicate ids retain the same
+   current last-write result;
+4. preserve `Number(value ?? fallback)` coercion and current missing-shape
+   behavior;
+5. preserve join normalization exactly:
+   scalar -> one-element list, array -> itself, missing -> empty;
+6. materialize the same 20 shape, 5 radius, 5 fuse and 10 join vectors once;
+7. expose that packet from the visible field/frame owner and bind the
+   shadow-mask field to it;
+8. leave viewport, screen size, tint, rim and edge uniforms field-local because
+   they differ between the visible and shadow passes.
+
+A standalone `ConnectedSurfaceIrisField` can retain self-preparation when no
+external packet is supplied; sharing is only an optimization for owners that
+already have identical shape/smoothing inputs.
+
+Required oracle:
+
+- zero through capacity-20 shapes;
+- production five-shape owner/frame/popup arrangement;
+- dormant zero-size tangent owner records;
+- one and both tangent joins;
+- duplicate ids;
+- missing ids and missing join targets;
+- joins supplied as scalar and array;
+- explicit/missing radius and fuse;
+- smoothing changes;
+- popup move/resize/reveal animation;
+- output resize/fractional scale;
+- shadow disabled/enabled transitions;
+- exact every named ShaderEffect shape/radius/fuse/join uniform before/after;
+- visible plate and shadow-mask raster parity.
+
+This is deliberately separate from Round 2.2. That older candidate targets
+removing a shadow capture/pass. R44.2 changes no GPU pass, QSB, blur or capture;
+it removes duplicated **CPU-side preparation** for the two passes that remain.
+
+### R44.3 — Paths deliberately not promoted
+
+**ConnectedSurfaceConnector:** the Canvas draws one small two-shoulder Bézier
+path when extent/edge/color/stroke inputs change. There is no per-frame
+intermediate array or deep geometry loop. Its source duplication cost is below
+the promotion threshold compared with the iRiS field preparation above.
+
+**Material shape construction:** `material-shapes.js` already memoizes every
+named polygon through `getCircle()/getSquare()/...`. Do not propose rebuilding
+that cache; the active allocation is in per-paint interpolation, not named
+shape construction.
+
+**CavaWavyLine:** smoothing is already a rolling-window pass and explicitly
+avoids an N-element smoothed-array allocation per CAVA frame. No new candidate
+was found beyond that existing optimization.
+
+**CavaSpectrum:** the renderer already reuses scratch arrays for selected,
+smoothed, primary, secondary and baseline data. Its per-paint gradient still
+builds color stops, but caching Canvas gradient/color state has a larger
+context/geometry/theme invalidation surface than the local saving justifies
+without profiling.
+
+**iRiS shadow-pass removal:** already owned by Round 2.2. Do not count the
+shared-uniform packet as GPU-pass reduction or re-promote the older shadow
+candidate.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
 before/after measurement.

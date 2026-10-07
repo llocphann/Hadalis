@@ -154,6 +154,12 @@ Rules:
 | `modules/regionSelector/RegionSelection.qml` | **HIGH-CONFIDENCE process/quoting candidate — remove avoidable outer `bash -c` layers for recording and content-region detection.** Recorder start can exec `record.sh --region <region> [--sound]` directly; content-region detection can invoke `bash find-regions-venv.sh --image ...` as interpreter+script argv, retaining one required Bash for the wrapper but removing the extra command-string parser. | Low. Preserve exact region/image argv, wrapper startup failure, RecorderStatus quick-check timing and current detached-process behavior. Do not touch screenshot/copy/OCR/search/edit branches that use real shell composition. | None. | Low transient process/CPU reduction on explicit region actions; removes one shell from recorder start and one extra `-c` shell layer from region detection. | 0%. |
 | MPRIS position-refresh producers across Bar / media controls / Sidebar / Lock / Waffle / VolumeMixer | **MEASURE THEN ADAPT — share one demand-leased position ticker per player identity instead of independent surface timers.** Current source still has ten `positionChanged()` occurrences: nine producer-style timers plus LyricsService listener. Producers request 500 ms, 1 s or configured ~3 s cadences and can target the same `MprisPlayer`. A per-player lease owner can run at the minimum requested interval while any consumer is active. | Medium–High timing risk. Raw `positionChanged()` signal phase/count is observable and `triggeredOnStart` semantics matter. Requires trace/oracle before promotion to strict-lossless. | None directly. | Potentially meaningful wakeup/CPU reduction when multiple media surfaces for the same player coexist; RAM negligible. | Expected pixels 0%; event timing changes unless explicitly normalized. |
 
+| Cloudflare WARP quick toggles (common/Waffle + Classic + Android) | **HIGH-CONFIDENCE process candidate — execute `warp-cli status` directly instead of `/bin/sh -c`.** All three implementations use a fixed executable path and no shell syntax, yet every 5 s status refresh while the relevant surface is open forks an intermediate shell. | Very low. Preserve status parsing, availability/daemon/toggled state, panel-open gating and action-triggered refresh timing. | None. | Low transient RAM/CPU; one fewer shell process per status refresh per live toggle instance. | 0%. |
+| `services/Hyprsunset.qml` | **HIGH-CONFIDENCE low-frequency process candidate — execute `hyprctl hyprsunset temperature` directly.** The probe uses Bash only for argv tokenization; timeout, stdout, state publication and pending-toggle control already live in QML. | Very low. Preserve PATH/spawn-failure, 5 s timeout, empty/error/6500 parsing and pending action state. | None. | Low transient RAM/CPU; one fewer Bash process per Hyprsunset state probe. | 0%. |
+| `services/ResourceUsage.qml` | **HIGH-CONFIDENCE companion candidate — remove Bash from recurring NVIDIA/Intel process-backed GPU samples.** NVIDIA can run `nvidia-smi` directly and select the first non-empty row in QML; Intel can run `/usr/bin/timeout 1 intel_gpu_top -J -s 500` directly. Preserve stderr suppression, first-GPU ownership, timeout and existing parser semantics. | Low–Medium. Multi-GPU first-row behavior and malformed/timeout/error cases are the key oracle. | None. | Low transient process-memory/CPU; one shell removed per expensive GPU sample that remains after metric-demand gating. | 0%. |
+| `modules/settings/InterfaceConfig.qml` | **HIGH-CONFIDENCE process candidate — collapse Settings World Clock preview from one Bash + N external `date` children to one Bash.** Current 20 s visible-section refresh invokes `date` once per configured timezone. Sibling WorldClock implementations already pass timezones as argv and use Bash builtin `printf '%(...)T'`. Preserve cadence, namespace and `timezone|time|offset` protocol. | Low–Medium. Valid IANA zones are straightforward; malformed shell-significant timezone strings require an explicit safe-argv contract decision rather than preserving accidental shell parsing. | None. | Low transient RAM/CPU; removes N external processes per preview refresh for N configured zones. | 0%. |
+| `modules/sidebarLeft/widgets/WorldClockWidget.qml` | **HIGH-POTENTIAL / ORACLE-GATED — separate sparse timezone metadata refresh from in-process display ticking.** The visible sidebar clock currently starts one Bash every 30 s, or every second when seconds are enabled, to obtain time/offset/date/day-of-year/hour data. Reuse sparse offset metadata and advance display time locally; align minute-only updates to boundaries. | Medium–High temporal/locale risk until deterministic old-vs-new oracle exists. DST, quarter-hour zones, midnight/year rollover, clock jumps and locale formatting must match. | None. | Potentially meaningful process/wakeup reduction while the sidebar clock is visible; seconds mode can eliminate nearly one shell spawn per second. | Expected pixels 0%; time-format/event semantics must be proven. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -214,6 +220,11 @@ Rules:
 56. **ScreenTime startup FileView read** — retire the one-shot test/cat shell while keeping range-history batching unchanged.
 57. **Region Selector direct argv cleanup** — remove avoidable outer shells only from recorder/content-region branches.
 58. **MPRIS per-player demand-leased position ticker** — MEASURE/ADAPT only until signal timing/freshness contract is defined.
+59. **WARP direct status argv** — remove one shell from every open-surface status refresh across all three implementations.
+60. **Hyprsunset direct probe argv** — low-risk companion cleanup for explicit/deferred state probes.
+61. **ResourceUsage direct GPU argv** — remove Bash from NVIDIA/Intel samples while retaining metric-demand gating as the larger owner.
+62. **Settings World Clock one-Bash preview** — eliminate one external `date` process per configured timezone on every 20 s preview refresh.
+63. **Sidebar World Clock split metadata/display cadence** — oracle-gated, higher leverage when seconds are enabled.
 
 ## Explicit non-candidates from this pass
 
@@ -3451,5 +3462,214 @@ Sidebar/ControlPanel, Lock transition, Waffle Action Center, two-player surface,
 open/close, pause/resume and a non-default resource interval before deciding the
 parity contract. The correct target is likely visible progress freshness and
 bounded wakeups, not identical raw signal count, but that must be explicit.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+
+## Research continuation — round 25
+
+Baseline: `dev` at `14ca9f7415d6a30e3f8e862820c77ad2247d7b89`.
+
+This round promotes three direct-argv process cleanups, repairs the archived
+Settings World Clock ownership gap, and keeps the more ambitious Sidebar World
+Clock cadence redesign explicitly oracle-gated.
+
+Current source identities:
+
+- common/Waffle Cloudflare model:
+  `0ec62b42e71e805b3c18f2cbfc9ffb5cd78b0e3c`;
+- Classic Cloudflare toggle:
+  `fee5c5fa1e85ba12daa2fb963fb2d80239558059`;
+- Android Cloudflare toggle:
+  `6c0e743dd92f2aa3016cc08e108d1576bde025e2`;
+- `services/Hyprsunset.qml`:
+  `ad37a89247439f2133ba65fb2248b81edbdc90b3`;
+- `services/ResourceUsage.qml`:
+  `1d8e8693c230ee7450072366557b6070d433af58`;
+- `modules/settings/InterfaceConfig.qml`:
+  `6f9e2c644aafebc0b3b54ba34df14c272bbbe52d`;
+- Sidebar `WorldClockWidget.qml`:
+  `5f9272b1aeedc3fa91b76e3a13de150bb6e61829`;
+- shared `services/WorldClock.qml`:
+  `1260b2d2ed85cf70339c2c8f366c296655dc3c9a`.
+
+### R25.1 — WARP status polling pays an unnecessary shell per refresh
+
+All three WARP toggle families currently use:
+
+```qml
+command: ["/bin/sh", "-c", root.warpCliPath + " status"]
+```
+
+with a fixed `warpCliPath = "/usr/bin/warp-cli"`. There is no pipe,
+redirection, expansion, condition or user-controlled shell composition.
+
+Strict-lossless replacement:
+
+```qml
+command: [root.warpCliPath, "status"]
+```
+
+Keep the existing 5 s cadence, `triggeredOnStart`, visibility gates and explicit
+post-action refreshes. This is not a cadence change; it removes only the
+intermediate process.
+
+At a 5 s cadence, one continuously open toggle instance can avoid about twelve
+shell launches per minute. That count is structural, not a whole-shell CPU
+claim.
+
+Required oracle across common/Waffle, Classic and Android variants:
+
+- installed connected/disconnected;
+- daemon unavailable;
+- nonzero status exit;
+- current connected/disconnected/error stdout forms;
+- panel open/close poll start/stop;
+- connect/disconnect/service-start actions and immediate refresh;
+- exact available/daemon/toggled/status/tooltip behavior.
+
+### R25.2 — Hyprsunset probe can be direct argv without touching state ownership
+
+Current probe:
+
+```qml
+["/usr/bin/bash", "-c", "hyprctl hyprsunset temperature"]
+```
+
+The Process already owns stdout, timeout and completion/error state. Replace only
+execution with:
+
+```text
+["hyprctl", "hyprsunset", "temperature"]
+```
+
+or a project-standard resolved hyprctl path if PATH ownership is intentionally
+made explicit.
+
+Keep the 5 s timeout and every current output check, including empty output,
+`Couldn't...` and `6500` inactive interpretation.
+
+This is lower leverage than WARP because probes are not short-cadence periodic,
+but it is a clean strict-lossless companion candidate.
+
+### R25.3 — ResourceUsage process-backed GPU probes can drop Bash independently of demand gating
+
+The larger canonical ResourceUsage optimization remains metric-demand gating.
+For samples that still occur, NVIDIA and Intel paths currently add one Bash
+process each.
+
+**NVIDIA**
+
+Run directly:
+
+```text
+nvidia-smi
+  --query-gpu=utilization.gpu,temperature.gpu
+  --format=csv,noheader,nounits
+```
+
+Consume stderr with the existing QML Process facilities. Reproduce current
+`head -n 1` semantics by selecting the **first non-empty output row** before
+parsing usage/temperature. Do not accidentally average or choose another GPU.
+
+**Intel**
+
+Run directly through timeout:
+
+```text
+/usr/bin/timeout 1 <intel_gpu_top> -J -s 500
+```
+
+Preserve the one-second hard timeout, 500 ms sampling request and existing
+maximum-engine-busy parser.
+
+Required oracle:
+
+- NVIDIA one/multiple GPU;
+- empty/malformed/stderr-only/nonzero NVIDIA output;
+- Intel valid multi-engine JSON;
+- absent busy field;
+- malformed/partial output;
+- timeout/nonzero/missing executable;
+- exact final `gpuUsage`/`gpuTemp` parity and no new stderr noise.
+
+At the default expensive-source minimum around 6 s, direct argv can remove up to
+about ten shell launches per minute of active NVIDIA/Intel monitoring. If metric
+demand gating eliminates those samples entirely, that larger saving naturally
+wins first.
+
+### R25.4 — Settings World Clock still carries N external date children per visible refresh
+
+The Widgets Settings preview refreshes every 20 seconds while its section is
+active. Current QML generates Bash source containing one command substitution
+per configured timezone:
+
+```text
+$(TZ='zone' date '+...')
+```
+
+For N zones, each refresh therefore starts one Bash plus N `date` processes.
+
+Current sibling implementations already prove the one-process shape:
+
+- pass each timezone as an argv entry;
+- loop over `"$@"`;
+- set `TZ="$tz"` for Bash builtin `printf '%(...)T' ... -1`;
+- emit one line per timezone.
+
+Strict-lossless Settings migration must preserve:
+
+- 20 s cadence and section visibility gate;
+- 12/24-hour formatting;
+- positive/negative offsets;
+- output protocol `timezone|time|offset`;
+- configured order;
+- one process owner and current in-flight behavior.
+
+For valid IANA timezone inputs this removes N child processes per refresh. For a
+malformed string containing shell-significant characters, current code has
+accidental command-string semantics. Safe argv handling is preferable, but the
+project should explicitly classify such input as unsupported/sanitized rather
+than pretending shell injection side effects are a strict contract.
+
+### R25.5 — Sidebar World Clock process cadence is a larger but timing-sensitive target
+
+The Sidebar widget currently launches one Bash process on every display refresh:
+
+- every 30 s when seconds are hidden;
+- every 1 s when seconds are shown.
+
+That process emits time, UTC offset, localized date, day-of-year and hour24 for
+all configured zones. The newer shared WorldClock service demonstrates that
+timezone offset metadata can be refreshed sparsely while a local `now` value
+advances display state in-process.
+
+Candidate architecture:
+
+1. resolve timezone metadata/offsets at startup, timezone changes and a sparse
+   safety cadence;
+2. tick visible time in-process;
+3. when seconds are disabled, use a one-shot timer aligned to the next minute
+   boundary rather than fixed 30 s polling;
+4. when seconds are enabled, update once per second in-process with no shell;
+5. retain the current Bash formatter as deterministic oracle/fallback until
+   parity is proven.
+
+Required corpus/oracle:
+
+- UTC;
+- DST and non-DST zones;
+- +05:30, +05:45, -03:30 and date-line zones;
+- minute boundary;
+- midnight and year rollover;
+- known DST transition;
+- 12/24 h and seconds on/off;
+- date text, offset label, dayDelta, local highlight;
+- system-clock jump;
+- timezone config change during an in-flight metadata refresh.
+
+Also record child-process counts for five minutes of sidebar-open operation in
+both normal and seconds modes before/after. This remains ORACLE-GATED rather than
+declared strict-lossless from static analysis alone.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.

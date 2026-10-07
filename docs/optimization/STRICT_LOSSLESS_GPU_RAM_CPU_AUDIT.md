@@ -138,6 +138,12 @@ Rules:
 | `modules/common/widgets/SettingsSearchRegistry.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — generate highlight markup only after score/sort/top-50 selection.** Current search creates highlighted label/description strings for every match before sorting, then discards everything after the first 50. Highlight markup does not influence score or ordering, so retain raw text + matched terms through ranking and call the same highlighter only for the selected top 50. | Low. Preserve exact matched-term order, overlap markup, scores, tie order and every returned field. | None. | Low–Medium transient string/allocation reduction for broad queries with >50 matches. | 0%. |
 | `modules/settings/ThemesConfig.qml` | **HIGH-CONFIDENCE process candidate — collapse saved-theme polling fan-out to one Bash + one jq per poll.** While the custom-theme editor is expanded, the 2 s poll starts one Bash and then one external `basename` plus one `jq` per saved JSON file. Derive basename with shell parameter expansion and invoke one jq over the ordered file list while preserving one compact output object per input file. | Low–Medium. Preserve glob order, invalid-file warning/skip behavior, filenames with spaces/dots and same model reset/publication timing. | None. | Low transient RAM/CPU process reduction. Per poll, process count changes from roughly `1 + 2T` to `2` for T saved themes. | 0%. |
 
+| `services/WorldClock.qml` | **HIGH-CONFIDENCE lifecycle/RAM candidate — lazy-materialize the full timezone picker catalog only when a picker needs it.** Runtime clock rendering needs only configured timezones/offsets/entries, but WorldClock eagerly builds the complete IANA timezone list plus a second `{label,tz,icon}` combo model whenever the singleton materializes. Current consumers of the full catalog are picker/editor surfaces only. | Low–Medium. Picker must still have the complete model on its first visible frame; preserve Intl fallback, labels and selected-timezone behavior. | None. | Low–Medium persistent/transient RAM reduction for sessions that display World Clock without opening timezone editors; avoids full catalog label construction. | 0%. |
+| `modules/sidebarLeft/LocalMusicView.qml` | **HIGH-CONFIDENCE CPU candidate — prepare exact lowercase search haystacks once per active search session.** Current `filteredTracks` lowercases title/artist/album/folder and concatenates a haystack for every track on every query edit. Build `[{track, searchText}]` lazily when query becomes non-empty, reuse while `libraryTracks` identity is unchanged, invalidate on library change and release when query clears. | Low. Preserve exact String/null fallback, spacing, substring semantics, result identity/order and immediate updates on library rescans. | None. | Low bounded transient RAM while search is active in exchange for materially lower per-keystroke CPU/string allocation on large libraries. | 0%. |
+| `services/NiriService.qml` + classic/Waffle Background | **HIGH-CONFIDENCE CPU candidate — centralize active-workspace occupancy instead of recomputing it per output/family.** Classic and Waffle backgrounds independently materialize `Object.values(workspaces)`, find the active workspace for an output, then scan all Niri windows for occupancy. Derive `activeWorkspaceIdByOutput` and `occupiedWorkspaceIds` once from authoritative Niri snapshots and expose a reactive O(1) helper/map. | Low–Medium. Preserve non-Niri/unknown-output/no-active-workspace false behavior and exact invalidation on window/workspace topology changes. | None. | Low transient allocation + CPU reduction: repeated O(M·(W+N)) background scans become shared O(W+N) derivation plus O(1) per-output reads. | 0%. |
+| `modules/background/Background.qml` | **HIGH-CONFIDENCE Hyprland CPU/allocation candidate — replace `relevantWindows.filter(...).sort(...)` plus later `some()` with one summary pass.** The sorted array is only used for min workspace id, max workspace id and current-workspace occupancy. Derive `{first,last,hasCurrent}` directly in one scan while preserving the existing falsy-id fallback semantics. | Low. Workspace id 0 is currently permitted by the filter but then treated as falsy by `|| 1/10`; preserve that quirk rather than “fixing” it here. | None. | Low transient allocation + CPU reduction: remove one filtered array, O(N log N) sort and later O(N) occupancy scan per relevant update/output. | 0%. |
+| `modules/background/Background.qml` + `modules/screenCorners/ScreenCorners.qml` | **HIGH-CONFIDENCE secondary Hyprland candidate — replace nested fullscreen `filter().filter()[0]` allocations with one `find/some` pass.** Both paths only ask whether this monitor's active workspace contains a fullscreen Wayland window. | Low. Preserve loose monitor-name equality, active-workspace requirement, Wayland-only fullscreen detection and false/undefined behavior when data is absent. | None. | Low transient allocation/CPU reduction on Hyprland workspace/toplevel updates. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -185,6 +191,11 @@ Rules:
 43. **Settings search normalized registration fields** — eliminate repeated lowercase/join normalization on every keystroke.
 44. **Settings search post-top-50 highlighting** — avoid generating discarded highlight markup.
 45. **Saved-theme catalog process batching** — reduce `1 + 2T` child processes per visible-editor poll to one Bash + one jq.
+46. **WorldClock lazy timezone catalog** — avoid full IANA picker-model allocation unless an editor/picker is actually opened.
+47. **LocalMusic active-search haystack cache** — trade bounded search-session RAM for lower per-keystroke normalization/allocation.
+48. **Niri active-workspace occupancy snapshot** — share output occupancy across classic/Waffle Background instead of rescanning windows/workspaces per output.
+49. **Hyprland Background one-pass workspace summary** — replace filter+sort+some with one scan while preserving id-0 fallback behavior.
+50. **Hyprland active-fullscreen find/some** — secondary allocation cleanup for Background/ScreenCorners.
 
 ## Explicit non-candidates from this pass
 
@@ -2817,5 +2828,205 @@ The larger idea—replace the fixed 2 s poll with filesystem-driven updates—is
 separate follow-up. Add/remove watchers are insufficient by themselves because
 same-name overwrite must also be detected. Do not remove polling until overwrite
 semantics are proven.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+
+## Research continuation — round 22
+
+Baseline: `dev` at `318e50891bf1e93475945926b64881ea489c357a`.
+
+This round promotes four more archived findings whose source identities still
+match current dev exactly. It also separates a small Hyprland fullscreen cleanup
+from the larger Background range/occupancy work so the priority remains honest.
+
+Current source identities:
+
+- `services/WorldClock.qml`: `1260b2d2ed85cf70339c2c8f366c296655dc3c9a`;
+- `modules/sidebarLeft/LocalMusicView.qml`: `d5b1880d5a1a3796f0faefe343cf3f2f9909953a`;
+- `modules/sidebarLeft/SidebarLeftContent.qml`: `06c8e5aa355b97d14d606f7d152123d29a8b36ab`;
+- `modules/background/Background.qml`: `29bd40236ba9579077d361fb1012d4f994ef4a3a`;
+- `modules/waffle/background/WaffleBackground.qml`: `6e9bcbdf8daef77c9f8169ed998c44bc72b94fa6`;
+- `modules/screenCorners/ScreenCorners.qml`: `3fc43bf7e1b7ec63fae6d27f55a5dd48fbb4cb00`.
+
+### R22.1 — WorldClock eagerly owns editor-only timezone catalog state
+
+The runtime clock needs the configured timezone set and current offsets/time.
+Yet whenever WorldClock is materialized it also evaluates:
+
+```qml
+readonly property var timezoneList: ... Intl.supportedValuesOf("timeZone") ...
+readonly property var comboModel: root.timezoneList.map(tz => ({
+    label: root.labelFor(tz), tz: tz, icon: ""
+}))
+```
+
+Repository occurrence inspection shows the full catalog is consumed by timezone
+picker/editor surfaces, not ordinary clock rendering.
+
+Strict-lossless direction:
+
+1. replace eager picker catalog evaluation with an idempotent
+   `ensureTimezoneCatalog()`;
+2. keep catalog state empty until the first picker/editor requests it;
+3. compute `Intl.supportedValuesOf("timeZone")` at most once per singleton;
+4. build labels/model once and share them among picker instances;
+5. retain the complete fallback timezone list and existing `labelFor()`
+   formatting;
+6. keep configured timezone values and clock entries independent of catalog
+   readiness.
+
+Required oracle:
+
+- Intl supported-values path;
+- fallback path when Intl support is absent/throws;
+- normal clock rendering before catalog creation;
+- widget edit popover opened first;
+- Desktop Widgets Settings opened first;
+- both surfaces opened in either order;
+- selected index for every configured timezone;
+- custom configured timezone absent from the catalog;
+- change timezone and verify current clock/offset refresh parity.
+
+The picker must still show the complete model on its first visible frame. No
+permanent spinner/delayed-user-visible catalog is acceptable for this candidate.
+
+### R22.2 — LocalMusic repeats immutable metadata normalization on every keystroke
+
+Current search binding lowercases four fields and concatenates one haystack for
+every track whenever `searchField.text` changes:
+
+```text
+lower(title) + " " + lower(artist) + " " +
+lower(album) + " " + lower(folder)
+```
+
+For N tracks and Q intermediate query states, this performs roughly O(N·Q)
+normalization/concatenation even though track metadata is unchanged during the
+search session.
+
+The containing Sidebar keeps only current/adjacent SwipeView loaders active, so
+the optimization can remain view-local rather than adding session-wide music
+RAM.
+
+Strict-lossless direction:
+
+1. lazily build `[{track, searchText}]` when query transitions empty ->
+   non-empty;
+2. use the exact current `String(track?.field ?? "").toLowerCase()` values and
+   single-space concatenation;
+3. reuse the prepared array for subsequent query edits;
+4. invalidate immediately on `LocalMusic.libraryTracksChanged`;
+5. clear the prepared array when query becomes empty;
+6. return the original track object references in original order.
+
+Required oracle:
+
+- empty/whitespace-only query;
+- title/artist/album/folder matches;
+- mixed case;
+- null/missing metadata;
+- multi-word substring queries;
+- duplicate tracks;
+- rescan while search is active;
+- clear then re-enter search;
+- exact result identity/order.
+
+Do not add fuzzy search, Unicode normalization, token ranking or debounce.
+
+### R22.3 — Niri Background occupancy is recomputed per output and per family
+
+Classic and Waffle backgrounds each derive:
+
+```text
+Object.values(workspaces)
+  -> find active workspace for this output
+  -> scan windows for matching workspace_id
+```
+
+for every output instance. With M outputs, W workspaces and N windows, a relevant
+publication can therefore trigger work shaped like O(M·(W+N)) in each family.
+
+Strict-lossless shared derivation:
+
+- `activeWorkspaceIdByOutput` from the authoritative workspace snapshot;
+- `occupiedWorkspaceIds` Set/map from the authoritative Niri windows snapshot;
+- helper/read model returning whether one output's current active workspace is
+  occupied;
+- replace the derived map/revision whenever windows/workspaces change so QML
+  consumers invalidate reactively.
+
+Do not derive this from foreign toplevels. Current behavior intentionally trusts
+Niri's own window/workspace ids.
+
+Required oracle:
+
+- zero windows/workspaces;
+- one/multiple outputs;
+- active workspace change;
+- open/close/move window;
+- cross-output move;
+- workspace id/index/output topology change;
+- focus-only change must not alter occupancy;
+- output remove/re-add;
+- exact classic/Waffle `hasWindowsOnCurrentWorkspace`, focus-presence and blur
+  progress parity.
+
+### R22.4 — Hyprland Background keeps a sorted array stronger than its consumers need
+
+Classic Background currently constructs a monitor-local `relevantWindows`
+array by filtering `HyprlandData.windowList` and sorting it by workspace id.
+The array is then used only for:
+
+- first workspace id;
+- last workspace id;
+- whether the active workspace has a window.
+
+One scan can derive `{first,last,hasCurrent}` without retaining/sorting the full
+array.
+
+The current fallback must be copied exactly:
+
+```qml
+firstWorkspaceId = summary.first || 1
+lastWorkspaceId = summary.last || 10
+```
+
+That means workspace id 0 remains treated as falsy even though the existing
+filter permits it. Do not silently convert to `??` and change semantics.
+
+Required oracle:
+
+- no windows;
+- negative/special workspace ids;
+- workspace id 0;
+- out-of-order workspace ids;
+- current workspace occupied/empty;
+- active workspace change without window-list reorder;
+- monitor migration;
+- one/multiple outputs;
+- exact first/last range and occupancy parity.
+
+### R22.5 — Hyprland fullscreen nested filters are a clean secondary cleanup
+
+Background and ScreenCorners both build monitor workspace arrays, filter again
+for active+fullscreen, and inspect element 0. The requested answer is only a
+boolean/existence result.
+
+Equivalent allocation-light shape:
+
+```qml
+Hyprland.workspaces.values.find(workspace =>
+    workspace.monitor
+    && workspace.monitor.name == monitor.name
+    && workspace.active
+    && workspace.toplevels.values.some(window =>
+        window.wayland?.fullscreen))
+```
+
+Preserve loose monitor-name equality, active-workspace requirement and
+Wayland-only fullscreen detection. Keep Niri on the GameMode authority path.
+This ranks below R22.4 because it removes smaller temporary arrays rather than an
+entire sort pipeline.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.

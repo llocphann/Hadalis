@@ -226,6 +226,10 @@ Rules:
 | `modules/bar/BarTaskbar.qml` + `BarTaskbarButton.qml`; `modules/dock/DockApps.qml` + `DockAppButton.qml`; Waffle `WaffleTaskViewContent.qml` + `WindowThumbnail.qml` | **HIGH-CONFIDENCE compositor CPU candidate — per-owner published-focus hoist instead of one full `NiriService.windows.find(is_focused)` per delegate.** Bar and Dock buttons each recompute the identical `windows.find(...) ?? activeWindow` expression, while every Waffle task-view window thumbnail independently finds the focused id. Compute the exact current expression once in each existing owner and pass the object/id into its delegates; do not change `NiriService` authority or signal ordering. | Low. Preserve exact published-window-first/fallback semantics, null behavior, object identity, title/app-id matching, focus-only updates and each owner's current lifetime. Waffle must keep its current focus highlight even when cached task-view membership is not refreshed on focus-only updates. | One object/int binding per owner; removes equivalent bindings from every delegate. | **Medium local CPU potential on Niri window publications/focus churn**, scaling with visible taskbar/dock app delegates and Task View window count: O((B+D+T)×N) focused-window scans become O((owners)×N) plus O(1) delegate reads. | 0%. |
 | `modules/bar/Workspaces.qml` | **HIGH-CONFIDENCE multi-output CPU/allocation candidate — build one workspace representative/occupancy summary per published Niri window snapshot.** In workspace mode every rendered workspace button filters all `NiriService.windows` to choose `first focused else first`; the occupancy worker separately scans the same list into a Set, and column mode performs another active-workspace filter. Build one source-order-preserving summary `{representativeByWorkspace, occupiedIds}` in one pass; use O(1) representative lookup per button and reuse `occupiedIds`. Keep the column-mode array filter separate in the first patch to avoid retaining per-workspace arrays. | Low. Representative selection must preserve Array.filter + Array.find semantics: first focused window wins, otherwise first source-order window; duplicate/malformed workspace ids, empty workspaces, showAppIcons off/on, per-monitor slot mapping and focus changes must remain exact. | Small O(workspaces) resident maps/Sets per Workspaces instance; no per-window bucket arrays required. | **Low–Medium CPU/allocation reduction per window snapshot, larger with many workspaces/outputs.** Removes W full-window filter allocations for workspace icon delegates and lets the existing occupancy refresh reuse the same membership summary. | 0%. |
 
+| `modules/wallpaperLauncher/WallpaperLauncherList.qml` + `WallpaperLibrary.qml` | **HIGH-CONFIDENCE interactive CPU/allocation candidate — Wallpaper Launcher prepared relative-path search keys.** Every non-empty query currently filters the full selected wallpaper list and runs `relativePath.toLowerCase()` for every entry on every keystroke, although `WallpaperLibrary` publishes a stable sorted snapshot until the next scan/mode switch. Prepare the exact lowercase relative-path key once per published entry snapshot, then filter by those keys while returning the original entry objects in the same order. | Very low. Preserve `trim().toLowerCase()` query normalization, empty-query identity (`return entries`), fresh filtered-array behavior, original entry object identity/order, Static/Animated mode switches, scan refreshes and current-path index/preview timing. | Small bounded O(total relative-path characters) search-key RAM while prepared; can be lazy/session-scoped if desired. | **Medium local CPU/allocation reduction while typing in large wallpaper libraries**; per-keystroke lowercase work falls from O(N path text) to O(N) substring checks. | 0%. |
+| `modules/cheatsheet/CheatsheetKeybinds.qml` + `NiriKeybinds.qml` / `HyprlandKeybinds.qml` | **HIGH-CONFIDENCE interactive CPU/allocation candidate — Cheatsheet lazy prepared search fields.** `allKeybinds` already clones the compositor snapshot once, but every search keystroke lowercases `key`, every modifier, `comment` and `category` again for every row. Lazily prepare separate lowercase fields on the first non-empty search for the current `allKeybinds` snapshot and reuse them across subsequent keystrokes; return the existing cloned keybind objects rather than wrapper objects. | Very low. Do not concatenate fields into one haystack because that can create cross-field false matches. Preserve optional-field behavior, per-modifier `some()` semantics, first-search malformed-data behavior, fresh filtered-array identity, result order and Niri/Hyprland reload invalidation. Clear/rebuild the prepared cache when `allKeybinds` changes; it may be dropped again when search becomes empty. | Temporary O(keybind text) lowercase cache only during an active search session if cleared on exit. | **Low–Medium interactive CPU/allocation reduction**, scaling with keybind count/modifier count and query length; stable strings are normalized once per search session instead of once per keystroke. | 0%. |
+| `services/Ai.qml` + `modules/sidebarLeft/aiChat/AiModelSelector.qml` | **HIGH-CONFIDENCE interactive/catalog CPU candidate — AI recommendation pre-score + query-independent recommendation set.** `recommendedModelIds()` currently calls `_profileScore()` twice per sort comparison, rebuilding/lowercasing model labels repeatedly; the selector then calls the complete recommendation pipeline from inside its `entries` binding, so changing only search text can re-filter/sort recommendations even though recommendation inputs did not change. Decorate each allowed runnable model with its score once before the same stable descending sort, and expose a recommendation Set/property that invalidates only with the exact runnable-model/model-field readiness inputs, not `filter` text. Non-recommended catalog modes should not compute the set at all if it is not otherwise needed. | Low. Preserve `_profileAllows` rules, exact numeric score/coercion, input-order tie stability, minimum-limit behavior, model-id identity, credential/policy/provider readiness invalidation and default-model selection. Do not cache complete selector entries because `ready`, `hasKey` and provider status have independent reactive lifetimes. | Small O(R) transient decorated score records during recommendation rebuild; optional Set of at most the requested recommendation count. | **Medium local CPU reduction for large discovered catalogs and repeated model-search typing**, especially under the default Recommended filter; scoring work changes from comparator-multiplied calls to once per candidate and recommendation sorting leaves the text-query hot path. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -348,6 +352,9 @@ Rules:
 110. **Merged-calendar prepared sort timestamps** — parse local/external event timestamps once per 30-day list rebuild and sort by the prepared numeric keys instead of reparsing dates inside every comparator call.
 111. **Per-owner Niri focused-window hoist** — compute the exact existing published-focus expression once in BarTaskbar, DockApps and Waffle Task View owners instead of rescanning the full window snapshot in every delegate.
 112. **Workspaces one-pass representative/occupancy summary** — preserve first-focused/first-window semantics while replacing per-workspace full-list filters and the separate occupancy membership scan with one published-snapshot summary.
+113. **Wallpaper Launcher prepared relative-path search keys** — normalize each published wallpaper relative path once per library snapshot instead of once per entry per keystroke.
+114. **Cheatsheet lazy prepared search fields** — keep separate lowercase key/modifier/comment/category fields only for the active search session and reuse them across query edits.
+115. **AI recommendation pre-score + query-independent recommendation set** — score allowed runnable models once per recommendation rebuild and remove the recommendation sort from model-search text edits.
 
 ## Explicit non-candidates from this pass
 
@@ -7556,6 +7563,229 @@ all lowercase titles needs workload evidence first.
 **Waffle Start recent apps:** `getRecentApps()` stops after four unique app ids.
 Its bounded scan/lookup is not promoted without evidence that Start-page rebuild
 frequency makes it material.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
+before/after measurement.
+
+## Research continuation — round 42
+
+Baseline: `dev` at `822cae55e9699d7de9a2c0bd0da9f4a2b18ee967`.
+
+This round moved from compositor snapshot fan-out to interactive search paths.
+Promotion required a stable source snapshot plus a way to move normalization or
+ranking work off the text-query hot path without changing returned object
+identity, ordering, readiness or live-provider state.
+
+Current source identities:
+
+- `modules/wallpaperLauncher/WallpaperLauncherList.qml`: `ca1ff0267883263e8e334f9c826b0938fc9ada2d`;
+- `modules/wallpaperLauncher/WallpaperLibrary.qml`: `09d84346de34cfd23e65826e2436df7dda264aab`;
+- `modules/wallpaperLauncher/WallpaperLauncherContent.qml`: `b0a9e8ee0bacfdc00a6efeedff4651b1df86aca1`;
+- `modules/cheatsheet/CheatsheetKeybinds.qml`: `934bdc0a8f3de4e85ec662fc2008a877dc0e5637`;
+- `modules/cheatsheet/Cheatsheet.qml`: `583e6b33842a4e250ad2639fab1781220c09dff7`;
+- `services/deferred/NiriKeybinds.qml`: `a127f97a691e7d348e72889c2137c80e954a4b36`;
+- `services/deferred/HyprlandKeybinds.qml`: `58cf069d1e20120fc12038aeea5b7144df431b82`;
+- `modules/sidebarLeft/aiChat/AiModelSelector.qml`: `9581a8ba5c4f9132d904e5673bf29dd2a0328c53`;
+- `modules/sidebarLeft/AiChat.qml`: `6b9b2b860559f238e81fade02daafded65a71d25`;
+- `services/Ai.qml`: `6dc315458f7827f96a55dc2259365e814e8d1ed2`;
+- `services/ai/AiProviderCatalog.qml`: `188a129bc2302b5d1af24dd8976332d7d4e174e0`;
+- `modules/common/widgets/FontSelector.qml`: `fe938851d7d2b74f56dc371be7f5e8f5564128d3`;
+- Waffle `WSettingsFontSelector.qml`: `7ef736232412a7e3b616c0476703adcea2aa1610`;
+- `modules/common/widgets/IconThemeSelector.qml`: `19a7b8ceea8540ff5d8d46594e38df73a5761484`.
+
+### R42.1 — Wallpaper search renormalizes every path on every keystroke
+
+`WallpaperLibrary.consume()` already owns the complete snapshot boundary:
+
+1. parse the `find` output;
+2. deduplicate paths;
+3. compute `relativePath` and animation kind;
+4. sort static and animated lists by `relativePath`;
+5. publish each list as a new property value.
+
+Between scans/mode changes, each entry's `relativePath` is immutable.
+
+`WallpaperLauncherList.filteredEntries` nevertheless does:
+
+```qml
+const query = searchText.trim().toLowerCase()
+if (!query) return entries
+return entries.filter(entry =>
+    entry.relativePath.toLowerCase().includes(query))
+```
+
+So an N-wallpaper library recreates the same N lowercase strings for every
+character typed.
+
+Strict shape:
+
+1. retain the current `entries` property as the only presentation model;
+2. prepare an aligned lowercase relative-path key array only when that entries
+   snapshot changes (or lazily on the first non-empty query);
+3. keep `trim().toLowerCase()` for the query exactly;
+4. for a non-empty query, iterate the keys and push the corresponding **original
+   entry object** into a fresh result array;
+5. for an empty query, continue returning `entries` directly;
+6. invalidate preparation on Static/Animated mode switch and every library scan.
+
+This does not change ScriptModel values, selection identity, current-index
+matching or preview/apply paths.
+
+Required oracle:
+
+- 0/1/many entries;
+- empty/whitespace query;
+- case variants and Unicode paths under the current JavaScript lowercasing
+  contract;
+- duplicate basenames in different folders;
+- paths outside the configured root where `relativePath === path`;
+- Static -> Animated -> Static;
+- forced refresh while a query is non-empty;
+- browse-folder change;
+- current wallpaper filtered in/out;
+- exact filtered object identity/order and `visibleItems`;
+- exact current-index, preview debounce and apply target after each edit.
+
+The tradeoff is a bounded lowercase-key cache proportional to relative-path
+text. A lazy cache can avoid that RAM until the user actually searches.
+
+### R42.2 — Cheatsheet search repeats four stable normalization families per row
+
+`CheatsheetKeybinds.allKeybinds` already rebuilds only from the compositor
+keybind snapshot. It clones each row and adds the category once:
+
+```qml
+let item = Object.assign({}, kb)
+item.category = cat.name
+result.push(item)
+```
+
+But the text-query binding repeats stable transforms:
+
+```qml
+kb.key?.toLowerCase().includes(q)
+|| kb.mods?.some(m => m.toLowerCase().includes(q))
+|| kb.comment?.toLowerCase().includes(q)
+|| kb.category?.toLowerCase().includes(q)
+```
+
+Niri publishes a replacement `keybinds` tree after parser/editor reloads;
+Hyprland replaces its parsed keybind trees on compositor config reload. These
+are natural invalidation boundaries.
+
+The strict implementation should remain lazy because the Cheatsheet loads the
+Keybinds page even when another page is visible:
+
+1. when search is empty, keep returning `allKeybinds` and allocate no search
+   projection;
+2. on the first non-empty search for an `allKeybinds` snapshot, prepare a
+   wrapper for each cloned item containing separate lowercase `key`,
+   `mods[]`, `comment` and `category` values;
+3. keep the four current predicates separate — **do not** join the fields into
+   one haystack, which could create matches spanning field boundaries;
+4. each query creates the same fresh filtered result array but pushes the
+   existing cloned item objects;
+5. clear/rebuild preparation when `allKeybinds` changes; optionally release it
+   again when search becomes empty.
+
+Required oracle:
+
+- empty search and whitespace-only search;
+- key-only, modifier-only, comment-only and category-only matches;
+- query matching multiple fields;
+- multiple modifiers with match at first/middle/last element;
+- missing optional fields;
+- unusual/malformed field values: no new eager normalization before a search
+  begins;
+- Niri enriched reload, Niri legacy fallback, Hyprland config reload;
+- compositor switch;
+- exact result identity/order/count and row rendering;
+- clear search -> exact original `allKeybinds` reference behavior.
+
+### R42.3 — AI model search reruns recommendation ranking even when only query text changes
+
+`AiModelSelector.entries` currently begins every reevaluation with:
+
+```qml
+const query = root.filter.trim().toLowerCase()
+const recommended = new Set(Ai.recommendedModelIds("auto", 18))
+```
+
+The selector's default filter is `recommended`, so typing in the search box
+can rerun the full recommendation pipeline even though recommendation inputs
+have not changed.
+
+That pipeline itself currently does:
+
+```qml
+root.runnableModelList
+    .map(id => ({ id, model: root.models[id] }))
+    .filter(item => root._profileAllows(item.model, profileId))
+    .sort((a, b) =>
+        root._profileScore(b.model, profileId)
+        - root._profileScore(a.model, profileId))
+```
+
+A comparison sort can call `_profileScore()` many times for the same model.
+Each score call rebuilds/lowercases `${model.model} ${model.name}` and runs
+the same regex/capability/context checks.
+
+Two changes compose without caching dynamic selector rows:
+
+1. in `recommendedModelIds()`, build the allowed candidate array in source
+   order and compute each candidate's score exactly once; sort by the stored
+   numeric score with the same descending comparator, preserving stable ties;
+2. in `AiModelSelector`, derive the resulting 18-id Set in a property whose
+   dependencies are the exact recommendation inputs (runnable model list,
+   relevant model fields/readiness/policy/credential state), **not**
+   `root.filter`; the `entries` query binding then only performs membership
+   reads;
+3. when a non-recommended catalog filter is active, do not invoke recommendation
+   ranking merely to build an unused Set.
+
+Do not cache complete `entries`. `Ai.modelCanRun()`, API-key state and
+`AiProviderCatalog.stateFor()` have independent reactive lifetimes and must
+continue updating row readiness/status even when search text is unchanged.
+
+Required oracle:
+
+- zero/one/many models;
+- runnable and locked models;
+- free/private/vision/coding/fast/quality/long-context profiles;
+- code-name regex match versus toolCalling capability;
+- equal scores: exact original runnable-list tie order;
+- string/numeric context-token coercion exactly as today;
+- `limit` 0/1/8/18/larger-than-catalog;
+- policy changes;
+- keyring load/add/remove key;
+- provider catalog refresh/status change;
+- local model add/remove;
+- default model selection and `recommendedModelIds()` callers outside the
+  selector;
+- repeated search keystrokes with no recommendation input change -> zero new
+  recommendation sort;
+- exact selector row order/readiness/status and selected model behavior.
+
+### R42.4 — Paths deliberately not promoted
+
+**AI selector full search-entry cache:** model name/id/provider text looks
+cacheable, but the same loop also publishes `ready`, `hasKey` and provider
+status. A monolithic cached row risks stale authentication/health state. R42.3
+moves only ranking work whose dependency boundary is clear.
+
+**FontSelector / WSettingsFontSelector:** both call `Qt.fontFamilies()` and
+lowercase family names while typing. Caching looks attractive for large font
+sets, but Qt does not expose an obvious font-database change signal here. The
+current function call can observe a font installed/removed while the selector
+remains alive on the next query reevaluation; a component-lifetime cache could
+silently stop doing so. Measure/profile first or add a proven invalidation
+source before promotion.
+
+**IconThemeSelector:** its search similarly lowercases theme names, but
+`IconThemeService.availableThemes` is already an explicit shared list and
+normal theme counts are much smaller than wallpaper/keybind/model catalogs.
+Keep this below the promotion line unless profiling shows the settings search
+path is material.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
 before/after measurement.

@@ -32,7 +32,7 @@ Item {
             AbyssLabel { text: "Applications & workspaces"; font.bold: true; Layout.fillWidth: true }
             AbyssLabel {
                 text: "Wull · "+AbyssRenderPolicy.wullQualityLabel
-                color: AbyssStyle.textColorMuted
+                color: Appearance.colors.colSubtext
             }
             AbyssButton { glyph: "close"; description: "Close launcher"; onClicked: root.closeRequested() }
         }

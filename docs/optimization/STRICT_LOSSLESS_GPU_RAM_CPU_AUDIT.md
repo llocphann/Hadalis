@@ -182,6 +182,12 @@ Rules:
 | `services/DesktopWidgetLayout.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — prepare read-side output/screen indexes at their revision boundaries.** Every `enabled()` call currently rebuilds configured + connected monitor arrays in `outputAllowed()`, then linearly scans `records` through `widgetOverride()`; `effectiveEnabled()` additionally deep-normalizes/clones all records merely to recover saved output names. Keep mutation-time `_normalizedRecords()`, but derive first-record-by-output, ordered unique saved-output names and configured/connected membership once per relevant Config/screens revision for the read path. | Low–Medium. Duplicate-output first-match semantics, trimmed record output names, untrimmed configured names, stale/disconnected fallback behavior, hotplug reactivity and original override-object identity are strict contracts. | None. | Low transient array/deep-clone reduction, with a tiny bounded retained index proportional to outputs. | 0%. |
 | `services/DateTime.qml` | **HIGH-CONFIDENCE CPU micro-candidate — decouple date-only locale formatting from second/minute clock precision.** `shortDate`, `date` and `collapsedCalendarFormat` all bind directly to `clock.date`; when second precision is enabled or the screen is locked, the shared clock advances every second even though these three strings normally change only when the calendar day/format/locale changes. Guard those three conversions behind an exact day/format/locale key while leaving `time`, `timeDisplay` and minute-based uptime refresh untouched. | Low–Medium. Must preserve midnight rollover, manual wall-clock/date jumps, timezone/locale changes and live date-format config changes at the same observable tick. | None. | Negligible persistent RAM; low recurring CPU/string-allocation reduction, larger only while the shared clock is at 1 Hz. | 0%. |
 
+| `services/ShellUpdates.qml` + `setup` | **HIGH-CONFIDENCE update-time process candidate — keep the current 2 s progress cadence but stop spawning `cat` for every status read.** While an update is active, `updateProgressPoller` launches `updateProgressReader` every 2000 ms; that Process is only `cat update-status`. The watchdog owns a second one-shot `cat` reader. The service already owns a blocking `FileView` for the same status file. Reuse a FileView reload/text path and a shared parser while retaining the 2 s timer and 120 s watchdog. Do **not** replace this first with pure `watchChanges`: `setup` writes markers with shell redirection (`printf > file`), so a watcher may observe the truncate/write intermediate state. | Low. Preserve exact progress/failure parsing, two-second presentation cadence, watchdog extension/stuck detection, shell-restart resume and missing-file behavior. Keep the boot-staleness Bash probe because it also compares mtime with boot epoch. | None. | Low transient process-memory/CPU reduction during updates; removes one child process every 2 s plus watchdog `cat` reads. | 0%. |
+| `modules/waffle/taskview/WaffleTaskViewContent.qml` | **HIGH-CONFIDENCE interactive CPU/allocation candidate — group windows by workspace once per cache refresh and retain a private per-slot projection.** `refreshCache()` currently filters the complete `NiriService.windows` array once for every visible workspace, then sorts each subset. `previewCounts` independently filters the full flattened cache once per workspace on drag updates, and keyboard helpers filter the flat cache again per navigation call. Build a workspace-id→slot map, distribute windows in one pass, keep each slot's exact existing column sort, and publish both the existing flat cache and an internal per-slot view/count snapshot. | Low–Medium. Preserve current-output exclusion, missing-position fallback to column 0, stable equal-column order, flat result order/fields, drag exclusion/+1 target semantics and fresh-array behavior where callers may mutate results. | None. | Low–Medium transient array/CPU reduction while Task View is open; changes repeated O(W×N) scans into O(W+N) grouping plus the same per-workspace sorts. | 0%. |
+| `services/NiriService.qml` + published-window ID consumers | **HIGH-CONFIDENCE CPU candidate — derive a first-match window-id index from the published `windows` snapshot.** Several consumers repeatedly call `NiriService.windows.find(w => w.id === id)`; Waffle `TaskAppButton` does that inside a loop over an app's toplevels, and `MinimizedWindows` performs ID finds in restore/visibility paths. Maintain a small id→window lookup whenever public `windows` changes, preserving Array.find's **first duplicate wins** behavior, and let only consumers of the published snapshot use it. | Low–Medium. Duplicate/missing IDs and exact object identity are contracts. NiriService handlers that intentionally operate on `_pendingWindows` / the freshest unpublished list must keep their current scans or own a separate proven index. | None. | Tiny bounded Map/object RAM cost in exchange for lower repeated lookup CPU; no RAM-saving claim. | 0%. |
+| `services/WullMind.qml` | **HIGH-CONFIDENCE micro-candidate — select the next eligible proactive reminder in one stable pass instead of materializing and sorting all reminder rows every minute.** `offerAutomatic()` calls `reminderRows()`, which copies journal schedule rows, appends bounded Todo/calendar rows, sorts the whole array by start minute, then immediately `find()`s the first unreminded item in the ±10-minute window. For the automatic path only, scan sources in today's existing source order and retain the earliest eligible item; on equal start minute keep the first encountered row to match stable-sort + find semantics. Keep `reminderRows()` itself for any direct callers/tests. | Low. Source ordering, invalid-time rejection, Todo/calendar bounds, reminder-key construction, stable equal-time tie behavior and the existing Obsidian context-refresh-before-reminder ordering must remain exact. | None. | Low transient JS allocation/CPU reduction on the one-minute proactive cadence; intentionally low priority. | 0%. |
+| `modules/abyss/companion/OctoTentacles.qml` + `WaterDropletBody.qml` + `WullPresence.qml` | **MEASURE FIRST — new companion render/state-machine paths are not source-only optimization candidates yet.** Octo now owns one liquid ShaderEffect per tentacle. Aqua's floor reflection is already a bounded 76×82 `ShaderEffectSource`, only live while visible, grounded and detailed effects are enabled. Presence timers inspected in this pass are bounded one-shot deadlines, not recurring idle polls. Profile GPU/frame cost and capture current Aqua/Octo A/B fixtures before changing shader fidelity, tentacle count, reflection behavior or state timing. | High if optimized by assumption. These are highly visible character/motion contracts and were concurrently changed in the current dev sequence. | Unknown until measured. | Low/unknown. | No promoted visual substitution; any later renderer candidate needs a deterministic <1% A/B oracle. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -264,6 +270,11 @@ Rules:
 77. **ShellLayoutController internal descriptor references** — retain public fresh-copy isolation but eliminate JSON serialize/parse from internal read-only state/validation paths.
 78. **DesktopWidgetLayout revision-scoped read indexes** — stop rebuilding monitor arrays, linear output scans and deep normalized records across repeated widget/output enable checks.
 79. **DateTime day-key formatting guard** — keep 1 Hz time where requested while avoiding three date-only locale conversions on unchanged calendar days.
+
+80. **ShellUpdates FileView status reads** — retain the exact 2 s progress cadence and watchdog semantics while removing repeated `cat` child processes.
+81. **Waffle Task View one-pass workspace projection** — group windows once per refresh and reuse per-slot arrays/counts for drag/navigation.
+82. **Niri published-window ID index** — O(1) first-match lookups for consumers of the committed `windows` snapshot; never substitute it for pending-window logic.
+83. **Wull proactive reminder one-pass selection** — low-priority stable minimum selection that avoids minute-cadence array construction/sort.
 
 ## Explicit non-candidates from this pass
 
@@ -4876,6 +4887,278 @@ Replacing this with a computed “next midnight” one-shot timer would add
 suspend/resume, wall-clock jump and timezone-change edge cases for very small
 wake-up savings. Do not promote this path without profiler evidence that the
 single active minute comparison is material.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+## Research continuation — round 32
+
+Baseline: `dev` at `04d40521412561718dbbffc9fcfeeec0eedabcc1`.
+
+This round was reconciled against five concurrent companion commits that landed
+after round 31. The new HEAD changes Aqua/Octo companion code but does not modify
+the canonical optimization ledger or the ShellUpdates, Waffle Task View,
+NiriService, MinimizedWindows and Waffle TaskAppButton sources underlying the
+three larger findings below. WullMind was re-read from the new HEAD before its
+micro-candidate was retained.
+
+Current source identities:
+
+- `services/ShellUpdates.qml`:
+  `51e7eff2300e169ee0021673757dc9f4f79556d9`;
+- `setup`:
+  `f185edf66e9fb57d81e8441134af55dbddaa769d`;
+- `modules/waffle/taskview/WaffleTaskViewContent.qml`:
+  `8ee8ff511dafab601a840ebc0475e18563b41034`;
+- `services/NiriService.qml`:
+  `4c8194493fd380bf0ad8c51bc62990ad0c232738`;
+- `services/MinimizedWindows.qml`:
+  `ced7e049ef5942dea1ca5f3395eb9b614e9ecaf6`;
+- `modules/waffle/bar/tasks/TaskAppButton.qml`:
+  `500c22e179e8ab88988e0bfc40f97b9d4e67fe81`;
+- `services/WullMind.qml`:
+  `8f237b0fe8225ae0d15d112d75419928b383ba60`;
+- `modules/abyss/companion/OctoTentacles.qml`:
+  `eb5754f499d9dd7cf24c7e1d44f3f30f6dc55b63`;
+- `modules/abyss/companion/WaterDropletBody.qml`:
+  `d8d248b692c8b693204a1b17852adf6a3d0cbaa3`;
+- `modules/abyss/companion/WullPresence.qml`:
+  `d579b5d9cfca7b314e4185f23091d9e7e76abc4e`.
+
+### R32.1 — ShellUpdates spawns a process every two seconds only to read one file
+
+The live update-progress path is:
+
+```text
+Timer updateProgressPoller
+  interval: 2000
+  repeat: true
+  while isUpdating:
+      updateProgressReader.running = true
+
+Process updateProgressReader
+  command: ["cat", updateStatusPath]
+  -> parse progress / updating / failed
+```
+
+A second `Process updateStatusReader` runs `cat` for watchdog checks. These
+children do not perform update work; they only transport a few bytes already
+stored in a known local state file.
+
+The service already owns `updateResumeFile`, a blocking `FileView` pointing
+at the same status path, and already calls `reload()` / `text()` during
+restart recovery. The strict-lossless first step is therefore narrower than an
+event-driven redesign:
+
+1. keep `updateProgressPoller.interval === 2000` and its start/stop lifetime;
+2. on each tick, reload/read a FileView and feed the exact current parser;
+3. use the same helper from the 120 s watchdog;
+4. preserve `updateResumeReader` separately because it also computes boot epoch
+   and compares status-file mtime to reject stale previous-boot state.
+
+Why not promote pure `watchChanges` yet? The writer in `setup` is:
+
+```sh
+printf '%s\n' "$status" > "$_update_status_file"
+```
+
+That truncates then writes the same inode rather than publishing by atomic
+rename. An event watcher may therefore expose an empty/intermediate state unless
+extra debounce/reload semantics are proven. Keeping the two-second schedule
+removes process fan-out without changing update presentation timing.
+
+Required oracle:
+
+- missing/empty status file;
+- `updating`;
+- valid `progress:STEP:TOTAL:MESSAGE`, including colons in MESSAGE;
+- malformed step/total values;
+- `failed:CODE:MESSAGE`;
+- shell restart at initial marker, mid-progress and final step;
+- stale previous-boot status;
+- watchdog sees same progress twice -> stuck;
+- watchdog sees changed progress -> extends timeout;
+- success-without-restart and unknown status;
+- exact UI fields, poll start/stop state and clear-status behavior.
+
+This removes one child process per progress tick while deliberately preserving
+the existing polling cadence.
+
+### R32.2 — Waffle Task View repeatedly rescans the same flat window cache
+
+`refreshCache()` currently loops every current-output workspace and, for each
+one, filters the complete Niri window snapshot:
+
+```text
+for each workspace:
+    wins = NiriService.windows.filter(window.workspace_id == workspace.id)
+    wins.sort(by pos_in_scrolling_layout[0])
+    compute total width
+    append flattened presentation records
+```
+
+If there are W workspaces and N windows, membership discovery is O(W×N) before
+the per-workspace sorts.
+
+Two later paths repeat related work:
+
+```text
+previewCounts:
+    for every workspace slot:
+        cachedWindowItems.filter(slot && not dragged).length
+
+getWindowsInSlot(slot):
+    cachedWindowItems.filter(slot)
+```
+
+The latter feeds keyboard next/previous/focused-window navigation; previewCounts
+reacts while drag state changes.
+
+Strict-lossless shape:
+
+1. build `workspaceId -> slot` once from `cachedWorkspaces`;
+2. allocate one ordered bucket per workspace;
+3. scan `NiriService.windows` once and append only windows whose workspace is
+   in that map;
+4. run the **same existing column comparator** independently on each bucket;
+5. build today's identical flattened `cachedWindowItems` while also retaining
+   an internal per-slot presentation array/count;
+6. make drag preview counts one pass (or derive from those bucket counts with
+   the dragged-id adjustment);
+7. let keyboard helpers read the prepared slot array; return a fresh slice if
+   fresh-array identity is part of any direct helper test.
+
+Required oracle:
+
+- zero/one/many workspaces and windows;
+- windows belonging to outputs absent from `cachedWorkspaces`;
+- missing `layout.pos_in_scrolling_layout` (current comparator falls back to 0);
+- equal column positions and stable source-order ties;
+- missing tile sizes and current screen-size fallback;
+- exact cumulative width/proportion/proportionOffset;
+- active/focused workspace selection;
+- drag from/to same and different slots, including dragged-window exclusion;
+- workspace rename, open/close and delayed refresh;
+- exact flattened record ordering/fields and keyboard navigation result.
+
+No preview-capture, drag timing or visual geometry changes are required.
+
+### R32.3 — Published Niri windows have no shared ID lookup despite repeated finds
+
+The public `NiriService.windows` list is a committed/sorted snapshot. It is
+published from the batched window-update timer and is also re-sorted when output
+geometry/order changes.
+
+Consumers then rediscover records by numeric id. Examples on current dev:
+
+- Waffle `TaskAppButton.focusedWindowIndex` loops an app's toplevels and calls
+  `NiriService.windows.find(...id...)` for each Niri toplevel before sorting
+  their column positions;
+- `MinimizedWindows` performs the same published-list lookup in restore and
+  output-visibility paths.
+
+A derived lookup can be rebuilt once whenever **public `windows`** changes:
+
+```text
+firstWindowById[id] = first window carrying that id
+```
+
+The first-occurrence qualification matters. JavaScript `Array.find` returns the
+first duplicate; naïvely assigning every map entry would make the last duplicate
+win and would not be a strict replacement for malformed input.
+
+Scope boundary is equally important: several NiriService handlers intentionally
+choose:
+
+```qml
+_windowsDirty ? _pendingWindows : windows
+```
+
+to operate on data newer than the public snapshot. Those paths must keep their
+current scan or gain a separately proven pending index. The new shared lookup is
+only for consumers whose contract is explicitly the published `windows`
+property.
+
+Required oracle:
+
+- empty list;
+- one/many unique numeric ids;
+- duplicate ids with distinct object payloads -> first object wins;
+- missing/null/zero ids exactly as today's requested lookups behave;
+- window open/change/close publication;
+- focus-only publication;
+- output geometry reorder that republishes/reorders `windows`;
+- lookup returns the exact original window object;
+- pending-window handlers still observe pending state before public publication.
+
+This trades a bounded O(N) lookup structure for lower repeated O(N) scans; it is
+a CPU candidate, not a RAM-saving claim.
+
+### R32.4 — Wull's one-minute reminder path sorts more data than it consumes
+
+On the current concurrent HEAD, `WullMind.reminderRows()` still:
+
+1. clones the optional journal schedule;
+2. appends up to 128 eligible Todo rows for today;
+3. appends up to 32 non-all-day calendar rows;
+4. sorts the combined rows by `start`.
+
+`offerAutomatic()`, driven by the existing one-minute proactive timer, then
+immediately asks only for the first row within the ±10-minute condition that has
+not already been reminded.
+
+For this automatic selection path, a stable one-pass minimum is equivalent:
+
+- visit journal rows first, then Todo rows, then Calendar rows, matching today's
+  construction order;
+- apply the existing normalization/validity/window/reminded predicates;
+- replace the winner only for a **strictly earlier** `start`;
+- therefore equal-time rows retain the first source-order item, matching stable
+  `sort((a,b) => a.start-b.start)` followed by `find()`.
+
+Keep `reminderRows()` unchanged for direct callers/tests unless a repository
+reference audit proves it private.
+
+Required oracle:
+
+- no reminders;
+- journal-only, Todo-only, Calendar-only and mixed sources;
+- invalid Todo time;
+- done/not-today Todo rows;
+- all-day/invalid calendar rows;
+- exact 128/32 source bounds;
+- before/inside/after the current ±10-minute predicate;
+- already-reminded first row with a later eligible row;
+- equal start time across and within sources;
+- exact reminder key/text/type/time;
+- Obsidian auto-context refresh still runs before reminder selection and can
+  defer the current pass exactly as today.
+
+This is intentionally a low-priority micro-candidate.
+
+### R32.5 — New Aqua/Octo rendering and companion deadlines remain profile-first
+
+The concurrent companion commits add an Octo tentacle render path. Current
+`OctoTentacles.qml` creates a liquid ShaderEffect per rig tentacle with a vector
+fallback for software/error rendering. That is a visible new GPU workload, but
+source shape alone is insufficient to claim that reducing tentacles, shader
+steps or quality is lossless.
+
+The existing Aqua reflection is already strongly bounded:
+
+- `sourceRect: 76 × 82`;
+- `textureSize: 76 × 82`;
+- live only while the body is visible, grounded and detailed effects are active;
+- source is detached when software/error/fidelity conditions reject it.
+
+The WullPresence timers inspected after the concurrent changes are state-machine
+deadlines (full-visit, reaction, pointer notice, recovery, peek and surface
+deadline), not a set of recurring idle polling loops.
+
+Therefore no companion GPU/timer candidate is promoted from counts alone. First
+profile Aqua vs Octo frame time/GPU activity at identical presentation states
+and retain the existing production/fixture visual oracles. A later shader
+candidate must prove deterministic visual error below the audit budget rather
+than assuming fewer passes is acceptable.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
 

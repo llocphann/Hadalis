@@ -208,6 +208,11 @@ Rules:
 | `services/deferred/Emojis.qml` | **HIGH-CONFIDENCE per-keystroke CPU candidate — extend the existing prepared-entry cache with the lowercase key used by sloppy/Levenshtein mode.** Normal fuzzy mode already prepares `Fuzzy.prepare(entry)` once per list revision. Sloppy mode still calls `entry.toLowerCase()` for up to the first 100 entries on every query. Store `lower` beside `name`/entry and reuse it in both limited top-K and unlimited sloppy branches. | Very low. Preserve the first-100 bound, score threshold, binary insertion tie behavior, full-sort behavior when limit ≤ 0, source object/string identity and list-revision invalidation. | Tiny bounded extra string cache for emoji entries. | Low but repeated CPU/allocation reduction on every sloppy emoji query keystroke. | 0%. |
 | `modules/bar/UtilButtons.qml` | **HIGH-CONFIDENCE micro-candidate — derive the active utility order once and reuse it for count/index/placement.** The file has at most 11 utility IDs, but every visible Loader computes row/column through `utilityIndex(id)`, which filters the full ordered list and re-runs `utilityActive()`; `visibleUtilityCount` performs the same filter independently. Publish one reactive `activeUtilityOrder = utilityOrder.filter(utilityActive)`, use its length and `indexOf()`, and keep Loader activation semantics unchanged. | Very low. Preserve configured order normalization, dynamic Privacy/Audio/Niri availability dependencies, inactive-loader behavior and `Math.max(0, index)` fallback. | One small derived array replacing repeated temporary arrays. | Low allocation/CPU reduction on bar utility-state/config changes; mainly removes repeated dependency evaluation and filter arrays. | 0%. |
 
+| `modules/sidebarLeft/LocalMusicView.qml` + `services/LocalMusic.qml` | **HIGH-CONFIDENCE interactive CPU/allocation candidate — prepare immutable-per-library track metadata once instead of rebuilding search/folder keys across the complete MPD library on every query or selection change.** Current search lowercases and concatenates title + artist + album + folder for every track on every keystroke; folder browsing and selected-track resolution separately renormalize folder/key strings while rescanning the same library. Build a projection keyed to `libraryTracks` replacement containing the original track reference, exact `trackKey`, normalized folder and lowercase search haystack; query/folder/selection changes then reuse those fields. | Low–Medium. Preserve empty-query source-list behavior, JS lowercase semantics, root/nested folder normalization, original track identity/order, URI-before-path key precedence, child-folder grouping/order and immediate invalidation on every library replacement/rescan. | Low bounded metadata proportional to library size; replaces repeated temporary lowercase/concatenated strings. | Medium local CPU/allocation reduction for large music libraries during search, folder navigation and selection. | 0%. |
+| `services/LocalMusic.qml` + local-lyrics Python/Rust producers | **HIGH-CONFIDENCE hot-path CPU candidate — replace the synchronized sidecar-lyrics linear active-line scan with an upper-bound binary search.** Both current producers sort timed LRC rows ascending before publishing, while `localLyricsActiveIndex` scans from row 0 until playback position on every reactive position update. Find the last timestamp `<= position` in O(log N), preserving last-equal-timestamp ownership. | Very low. Preserve unsynced/empty = -1, before-first = -1, duplicate equal timestamps -> last duplicate, exact timestamp, backwards/forwards seeks and original row/index identity. The optimization relies on the existing producer contract that synced rows are numeric and sorted. | None. | Low–Medium repeated CPU reduction while synchronized local lyrics are displayed; largest benefit for long lyric files / frequent MPRIS position updates. | 0%. |
+| `services/WidgetPowerManager.qml` + `modules/background/widgets/AbstractBackgroundWidget.qml` | **HIGH-CONFIDENCE duplicate-work candidate — compute per-output widget pause state once per widget instead of twice.** Every `AbstractBackgroundWidget` currently binds `powerActive` through `widgetsActiveForOutput()` and `powerReduced` through `reducedModeForOutput()`; both call the same `shouldPauseForOutput()`, whose window-presence branch rebuilds active-workspace state and scans Niri windows. Because the public results are exact complements, derive `powerReduced: !powerActive` while keeping the authoritative service call for `powerActive`. | Very low. Verify every trigger: output eligibility, edit mode, manual GameMode, fullscreen, windows-present policy, Niri/non-Niri and multi-output workspaces. Preserve all existing animation/effect bindings and exact complement semantics. | None. | Low–Medium aggregate CPU/allocation reduction across multiple resident desktop widgets; removes one duplicate output-policy/workspace/window evaluation per widget invalidation. | 0%. |
+| `services/deferred/Cliphist.qml` | **HIGH-CONFIDENCE per-keystroke CPU candidate — add the lowercase sloppy-search key to the existing revision-keyed prepared clipboard entry cache.** Normal fuzzy search already prepares entries once per `entries` revision and the classic filter path already has its own prepared display keys, but sloppy/Levenshtein mode still calls `entry.toLowerCase()` for up to the first 100 history rows on every query. Cache the exact lowercase raw-entry string alongside the existing fuzzy-prepared record and reuse it in both limited top-K and unlimited sloppy branches. | Very low. Preserve the first-100/maxEntries bound, score threshold, equal-score insertion order, limit semantics, exact raw entry identity and cache invalidation on every `entries` replacement. | Tiny bounded extra lowercase-string cache. | Low but repeated CPU/allocation reduction for sloppy clipboard search; same proven class as Emoji #98. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -315,6 +320,11 @@ Rules:
 97. **YtMusic resume dirty checkpoint** — retain the 5 s crash-resume checkpoint while suppressing unchanged Config mutations/writes and their global revision fan-out.
 98. **Emoji sloppy-search lowercase preparation** — reuse per-list-revision lowercase keys instead of lowercasing up to 100 entries per query.
 99. **Bar utility active-order projection** — compute the ordered active utility list once and reuse it for count/index/layout placement.
+
+100. **LocalMusic prepared library metadata** — move per-track lowercase search haystacks, normalized folder paths and stable keys to the `libraryTracks` revision boundary.
+101. **LocalMusic timed-lyrics binary lookup** — exploit the producer-guaranteed sorted LRC timeline to replace reactive O(N) active-line scans with exact upper-bound O(log N) lookup.
+102. **Background widget power-state complement reuse** — call the per-output pause computation once per widget and derive reduced state as the exact inverse.
+103. **Cliphist sloppy-search lowercase preparation** — reuse source-revision lowercase raw-entry keys instead of normalizing up to 100 clipboard rows per query.
 
 ## Explicit non-candidates from this pass
 
@@ -6398,6 +6408,327 @@ unless process traces show meaningful churn.
 ordered name list is safe but too small to promote ahead of the four candidates
 above; callers usually re-evaluate on geometry/DPR changes rather than every
 frame.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+## Research continuation — round 37
+
+Baseline: `dev` at `1afd09f2ca0944da8bbc26da471898e446883da0`.
+
+This round deliberately moved into the local-music and desktop-widget derived
+state paths, then revisited deferred clipboard search only where a source-level
+gap remained after the earlier prepared-cache work. No concurrent commits landed
+after round 36 during this audit.
+
+Current source identities:
+
+- `services/LocalMusic.qml`:
+  `88263668b48d85323a576c4c3645d9f40909f466`;
+- `modules/sidebarLeft/LocalMusicView.qml`:
+  `d5b1880d5a1a3796f0faefe343cf3f2f9909953a`;
+- `scripts/local_music_lyrics.py`:
+  `cd46821e435fd74f50d83e5bf811e6d1ca0cfe8d`;
+- `native/inir-mpdd/src/main.rs`:
+  `1c63b8e5281dad2a28e88ea3cb660f7cc0c0cb88`;
+- `services/LyricsService.qml`:
+  `69df76941fa3d0fd7f069d9df6488950eb5972f3`;
+- `services/WidgetPowerManager.qml`:
+  `da0d6feffdcfc7682d08d92460222dddaa3d06d0`;
+- `modules/background/widgets/AbstractBackgroundWidget.qml`:
+  `16603c04327503fad558fb6886e61a7738295b73`;
+- `services/deferred/Cliphist.qml`:
+  `edfcd8969d5fcb2fd0bcda7ae8269fbe21d924b1`.
+
+### R37.1 — Local Music rebuilds stable library strings on every interactive search
+
+The Songs search binding currently walks the complete MPD library for every
+query change:
+
+```qml
+for (const track of LocalMusic.libraryTracks) {
+    const title = String(track?.title ?? "").toLowerCase()
+    const artist = String(track?.artist ?? "").toLowerCase()
+    const album = String(track?.album ?? "").toLowerCase()
+    const folder = String(track?.folder ?? "").toLowerCase()
+    const haystack = title + " " + artist + " " + album + " " + folder
+    if (haystack.includes(root.query))
+        result.push(track)
+}
+```
+
+Those four source fields are stable for the complete lifetime of the published
+`libraryTracks` snapshot. Query edits only change the comparison needle, yet
+they currently repeat four conversions/lowercase operations and one joined
+string allocation per track per keystroke.
+
+The same view performs other immutable-per-library transformations separately:
+
+- `buildSongEntries()` rescans all tracks and normalizes each folder path while
+  constructing the current folder projection;
+- `resolveSelectedTracks()` rescans all tracks and reconstructs `trackKey` /
+  normalized-folder strings when selected keys/folders change.
+
+For a large MPD library these are catalog-sized transforms on UI-local state
+changes, not on music-library changes.
+
+A strict-lossless projection can be built only when
+`LocalMusic.libraryTracks` is replaced:
+
+```text
+preparedTrack = {
+  track: originalTrackReference,
+  key: String(track.uri ?? track.path ?? ""),
+  folder: normalizedFolder(track.folder),
+  searchKey:
+    lower(title) + " " + lower(artist) + " " + lower(album) + " " + lower(folderRaw)
+}
+```
+
+Then:
+
+1. non-empty search filters `preparedTrack.searchKey`, but returns the original
+   track reference in source order;
+2. folder browsing uses `preparedTrack.folder`;
+3. selection resolution uses the prepared key/folder;
+4. empty search may continue returning the exact original
+   `LocalMusic.libraryTracks` object, preserving today's binding identity;
+5. `buildSongEntries()` may still create its fresh UI entry objects exactly as
+   it does now.
+
+Do not move this cache into the always-resident LocalMusic service unless there
+is a reason for another consumer to share it. The view-local cache is sufficient
+and respects current UI lifecycle ownership.
+
+Required oracle:
+
+- empty library / one / many thousands of tracks;
+- empty query returns the existing source-list semantics;
+- leading/trailing search spaces and mixed case;
+- empty/null title, artist, album, folder, URI and path;
+- non-ASCII strings using exact JS `toLowerCase()` behavior;
+- URI-before-path key precedence;
+- root, leading-slash, trailing-slash and nested folders;
+- direct tracks mixed with child folders;
+- source order and original track object identity;
+- selected individual tracks and selected parent folders;
+- MPD rescan replacing the library while query/folder/selection is resident;
+- exact Songs list and resulting play/enqueue payloads.
+
+### R37.2 — Local synchronized lyrics linearly rescan a sorted timeline
+
+`LocalMusic.localLyricsActiveIndex` currently walks from the beginning:
+
+```qml
+let index = -1
+for (let i = 0; i < localLyricsLines.length; i++) {
+    const time = Number(localLyricsLines[i]?.time ?? -1)
+    ...
+    if (time <= position)
+        index = i
+    else
+        break
+}
+return index
+```
+
+This reactive property follows `lyricsPosition`, which prefers live MPRIS
+position when available. As playback advances, work grows with the current song
+position: near the end of an N-line file, each evaluation reads nearly N rows.
+
+The sortedness needed for an upper-bound binary search is not an assumption.
+Both authoritative producers explicitly establish it before QML receives synced
+lines:
+
+Python fallback:
+
+```python
+timed.sort(key=lambda item: float(item["time"]))
+```
+
+Rust `inir-mpdd` path:
+
+```rust
+timed.sort_by(|left, right| left.0.total_cmp(&right.0));
+```
+
+Hadalis also already uses the same algorithmic class in
+`LyricsService._indexForPosition()`, which binary-searches a sorted lyric
+timeline and then schedules the next lyric transition with a one-shot timer.
+
+The narrow candidate is only the lookup algorithm in LocalMusic. It does not
+change MPRIS cadence, local-lyrics loading, auto-scroll behavior or the producer
+payload.
+
+Parity detail: the current loop uses `<=` and keeps advancing, so duplicate
+timestamps resolve to the **last** row at that timestamp. Implement an upper
+bound (first timestamp > position, then index - 1), not a lower-bound lookup.
+
+Required oracle:
+
+- unsynced/plain lyrics -> -1;
+- empty synced list -> -1;
+- playback before first timestamp -> -1;
+- timestamp 0;
+- exact first/middle/last timestamp;
+- duplicate timestamps -> last equal row;
+- between timestamps;
+- after final timestamp;
+- rapid forward and backward seeks;
+- MPRIS-backed and MPD-status fallback positions;
+- exact ListView currentIndex / auto-scroll behavior.
+
+### R37.3 — Every desktop widget computes the same pause state twice
+
+The power service exposes:
+
+```qml
+function widgetsActiveForOutput(outputName: string): bool {
+    return !root.shouldPauseForOutput(outputName)
+}
+
+function reducedModeForOutput(outputName: string): bool {
+    return root.shouldPauseForOutput(outputName)
+}
+```
+
+The values are exact logical complements.
+
+Each `AbstractBackgroundWidget`, however, binds both independently:
+
+```qml
+readonly property bool powerActive:
+    WidgetPowerManager.widgetsActiveForOutput(root.outputName)
+readonly property bool powerReduced:
+    WidgetPowerManager.reducedModeForOutput(root.outputName)
+```
+
+That means one reactive invalidation can call `shouldPauseForOutput()` twice for
+the same widget/output.
+
+The cheap branches are not the concern. When
+`pauseWhenWindowsPresent` is enabled, the calculation calls
+`_hasWindowsOnActiveWorkspace()`, which:
+
+1. creates a new Set;
+2. iterates all Niri workspaces to find the active ids for the output;
+3. scans Niri windows until a visible active-workspace window is found.
+
+It also evaluates output eligibility through DesktopWidgetLayout. With multiple
+resident widgets on an output, repeating the full calculation twice per widget
+multiplies the same derived work.
+
+The smallest strict-lossless change is local:
+
+```text
+powerActive = WidgetPowerManager.widgetsActiveForOutput(outputName)
+powerReduced = !powerActive
+```
+
+Do not introduce a global service cache in the first patch. A per-output cache
+would require a much broader invalidation proof across Niri windows/workspaces,
+GameMode, DesktopWidgetLayout, edit mode and Config. Removing the exact duplicate
+client call gives deterministic savings with almost no new state.
+
+Required oracle:
+
+- power manager disabled/enabled;
+- widget edit mode;
+- manual GameMode;
+- fullscreen globally and on another/same output;
+- `pauseWhenWindowsPresent` false/true;
+- zero/multiple active workspaces;
+- minimized vs visible windows;
+- Niri vs non-Niri;
+- output allowed/disabled by DesktopWidgetLayout;
+- multi-monitor widgets;
+- assert `powerReduced === !powerActive` through every transition;
+- animation, clock, visualizer and WidgetSurface power bindings unchanged.
+
+### R37.4 — Cliphist sloppy search still normalizes raw rows per query
+
+Round 29 correctly found that Cliphist already owns important prepared state:
+
+- revision-keyed Fuzzy.prepare records;
+- bounded top-K insertion for limited fuzzy queries;
+- equality suppression when the source list has not changed;
+- a separate source-revision cache for classic/Waffle display-filter keys.
+
+That did not cover the sloppy/Levenshtein branch.
+
+Current sloppy search still does:
+
+```qml
+const searchLower = search.toLowerCase()
+const count = Math.min(100, root.maxEntries)
+...
+const entry = entries[i]
+const score = Levendist.computeTextMatchScore(
+    entry.toLowerCase(), searchLower)
+```
+
+in both the limited and unlimited result paths. So up to the first 100 raw
+history strings are lowercased again for every sloppy query even though
+`entries` is unchanged.
+
+This is now the exact same source-proven class as Emoji promotion #98. Extend
+the existing fuzzy prepared record:
+
+```text
+{
+  name: Fuzzy.prepare(displayText),
+  lower: rawEntry.toLowerCase(),
+  entry: rawEntry
+}
+```
+
+and use those first prepared records in sloppy mode.
+
+Do not substitute the display-filter cache's `iiKey` or `waffleKey`.
+Sloppy search currently scores the **raw cliphist entry string**, including the
+stored id/preview representation. Changing it to a cleaned display key would
+change fuzzy scores/results.
+
+Required oracle:
+
+- empty search fast path unchanged;
+- sloppy off/on at runtime;
+- 0, <100, =100 and >100 history entries;
+- `maxEntries < 100`;
+- positive and non-positive result limits;
+- exact score threshold boundary;
+- equal-score insertion order;
+- limited top-K and unlimited sort paths;
+- binary/image preview rows;
+- entries replacement invalidates the prepared lowercase key;
+- exact original raw-entry identity/order returned.
+
+### R37.5 — Findings deliberately not promoted from this pass
+
+**LyricsService:** its synchronized network/media lyric path already uses binary
+search and a one-shot timer to the next lyric boundary. It is the positive
+precedent for R37.2, not another optimization candidate.
+
+**DeviceStatePersistence / PowerProfilePersistence:** the device restore paths
+are event-driven and their timeout timers are one-shot. Power-profile/TLP
+probing already has explicit demand/capability gating documented in earlier
+rounds. No recurring source-proven waste was found here.
+
+**ConflictKiller / FirstRunExperience:** both perform bounded lifecycle work:
+ConflictKiller consolidates conflict discovery into one delayed startup /proc
+scan, while the wallpaper discovery path exists only for first-run bootstrap.
+Removing those probes would trade correctness for negligible steady-state gain.
+
+**GowallService per-line list publication:** `gowall list` and color extraction
+currently publish by immutable array copy for each output line. Collecting into
+one array would reduce cumulative copying, but it would also change observable
+incremental publication timing. No source-only proof shows that timing is
+irrelevant, so this remains unpromoted until a focused UI fixture or profiler
+justifies a different collector contract.
+
+**Classic ClipboardPanel:** its search path already calls
+`Cliphist.filterEntries()`, which caches sanitized/lowercase display keys by
+entries revision. The remaining sloppy-search raw lowercase gap belongs in the
+shared Cliphist service (R37.4), not as another panel-local cache.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
 

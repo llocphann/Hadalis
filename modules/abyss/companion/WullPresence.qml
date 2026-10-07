@@ -260,7 +260,8 @@ Item {
     function moveTo(selected, exit, preferredMode = ""): bool {
         if (handoffActive || portalActive || !permitted || !actor || actor.presentation<.99 || dragging || (peekIntro && !exit)) return false
         const here=Object.assign(position(),{edge:emergenceEdge})
-        if (motionEnabled && Travel.usePortal(here,selected,scene?.scale) && startPortal(here,selected,exit)) return true
+        if (motionEnabled && !["fall","jump"].includes(preferredMode)
+                && Travel.usePortal(here,selected,scene?.scale) && startPortal(here,selected,exit)) return true
         const route=Scene.path(scene,here,selected)
         if (!route.qualified) return false
         disturb("depart",Scene.annotate(scene,here,placement.edge,placement.kind,placement.key))

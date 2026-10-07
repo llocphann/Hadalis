@@ -183,6 +183,9 @@ Item {
     onPresentationChanged: if (presentation>.99) Qt.callLater(root.checkArrival)
     function place(): void {
         if (!initialized || !managedPlacement || hardResetting) return
+        // Presence adopts the destination only while the portal body is hidden.
+        // A caller retaining travelEnabled must not also start a flight tween.
+        if (travelMode==="portal") return
         if (Math.abs(x-targetX)<0.01 && Math.abs(y-targetY)<0.01) return
         if (dragging || !motionEnabled || reveal <= 0 || presentation < 0.01) {
             stopTravel()

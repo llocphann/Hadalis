@@ -72,6 +72,20 @@ Window {
    check(!presence.portalActive && !actor.inputReady,"cast handoff retained an active portal or input")
    wait(1600);check(Scene.distance(presence.position(),source)<.2,"cast handoff retained a delayed teleport")
    presence.handoffActive=false
+   source=put(.3)
+   actor.adoptTo(source.x,120,"bottom",1);presence.targetY=120;wait(40)
+   dest=Scene.annotate(root.scene,{x:source.x,y:source.y},"bottom","edge","bottom")
+   check(presence.moveTo(dest,false,"fall"),"physical fall rejected")
+   wait(40)
+   check(!presence.portalActive && presence.mode==="fall" && actor.moving,"long fall was replaced by portal")
+   tryCompare(presence,"traveling",false,presence.duration+700)
+   check(presence.grounded && Scene.distance(presence.position(),dest)<.2,"physical fall did not land")
+   source=put(.15);dest=Scene.edgePoint(root.scene,"bottom",.9)
+   check(presence.moveTo(dest,false,"jump"),"physical jump rejected")
+   wait(40)
+   check(!presence.portalActive && presence.mode==="jump" && actor.moving,"explicit jump was replaced by portal")
+   tryCompare(presence,"traveling",false,presence.duration+700)
+   check(presence.grounded && Scene.distance(presence.position(),dest)<.2,"physical jump did not land")
    source=put(.3);dest=Scene.annotate(root.scene,{x:source.x+70,y:source.y},"bottom","edge","bottom")
    check(presence.moveTo(dest,false,"roll"),"grounded roll rejected")
    wait(350)
@@ -79,7 +93,7 @@ Window {
    check(actor.rolling && !actor.flying && presence.grounded && Math.abs(body.rollingAngle)>20,"roll did not rotate the native body on its surface")
    tryCompare(presence,"traveling",false,presence.duration+700)
    check(!actor.rolling && body.rollingAngle===0 && actor.inputReady && Scene.distance(presence.position(),dest)<.2,"roll did not finish upright at destination")
-   console.info("WULL_PORTAL_NATIVE_PASS hidden-handover destination-invalidation bounded-lifetime motion-cancel interaction-cancel cast-cancel grounded-roll")
+   console.info("WULL_PORTAL_NATIVE_PASS hidden-handover destination-invalidation bounded-lifetime motion-cancel interaction-cancel cast-cancel physical-fall physical-jump grounded-roll")
   }catch(e){console.error("WULL_PORTAL_NATIVE_FAIL",e.message,e.stack)}Qt.quit()}
  }
  Timer {interval:100;running:true;onTriggered:test.runChecks()}

@@ -12,6 +12,8 @@ Item {
     id: root
     property bool panelVisible: true
     property bool embeddedSurface: false
+    property bool externalEditToolbar: false
+    readonly property var canvasController: dashboardContent.canvasController
     property bool directBottomAttachment: false
     property bool popupPresented: true
     property string searchingText: ""
@@ -45,7 +47,7 @@ Item {
     readonly property real dashboardWidth: Math.round(Math.max(0,
         Math.min(root.availableWidth - 24, root.availableWidth * root.widthRatio)))
     readonly property bool editing: dashboardContent.editMode
-    readonly property real editToolbarReserve: root.editing
+    readonly property real editToolbarReserve: root.editing && !root.externalEditToolbar
         ? Math.max(0, dashboardEditToolbar.implicitHeight - 1) : 0
     readonly property real baseConfiguredHeight: Math.round(Math.min(
         Math.max(320, root.availableHeight - 24),
@@ -214,6 +216,7 @@ Item {
         parent: dashboardSurfaceLayer
         z: 8
         canvasController: dashboardContent.canvasController
+        visible: root.editing && !root.externalEditToolbar
         width: Math.min(
             dashboardEditToolbar.implicitWidth,
             Math.max(1, dashContainer.width - 32))

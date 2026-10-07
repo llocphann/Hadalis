@@ -78,7 +78,8 @@ function _tiers(request, span, depth, accepted, gap, width, height, insets) {
     var edge = request.record.edge;
     var horizontal = edge === "top" || edge === "bottom";
     var reverse = edge === "bottom" || edge === "right";
-    var tiers = [0];
+    var minimumInward=Math.max(0,_number(request.minimumInward,0));
+    var tiers = [minimumInward];
     if (request.allowInward === false) return tiers;
     accepted.forEach(function(other) {
         var baseAlongStart = horizontal ? base.x : base.y;
@@ -94,7 +95,7 @@ function _tiers(request, span, depth, accepted, gap, width, height, insets) {
         var tier = reverse
             ? baseCrossEnd-otherCrossStart+gap
             : otherCrossEnd-baseCrossStart+gap;
-        if (tier > 0) tiers.push(tier);
+        if (tier > minimumInward) tiers.push(tier);
     });
     return tiers.filter(function(value,index,list) {
         return list.findIndex(function(other) { return Math.abs(other-value) < .5; }) === index;

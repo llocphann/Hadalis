@@ -23,6 +23,7 @@ ShellRoot {
     property var toolbar: null
     property var before: null
     property var canvasIdentity: null
+    property var canvasSize: null
     function check(ok,message): bool {
         if(ok) return true
         console.error("DASHBOARD_EDIT_FAIL",hostIndex,message);root.finished=true;return false
@@ -56,6 +57,7 @@ ShellRoot {
                 if(!root.check(!root.canvas._layoutHasOverlap(root.canvas._snapshotVisibleRects()),"default minimum-size cards project without overlap")) return
                 if(!root.check(root.canvas.workspace.width===root.canvas.width && root.canvas.workspace.height===root.canvas.height,"workspace stays bounded by Dashboard dimensions")) return
                 const fixedSize=[root.canvas.width,root.canvas.height]
+                root.canvasSize=fixedSize
                 body.progress=.15
                 if(!root.check(root.canvas.width===fixedSize[0] && root.canvas.height===fixedSize[1],"reveal clips the fixed-size canvas instead of repacking it")) return
                 body.progress=1
@@ -66,10 +68,11 @@ ShellRoot {
                 root.canvasIdentity=root.canvas
             }
             else if(root.step===5) {
-                root.toolbar=root.find(body.contentItem.item,item=>item.canvasController===root.canvas && item.editing!==undefined)
+                root.toolbar=root.find(body.parent,item=>item.objectName==="abyssDashboardEditPopup" && item.canvasController===root.canvas)
                 if(!root.check(root.toolbar!==null && root.toolbar.visible && root.toolbar.width>200 && root.toolbar.height>20,"editing toolbar has usable dimensions")) return
                 const p=root.toolbar.mapToItem(body.contentItem,0,0)
-                if(!root.check(p.x>=0 && p.y>=0 && p.x+root.toolbar.width<=body.contentItem.width+.5 && p.y+root.toolbar.height<=body.contentItem.height+.5,"toolbar stays inside field content/input clip: "+JSON.stringify([p.x,p.y,root.toolbar.width,root.toolbar.height,body.contentItem.width,body.contentItem.height]))) return
+                if(!root.check(p.x>=0 && p.y+root.toolbar.height<=0 && p.x+root.toolbar.width<=body.contentItem.width+.5,"toolbar is above Dashboard, outside its canvas clip: "+JSON.stringify([p.x,p.y,root.toolbar.width,root.toolbar.height]))) return
+                if(!root.check(root.canvas.width===root.canvasSize[0] && root.canvas.height===root.canvasSize[1],"Edit preserves the widget workspace dimensions")) return
                 root.before=root.canvas._rectPixels("notes")
                 const end={x:root.before.x+root.before.width,y:root.before.y+root.before.height}
                 root.canvas.beginResize("notes","se",end)
@@ -121,4 +124,5 @@ dbus-run-session -- env -u QS_CONFIG_NAME -u QS_CONFIG_PATH -u QS_MANIFEST \
 # An early crash/exit is a failure even if a success marker was emitted.
 if [[ "$runtime_status" != 124 ]]; then cat "$dashboard_test_root/runtime.log";exit 1;fi
 if ! rg -q DASHBOARD_EDIT_PASS "$dashboard_test_root/runtime.log" || rg -q 'DASHBOARD_EDIT_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign|is not a type|Type .* unavailable' "$dashboard_test_root/runtime.log";then cat "$dashboard_test_root/runtime.log";exit 1;fi
-printf 'PASS: both Abyss Dashboard hosts keep resize persistence and empty-layout restore controls inside content/input bounds\n'
+printf 'PASS: both Abyss Dashboard hosts preserve workspace sizes with controls above the canvas and empty-layout restore\n'
+python3 "$repo_root/scripts/test-dashboard-editor-field-runtime.py"

@@ -28,6 +28,16 @@ Item {
              height:root._workspaceReferenceHeight})
     }
     property string layoutMessage: ""
+    property var _undoEntries: []
+    readonly property bool canUndo: editMode && _undoEntries.length>0
+    function undoLastEdit() {
+        if (!root.canUndo) return
+        root.finishInteraction(false)
+        const history=root._undoEntries.slice()
+        root._draftEntries=history.pop()
+        root._undoEntries=history
+        root.layoutMessage=""
+    }
     signal requestEventsDialog(var event)
 
     readonly property int gridSize: Math.max(8, Number(
@@ -266,6 +276,9 @@ Item {
 
     function _writeEntries(entries) {
         if (root.editMode) {
+            const previous=root._cloneEntries(root._draftEntries ?? root._storedEntries())
+            if (JSON.stringify(previous)!==JSON.stringify(entries))
+                root._undoEntries=root._undoEntries.slice(-15).concat([previous])
             root._draftEntries = root._cloneEntries(entries)
             if (root.responsiveWorkspace) {
                 root._draftWorkspaceWidth = canvas.width
@@ -1794,6 +1807,7 @@ Item {
         root._smartSnapAxes = ({ x: false, y: false })
         root.selectedId = ""
         root._draftEntries = null
+        root._undoEntries = []
         root._draftWorkspaceWidth = 0
         root._draftWorkspaceHeight = 0
         root._draftGridSize = null

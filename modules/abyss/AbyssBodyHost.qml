@@ -35,6 +35,11 @@ Item {
     property bool animatePlacementChanges:
         identity !== "dock" && identity !== "edgeEditor" && identity !== "editorPreview"
     property bool largeSurface: false
+    // Content may place a compact control surface above itself. Top-attached
+    // bodies reserve that headroom by moving inward, preserving canvas size.
+    readonly property real minimumInward: edge === "top"
+        && (contentItem.item?.editMode ?? false)
+        ? Math.max(0, Number(contentItem.item?.topControlReserve ?? 0)) : 0
     // Keep Dock/icon geometry fixed, but let panel content reflow before any
     // lower-priority body is evicted. These are panel dimensions including
     // padding; hosts may raise them for feature-specific readability.
@@ -202,6 +207,7 @@ Item {
             priority:root.placementPriority,padding:root.padding,
             minSpan:root.minimumSpan,minDepth:root.minimumDepth,
             allowInward:root.placementCanStackInward,
+            minimumInward:root.minimumInward,
             stackPolicy:root.stackPolicy,
             stackProximity:root.stackProximity,
             record:root.requestedRecord})

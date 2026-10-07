@@ -10,6 +10,7 @@ Rectangle {
     id: root
 
     required property var canvasController
+    property bool embeddedSurface: false
     readonly property bool editing: root.canvasController?.editMode ?? false
     readonly property var hiddenIds: root.canvasController?.hiddenIds ?? []
     readonly property bool abyssMode:
@@ -21,12 +22,12 @@ Rectangle {
     readonly property real availableModulesNaturalWidth:
         root.hiddenIds.length > 0 ? availableModulesRow.implicitWidth : 0
     readonly property real toolbarRowNaturalWidth:
-        editActions.implicitWidth
+        8*34+7*6
         + (root.hiddenIds.length > 0
             ? root.sectionGap + root.availableModulesNaturalWidth : 0)
     implicitWidth: Math.ceil(Math.max(
         toolbarTitle.implicitWidth,
-        root.toolbarRowNaturalWidth)
+        Math.min(760,root.toolbarRowNaturalWidth))
         + root.horizontalPadding * 2)
     implicitHeight: toolbarColumn.implicitHeight + root.horizontalPadding * 2
     visible: root.editing
@@ -35,11 +36,11 @@ Rectangle {
     topRightRadius: radius
     bottomLeftRadius: root.abyssMode ? radius : 0
     bottomRightRadius: root.abyssMode ? radius : 0
-    color: root.abyssMode
+    color: root.embeddedSurface ? "transparent" : root.abyssMode
         ? Qt.alpha(AbyssStyle.surfaceDeep,
             Math.max(0.72, AbyssStyle.contentOpacity))
         : Appearance.colors.colLayer0
-    border.width: root.abyssMode ? 1 : 0
+    border.width: root.abyssMode && !root.embeddedSurface ? 1 : 0
     border.color: root.abyssMode
         ? Qt.alpha(AbyssStyle.accent, 0.22) : "transparent"
     clip: true
@@ -67,16 +68,37 @@ Rectangle {
             elide: Text.ElideRight
         }
 
-        RowLayout {
+        ColumnLayout {
             id: toolbarRow
             Layout.fillWidth: true
-            Layout.preferredHeight: 34
             spacing: root.sectionGap
 
-            RowLayout {
+            GridLayout {
                 id: editActions
-                Layout.fillWidth: false
-                spacing: 6
+                Layout.alignment: Qt.AlignHCenter
+                columns: Math.max(1,Math.min(8,Math.floor((root.width-root.horizontalPadding*2+6)/40)))
+                rowSpacing: 6
+                columnSpacing: 6
+
+                EditToolButton {
+                    objectName: "dashboardEditDone"
+                    iconName: "done"
+                    tooltipText: Translation.tr("Done editing")
+                    onClicked: root.canvasController?.commitEditMode()
+                }
+                EditToolButton {
+                    objectName: "dashboardEditCancel"
+                    iconName: "close"
+                    tooltipText: Translation.tr("Cancel editing")
+                    onClicked: root.canvasController?.cancelEditMode()
+                }
+                EditToolButton {
+                    objectName: "dashboardEditUndo"
+                    iconName: "undo"
+                    tooltipText: Translation.tr("Undo last layout change")
+                    enabled: root.canvasController?.canUndo ?? false
+                    onClicked: root.canvasController?.undoLastEdit()
+                }
 
                 EditToolButton {
                     iconName: root.canvasController?.snapEnabled

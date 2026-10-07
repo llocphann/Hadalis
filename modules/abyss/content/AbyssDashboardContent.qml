@@ -1,25 +1,23 @@
 import QtQuick
-import QtQuick.Layouts
 import qs.modules.dashboard
+import qs.modules.abyss
 
 Item {
     id: root
     property var participant: null
-    ColumnLayout {
+    readonly property bool editMode: content.editMode
+    readonly property real topControlReserve: editor.desiredHeight+16
+    DashboardContent {
+        id: content
         anchors.fill: parent
-        spacing: 8
-        DashboardEditToolbar {
-            Layout.alignment: Qt.AlignHCenter
-            Layout.maximumWidth: root.width
-            canvasController: content.canvasController
-        }
-        DashboardContent {
-            id: content
-            Layout.fillWidth: true; Layout.fillHeight: true
-            embeddedSurface: true
-            presentationActive: root.participant?.open ?? true
-            screenWidth: root.participant?.width ?? 1920
-            screenHeight: root.participant?.height ?? 1080
-        }
+        embeddedSurface: true
+        presentationActive: root.participant?.open ?? true
+        screenWidth: root.participant?.width ?? 1920
+        screenHeight: root.participant?.height ?? 1080
+    }
+    AbyssDashboardEditPopup {
+        id: editor
+        body: root.participant
+        canvasController: content.canvasController
     }
 }

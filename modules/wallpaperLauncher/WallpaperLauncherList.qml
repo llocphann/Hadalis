@@ -15,11 +15,11 @@ PathView {
     required property string monitorName
     property int maxVisibleItems: 5
     property real cardWidth: Math.round(240 * Appearance.fontSizeScale)
-    property real cardHeight: Math.round(cardWidth / (4 / 3))
+    property real cardHeight: Math.round(cardWidth * 9 / 16) + 40
 
     signal applyRequested(string path)
 
-    readonly property real itemWidth: cardWidth
+    readonly property real itemWidth: cardWidth * .8
     readonly property var filteredEntries: {
         const query = searchText.trim().toLowerCase()
         if (!query) return entries

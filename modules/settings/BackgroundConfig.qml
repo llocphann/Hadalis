@@ -1269,8 +1269,9 @@ ContentPage {
                     Layout.bottomMargin: 2
                     text: {
                         const raw = Config.options?.background?.transition?.type ?? "crossfade"
-                        const t = AwwwBackend.normalizedAwwwTransitionType(raw, Config.options?.background?.transition?.direction ?? "right")
+                        const t = raw === "inirMelt" ? raw : AwwwBackend.normalizedAwwwTransitionType(raw, Config.options?.background?.transition?.direction ?? "right")
                         switch (t) {
+                        case "inirMelt": return "Liquid melt with flowing columns, following iNiR."
                         case "none":   return Translation.tr("Instant switch — no visible transition.")
                         case "simple": return Translation.tr("Classic step-based dissolve. Fast, simple and lightweight.")
                         case "fade":   return Translation.tr("Smooth fade using a bezier curve for the transition progression.")
@@ -1295,14 +1296,13 @@ ContentPage {
                 }
 
                 ConfigSelectionArray {
-                    currentValue: AwwwBackend.normalizedAwwwTransitionType(
-                        Config.options?.background?.transition?.type ?? "crossfade",
-                        Config.options?.background?.transition?.direction ?? "right"
-                    )
+                    currentValue: Config.options?.background?.transition?.type === "inirMelt" ? "inirMelt"
+                        : AwwwBackend.normalizedAwwwTransitionType(Config.options?.background?.transition?.type ?? "inirMelt",Config.options?.background?.transition?.direction ?? "right")
                     onSelected: newValue => {
                         Config.setNestedValue("background.transition.type", newValue);
                     }
                     options: [
+                        { displayName:"Liquid melt (iNiR)",icon:"water",value:"inirMelt" },
                         { displayName: Translation.tr("None"), icon: "block", value: "none" },
                         { displayName: Translation.tr("Simple"), icon: "transition_fade", value: "simple" },
                         { displayName: Translation.tr("Fade"), icon: "motion_photos_on", value: "fade" },

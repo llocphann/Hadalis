@@ -61,13 +61,6 @@ PanelWindow {
         onTriggered: root.closing = false
     }
 
-    IpcHandler {
-        target: "wallpaperLauncher"
-        function next(): void { content.moveSelection(1) }
-        function previous(): void { content.moveSelection(-1) }
-        function applyCurrent(): void { content.activateCurrent() }
-        function status(): string { return content.statusJson() }
-    }
 
     MouseArea {
         anchors.fill: parent

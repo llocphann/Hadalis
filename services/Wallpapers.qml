@@ -355,7 +355,7 @@ Singleton {
         const url = "file://" + parts.join("/")
         
         const md5Hash = MD5.hash(url)
-        const cacheDir = Quickshell.env("HOME") + "/.cache/thumbnails/" + size
+        const cacheDir = Directories.genericCachePath + "/thumbnails/" + size
         return cacheDir + "/" + md5Hash + ".png"
     }
 
@@ -1038,15 +1038,22 @@ Singleton {
         const item = root._singleThumbQueue.shift()
         const maxSize = Images.thumbnailSizes[item.size] ?? 256
         const outputDir = FileUtils.parentDirectory(item.outputPath)
-        const commandBody = root.isVideoFile(item.filePath)
-            ? "mkdir -p " + JSON.stringify(outputDir)
-                + " && [ -f " + JSON.stringify(item.outputPath) + " ] && exit 0 || { ffmpeg -y -i " + JSON.stringify(item.filePath)
-                + " -vf " + JSON.stringify(`thumbnail=n=100,scale='min(${maxSize},iw)':'min(${maxSize},ih)':force_original_aspect_ratio=decrease`)
-                + " -frames:v 1 -update 1 "
-                + " " + JSON.stringify(item.outputPath) + " >/dev/null 2>&1 && exit 1; }"
-            : "mkdir -p " + JSON.stringify(outputDir)
-                + " && [ -f " + JSON.stringify(item.outputPath) + " ] && exit 0 || { magick " + JSON.stringify(item.filePath + "[0]")
-                + " -resize " + `${maxSize}x${maxSize}` + " " + JSON.stringify(item.outputPath) + " >/dev/null 2>&1 && exit 1; }"
+        // Paths are shell data, including quotes, dollars and backticks.
+        // Publish only a complete PNG so cancelled work cannot poison the cache.
+        const quote = value => "'" + StringUtils.shellSingleQuoteEscape(String(value)) + "'"
+        const output = quote(item.outputPath)
+        const commandBody = "mkdir -p -- " + quote(outputDir)
+            + " || exit 2; [ -s " + output + " ] && exit 0; "
+            + "tmp=$(mktemp " + quote(item.outputPath + ".XXXXXX") + ") || exit 2; "
+            + "trap 'rm -f -- \"$tmp\"' EXIT; "
+            + (root.isVideoFile(item.filePath)
+                ? "ffmpeg -y -i " + quote(item.filePath)
+                    + " -vf " + quote(`thumbnail=n=100,scale='min(${maxSize},iw)':'min(${maxSize},ih)':force_original_aspect_ratio=decrease`)
+                    + " -frames:v 1 -f image2 -vcodec png \"$tmp\""
+                : "magick " + quote(item.filePath + "[0]")
+                    + " -resize " + `${maxSize}x${maxSize}` + " png:\"$tmp\"")
+            + " >/dev/null 2>&1 && [ -s \"$tmp\" ] && mv -- \"$tmp\" " + output + " && exit 1; exit 2"
+
 
         _singleThumbProc._key = item.key
         _singleThumbProc._filePath = item.filePath

@@ -365,18 +365,11 @@ Singleton {
     // Target monitor for wallpaper selector (set before opening, avoids config timing issues)
     property string wallpaperSelectorTargetMonitor: ""
     onWallpaperSelectorOpenChanged: {
-        // Reset selection target when selector closes without selection
-        if (!wallpaperSelectorOpen) {
-            wallpaperSelectionTarget = "main";
-            wallpaperSelectorTargetMonitor = "";
-            // Also reset Config targets if they were set
-            if (Config.options?.wallpaperSelector?.selectionTarget &&
-                Config.options.wallpaperSelector.selectionTarget !== "main") {
-                Config.setNestedValue("wallpaperSelector.selectionTarget", "main")
-            }
-            if (Config.options?.wallpaperSelector?.targetMonitor) {
-                Config.setNestedValue("wallpaperSelector.targetMonitor", "")
-            }
+        if (wallpaperSelectorOpen) {
+            // Old callers retain target/output before reaching the one picker.
+            wallpaperSelectorOpen=false
+            wallpaperLauncherMode=WallpaperListener.isAnimatedPath(Wallpapers.currentWallpaperPathForTarget(Wallpapers.currentSelectionTarget(),wallpaperSelectorTargetMonitor)) ? "animated" : "static"
+            wallpaperLauncherOpen=true
         }
     }
     onWallpaperLauncherOpenChanged: {
@@ -395,16 +388,11 @@ Singleton {
     property bool cheatsheetOpen: false
     property bool coverflowSelectorOpen: false
     onCoverflowSelectorOpenChanged: {
-        if (!coverflowSelectorOpen) {
-            wallpaperSelectionTarget = "main";
-            wallpaperSelectorTargetMonitor = "";
-            if (Config.options?.wallpaperSelector?.selectionTarget &&
-                Config.options.wallpaperSelector.selectionTarget !== "main") {
-                Config.setNestedValue("wallpaperSelector.selectionTarget", "main")
-            }
-            if (Config.options?.wallpaperSelector?.targetMonitor) {
-                Config.setNestedValue("wallpaperSelector.targetMonitor", "")
-            }
+        if (coverflowSelectorOpen) {
+            // Old callers retain target/output before reaching the one picker.
+            coverflowSelectorOpen=false
+            wallpaperLauncherMode=WallpaperListener.isAnimatedPath(Wallpapers.currentWallpaperPathForTarget(Wallpapers.currentSelectionTarget(),wallpaperSelectorTargetMonitor)) ? "animated" : "static"
+            wallpaperLauncherOpen=true
         }
     }
     property bool controlPanelOpen: false

@@ -1,83 +1,39 @@
 pragma ComponentBehavior: Bound
-
-import qs.modules.common
-import qs.modules.common.functions
-import qs.modules.wallpaperSelector
 import QtQuick
+import Qt5Compat.GraphicalEffects as GE
+import qs.modules.common
+import qs.modules.common.widgets
+import qs.modules.abyss.looks
 
 Item {
-    id: root
-
+    id:root
     required property var modelData
     required property int index
     required property real cardWidth
     required property real cardHeight
     signal activated(int index)
-
-    readonly property bool current: PathView.isCurrentItem
-    readonly property bool applied:
-        root.modelData.path === (PathView.view?.currentWallpaperPath ?? "")
-    property real entryScale: 0.96
-    property real entryOpacity: 0
-
-    implicitWidth: cardWidth
-    implicitHeight: cardHeight
-    scale: PathView.onPath ? 1 : 0
-    opacity: PathView.onPath ? 1 : 0
-    z: PathView.z ?? 0
-
-    Component.onCompleted: entryAnimation.restart()
-
-    ParallelAnimation {
-        id: entryAnimation
-        NumberAnimation {
-            target: root
-            property: "entryScale"
-            from: 0.96
-            to: 1
-            duration: Appearance.animationsEnabled
-                ? Appearance.animation.elementMoveEnter.duration : 0
-            easing.type: Appearance.animation.elementMoveEnter.type
-            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+    readonly property bool current:PathView.isCurrentItem
+    readonly property bool applied:modelData.path===(PathView.view?.currentWallpaperPath ?? "")
+    implicitWidth:cardWidth;implicitHeight:cardHeight
+    scale:current ? 1 : PathView.onPath ? .8 : 0
+    opacity:PathView.onPath ? 1 : 0
+    z:PathView.z ?? 0
+    Behavior on scale {enabled:Appearance.animationsEnabled;NumberAnimation {duration:180;easing.type:Easing.OutCubic}}
+    StyledRectangularShadow {target:preview;visible:root.current && Appearance.effectsEnabled;radius:18;blur:12;spread:1;color:Qt.alpha(AbyssStyle.surfaceDeep,.45)}
+    Rectangle {
+        id:preview
+        x:8;y:4;width:parent.width-16;height:width*9/16
+        color:AbyssStyle.surfaceRaised;radius:18
+        MaterialSymbol {anchors.centerIn:parent;text:modelData.kind==="static" ? "image" : "movie";color:AbyssStyle.textColorMuted;iconSize:38}
+        ThumbnailImage {
+            id:image;objectName:"wallpaperCardImage";anchors.fill:parent;sourcePath:root.modelData.path
+            sourceSize.width:Math.ceil(width*2);sourceSize.height:Math.ceil(height*2)
+            fillMode:Image.PreserveAspectCrop;generateThumbnail:true;mipmap:true
+            layer.enabled:true
+            layer.effect:GE.OpacityMask {maskSource:Rectangle {width:preview.width;height:preview.height;radius:18;color:"white"}}
         }
-        NumberAnimation {
-            target: root
-            property: "entryOpacity"
-            from: 0
-            to: 1
-            duration: Appearance.animationsEnabled
-                ? Appearance.animation.elementMoveEnter.duration : 0
-            easing.type: Appearance.animation.elementMoveEnter.type
-            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
-        }
+        Rectangle {visible:root.applied;anchors.right:parent.right;anchors.top:parent.top;anchors.margins:8;width:26;height:26;radius:13;color:AbyssStyle.accent;MaterialSymbol {anchors.centerIn:parent;text:"check";iconSize:18;color:AbyssStyle.surface}}
     }
-
-    WallpaperDirectoryItem {
-        id: card
-        anchors.fill: parent
-        scale: root.entryScale
-        opacity: root.entryOpacity
-        fileModelData: ({
-            filePath: root.modelData.path,
-            fileName: root.modelData.name,
-            fileIsDir: false,
-            fileUrl: root.modelData.path
-        })
-        // Keep the original card inset and accent surface. The launcher has at
-        // most five cards, so it can afford a 2x decoded thumbnail and mipmaps
-        // without imposing that cost on the full wallpaper grid.
-        thumbnailResolutionScale: 2
-        thumbnailMipmap: true
-        colBackground: (root.current || containsMouse)
-            ? Appearance.colors.colPrimary
-            : root.applied
-                ? Appearance.colors.colSecondaryContainer
-                : ColorUtils.transparentize(Appearance.colors.colPrimaryContainer)
-        colText: (root.current || containsMouse)
-            ? Appearance.colors.colOnPrimary
-            : root.applied
-                ? Appearance.colors.colOnSecondaryContainer
-                : Appearance.colors.colOnLayer0
-        onActivated: root.activated(root.index)
-    }
+    AbyssLabel {anchors.top:preview.bottom;anchors.topMargin:8;anchors.horizontalCenter:parent.horizontalCenter;width:parent.width-20;horizontalAlignment:Text.AlignHCenter;text:root.modelData.relativePath.replace(/\.[^/.]+$/,"");elide:Text.ElideMiddle;color:root.current ? AbyssStyle.accent : AbyssStyle.textColor}
+    MouseArea {anchors.fill:parent;onClicked:root.activated(root.index)}
 }

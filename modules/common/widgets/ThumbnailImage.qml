@@ -128,7 +128,7 @@ StyledImage {
         }
         function onThumbnailGeneratedFile(filePath) {
             if (!root.sourcePath || root.sourcePath.length === 0) return
-            if (Qt.resolvedUrl(root.sourcePath) !== Qt.resolvedUrl(filePath)) return
+            if (String(Qt.resolvedUrl(root.sourcePath)) !== String(Qt.resolvedUrl(filePath))) return
             root.reloadThumbnail()
         }
     }

@@ -152,8 +152,8 @@ ContentPage {
                 Layout.fillWidth: true
                 currentValue: Config.options?.panelFamily ?? "abyss"
                 options: [
-                    { displayName: "Waffle", icon: "window", value: "waffle" },
-                    { displayName: "Abyss", icon: "water", value: "abyss" }
+                    { displayName: "Abyss", icon: "water", value: "abyss" },
+                    { displayName: "Waffle", icon: "window", value: "waffle" }
                 ]
                 onSelected: value => Quickshell.execDetached([Quickshell.shellPath("scripts/inir"),"panelFamily","set",value])
             }
@@ -893,44 +893,11 @@ ContentPage {
         title: Translation.tr("Wallpaper selector")
 
         SettingsGroup {
-            ContentSubsection {
-                title: Translation.tr("Selector style")
-
-                ConfigSelectionArray {
-                    currentValue: Config.options?.wallpaperSelector?.style ?? "grid"
-                    options: [
-                        { displayName: Translation.tr("Grid"), icon: "grid_view", value: "grid" },
-                        { displayName: Translation.tr("Coverflow"), icon: "view_carousel", value: "coverflow" },
-                        { displayName: Translation.tr("Launcher"), icon: "wallpaper_slideshow", value: "launcher" }
-                    ]
-                    onSelected: value => Config.setNestedValue("wallpaperSelector.style", value)
-                }
-
-                SettingsSwitch {
-                    visible: (Config.options?.wallpaperSelector?.style ?? "grid") === "coverflow"
-                    buttonIcon: "view_array"
-                    text: Translation.tr("Skew view (parallelogram cards)")
-                    checked: (Config.options?.wallpaperSelector?.coverflowView ?? "gallery") === "skew"
-                    onCheckedChanged: Config.setNestedValue("wallpaperSelector.coverflowView", checked ? "skew" : "gallery")
-                    StyledToolTip {
-                        text: Translation.tr("Use tilted parallelogram cards instead of the hero + filmstrip layout.\nYou can also switch between views from the toolbar inside the coverflow.")
-                    }
-                }
+            StyledText {
+                Layout.fillWidth:true;wrapMode:Text.WordWrap
+                text:"A centered wallpaper carousel with search, folders and animated previews."
             }
 
-            ContentSubsection {
-                title: Translation.tr("Behavior")
-
-                SettingsSwitch {
-                    buttonIcon: "open_in_new"
-                    text: Translation.tr("Use system file picker")
-                    checked: Config.options?.wallpaperSelector?.useSystemFileDialog ?? false
-                    onCheckedChanged: Config.setNestedValue("wallpaperSelector.useSystemFileDialog", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Use your system's native file picker instead of the built-in one")
-                    }
-                }
-            }
         }
     }
 

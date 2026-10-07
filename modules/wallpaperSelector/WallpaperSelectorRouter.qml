@@ -73,56 +73,13 @@ Scope {
         GlobalStates.coverflowSelectorOpen = !GlobalStates.coverflowSelectorOpen
     }
 
-    function toggleCoverflow(): void {
-        if (GlobalStates.coverflowSelectorOpen) {
-            GlobalStates.coverflowSelectorOpen = false
-            return
-        }
-        const explicitMonitor = GlobalStates.wallpaperSelectorTargetMonitor
-            || (Config.options?.wallpaperSelector?.targetMonitor ?? "")
-        if (explicitMonitor)
-            root._toggleCoverflowWithMonitor(explicitMonitor)
-        else
-            root._openOnFocusedMonitor("coverflow", "")
-    }
-
+    function toggleCoverflow(): void { root.toggle() }
     function toggle(): void {
-        if (GlobalStates.wallpaperLauncherOpen) {
-            GlobalStates.wallpaperLauncherOpen = false
-            return
-        }
-        if (Config.options?.wallpaperSelector?.useSystemFileDialog ?? false) {
-            Wallpapers.openFallbackPicker(Appearance.m3colors.darkmode)
-            return
-        }
-        const selectorStyle = Config.options?.wallpaperSelector?.style ?? "grid"
-        if (selectorStyle === "launcher") {
-            root._openLauncher("", "")
-            return
-        }
-        if (selectorStyle === "coverflow") {
-            GlobalStates.wallpaperSelectorOpen = false
-            root.toggleCoverflow()
-            return
-        }
-        GlobalStates.coverflowSelectorOpen = false
-        if (GlobalStates.wallpaperSelectorOpen) {
-            GlobalStates.wallpaperSelectorOpen = false
-            return
-        }
-        const explicitMonitor = GlobalStates.wallpaperSelectorTargetMonitor
-            || (Config.options?.wallpaperSelector?.targetMonitor ?? "")
-        const explicitTarget = Config.options?.wallpaperSelector?.selectionTarget ?? "main"
-        if (!explicitMonitor && explicitTarget === "main") {
-            if (Config.options?.panelFamily === "waffle") {
-                const useMain = Config.options?.waffles?.background?.useMainWallpaper ?? true
-                Config.setNestedValue("wallpaperSelector.selectionTarget", useMain ? "main" : "waffle")
-            } else Config.setNestedValue("wallpaperSelector.selectionTarget", "main")
-        }
-        if (explicitMonitor)
-            root._openWithMonitor(explicitMonitor)
-        else
-            root._openOnFocusedMonitor("grid", "")
+        if (GlobalStates.wallpaperLauncherOpen) {GlobalStates.wallpaperLauncherOpen=false;return}
+        if (Config.options?.panelFamily==="waffle" && Wallpapers.currentSelectionTarget()==="main"
+                && !(Config.options?.waffles?.background?.useMainWallpaper ?? true))
+            Config.setNestedValue("wallpaperSelector.selectionTarget","waffle")
+        root._openLauncher("","")
     }
 
     // An empty mode means "match what is on screen": opening the picker while a
@@ -145,7 +102,7 @@ Scope {
         // Opening the launcher makes it the active picker, so the wallpaper
         // shortcut keeps opening it instead of falling back to the grid.
         // The grid button inside the launcher is the way back out.
-        Config.setNestedValue("wallpaperSelector.style", "launcher")
+        Config.setNestedValue("wallpaperSelector.style", "caelestia")
         GlobalStates.wallpaperLauncherMode = nextMode
         const target = Wallpapers.currentSelectionTarget()
         GlobalStates.wallpaperSelectionTarget = target
@@ -185,20 +142,14 @@ Scope {
         }
         function openLauncher(mode: string): void { root.openLauncher(mode) }
         function toggleOnMonitor(monitorName: string): void {
-            if ((Config.options?.wallpaperSelector?.style ?? "grid") === "launcher") {
-                root._openLauncher("", monitorName)
-                return
-            }
-            if (monitorName) {
-                GlobalStates.wallpaperSelectorTargetMonitor = monitorName
-                Config.setNestedValue("wallpaperSelector.targetMonitor", monitorName)
-            }
-            root.toggle()
+            if(GlobalStates.wallpaperLauncherOpen && GlobalStates.wallpaperSelectorTargetMonitor===monitorName)
+                GlobalStates.wallpaperLauncherOpen=false
+            else root._openLauncher("",monitorName)
         }
         function random(): void { Wallpapers.randomFromCurrentFolder() }
         function status(): string {
             return JSON.stringify({
-                style: Config.options?.wallpaperSelector?.style ?? "grid",
+                style: "caelestia",
                 gridOpen: GlobalStates.wallpaperSelectorOpen,
                 launcherOpen: GlobalStates.wallpaperLauncherOpen,
                 coverflowOpen: GlobalStates.coverflowSelectorOpen,
@@ -215,10 +166,10 @@ Scope {
         target: "coverflowSelector"
         function toggle(): void { root.toggleCoverflow() }
         function open(): void {
-            if (!GlobalStates.coverflowSelectorOpen)
+            if (!GlobalStates.wallpaperLauncherOpen)
                 root.toggleCoverflow()
         }
-        function close(): void { GlobalStates.coverflowSelectorOpen = false }
+        function close(): void { GlobalStates.wallpaperLauncherOpen = false }
     }
 
     Loader {

@@ -429,7 +429,7 @@
         },
         "transition": {
             "enable": true,
-            "type": "random",
+            "type": "inirMelt",
             "direction": "right",
             "duration": 800,
             "bezier": [
@@ -1704,7 +1704,7 @@
     },
     "wallpaperSelector": {
         "selectionTarget": "main",
-        "style": "grid",
+        "style": "caelestia",
         "coverflowView": "gallery",
         "targetMonitor": "",
         "useSystemFileDialog": false,

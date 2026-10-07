@@ -1779,7 +1779,7 @@ Singleton {
                 }
                 property JsonObject transition: JsonObject {
                     property bool enable: true
-                    property string type: "crossfade"
+                    property string type: "inirMelt"
                     property string direction: "right"
                     property int duration: 800
                     property list<var> bezier: [0.54, 0.0, 0.34, 0.99]
@@ -2701,7 +2701,7 @@ Singleton {
                 property bool useSystemFileDialog: false
                 property string selectionTarget: "main"
                 property string targetMonitor: ""
-                property string style: "grid"
+                property string style: "caelestia"
                 property string coverflowView: "gallery"
             }
 
@@ -2842,7 +2842,7 @@ Singleton {
                     property bool hideWhenFullscreen: true
                     property JsonObject transition: JsonObject {
                         property bool enable: true
-                        property string type: "crossfade"
+                        property string type: "inirMelt"
                         property string direction: "right"
                         property int duration: 800
                     }

@@ -160,6 +160,8 @@ Rules:
 | `modules/settings/InterfaceConfig.qml` | **HIGH-CONFIDENCE process candidate — collapse Settings World Clock preview from one Bash + N external `date` children to one Bash.** Current 20 s visible-section refresh invokes `date` once per configured timezone. Sibling WorldClock implementations already pass timezones as argv and use Bash builtin `printf '%(...)T'`. Preserve cadence, namespace and `timezone|time|offset` protocol. | Low–Medium. Valid IANA zones are straightforward; malformed shell-significant timezone strings require an explicit safe-argv contract decision rather than preserving accidental shell parsing. | None. | Low transient RAM/CPU; removes N external processes per preview refresh for N configured zones. | 0%. |
 | `modules/sidebarLeft/widgets/WorldClockWidget.qml` | **HIGH-POTENTIAL / ORACLE-GATED — separate sparse timezone metadata refresh from in-process display ticking.** The visible sidebar clock currently starts one Bash every 30 s, or every second when seconds are enabled, to obtain time/offset/date/day-of-year/hour data. Reuse sparse offset metadata and advance display time locally; align minute-only updates to boundaries. | Medium–High temporal/locale risk until deterministic old-vs-new oracle exists. DST, quarter-hour zones, midnight/year rollover, clock jumps and locale formatting must match. | None. | Potentially meaningful process/wakeup reduction while the sidebar clock is visible; seconds mode can eliminate nearly one shell spawn per second. | Expected pixels 0%; time-format/event semantics must be proven. |
 
+| Direct media-art `Image` / `StyledImage` paths in media presets, Waffle Action Center/Widgets/Lock and VolumeMixer | **HIGH-CONFIDENCE RAM/GPU candidate within the <1% visual budget — bound decode size to conservative presentation resolution instead of decoding arbitrary original cover dimensions.** Hadalis already uses a 2× presentation-size `sourceSize` policy in `MediaCrossSlideImage.qml`, but several direct cover-art paths still have no sourceSize and use `cache:false`. Start with small foreground slots (48/96/104/108 px) at a 2× or DPR-proven bound; separately tune card-sized blurred sources with enough oversampling to preserve blur/filtering. | Medium. This is not exact pixel-lossless by assumption: source downscaling can change filtering/blur slightly. Require <1% global/edge-detail error at 1.0/1.25/1.5/2.0 DPR plus visual sharpness review. | Low–Medium GPU/texture residency reduction when large covers are shown on several surfaces; may also reduce upload/decode pressure. | Potentially medium steady image RAM for large source artwork; illustrative 2000×2000 RGBA is ~16 MB versus ~0.18 MB for a 216×216 2× decode target, before backend-specific overhead. | <1% measured visual budget; reject or raise decode target if exceeded. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -225,6 +227,7 @@ Rules:
 61. **ResourceUsage direct GPU argv** — remove Bash from NVIDIA/Intel samples while retaining metric-demand gating as the larger owner.
 62. **Settings World Clock one-Bash preview** — eliminate one external `date` process per configured timezone on every 20 s preview refresh.
 63. **Sidebar World Clock split metadata/display cadence** — oracle-gated, higher leverage when seconds are enabled.
+64. **Media artwork conservative decode bounds** — start with repeated small foreground slots, then card-sized blur sources under a <1% raster/resource oracle.
 
 ## Explicit non-candidates from this pass
 
@@ -3673,3 +3676,161 @@ both normal and seconds modes before/after. This remains ORACLE-GATED rather tha
 declared strict-lossless from static analysis alone.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+
+## Research continuation — round 26
+
+Baseline: `dev` at `f5d0806c0bea4f8a9486ce68eb4345872fe30d23`.
+
+This round returns to GPU/RAM residency. The archived media-art decode-size
+finding was revalidated against current source. The relevant blobs remain at the
+same identities as the original research, and direct foreground/background art
+paths still decode without explicit source-size bounds.
+
+Current source identities:
+
+- `modules/common/widgets/MediaCrossSlideImage.qml`:
+  `99aacfef3bc12d58ab341e5cd530a5d776263ab6`;
+- `modules/mediaControls/presets/CompactPlayer.qml`:
+  `4642a25def2eff69ffe450dd09ca336d8f4b68bf`;
+- `modules/mediaControls/presets/FullPlayer.qml`:
+  `e51ef3d470192a245fe19b26bef3fcca8dc2a98a`;
+- `modules/mediaControls/presets/AlbumArtPlayer.qml`:
+  `f9c123d6b82073872dcafb7d1b9ba99b4ffeddf9`;
+- Waffle Action Center `MediaPaneContent.qml`:
+  `dfea7b4e2cfb5a0629f8b77911dd56e7c883c354`;
+- Waffle `WidgetsContent.qml`:
+  `7919f08b523479a5348660f0b95993d0b0b57544`;
+- Waffle lock / safe lock:
+  `9cc7e75e21650c26572a17f61140b7d56fd9a734` /
+  `86d038cdb3503b0aaae1d3c78b6fdb580263235b`;
+- ii `VolumeMixer.qml`:
+  `612903a3b1d8cdd5ebb933a53abd90c79aa93f7b`.
+
+### R26.1 — Existing Hadalis media code already proves a conservative decode-bound shape
+
+`MediaCrossSlideImage.qml` requests both transition layers at approximately 2×
+logical presentation size. That is a strong in-tree precedent: it keeps the
+cross-slide sharp while preventing an arbitrary source cover from dictating
+steady decoded texture size.
+
+The current direct-art paths below do not consistently have such a bound.
+
+Confirmed examples on current dev:
+
+- Waffle Action Center foreground art: ~104×104 logical px, no sourceSize;
+- Waffle Widgets foreground art: ~108×108, no sourceSize;
+- Waffle Lock and Safe Lock media art: 48×48, no sourceSize;
+- ii VolumeMixer cover: 96×96, no sourceSize;
+- CompactPlayer blurred card background: card-sized, no sourceSize;
+- FullPlayer cover-art background: card-sized, no sourceSize;
+- AlbumArtPlayer blurred/full cover background: card-sized, no sourceSize;
+- Waffle Widgets background art feeding `FastBlur`: panel/card-sized, no
+  sourceSize.
+
+Several of these use `cache:false`, so simultaneously resident surfaces are not
+relying on the shared Image cache to guarantee one retained representation.
+
+### R26.2 — First promotion phase should target small foreground slots
+
+For fixed/small cover slots, use a conservative policy no more aggressive than
+current MediaCrossSlideImage precedent:
+
+```text
+requested width  >= ceil(presentation width  × 2)
+requested height >= ceil(presentation height × 2)
+```
+
+or a DPR-aware physical-pixel equivalent proven at the supported fractional
+scales.
+
+Recommended first A/B surfaces:
+
+1. 48×48 Lock/Safe Lock art;
+2. 96×96 VolumeMixer art;
+3. 104×104 Waffle Action Center art;
+4. 108×108 Waffle Widgets foreground art.
+
+These have the cleanest bounded presentation geometry and no blur-radius
+interaction.
+
+Keep unchanged:
+
+- source URL/cache-busting;
+- `PreserveAspectCrop`;
+- async/cache policy;
+- opacity/visibility transitions;
+- smooth/mipmap flags where present;
+- rounded clipping/masks;
+- MediaArtwork resolver lifecycle.
+
+### R26.3 — Blurred/card-sized backgrounds need a separate oversampling oracle
+
+The same 2× rule should not be copied mechanically to every blurred background.
+Blurred/card-wide sources are sampled across a larger surface and filtering can
+amplify decode-size differences.
+
+For CompactPlayer, FullPlayer, AlbumArtPlayer and Waffle Widgets background art:
+
+1. request at least the actual visible card/body dimensions;
+2. test 1×, 1.5×, 2× and DPR-aware variants;
+3. preserve blur radius/kernel, crop, smooth/mipmap and opacity exactly;
+4. choose the smallest target that remains below the project <1% visual budget
+   across all required scales/covers.
+
+Do not combine this experiment with opacity-mask removal, blur substitution or
+MediaArtwork in-flight deduplication. Isolate decode residency first.
+
+### R26.4 — Why the RAM opportunity is structurally meaningful
+
+Illustrative raw RGBA arithmetic:
+
+- 2000×2000 source: 16,000,000 bytes (~15.3 MiB) of pixel data;
+- 216×216 target for a 108×108 2× slot: 186,624 bytes (~0.18 MiB).
+
+This is **not** a claim that Qt/Hadalis RSS or VRAM will fall by exactly that
+amount. Decoder implementations can use transient full-resolution buffers,
+textures may have alignment/mipmap/effect overhead, and formats differ.
+Nevertheless, the steady presentation texture has a large upper-bound gap when
+a multi-megapixel cover is displayed in a ~100 px slot.
+
+The opportunity compounds when the same large cover is independently loaded by
+multiple `cache:false` surfaces.
+
+### R26.5 — Required visual/resource oracle
+
+Use fixture artwork covering:
+
+- low-resolution source;
+- 512 px, 1k, 2k and 4k covers;
+- square and non-square ratios;
+- high-frequency/text/detail-heavy artwork;
+- 1.0 / 1.25 / 1.5 / 2.0 output scale;
+- 48 / 96 / 104 / 108 px foreground slots;
+- Compact/Full/AlbumArt/Waffle blurred backgrounds;
+- track-change/cross-slide state where applicable.
+
+Compare baseline and bounded variants with:
+
+- global normalized pixel-difference ratio;
+- detail/edge crop around cover boundaries;
+- max per-channel delta;
+- subjective cover/text sharpness inspection;
+- RSS/PSS under the same visible-surface set;
+- renderer texture/GPU memory when available.
+
+Acceptance remains the user's original optimization policy: **<1% measured
+visual difference**. If a target exceeds that budget, increase the decode bound
+or reject it for that surface.
+
+### R26.6 — Existing bounded paths are non-targets
+
+Do not reduce these from static reasoning:
+
+- `MediaCrossSlideImage.qml`: already uses 2× bounds;
+- Waffle MediaOSD: already bounded;
+- existing explicitly bounded wallpaper/avatar images;
+- Clipboard decoded images: intrinsic decoded dimensions participate in current
+  preview-sizing regression contracts and are a separate non-candidate.
+
+No whole-Hadalis RAM/GPU percentage is claimed without measurement.

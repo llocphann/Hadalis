@@ -2147,6 +2147,7 @@
             "size": 1,
             "edgeSizes": {"top": 1, "right": 1, "bottom": 1, "left": 1},
             "edgeThicknesses": {"top": -1, "right": -1, "bottom": -1, "left": -1},
+            "edgeWidthAffectsModules": {"top": true, "right": true, "bottom": true, "left": true},
             "depth": 36
         },
         "motion": {

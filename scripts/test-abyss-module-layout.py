@@ -25,6 +25,22 @@ for (const edge of ['top','right','bottom','left']) {
  const placements=normalize([{kind:'clock',edge}],edge);
  assert.equal(edgeInsetsForModules(placements,{...opts,singleModuleExpansion:{[edge]:'local'}},1,16,48,false)[edge],32,'local module retains chosen resting thickness');
 }
+for (const edge of ['top','right','bottom','left']) {
+ const opts={edgeThickness:16,edgeThicknesses:{[edge]:32},edgeWidthAffectsModules:{[edge]:false}};
+ const shared={edge,size:1,customSize:false},custom={...shared,size:1.4,customSize:true};
+ assert.equal(moduleSize(shared,opts),1,'Edge-only width leaves inherited modules at their prior size');
+ assert.equal(moduleSize(custom,opts),1.4,'custom size remains independent in both policies');
+ const placements=normalize([{kind:'clock',edge},{kind:'battery',edge}],edge);
+ assert.equal(edgeInsetsForModules(placements,opts,1,16,48,false)[edge],32,'painted Edge-only width is no longer masked by the module strip minimum');
+ assert(edgeInsetsForModules(placements,opts,1,16,48,true)[edge]>=48,'reserved workspace still protects modules');
+ const records=geometry(placements,1920,1080,opts,1);
+ assert.equal(localSurfaces(records,1920,1080,opts,1,48).length,2,'both modules retain connected foreground backing');
+ const all={outputLayouts:[{outputName:'B',placements:[],edgeWidthAffectsModules:{left:false}}]};
+ const saved=saveProfile(all,'A',placements,8,true,undefined,undefined,undefined,{[edge]:32},{[edge]:false});
+ assert.equal(saved['abyss.modules.outputLayouts'].find(p=>p.outputName==='B').edgeWidthAffectsModules.left,false);
+ assert.equal(optionsForOutput({...all,outputLayouts:saved['abyss.modules.outputLayouts']},'A').edgeWidthAffectsModules[edge],false,'per-output Done retains policy');
+ assert.equal(saveProfile(all,'A',placements,8,false,undefined,undefined,undefined,{[edge]:32},{[edge]:false})['abyss.modules.edgeWidthAffectsModules'][edge],false,'global Done stores policy');
+}
 const thicknessProfile={edgeThicknesses:{top:20},outputLayouts:[{outputName:'B',placements:[],edgeThicknesses:{left:28}}]};
 const thicknessSaved=saveProfile(thicknessProfile,'A',[],8,true,undefined,undefined,undefined,{right:32});
 assert.deepEqual(thicknessSaved['abyss.modules.outputLayouts'][0].edgeThicknesses,{left:28},'Done preserves another output thickness');

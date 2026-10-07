@@ -25,6 +25,7 @@ Item {
     property real gap: 8
     property var edgeSizes: ({top:1,right:1,bottom:1,left:1})
     property var edgeThicknesses: ({top:-1,right:-1,bottom:-1,left:-1})
+    property var edgeWidthAffectsModules: ({top:true,right:true,bottom:true,left:true})
     property real moduleScale: 1
     property var singleModuleExpansion: ({top:"edge",right:"edge",bottom:"edge",left:"edge"})
     property string editingEdge: "top"
@@ -51,7 +52,7 @@ Item {
     readonly property string nearbyCorner: Placement.adjacentEdge(moduleLayer.layoutRecords.find(p=>p.id===selectedId),width,height)
     readonly property var selected: draft.find(p => p.id === selectedId)
     readonly property var draftOptions: Object.assign({},Config.options?.abyss?.modules,{gap:gap,edgeSizes:edgeSizes,size:moduleScale,
-        singleModuleExpansion:singleModuleExpansion,edgeThicknesses:edgeThicknesses,edgeThickness:AbyssStyle.perimeterThickness})
+        singleModuleExpansion:singleModuleExpansion,edgeThicknesses:edgeThicknesses,edgeWidthAffectsModules:edgeWidthAffectsModules,edgeThickness:AbyssStyle.perimeterThickness})
 
     function toolbarEdgeScore(edge): real {
         let score = (edge === toolbarEdge ? -4 : 0)
@@ -125,6 +126,7 @@ Item {
         gap = options.gap
         edgeSizes = Object.assign({top:1,right:1,bottom:1,left:1},options.edgeSizes)
         edgeThicknesses = Object.assign({top:-1,right:-1,bottom:-1,left:-1},options.edgeThicknesses)
+        edgeWidthAffectsModules = Object.assign({top:true,right:true,bottom:true,left:true},options.edgeWidthAffectsModules)
         moduleScale = options.size
         singleModuleExpansion = Object.assign({top:"edge",right:"edge",bottom:"edge",left:"edge"},options.singleModuleExpansion)
         editingEdge = moduleLayer.edge
@@ -138,7 +140,7 @@ Item {
     }
     function finish(save): void {
         if (save) {
-            const writes=Placement.saveProfile(Config.options?.abyss?.modules,outputName,draft,gap,outputOnly,edgeSizes,singleModuleExpansion,moduleScale,edgeThicknesses)
+            const writes=Placement.saveProfile(Config.options?.abyss?.modules,outputName,draft,gap,outputOnly,edgeSizes,singleModuleExpansion,moduleScale,edgeThicknesses,edgeWidthAffectsModules)
             let positions=Config.options?.abyss?.positions ?? []
             positionEdits.forEach(edit=>positions=Presentation.save(positions,edit.kind,edit.outputName,edit.values))
             if(positionEdits.length) writes["abyss.positions"]=positions
@@ -153,6 +155,7 @@ Item {
         edgeSizes = {top:1,right:1,bottom:1,left:1}
         moduleScale = 1
         edgeThicknesses = {top:-1,right:-1,bottom:-1,left:-1}
+        edgeWidthAffectsModules = {top:true,right:true,bottom:true,left:true}
         singleModuleExpansion = {top:"edge",right:"edge",bottom:"edge",left:"edge"}
         guides = []
         selectedId = ""
@@ -550,7 +553,7 @@ Item {
                     rowSpacing:6
                     columnSpacing:6
 
-                    AbyssLabel { text:"Edge thickness" }
+                    AbyssLabel { text:"Edge width" }
                     AbyssSlider {
                         unit:"px";from:10;to:40;stepSize:1
                         Layout.fillWidth:true
@@ -569,6 +572,14 @@ Item {
                             {},root.edgeThicknesses,
                             {[root.editingEdge]:-1})
                     }
+                }
+
+                AbyssButton {
+                    visible:!root.editingPopups;Layout.fillWidth:true
+                    text:"Width affects modules";glyph:"width"
+                    description:"Scale inherited modules with this Edge, or change only the physical Edge. Custom module sizes stay independent."
+                    checkable:true;checked:root.edgeWidthAffectsModules[root.editingEdge]!==false
+                    onToggled:root.edgeWidthAffectsModules=Object.assign({},root.edgeWidthAffectsModules,{[root.editingEdge]:checked})
                 }
 
                 GridLayout {

@@ -623,6 +623,12 @@ Singleton {
                         property real bottom: -1
                         property real left: -1
                     }
+                    property JsonObject edgeWidthAffectsModules: JsonObject {
+                        property bool top: true
+                        property bool right: true
+                        property bool bottom: true
+                        property bool left: true
+                    }
                     property JsonObject edgeSizes: JsonObject {
                         property real top: 1
                         property real right: 1

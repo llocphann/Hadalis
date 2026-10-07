@@ -223,6 +223,9 @@ Rules:
 | `services/ai/AiProviderCatalog.qml` + `modules/settings/AiConfig.qml` | **HIGH-CONFIDENCE catalog-publication CPU/allocation candidate — publish with append-once storage and build one provider→models index instead of repeatedly copying/filtering the full model catalog.** `_publishModels()` currently grows `merged` through repeated `merged = merged.concat(bucket)` copies, sorts it, then each Material provider card calls `modelsFor(providerId)`, which filters the entire sorted catalog again. Current presets contain 11 providers. Fill one array with `push`, keep the exact existing sort comparator, build a stable private `Map` of provider buckets from that sorted result, and have `modelsFor()` return a fresh `slice()` of the bucket. Mutate the private Map before the single existing `models` publication so `modelsChanged` remains the authoritative UI invalidation. | Low. Preserve `Object.keys(_catalogByProvider)` pre-sort input order, stable equal-key sort behavior, exact model object identity, strict `providerId ===` membership semantics, fresh-array return behavior from `modelsFor()`, and current `modelsChanged`/`catalogUpdated` cadence. | Small O(M) resident reference index across the discovered model catalog. | Medium transient CPU/allocation reduction on catalog load/refresh and when the provider settings grid is live; removes repeated concat copies plus up to one full M-model filter per visible provider card. | 0%. |
 | `modules/sidebarRight/events/EventsWidget.qml` + `modules/background/widgets/calendar/CalendarUpcomingWidget.qml` | **HIGH-CONFIDENCE calendar CPU/allocation candidate — parse each merged event timestamp once before sorting instead of constructing two `Date` objects per comparator call.** Both 30-day merged-list builders clone local/external events and then sort with `new Date(a.dateTime || a.startDate) - new Date(b.dateTime || b.startDate)`. Prepare a private event→millisecond key while appending; reuse the already-created external `evtTime` where available; sort by numeric keys with the same stable source order for equal/invalid keys. | Low. Preserve the current local/external inclusion rules, all-day past-event exception, object clone shapes, equal-time stability, invalid-date comparator behavior (`NaN` acts as an equal comparison), full EventsWidget ordering, CalendarUpcoming `slice(0,maxEvents)`, and day-header grouping. | Tiny transient timestamp Map/parallel keys during rebuild; no persistent cache required. | Low–Medium CPU/allocation reduction on event/calendar refreshes, growing with the number of 30-day merged events; Date parsing falls from comparator-multiplied O(N log N) construction to O(N) preparation while the sort itself remains unchanged. | 0%. |
 
+| `modules/bar/BarTaskbar.qml` + `BarTaskbarButton.qml`; `modules/dock/DockApps.qml` + `DockAppButton.qml`; Waffle `WaffleTaskViewContent.qml` + `WindowThumbnail.qml` | **HIGH-CONFIDENCE compositor CPU candidate — per-owner published-focus hoist instead of one full `NiriService.windows.find(is_focused)` per delegate.** Bar and Dock buttons each recompute the identical `windows.find(...) ?? activeWindow` expression, while every Waffle task-view window thumbnail independently finds the focused id. Compute the exact current expression once in each existing owner and pass the object/id into its delegates; do not change `NiriService` authority or signal ordering. | Low. Preserve exact published-window-first/fallback semantics, null behavior, object identity, title/app-id matching, focus-only updates and each owner's current lifetime. Waffle must keep its current focus highlight even when cached task-view membership is not refreshed on focus-only updates. | One object/int binding per owner; removes equivalent bindings from every delegate. | **Medium local CPU potential on Niri window publications/focus churn**, scaling with visible taskbar/dock app delegates and Task View window count: O((B+D+T)×N) focused-window scans become O((owners)×N) plus O(1) delegate reads. | 0%. |
+| `modules/bar/Workspaces.qml` | **HIGH-CONFIDENCE multi-output CPU/allocation candidate — build one workspace representative/occupancy summary per published Niri window snapshot.** In workspace mode every rendered workspace button filters all `NiriService.windows` to choose `first focused else first`; the occupancy worker separately scans the same list into a Set, and column mode performs another active-workspace filter. Build one source-order-preserving summary `{representativeByWorkspace, occupiedIds}` in one pass; use O(1) representative lookup per button and reuse `occupiedIds`. Keep the column-mode array filter separate in the first patch to avoid retaining per-workspace arrays. | Low. Representative selection must preserve Array.filter + Array.find semantics: first focused window wins, otherwise first source-order window; duplicate/malformed workspace ids, empty workspaces, showAppIcons off/on, per-monitor slot mapping and focus changes must remain exact. | Small O(workspaces) resident maps/Sets per Workspaces instance; no per-window bucket arrays required. | **Low–Medium CPU/allocation reduction per window snapshot, larger with many workspaces/outputs.** Removes W full-window filter allocations for workspace icon delegates and lets the existing occupancy refresh reuse the same membership summary. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -343,6 +346,8 @@ Rules:
 108. **Waffle skew Alt Switcher single-pass parallelogram mask** — keep the existing skew geometry/preview/shadow contracts while eliminating the per-delegate content-layer + captured mask chain.
 109. **AI catalog append-once publication + provider index** — eliminate repeated concat copies and per-provider full-catalog filters while preserving the single `models` publication boundary and fresh `modelsFor()` arrays.
 110. **Merged-calendar prepared sort timestamps** — parse local/external event timestamps once per 30-day list rebuild and sort by the prepared numeric keys instead of reparsing dates inside every comparator call.
+111. **Per-owner Niri focused-window hoist** — compute the exact existing published-focus expression once in BarTaskbar, DockApps and Waffle Task View owners instead of rescanning the full window snapshot in every delegate.
+112. **Workspaces one-pass representative/occupancy summary** — preserve first-focused/first-window semantics while replacing per-workspace full-list filters and the separate occupancy membership scan with one published-snapshot summary.
 
 ## Explicit non-candidates from this pass
 
@@ -7350,6 +7355,207 @@ Do not inflate the promoted scope without measurement.
 use simple filters, but they update at catalog/provider-state cadence rather
 than an interactive hot loop. Folding them into publication could alter NOTIFY
 ordering for very small savings; leave them unchanged in the first optimization.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
+before/after measurement.
+
+## Research continuation — round 41
+
+Baseline: `dev` at `01050f572d0669e6bb1d9c991a28b2717a7433f3`.
+
+This round returned to Niri presentation fan-out, but deliberately avoided
+service-authority changes. The strongest findings remove repeated reads over
+the same already-published `NiriService.windows` snapshot while preserving
+today's batching, fallback and signal order.
+
+Current source identities:
+
+- `modules/bar/BarTaskbar.qml`: `3aca1b63e2633584c86f75c6a2e5eb2ebaebfdb3`;
+- `modules/bar/BarTaskbarButton.qml`: `15430646fe40a7e4708dc0d5de8c19858259713d`;
+- `modules/dock/DockApps.qml`: `11b3ea8cc17c91a1cf3b6a1f41f64f392d4dfcc9`;
+- `modules/dock/DockAppButton.qml`: `e82cf611338e518d70f8c95e45808217c7b90934`;
+- Waffle `WaffleTaskViewContent.qml`: `8ee8ff511dafab601a840ebc0475e18563b41034`;
+- Waffle `WindowThumbnail.qml`: `466f1b9477641fe1588f3c3468da6801e321579e`;
+- `modules/bar/Workspaces.qml`: `f7c51bb42b984ba8d3da078652a36ca75bd2db71`;
+- `modules/bar/ActiveWindow.qml`: `7b6edafc7d90adc58c399f672d02a334eec385e1`;
+- `services/NiriService.qml`: `4c8194493fd380bf0ad8c51bc62990ad0c232738`;
+- `services/GameMode.qml`: `692f3e200b7c46835f44f152c88f231e2d0bd2b5`;
+- `services/ScreenTime.qml`: `1eabb174c464bf0a1e372ebbe8a43f671d2e9d89`;
+- `modules/sidebarLeft/widgets/QuickLaunch.qml`: `de61cc5eccb5f5b2b926aa8da7594cbdb394676e`;
+- Waffle `StartPageContent.qml`: `bd9f6188b5c4bbcafb1fe61b982836aa145d7098`.
+
+### R41.1 — Focused-window discovery is repeated once per app/window delegate
+
+`NiriService` already derives `activeWindow` while publishing a batched window
+snapshot, but several UI paths intentionally do not trust that property alone.
+Bar and Dock delegates both use the same expression:
+
+```qml
+NiriService.windows?.find(window => window.is_focused)
+    ?? NiriService.activeWindow
+    ?? null
+```
+
+That published-windows-first ordering is important enough that this round does
+**not** propose replacing the expression globally with `activeWindow`.
+`windows` is assigned before `activeWindow` inside the service update timer, and
+other freshness-sensitive consumers intentionally use different precedence.
+
+The problem is ownership fan-out:
+
+- every `BarTaskbarButton` executes the complete find;
+- every `DockAppButton` executes the complete find;
+- every visible Waffle `WindowThumbnail` independently scans the same window
+  list for the focused id.
+
+Those delegates share existing owners that are already invalidated by the same
+state and can perform the lookup once:
+
+1. `BarTaskbar` derives the exact current Niri focused-window expression once
+   and passes the resulting object to every `BarTaskbarButton`;
+2. `DockApps` does the same for `DockAppButton`;
+3. `WaffleTaskViewContent` derives the focused window id directly from
+   `NiriService.windows` once and passes only that integer to every
+   `WindowThumbnail`;
+4. delegate active/focused matching code stays byte-for-byte equivalent after
+   substituting the supplied object/id;
+5. Hyprland paths remain untouched.
+
+This avoids introducing a new singleton property, nested mutable cache, or
+NOTIFY ordering contract. It is purely a common-subexpression ownership move.
+
+Required oracle:
+
+- zero windows;
+- one focused window;
+- multiple windows with exactly one focused flag;
+- malformed snapshot with zero focused flags, preserving Bar/Dock
+  `activeWindow` fallback and Waffle's current `-1` behavior;
+- malformed snapshot with multiple focused flags, preserving first-match order;
+- focus-only change without membership change;
+- title/app-id change on the focused window;
+- open/close and layout-sort publication;
+- Bar/Dock one-window and multi-window app groups, including identical app ids
+  where title matching disambiguates the active toplevel;
+- Task View cached membership remaining unchanged while focus moves;
+- exact active dot/pill state and Waffle focus ring before/after every step;
+- identical non-Niri behavior.
+
+Do not fold `GameMode`, `ScreenTime` or other service consumers into the first
+patch. Their precedence/freshness contracts differ and are not required for
+the high-fan-out delegate saving.
+
+### R41.2 — Workspace app-icon delegates each filter the full Niri window list
+
+`Workspaces.qml` currently has three related reads over the same published
+window snapshot.
+
+Column mode filters once for the active workspace:
+
+```qml
+NiriService.windows?.filter(w => w.workspace_id === currentWs.id)
+```
+
+The workspace-mode button delegate then repeats a stronger version once per
+rendered workspace:
+
+```qml
+const wins = NiriService.windows?.filter(w => w.workspace_id === niriWorkspace.id) ?? []
+return wins.find(w => w.is_focused) || wins[0]
+```
+
+Separately, `doUpdateWorkspaceOccupied()` scans every window again to construct
+`occupiedWorkspaceIds`.
+
+For W rendered workspaces and N windows, app-icon representative discovery alone
+is O(W×N) and allocates W filtered arrays after every relevant publication.
+Yet its result needs only two facts per workspace: membership and a
+representative window.
+
+A strict one-pass summary can preserve the current semantics without retaining
+full per-workspace buckets:
+
+```text
+occupiedIds
+representativeByWorkspace
+focusedChosenByWorkspace
+```
+
+For every window in **published source order**:
+
+1. add valid `workspace_id` to `occupiedIds`;
+2. if the workspace has no representative, store this first window;
+3. if no focused representative has been chosen yet and this window is
+   focused, replace the representative and mark focused chosen;
+4. once a focused representative exists, never replace it with a later focused
+   window.
+
+That exactly reproduces `filter(...).find(is_focused) || wins[0]`: first
+focused wins; if none is focused, first source-order member wins.
+
+Consumers then become:
+
+- workspace icon delegate: O(1) representative lookup;
+- occupancy refresh: reuse `occupiedIds` rather than rescan N windows;
+- column mode: keep its existing active-workspace filter in the first patch.
+
+Keeping column mode separate is intentional. A full bucket index would retain
+O(N) additional window references in every Workspaces instance and would begin
+to overlap conceptually with Round 32's Waffle Task View grouping. The summary
+above captures the larger workspace-mode fan-out with only O(workspaces) state.
+
+Required oracle:
+
+- 0/1/many workspaces and windows;
+- per-monitor and focused-output workspace modes;
+- dynamic and fixed workspace counts;
+- `showAppIcons` true/false and number-overlay transitions;
+- empty workspace;
+- one/multiple windows in a workspace;
+- focused window first/middle/last;
+- malformed multiple focused windows: first focused must win;
+- no focused window: first source-order window must win;
+- duplicate, null and undefined workspace ids;
+- focus-only, title/app-id, open/close and workspace-move publications;
+- exact `workspaceOccupied`, icon source and active-workspace presentation;
+- vertical/horizontal bars and multiple outputs.
+
+Relation to earlier work: Round 11.1 remains valid because its config snapshot
+guard prevents unrelated Config writes from assigning workspace properties and
+arming the occupancy debounce at all. If both candidates are implemented, the
+R41 summary additionally removes the N-window scan when a legitimate occupancy
+refresh does run. Do not add both savings as independent whole-shell gains.
+
+### R41.3 — Paths deliberately not promoted
+
+**NiriService `activeWindow` as a universal replacement:** rejected for the
+first patch. Current Bar/Dock code explicitly prefers a focused flag from the
+published `windows` snapshot and only then falls back to `activeWindow`.
+Changing that precedence or the service assignment order can create a different
+transient focus result. R41.1 removes repeated scans without touching authority.
+
+**ActiveWindow.qml:** each instance also scans the published window list for
+the first focused record. This is one scan per ActiveWindow component, not one
+scan per app/window delegate, so it is lower fan-out. It can later consume a
+proven shared focus projection, but it is not needed to justify R41.1.
+
+**GameMode focused-window path:** its fallback exists because Niri focus flags
+can lag layout events; Round 20/27 already separates fullscreen/focus freshness
+work. Do not replace its scan under this common-subexpression patch.
+
+**ScreenTime:** it intentionally prefers `NiriService.activeWindow` and only
+scans `windows` as a startup fallback. That short-circuit makes it a different
+and usually cheaper contract.
+
+**QuickLaunch:** `isAppRunning()` scans windows for each configured shortcut
+using substring matching against lowercased app id/title. The default list is
+small and this widget is sidebar-scoped. A normalized window-token index could
+help large custom shortcut lists, but changing substring semantics or retaining
+all lowercase titles needs workload evidence first.
+
+**Waffle Start recent apps:** `getRecentApps()` stops after four unique app ids.
+Its bounded scan/lookup is not promoted without evidence that Start-page rebuild
+frequency makes it material.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
 before/after measurement.

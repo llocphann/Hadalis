@@ -201,3 +201,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    import subprocess
+    subprocess.run(["python3", str(Path(__file__).with_name("test-cava-warm-spectrum-runtime.py"))], check=True)

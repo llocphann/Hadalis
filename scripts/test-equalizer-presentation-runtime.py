@@ -37,6 +37,7 @@ Singleton {
  property var points: []
  property real normalizationCeiling: 100
  property bool audioSignalActive: false
+ signal framePublished()
  function subscribe(count) { return 1 }
  function updateSubscription(token,count) {}
  function unsubscribe(token) {}

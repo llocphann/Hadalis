@@ -1582,7 +1582,10 @@ Item {
 
                                     EqualizerPanel {
                                         Layout.fillWidth: true
-                                        active: root.panelVisible
+                                        // The base controls tree stays warm,
+                                        // but its analyzer/DSP lease ends after
+                                        // the last crossfade pixels disappear.
+                                        active: root.panelVisible && visible
                                     }
                                 }
                             }

@@ -35,8 +35,12 @@ ShellRoot {
         if(value) return true
         console.error("WAVE_RUNTIME_FAIL",message);Qt.quit();return false
     }
-    function capture(name): void {
-        scene.grabToImage(result => { result.saveToFile(Quickshell.env("ABYSS_WAVE_OUTPUT")+"/"+name+".png");root.captured++ })
+    function capture(name, after = null): void {
+        scene.grabToImage(result => {
+            result.saveToFile(Quickshell.env("ABYSS_WAVE_OUTPUT")+"/"+name+".png")
+            root.captured++
+            if(after) after()
+        })
     }
     FloatingWindow {
         visible: true; implicitWidth: 420; implicitHeight: 260; color: "#071218"
@@ -85,7 +89,7 @@ ShellRoot {
                 waves.presented=true;audio.audioSignalActive=true;spectrum.playing=true
             }
             if(root.step === 17) {
-                if(!root.check(waves.audioAllowed && !waves.motionAllowed && waves.simulation.hasSpectrum && waves.simulation.displacement.some(v=>Math.abs(v)>.1),"audio drives field while interaction waves stay off")) return
+                if(!root.check(waves.audioAllowed && !waves.motionAllowed && waves.simulation.hasSpectrum && waves.crestPeak>.1 && !waves.running && waves.simulation.steps===0,"audio presents immediate crests with zero interaction solver work")) return
                 if(!root.check(!spectrum.held,"injected audio does not acquire an analyzer lease")) return
                 root.capture("audio")
             }
@@ -96,8 +100,9 @@ ShellRoot {
             }
             if(root.step === 21) {
                 if(!root.check(!spectrum.wanted && !waves.running && waves.simulation.displacement.every(v=>v===0),"paused playback restores flat field and stops updates")) return
-                root.capture("paused")
-                audio.audioSignalActive=true;spectrum.playing=true
+                // grabToImage is asynchronous: keep the paused state until
+                // its GPU readback completes before restarting playback.
+                root.capture("paused", () => { audio.audioSignalActive=true;spectrum.playing=true })
             }
             if(root.step === 23) {
                 Config.setNestedValue("performance.reduceAnimations",true)

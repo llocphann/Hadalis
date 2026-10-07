@@ -135,11 +135,13 @@ function advanceTravel(state, elapsed) {
     }
     state.traveling.length=kept;
 }
-// Feed a bounded, smooth rest shape into the same spring field. Constant audio
-// can settle to a static wave; changing CAVA frames wake it without an idle clock.
-function spectrum(state, edges, points, ceiling, strength) {
+// Present a bounded audio shape in the existing field. CAVA supplies the clock;
+// this path never wakes or adds energy to the interaction spring solver.
+function spectrum(state, edges, points, ceiling, strength, phase) {
     var count=points?.length || 0,changed=false,active=false;
-    var maximum=heightLimit(state)*bounded(strength,0,4)*2;
+    var maximum=Math.min(96,Math.min(state.width,state.height)*.12)*bounded(strength,0,4);
+    var limit=Math.min(192,Math.min(state.width,state.height)*.18);
+    state.spectrumLimit=count && maximum>0 ? limit : 0;
     var normalizer=Math.max(20,Number(ceiling) || 100);
     for(var i=0;i<state.count;i++) {
         var location=i*state.length/state.count,edge,along,length;
@@ -153,7 +155,10 @@ function spectrum(state, edges, points, ceiling, strength) {
             var a=Number(points[low]),b=Number(points[high]);
             var level=((Number.isFinite(a)?Math.max(0,a):0)*(1-(position-low))+(Number.isFinite(b)?Math.max(0,b):0)*(position-low))/normalizer;
             level=Math.sqrt(Math.max(0,Math.min(1,level)));
-            if(level>.025) target=Math.min(heightLimit(state),maximum*level)*Math.sin(t*Math.PI*6)*Math.pow(Math.sin(t*Math.PI),2);
+            // Old iNiR carrier: index*.5 + phase, driven at CAVA frame cadence.
+            // Audio is a presentation shape, independent of the interaction
+            // spring string. Peaks respond in this frame rather than seconds.
+            if(level>.025) target=Math.min(limit,maximum*level)*Math.sin(position*.5+(Number(phase)||0))*Math.pow(Math.sin(t*Math.PI),2);
         }
         if(Math.abs(target-state.spectrumTargets[i])>.005 || (target===0 && state.spectrumTargets[i]!==0)) {
             changed=true;state.spectrumTargets[i]=target;
@@ -161,7 +166,6 @@ function spectrum(state, edges, points, ceiling, strength) {
         active=active || Math.abs(state.spectrumTargets[i])>.005;
     }
     state.hasSpectrum=active;
-    if(changed) { state.mode="ACTIVE";state.quiet=0;state.age=0; }
     return changed;
 }
 function advance(state, elapsed) {
@@ -182,7 +186,7 @@ function advance(state, elapsed) {
             var viscous=state.velocity[left]+state.velocity[right]-2*state.velocity[i];
             var spring=(18+62*p.tension)*(.4+.6*p.rebound);
             var damping=1.2+7*p.decay+3*(1-p.propagation)+(atCorner?(1-p.corner)*2:0);
-            acceleration[i]=(speed*speed/(dx*dx)*lap*transfer+spring*(state.spectrumTargets[i]-state.displacement[i])
+            acceleration[i]=(speed*speed/(dx*dx)*lap*transfer+spring*(0-state.displacement[i])
                 +(60+120*p.tension)*state.travelTargets[i]
                 +p.viscosity*900/(dx*dx)*viscous)/state.mass[i]-damping*state.velocity[i];
         }
@@ -197,11 +201,11 @@ function advance(state, elapsed) {
         state.steps++;
     }
     state.age+=elapsed;
-    var quiet=state.traveling.length===0 && (state.hasSpectrum || state.displacement.every(function(v) { return Math.abs(v)<.025; }))
+    var quiet=state.traveling.length===0 && state.displacement.every(function(v) { return Math.abs(v)<.025; })
         && state.velocity.every(function(v) { return Math.abs(v)<.12; });
     state.quiet=quiet ? state.quiet+1 : 0;
     if(state.quiet>=8) {
-        if(!state.hasSpectrum) state.displacement.fill(0);
+        state.displacement.fill(0);
         state.velocity.fill(0);state.mode="SLEEPING";
     } else state.mode=state.age<.2 ? "ACTIVE" : "SETTLING";
     return true;
@@ -220,11 +224,14 @@ function projectCrests(state, foamAllowed) {
     for(var i=0;i<count;i++) {
         var h=(state.displacement[(i+count-2)%count]+4*state.displacement[(i+count-1)%count]
             +6*state.displacement[i]+4*state.displacement[(i+1)%count]+state.displacement[(i+2)%count])/16;
+        if(state.hasSpectrum)
+            h+=(state.spectrumTargets[(i+count-2)%count]+4*state.spectrumTargets[(i+count-1)%count]
+                +6*state.spectrumTargets[i]+4*state.spectrumTargets[(i+1)%count]+state.spectrumTargets[(i+2)%count])/16;
         h=Number.isFinite(h) ? Math.max(0,h) : 0;
         source[i]=h*h/(h+.5);
         peak=Math.max(peak,source[i]);
     }
-    var limit=Math.min(192,heightLimit(state)*2,Math.min(state.width,state.height)*.35);
+    var limit=Math.max(state.spectrumLimit || 0,Math.min(192,heightLimit(state)*2,Math.min(state.width,state.height)*.35));
     state.crestPeak=0;
     for(var j=0;j<count;j++) {
         var relative=peak>0 ? source[j]/peak : 0;

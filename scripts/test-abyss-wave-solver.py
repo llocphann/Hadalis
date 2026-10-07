@@ -101,7 +101,7 @@ const malformedMass=create(128,1280,720,travelParameters);
 travel(malformedMass,'top',640,400,1,'invalid');advance(malformedMass,.05);
 assert(malformedMass.displacement.every(Number.isFinite),'malformed mass falls back to a finite popup weight');
 s=create(256,1920,1200,p);
-const raw=[20,70,40,95,30,50,80,10],rawBefore=JSON.stringify(raw);
+const raw=Array.from({length:64},(_,i)=>[20,70,40,95,30,50,80,10][i%8]),rawBefore=JSON.stringify(raw);
 assert(spectrum(s,['top'],raw,100,.8));
 const weaker=create(256,1920,1200,p),stronger=create(256,1920,1200,p);
 spectrum(weaker,['top'],[1,4,2,5,1,2,3,1],100,1);
@@ -112,7 +112,9 @@ assert(s.spectrumTargets.every((v,i)=>i*s.length/s.count<=s.width || v===0),'onl
 assert.equal(JSON.stringify(raw),rawBefore,'shared analyzer frames are never mutated');
 for(let i=0;i<1600;i++) advance(s,1/120);
 assert.equal(s.mode,'SLEEPING','stationary spectrum can settle without continuous integration');
-assert(s.displacement.some(v=>Math.abs(v)>.1),'settled audio keeps its physical wave');
+assert.equal(s.steps,0,'audio presentation never starts the interaction solver');
+assert(projectCrests(s,false)>1,'audio has a crest in its first presented frame');
+assert(s.spectrumTargets.some(v=>Math.abs(v)>.1),'audio keeps its direct response shape');
 const audioSteps=s.steps;advance(s,.05);assert.equal(s.steps,audioSteps);
 assert.equal(spectrum(s,['top'],raw,100,.8),false,'identical audio does not wake the field');
 assert(spectrum(s,['left'],raw,100,.8),'edge changes wake and release old targets');
@@ -151,4 +153,7 @@ assert(visual.crestPeak<visual.displacement[80] && visual.crests[79]>0 && visual
 console.log('PASS: signed interference, finite stability/sleep, compact positive crests and bounded crest-only whitewater');
 
 """
-raise SystemExit(subprocess.run(["node","-e",program],cwd=root).returncode)
+result = subprocess.run(["node","-e",program],cwd=root)
+if result.returncode:
+    raise SystemExit(result.returncode)
+raise SystemExit(subprocess.run(["node",str(root / "scripts/test-abyss-wave-interaction-parity.cjs")],cwd=root).returncode)

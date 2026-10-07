@@ -29,6 +29,9 @@ Item {
     signal configurationChanged()
     function reset(): void {
         simulation = Wave.create(sampleCount,outputWidth,outputHeight,parameters)
+        // Disarm the shader synchronously; a hidden/offscreen Canvas may not
+        // produce another paint after its last animation clock has stopped.
+        crestPeak = 0
         Wave.setMass(simulation,records)
         mode = "SLEEPING"
         revision++
@@ -47,18 +50,20 @@ Item {
         mode = simulation.mode
         revision++
     }
-    function feedSpectrum(edges,points,ceiling,strength): void {
+    function feedSpectrum(edges,points,ceiling,strength,phase = 0): void {
         if(!audioAllowed) return
         if(!simulation) reset()
-        if(!Wave.spectrum(simulation,edges,points,ceiling,strength*AbyssStyle.motionIntensity)) return
+        if(!Wave.spectrum(simulation,edges,points,ceiling,strength*AbyssStyle.motionIntensity,phase)) return
         idleDisturbance=false
-        lastStep=Date.now();mode=simulation.mode;revision++
+        revision++
     }
     function clearSpectrum(): void {
         if(!simulation || !simulation.hasSpectrum) return
         if(!integrationAllowed) { reset();return }
-        Wave.spectrum(simulation,[],[],100,0)
-        lastStep=Date.now();mode=simulation.mode
+        if(Wave.spectrum(simulation,[],[],100,0)) {
+            crestPeak=Wave.projectCrests(simulation,Appearance.effectsEnabled && AbyssStyle.quality !== "performance")
+            revision++
+        }
     }
     onAudioAllowedChanged: if(!audioAllowed) clearSpectrum()
     onMotionAllowedChanged: if(!motionAllowed && simulation) Wave.clearTravel(simulation)

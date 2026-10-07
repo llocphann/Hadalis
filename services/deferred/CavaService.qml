@@ -29,6 +29,7 @@ Singleton {
     property bool _suppressConfigRestart: false
     property int _generationBars: 0
     property int _processBars: 0
+    property int _warmBars: 0
     property bool _pendingConfigGeneration: false
     readonly property int _subscribers: _legacySubscribers + _sampleRequests.length
     readonly property bool active: _subscribers > 0
@@ -39,6 +40,7 @@ Singleton {
     property var points: []
     property real normalizationCeiling: 100
     property bool audioSignalActive: false
+    signal framePublished()
     // Real PipeWire streams frequently peak in the 20-100 range even though
     // cava's ASCII output can represent 0-1000. Keep silence restrained without
     // flattening ordinary playback to a one-pixel line.
@@ -65,7 +67,7 @@ Singleton {
     readonly property int effectiveBars: {
         let count = root.cfgBars > 0
             ? Math.max(2, Math.round(root.cfgBars))
-            : Math.min(320, Math.max(50, root.requestedBars))
+            : Math.min(320, Math.max(64, root.requestedBars, root._warmBars))
         if (root.cfgStereo && count % 2 !== 0)
             count++
         return count
@@ -118,6 +120,8 @@ Singleton {
             return
         const previousBars = root.effectiveBars
         const bars = Math.max(0, Math.round(Number(requestedBars) || 0))
+        const current=root._sampleRequests.find(request=>request.id===requestId)
+        if(!current || current.bars===bars) return
         const next = root._sampleRequests.map(request =>
             request.id === requestId ? { id: request.id, bars: bars } : request)
         root._suppressConfigRestart = true
@@ -198,6 +202,7 @@ Singleton {
         } else if (root.audioSignalActive && !signalRelease.running) {
             signalRelease.restart()
         }
+        root.framePublished()
     }
 
     property bool _pendingRestart: false
@@ -295,6 +300,7 @@ Singleton {
                 root._pendingConfigGeneration = false
                 configGen.running = false
                 cavaProc.running = false
+                root._warmBars = 0
                 signalRelease.restart()
                 frameClear.restart()
             }
@@ -314,6 +320,7 @@ Singleton {
                 root._generateConfig()
             } else if (code === 0 && root.active) {
                 root._processBars = root._generationBars
+                root._warmBars = root._generationBars
                 cavaProc.running = true
             } else if (root.active) {
                 signalRelease.restart()

@@ -17,6 +17,8 @@ Item {
 
     property bool active: false
     property int sampleCount: 0
+    readonly property bool completeFrameClock: true
+    signal framePublished()
     readonly property var _emptyPoints: []
     readonly property bool _wanted: active && !Appearance.gameModeMinimal
 
@@ -33,6 +35,10 @@ Item {
 
     readonly property bool _held: root._serviceLease.held
     readonly property bool held: root._held
+    Connections {
+        target: root._held ? CavaService : null
+        function onFramePublished(): void { root.framePublished() }
+    }
     readonly property int _subscriptionId:
         root._serviceLease.token === null || root._serviceLease.token === undefined
             ? -1 : Number(root._serviceLease.token)

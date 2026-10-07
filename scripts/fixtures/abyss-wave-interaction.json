@@ -1,0 +1,216 @@
+{
+  "sourceCommit": "8f625d1f0",
+  "scope": "Interaction only; audio behavior is an authorized redesign.",
+  "traces": [
+    {
+      "count": 128,
+      "width": 1920,
+      "height": 1080,
+      "preset": "calm",
+      "sha256": "a385f17cd19d9f3ae381ebe5a64e9b8457b61f3c92078fed7279bf74b094b92c"
+    },
+    {
+      "count": 128,
+      "width": 1920,
+      "height": 1080,
+      "preset": "balanced",
+      "sha256": "8886cb924bdefaf2b11d38035f80b511ff2502908b54c4a6c49b7a0bfeab1731"
+    },
+    {
+      "count": 128,
+      "width": 1920,
+      "height": 1080,
+      "preset": "fluid",
+      "sha256": "0cdfc948a5d52e6cfad3bef425bf57b6b64444e71388c07326e880816b92ad36"
+    },
+    {
+      "count": 128,
+      "width": 1920,
+      "height": 1080,
+      "preset": "deep",
+      "sha256": "6b5bb9175ee6a7bf8860463b0677330cc855737d99ef6e595d77b3b62601ae6d"
+    },
+    {
+      "count": 128,
+      "width": 1920,
+      "height": 1080,
+      "preset": "custom",
+      "sha256": "1a922548a9b09ae928da027fffa986e15f4292fe46dec203b8757e344d2e588c"
+    },
+    {
+      "count": 128,
+      "width": 720,
+      "height": 650,
+      "preset": "calm",
+      "sha256": "e5fbeb1ce85aa546d8fe5ebd9121986fc293873c722fc50ccac5023e4cb1aab3"
+    },
+    {
+      "count": 128,
+      "width": 720,
+      "height": 650,
+      "preset": "balanced",
+      "sha256": "f82b3015361f04fec5a9950a9fbe58f69e2b35d224ab42148c98c0d90a176fd8"
+    },
+    {
+      "count": 128,
+      "width": 720,
+      "height": 650,
+      "preset": "fluid",
+      "sha256": "6e9ca1d5ab311a551010030536c4167deb48518a362f633441014396373278d8"
+    },
+    {
+      "count": 128,
+      "width": 720,
+      "height": 650,
+      "preset": "deep",
+      "sha256": "dbeddb1864f1b56f38d2455fa4aa78cb8f66fee2abc6bee851faab2bd253ba2b"
+    },
+    {
+      "count": 128,
+      "width": 720,
+      "height": 650,
+      "preset": "custom",
+      "sha256": "aeee1c41e7c1e55fdfd6afaa3f02446abd4f2a3a7c41729a559404c41fa0c800"
+    },
+    {
+      "count": 128,
+      "width": 420,
+      "height": 260,
+      "preset": "calm",
+      "sha256": "3253773e1ec69e9b93088a5aaef7456ce53623748ab4e650870c62e57a3d2a4f"
+    },
+    {
+      "count": 128,
+      "width": 420,
+      "height": 260,
+      "preset": "balanced",
+      "sha256": "fac445f3cdb5646d9aec4ff001e71c611f74807e094a564d76f58ad037f6d086"
+    },
+    {
+      "count": 128,
+      "width": 420,
+      "height": 260,
+      "preset": "fluid",
+      "sha256": "9973a554747e7b097eb59e7a4d3b8dfb26bba8c034e3aa78dd651b3b2dbc47a7"
+    },
+    {
+      "count": 128,
+      "width": 420,
+      "height": 260,
+      "preset": "deep",
+      "sha256": "3e9f0f308dc9696ea2f6d748dc6488d11c8a04303c8cb2028b7b614a8c22a7dd"
+    },
+    {
+      "count": 128,
+      "width": 420,
+      "height": 260,
+      "preset": "custom",
+      "sha256": "0fc814adccac1ab72dc940b0243117188efa4575f41e39dfa7de9abd499a4ebe"
+    },
+    {
+      "count": 256,
+      "width": 1920,
+      "height": 1080,
+      "preset": "calm",
+      "sha256": "9b9ab8bfb87805a880bbc31c37851277525a6c9f19bbe9ef34f7d90f1e357e9d"
+    },
+    {
+      "count": 256,
+      "width": 1920,
+      "height": 1080,
+      "preset": "balanced",
+      "sha256": "d905e2a089eb5aaf7d05612bf193e16d3abe3e3017070227441812a841eb323f"
+    },
+    {
+      "count": 256,
+      "width": 1920,
+      "height": 1080,
+      "preset": "fluid",
+      "sha256": "60cd12ef58bdee4cf8e3c5b28155a2f8a5faec6e8d98fa857a3c473946d0e13b"
+    },
+    {
+      "count": 256,
+      "width": 1920,
+      "height": 1080,
+      "preset": "deep",
+      "sha256": "fd81cf52350a0405824bd7b29158b68a08392c307739d1e6d26f38880726ee1b"
+    },
+    {
+      "count": 256,
+      "width": 1920,
+      "height": 1080,
+      "preset": "custom",
+      "sha256": "6403c76114e9ff52e55b9dac79b0f8d901a414135d88944b5882b64d78f125b6"
+    },
+    {
+      "count": 256,
+      "width": 720,
+      "height": 650,
+      "preset": "calm",
+      "sha256": "fe0e678e1831ab6e2f7deffe354d3f477b926183cef800549faa0b1af69e5271"
+    },
+    {
+      "count": 256,
+      "width": 720,
+      "height": 650,
+      "preset": "balanced",
+      "sha256": "256566cf1fdbeb1d348b2f46a3f40c7eec8f3e56b940a6e3b3da4ad8f28ca1bc"
+    },
+    {
+      "count": 256,
+      "width": 720,
+      "height": 650,
+      "preset": "fluid",
+      "sha256": "670264f6d9f27134f555801da05d93cbbec0f363e8a11d5927ea1ba5bad01c6b"
+    },
+    {
+      "count": 256,
+      "width": 720,
+      "height": 650,
+      "preset": "deep",
+      "sha256": "386e4aedf006c813cd345c99692f686d288a57148e83874f94c8b879fed5d098"
+    },
+    {
+      "count": 256,
+      "width": 720,
+      "height": 650,
+      "preset": "custom",
+      "sha256": "adb8e9513cbc77bf68fd5d8e65b5299dd70c2823ae709b2ca9c735561ed7a16b"
+    },
+    {
+      "count": 256,
+      "width": 420,
+      "height": 260,
+      "preset": "calm",
+      "sha256": "d15fe05042b19debc571aa94e0d4240ae2f5b95bb9c92f88a942b01313e3a87d"
+    },
+    {
+      "count": 256,
+      "width": 420,
+      "height": 260,
+      "preset": "balanced",
+      "sha256": "8ea1aa9e67863f9b224549ac3b4800a9e994312ada6e277aa5e7329ea61108be"
+    },
+    {
+      "count": 256,
+      "width": 420,
+      "height": 260,
+      "preset": "fluid",
+      "sha256": "17c60cdd97f43b2e541c3ec75f615a30c63639e490880932cf5c725e88ad6fa7"
+    },
+    {
+      "count": 256,
+      "width": 420,
+      "height": 260,
+      "preset": "deep",
+      "sha256": "82eea8fdf4c301305c233596854282c05f7a08fbce40ab272c11c84091d50acc"
+    },
+    {
+      "count": 256,
+      "width": 420,
+      "height": 260,
+      "preset": "custom",
+      "sha256": "4f8584f9acd18c6ce5e63ec7cc7e41dddfe79eb64b9a07e2fd2794080158884a"
+    }
+  ]
+}

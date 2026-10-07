@@ -17,6 +17,8 @@ Item {
     property bool presented: true
     property bool playing: MprisController.isPlaying || YtMusic.isPlaying
     property var audioSource: null
+    property real phase: 0
+    property double lastFrameMs: 0
     readonly property var source: audioSource ?? cava
     readonly property var options: Config.options?.abyss?.spectrum
     readonly property bool configured: options?.configured ?? false
@@ -31,24 +33,32 @@ Item {
     readonly property bool held: cava.held
     Binding { target:root.waves;property:"audioEnabled";value:root.wanted }
     CavaProcess { id:cava;active:root.wanted && !root.audioSource;sampleCount:64 }
-    function update(): void {
+    function refreshSpectrum(frame = false): void {
         if(!waves || !source) return
-        if(!wanted || !source.audioSignalActive) { waves.clearSpectrum();return }
-        waves.feedSpectrum(edges,source.points,source.normalizationCeiling,strength)
+        if(!wanted || !source.audioSignalActive) { lastFrameMs=0;waves.clearSpectrum();return }
+        if(frame) {
+            const now=Date.now()
+            if(lastFrameMs>0) phase=(phase+Math.min(250,now-lastFrameMs)*.003125)%(2*Math.PI)
+            lastFrameMs=now
+        }
+        waves.feedSpectrum(edges,source.points,source.normalizationCeiling,strength,phase)
     }
     Connections {
         target:root.source
-        function onPointsChanged(): void { root.update() }
-        function onAudioSignalActiveChanged(): void { root.update() }
+        enabled:root.wanted
+        ignoreUnknownSignals:true
+        function onPointsChanged(): void { if(!root.source?.completeFrameClock) root.refreshSpectrum(true) }
+        function onFramePublished(): void { root.refreshSpectrum(true) }
+        function onAudioSignalActiveChanged(): void { root.refreshSpectrum() }
     }
     Connections {
         target:root.waves
-        function onConfigurationChanged(): void { root.update() }
-        function onAudioAllowedChanged(): void { root.update() }
+        function onConfigurationChanged(): void { root.refreshSpectrum() }
+        function onAudioAllowedChanged(): void { root.refreshSpectrum() }
     }
-    onWantedChanged: update()
-    onSourceChanged: update()
-    onEdgesChanged: update()
-    onStrengthChanged: update()
-    Component.onCompleted: update()
+    onWantedChanged: refreshSpectrum()
+    onSourceChanged: refreshSpectrum()
+    onEdgesChanged: refreshSpectrum()
+    onStrengthChanged: refreshSpectrum()
+    Component.onCompleted: refreshSpectrum()
 }

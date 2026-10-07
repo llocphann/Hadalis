@@ -236,6 +236,8 @@ Rules:
 | `modules/common/widgets/shapes/ShapeCanvas.qml` + `shapes/morph.js` + `shapes/cubic.js` | **HIGH-CONFIDENCE animation CPU/allocation candidate — ShapeCanvas allocation-free morph streaming.** Every Canvas paint calls `Morph.asCubics(progress)`. For M matched segments that routine allocates a result array, one interpolated `Cubic` per segment, two 8-slot arrays per interpolated segment (`Array.from(...).map(...)`), then an additional 8-slot array + closing `Cubic` so the final endpoint exactly equals the first anchor. ShapeCanvas repaints not only while `progress` animates but also for color/stroke changes, so the same geometry allocation can recur on color-only frames at stable progress. Extend the existing mutable interpolation path with a closed streaming iterator that reuses one `MutableCubic`, captures the first anchor, and overrides only the final endpoint exactly as `asCubics()` does today; stream directly into the Canvas path instead of materializing the cubic array. | Low–Medium. The final-segment closure rule is pixel-critical and the current `forEachCubic()` alone is **not** equivalent. Preserve interpolation arithmetic, segment order/count, progress overshoot, first/last anchor identity, fit-to-canvas transforms, stroke width compensation and all animation timing. | One reusable 8-number mutable cubic per ShapeCanvas instance instead of per-paint result/cubic/point arrays. | **Medium transient allocation + local CPU reduction** across shared Material Shape animations and color repaints; no change to MaterialShapes matching topology or pixels. | 0%. |
 | `modules/common/perimeter/ConnectedSurfaceIrisField.qml` + `ConnectedSurfaceIrisFrame.qml` | **HIGH-CONFIDENCE connected-surface CPU/allocation candidate — Connected iRiS shared shape-uniform packet.** A production frame owns two `ConnectedSurfaceIrisField` instances: the visible plate and the SDF shadow mask. Both consume the same five-shape snapshot and the same `smoothing: root.fuse`, yet each independently derives 20 shape vectors, 5 radius blocks, 5 fuse blocks and 10 join blocks (40 shape-derived `vector4d` values) plus the same id map and helper lookups. Prepare that immutable shape/smoothing packet once per snapshot and let both fields bind their named shader uniforms to the same prepared values; keep viewport/screen/tint/rim/edge field-local. | Low–Medium. Preserve capacity-20 zero fill, shape order, duplicate-id last-write map behavior, scalar coercion/fallbacks, non-array join wrapping, missing join names, exact update timing and every named ShaderEffect uniform value. Packet replacement must invalidate both fields in the same QML turn. Do not touch `IrisField.frag(.qsb)` or shadow-pass topology. | One shared O(capacity) prepared packet replaces two identical CPU-side preparations; each ShaderEffect still owns its uniform bindings/GPU uploads. | **Low–Medium CPU/allocation reduction during connected-popup geometry animation**, with zero claimed GPU-pass reduction. Distinct from Round 2.2 shadow-pass elimination research. | 0%. |
 
+| `modules/settings/SettingsPageRegistry.qml` + `SettingsPageRegistryData.qml` + static Settings search consumers | **HIGH-CONFIDENCE interactive CPU/allocation candidate — Settings static prepared family-routed search index.** `SettingsPageRegistryData.searchIndex()` already caches the translation-expanded raw static index, but every non-empty Settings query calls wrapper `SettingsPageRegistry.searchIndex()`, which re-filters legacy slots, runs `FamilyPolicy.settingsRoute()` for every entry, clones redirected entries, then each consumer lowercases `label`, `description`, `pageName`, `section` and `keywords.join(" ")` again. Prepare the routed static snapshot plus private normalized fields once per exact family/translation epoch; query edits then only run the existing term/scoring predicates. | Low. Invalidate on Translation index rebuild and every `panelFamily` change; preserve hidden-legacy filtering, Abyss page-name/route substitutions, raw object fields, consumer-specific `isPageApplicable`/allowed filtering, score/order/tie behavior and immediate family-switch observability. Do not fold dynamic control entries into this cache; candidates #43/#44 already own that separate lifecycle. | Bounded O(static search text) normalized strings and routed entry references for one active family epoch. | **Low–Medium interactive CPU/allocation reduction across standalone Settings, SettingsOverlay and SettingsFocus**: eliminates per-keystroke full-index route/filter/map/clones and repeated static metadata normalization. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -365,6 +367,7 @@ Rules:
 117. **OrbitalWeather per-quadrant arc-length table reuse** — build the exact 72-sample cumulative ellipse table once per used quadrant during a non-liquid `hourAngles` evaluation instead of once per hour.
 118. **ShapeCanvas allocation-free morph streaming** — stream interpolated cubic segments through one reusable mutable cubic while retaining the exact final-anchor closure rule.
 119. **Connected iRiS shared shape-uniform packet** — prepare the common shape/smoothing uniform vectors once per snapshot and share them between visible and shadow-mask iRiS fields.
+120. **Settings static prepared family-routed search index** — cache the family-routed static Settings search snapshot and its normalized text fields per translation/family epoch instead of rebuilding them on every query edit.
 
 ## Explicit non-candidates from this pass
 
@@ -8238,6 +8241,183 @@ without profiling.
 **iRiS shadow-pass removal:** already owned by Round 2.2. Do not count the
 shared-uniform packet as GPU-pass reduction or re-promote the older shadow
 candidate.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
+before/after measurement.
+
+## Research continuation — round 45
+
+Baseline: `dev` at `3881227eb8a626d470d05db1d68cdb2be04dab2b`.
+
+This round moved away from render primitives into Settings search publication
+boundaries. The audit first found repeated dynamic-entry normalization, but
+duplicate checking showed that work is already canonical candidate #43, with
+discarded pre-limit highlight construction already candidate #44. Those were
+therefore not re-promoted.
+
+Current source identities:
+
+- `modules/settings/SettingsPageRegistry.qml`:
+  `3ff65883143160c60a740efae802b4a5d6f27ed0`;
+- `modules/settings/SettingsPageRegistryData.qml`:
+  `3746cb7184edd6747634ec43255c30b9cfbe4e28`;
+- `modules/common/widgets/SettingsSearchRegistry.qml`:
+  `836c9c061039bae7508aa6b44973722409ddf1dd`;
+- `modules/settings/SettingsOverlay.qml`:
+  `dcc55af98cfbf0c628f8ab37edd474a4085d80f7`;
+- `modules/settings/SettingsFocus.qml`:
+  `3bad6c434fb735ba90d46bca5c676c5a23dcff45`;
+- standalone `settings.qml`:
+  `d490bc816cf5c12a9c1e057e04667092fec9a85e`;
+- `modules/overview/OverviewWidget.qml`:
+  `09c67be3c1d7d88a5964b66ac1633d1e53a49509`;
+- `modules/common/widgets/GroupButton.qml`:
+  `0dfd4cd803053029222bc566aff0d0dec37b21a0`;
+- Waffle `WMenu.qml`:
+  `b2a5840e2f2a6b0e4bae1fbfd708955140dc337f`.
+
+### R45.1 — The static Settings index is cached raw but rerouted and renormalized per query
+
+`SettingsPageRegistryData.searchIndex()` already owns one useful cache. It
+materializes the large translation-aware static index once and invalidates that
+raw cache on:
+
+```qml
+Translation.onLanguageCodeChanged
+Translation.onTranslationsChanged
+```
+
+The public wrapper still does work every time it is called:
+
+```qml
+return SettingsPageRegistryData.searchIndex()
+    .filter(entry => !root.isHiddenLegacyIndex(entry.pageIndex))
+    .map(entry => {
+        const route = FamilyPolicy.settingsRoute(
+            Config.options?.panelFamily,
+            entry.pageIndex,
+            entry.section)
+        if (route.pageIndex !== entry.pageIndex)
+            return Object.assign({}, entry, route, { pageName: "Abyss" })
+        if (root.abyssFamily && entry.pageIndex === root.barPageIndex)
+            return Object.assign({}, entry, { pageName: "Abyss" })
+        return entry
+    })
+```
+
+All three current static-search consumers call this from their query rebuild:
+
+- standalone `settings.qml`;
+- `SettingsOverlay.qml`;
+- `SettingsFocus.qml`.
+
+The standalone and Overlay search loops then recreate the same normalized
+metadata for each routed static entry on every query edit:
+
+```qml
+label.toLowerCase()
+description.toLowerCase()
+pageName.toLowerCase()
+section.toLowerCase()
+keywords.join(" ").toLowerCase()
+```
+
+`SettingsFocus` also consumes the same routed static snapshot and performs
+its own matching policy. The search policies should remain consumer-owned; the
+shared opportunity is only the immutable family/translation preparation below
+them.
+
+Strict-lossless direction:
+
+1. retain `SettingsPageRegistryData.searchIndex()` as the raw,
+   translation-owned source;
+2. in `SettingsPageRegistry`, prepare one private routed snapshot for the
+   current `Config.options.panelFamily`;
+3. execute the current hidden-legacy filter and
+   `FamilyPolicy.settingsRoute()` loop exactly once for that epoch;
+4. retain the exact raw/public fields that callers currently receive;
+5. add private normalized fields for label, description, page name, section and
+   joined keywords to each prepared record (or to an aligned private metadata
+   array);
+6. invalidate/rebuild on every raw translation-index revision and every panel
+   family transition;
+7. let each Settings surface keep its existing applicability/allowed filtering,
+   query-term matching, score bonuses, dynamic-result merge, deduplication and
+   top-50 policy.
+
+Do not cache final query results. Query text is intentionally immediate and
+different Settings surfaces apply different allowed/page filters.
+
+The prepared snapshot must preserve current route semantics exactly. In
+particular:
+
+- legacy hidden indexes stay absent;
+- Abyss family routing may redirect page/section and clone that routed record;
+- the active Abyss Bar slot presents `pageName: "Abyss"`;
+- ii/Waffle/Abyss transitions must immediately expose the new route set;
+- consumer-side `isPageApplicable()` remains authoritative rather than being
+  silently moved into the shared snapshot.
+
+Required oracle:
+
+- empty query (no search work/result behavior change);
+- one and multiple terms;
+- label/description/page/section/keyword-only matches;
+- upper/lower/mixed case;
+- prefix and mid-string label matches;
+- ii -> Waffle -> Abyss -> ii without restarting Settings;
+- redirected Abyss entries and Bar page-name substitution;
+- legacy hidden page indexes;
+- translation revision while Settings remains alive;
+- standalone Settings, SettingsOverlay and SettingsFocus;
+- exact raw result fields and object-visible values;
+- exact scores, tie ordering, dynamic/static merge order, dedup result and final
+  top-50 set.
+
+This composes with, but does not duplicate, older candidates:
+
+- #43 prepares normalized fields for **dynamic registered controls**;
+- #44 moves dynamic result highlighting after the top-50 selection;
+- R45.1 prepares the **static family-routed registry snapshot** before any query
+  exists.
+
+If implementation also notices that static result highlighting is generated
+before the final merged top-50 cutoff in standalone/Overlay search, fold that
+work into the same proof envelope as #44 rather than assigning another
+promotion number.
+
+### R45.2 — Paths deliberately not promoted
+
+**SettingsSearchRegistry dynamic normalization:** rediscovered during this
+round, but it is exactly canonical candidate #43 / Round 21.2. No new number.
+
+**Settings dynamic pre-limit highlighting:** likewise already owned by candidate
+#44 / Round 21.3. The static half can be covered as an implementation extension,
+not counted as an independent optimization.
+
+**OverviewWidget monitor scans:** every visible Overview window does a
+`HyprlandData.monitors.find()` for its window monitor and another identical
+lookup for the Overview's widget monitor. A per-owner monitor-id map could make
+those O(1), but monitor counts are normally tiny and the whole path is scoped
+to an open Hyprland Overview. Keep below promotion threshold without profiling.
+The larger toplevel model projection is also presentation-specific and should
+not be rewritten from source inspection alone.
+
+**GroupButton parent scans:** each grouped button computes its visible index and
+visible-child count by walking `parent.children`. This is structurally
+quadratic across a group after visibility changes, but normal button groups are
+small and the scans do not run on every width/color animation frame. A shared
+group summary would add ownership complexity for little proven value.
+
+**Waffle WMenu implicit-width scan:** the menu uses `Array.from(count)` plus a
+max-width reduction over instantiated items. It is bounded by menu population
+and tied to child implicit-size changes; no evidence shows this as a material
+hot path.
+
+**AutomationConfig search hits:** repository code search still returns an
+`AutomationConfig.qml` path, but fetching that file and the guessed Automation
+services from this exact `dev` SHA returns 404. Search-index hits that cannot be
+reproduced from current `dev` are not optimization evidence.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
 before/after measurement.

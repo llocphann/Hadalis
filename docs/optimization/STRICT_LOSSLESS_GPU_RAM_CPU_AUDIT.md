@@ -119,6 +119,11 @@ Rules:
 | `services/LocalMusic.qml` | **HIGH-CONFIDENCE RAM-retention candidate — stop retaining dead `folderCollections` state in QML.** Current snapshot application stores `payload.tracks`, `payload.playlists` and `payload.folders`, but the live Songs browser derives folder navigation directly from `LocalMusic.libraryTracks`; current repository search finds no consumer of `LocalMusic.folderCollections`. Remove the property and assignment only, leaving native/Python snapshot shape unchanged. | Low. Re-run a dev-wide reference search and LocalMusic navigation/selection/playback oracle immediately before implementation. | None. | Medium potential for large libraries because the parsed `payload.folders` subtree duplicates track metadata by folder and can become collectible after snapshot application instead of being retained. Exact RSS needs measurement. | 0%. |
 | `native/inir-mpdd/src/main.rs` + `scripts/local_music_mpd.py` | **COMPATIBILITY-GATED higher-value follow-up — stop constructing/serializing the duplicate `folders` snapshot field only if the stable MPD snapshot contract is intentionally revised or a lean mode is added.** Rust currently clones track objects into folder buckets; Python emits the equivalent second representation. The shell does not need it after the QML dead-retention cleanup, but current deep benchmark contracts explicitly include `folders` among stable snapshot fields. | Medium–High contract risk. Do not silently remove from only one backend or break native/Python parity/manual callers. | None. | Potentially medium transport/transient RAM reduction for large libraries; also removes folder grouping/cloning/serialization CPU. No credit until compatibility is resolved. | 0%. |
 
+| `services/MinimizedWindows.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — replace workspace filter+sort selection with stable one-pass extrema/nearest selection.** `stashWorkspaceForOutput()` filters eligible workspaces, sorts descending by `idx`, then returns element 0. `restoreWorkspace()` filters one output, sorts ascending, then either finds exact `idx` or reduces to the nearest. Both sorts are unnecessary if the one-pass selector reproduces current stable-sort tie behavior explicitly. | Low. Tie behavior is the proof boundary: descending stash selection keeps the first source-order workspace among equal max `idx`; restore exact-`idx` keeps first source-order duplicate; nearest fallback must prefer lower `idx` on equal distance because the current ascending stable sort presents it first. | None. | Low transient allocation reduction plus O(W log W) -> O(W) CPU on minimize/restore fallback paths; persistent RAM unchanged. | 0%. |
+| `services/MinimizedWindows.qml` + `modules/waffle/bar/tasks/TaskAppButton.qml` | **HIGH-CONFIDENCE micro-candidate — count minimized windows without allocating a filtered ID array.** `countMinimizedForApp()` currently calls `getMinimizedForApp(appId).length`, allocating a temporary array. Waffle binds this count once per task-app delegate. Use a direct counter loop with the exact same case-insensitive substring predicate; keep `getMinimizedForApp()` for callers that actually need IDs. | Very low. Preserve null/error behavior for malformed app records and exact substring semantics. | None. | Low transient allocation/CPU reduction proportional to visible task-app delegates × minimized-state invalidations. | 0%. |
+| `services/TrayService.qml` | **HIGH-CONFIDENCE CPU/allocation candidate — promote the archived one-pass tray partition into the canonical ledger.** The service independently filters `SystemTray.items.values` three times for Fcitx, pinned-user-list and unpinned-user-list outputs, repeating Fcitx normalization and linear pin membership tests. One ordered pass plus a membership Set can produce the same three arrays. | Low. Preserve source order, passive filtering asymmetry, raw-id equality, duplicate pin semantics and final invertPins composition. | None. | Low transient allocation/CPU reduction on tray source/status/pin invalidation; persistent RAM essentially unchanged. | 0%. |
+| `modules/bar/SysTray.qml` | **HIGH-CONFIDENCE separate Material-tray candidate — collapse three local SystemTray scans into one private partition snapshot.** Material does not simply consume `TrayService` outputs: it uses `bar.tray` config and has a Spotify exception that keeps passive Spotify visible. It currently performs its own Fcitx filter plus pinned/unpinned filters over the same source list. Build one local partition preserving the Material-specific pin namespace and Spotify rule rather than incorrectly reusing the generic/Waffle result. | Low–Medium. The Spotify passive exception, Fcitx ownership, bar-specific pin list, invertPins and overflow-close behavior are hard contracts. | None. | Low transient allocation/CPU reduction on every Material tray invalidation; avoids repeated lowercase/classification work. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -152,6 +157,10 @@ Rules:
 29. **Custom-widget scanner shell builtins** — remove per-manifest `dirname`/`basename`/`cat` child processes after byte/output oracle coverage.
 30. **LocalMusic dead `folderCollections` retention** — remove the QML-retained duplicate after a final current-dev reference/behavior oracle.
 31. **LocalMusic lean snapshot mode / schema revision** — only if stable `folders` compatibility is explicitly preserved or versioned.
+32. **MinimizedWindows stable one-pass workspace selection** — remove two sort-based selectors after tie-breaking oracle coverage.
+33. **TrayService one-pass partition** — migrate the revalidated archived tray classifier into current canonical work.
+34. **Material SysTray one-pass partition** — independently preserve `bar.tray` + Spotify semantics; do not alias it blindly to the Waffle/generic service result.
+35. **Minimized app-count allocation removal** — low-risk micro follow-up after the larger MinimizedWindows selector proof.
 
 ## Explicit non-candidates from this pass
 
@@ -1954,5 +1963,173 @@ If a lean mode is adopted, measure:
 - transient process RSS;
 - QML parse time/RSS;
 - identical frontend library, folder-navigation and playback state.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.
+
+
+## Research continuation — round 17
+
+Baseline: `dev` at `4677288dc9d3bee5d3a65969ebb3c8b031e33030`.
+
+This round adds one entirely new Niri minimize/restore candidate, promotes a
+revalidated archived tray finding into the canonical ledger, and identifies a
+separate Material tray duplication that the archived service-only analysis did
+not cover.
+
+Current source identities:
+
+- `services/MinimizedWindows.qml`: `ced7e049ef5942dea1ca5f3395eb9b614e9ecaf6`;
+- `modules/waffle/bar/tasks/TaskAppButton.qml`: `500c22e179e8ab88988e0bfc40f97b9d4e67fe81`;
+- `services/TrayService.qml`: `3f5e1f2580aebadf87ab40b91b4876c9ca68e76b`;
+- `modules/bar/SysTray.qml`: `df3d21edca72eaf173f015c00a4cc122386d1e5e`;
+- `modules/waffle/bar/tray/Tray.qml`: `1f00cc4a96fa861470d40fd47c23b0d8666b7946`.
+
+### R17.1 — MinimizedWindows sorts whole workspace subsets just to choose one result
+
+`stashWorkspaceForOutput()` currently builds the occupied-workspace Set and
+then executes:
+
+```qml
+const workspaces = (NiriService.allWorkspaces ?? [])
+    .filter(workspace => workspace.output === output && !occupied.has(workspace.id))
+    .sort((a, b) => b.idx - a.idx)
+return workspaces[0] ?? null
+```
+
+Only the workspace with maximum `idx` is needed. A single pass can track the
+best eligible workspace and avoid both the filtered array and sort.
+
+Strict equivalence requires explicit tie handling. JavaScript sort is stable on
+the supported runtime. For equal `idx`, descending sort preserves source order,
+and `[0]` selects the first source-order candidate. Therefore a one-pass
+selector must update only when `workspace.idx > best.idx`, not on equality.
+
+### R17.2 — Restore fallback can also be one pass, but its tie rule is different
+
+When the original workspace id no longer exists, `restoreWorkspace()` does:
+
+```qml
+const outputWorkspaces = allWorkspaces
+    .filter(workspace => workspace.output === originalOutput)
+    .sort((a, b) => a.idx - b.idx)
+
+return outputWorkspaces.find(workspace => workspace.idx === originalWorkspace)
+    ?? outputWorkspaces.reduce((best, workspace) =>
+        abs(workspace.idx - originalWorkspace) < abs(best.idx - originalWorkspace)
+            ? workspace : best)
+```
+
+The sort is not needed for distance itself, but it defines tie behavior:
+
+- exact duplicate `idx`: stable ascending sort + `find` returns the first
+  source-order duplicate;
+- equal distance around the requested index, e.g. 4 and 6 around 5: ascending
+  order sees 4 first, and the strict `<` reducer keeps 4 on the tie.
+
+A strict one-pass equivalent can track:
+
+1. first exact match in source order;
+2. otherwise smallest absolute distance;
+3. on equal distance, smaller `idx`;
+4. on equal distance and equal `idx`, first source-order record.
+
+That reproduces the current sorted semantics without allocating/sorting the
+output subset.
+
+Required oracle for R17.1/R17.2:
+
+- empty workspace list;
+- one/many outputs;
+- all candidate workspaces occupied;
+- equal max `idx` duplicates for stash selection;
+- original workspace id still present;
+- original id missing but exact original `idx` present;
+- duplicate exact `idx` records;
+- nearest lower only / upper only;
+- symmetric nearest tie around the requested index;
+- duplicate nearest records;
+- negative/unusual indices if accepted by current Niri fixture model;
+- compare selected workspace **object identity**, not only id/value.
+
+This is action-path work, not frame-path work, so the expected gain is modest in
+normal use despite the clean complexity reduction.
+
+### R17.3 — countMinimizedForApp allocates a result array only to read length
+
+Current service code:
+
+```qml
+function countMinimizedForApp(appId) {
+    return getMinimizedForApp(appId).length
+}
+```
+
+`getMinimizedForApp()` filters `minimizedIds` into a new array. The only
+external count consumer found on current dev is Waffle
+`TaskAppButton.minimizedCount`, instantiated once per task-app delegate.
+
+Keep `getMinimizedForApp()` unchanged for ID-returning behavior. A direct count
+loop can reuse the same lowercase substring predicate and remove one temporary
+array per count binding evaluation.
+
+This is a micro-candidate and ranks below the workspace selector cleanup.
+
+### R17.4 — TrayService archived finding remains valid on current source
+
+The current TrayService blob is identical to the archived research identity.
+It still derives three outputs with three separate source filters:
+
+- `fcitxItems`;
+- `itemsInUserList`;
+- `itemsNotInUserList`.
+
+The archived one-pass partition remains valid and is now promoted into this
+canonical ledger. Membership can use a Set without altering persisted pin order
+or duplicates because this path only asks exact membership.
+
+The service semantics to retain are asymmetric:
+
+- Fcitx bypasses the normal lists;
+- pinned items remain in `itemsInUserList` even when passive;
+- passive filtering applies only to `itemsNotInUserList` when smartTray is on;
+- final Waffle-visible pinned/unpinned composition still depends on
+  `invertPins`.
+
+### R17.5 — Material SysTray duplicates the same work but cannot blindly reuse TrayService outputs
+
+Current Material `modules/bar/SysTray.qml` separately scans
+`SystemTray.items.values` three times again. Its semantics differ from the
+service in two important ways:
+
+1. configuration comes from `Config.options.bar.tray`, while TrayService uses
+   the generic `Config.options.tray` namespace consumed by Waffle;
+2. Material has an explicit Spotify exception:
+   a passive Spotify item remains visible when smart filtering is enabled.
+
+Therefore the safe first optimization is **not** to replace Material lists with
+`TrayService.pinnedItems/unpinnedItems`. Instead, Material can build one private
+partition snapshot from its own pins/filter flag while preserving the Spotify
+exception exactly.
+
+For each valid non-Fcitx item, compute lowercase id/title once, determine the
+Spotify exception once, perform pin membership once, and append to exactly one
+of the Material user-list arrays. Fcitx remains its own always-visible group.
+
+Required Material oracle:
+
+- Fcitx by id/title;
+- pinned/unpinned active item;
+- pinned/unpinned passive item;
+- passive Spotify by id and by title;
+- smartTray on/off;
+- duplicate bar pin ids;
+- invertPins on/off;
+- item status mutation without insertion/removal;
+- overflow closes when the final unpinned item disappears;
+- exact item identity and source order for all four public arrays.
+
+Longer-term unification into one shared parameterized classifier may be useful,
+but only after both service/Waffle and Material snapshots have parity tests.
+Do not merge config namespaces or Spotify policy as part of the optimization.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without measurement.

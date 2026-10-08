@@ -58,7 +58,10 @@ Window {
     check(!button.outlined && button.background.border.width===0,"search action still has a decorative border")
    }
    const mode=named(picker,"wallpaperMode"),tip=findChild(mode,"abyssButtonToolTip")
-   mouseMove(mode,mode.width/2,mode.height/2);tryVerify(()=>tip.contentItem.shown,2500);wait(200)
+   check(waitForPolish(root,1500),"wallpaper action layout is still pending")
+   mouseMove(mode,mode.width/2,mode.height/2)
+   tryCompare(mode,"hovered",true,1500,"native pointer did not enter the wallpaper action")
+   tryVerify(()=>tip.contentItem.shown,2500,"wallpaper action hover did not show its tooltip");wait(200)
    const surface=findChild(tip.contentItem,"styledToolTipSurface")
    check(tip.contentItem.abyss && surface.radius>=12 && surface.color===AbyssStyle.surface,"hover tip did not use the Abyss material")
    root.contentItem.grabToImage(result=>result.saveToFile("/tmp/hadalis-wallpaper-hover-20261007.png"))
@@ -94,7 +97,15 @@ Window {
    wall.enableTransitions=false;wall.source=root.prefix+"b.png";wait(80)
    check(!wall._transitioning,"disabled motion still rendered a liquid transition")
    console.info("WALLPAPER_CAROUSEL_PASS native-library search navigation single-owner safe-legacy-melt rapid-switch reduced-motion")
-  }catch(e){console.error("WALLPAPER_CAROUSEL_FAIL",e.message,e.stack)}Qt.quit()}
+  }catch(e){
+   const mode=named(picker,"wallpaperMode"),tip=findChild(mode,"abyssButtonToolTip")
+   console.error("WALLPAPER_CAROUSEL_FAIL",e.message,e.stack,JSON.stringify({
+    window:[root.width,root.height,root.visible,root.active],
+    action:[mode.x,mode.y,mode.width,mode.height,mode.visible,mode.enabled,mode.hovered],
+    position:mode.mapToItem(root.contentItem,0,0),
+    tooltip:[tip.visible,tip.enabled,tip.parentHoverState,tip.internalVisibleCondition,tip.contentItem.shown]
+   }))
+  }Qt.quit()}
  }
  Timer {interval:100;running:true;onTriggered:test.runChecks()}
 }

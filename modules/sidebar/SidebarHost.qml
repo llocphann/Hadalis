@@ -687,9 +687,13 @@ Scope {
         Item {
             id: sidebarEdgeOpenArea
             x: root.isLeftEdge ? 0 : sidebarRoot.width - width
-            y: 0
+            // The top-right corner is explicitly click-only. An optional
+            // right-edge hover strip must not overlap its physical hot corner,
+            // including legacy wide corner settings and tall sidebar hosts.
+            y: root.isLeftEdge ? 0 : Math.min(sidebarRoot.height, Math.max(64,
+                Math.round(Config.options?.sidebar?.cornerOpen?.cornerRegionHeight ?? 0)))
             width: root.edgeOpenWidth
-            height: sidebarRoot.height
+            height: Math.max(0, sidebarRoot.height - y)
 
             HoverHandler {
                 enabled: root.edgeOpenEnabled && !root.roleOpen

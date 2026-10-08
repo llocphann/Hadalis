@@ -263,8 +263,13 @@ Item {
     function moveTo(selected, exit, preferredMode = ""): bool {
         if (handoffActive || portalActive || !permitted || !actor || actor.presentation<.99 || dragging || (peekIntro && !exit)) return false
         const here=Object.assign(position(),{edge:emergenceEdge})
-        if (motionEnabled && !["fall","jump"].includes(preferredMode)
-                && Travel.usePortal(here,selected,scene?.scale) && startPortal(here,selected,exit)) return true
+        // Portal openings are travel-only: never replace an appearance, peek,
+        // withdrawal or an explicitly requested physical movement.
+        if (!exit && !retreating && visitActive && !peekIntro && !peekOnly
+                && renderedReveal > .99 && requestedReveal > .99 && placement.grounded
+                && motionEnabled && preferredMode === ""
+                && Travel.usePortal(here,selected,scene?.scale)
+                && startPortal(here,selected,false)) return true
         const route=Scene.path(scene,here,selected)
         if (!route.qualified) return false
         disturb("depart",Scene.annotate(scene,here,placement.edge,placement.kind,placement.key))

@@ -261,6 +261,7 @@ Earlier `NO ACTION`, `ALREADY OPTIMIZED`, `MEASURE FIRST`, `SUPERSEDED`, and `NO
 | `modules/common/Config.qml` | **HIGH-POTENTIAL CPU/temporary-allocation candidate — repeated deep JSON clone of in-flight mutation overlays.** During `_reloadInFlight` and/or `_writeInFlight`, each `setNestedValue(s)` clones *all previously pending overlay entries* through `JSON.stringify`/`JSON.parse`, then assigns one new path. For a burst of K distinct large mutable payload edits in one flight, cumulative previous-overlay traversal can grow quadratically with K; repeated same-key edits can redundantly clone the prior large value. Consider a private sparse last-write-wins overlay representation with equivalent JSON normalization/snapshot semantics, publishing/replaying at the original ownership boundaries. | **Medium / oracle-required** because last-value references, prior-value cloning, special/non-JSON values, QML `var` NOTIFY, insertion/replay order, style migration and overlapping reload/write/save completion can be observable. Do not simply mutate the current overlay in place and claim parity. Need real QV4 asynchronous race tests. | Bounded live overlay storage; possible lower transient JSON-copy allocation, most relevant under overlapping file I/O. | Potential reduction in config-mutation latency during bursts; **not** a claimed startup/steady-state whole-shell win. | 0% functional state drift, no runtime change authorized. |
 | `modules/sidebarRight/notepad/NotepadWidget.qml` | **HIGH-CONFIDENCE allocation-shape candidate — per-edit whole-document word-list allocation.** `wordCount` currently uses `textArea.text.trim()` to test non-empty and again calls `.trim().split(/\s+/).length`, generating a word array and repeated string processing for every change to the editor's `text`. For long notes, the split result scales with word count. Investigate one exact ECMAScript-whitespace streaming count and optionally an explicit visibility/presentation demand boundary after confirming QML binding activity. | Low–Medium. Preserve immediate displayed count, empty/whitespace-only notes, JS Unicode `\s` and `trim` semantics, text changes/programmatic loads, compact/full presentation and QML public `wordCount` behavior. `Notepad` cross-surface tab synchronization and 800 ms autosave must remain untouched. | Remove O(words) temporary split array per evaluated text change; still requires O(text) scan unless a stronger proof-backed incremental model is used. | Potentially lower typing GC/CPU for large notes only; benchmark JS scanning cost before claiming CPU improvement. | 0% exact count/UI timing drift. |
 
+| `modules/common/Config.qml` + `services/CustomWidgets.qml` | **HIGH-CONFIDENCE STRUCTURAL ALLOCATION CANDIDATE; behavior/NOTIFY parity still unproved — batch custom-widget default seeding repeatedly deep-copies the expanding custom config tree.** `CustomWidgets._seedMissingConfig()` builds a potentially large `updates` object of missing keys and calls `Config.setNestedValues(updates)` once. That function loops keys and calls `_applyNestedKey`; each `background.widgets.custom.*` key currently executes `JSON.parse(JSON.stringify(customWidgetData))`, publishes one new QML `customWidgetData`, and then `_cloneObject(data)` for `_customSnapshotForInject`. For K new keys, each prior value can be copied during subsequent keys, so cumulative traversed prior tree may grow quadratically in K for similar-size values. This occurs even with no FileView read/write in flight, unlike R51.1's separate in-flight overlay copies. | Medium–High: repeated fresh-object identity, *intermediate* `customWidgetDataChanged` delivery, string coercion, custom snapshot/inject ordering, concurrent external edits, and saved JSON/fallback are all observable. Do not silently coalesce per-key NOTIFY or alias live mutable trees. Prove real QV4 step-by-step parity or retain current publication semantics. | Potentially lower transient JS allocations under batch missing-default seeding, proportional to total custom-widget config shape. Not proof of persistent RSS reduction. | Highest expected savings during many-widget install/reload/default creation; inspect clone counts/bytes and time before claiming CPU speedup. | 0% behavior/data drift. |
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -399,6 +400,7 @@ Earlier `NO ACTION`, `ALREADY OPTIMIZED`, `MEASURE FIRST`, `SUPERSEDED`, and `NO
 126. **DateTime stable calendar/minute snapshot fan-out** — keep the shared clock precision but stop date-only/minute-only external consumers from inheriting 1 Hz invalidation.
 127. **Config in-flight overlay clone churn** — optimize only after exact asynchronous save/reload/NOTIFY and JSON-normalization parity; do not weaken existing race protection.
 128. **Notepad live word-count allocation** — remove per-edit word-array materialization with exact whitespace/count semantics and no delayed visible stats.
+129. **Custom-widget configuration batch deep-copy churn** — first prove per-key custom data NOTIFY/identity, async persistence, source-order and injection parity; then reduce repeated previous-tree cloning without changing external behavior.
 
 ## Explicit non-candidates from this pass
 
@@ -9300,3 +9302,54 @@ R50's two verified completed findings remain `RETIRED / IMPLEMENTED`: R16.1 QML 
 R51.1 differs from the existing domain-specific `Config.configChanged` invalidation proposals: it reduces *private in-flight snapshot copy work* and does not suppress signals or any consumer binding. R51.2 is specific to the multi-surface Notepad editor, not the already-studied search normalization, Settings search or CAVA profiles.
 
 No runtime or tests executed through this GitHub-only research pass. The regression scripts are referenced as available fixtures, **not presented as passing on this baseline**. No whole-Hadalis CPU/GPU/RAM/FPS percentages are claimed. Continue strict-lossless source research and feature-specific oracle development.
+
+## Research continuation — round 52
+
+Baseline: `dev` at `f3034df8104831a3d1dfe61e86c815c819bf8458`. The branch ref matches the Round 51 documentation completion `f3034df8104831a3d1dfe61e86c815c819bf8458`; **there are no intervening source commits to attribute a new runtime change to.** The new work reviews a distinct custom-widget configuration batch path and a package-search process/latency boundary. Prior R50 retired implementations stay retired; no new retired finding is proven in this pass.
+
+Verified source blob identities:
+
+- `modules/common/Config.qml`: `312b8f7078f138e075bc2a979b751b57de3e4347`;
+- `services/CustomWidgets.qml`: `fe4b1ef553fe7ed437b4e0de947615eee83752c9`;
+- `services/deferred/PackageSearch.qml`: `8a2fdcc8dcf79589456797042d7ef245c8f72ab0`;
+- `modules/overview/ActionModeView.qml`: `9b27d18f4b71fef013d7269d1ea22438a9f029b5`;
+- `services/FontSyncService.qml`: `28a15b4f0a9008e6ccbb66eb6dbe058d20169824`;
+- `services/KeyboardIndicators.qml`: `bde84eb8b229a2bd9e63eee048d702decbf149b3`.
+
+### R52.1 — Custom widget default seeding traverses the full growing QML config tree twice for each new key
+
+**HIGH-CONFIDENCE SOURCE-LEVEL ALLOCATION OPPORTUNITY / ORACLE REQUIRED BEFORE ANY CHANGE.** `CustomWidgets._seedMissingConfig()` waits until `Config.ready`, `Config.customWidgetDataSynced` and its manifest scan are complete. It enumerates each widget's default keys, checks `Config.getNestedValue("background.widgets.custom." + widgetId + "." + key)`, and builds an `updates` object of all missing values. It calls `Config.setNestedValues(updates)` **once**, correctly coalescing the outer revision/`configChanged`/write debounce.
+
+Inside that batch, however, `Config.setNestedValues()` still calls `_applyNestedKey` for **each** path. The `background.widgets.custom.*` special case performs:
+
+```qml
+data = JSON.parse(JSON.stringify(root.customWidgetData ?? {}))
+... // assign the converted leaf
+root.customWidgetData = data
+root._customSnapshotForInject = root._cloneObject(data)
+root._pendingCustomInject = root._hasObjectKeys(root._customSnapshotForInject)
+```
+
+The first JSON traversal clones the previous whole custom-widget tree; the second clones the whole updated tree. Both occur again for the next missing default key, **even in an otherwise idle FileView session**. For K newly populated keys with similarly sized values, previous keys can be traversed repeatedly so aggregate copy work scales with approximately the sum of the growing snapshot sizes (quadratic in K for constant-size keys). If the existing config is already large, each new key also recopies unrelated existing widget subtrees. The exact number of allocations, loaded widgets and milliseconds is unmeasured.
+
+**Do not confuse this with R51.1**: that candidate copies `_reloadOverlay`/`_writeOverlay` only while asynchronous I/O flight flags are active; this one copies *live `customWidgetData` and the injection snapshot* for every custom key in a single normal batch. The two costs can compound during a save flight but have different owners/invalidation contracts.
+
+Strict-lossless research direction: collect per-batch `K`, tree sizes, JSON-stringify/parse invocations, bytes traversed and QML signal traces. Evaluate whether the batch can reuse a prepared snapshot or apply an identity-preserving/notification-preserving reduction of redundant copying. **Do not assume one final assignment is equivalent**: current code publishes a new `customWidgetData` object and refreshes `_customSnapshotForInject` on *every key*, so synchronous observers/NOTIFY and object identity may see each intermediate prefix state. Also the helper uses string conversion for values that look numeric/boolean; `_applyToMirror` deliberately bypasses the custom subtree, while `_prepareCustomInject`/`_injectCustomDataSync` publish it later.
+
+Required oracle with real QV4 and the actual Config singleton: K=0,1,2,20,100,500; old tree empty/large; repeated same widget and many distinct widgets; existing keys/missing keys; default-config overrides and configKeys types; object/array/null/string values including numeric/boolean-looking strings; custom root assignment vs nested assignments; duplicate dotted keys and key-order differences; `customWidgetDataChanged` count and the sequence/identity/readable content of **every** intermediate signal; Config revision, `configChanged` and exact persisted JSON; external file reload, simultaneous write/reload, recoverable failed write, `_pendingCustomInject` and custom snapshot mutation; plugin manifests created/removed; multiple custom-widget delegates reading the same fields. Ensure the existing `test-config-inflight-mutation-runtime.py` remains green and add a separate batch/reference fixture. If fresh identity/NOTIFY preservation proves too expensive, keep this candidate unimplemented rather than weakening strict-lossless.
+
+### R52.2 — Overview Remove-package query dispatch bypasses the shared search debounce
+
+**MEASURE FIRST / UX-PARITY GATED — not promoted to strict-lossless implementation.** `ActionModeView.onPackageQueryChanged` calls `PackageSearch.searchInstalled(packageQuery)` directly when the query has at least two characters and the action prefix selects Remove. The Install/Search branches call `PackageSearch.search()`, which restarts a 300 ms debounce. Conversely `searchInstalled()` explicitly stops that debounce, increments the request generation, marks searching, and immediately queues the command `pacman -Qs "$1" | head -100` under Bash.
+
+The installed-request queue retains at most one latest pending request while the process is running, and generation checks suppress stale *result publication*. That is useful and must remain. But it is **not a 300 ms typing debounce**: if each quick installed search finishes before the next keystroke, it can execute once per keystroke; on slow searches it still may execute intermediate searches as each process exits depending on input timing. Distinguish submitted requests, actual helper starts, completions, and visible results; do not assert N processes for N characters unconditionally.
+
+Potential solution: introduce an installed-only debounce or coalescing boundary, but this changes when `searching`, `error` and results become observable and may reduce responsiveness for a single Remove query. This is **not source-only strict-lossless proof**. Test exact rapid typing, pasting, query erase, prefix mode switches, pending process completion after view destruction, 0/1/2+ query characters, AUR/available vs installed path and missing package manager. A before/after latency/process profile and explicit UX acceptance are needed before promoting. Do not weaken the active-generation stale-result protections or shell-command quoting.
+
+### R52.3 — Paths checked but deliberately not promoted / retirement unchanged
+
+- `FontSyncService` is already config-driven and uses a 500 ms debounce, one in-flight process and a 30-second **one-shot timeout**, not a recurring 30-second font-sync poll. It deliberately reconciles GTK/KDE font settings at startup. No new candidate merely from its timer count.
+- `KeyboardIndicators` uses an event-driven native evdev lock-state monitor when available. Its `ledDiscoveryIntervalMs` 30 s/5 min (low power 2/10 min) fallback is for sysfs recovery with watcher failures. Do not treat the fallback discovery loop as an idle high-frequency default-CPU target; removal would lose device reconnect handling.
+- R50's `RETIRED / IMPLEMENTED` R16.1 and R43.2 remain closed as research candidates. R51.1 overlay copying and R51.2 word-count arrays remain separately open; R52.1 explicitly does not duplicate either.
+
+This is **research only**: GitHub source verification at the pinned baseline, no QML/native patch, no local tests/benchmark and no owner-desktop evidence. Preserve strict-lossless and avoid unmeasured whole-shell CPU/RAM/GPU/FPS percentage claims. Continue to next research round.

@@ -39,6 +39,7 @@ Singleton {
     function fuzzyQuery(query: string): list<var> {
         if (!query || query.trim() === "") return allActions
         const q = query.toLowerCase().trim()
+        let words = null
         const scored = allActions.map(action => {
             let score = 0
             const name = (action.name ?? "").toLowerCase()
@@ -56,7 +57,9 @@ Singleton {
             if (id.includes(q)) score += 20
             if (kw.includes(q)) score += 10
             // Per-word matching for multi-word queries
-            const words = q.split(/\s+/)
+            // Every action scores the same query. Keep the original first-use
+            // read order and allocate nothing when the catalog is empty.
+            if (words === null) words = q.split(/\s+/)
             if (words.length > 1) {
                 const combined = `${name} ${desc} ${id} ${kw}`
                 const matchCount = words.filter(w => combined.includes(w)).length

@@ -64,8 +64,11 @@ Item {
         : Math.max(1, (width - pointWidth - 18) / 2)
     readonly property var hourAngles: {
         const result = []
+        // One evaluation owns its tables. Resize/data/mode changes start fresh;
+        // quadrants retain their own exact 72-sample arithmetic.
+        const tables = {}
         for (let i = 0; i < root.hours.length; ++i)
-            result.push(root.orbitAngleForHour(root.hours[i]?.label))
+            result.push(root.orbitAngleForHour(root.hours[i]?.label,tables))
         return result
     }
 
@@ -83,12 +86,7 @@ Item {
         return (((hour % 24) + 24) % 24) + minute / 60
     }
 
-    function arcAngle(startAngle, endAngle, fraction): real {
-        if (fraction <= 0)
-            return startAngle
-        if (fraction >= 1)
-            return endAngle
-
+    function arcTable(startAngle, endAngle) {
         const samples = 72
         const rx = root.orbitRadiusX
         const ry = root.orbitRadiusY
@@ -109,6 +107,22 @@ Item {
             prevX = x
             prevY = y
         }
+        return {lengths:lengths,total:total,samples:samples}
+    }
+
+    function arcAngle(startAngle, endAngle, fraction, tables): real {
+        if (fraction <= 0)
+            return startAngle
+        if (fraction >= 1)
+            return endAngle
+
+        const key = startAngle+":"+endAngle
+        let table = tables?.[key]
+        if (!table) {
+            table = root.arcTable(startAngle,endAngle)
+            if (tables) tables[key]=table
+        }
+        const lengths=table.lengths, total=table.total, samples=table.samples
 
         const target = total * fraction
         let sample = 1
@@ -122,7 +136,7 @@ Item {
         return startAngle + (endAngle - startAngle) * t
     }
 
-    function orbitAngleForHour(label): real {
+    function orbitAngleForHour(label, tables): real {
         const hour = root.hourFromLabel(label)
         const shiftedHour = (hour - 6 + 24) % 24
         const quadrant = Math.floor(shiftedHour / 6)
@@ -134,7 +148,7 @@ Item {
             return -Math.PI / 2 + shiftedHour * Math.PI / 12
         const start = -Math.PI / 2 + quadrant * Math.PI / 2
         const end = start + Math.PI / 2
-        return root.arcAngle(start, end, fraction)
+        return root.arcAngle(start, end, fraction, tables)
     }
 
     LiquidOrbitalField {

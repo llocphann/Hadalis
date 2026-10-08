@@ -52,7 +52,7 @@ def main() -> None:
             raise AssertionError(f"Removed large-popup control remains: {removed}")
 
     require(orbital, "(Weather.data?.hourly ?? []).slice(0, 8)",
-            "function orbitAngleForHour(label): real",
+            "function orbitAngleForHour(label, tables): real",
             "readonly property real conceptOrbitAspect:",
             "readonly property real availableLiquidWidth:",
             "readonly property real availableLiquidHeight:",

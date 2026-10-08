@@ -388,8 +388,8 @@ def main() -> None:
     for token in (
         "(Weather.data?.hourly ?? []).slice(0, 8)",
         "function hourFromLabel(label): real",
-        "function arcAngle(startAngle, endAngle, fraction): real",
-        "function orbitAngleForHour(label): real",
+        "function arcAngle(startAngle, endAngle, fraction, tables): real",
+        "function orbitAngleForHour(label, tables): real",
         "readonly property real pointWidth:",
         "readonly property real pointHeight:",
     ):

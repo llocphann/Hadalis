@@ -244,6 +244,9 @@ Rules:
 | `scripts/images/least_busy_region.py` | **HIGH-CONFIDENCE image-analysis CPU candidate — least_busy_region padded-integral hot loop.** Both least/busiest and largest-region scans immediately drop OpenCV integral images\' zero border with `[1:,1:]`, then call a Python `region_sum()` twice per candidate window; that helper branches on `x1 > 0` / `y1 > 0` to reconstruct the missing border. Keep the native `(h+1)×(w+1)` integral arrays and compute each inclusive rectangle from the same four operands in the same subtract/subtract/add order: `I[y2+1,x2+1] - I[y2+1,x1] - I[y1,x2+1] + I[y1,x1]`. This removes per-window boundary branches without changing candidate order or variance math; in largest-region mode also hoist constant `region_w*region_h` outside the inner scan. | Very low. Preserve exact candidate ranges, out-of-bounds `continue`, row-major first-match/tie semantics, float64 integral depth and arithmetic order. Oracle exact sum/squared-sum/variance and chosen coordinates including x/y=0, padding-adjusted tiny images, least/busiest and largest-region binary-search steps. | None in practice: the current sliced integral views already keep the full OpenCV base arrays alive. | **Medium local Python CPU reduction inside the sliding-window search**, especially large screens/small stride: removes two helper calls and up to six boundary tests per candidate window, plus a loop-invariant multiply in largest-region scans. | 0%. |
 | `modules/settings/CustomThemeEditor.qml` | **HIGH-CONFIDENCE interactive CPU candidate — CustomTheme quick-adjustment prepared HSL baseline.** Saturation/brightness/temperature sliders debounce at 50 ms. `captureOriginalColors()` already freezes one deep-cloned baseline for the whole adjustment session, but every debounce tick repeats `Object.keys`, `m3`/hex validation, `Qt.color()` parsing and HSL extraction for every baseline color before applying only new slider factors. When the baseline is first captured, prepare the same ordered valid-color rows as `{key,h,s,l,a}` once; each later tick only performs factor math + `Qt.hsla(...).toString()` and builds the same update object. Reset the prepared rows exactly whenever `originalColors` is reset today. | Very low–Low. Preserve `Object.keys` enumeration order, current `m3` + `startsWith("#")` eligibility, Qt color parsing semantics (including malformed/edge color strings), hue wrapping, clamping, alpha, update insertion order, 50 ms debounce and today\'s intentionally frozen baseline semantics if unrelated theme values change mid-session. | Tiny O(valid m3 colors) numeric metadata for the active quick-adjustment session, alongside the baseline object already retained. | **Low–Medium interactive CPU reduction during slider drags**: removes repeated key filtering/color parsing/HSL extraction at up to the existing 20 Hz debounce cadence. Theme application/config publication cost remains unchanged. | 0%. |
 
+| `modules/settings/AdvancedConfig.qml` + Waffle `WThemesPage.qml` + `scripts/colors/apply-targets.sh` / `modules/90-cava.sh` | **HIGH-CONFIDENCE process/pipeline candidate — Cava Settings target-specific apply.** Both Settings families debounce Cava-specific option changes and then launch `switchwall.sh --noswitch`, regenerating the wallpaper palette and waking the general external-theme pipeline even though repository-wide search shows `appearance.cava.*` is consumed by the Cava target only. Route those debounced changes to `apply-targets.sh cava` (or the same target module) against the existing generated palette; retain a full-regeneration fallback only when required palette artifacts are absent. The enable/disable toggle still executes the Cava target so its managed block is added/stripped exactly as today. | Low–Medium. Preserve 500 ms coalescing, Config write order, first-run/missing-palette recovery, managed-block strip/add behavior, cover-source extraction, exact external Cava config, and internal visualizer reactivity. Do not skip target execution merely because `enableCava=false`: disabling must remove an existing managed block. | None beyond existing target process; eliminates unrelated palette/external-target work. | **Medium–High transient CPU/process/I/O reduction for Cava Settings changes**: replaces a whole wallpaper color regeneration + possible all-target apply wave with one Cava-target apply once artifacts exist. | 0%. |
+| `services/DateTime.qml` + direct date/calendar consumers across Lock/Bar/VerticalBar/Widgets/Calendar surfaces | **HIGH-CONFIDENCE recurring CPU/reactivity candidate — DateTime stable calendar/minute snapshot fan-out.** The shared `SystemClock` intentionally runs at 1 Hz when second precision is enabled or while locked, but many consumers read raw `DateTime.clock.date` only to format a calendar date, derive a today key/name, or feed month/day calendar state. Those bindings reevaluate every second even though their semantic input changes only at the next minute/day. Publish stable day-level and, where needed, minute-level snapshots from the same SystemClock and migrate only consumers whose current format/logic omits seconds. Candidate #79 remains the service-internal three-string optimization; this extends the same boundary to external consumers and calendar inputs. | Low–Medium. Preserve midnight rollover, manual wall-clock jumps, timezone changes, live locale/Translation changes, lock/unlock precision transitions, exact formatted strings, date identity/fields needed by CalendarView, and all true minute/second consumers. `Notifications` quiet-hours and second-hand/rotation logic stay on raw clock/minute/second signals. | One/two tiny Date snapshots or scalar epoch records in the singleton. | **Low–Medium recurring CPU/string/reactive reduction, potentially larger while locked/multi-output** because lock/date/calendar surfaces stop inheriting 1 Hz invalidation solely from raw clock-date identity. | 0%. |
+
 ## Promotion order
 
 1. **Bounded wallpaper-glass capture** — `GlassBackground` family plus Bar/Dock non-native-blur paths. This attacks screen-sized offscreen layers that are often displayed only through small panel geometry.
@@ -378,6 +381,8 @@ Rules:
 122. **Waffle clock records-change process narrowing** — stop global desktop-widget record writes from directly launching Waffle clock image analysis; rely on the clock's actual enable/strategy/geometry/wallpaper invalidations.
 123. **least_busy_region padded-integral hot loop** — retain OpenCV's zero border so every sliding-window sum uses the same four integral operands without Python boundary branches; hoist largest-region area from the inner loop.
 124. **CustomTheme quick-adjustment prepared HSL baseline** — parse/filter the frozen custom-theme baseline once per adjustment session and reuse ordered HSL metadata across 50 ms slider ticks.
+125. **Cava Settings target-specific apply** — apply only the Cava theming target for `appearance.cava.*` edits once palette artifacts exist, instead of regenerating the wallpaper palette and waking unrelated external targets.
+126. **DateTime stable calendar/minute snapshot fan-out** — keep the shared clock precision but stop date-only/minute-only external consumers from inheriting 1 Hz invalidation.
 
 ## Explicit non-candidates from this pass
 
@@ -8892,6 +8897,272 @@ measurement.
 **Waffle Background Niri occupancy:** rediscovered while checking resident
 background work, but the per-output active-workspace/window derivation is
 already owned by R22.3. No new promotion.
+
+No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
+before/after measurement.
+
+## Research continuation — round 48
+
+Baseline: `dev` at `7a31777674ae8e1ccb69824f988e720118ad038a`.
+
+This round moved away from the Round 47 image-analysis/theme-baseline work and
+audited two different fan-out boundaries: Settings-triggered external theming
+and raw DateTime clock propagation into date-only consumers. A concurrent
+Abyss/audio/Obsidian/weather commit advanced `dev` while the round was being
+prepared; the write was aborted, the branch was re-read, and every promoted
+source blob was verified unchanged before this round was written.
+
+Current source identities:
+
+- `modules/settings/AdvancedConfig.qml`:
+  `baf79c0311a105c3cbf871628f9a4dec4d0e64f4`;
+- Waffle `modules/waffle/settings/pages/WThemesPage.qml`:
+  `b4c1f8e1282ab97ea4fdf1bf032b88294a157772`;
+- `scripts/colors/apply-targets.sh`:
+  `8196c1d71db336ad473a7b6491f2e852750c4d03`;
+- `scripts/colors/modules/90-cava.sh`:
+  `e2cd64b5fde250057e8a50c852bfb0ec2824f932`;
+- `scripts/colors/switchwall.sh`:
+  `31daa6590491bf39a096f8d1a83edcad0492f9aa`;
+- `services/CavaTheme.qml`:
+  `b60aaaef87c070e9940934ec4f76aeeba2c79edf`;
+- `services/DateTime.qml`:
+  `6e99a0a319dbbd84635492c0ca6fcd617c2f175c`;
+- `modules/verticalBar/VerticalDateWidget.qml`:
+  `c72b372c3eee330e4d1dd51cba178b1ad3a2fe7a`;
+- `modules/common/widgets/WeekRow.qml`:
+  `e95df323efdbf6fbcc5f3e6e855e1450fa869507`;
+- `modules/bar/ClockCalendarContent.qml`:
+  `9d56664adc9acb307acb0a2a38f77b9c0ff62491`;
+- `modules/controlPanel/DateTimeHeader.qml`:
+  `efed96608a8bcc23049268426d32fb4dc4246b8f`;
+- date-indicator `BubbleDate.qml`:
+  `ba7ae9da666319f8aebd0aec38773695ddb3ce03`;
+- date-indicator `RectangleDate.qml`:
+  `0dba4da79e1c289486dd547f7796ac0e5718b083`;
+- date-indicator `RotatingDate.qml`:
+  `c787ccfd8a658210b2806126a20c3c11040f5d25`;
+- Material `modules/lock/LockSurface.qml`:
+  `ceb678a43c171de48fdceee407e0a615b1ec4591`;
+- Waffle `WaffleLockSurface.qml`:
+  `9cc7e75e21650c26572a17f61140b7d56fd9a734`;
+- Waffle `WaffleLockSurfaceSafe.qml`:
+  `86d038cdb3503b0aaae1d3c78b6fdb580263235b`;
+- Sidebar `GlanceHeader.qml`:
+  `01b3bb7a62335d2d492b1e21bbf5484de1a5d656`;
+- Waffle `WidgetsContent.qml`:
+  `7919f08b523479a5348660f0b95993d0b0b57544`;
+- `AnimeScheduleView.qml`:
+  `4023dc68759dd68d245cced7b01ef1d4a33400b1`.
+
+### R48.1 — Cava-specific Settings changes currently regenerate the entire wallpaper theme
+
+Both Material/ii Advanced Settings and Waffle Themes Settings use the same
+pattern:
+
+```qml
+function setCavaValue(path, value, regenerateStandalone) {
+    Config.setNestedValue(path, value)
+    if (regenerateStandalone)
+        cavaConfigDebounce.restart()
+}
+...
+Timer {
+    interval: 500
+    onTriggered: Quickshell.execDetached([
+        Directories.wallpaperSwitchScriptPath, "--noswitch"])
+}
+```
+
+The affected values include:
+
+- `appearance.cava.colorSource`;
+- `gradientCount`;
+- `sensitivity`;
+- `bars`;
+- `framerate`;
+- `stereo`;
+- reset-to-defaults for the same group.
+
+`waveOpacity` is already correctly marked as runtime-only and does not request
+standalone regeneration.
+
+Repository-wide source search shows the color pipeline's only reader of
+`appearance.cava.*` is `scripts/colors/modules/90-cava.sh`. That module:
+
+1. reads Cava-specific configuration;
+2. if `appearance.wallpaperTheming.enableCava=true`, generates/replaces the
+   managed Cava block using existing generated palette/cover artifacts;
+3. otherwise strips the managed block.
+
+The repo already owns the exact narrow orchestrator:
+
+```bash
+scripts/colors/apply-targets.sh cava
+```
+
+which resolves the target manifest and executes only `90-cava.sh`.
+
+By contrast, `switchwall.sh --noswitch` re-enters wallpaper color generation
+from the current wallpaper. The resulting palette publication is watched by
+the shell's external-theme owner, so a Cava-only setting edit can wake work for
+targets whose inputs did not change.
+
+Strict-lossless direction:
+
+1. keep each Settings surface's existing 500 ms debounce;
+2. keep Config writes immediate;
+3. when a Cava setting requires external Cava regeneration and the generated
+   palette prerequisites already exist, execute only the Cava target;
+4. the external-Cava enable toggle must also execute that target in **both**
+   directions:
+   - enable -> add/update managed block;
+   - disable -> strip the existing managed block;
+5. if the required generated palette artifact is missing/unusable, fall back to
+   the current full regeneration path so first-run/recovery behavior does not
+   regress;
+6. keep `CavaTheme` runtime palette/reactivity independent: internal shell
+   visualizers continue to react directly to Config regardless of whether the
+   external Cava target is enabled.
+
+Do not simply skip all work when `enableCava=false`: the transition from true
+to false has a required filesystem side effect. The optimization is **target
+narrowing**, not “never run while disabled”.
+
+Required oracle:
+
+- external Cava initially disabled with no managed block;
+- disabled with stale managed/legacy managed block;
+- false -> true -> false;
+- theme/vibrant/cover color source;
+- gradient count 1..8;
+- sensitivity/bars/framerate/stereo changes;
+- reset defaults;
+- repeated slider/spin changes inside 500 ms -> one target apply;
+- generated palette present;
+- generated palette missing/corrupt -> full-regeneration fallback;
+- cover-art path present/missing;
+- Cava binary present/missing;
+- exact final `~/.config/cava/config` bytes;
+- exact internal `CavaTheme.visualizerColors` behavior;
+- prove unrelated GTK/editor/browser/terminal target scripts do not run on the
+  narrow steady-state path.
+
+This candidate removes both palette-generation work and unrelated target
+fan-out, not merely one Bash process.
+
+### R48.2 — raw shared clock identity leaks 1 Hz invalidation into date-only surfaces
+
+`DateTime.clock` intentionally selects second precision when either:
+
+```qml
+Config.options.time.secondPrecision
+|| GlobalStates.screenLocked
+```
+
+That is correct for clocks/second hands. The issue is that many unrelated
+bindings consume the same raw `clock.date` object while using only day fields.
+
+Current examples include:
+
+- Vertical Bar day/month labels;
+- Control Panel weekday/full-date labels;
+- Material/Waffle lock-screen date labels, including multiple lock layouts;
+- Cookie/Bubble/Rectangle/Rotating desktop-clock date labels;
+- Sidebar Glance date;
+- Waffle Widgets date;
+- Anime schedule `todayName`;
+- calendar/today comparisons and month ownership such as
+  `ClockCalendarContent` and `WeekRow`.
+
+Several event/calendar components already convert the raw date to a
+`yyyy-MM-dd` string. Their downstream state does not republish when that
+string stays equal, but the formatting binding still executes on each raw clock
+tick.
+
+Candidate #79 / R31.3 covers only three **internal DateTime strings**:
+`shortDate`, `date`, and `collapsedCalendarFormat`. It does not stop these
+external components from depending directly on the 1 Hz clock.
+
+Strict-lossless direction:
+
+1. keep the one existing `SystemClock` and its current precision rules;
+2. in DateTime, maintain a stable calendar snapshot/epoch whose public value
+   changes only when year/month/day or the required locale/translation epoch
+   changes;
+3. optionally maintain a stable minute snapshot for consumers whose explicit
+   format contains hours/minutes but no seconds;
+4. migrate only consumers proven not to need sub-boundary precision;
+5. let actual second hands, rotating-second geometry, second-bearing time
+   strings and other true second consumers retain the raw clock;
+6. keep minute-sensitive policy such as notification quiet-hours on minute/raw
+   time ownership rather than incorrectly downgrading it to the day snapshot.
+
+A Date object used as the stable calendar snapshot must remain derived from the
+same SystemClock/local timezone. Do not replace it with UTC or a separately
+running midnight timer.
+
+Important lock-screen point: lock forces the shared clock to 1 Hz. Lock surfaces
+also contain several large date labels. With one lock surface per output, raw
+date binding fan-out is multiplied exactly in the state where precision is
+highest even though the calendar text is static for almost the whole lock
+session.
+
+Required oracle:
+
+- minute precision and explicit second precision;
+- lock/unlock transitions;
+- one and multiple outputs/lock surfaces;
+- 23:59:59 -> midnight;
+- manual wall-clock jump within a day and across a day;
+- timezone change that changes the local date;
+- suspend/resume across midnight;
+- live Translation/language change;
+- effective Qt locale change where supported;
+- date format config changes;
+- leap day, month/year boundaries and DST transition dates;
+- exact date labels for every migrated surface;
+- exact `today`/same-date behavior in CalendarView/WeekRow;
+- RotatingDate keeps its separate `clockSecond` dependency and identical
+  second-hand/date-arc motion;
+- Waffle tooltip's minute-only text may use a minute snapshot, but must still
+  change at the same minute boundary;
+- Notifications quiet-hours and any true minute/second policy remain unchanged.
+
+The implementation should prefer narrow stable value/signal publication over
+per-component private timers. Repository tests explicitly require lock date
+labels to derive from the shared SystemClock; a DateTime-owned stable snapshot
+satisfies that ownership while removing redundant 1 Hz downstream invalidation.
+
+### R48.3 — Paths deliberately not promoted
+
+**Gowall theme-list append copies:** `GowallService` currently publishes
+`availableThemes = [...availableThemes, theme]` for each streamed theme line,
+which gives quadratic prefix-copy behavior. Both Material and Waffle Gowall
+editors bind directly to that list while `loadingThemes` is true, so replacing
+it with one final publication would remove the currently observable progressive
+theme list. A mutable in-place list would need a proven QML notification
+contract. Do not trade UI semantics for the allocation saving from source alone.
+
+**Lock fingerprint probe:** rediscovered in this process/timer sweep, but Round
+35.5 already records it as a low-value one-shot, security-adjacent path. No new
+promotion.
+
+**Notification Center current-app lowercase:** `isCurrentApp()` lowercases the
+same current id once per activity row plus each row id/originalId. A prepared
+current id is valid, but the activity list is bounded and visible only on the
+Activity tab. Keep below the promotion threshold unless profiling shows row
+churn matters.
+
+**VoiceSearch local backend probe:** backend probing is explicitly demand-driven
+through `ensureInitialized()`, coalesces an in-flight refresh through
+`_probeQueued`, and re-probes when the configured local model changes. No
+steady-state polling or duplicated owner was found.
+
+**SessionWarnings pidof pair:** refresh owns two short `pidof` processes for
+package managers/downloaders. The caller controls refresh cadence and the two
+domains are semantically separate. Combining them would save one occasional
+process but complicate distinct result ownership; below promotion threshold.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
 before/after measurement.

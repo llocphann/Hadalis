@@ -429,7 +429,7 @@
         },
         "transition": {
             "enable": true,
-            "type": "inirMelt",
+            "type": "crossfade",
             "direction": "right",
             "duration": 800,
             "bezier": [

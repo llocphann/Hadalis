@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pipewire
 import qs.services.deferred
+import "root:modules/common/functions/audioRouting.js" as AudioRouting
 
 /**
  * A nice wrapper for default Pipewire audio sink and source.
@@ -18,7 +19,7 @@ Singleton {
     readonly property PwNode rawSink: Pipewire.defaultAudioSink
     property PwNode _pendingSink: null
     readonly property PwNode defaultSink: root._pendingSink ?? rawSink
-    property PwNode sink: root._pendingSink ?? root.resolveControllableSink(rawSink)
+    property PwNode sink: root.resolveControllableSink(defaultSink)
     property PwNode source: Pipewire.defaultAudioSource
 
     // When QS catches up and rawSink changes, clear the pending override
@@ -69,33 +70,35 @@ Singleton {
     }
 
     function resolveControllableSink(node) {
-        if (!node || !node.audio)
-            return node
+        return AudioRouting.resolveSink(node, Pipewire.nodes.values, Pipewire.links.values,
+            [root._nativeEffectsOutput, root._flatpakEffectsOutput])
+    }
 
-        const props = node.properties ?? {}
-        const nodeName = String(props["node.name"] ?? node.name ?? "")
-        const applicationId = String(props["application.id"] ?? "")
-        const isVirtual = String(props["node.virtual"] ?? "false") === "true"
-        const isPassthrough = String(props["monitor.passthrough"] ?? "false") === "true"
-        const driverId = Number(props["node.driver-id"] ?? 0)
-        const isEasyEffectsSink = nodeName === "easyeffects_sink"
-            || applicationId === "com.github.wwmm.easyeffects"
-            || (isVirtual && isPassthrough)
+    readonly property bool _effectsOutputWanted: AudioRouting.isEffectsSink(root.defaultSink)
+    property string _nativeEffectsOutput: ""
+    property string _flatpakEffectsOutput: ""
+    FileView {
+        id: nativeEffectsConfig
+        path: root._effectsOutputWanted ? Directories.configPath + "/easyeffects/db/easyeffectsrc" : ""
+        printErrors: false
+        watchChanges: root._effectsOutputWanted
+        onLoaded: root._nativeEffectsOutput = AudioRouting.outputDevice(text())
+        onFileChanged: reload()
+        onLoadFailed: root._nativeEffectsOutput = ""
+    }
+    FileView {
+        id: flatpakEffectsConfig
+        path: root._effectsOutputWanted ? Directories.homePath + "/.var/app/com.github.wwmm.easyeffects/config/easyeffects/db/easyeffectsrc" : ""
+        printErrors: false
+        watchChanges: root._effectsOutputWanted
+        onLoaded: root._flatpakEffectsOutput = AudioRouting.outputDevice(text())
+        onFileChanged: reload()
+        onLoadFailed: root._flatpakEffectsOutput = ""
+    }
 
-        if (!isEasyEffectsSink || !Number.isFinite(driverId) || driverId <= 0)
-            return node
-
-        const physicalSink = Pipewire.nodes.values.find(candidate =>
-            root.correctType(candidate, true)
-            && !candidate.isStream
-            && Number(candidate.id ?? 0) === driverId
-        )
-
-        if (physicalSink) return physicalSink
-
-        // Keep EasyEffects sink if physical mapping is unavailable.
-        // Avoid picking an arbitrary non-virtual sink during reconnect/profile churn.
-        return node
+    function _sinkControlTarget(): string {
+        const id = Number(root.sink?.id ?? 0)
+        return Number.isFinite(id) && id > 0 ? String(id) : "@DEFAULT_AUDIO_SINK@"
     }
 
     // Lists
@@ -184,12 +187,14 @@ Singleton {
     }
 
     property real _queuedSinkVolume: 0
+    property string _queuedSinkTarget: ""
     property bool _sinkVolumePending: false
     property real _queuedSourceVolume: 0
     property bool _sourceVolumePending: false
 
     function _queueSinkVolume(value: real): void {
         root._queuedSinkVolume = value
+        root._queuedSinkTarget = root._sinkControlTarget()
         root._sinkVolumePending = true
         if (!wpctlSetSinkVolume.running && !sinkVolumeDispatch.running)
             sinkVolumeDispatch.start()
@@ -209,7 +214,7 @@ Singleton {
             if (wpctlSetSinkVolume.running || !root._sinkVolumePending)
                 return
             root._sinkVolumePending = false
-            wpctlSetSinkVolume.command = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", String(root._queuedSinkVolume)]
+            wpctlSetSinkVolume.command = ["wpctl", "set-volume", root._queuedSinkTarget, String(root._queuedSinkVolume)]
             wpctlSetSinkVolume.running = true
         }
     }
@@ -234,16 +239,22 @@ Singleton {
         onExited: if (root._sinkVolumePending) sinkVolumeDispatch.restart()
     }
 
-    // Relative increment/decrement — does not require reading current volume from QML,
-    // so it works even when Quickshell has not yet tracked the USB sink node.
-    Process {
-        id: wpctlIncrementSinkVolume
-        command: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "2%+"]
+    // Serialize relative steps so held keys and alternating presses cannot drop
+    // input or race each other. Each step keeps the device selected at the press.
+    property var _sinkSteps: []
+    function _queueSinkStep(direction: string): void {
+        root._sinkSteps.push({target: root._sinkControlTarget(), direction: direction})
+        root._dispatchSinkStep()
     }
-
+    function _dispatchSinkStep(): void {
+        if (wpctlSinkStep.running || root._sinkSteps.length === 0)
+            return
+        const step = root._sinkSteps.shift()
+        wpctlSinkStep.exec(["wpctl", "set-volume", step.target, step.direction])
+    }
     Process {
-        id: wpctlDecrementSinkVolume
-        command: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "2%-"]
+        id: wpctlSinkStep
+        onExited: Qt.callLater(root._dispatchSinkStep)
     }
 
     Process {
@@ -336,15 +347,11 @@ Singleton {
     }
 
     function incrementVolume() {
-        // Fire wpctl relative increment first — works even when sink?.audio is not yet tracked.
-        if (!wpctlIncrementSinkVolume.running)
-            wpctlIncrementSinkVolume.running = true
+        root._queueSinkStep("2%+")
     }
 
     function decrementVolume() {
-        // Fire wpctl relative decrement first — works even when sink?.audio is not yet tracked.
-        if (!wpctlDecrementSinkVolume.running)
-            wpctlDecrementSinkVolume.running = true
+        root._queueSinkStep("2%-")
     }
 
     function setDefaultNode(node, isSink: bool): void {

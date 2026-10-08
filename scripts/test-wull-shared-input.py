@@ -99,7 +99,8 @@ with tempfile.TemporaryDirectory(prefix="wull-shared-input-") as temp:
     private=Path(temp);shell,xdg=core["staged"](private)
     (shell/"shell.qml").write_text(qml)
     env=core["private_env"](xdg,private/"result.json")
-    env["QT_QUICK_BACKEND"]="software"
+    env.update(QT_QUICK_BACKEND="software", QT_QUICK_CONTROLS_STYLE="Basic",
+               QT_QPA_PLATFORMTHEME="generic", QT_NO_XDG_DESKTOP_PORTAL="1")
     with (private/"test.log").open("w") as output:
         process=subprocess.Popen(["dbus-run-session","--","qs","--path",str(shell/"shell.qml")],cwd=ROOT,
             env=env,stdin=subprocess.DEVNULL,stdout=output,stderr=subprocess.STDOUT,start_new_session=True)

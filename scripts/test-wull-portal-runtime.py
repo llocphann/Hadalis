@@ -59,6 +59,16 @@ Window {
    check(Scene.distance(presence.position(),dest)<.2 && actor.portalReveal===0,"handover was visible or missed its destination")
    tryCompare(presence,"portalActive",false,1600)
    check(!portals.visible && actor.inputReady && presence.grounded,"portal did not settle or stop drawing")
+   source=put(.15);dest=Scene.edgePoint(root.scene,"bottom",.9)
+   check(presence.moveTo(dest,true),"long retreat rejected")
+   wait(40)
+   check(!presence.portalActive && presence.traveling,"withdrawal incorrectly used portal")
+   presence.hideImmediately()
+   source=put(.15);dest=Scene.edgePoint(root.scene,"bottom",.9)
+   check(presence.moveTo(dest,false,"run"),"explicit long run rejected")
+   wait(40)
+   check(!presence.portalActive && presence.traveling,"explicit physical movement incorrectly used portal")
+   presence.hideImmediately()
    source=put(.15);dest=Scene.edgePoint(root.scene,"bottom",.9);presence.moveTo(dest,false);wait(300)
    root.blocked=true;wait(150)
    check(!presence.portalActive && Scene.distance(presence.position(),source)<.2,"blocked destination retained a stale portal")
@@ -93,7 +103,7 @@ Window {
    check(actor.rolling && !actor.flying && presence.grounded && Math.abs(body.rollingAngle)>20,"roll did not rotate the native body on its surface")
    tryCompare(presence,"traveling",false,presence.duration+700)
    check(!actor.rolling && body.rollingAngle===0 && actor.inputReady && Scene.distance(presence.position(),dest)<.2,"roll did not finish upright at destination")
-   console.info("WULL_PORTAL_NATIVE_PASS hidden-handover destination-invalidation bounded-lifetime motion-cancel interaction-cancel cast-cancel physical-fall physical-jump grounded-roll")
+   console.info("WULL_PORTAL_NATIVE_PASS hidden-handover travel-only retreat-not-portal explicit-move-not-portal destination-invalidation bounded-lifetime motion-cancel interaction-cancel cast-cancel physical-fall physical-jump grounded-roll")
   }catch(e){console.error("WULL_PORTAL_NATIVE_FAIL",e.message,e.stack)}Qt.quit()}
  }
  Timer {interval:100;running:true;onTriggered:test.runChecks()}

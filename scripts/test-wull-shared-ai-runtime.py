@@ -63,6 +63,13 @@ ShellRoot {
    if(!Config.ready)return
    if(root.step===0){
     Ai._initialized=true
+    const originalPrompt=Config.options.ai.systemPrompt
+    const substitutions=Ai.promptSubstitutions
+    Config.setNestedValue("ai.systemPrompt","{DISTRO}/{DISTRO}|{DATETIME}|{WINDOWCLASS}|{DE}|$& literal")
+    if(!root.check(Ai.systemPrompt===substitutions["{DISTRO}"]+"/"+substitutions["{DISTRO}"]+"|"+substitutions["{DATETIME}"]+"|"+substitutions["{WINDOWCLASS}"]+"|"+substitutions["{DE}"]+"|$& literal","live repeated context substitutions preserve literal text"))return
+    Config.setNestedValue("ai.systemPrompt","")
+    if(!root.check(Ai.systemPrompt==="","clearing the AI prompt leaves an empty typed prompt"))return
+    Config.setNestedValue("ai.systemPrompt",originalPrompt)
     KeyringStorage.keyringData=({apiKeys:{fixture:"fixture-credential"}});KeyringStorage.loaded=true
     root.add("fixture-main","/ok");root.add("fixture-wull","/ok")
     root.add("fixture-failure","/failure");root.add("fixture-slow","/slow")

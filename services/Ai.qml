@@ -253,7 +253,10 @@ Singleton {
         }
     }
 
-    property string systemPrompt: {
+    // Dependencies can disappear in different orders during shell teardown.
+    // Keep the intermediate evaluation nullable and the public prompt typed.
+    property string systemPrompt: root?._resolvedSystemPrompt ?? ""
+    readonly property var _resolvedSystemPrompt: {
         let prompt = Config.options?.ai?.systemPrompt ?? "";
         for (let key in root.promptSubstitutions) {
             // prompt = prompt.replaceAll(key, root.promptSubstitutions[key]);

@@ -82,7 +82,10 @@ Item {
     property real arc: 0
     property real normalX: 0
     property real normalY: -1
-    readonly property real standingAngle: grounded ? emergenceEdge==="top" ? 180 : emergenceEdge==="left" ? 90 : emergenceEdge==="right" ? -90 : 0 : 0
+    // Airborne motion retains the takeoff support frame. `grounded` describes
+    // current contact and becomes false during Jump/Fly; it must not rotate
+    // the actor back to the bottom Edge before the destination is adopted.
+    readonly property real standingAngle: placement.grounded ? emergenceEdge==="top" ? 180 : emergenceEdge==="left" ? 90 : emergenceEdge==="right" ? -90 : 0 : 0
     property real directionX: 1
     property real directionY: 0
     property bool surfaceDue: false

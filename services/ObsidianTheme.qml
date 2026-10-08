@@ -13,7 +13,7 @@ Singleton {
  readonly property string applicationConfigPath:options?.applicationConfigPath ?? ""
  readonly property var palette:({background:hex(Appearance.colors.colLayer0Base),foreground:hex(Appearance.m3colors.m3onSurface),accent:hex(Appearance.colors.colPrimary)})
  readonly property string signature:JSON.stringify({vault:vaultPath,config:configPath,application:applicationConfigPath,palette:palette})
- readonly property bool busy:worker.running
+ readonly property bool busy:worker?.running ?? false
  property var info:({})
  property string error:""
  property var queued:null

@@ -14,6 +14,8 @@ Item {
     property int activeIndex: -1
     readonly property var hours: (Weather.data?.hourly ?? []).slice(0,8)
     readonly property var selectedHour: hours[activeIndex] ?? null
+    readonly property color secondaryInk: Appearance.m3colors.darkmode
+        ? AbyssStyle.textColorMuted : "#000000"
     readonly property real nodeWidth: Math.min(Math.max(1,width-16),Math.max(44,Math.min(72,48*Appearance.fontSizeScale,width*.16)))
     readonly property real nodeHeight: Math.min(Math.max(1,height-16),Math.max(54,Math.min(80,54*Appearance.fontSizeScale,height*.26)))
     readonly property real radiusX: Math.max(0,(width-nodeWidth-16)/2)
@@ -43,7 +45,7 @@ Item {
         AbyssLabel {
             Layout.fillWidth:true;horizontalAlignment:Text.AlignHCenter
             text:root.selectedHour?.label ?? Qt.formatDate(root.now,"ddd, MMM d")
-            font.pixelSize:Appearance.font.pixelSize.smaller;color:AbyssStyle.textColorMuted
+            font.pixelSize:Appearance.font.pixelSize.smaller;color:root.secondaryInk
         }
         RowLayout {
             Layout.alignment:Qt.AlignHCenter;spacing:6
@@ -59,7 +61,7 @@ Item {
         AbyssLabel {
             Layout.fillWidth:true;horizontalAlignment:Text.AlignHCenter
             text:root.selectedHour ? Weather.describeWeather(root.selectedHour.code) : Weather.data?.description ?? ""
-            font.pixelSize:Appearance.font.pixelSize.smallest;color:AbyssStyle.textColorMuted
+            font.pixelSize:Appearance.font.pixelSize.smallest;color:root.secondaryInk
             maximumLineCount:2;elide:Text.ElideRight
         }
     }
@@ -86,7 +88,7 @@ Item {
                 spacing:1
                 AbyssLabel {
                     text:node.modelData.label ?? "";Layout.alignment:Qt.AlignHCenter
-                    font.pixelSize:Appearance.font.pixelSize.smallest;color:AbyssStyle.textColorMuted
+                    font.pixelSize:Appearance.font.pixelSize.smallest;color:root.secondaryInk
                 }
                 MaterialSymbol {
                     text:Icons.getWeatherIcon(node.modelData.code,node.modelData.isNight ?? false) ?? "cloud"
@@ -104,6 +106,6 @@ Item {
         anchors.bottomMargin:8
         visible:root.hours.length===0
         text:Translation.tr("Hourly forecast unavailable")
-        font.pixelSize:Appearance.font.pixelSize.smallest;color:AbyssStyle.textColorMuted
+        font.pixelSize:Appearance.font.pixelSize.smallest;color:root.secondaryInk
     }
 }

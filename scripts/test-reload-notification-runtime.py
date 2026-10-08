@@ -3,12 +3,12 @@
 from pathlib import Path
 import os
 import shutil
-import subprocess
 import tempfile
+from native_test_session import private_wayland, run_qs
 
 repo = Path(__file__).resolve().parents[1]
-if not shutil.which("qs") or not shutil.which("notify-send") or not os.environ.get("WAYLAND_DISPLAY"):
-    print("SKIP: reload notification requires Quickshell, notify-send and Wayland")
+if not shutil.which("qs") or not shutil.which("niri") or not shutil.which("notify-send") or not os.environ.get("WAYLAND_DISPLAY"):
+    print("SKIP: reload notification requires Quickshell, Niri, notify-send and Wayland")
     raise SystemExit(0)
 
 with tempfile.TemporaryDirectory(prefix="hadalis-reload-notification-") as folder:
@@ -106,13 +106,14 @@ ShellRoot {
  }}
 }
 ''')
-    env = os.environ.copy()
-    for name in ("QS_CONFIG_NAME", "QS_CONFIG_PATH", "QS_MANIFEST"):
-        env.pop(name, None)
-    env.update(QT_QPA_PLATFORM="wayland", QT_QUICK_BACKEND="software", XDG_CONFIG_HOME=str(root / "config"),
-               XDG_STATE_HOME=str(root / "state"), XDG_CACHE_HOME=str(root / "cache"))
-    result = subprocess.run(["dbus-run-session", "--", "qs", "-p", str(root), "--no-color"],
-                            env=env, capture_output=True, text=True, timeout=16)
+    # Owner fullscreen/Game Mode must not suppress this ordinary-ingress
+    # fixture. Preserve the production suppression rules on a private output.
+    with private_wayland(root) as env:
+        if env is None:
+            raise RuntimeError("Private Niri did not become available")
+        env.update(QT_QUICK_BACKEND="software", QT_QUICK_CONTROLS_STYLE="Basic",
+                   QT_QPA_PLATFORMTHEME="generic")
+        result = run_qs(root,env,timeout=16)
     log = result.stdout + result.stderr
     if result.returncode or "RELOAD_NOTIFICATION_PASS" not in log or any(word in log for word in (
         "RELOAD_NOTIFICATION_FAIL", "ReferenceError:", "TypeError:", "Binding loop", "Unable to assign",

@@ -489,6 +489,9 @@ Scope {
                     implicitHeight: cornerWidget.cornerOpenHeight
                     hoverEnabled: true
                     onPositionChanged: {
+                        // The top-right corner is click-only, even when legacy
+                        // clicklessCornerEnd is enabled. Keep its volume scroll.
+                        if (cornerPanelWindow.isTopRight) return;
                         if (Config.options?.sidebar?.cornerOpen?.clickless ?? false) return;
                         if (!(Config.options?.sidebar?.cornerOpen?.clicklessCornerEnd ?? false)) return;
                         const verticalOffset = Config.options?.sidebar?.cornerOpen?.clicklessCornerVerticalOffset ?? 10;
@@ -498,7 +501,7 @@ Scope {
                             screenCorners.actionForCorner[cornerPanelWindow.corner](cornerPanelWindow.screen?.name ?? "");
                     }
                     onEntered: {
-                        if (Config.options?.sidebar?.cornerOpen?.clickless ?? false)
+                        if (!cornerPanelWindow.isTopRight && (Config.options?.sidebar?.cornerOpen?.clickless ?? false))
                             screenCorners.actionForCorner[cornerPanelWindow.corner](cornerPanelWindow.screen?.name ?? "");
                     }
                     onPressed: {

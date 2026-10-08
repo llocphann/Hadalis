@@ -150,10 +150,11 @@ Item {
         }
         FocusedScrollMouseArea {
             anchors.fill:parent;hoverEnabled:true
-            onEntered: if(corner.options.clickless ?? false) corner.activate(true)
+            // Right corner is click-only; hover and pointer movement must not open the system sidebar.
+            onEntered: if(corner.leftSide && (corner.options.clickless ?? false)) corner.activate(true)
             onPressed: if(!(corner.options.clickless ?? false)) corner.activate(false)
             onPositionChanged: {
-                if((corner.options.clickless ?? false) || !(corner.options.clicklessCornerEnd ?? false)) return
+                if(!corner.leftSide || (corner.options.clickless ?? false) || !(corner.options.clicklessCornerEnd ?? false)) return
                 const offset=corner.options.clicklessCornerVerticalOffset ?? 1
                 const end=corner.leftSide ? mouseX<=2 : mouseX>=width-2
                 if(end && (corner.atBottom ? mouseY<height-offset : mouseY>offset)) corner.activate()

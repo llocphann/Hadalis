@@ -14,5 +14,5 @@ Singleton {
     readonly property string wullQuality: Policy.wull(Config.options?.abyss?.companion?.renderQuality,
         Config.options?.abyss?.companion?.autoQuality ?? false,powerProfile,abyssQuality)
     readonly property string wullQualityLabel:
-        wullQuality === "performance" ? "Performance" : "Quality"
+        Policy.wullLabel(wullQuality)
 }

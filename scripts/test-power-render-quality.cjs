@@ -11,4 +11,16 @@ for(const profile of ['power-saver','balanced','performance','unavailable']) {
   }
  }
 }
+// The explicit higher tier never bypasses shell Performance or increases
+// the pre-existing automatic profile cost.
+for(const profile of ['power-saver','balanced','performance','unavailable']) {
+ for(const shell of ['performance','balanced','quality']) {
+  assert.equal(policy.wull('detailed',false,profile,shell),shell==='performance'?'performance':'detailed');
+  assert.equal(policy.wull('detailed',true,profile,shell),shell==='performance'||profile==='power-saver'?'performance':'quality');
+ }
+}
+assert.equal(policy.wullLabel('performance'),'Performance');
+assert.equal(policy.wullLabel('quality'),'Balanced');
+assert.equal(policy.wullLabel('detailed'),'Quality');
+assert.equal(policy.wullLabel('unknown'),'Balanced');
 console.log('PASS: live-profile policy matrix and manual mode');

@@ -505,7 +505,7 @@ Scope {
                             screenCorners.actionForCorner[cornerPanelWindow.corner](cornerPanelWindow.screen?.name ?? "");
                     }
                     onPressed: {
-                        if (!(Config.options?.sidebar?.cornerOpen?.clickless ?? false)) {
+                        if (cornerPanelWindow.isTopRight || !(Config.options?.sidebar?.cornerOpen?.clickless ?? false)) {
                             screenCorners.actionForCorner[cornerPanelWindow.corner](cornerPanelWindow.screen?.name ?? "");
                             if (Config.options?.background?.effects?.ripple?.hotcorners ?? true) {
                                 GlobalStates.requestRipple(0, 0, cornerPanelWindow.screen.name);

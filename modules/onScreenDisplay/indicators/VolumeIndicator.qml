@@ -4,7 +4,7 @@ import qs.modules.onScreenDisplay
 
 OsdValueIndicator {
     id: osdValues
-    value: Audio.sink?.audio.volume ?? 0
+    value: Audio.osdSinkVolume
     icon: Audio.sink?.audio.muted ? "volume_off" : "volume_up"
     name: Translation.tr("Volume")
 }

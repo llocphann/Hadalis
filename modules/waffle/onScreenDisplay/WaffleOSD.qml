@@ -100,6 +100,14 @@ Scope {
         }
     }
 
+    Connections {
+        target: Audio
+        function onSinkControlRequested(): void {
+            if (root.initialized && !GameMode.suppressNiriToast)
+                root.triggerVolumeOSD()
+        }
+    }
+
     // Media OSD is triggered via IPC only (not on every track change)
     // See services/MprisController.qml IpcHandler
 

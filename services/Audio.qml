@@ -29,6 +29,15 @@ Singleton {
     readonly property real hardMaxValue: 2.00
     property string audioTheme: Config.options?.sounds?.theme ?? "freedesktop"
     property real value: sink?.audio?.volume ?? rawSink?.audio?.volume ?? 0
+    // A device-route-level change can be invisible to PwNode.audio.volume.
+    // OSD prefers a verified wpctl read-back when the QML value stays stale.
+    property real _sinkSampleVolume: NaN
+    property string _sinkSampleTarget: ""
+    property int _sinkWriteGeneration: 0
+    property int _sinkReadGeneration: 0
+    property string _sinkReadTarget: ""
+    readonly property real osdSinkVolume: root._sinkSampleTarget === root._sinkControlTarget()
+        && Number.isFinite(root._sinkSampleVolume) ? root._sinkSampleVolume : root.value
     property bool micBeingAccessed: (Pipewire.links?.values ?? []).some(link =>
         !(link?.source?.isStream ?? true)
             && !(link?.source?.isSink ?? true)
@@ -122,11 +131,14 @@ Singleton {
 
     // Signals
     signal sinkProtectionTriggered(string reason);
+    // Immediate IPC/slider feedback even when PipeWire omits a volume event.
+    signal sinkControlRequested();
 
     // Controls
     function toggleMute() {
         if (!root.sink?.audio) return;
         root.sink.audio.muted = !root.sink.audio.muted
+        root.sinkControlRequested()
     }
 
     function setSourceVolume(target: real): void {
@@ -186,6 +198,13 @@ Singleton {
         }
     }
 
+    function _invalidateSinkSample(): void {
+        root._sinkSampleTarget = ""
+        root._sinkSampleVolume = NaN
+        root._sinkWriteGeneration++
+        sinkVolumeSampleTimer.stop()
+    }
+
     property real _queuedSinkVolume: 0
     property string _queuedSinkTarget: ""
     property bool _sinkVolumePending: false
@@ -193,6 +212,7 @@ Singleton {
     property bool _sourceVolumePending: false
 
     function _queueSinkVolume(value: real): void {
+        root._invalidateSinkSample()
         root._queuedSinkVolume = value
         root._queuedSinkTarget = root._sinkControlTarget()
         root._sinkVolumePending = true
@@ -236,13 +256,20 @@ Singleton {
     Process {
         id: wpctlSetSinkVolume
         command: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "1.0"]
-        onExited: if (root._sinkVolumePending) sinkVolumeDispatch.restart()
+        onExited: {
+            if (root._sinkVolumePending)
+                sinkVolumeDispatch.restart()
+            else
+                sinkVolumeSampleTimer.restart()
+        }
     }
 
     // Serialize relative steps so held keys and alternating presses cannot drop
     // input or race each other. Each step keeps the device selected at the press.
     property var _sinkSteps: []
     function _queueSinkStep(direction: string): void {
+        root._invalidateSinkSample()
+        root.sinkControlRequested()
         root._sinkSteps.push({target: root._sinkControlTarget(), direction: direction})
         root._dispatchSinkStep()
     }
@@ -254,7 +281,45 @@ Singleton {
     }
     Process {
         id: wpctlSinkStep
-        onExited: Qt.callLater(root._dispatchSinkStep)
+        onExited: Qt.callLater(() => {
+            root._dispatchSinkStep()
+            if (!wpctlSinkStep.running && root._sinkSteps.length === 0)
+                sinkVolumeSampleTimer.restart()
+        })
+    }
+
+    // Coalesce rapid key repeats; reject observations from older writes
+    // or a different output. This does not change the default sink.
+    Timer {
+        id: sinkVolumeSampleTimer
+        interval: 80
+        onTriggered: {
+            if (wpctlSinkStep.running || root._sinkSteps.length > 0
+                    || wpctlSetSinkVolume.running || root._sinkVolumePending
+                    || _rampTimerInternal.running || wpctlGetSinkVolume.running) {
+                restart()
+                return
+            }
+            root._sinkReadTarget = root._sinkControlTarget()
+            root._sinkReadGeneration = root._sinkWriteGeneration
+            wpctlGetSinkVolume.exec(["wpctl", "get-volume", root._sinkReadTarget])
+        }
+    }
+    Process {
+        id: wpctlGetSinkVolume
+        stdout: StdioCollector { id: sinkVolumeSampleCollector }
+        onExited: (exitCode, _exitStatus) => {
+            if (exitCode !== 0 || root._sinkReadGeneration !== root._sinkWriteGeneration
+                    || root._sinkReadTarget !== root._sinkControlTarget())
+                return
+            const result = String(sinkVolumeSampleCollector.text ?? "")
+            const match = result.match(/Volume:\s*([0-9]*\.?[0-9]+)/i)
+            if (!match) return
+            const volume = Number(match[1])
+            if (!Number.isFinite(volume)) return
+            root._sinkSampleTarget = root._sinkReadTarget
+            root._sinkSampleVolume = Math.max(0, Math.min(root.hardMaxValue, volume))
+        }
     }
 
     Process {
@@ -302,6 +367,7 @@ Singleton {
         const clamped = Math.max(0, Math.min(Math.min(maxAllowed, root.hardMaxValue), target));
 
         const protectionEnabled = (Config.options?.audio?.protection?.enable ?? false);
+        root.sinkControlRequested()
         if (!protectionEnabled) {
             root._queueSinkVolume(clamped)
             return;
@@ -406,9 +472,18 @@ Singleton {
     // the new sink's initial volume isn't compared against the old sink's level
     // and we don't apply a stale ramp target to the wrong device.
     onSinkChanged: {
+        root._invalidateSinkSample()
         _sinkProtectionConn.lastReady = false
         _sinkProtectionConn.lastVolume = 0
         _rampTimerInternal.running = false
+    }
+
+    Connections {
+        target: root.sink?.audio ?? null
+        function onVolumeChanged(): void {
+            root._sinkSampleTarget = ""
+            root._sinkSampleVolume = NaN
+        }
     }
 
     Connections { // Protection against sudden volume changes

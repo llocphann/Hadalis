@@ -79,6 +79,9 @@ Item {
     }
     Connections {
         target: Audio
+        function onSinkControlRequested(): void {
+            if (!GameMode.suppressNiriToast) root.show("volume")
+        }
         function onMicVolumeChanged(): void { root.show("mic") }
         function onMicMutedChanged(): void { root.show("mic") }
         function onSinkProtectionTriggered(reason: string): void { root.show("volume"); GlobalStates.abyssOsdMessage = reason }

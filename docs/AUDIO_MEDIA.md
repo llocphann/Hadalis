@@ -18,7 +18,7 @@ Keybinds and OSD handle the basics:
 | Mute | Toggle default sink mute |
 | Mic Mute | Toggle default source mute |
 
-The OSD (on-screen display) appears for volume and brightness changes, showing the current level with an animated bar.
+The OSD (on-screen display) appears for volume and brightness changes, showing the current level with an animated bar. IPC volume/mute requests also wake the OSD when a hardware/device-route change is not reflected by the Quickshell PipeWire node. After Hadalis volume writes, a debounced `wpctl get-volume` read-back feeds the OSD without changing the selected audio output.
 
 ### Per-app mixer
 
@@ -26,7 +26,23 @@ The right sidebar (ii) and action center (waffle) include a per-app volume mixer
 
 ### EasyEffects
 
-If EasyEffects is installed, iNiR detects its virtual sink and controls the physical sink behind it instead. This means volume control works correctly whether EasyEffects is running or not. A toggle in the right sidebar/action center lets you enable/disable EasyEffects.
+If EasyEffects is installed, iNiR detects its virtual sink and attempts to control the physical sink behind it using directed PipeWire links or an exact EasyEffects output-device name. If the route is ambiguous, it does not guess a hardware sink. A toggle in the right sidebar/action center lets you enable/disable EasyEffects.
+
+**Recommended routing:** EasyEffects upstream advises leaving the actual hardware device (for example, ALC257 Analog when it really drives the speakers) as the system default, and letting EasyEffects route application streams through its effects pipeline. Do not forcibly set `easyeffects_sink` as the system default just to obtain audio. Hadalis still supports a pre-existing virtual default without silently changing it. EasyEffects must point to a working physical output; Hadalis cannot repair a missing ALSA profile, disconnected port, hardware mute or incorrectly routed stream by changing the OSD.
+
+**Read-only diagnosis when speakers are silent or IPC OSD is missing:**
+```sh
+wpctl status
+pactl get-default-sink
+pactl list short sinks
+pactl list short sink-inputs
+wpctl get-volume @DEFAULT_AUDIO_SINK@
+pw-link -l
+```
+
+Compare the active application stream and EasyEffects output links with the physical playback node. Check the selected ALC257 profile, port (Speakers vs Headphones) and mute in `pavucontrol` or `wpctl`. Switching defaults changes where **new** streams auto-connect; inspect current streams separately. No automatic hardware fallback is performed because selecting the wrong port could silence a working route.
+
+References: [EasyEffects upstream routing warning](https://github.com/wwmm/easyeffects#warning), [WirePlumber wpctl documentation](https://pipewire.pages.freedesktop.org/wireplumber/man/wpctl.html).
 
 The Equalizer Phase 1 capability is disabled by default and is separate from normal Media playback. EasyEffects is its first optional backend, while `socat` is used only as an optional transport to the local EasyEffects control socket. If either the backend or transport is unavailable, the Equalizer capability remains unavailable and playback continues normally.
 

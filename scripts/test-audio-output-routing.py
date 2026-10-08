@@ -95,7 +95,7 @@ QtObject {
     wpctl = binary / "wpctl"
     wpctl.write_text('''#!/usr/bin/env python3
 import json,os,sys,time
-if sys.argv[1]=='get-volume':print('Volume: 0.44 MUTED')
+if sys.argv[1]=='get-volume':print('Volume: 0.44 MUTED' if sys.argv[2]=='60' else 'Volume: 0.73')
 else:
  time.sleep(.08)
  with open(os.environ['AUDIO_LOG'],'a') as f:f.write(json.dumps(sys.argv[1:])+'\\n')
@@ -112,6 +112,8 @@ import "fakepipewire" as Fake
 ShellRoot {
  Component.onCompleted:Quickshell.watchFiles=false
  property var calls:[]
+ property int sinkActivityCount:0
+ Connections {target:Audio;function onSinkControlRequested(){sinkActivityCount++}}
  FileView {id:log;path:Quickshell.env("AUDIO_LOG");watchChanges:true;printErrors:false;onLoaded:calls=text().trim().split('\n').filter(Boolean).map(JSON.parse);onFileChanged:reload()}
  TestCase {
   id:test;when:false;optional:true
@@ -127,6 +129,9 @@ ShellRoot {
    Fake.Pipewire.defaultAudioSink=Fake.Pipewire.headphones
    Audio.incrementVolume()
    tryVerify(()=>calls.length===9,4000)
+   check(sinkActivityCount>=11,"IPC volume/mute requests failed to signal OSD with a frozen PipeWire node")
+   tryVerify(()=>Math.abs(Audio.osdSinkVolume-.73)<.0001,4000)
+   check(Fake.Pipewire.headphones.audio.volume===.44,"sample must not overwrite hardware QML volume")
    check(calls.slice(0,8).every(call=>call[1]==="58") && calls[8][1]==="66","queued presses followed a later device selection")
    check(calls.slice(0,5).every(call=>call[2]==="2%+") && calls.slice(5,8).every(call=>call[2]==="2%-"),"burst input reordered or lost")
    Audio.setSinkVolume(.31);tryVerify(()=>calls.length===10,2000)
@@ -136,7 +141,7 @@ ShellRoot {
    Fake.Pipewire.links=({values:[{source:Fake.Pipewire.tail,target:Fake.Pipewire.headphones}]})
    tryCompare(Audio,"sink",Fake.Pipewire.headphones,2000)
    check(Audio.defaultSink===Fake.Pipewire.effects,"active links replaced effects default")
-   console.info("AUDIO_DISPATCH_PASS effects idle and active, mute/slider resolved, 9 ordered burst steps and stable device identity")
+   console.info("AUDIO_DISPATCH_PASS effects idle/active, IPC OSD and read-back, mute/slider resolved, 9 ordered burst steps and stable device identity")
   }catch(e){console.error("AUDIO_DISPATCH_FAIL",e.message,e.stack)}Qt.quit()}
  }
  Timer {interval:100;running:true;onTriggered:test.runChecks()}

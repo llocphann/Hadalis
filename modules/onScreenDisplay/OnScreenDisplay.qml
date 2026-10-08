@@ -269,6 +269,11 @@ Scope {
     Connections {
         // Listen to protection triggers
         target: Audio
+        function onSinkControlRequested(): void {
+            if (!root.initialized || GameMode.suppressNiriToast) return;
+            root.currentIndicator = "volume";
+            root.triggerOsd();
+        }
         function onSinkProtectionTriggered(reason) {
             root.protectionMessage = reason;
             root.currentIndicator = "volume";

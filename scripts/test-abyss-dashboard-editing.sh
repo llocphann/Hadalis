@@ -117,7 +117,7 @@ ShellRoot {
 QML
 runtime_status=0
 dbus-run-session -- env -u QS_CONFIG_NAME -u QS_CONFIG_PATH -u QS_MANIFEST \
- QT_QPA_PLATFORM=wayland \
+ QT_QPA_PLATFORM=wayland QT_QUICK_CONTROLS_STYLE=Basic QT_QPA_PLATFORMTHEME=generic QT_NO_XDG_DESKTOP_PORTAL=1 \
  XDG_CONFIG_HOME="$dashboard_test_root/config" XDG_STATE_HOME="$dashboard_test_root/state" XDG_CACHE_HOME="$dashboard_test_root/cache" \
  timeout 20s qs -p "$dashboard_test_root" --no-color > "$dashboard_test_root/runtime.log" 2>&1 || runtime_status=$?
 # The harness stays alive after its assertions; timeout owns its termination.

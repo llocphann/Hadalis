@@ -2,8 +2,8 @@
 # Qualify actual Clipboard retraction without swapping in Overview/Dashboard.
 set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-if ! command -v qs >/dev/null || [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
-    printf 'SKIP: Abyss clipboard lifecycle (Quickshell/Wayland unavailable)\n'
+if ! command -v qs >/dev/null || ! command -v niri >/dev/null || [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
+    printf 'SKIP: Abyss clipboard lifecycle (Quickshell/Niri/Wayland unavailable)\n'
     exit 0
 fi
 clipboard_test_root="$(mktemp -d)"
@@ -52,7 +52,7 @@ ShellRoot {
                 GlobalStates.shellEntryReady=true;GlobalStates.deferredPanelsReady=true
                 GlobalStates.dashboardOpen=false;GlobalStates.clipboardOpen=true
             } else if(root.step===1) {
-                if(!root.check(clip.open && clip.ready && !overview.ready && !GlobalStates.dashboardOpen,"only Clipboard content is loaded")) return
+                if(!root.check(clip.open && clip.ready && !overview.ready && !GlobalStates.dashboardOpen,"only Clipboard content is loaded "+JSON.stringify({open:clip.open,ready:clip.ready,status:clip.contentItem.status,progress:clip.progress,presented:output.presented,fullscreen:output.fullscreenCovered,output:output.outputName,target:GlobalStates.abyssClipboardTargetOutput,resolved:GlobalStates.resolveOutputName(GlobalStates.abyssClipboardTargetOutput,[]),clipboard:GlobalStates.clipboardOpen,overview:overview.ready,dashboard:GlobalStates.dashboardOpen,panels:Config.options.enabledPanels}))) return
                 root.clipboardSource=String(clip.contentItem.source)
                 GlobalStates.clipboardOpen=false
                 if(!root.check(clip.progress>0 && String(clip.contentItem.source)===root.clipboardSource && !overview.ready && !GlobalStates.dashboardOpen,"closing retains Clipboard while retracting without opening Dashboard")) return
@@ -73,10 +73,21 @@ ShellRoot {
     }
 }
 QML
-if ! dbus-run-session -- env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST QT_QPA_PLATFORM=wayland \
- XDG_CONFIG_HOME="$clipboard_test_root/config" XDG_STATE_HOME="$clipboard_test_root/state" \
- XDG_CACHE_HOME="$clipboard_test_root/cache" timeout 25s qs -p "$clipboard_test_root" --no-color \
- > "$clipboard_test_root/runtime.log" 2>&1; then
+if ! python3 - "$repo_root" "$clipboard_test_root" <<'PYRUN'
+from pathlib import Path
+import sys
+repo,folder=map(Path,sys.argv[1:])
+sys.path.insert(0,str(repo/'scripts'))
+from native_test_session import private_wayland, run_qs
+with private_wayland(folder) as env:
+    if env is None:
+        raise RuntimeError("Private Niri did not become available")
+    env.update(QT_QUICK_CONTROLS_STYLE="Basic", QT_QPA_PLATFORMTHEME="generic")
+    result=run_qs(folder,env,timeout=25)
+(folder/'runtime.log').write_text(result.stdout)
+raise SystemExit(result.returncode)
+PYRUN
+then
     cat "$clipboard_test_root/runtime.log"; exit 1
 fi
 if ! rg -q CLIPBOARD_REFINE_PASS "$clipboard_test_root/runtime.log" || \

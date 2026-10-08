@@ -667,6 +667,10 @@ Item {
                             // Qt's wrapped placeholder derives its implicit
                             // width from this width. The viewport owns sizing.
                             implicitWidth: 0
+                            // Only the note owns scroll extent. The wrapped
+                            // placeholder must not feed its height back into
+                            // viewport width while a card is being laid out.
+                            implicitHeight: contentHeight + topPadding + bottomPadding
                             width: scrollView.availableWidth
                             wrapMode: TextArea.Wrap
                             renderType: Text.NativeRendering

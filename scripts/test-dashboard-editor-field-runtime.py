@@ -13,6 +13,7 @@ import QtTest
 import Quickshell
 import qs
 import qs.modules.common
+import qs.services
 import qs.modules.abyss
 import qs.modules.abyss.looks
 ShellRoot {
@@ -52,6 +53,23 @@ ShellRoot {
     check(canvas!==null,"missing canvas "+route)
     Config.setNestedValue("dashboard.canvas.widgets",canvas.defaultEntries().map(p=>Object.assign({},p,{visible:p.id==="notes",x:.15,y:.15,w:.3,h:.35})))
     wait(80)
+    // Empty placeholders and long drafts must not drive card width or lose
+    // vertical scrolling as the real hosts resize/reload the notes editor.
+    tryCompare(Notepad,"ready",true,4000)
+    const note=find(canvas,i=>typeof i.placeholderText==="string" && typeof i.cursorPosition==="number" && typeof i.wrapMode==="number")
+    check(note!==null,"notes editor missing")
+    const draft=note.text
+    note.text="";wait(40)
+    check(note.placeholderText.length>0,"empty notes lost their placeholder")
+    note.text=("A wrapped note remains editable throughout Dashboard resizing. ").repeat(12)+"\n"+("A separate draft line.\n").repeat(60)
+    wait(60)
+    let viewport=note.parent
+    while(viewport && typeof viewport.contentY!=="number")viewport=viewport.parent
+    check(viewport!==null && viewport.contentHeight>viewport.height,"long notes cannot scroll")
+    check(viewport.contentHeight>=note.contentHeight && viewport.contentWidth<=viewport.width+1,"notes have clipped text or a horizontal scroll extent")
+    viewport.contentY=Math.max(0,viewport.contentHeight-viewport.height);wait(20)
+    check(viewport.contentY+viewport.height>=note.contentHeight,"last note line is unreachable")
+    note.text=draft;wait(40)
     const dimensions=[canvas.width,canvas.height],saved=JSON.stringify(Config.options.dashboard.canvas.widgets)
     canvas.beginEditMode();wait(120)
     const popup=find(window.contentItem,i=>i.objectName==="abyssDashboardEditPopup" && i.canvasController===canvas)

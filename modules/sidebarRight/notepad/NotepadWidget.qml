@@ -657,10 +657,16 @@ Item {
                         anchors.margins: root.compactPresentation ? 6 : 8
                         ScrollBar.vertical.policy: ScrollBar.AsNeeded
                         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                        // Wrapped notes occupy the viewport, with no horizontal
+                        // extent inferred from the text or placeholder.
+                        contentWidth: availableWidth
 
                         TextArea {
                             id: textArea
                             enabled: Notepad.ready
+                            // Qt's wrapped placeholder derives its implicit
+                            // width from this width. The viewport owns sizing.
+                            implicitWidth: 0
                             width: scrollView.availableWidth
                             wrapMode: TextArea.Wrap
                             renderType: Text.NativeRendering
@@ -678,11 +684,21 @@ Item {
                                 ? Appearance.angel.colOnPrimary
                                 : Appearance.inirEverywhere ? Appearance.inir.colOnPrimary
                                 : Appearance.colors.colOnSecondaryContainer
-                            placeholderText: Translation.tr("Write your notes here...")
+                            property bool placeholderReady: false
+                            placeholderText: placeholderReady
+                                ? Translation.tr("Write your notes here...") : ""
                             placeholderTextColor: Appearance.inirEverywhere
                                 ? Appearance.inir.colTextSecondary
                                 : Appearance.colors.colOutline
-                            Component.onCompleted: root._loadActiveTab()
+                            Component.onCompleted: {
+                                root._loadActiveTab()
+                                // The style's wrapped placeholder must not
+                                // measure against an unfinished layout.
+                                Qt.callLater(() => {
+                                    if (textArea)
+                                        textArea.placeholderReady = true
+                                })
+                            }
                             selectByMouse: true
                             persistentSelection: true
                             activeFocusOnTab: true

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Composed field/editor across four edges, two surface sizes and both routes."""
-import json, tempfile
+import json, os, tempfile
 from pathlib import Path
 from native_test_session import private_wayland, run_qs
-ROOT=Path(__file__).resolve().parents[1]
+ROOT=Path(os.environ.get("HADALIS_DASHBOARD_TEST_ROOT",str(Path(__file__).resolve().parents[1]))).resolve()
 with tempfile.TemporaryDirectory(prefix="hadalis-dashboard-editor-field-") as name:
  folder=Path(name)
  for entry in ["modules","services","GlobalStates.qml","qmldir","assets","scripts","defaults","translations"]:(folder/entry).symlink_to(ROOT/entry)
@@ -24,6 +24,7 @@ ShellRoot {
  property real surfaceWidth:1280
  property real surfaceHeight:900
  property string caseName:""
+ property int capturedFrames:0
  Component.onCompleted:Quickshell.watchFiles=false
  FloatingWindow {
   id:window;visible:true;implicitWidth:1280;implicitHeight:900;color:"#111820"
@@ -52,9 +53,15 @@ ShellRoot {
   function clickAction(popup,name){
    const button=findChild(popup,name)
    check(button?.visible && button.enabled,"action unavailable: "+name)
-   // Hiding a card changes the Add row and can schedule a toolbar relayout.
-   // Map the native click only after the pending layout has finished.
-   check(waitForPolish(surface.Window.window,1500),"pending editor layout: "+name)
+   // An unfocused nested compositor can throttle onscreen frame callbacks.
+   // Render this owned field into an image to flush the real scene/layout
+   // before mapping input, without taking focus from the owner's application.
+   if(name==="dashboardEditDone"){
+    const before=root.capturedFrames
+    check(surface.grabToImage(result=>{root.capturedFrames++}),"editor field capture refused")
+    tryVerify(()=>root.capturedFrames>before,3000)
+   }
+   check(waitForPolish(button.parent,1500),"pending editor action row: "+name)
    clickSpy.target=button;clickSpy.clear()
    mouseClick(button)
    tryCompare(clickSpy,"count",1,1000)

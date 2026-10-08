@@ -50,10 +50,14 @@ Item {
         identity !== "dock" && identity !== "edgeEditor" && identity !== "editorPreview"
     property bool largeSurface: false
     // Content may place a compact control surface above itself. Top-attached
-    // bodies reserve that headroom by moving inward, preserving canvas size.
+    // bodies move inward; side-attached bodies move along their physical Edge.
+    // Both leave the widget canvas dimensions unchanged during editing.
     readonly property real minimumInward: edge === "top"
         && (contentItem.item?.editMode ?? false)
         ? Math.max(0, Number(contentItem.item?.topControlReserve ?? 0)) : 0
+    readonly property real requestedAlong: !Geometry.horizontal(edge)
+        && (contentItem.item?.editMode ?? false)
+        ? Math.max(along, Number(contentItem.item?.topControlReserve ?? 0)) : along
     // Keep Dock/icon geometry fixed, but let panel content reflow before any
     // lower-priority body is evicted. These are panel dimensions including
     // padding; hosts may raise them for feature-specific readability.
@@ -123,7 +127,7 @@ Item {
     // slide/reflow from the current frame and naturally reverse mid-flight.
     readonly property bool placementMotionReady: retainedPlacement !== null
     property real visualPlacementAlong: Number.isFinite(Number(coordinatedPlacement?.along))
-        ? Number(coordinatedPlacement.along) : along
+        ? Number(coordinatedPlacement.along) : requestedAlong
     property real visualPlacementSpan: Number.isFinite(Number(coordinatedPlacement?.span))
         ? Number(coordinatedPlacement.span) : span
     property real visualPlacementDepth: Number.isFinite(Number(coordinatedPlacement?.depth))
@@ -153,11 +157,11 @@ Item {
     property real availabilityProgress: presented ? 1 : 0
     property real progress: (externalProgress >= 0
         ? Math.max(0,Math.min(1,externalProgress)) : 1) * availabilityProgress
-    readonly property var requestedRecord: Geometry.panel(width,height,edgeInsets,edge,along,span,depth,1,padding,[],largeSurface)
+    readonly property var requestedRecord: Geometry.panel(width,height,edgeInsets,edge,requestedAlong,span,depth,1,padding,[],largeSurface)
     // Resting geometry is still produced by AbyssGeometry from allocator output.
     // Pyramid motion only snapshots/interpolates this already-resolved record.
     readonly property var pyramidRestingRecord: Geometry.placedPanel(
-        width,height,edgeInsets,edge,along,span,depth,1,padding,
+        width,height,edgeInsets,edge,requestedAlong,span,depth,1,padding,
         obstacles,largeSurface,visualPlacement)
     readonly property bool pyramidPresentationActive:
         root.pyramidMotionEnabled
@@ -172,7 +176,7 @@ Item {
             ? root.placement : null
     readonly property var pyramidAllocatorRecord:
         root.pyramidAllocatorPlacement
-            ? Geometry.placedPanel(width,height,edgeInsets,edge,along,span,
+            ? Geometry.placedPanel(width,height,edgeInsets,edge,requestedAlong,span,
                 depth,1,padding,obstacles,largeSurface,
                 root.pyramidAllocatorPlacement)
             : null
@@ -189,12 +193,12 @@ Item {
                     ?? PyramidMotion.collapsedRecord(
                         root.pyramidFullRecord,null),
                 root.pyramidFullRecord,root.progress)
-            : Geometry.placedPanel(width,height,edgeInsets,edge,along,span,
+            : Geometry.placedPanel(width,height,edgeInsets,edge,requestedAlong,span,
                 depth,progress,padding,obstacles,largeSurface,
                 visualPlacement)
     readonly property var record: Geometry.joinCorner(
         rawPresentationRecord,joinedEdge,width,height,edgeInsets)
-    readonly property var targetRecord: Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,1,padding,obstacles,largeSurface,layoutPlacement)
+    readonly property var targetRecord: Geometry.placedPanel(width,height,edgeInsets,edge,requestedAlong,span,depth,1,padding,obstacles,largeSurface,layoutPlacement)
     readonly property Item contentItem: content
     readonly property bool ready: embeddedItem !== null || content.status === Loader.Ready
     readonly property Item contentParent: contentCanvas
@@ -210,7 +214,7 @@ Item {
         visualPlacement: root.visualPlacement
         surfaceSettled: root.presented && root.ready && Math.abs(root.progress-1) < .001
             && !root.pyramidClosing && !root.pyramidReopening
-            && Math.abs(root.visualPlacementAlong-(root.coordinatedPlacement?.along ?? root.along))<.1
+            && Math.abs(root.visualPlacementAlong-(root.coordinatedPlacement?.along ?? root.requestedAlong))<.1
             && Math.abs(root.visualPlacementSpan-(root.coordinatedPlacement?.span ?? root.span))<.1
             && Math.abs(root.visualPlacementDepth-(root.coordinatedPlacement?.depth ?? root.depth))<.1
             && Math.abs(root.visualPlacementInward-(root.coordinatedPlacement?.inward ?? 0))<.1

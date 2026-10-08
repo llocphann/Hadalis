@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Composed field/editor across four edges, two output sizes and both routes."""
+"""Composed field/editor across four edges, two surface sizes and both routes."""
 import json, tempfile
 from pathlib import Path
 from native_test_session import private_wayland, run_qs
@@ -21,10 +21,17 @@ ShellRoot {
  property bool shown:false
  property string route:"Dashboard"
  property string edge:"bottom"
+ property real surfaceWidth:1280
+ property real surfaceHeight:900
+ property string caseName:""
  Component.onCompleted:Quickshell.watchFiles=false
  FloatingWindow {
-  id:window;visible:true;width:1280;height:900;color:"#111820"
-  AbyssSurfaceController {id:liquid;outputWidth:window.width;outputHeight:window.height;presentationItem:window.contentItem;edgeInsets:({top:16,left:16,right:16,bottom:16})}
+  id:window;visible:true;implicitWidth:1280;implicitHeight:900;color:"#111820"
+  // A compositor may retain the native window size. Exercise the allocated
+  // field dimensions explicitly instead of treating a resize request as proof.
+  Item {
+  id:surface;width:root.surfaceWidth;height:root.surfaceHeight
+  AbyssSurfaceController {id:liquid;outputWidth:surface.width;outputHeight:surface.height;presentationItem:surface;edgeInsets:({top:16,left:16,right:16,bottom:16})}
   AbyssField {id:field;anchors.fill:parent;records:liquid.records;waveTexture:liquid.waves.texture;edgeInsets:liquid.edgeInsets}
   AbyssBodyHost {
    id:body;anchors.fill:parent;controller:liquid;identity:"dashboard";edge:root.edge
@@ -35,11 +42,23 @@ ShellRoot {
    along:((["top","bottom"].includes(edge)?width:height)-span)/2
    source:Qt.resolvedUrl("modules/abyss/content/Abyss"+root.route+"Content.qml")
   }
+  }
  }
  TestCase {
   id:test;when:false;optional:true
-  function check(v,m){if(!v)throw new Error(m)}
+  SignalSpy {id:clickSpy;signalName:"clicked"}
+  function check(v,m){if(!v)throw new Error(root.caseName+": "+m)}
   function find(item,p){if(p(item))return item;for(const c of item.children??[]){const x=find(c,p);if(x)return x}return null}
+  function clickAction(popup,name){
+   const button=findChild(popup,name)
+   check(button?.visible && button.enabled,"action unavailable: "+name)
+   // Hiding a card changes the Add row and can schedule a toolbar relayout.
+   // Map the native click only after the pending layout has finished.
+   check(waitForPolish(surface.Window.window,1500),"pending editor layout: "+name)
+   clickSpy.target=button;clickSpy.clear()
+   mouseClick(button)
+   tryCompare(clickSpy,"count",1,1000)
+  }
   function runChecks(){try{
    tryCompare(Config,"ready",true,4000)
    Config.setNestedValues({"performance.reduceAnimations":true,"dashboard.showHeader":false})
@@ -47,7 +66,9 @@ ShellRoot {
    tryCompare(field,"ready",true,4000)
    let count=0
    for(const size of [[1280,900],[720,650]])for(const route of ["Dashboard","Overview"])for(const edge of ["top","right","bottom","left"]){
-    root.shown=false;wait(100);window.width=size[0];window.height=size[1];root.route=route;root.edge=edge;root.shown=true
+    root.caseName=JSON.stringify([size,route,edge])
+    root.shown=false;wait(100);root.surfaceWidth=size[0];root.surfaceHeight=size[1];root.route=route;root.edge=edge;root.shown=true
+    check(surface.width===size[0] && surface.height===size[1],"field allocation did not resize")
     tryVerify(()=>body.contentItem.item!==null,5000)
     const canvas=find(body.contentItem.item,i=>typeof i.beginResize==="function")
     check(canvas!==null,"missing canvas "+route)
@@ -72,21 +93,21 @@ ShellRoot {
     note.text=draft;wait(40)
     const dimensions=[canvas.width,canvas.height],saved=JSON.stringify(Config.options.dashboard.canvas.widgets)
     canvas.beginEditMode();wait(120)
-    const popup=find(window.contentItem,i=>i.objectName==="abyssDashboardEditPopup" && i.canvasController===canvas)
+    const popup=find(surface,i=>i.objectName==="abyssDashboardEditPopup" && i.canvasController===canvas)
     check(popup?.visible,"editor did not join output field")
     check(canvas.width===dimensions[0] && canvas.height===dimensions[1],"Edit resized widgets "+route+edge)
-    const origin=canvas.mapToItem(window.contentItem,0,0)
+    const origin=canvas.mapToItem(surface,0,0)
     check(popup.y+popup.height<=origin.y+1,"controls overlap widget canvas "+route+edge)
-    check(popup.x>=0 && popup.y>=0 && popup.x+popup.width<=window.width && popup.y+popup.height<=window.height,"editor outside output")
+    check(popup.x>=0 && popup.y>=0 && popup.x+popup.width<=surface.width && popup.y+popup.height<=surface.height,"editor outside output")
     check(liquid.participants.dashboardEditor?.inputBounds.width>0,"editor lacks native field input")
     check(liquid.records.some(r=>r.content.width===popup.width && r.content.height===popup.height),"editor lacks shared field paint")
     canvas.setWidgetVisible("notes",false);wait(50)
     check(canvas.canUndo && canvas.visibleIds.length===0 && popup.visible,"empty dashboard lost controls")
-    mouseClick(findChild(popup,"dashboardEditUndo"));wait(50)
+    clickAction(popup,"dashboardEditUndo");wait(50)
     check(canvas.visibleIds.includes("notes"),"Undo did not restore module")
-    canvas.setWidgetVisible("notes",false);mouseClick(findChild(popup,"dashboardEditCancel"));wait(50)
+    canvas.setWidgetVisible("notes",false);clickAction(popup,"dashboardEditCancel");wait(50)
     check(!canvas.editMode && JSON.stringify(Config.options.dashboard.canvas.widgets)===saved,"Cancel changed saved layout")
-    canvas.beginEditMode();wait(80);canvas.setWidgetVisible("notes",false);mouseClick(findChild(popup,"dashboardEditDone"));wait(80)
+    canvas.beginEditMode();wait(80);canvas.setWidgetVisible("notes",false);clickAction(popup,"dashboardEditDone");wait(80)
     check(!canvas.editMode && !canvas.visibleIds.includes("notes"),"Done did not save layout")
     check(!popup.visible && liquid.participants.dashboardEditor?.inputBounds.width===0,"editor did not release input")
     count++

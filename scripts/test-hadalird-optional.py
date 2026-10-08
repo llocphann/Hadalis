@@ -1,0 +1,152 @@
+#!/usr/bin/env python3
+"""Optional host discovery, fail-closed actions and disposable QML lifecycle."""
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+from native_test_session import run_qs
+
+ROOT = Path(__file__).resolve().parents[1]
+spec = importlib.util.spec_from_file_location("discovery", ROOT / "scripts/hadalird-status.py")
+discovery = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(discovery)
+
+
+def package_at(path):
+    path.mkdir(parents=True)
+    for filename in discovery.ENTRYPOINTS.values():
+        target = path / filename
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("import QtQuick\nItem {implicitHeight:32}\n")
+    (path / "HadalisSession.qml").write_text('''
+import QtQuick
+Item {
+ id:root
+ required property var host
+ property int operations:0
+ readonly property var tlp:host.tlpEnabled ? charge : null
+ readonly property var tlpSettings:host.tlpEnabled ? settings : null
+ readonly property var tlpCapabilities:host.tlpEnabled ? caps : null
+ readonly property var thinkfan:host.thinkfanEnabled ? fan : null
+ readonly property var obsidianTheme:null
+ readonly property var zettelkasten:null
+ QtObject {id:charge; property bool available:true;property int currentLimit:42;function apply(){root.operations++} function refresh(){root.operations++}}
+ QtObject {id:settings;property bool available:true;property var categories:[{id:"battery-care"}];signal mutationFinished(string kind,bool success);function apply(){root.operations++;return true}}
+ QtObject {id:caps;property var values:({MODE:["auto"]})}
+ QtObject {id:fan;property bool available:true;function applyProfile(profile){root.operations++;return true}}
+ Component.onDestruction:console.info("HADALIRD_FIXTURE_DESTROYED")
+}
+''')
+    data = {"id":"hadalird","version":"fixture","hostApi":1,"sourceSha":"a"*40,
+            "session":discovery.ENTRYPOINTS["session"],
+            "settings":{"tlp":discovery.ENTRYPOINTS["tlpSettings"],"obsidian":discovery.ENTRYPOINTS["obsidianSettings"]},
+            "backends":{"managedTodo":discovery.ENTRYPOINTS["managedTodo"],"dailyTodo":discovery.ENTRYPOINTS["dailyTodo"]}}
+    data["files"] = {name:hashlib.sha256((path/name).read_bytes()).hexdigest() for name in discovery.ENTRYPOINTS.values()}
+    (path / "manifest.json").write_text(json.dumps(data))
+    return data
+
+
+with tempfile.TemporaryDirectory(prefix="hadalird-host-") as name:
+    private = Path(name)
+    data_home = private / "data"
+    assert not discovery.inspect(private, data_home)["available"]
+    package = data_home / "hadalird/releases/fixture"
+    manifest = package_at(package)
+    (data_home / "hadalird/current").symlink_to("releases/fixture")
+    assert discovery.inspect(private, data_home)["available"]
+    for field, value in (("hostApi",True),("hostApi",2),("id","foreign"),("sourceSha","bad"),("session","../../foreign.qml")):
+        (package / "manifest.json").write_text(json.dumps({**manifest,field:value}))
+        assert not discovery.inspect(private, data_home)["available"],field
+    (package / "manifest.json").write_text(json.dumps(manifest))
+    original = (package / "HadalisSession.qml").read_bytes()
+    (package / "HadalisSession.qml").write_text("modified")
+    assert not discovery.inspect(private, data_home)["available"]
+    (package / "HadalisSession.qml").write_bytes(original)
+    assert discovery.inspect(private, data_home)["available"]
+    for present in (False, True):
+        shell = private / ("present" if present else "absent")
+        shell.mkdir()
+        for entry in ("services","modules","GlobalStates.qml","qmldir","scripts","defaults","translations","assets"):
+            (shell / entry).symlink_to(ROOT / entry)
+        config = shell / "config/illogical-impulse"
+        config.mkdir(parents=True)
+        options = json.loads((ROOT / "defaults/config.json").read_text())
+        options["integrations"]["hadalird"] = {key:not present for key in ("tlp","thinkfan","obsidian")}
+        options["battery"]["chargeLimit"]["enable"] = False
+        (config / "config.json").write_text(json.dumps(options))
+        (shell / "shell.qml").write_text('''
+import QtQuick
+import QtTest
+import Quickshell
+import qs.services
+import qs.modules.common
+import qs.modules.settings
+ShellRoot {
+ id:root
+ property var charge:TlpService
+ property var fan:ThinkFanService
+ property var settings:TlpSettingsService
+ property var theme:ObsidianTheme
+ property var notes:Zettelkasten
+ ObsidianTodoBackend {id:managed;active:true;vaultPath:"/not-owner-vault";notePath:"Todo.md"}
+ DailyNoteTodoBackend {id:daily;active:true;vaultPath:"/not-owner-vault"}
+ TlpPowerSettings {width:400;visible:false}
+ ObsidianThemeSettings {width:400;visible:false}
+ TestCase {
+  id:test;when:false;optional:true
+  function check(value,message){if(!value)throw new Error(message)}
+  function runChecks(){try{
+   tryCompare(Config,"ready",true,4000)
+   const present=Quickshell.env("HADALIRD_PRESENT")==="1"
+   if(!present){
+    wait(500)
+    check(!Hadalird.available && !Hadalird.enabled && Hadalird.session===null,"missing package started")
+    check(Config.options.integrations.hadalird.tlp,"missing package erased the saved selection")
+    check(!TlpService.available && !ThinkFanService.available && !managed.ready && !daily.ready,"missing worker reported ready")
+    check(!TlpSettingsService.apply() && !ThinkFanService.applyProfile("managed") && !managed.addTask("no write") && !Zettelkasten.capture("no write","no write"),"missing action reported success")
+    check(TlpSettingsService.lastError.length>0 && managed.errorMessage.length>0,"missing action gave no reason")
+   }else{
+    tryCompare(Hadalird,"available",true,4000)
+    check(!Hadalird.enabled && Hadalird.session===null,"installed package enabled itself")
+    Config.setNestedValue("integrations.hadalird.tlp",true)
+    tryVerify(()=>Hadalird.session!==null,2000)
+    const owned=Hadalird.session
+    tryCompare(TlpService,"currentLimit",42,1000)
+    check(TlpSettingsService.categories[0].id==="battery-care" && TlpRuntimeCapabilities.values.MODE[0]==="auto","host lost reactive data")
+    TlpService.apply();check(owned.operations===1,"charge action did not reach its sole owner")
+    check(TlpSettingsService.apply() && owned.operations===2,"settings action did not reach its sole owner")
+    check(!ThinkFanService.available && !ThinkFanService.applyProfile("managed") && owned.operations===2,"disabled fan reached a worker")
+    Config.setNestedValue("integrations.hadalird.thinkfan",true)
+    tryCompare(ThinkFanService,"available",true,1000)
+    check(Hadalird.session===owned,"enabling a peer rebuilt the session")
+    check(ThinkFanService.applyProfile("managed") && owned.operations===3,"fan action lost its owner")
+    Config.setNestedValue("integrations.hadalird.tlp",false)
+    tryCompare(TlpService,"available",false,1000)
+    TlpService.apply();check(owned.operations===3,"disabled charge leaked an action")
+    Config.setNestedValue("integrations.hadalird.thinkfan",false)
+    tryVerify(()=>Hadalird.session===null,2000)
+    check(!Hadalird.enabled && !ThinkFanService.available,"disabled package retained a worker")
+   }
+   console.info("HADALIRD_HOST_PASS",present ? "present-disabled-selected-unloaded" : "absent-fail-closed")
+  }catch(error){console.error("HADALIRD_HOST_FAIL",error.message,error.stack)}Qt.quit()}
+ }
+ Timer {interval:100;running:true;onTriggered:test.runChecks()}
+}
+''')
+        runtime = shell / "runtime"
+        runtime.mkdir(mode=0o700)
+        env = dict(os.environ,QT_QPA_PLATFORM="offscreen",XDG_RUNTIME_DIR=str(runtime),
+                   XDG_CONFIG_HOME=str(shell/"config"),XDG_STATE_HOME=str(shell/"state"),XDG_CACHE_HOME=str(shell/"cache"),
+                   XDG_DATA_HOME=str(data_home if present else shell/"data"),HADALIRD_PRESENT="1" if present else "0")
+        env.pop("NIRI_SOCKET",None)
+        env.pop("HYPRLAND_INSTANCE_SIGNATURE",None)
+        result = run_qs(shell,env,timeout=20)
+        if result.returncode or "HADALIRD_HOST_PASS" not in result.stdout or any(token in result.stdout for token in ("HADALIRD_HOST_FAIL","TypeError:","ReferenceError:","Binding loop","Unable to assign","Failed to load configuration")):
+            print(result.stdout)
+            raise SystemExit(1)
+        if present:
+            assert "HADALIRD_FIXTURE_DESTROYED" in result.stdout,"session retained engine-owned singleton work"
+print("HADALIRD_HOST_PASS bounded discovery/identity, absent fail-closed, installed default-off, sole-owner actions, reactive peers and unload")

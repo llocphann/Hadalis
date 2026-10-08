@@ -1,59 +1,43 @@
+pragma ComponentBehavior: Bound
 pragma Singleton
+
 import QtQuick
 import Quickshell
-import Quickshell.Io
-import qs.modules.common
-import qs.services
+
 Singleton {
- id:root
- readonly property var options:Config.options?.integrations?.obsidian
- readonly property bool enabled:Config.ready && (options?.autoTheme ?? false)
- readonly property string vaultPath:Todo.sharedVaultPath
- readonly property string configPath:options?.configPath ?? ""
- readonly property string applicationConfigPath:options?.applicationConfigPath ?? ""
- readonly property var palette:({background:hex(Appearance.colors.colLayer0Base),foreground:hex(Appearance.m3colors.m3onSurface),accent:hex(Appearance.colors.colPrimary)})
- readonly property string signature:JSON.stringify({vault:vaultPath,config:configPath,application:applicationConfigPath,palette:palette})
- // A direct alias preserves Process notifications without evaluating a JS
- // binding after the worker context has been torn down.
- readonly property alias busy:worker.running
- property var info:({})
- property string error:""
- property var queued:null
- property var current:null
- function hex(color):string {return "#"+[color.r,color.g,color.b].map(value=>Math.round(Math.max(0,Math.min(1,value))*255).toString(16).padStart(2,"0")).join("")}
- function request(action):void {
-  queued={action:action,vaultPath:vaultPath,configPath:configPath,applicationConfigPath:applicationConfigPath,palette:palette}
-  runNext()
- }
- function runNext():void {
-  if(worker.running || !queued)return
-  current=queued;queued=null;error="";worker.response=""
-  worker.command=["python3",Quickshell.shellPath("scripts/integrations/obsidian_theme.py")]
-  worker.running=true;deadline.restart()
- }
- function inspect():void {request("inspect")}
- function apply():void {request("apply")}
- function restore():void {Config.setNestedValue("integrations.obsidian.autoTheme",false);request("disable")}
- onEnabledChanged:if(enabled)debounce.restart();else {debounce.stop();if(queued?.action==="apply")queued=null}
- onSignatureChanged:if(enabled)debounce.restart()
- Component.onCompleted:if(enabled)debounce.restart()
- Timer {id:debounce;interval:350;repeat:false;onTriggered:if(root.enabled)root.apply()}
- Timer {id:deadline;interval:10000;repeat:false;onTriggered:{root.error="Obsidian did not respond in time";worker.running=false}}
- FileView {path:root.info.configPath ? root.info.configPath+"/appearance.json" : "";watchChanges:true;onFileChanged:if(root.enabled)debounce.restart()}
- Process {
-  id:worker
-  property string response:""
-  stdinEnabled:true
-  onStarted:{write(JSON.stringify(root.current));stdinEnabled=false}
-  stdout:SplitParser {onRead:data=>{if(worker.response.length<32768)worker.response+=data}}
-  onExited:(code,status)=>{
-   deadline.stop();stdinEnabled=true
-   try {
-    const result=JSON.parse(response)
-    if(result.ok){root.info=result;root.error=""}
-    else root.error=result.error || "Could not update Obsidian"
-   }catch(e){if(!root.error)root.error="Could not read Obsidian configuration"}
-   Qt.callLater(root.runNext)
-  }
- }
+    id: root
+    readonly property var implementation: Hadalird.session?.obsidianTheme ?? (null)
+    property string missingOperationError: ""
+    readonly property var options: root.implementation?.options ?? (null)
+    readonly property bool enabled: root.implementation?.enabled ?? (false)
+    readonly property string vaultPath: root.implementation?.vaultPath ?? ("")
+    readonly property string configPath: root.implementation?.configPath ?? ("")
+    readonly property string applicationConfigPath: root.implementation?.applicationConfigPath ?? ("")
+    readonly property var palette: root.implementation?.palette ?? (({}))
+    readonly property string signature: root.implementation?.signature ?? ("")
+    readonly property bool busy: root.implementation?.busy ?? (false)
+    readonly property var info: root.implementation?.info ?? (({}))
+    readonly property string error: root.implementation?.error ?? (root.missingOperationError)
+    readonly property var queued: root.implementation?.queued ?? (null)
+    readonly property var current: root.implementation?.current ?? (null)
+    function request(action): void {
+        if (root.implementation) return root.implementation.request(action)
+        root.missingOperationError = "Install and enable the Hadalird integration to use this action"
+    }
+    function runNext(): void {
+        if (root.implementation) return root.implementation.runNext()
+        root.missingOperationError = "Install and enable the Hadalird integration to use this action"
+    }
+    function inspect(): void {
+        if (root.implementation) return root.implementation.inspect()
+        root.missingOperationError = "Install and enable the Hadalird integration to use this action"
+    }
+    function apply(): void {
+        if (root.implementation) return root.implementation.apply()
+        root.missingOperationError = "Install and enable the Hadalird integration to use this action"
+    }
+    function restore(): void {
+        if (root.implementation) return root.implementation.restore()
+        root.missingOperationError = "Install and enable the Hadalird integration to use this action"
+    }
 }

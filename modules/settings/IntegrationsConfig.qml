@@ -18,6 +18,17 @@ ContentPage {
   activeSection=label.includes("calendar") ? "calendar" : label.includes("music") || label.includes("apps") ? "apps" : "obsidian";
   return true;
  }
+ SettingsCardSection {
+  title:"Optional integrations";icon:"extension";expanded:true
+  StyledText {
+   Layout.fillWidth:true;wrapMode:Text.WordWrap;color:Appearance.colors.colSubtext
+   text:Hadalird.available ? "Hadalird is installed. Choose the integrations to use." : "Install Hadalird to use TLP, Thinkfan and Obsidian."
+  }
+  SettingsSwitch {text:"TLP";autoToggle:false;checked:Config.options?.integrations?.hadalird?.tlp ?? false;onToggledByUser:value=>Config.setNestedValue("integrations.hadalird.tlp",value)}
+  SettingsSwitch {text:"Thinkfan";autoToggle:false;checked:Config.options?.integrations?.hadalird?.thinkfan ?? false;onToggledByUser:value=>Config.setNestedValue("integrations.hadalird.thinkfan",value)}
+  SettingsSwitch {text:"Obsidian";autoToggle:false;checked:Config.options?.integrations?.hadalird?.obsidian ?? false;onToggledByUser:value=>Config.setNestedValue("integrations.hadalird.obsidian",value)}
+  DialogButton {buttonText:"Refresh installed integrations";onClicked:Hadalird.refresh()}
+ }
  SettingsTaskNavigator {
   title:Translation.tr("Third-party integrations");icon:"extension";currentValue:root.activeSection
   description:Translation.tr("Connect your applications and data to Hadalis.")

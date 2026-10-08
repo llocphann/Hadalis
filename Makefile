@@ -219,7 +219,7 @@ install-thinkfan-helper:
 		assets/polkit/org.inir.thinkfan.policy > "$(DESTDIR)$(THINKFAN_POLICY)"
 	@chmod 644 "$(DESTDIR)$(THINKFAN_POLICY)"
 
-install: build install-bin install-shell install-native install-systemd install-icon install-desktop install-docs install-license install-battery-helper install-thinkfan-helper
+install: build install-bin install-shell install-native install-systemd install-icon install-desktop install-docs install-license
 
 uninstall-bin:
 	@rm -f "$(DESTDIR)$(BINDIR)/inir"
@@ -256,4 +256,4 @@ uninstall-battery-helper:
 uninstall-thinkfan-helper:
 	@rm -f "$(DESTDIR)$(THINKFAN_HELPER)" "$(DESTDIR)$(THINKFAN_POLICY)"
 
-uninstall: uninstall-systemd uninstall-desktop uninstall-icon uninstall-docs uninstall-license uninstall-shell uninstall-bin uninstall-battery-helper uninstall-thinkfan-helper
+uninstall: uninstall-systemd uninstall-desktop uninstall-icon uninstall-docs uninstall-license uninstall-shell uninstall-bin

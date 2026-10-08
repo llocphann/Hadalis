@@ -82,3 +82,5 @@ singleton Zettelkasten 1.0 Zettelkasten.qml
 singleton YtMusic 1.0 YtMusic.qml
 singleton Hadanion 1.0 Hadanion.qml
 singleton ObsidianTheme 1.0 ObsidianTheme.qml
+
+singleton Hadalird 1.0 Hadalird.qml

@@ -1,155 +1,36 @@
-pragma Singleton
 pragma ComponentBehavior: Bound
+pragma Singleton
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
-import qs.modules.common
 
-/**
- * Filesystem-canonical Zettelkasten quick-note capture.
- *
- * Uses Todo.sharedVaultPath, the same resolved vault as the Todo backends.
- * Legacy Quick Notes vault overrides are handled centrally by Todo.
- * No Obsidian process/plugin is needed.
- */
 Singleton {
     id: root
-
-    readonly property string configuredVaultPath: Todo.sharedVaultPath
-    readonly property string folder:
-        String(Config.options?.notes?.zettelkasten?.folder
-            ?? "00_Capture/03_Zettelkasten")
-    readonly property string defaultType:
-        String(Config.options?.notes?.zettelkasten?.defaultType ?? "Fleeting")
-    readonly property bool ready:
-        root.configuredVaultPath.length > 0 && root.folder.trim().length > 0
-
-    property bool busy: false
-    property string errorCode: ""
-    property string errorMessage: ""
-    property string lastCreatedPath: ""
-    property string lastCreatedFullPath: ""
-
-    readonly property string helperPath:
-        Quickshell.shellPath("scripts/notes/zettelkasten.py")
-
+    readonly property var implementation: Hadalird.session?.zettelkasten ?? (null)
+    property string missingOperationError: ""
+    readonly property string configuredVaultPath: root.implementation?.configuredVaultPath ?? ("")
+    readonly property string folder: root.implementation?.folder ?? ("")
+    readonly property string defaultType: root.implementation?.defaultType ?? ("")
+    readonly property bool ready: root.implementation?.ready ?? (false)
+    readonly property bool busy: root.implementation?.busy ?? (false)
+    readonly property string errorCode: root.implementation?.errorCode ?? (root.missingOperationError ? "integration-unavailable" : "")
+    readonly property string errorMessage: root.implementation?.errorMessage ?? (root.missingOperationError)
+    readonly property string lastCreatedPath: root.implementation?.lastCreatedPath ?? ("")
+    readonly property string lastCreatedFullPath: root.implementation?.lastCreatedFullPath ?? ("")
+    readonly property string helperPath: root.implementation?.helperPath ?? ("")
     signal captured(var payload)
-
-    function _setError(code: string, message: string): void {
-        root.errorCode = code
-        root.errorMessage = message
-    }
-
-    function _clearError(): void {
-        root.errorCode = ""
-        root.errorMessage = ""
-    }
-
     function capture(title, body): bool {
-        const content = String(body ?? "")
-        if (!root.ready) {
-            root._setError(
-                "not_configured",
-                "Configure an Obsidian vault before saving a Zettelkasten quick note"
-            )
-            return false
-        }
-        if (root.busy || captureProc.running) {
-            root._setError("busy", "Another Zettelkasten note is being saved")
-            return false
-        }
-        if (content.trim().length === 0 && String(title ?? "").trim().length === 0) {
-            root._setError("empty_note", "Quick note is empty")
-            return false
-        }
-
-        root.busy = true
-        root._clearError()
-        captureProc.command = [
-            "/usr/bin/python3", root.helperPath,
-            "--vault", root.configuredVaultPath,
-            "--folder", root.folder,
-            "--title", String(title ?? ""),
-            "--body", content,
-            "--type", root.defaultType
-        ]
-        captureProc.running = true
-        return true
+        if (root.implementation) return root.implementation.capture(title, body)
+        root.missingOperationError = "Install and enable the Hadalird integration to use this action"
+        return false
     }
-
     function openLast(): bool {
-        if (root.lastCreatedFullPath.length === 0)
-            return false
-        Quickshell.execDetached(["xdg-open", root.lastCreatedFullPath])
-        return true
+        if (root.implementation) return root.implementation.openLast()
+        root.missingOperationError = "Install and enable the Hadalird integration to use this action"
+        return false
     }
-
-    Timer {
-        id: captureTimeout
-        interval: 8000
-        repeat: false
-        onTriggered: {
-            if (!captureProc.running)
-                return
-            captureProc.timedOut = true
-            captureProc.running = false
-        }
-    }
-
-    Process {
-        id: captureProc
-        running: false
-        property bool startObserved: false
-        property bool timedOut: false
-        stdout: StdioCollector { id: captureCollector }
-
-        onRunningChanged: {
-            if (captureProc.running) {
-                captureProc.startObserved = false
-                return
-            }
-            if (captureProc.startObserved)
-                return
-            captureTimeout.stop()
-            root.busy = false
-            root._setError("capture_start_failed", "Failed to start Zettelkasten helper")
-        }
-
-        onStarted: {
-            captureProc.startObserved = true
-            captureProc.timedOut = false
-            captureTimeout.restart()
-        }
-
-        onExited: (exitCode, exitStatus) => {
-            captureTimeout.stop()
-            root.busy = false
-            if (captureProc.timedOut) {
-                root._setError("capture_timeout", "Zettelkasten quick-note capture timed out")
-                return
-            }
-            const output = String(captureCollector.text ?? "").trim()
-            if (output.length === 0) {
-                root._setError("capture_failed", "Zettelkasten helper returned no result")
-                return
-            }
-            try {
-                const payload = JSON.parse(output)
-                if (payload?.ok !== true) {
-                    root._setError(
-                        String(payload?.error?.code ?? "capture_failed"),
-                        String(payload?.error?.message ?? "Failed to save Zettelkasten quick note")
-                    )
-                    return
-                }
-                root.lastCreatedPath = String(payload.notePath ?? "")
-                root.lastCreatedFullPath = String(payload.noteFullPath ?? "")
-                root._clearError()
-                root.captured(payload)
-            } catch (error) {
-                root._setError("capture_invalid_output", "Zettelkasten helper returned invalid JSON")
-            }
-        }
+    Connections {
+        target: root.implementation
+        function onCaptured(payload): void {root.captured(payload)}
     }
 }

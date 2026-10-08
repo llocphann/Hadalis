@@ -1,5 +1,6 @@
 {
     "ai": {
+        "localModelFolder": "",
         "extraModels": [
             {
                 "name": "Gemini 2.5 Flash",
@@ -2220,6 +2221,11 @@
         }
     },
     "integrations": {
+        "hadalird": {
+            "tlp": false,
+            "thinkfan": false,
+            "obsidian": false
+        },
         "obsidian": {
             "autoTheme": false,
             "configPath": "",

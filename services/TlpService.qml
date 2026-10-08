@@ -3,372 +3,43 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
-import qs.modules.common
 
 Singleton {
     id: root
-
-    property bool available: false
-    property bool supported: false
-    property bool adjustable: false
-    property bool stateKnown: false
-    property bool active: false
-    property bool managed: false
-    property int currentLimit: -1
-    property int currentStart: -1
-    property string backend: ""
-    property string tlpVersion: ""
-    property string statusReason: ""
-    property string limitKind: "none"
-    property int minimumLimit: 1
-    property int maximumLimit: 100
-    property int limitStepSize: 1
-    property var allowedLimits: []
-    property int fixedLimit: -1
-    property string configBattery: ""
-    property string managedBattery: ""
-    property int managedLimit: -1
-    property bool busy: false
-
-    // Config.revision makes nested JsonAdapter writes observable here.
-    readonly property int requestedLimit: {
-        void Config.revision
-        return Config.options?.battery?.chargeLimit?.threshold ?? 80
-    }
-    readonly property int effectiveRequestedLimit: root._normalizeRequestedLimit(root.requestedLimit)
-    readonly property bool enabled: {
-        void Config.revision
-        return Config.options?.battery?.chargeLimit?.enable ?? false
-    }
-    readonly property bool discrete: root.limitKind === "discrete"
-    readonly property bool continuous: root.limitKind === "continuous"
-
-    property bool _statusSeen: false
-    property bool _reconcileAfterDetect: false
-    property bool _redetectAfterCurrent: false
-
-    function _log(...args): void {
-        if (Quickshell.env("QS_DEBUG") === "1") console.log(...args)
-    }
-
-    function _clearStatus(): void {
-        root.available = false
-        root.supported = false
-        root.adjustable = false
-        root.stateKnown = false
-        root.active = false
-        root.managed = false
-        root.currentLimit = -1
-        root.currentStart = -1
-        root.backend = ""
-        root.tlpVersion = ""
-        root.statusReason = ""
-        root.limitKind = "none"
-        root.minimumLimit = 1
-        root.maximumLimit = 100
-        root.limitStepSize = 1
-        root.allowedLimits = []
-        root.fixedLimit = -1
-        root.configBattery = ""
-        root.managedBattery = ""
-        root.managedLimit = -1
-    }
-
-    function _detect(): void {
-        if (!detector.running)
-            detector.running = true
-    }
-
+    readonly property var implementation: Hadalird.session?.tlp ?? (null)
+    property string missingOperationError: ""
+    readonly property bool available: root.implementation?.available ?? (false)
+    readonly property bool supported: root.implementation?.supported ?? (false)
+    readonly property bool adjustable: root.implementation?.adjustable ?? (false)
+    readonly property bool stateKnown: root.implementation?.stateKnown ?? (false)
+    readonly property bool active: root.implementation?.active ?? (false)
+    readonly property bool managed: root.implementation?.managed ?? (false)
+    readonly property int currentLimit: root.implementation?.currentLimit ?? (-1)
+    readonly property int currentStart: root.implementation?.currentStart ?? (-1)
+    readonly property string backend: root.implementation?.backend ?? ("")
+    readonly property string tlpVersion: root.implementation?.tlpVersion ?? ("")
+    readonly property string statusReason: root.implementation?.statusReason ?? (Hadalird.available ? "integration-disabled" : "integration-not-installed")
+    readonly property string limitKind: root.implementation?.limitKind ?? ("none")
+    readonly property int minimumLimit: root.implementation?.minimumLimit ?? (1)
+    readonly property int maximumLimit: root.implementation?.maximumLimit ?? (100)
+    readonly property int limitStepSize: root.implementation?.limitStepSize ?? (1)
+    readonly property var allowedLimits: root.implementation?.allowedLimits ?? ([])
+    readonly property int fixedLimit: root.implementation?.fixedLimit ?? (-1)
+    readonly property string configBattery: root.implementation?.configBattery ?? ("")
+    readonly property string managedBattery: root.implementation?.managedBattery ?? ("")
+    readonly property int managedLimit: root.implementation?.managedLimit ?? (-1)
+    readonly property bool busy: root.implementation?.busy ?? (false)
+    readonly property int requestedLimit: root.implementation?.requestedLimit ?? (80)
+    readonly property int effectiveRequestedLimit: root.implementation?.effectiveRequestedLimit ?? (80)
+    readonly property bool enabled: root.implementation?.enabled ?? (false)
+    readonly property bool discrete: root.implementation?.discrete ?? (false)
+    readonly property bool continuous: root.implementation?.continuous ?? (false)
     function refresh(): void {
-        if (detector.running) {
-            root._redetectAfterCurrent = true
-            return
-        }
-        root._detect()
+        if (root.implementation) return root.implementation.refresh()
+        root.missingOperationError = "Install and enable the Hadalird integration to use this action"
     }
-
-    function _numberOr(value, fallback: int): int {
-        return typeof value === "number" && isFinite(value) ? Math.round(value) : fallback
-    }
-
-    function _normalizeRequestedLimit(value: int): int {
-        const requested = Number(value)
-
-        if ((root.limitKind === "fixed" || root.limitKind === "mode") && root.fixedLimit >= 0)
-            return root.fixedLimit
-
-        if (root.limitKind === "continuous") {
-            const minimum = root.minimumLimit >= 0 ? root.minimumLimit : 1
-            const maximum = root.maximumLimit >= minimum ? root.maximumLimit : 100
-            const step = Math.max(1, root.limitStepSize)
-            const clamped = Math.max(minimum, Math.min(maximum, requested))
-            return Math.max(minimum, Math.min(maximum,
-                minimum + Math.round((clamped - minimum) / step) * step))
-        }
-
-        if (root.limitKind === "discrete" && root.allowedLimits.length > 0) {
-            let nearest = Number(root.allowedLimits[0])
-            let distance = Math.abs(nearest - requested)
-            for (let index = 1; index < root.allowedLimits.length; ++index) {
-                const candidate = Number(root.allowedLimits[index])
-                const candidateDistance = Math.abs(candidate - requested)
-                if (candidateDistance < distance) {
-                    nearest = candidate
-                    distance = candidateDistance
-                }
-            }
-            return nearest
-        }
-
-        return isFinite(requested) ? Math.round(requested) : 80
-    }
-
-    function _parseStatus(line: string): void {
-        let data
-        try {
-            data = JSON.parse(String(line ?? "").trim())
-        } catch (error) {
-            root._clearStatus()
-            return
-        }
-
-        if (data?.schema !== 1) {
-            root._clearStatus()
-            return
-        }
-
-        root.available = data.available === true
-        root.supported = data.supported === true
-        root.adjustable = data.adjustable === true
-        root.stateKnown = data.stateKnown === true
-        root.active = data.active === true
-        root.currentLimit = root._numberOr(data.currentLimit, -1)
-        root.currentStart = root._numberOr(data.currentStart, -1)
-        root.backend = String(data.plugin ?? "")
-        root.tlpVersion = String(data.tlpVersion ?? "")
-        root.statusReason = String(data.reason ?? "")
-        root.limitKind = String(data.limitKind ?? "none")
-        root.minimumLimit = root._numberOr(data.minimumLimit, 1)
-        root.maximumLimit = root._numberOr(data.maximumLimit, 100)
-        root.limitStepSize = Math.max(1, root._numberOr(data.stepSize, 1))
-        root.allowedLimits = Array.isArray(data.allowedLimits)
-            ? data.allowedLimits.filter(value => typeof value === "number" && isFinite(value)).map(value => Math.round(value))
-            : []
-        root.fixedLimit = root._numberOr(data.fixedLimit, -1)
-        root.configBattery = String(data.configBattery ?? "")
-        root.managedBattery = String(data.managedBattery ?? "")
-        root.managedLimit = root._numberOr(data.managedLimit, -1)
-        root.managed = data.managed === true
-        root._statusSeen = true
-    }
-
-    function _matchesRequestedPolicy(): bool {
-        // Disabled requires only iNiR ownership to be absent; user TLP limits may remain.
-        if (!root.enabled)
-            return !root.managed
-
-        if (!root.supported || !root.managed || !root.stateKnown)
-            return false
-
-        if (root.managedBattery !== root.configBattery)
-            return false
-        if (root.managedLimit !== root.effectiveRequestedLimit)
-            return false
-
-        return root.currentLimit === root.effectiveRequestedLimit
-    }
-
     function apply(): void {
-        if (!Config.ready)
-            return
-
-        // Coalesce config changes while status or apply is in flight.
-        if (root.busy || detector.running) {
-            root._reconcileAfterDetect = true
-            return
-        }
-
-        if (root._matchesRequestedPolicy()) {
-            root._reconcileAfterDetect = false
-            root._log("[TLP] Battery charge policy already matches iNiR ownership/state")
-            return
-        }
-
-        // Enabling needs hardware support; disabling only needs owned state to remove.
-        if (root.enabled && !root.supported) {
-            root._reconcileAfterDetect = false
-            return
-        }
-        if (!root.enabled && !root.managed) {
-            root._reconcileAfterDetect = false
-            return
-        }
-
-        root._reconcileAfterDetect = false
-        root.busy = true
-        applyProcess.command = root.enabled
-            ? ["/usr/bin/pkexec", "/usr/libexec/inir-battery-charge-limit", "--set", String(root.effectiveRequestedLimit)]
-            : ["/usr/bin/pkexec", "/usr/libexec/inir-battery-charge-limit", "--disable"]
-        applyProcess.running = true
-    }
-
-    Component.onCompleted: {
-        root._reconcileAfterDetect = Config.ready
-        root._detect()
-    }
-
-    Connections {
-        target: Config
-
-        function onConfigChanged(): void {
-            // Let revision-dependent bindings settle before comparing state.
-            Qt.callLater(() => root.apply())
-        }
-
-        function onReadyChanged(): void {
-            if (!Config.ready)
-                return
-            root._reconcileAfterDetect = true
-            root._detect()
-        }
-    }
-
-    Process {
-        id: detector
-        property bool timedOut: false
-        property bool startObserved: false
-        command: ["/usr/libexec/inir-battery-charge-limit", "--status"]
-
-        stdout: SplitParser {
-            onRead: data => root._parseStatus(data)
-        }
-
-        onRunningChanged: {
-            if (detector.running) {
-                detector.startObserved = false
-                return
-            }
-            if (detector.startObserved)
-                return
-
-            detectorTimeout.stop()
-            root._clearStatus()
-            console.warn("[TLP] Failed to start battery charge policy helper")
-            if (root._redetectAfterCurrent) {
-                root._redetectAfterCurrent = false
-                Qt.callLater(() => root._detect())
-            } else {
-                root._reconcileAfterDetect = false
-            }
-        }
-
-        onStarted: {
-            detector.startObserved = true
-            root._statusSeen = false
-            detector.timedOut = false
-            detectorTimeout.restart()
-        }
-
-        onExited: (exitCode, exitStatus) => {
-            detectorTimeout.stop()
-            if (detector.timedOut)
-                console.warn("[TLP] Timed out while reading battery charge policy status")
-            if (exitCode !== 0 || !root._statusSeen) {
-                root._clearStatus()
-                if (root._redetectAfterCurrent) {
-                    root._redetectAfterCurrent = false
-                    Qt.callLater(() => root._detect())
-                } else {
-                    root._reconcileAfterDetect = false
-                }
-                return
-            }
-
-            if (root._redetectAfterCurrent) {
-                root._redetectAfterCurrent = false
-                Qt.callLater(() => root._detect())
-                return
-            }
-
-            const reconcile = root._reconcileAfterDetect
-            root._reconcileAfterDetect = false
-            if (reconcile)
-                Qt.callLater(() => root.apply())
-        }
-    }
-
-    Timer {
-        id: detectorTimeout
-        interval: 5000
-        repeat: false
-        onTriggered: {
-            if (!detector.running)
-                return
-            detector.timedOut = true
-            detector.running = false
-        }
-    }
-
-    Process {
-        id: applyProcess
-        property bool timedOut: false
-        property bool startObserved: false
-
-        onRunningChanged: {
-            if (applyProcess.running) {
-                applyProcess.startObserved = false
-                return
-            }
-            if (applyProcess.startObserved || !root.busy)
-                return
-
-            applyTimeout.stop()
-            root.busy = false
-            console.warn("[TLP] Failed to start privileged battery charge policy helper")
-            root._detect()
-        }
-
-        onStarted: {
-            applyProcess.startObserved = true
-            applyProcess.timedOut = false
-            applyTimeout.restart()
-        }
-
-        onExited: (exitCode, exitStatus) => {
-            applyTimeout.stop()
-            root.busy = false
-            if (applyProcess.timedOut)
-                console.warn("[TLP] Timed out while applying battery charge policy")
-            else if (exitCode !== 0)
-                console.warn("[TLP] Failed to apply battery charge policy (exit code " + exitCode + ")")
-            else
-                root._log("[TLP] Battery charge policy applied")
-
-            // Re-read status after mutation; preserve any queued reconciliation.
-            root._detect()
-        }
-    }
-
-    Timer {
-        id: applyTimeout
-        interval: 60000
-        repeat: false
-        onTriggered: {
-            if (!applyProcess.running)
-                return
-            applyProcess.timedOut = true
-            applyProcess.running = false
-        }
-    }
-
-    Timer {
-        interval: 120000
-        repeat: true
-        // Startup detection remains unconditional. Once settled, keep periodic
-        // status verification only while Hadalis requests or still owns a
-        // charge-limit policy, or while an apply operation is in flight.
-        running: root.enabled || root.managed || root.busy
-        onTriggered: root._detect()
+        if (root.implementation) return root.implementation.apply()
+        root.missingOperationError = "Install and enable the Hadalird integration to use this action"
     }
 }

@@ -311,62 +311,14 @@ uninstall_reload_user_systemd() {
     fi
 }
 
+# Hadalird owns these payloads. Core removal preserves helpers, hardware
+# profiles, application data and already-running system services.
 uninstall_remove_battery_charge_limit() {
-    local helper="/usr/libexec/inir-battery-charge-limit"
-    local policy="/usr/share/polkit-1/actions/org.inir.battery-charge-limit.policy"
-    local schema="/usr/share/inir/tlp-settings-schema.json"
-    local battery_dropin="/etc/tlp.d/99-inir-battery-charge-limit.conf"
-    local settings_dropin="/etc/tlp.d/99-inir-tlp-settings.conf"
-
-    if [[ ! -e "$helper" && ! -e "$policy" && ! -e "$schema" \
-        && ! -e "$battery_dropin" && ! -e "$settings_dropin" ]]; then
-        return 0
-    fi
-
-    tui_info "Removing iNiR TLP settings integration..."
-
-    # The helper removes only iNiR-owned drop-ins. User and distribution TLP
-    # files remain untouched. Cleanup still proceeds if TLP disappeared.
-    if [[ -x "$helper" ]]; then
-        if ! pkg_sudo "$helper" --config-reset; then
-            tui_warn "Could not fully re-apply TLP; removing the iNiR-owned settings drop-in directly."
-            pkg_sudo rm -f "$settings_dropin" || return 1
-        fi
-        if ! pkg_sudo "$helper" --disable; then
-            tui_warn "Could not fully re-apply TLP; removing the iNiR-owned drop-in directly."
-            pkg_sudo rm -f "$battery_dropin" || return 1
-        fi
-    else
-        pkg_sudo rm -f "$settings_dropin" "$battery_dropin" || return 1
-    fi
-
-    pkg_sudo rm -f "$helper" "$policy" "$schema" || return 1
-    tui_success "iNiR TLP settings integration removed (TLP preserved)"
+    tui_info "Preserving optional Hadalird TLP integration"
 }
 
 uninstall_remove_thinkfan_bridge() {
-    local helper="/usr/libexec/inir-thinkfan"
-    local policy="/usr/share/polkit-1/actions/org.inir.thinkfan.policy"
-    local update_strategy=""
-
-    if declare -F get_installed_update_strategy >/dev/null 2>&1; then
-        update_strategy=$(get_installed_update_strategy 2>/dev/null || true)
-    fi
-
-    # Package-style installs own these files through their package manager.
-    # Source uninstall must never delete package-owned system payloads.
-    if [[ "$update_strategy" == "package-manager" ]]; then
-        tui_info "Preserving package-managed ThinkFan bridge"
-        return 0
-    fi
-
-    if [[ ! -e "$helper" && ! -e "$policy" ]]; then
-        return 0
-    fi
-
-    tui_info "Removing Hadalis ThinkFan bridge..."
-    pkg_sudo rm -f "$helper" "$policy" || return 1
-    tui_success "Hadalis ThinkFan bridge removed (upstream ThinkFan preserved)"
+    tui_info "Preserving optional Hadalird Thinkfan integration"
 }
 
 uninstall_create_backup() {

@@ -157,52 +157,6 @@ ContentPage {
                 spacing: 6
 
                 StyledText {
-                    text: Translation.tr("Obsidian vault folder")
-                    color: Appearance.colors.colOnSurfaceVariant
-                    font.pixelSize: Appearance.font.pixelSize.small
-                }
-
-                MaterialTextField {
-                    id: todoObsidianVaultPath
-                    Layout.fillWidth: true
-                    wrapMode: TextInput.NoWrap
-                    placeholderText: ""
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    color: Appearance.colors.colOnSurface
-                    text: Todo.sharedVaultPath
-                    background: Rectangle {
-                        color: Appearance.colors.colLayer1
-                        radius: Appearance.rounding.small
-                        border.width: todoObsidianVaultPath.activeFocus ? 2 : 1
-                        border.color: todoObsidianVaultPath.activeFocus
-                            ? Appearance.colors.colPrimary
-                            : Appearance.colors.colLayer0Border
-                    }
-                    onEditingFinished: {
-                        const value = text.trim()
-                        const canonical = String(Config.options?.todo?.obsidian?.vaultPath ?? "").trim()
-                        const legacy = String(Config.options?.notes?.zettelkasten?.vaultPath ?? "").trim()
-                        // Clear the old override so clearing the shared field
-                        // never resurrects a separate Quick Notes vault.
-                        if (value.length === 0 && legacy.length > 0)
-                            Config.setNestedValue("notes.zettelkasten.vaultPath", "")
-                        if (value !== canonical)
-                            Config.setNestedValue("todo.obsidian.vaultPath", value)
-                        if (value.length > 0 && legacy.length > 0)
-                            Config.setNestedValue("notes.zettelkasten.vaultPath", "")
-                    }
-
-                    StyledToolTip {
-                        text: Translation.tr("Shared by To-do and Zettelkasten.")
-                    }
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                StyledText {
                     text: Translation.tr("Note path pattern")
                     color: Appearance.colors.colOnSurfaceVariant
                     font.pixelSize: Appearance.font.pixelSize.small

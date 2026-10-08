@@ -101,7 +101,7 @@ def update_enabled(path,enabled):
 def execute(payload):
  vault,cfg=resolve_paths(payload);appearance_file=cfg/'appearance.json';appearance=read_json(appearance_file,{})
  stops,profile=weights(cfg,appearance)
- result={'ok':True,'vaultPath':str(vault),'configPath':str(cfg),'activeTheme':appearance.get('cssTheme') or 'Default','profile':profile,'enabled':SNIPPET in appearance.get('enabledCssSnippets',[]),'changed':False}
+ result={'ok':True,'vaultPath':str(vault),'configPath':str(cfg),'activeTheme':appearance.get('cssTheme') or 'Default','profile':profile,'snippetName':SNIPPET,'snippetPath':str(cfg/'snippets'/(SNIPPET+'.css')),'enabled':SNIPPET in appearance.get('enabledCssSnippets',[]),'changed':False}
  action=payload.get('action','inspect')
  if action=='apply':
   css=make_css(payload.get('palette',{}),stops)

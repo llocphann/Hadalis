@@ -38,4 +38,24 @@ class ThemeTests(unittest.TestCase):
    lightness=[colorsys.rgb_to_hls(*(int(ramp[f'{i:02}'][j:j+2],16)/255 for j in (1,3,5)))[1] for i in range(14)]
    direction=1 if lightness[-1]>lightness[0] else -1
    self.assertTrue(all((b-a)*direction>=0 for a,b in zip(lightness,lightness[1:])))
+ def test_reference_vaults_use_only_owned_snippet(self):
+  # Appearance layouts and cc stops read from Abyssal-Vault / Obsidian-Vault.
+  # Exercise copies, never the maintainer's live notes/configuration.
+  stops=['0a0e10','0c1113','10181b','162024','1d2a2f','26363e','30464f','3e5965','4e707e','5f899b','7da0b0','a0bac5','c6d6dc','e6edef']
+  for name,extra in [('Abyssal-Vault',[]),('Obsidian-Vault',['01_Core_System','02_Homepage','03_Bases','04_Content_Interface_And_Plugins','05_Style_Setting'])]:
+   with self.subTest(vault=name):
+    vault=Path(self.tmp.name)/name;cfg=vault/'.obsidian';cfg.mkdir(parents=True)
+    appearance={'cssTheme':'Border','enabledCssSnippets':extra+['01_Core','02_Components','03_Compatibility','04_Configuration'],'interfaceFontFamily':'GeistMono Nerd Font','textFontFamily':'GeistMono Nerd Font','monospaceFontFamily':'GeistMono Nerd Font'}
+    (cfg/'appearance.json').write_text(json.dumps(appearance))
+    theme_file=cfg/'themes/Border/theme.css';theme_file.parent.mkdir(parents=True);theme_file.write_text('body { --background-primary: #123456; }')
+    snippets=cfg/'snippets';snippets.mkdir()
+    for snippet in appearance['enabledCssSnippets']:(snippets/(snippet+'.css')).write_text('/* preserved user snippet */')
+    (snippets/'01_Core.css').write_text(':root {'+''.join(f'--cc-p{i:02}: #{color};' for i,color in enumerate(stops))+'}')
+    before={str(p.relative_to(cfg)):p.read_bytes() for p in cfg.rglob('*') if p.is_file() and p.name!='appearance.json'}
+    request={'vaultPath':str(vault),'palette':self.request['palette']}
+    info=theme.execute(request);self.assertEqual(info['profile'],'active Carbon Cyan');self.assertEqual(info['snippetPath'],str(snippets/(theme.SNIPPET+'.css')))
+    theme.execute({**request,'action':'apply'})
+    self.assertEqual(json.loads((cfg/'appearance.json').read_text()),{**appearance,'enabledCssSnippets':appearance['enabledCssSnippets']+[theme.SNIPPET]})
+    self.assertEqual({str(p.relative_to(cfg)):p.read_bytes() for p in cfg.rglob('*') if p.is_file() and str(p.relative_to(cfg)) in before},before)
+    theme.execute({**request,'action':'disable'});self.assertEqual(json.loads((cfg/'appearance.json').read_text()),appearance)
 if __name__=="__main__":unittest.main()

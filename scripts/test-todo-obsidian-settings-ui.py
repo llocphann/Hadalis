@@ -5,6 +5,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 services = (ROOT / "modules" / "settings" / "IntegrationsConfig.qml").read_text(encoding="utf-8")
+shared_paths = (ROOT / "modules" / "settings" / "ObsidianThemeSettings.qml").read_text(encoding="utf-8")
+integration_surface = services + shared_paths
 system_services = (ROOT / "modules" / "settings" / "ServicesConfig.qml").read_text(encoding="utf-8")
 facade = (ROOT / "services" / "Todo.qml").read_text(encoding="utf-8")
 internal = (ROOT / "services" / "InternalTodoBackend.qml").read_text(encoding="utf-8")
@@ -16,7 +18,7 @@ required = [
     'Translation.tr("Heading")',
     'id: todoMarkdownNotePattern',
     'id: todoMarkdownHeading',
-    'Config.setNestedValue("todo.obsidian.vaultPath", value)',
+    'updates["todo.obsidian.vaultPath"] = value',
     'Config.setNestedValue("todo.obsidian.dailyNote.folder", folder)',
     'Config.setNestedValue("todo.obsidian.dailyNote.format", format)',
     'Config.setNestedValue("todo.obsidian.dailyNote.plannerHeading", value)',
@@ -34,7 +36,7 @@ required = [
     'text: Todo.sharedVaultPath',
 ]
 for token in required:
-    assert token in services, f"unified Todo settings contract lost: {token}"
+    assert token in integration_surface, f"unified Todo settings contract lost: {token}"
     assert token not in system_services, f"application integration duplicated in Services: {token}"
 
 todo_start = services.index('title: Translation.tr("To-do & Quick Notes")')
@@ -48,7 +50,7 @@ assert "Planner heading" not in todo
 assert "font.pixelSize: Appearance.font.pixelSize.smallest" not in todo
 assert 'placeholderText: Translation.tr("~/Documents/Obsidian/My Vault")' not in todo
 assert 'placeholderText: "Day Planner"' not in todo
-assert todo.count('placeholderText: ""') >= 3
+assert integration_surface.count('placeholderText: ""') >= 3
 
 assert 'Config.setNestedValue("todo.backend", "obsidian")' not in services
 assert 'Config.setNestedValue("todo.backend", "obsidian")' in facade

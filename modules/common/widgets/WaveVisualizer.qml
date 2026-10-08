@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import qs.services
 import qs.modules.common
 import QtQuick
@@ -96,6 +98,7 @@ Item {
             model: root.activeBars
 
             delegate: Rectangle {
+                required property int index
                 property real level: root.processedBars && index < root.processedBars.length
                     ? root.processedBars[index] : 0.0
                 property real edgeNorm: Math.sin(
@@ -105,8 +108,11 @@ Item {
                     * (3.0 - 2.0 * rawEdgeFactor)
 
                 width: root.actualBarWidth
-                height: Math.max(root.minBarHeight, level * parent.height * 0.96)
-                anchors.bottom: parent.bottom
+                // Animated delegates can lose their visual parent before the
+                // owner finishes unloading. Preserve bottom alignment without
+                // retaining an anchor or dereferencing a retired parent.
+                height: Math.max(root?.minBarHeight ?? 0, level * (parent?.height ?? 0) * 0.96)
+                y: (parent?.height ?? 0) - height
                 topLeftRadius: width * 0.45
                 topRightRadius: width * 0.45
                 bottomLeftRadius: 0

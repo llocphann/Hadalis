@@ -64,6 +64,7 @@ function optionsForOutput(options, outputName) {
         edgeThicknesses:Object.assign({},options?.edgeThicknesses,profile?.edgeThicknesses),
         edgeWidthAffectsModules:Object.assign({},options?.edgeWidthAffectsModules,profile?.edgeWidthAffectsModules),
         edgeJoinModules:Object.assign({},options?.edgeJoinModules,profile?.edgeJoinModules),
+        edgeModuleRadii:Object.assign({},options?.edgeModuleRadii,profile?.edgeModuleRadii),
         singleModuleExpansion:Object.assign({},options?.singleModuleExpansion,profile?.singleModuleExpansion)});
 }
 function edgeSize(options, edge) { return bounded(options?.edgeSizes?.[edge],1,.6,1.8); }
@@ -118,7 +119,7 @@ function snapMove(placements, id, x, y, width, height, options, fontScale) {
     return {placements:moved,guides:Math.abs(actual.along+actual.span/2-target.center)<1
         ? [{horizontal:horizontal,along:target.line,label:target.label}] : []};
 }
-function saveProfile(options, outputName, placements, gap, outputOnly, edgeSizes, singleModuleExpansion, size, edgeThicknesses, edgeWidthAffectsModules, edgeJoinModules) {
+function saveProfile(options, outputName, placements, gap, outputOnly, edgeSizes, singleModuleExpansion, size, edgeThicknesses, edgeWidthAffectsModules, edgeJoinModules, edgeModuleRadii) {
     var normalized = normalize(placements,"top");
     var profiles = Array.from(options?.outputLayouts || []);
     var current = optionsForOutput(options,outputName);
@@ -127,18 +128,19 @@ function saveProfile(options, outputName, placements, gap, outputOnly, edgeSizes
     var thicknesses = Object.assign({},edgeThicknesses ?? current.edgeThicknesses);
     var affects = Object.assign({},edgeWidthAffectsModules ?? current.edgeWidthAffectsModules);
     var joins = Object.assign({},edgeJoinModules ?? current.edgeJoinModules);
+    var radii = Object.assign({},edgeModuleRadii ?? current.edgeModuleRadii);
     if (outputOnly) {
         var existing = profiles.find(function(p) { return p.outputName===outputName; });
         profiles = profiles.filter(function(p) { return p.outputName!==outputName; });
         profiles.push(Object.assign({},existing,{outputName:outputName,placements:normalized,gap:bounded(gap,8,0,32),
-            edgeSizes:Object.assign({},edgeSizes ?? current.edgeSizes),singleModuleExpansion:expansion,size:scale,edgeThicknesses:thicknesses,edgeWidthAffectsModules:affects,edgeJoinModules:joins}));
+            edgeSizes:Object.assign({},edgeSizes ?? current.edgeSizes),singleModuleExpansion:expansion,size:scale,edgeThicknesses:thicknesses,edgeWidthAffectsModules:affects,edgeJoinModules:joins,edgeModuleRadii:radii}));
         return {"abyss.modules.outputLayouts":profiles};
     }
     return {"abyss.modules.configured":true,"abyss.modules.placements":normalized,
         "abyss.modules.gap":bounded(gap,8,0,32),"abyss.modules.outputLayouts":profiles.filter(function(p) { return p.outputName!==outputName; }),
         "abyss.modules.edgeSizes":Object.assign({},edgeSizes ?? options?.edgeSizes),
         "abyss.modules.singleModuleExpansion":expansion,"abyss.modules.size":scale,
-        "abyss.modules.edgeThicknesses":thicknesses,"abyss.modules.edgeWidthAffectsModules":affects,"abyss.modules.edgeJoinModules":joins};
+        "abyss.modules.edgeThicknesses":thicknesses,"abyss.modules.edgeWidthAffectsModules":affects,"abyss.modules.edgeJoinModules":joins,"abyss.modules.edgeModuleRadii":radii};
 }
 function stripDepth(placements, edge, options, fontScale) {
     return placements.filter(function(p) { return p.enabled && p.edge===edge; }).reduce(function(depth,p) {
@@ -172,7 +174,27 @@ function localSurfaces(records, width, height, options, fontScale, minimum) {
             : p.edge==="bottom" ? {x:p.along-8,y:height-depth,width:p.span+16,height:depth+50}
             : p.edge==="left" ? {x:-50,y:p.along-8,width:depth+50,height:p.span+16}
             : {x:width-depth,y:p.along-8,width:depth+50,height:p.span+16};
-        return {edge:p.edge,surface:surface,content:p.content,span:p.span,along:p.along,depth:depth,progress:1,mass:1};
+        var along=p.along,span=p.span;
+        var corner=p.joinCorner ? cornerForModule(records,p.id,width,height) : "";
+        if(corner) {
+            var horizontal=p.edge==="top" || p.edge==="bottom";
+            var length=horizontal ? width : height;
+            var start=corner==="left" || corner==="top";
+            if(horizontal) {
+                if(start) { surface.width+=surface.x+50;surface.x=-50; }
+                else surface.width=width+50-surface.x;
+            } else {
+                if(start) { surface.height+=surface.y+50;surface.y=-50; }
+                else surface.height=height+50-surface.y;
+            }
+            span=start ? p.along+p.span : length-p.along;
+            along=start ? 0 : p.along;
+        }
+        var record={edge:p.edge,surface:surface,content:p.content,span:span,along:along,depth:depth,progress:1,mass:1};
+        var radius=options?.edgeModuleRadii?.[p.edge];
+        if(options?.edgeWidthAffectsModules?.[p.edge]===false && Number.isFinite(Number(radius)) && Number(radius)>=0)
+            record.radius=bounded(radius,0,0,64);
+        return record;
     });
     var result=[],nearby=bounded(options?.gap,8,0,32)+16;
     surfaces.forEach(function(record) {
@@ -262,4 +284,17 @@ function adjacentEdge(record,width,height) {
     var last = Math.max(0,length-record.along-record.span);
     if (Math.min(first,last)>160) return "";
     return horizontal ? (first<=last ? "left" : "right") : (first<=last ? "top" : "bottom");
+}
+// Only the visible end-most module can extend its local field to a corner.
+// Foreground packing and popup anchors remain independent of this paint weld.
+function cornerForModule(records,id,width,height) {
+    var own=records.find(function(p) {return p.id===id && p.span>0;});
+    var corner=adjacentEdge(own,width,height);
+    if(!corner) return "";
+    var start=corner==="left" || corner==="top";
+    var closer=records.some(function(p) {
+        return p.id!==id && p.edge===own.edge && p.span>0
+            && (start ? p.along<own.along : p.along+p.span>own.along+own.span);
+    });
+    return closer ? "" : corner;
 }

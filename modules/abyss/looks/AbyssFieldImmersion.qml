@@ -30,6 +30,16 @@ ShaderEffect {
     readonly property color rim:sourcePass.rim
     readonly property color shadow:sourcePass.shadow
     readonly property color glow:sourcePass.glow
+    readonly property vector4d radii0:sourcePass.radii0
+    readonly property vector4d radii1:sourcePass.radii1
+    readonly property vector4d radii2:sourcePass.radii2
+    readonly property vector4d radii3:sourcePass.radii3
+    readonly property vector4d radii4:sourcePass.radii4
+    readonly property vector4d radii5:sourcePass.radii5
+    readonly property vector4d radii6:sourcePass.radii6
+    readonly property vector4d radii7:sourcePass.radii7
+    readonly property vector4d radii8:sourcePass.radii8
+    readonly property vector4d radii9:sourcePass.radii9
     readonly property vector4d rect0:sourcePass.rect0
     readonly property vector4d rect1:sourcePass.rect1
     readonly property vector4d rect2:sourcePass.rect2

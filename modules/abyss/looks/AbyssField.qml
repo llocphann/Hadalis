@@ -38,6 +38,11 @@ Item {
         const r = root.records[index]?.surface
         return r ? Qt.vector4d(r.x,r.y,r.width,r.height) : Qt.vector4d(0,0,0,0)
     }
+    function packedRadii(group) {
+        const first=group*4
+        const radius=i=>root.records[i]?.radius ?? AbyssStyle.neckRadius
+        return Qt.vector4d(radius(first),radius(first+1),radius(first+2),radius(first+3))
+    }
     // Static texture provider; no offscreen pass or live screen capture.
     Image {
         id: wallpaperImage
@@ -79,6 +84,16 @@ Item {
         readonly property color rim: AbyssStyle.specular
         readonly property color shadow: AbyssStyle.shadow
         readonly property color glow: AbyssStyle.glow
+        readonly property vector4d radii0: root.packedRadii(0)
+        readonly property vector4d radii1: root.packedRadii(1)
+        readonly property vector4d radii2: root.packedRadii(2)
+        readonly property vector4d radii3: root.packedRadii(3)
+        readonly property vector4d radii4: root.packedRadii(4)
+        readonly property vector4d radii5: root.packedRadii(5)
+        readonly property vector4d radii6: root.packedRadii(6)
+        readonly property vector4d radii7: root.packedRadii(7)
+        readonly property vector4d radii8: root.packedRadii(8)
+        readonly property vector4d radii9: root.packedRadii(9)
         readonly property vector4d rect0: root.packed(0)
         readonly property vector4d rect1: root.packed(1)
         readonly property vector4d rect2: root.packed(2)

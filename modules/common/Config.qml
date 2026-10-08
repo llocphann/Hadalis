@@ -637,6 +637,12 @@ Singleton {
                         property bool bottom: false
                         property bool left: false
                     }
+                    property JsonObject edgeModuleRadii: JsonObject {
+                        property real top: -1
+                        property real right: -1
+                        property real bottom: -1
+                        property real left: -1
+                    }
                     property JsonObject edgeSizes: JsonObject {
                         property real top: 1
                         property real right: 1

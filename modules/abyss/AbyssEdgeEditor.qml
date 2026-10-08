@@ -27,6 +27,7 @@ Item {
     property var edgeThicknesses: ({top:-1,right:-1,bottom:-1,left:-1})
     property var edgeWidthAffectsModules: ({top:true,right:true,bottom:true,left:true})
     property var edgeJoinModules: ({top:false,right:false,bottom:false,left:false})
+    property var edgeModuleRadii: ({top:-1,right:-1,bottom:-1,left:-1})
     property real moduleScale: 1
     property var singleModuleExpansion: ({top:"edge",right:"edge",bottom:"edge",left:"edge"})
     property string editingEdge: "top"
@@ -50,10 +51,10 @@ Item {
             previewBody.span,width,height)
     property real lastImpulse: 0
     property var inputRegions: []
-    readonly property string nearbyCorner: Placement.adjacentEdge(moduleLayer.layoutRecords.find(p=>p.id===selectedId),width,height)
+    readonly property string nearbyCorner: Placement.cornerForModule(moduleLayer.layoutRecords,selectedId,width,height)
     readonly property var selected: draft.find(p => p.id === selectedId)
     readonly property var draftOptions: Object.assign({},Config.options?.abyss?.modules,{gap:gap,edgeSizes:edgeSizes,size:moduleScale,
-        singleModuleExpansion:singleModuleExpansion,edgeThicknesses:edgeThicknesses,edgeWidthAffectsModules:edgeWidthAffectsModules,edgeJoinModules:edgeJoinModules,edgeThickness:AbyssStyle.perimeterThickness})
+        singleModuleExpansion:singleModuleExpansion,edgeThicknesses:edgeThicknesses,edgeWidthAffectsModules:edgeWidthAffectsModules,edgeJoinModules:edgeJoinModules,edgeModuleRadii:edgeModuleRadii,edgeThickness:AbyssStyle.perimeterThickness})
 
     function toolbarEdgeScore(edge): real {
         let score = (edge === toolbarEdge ? -4 : 0)
@@ -129,6 +130,7 @@ Item {
         edgeThicknesses = Object.assign({top:-1,right:-1,bottom:-1,left:-1},options.edgeThicknesses)
         edgeWidthAffectsModules = Object.assign({top:true,right:true,bottom:true,left:true},options.edgeWidthAffectsModules)
         edgeJoinModules = Object.assign({top:false,right:false,bottom:false,left:false},options.edgeJoinModules)
+        edgeModuleRadii = Object.assign({top:-1,right:-1,bottom:-1,left:-1},options.edgeModuleRadii)
         moduleScale = options.size
         singleModuleExpansion = Object.assign({top:"edge",right:"edge",bottom:"edge",left:"edge"},options.singleModuleExpansion)
         editingEdge = moduleLayer.edge
@@ -142,7 +144,7 @@ Item {
     }
     function finish(save): void {
         if (save) {
-            const writes=Placement.saveProfile(Config.options?.abyss?.modules,outputName,draft,gap,outputOnly,edgeSizes,singleModuleExpansion,moduleScale,edgeThicknesses,edgeWidthAffectsModules,edgeJoinModules)
+            const writes=Placement.saveProfile(Config.options?.abyss?.modules,outputName,draft,gap,outputOnly,edgeSizes,singleModuleExpansion,moduleScale,edgeThicknesses,edgeWidthAffectsModules,edgeJoinModules,edgeModuleRadii)
             let positions=Config.options?.abyss?.positions ?? []
             positionEdits.forEach(edit=>positions=Presentation.save(positions,edit.kind,edit.outputName,edit.values))
             if(positionEdits.length) writes["abyss.positions"]=positions
@@ -159,6 +161,7 @@ Item {
         edgeThicknesses = {top:-1,right:-1,bottom:-1,left:-1}
         edgeWidthAffectsModules = {top:true,right:true,bottom:true,left:true}
         edgeJoinModules = {top:false,right:false,bottom:false,left:false}
+        edgeModuleRadii = {top:-1,right:-1,bottom:-1,left:-1}
         singleModuleExpansion = {top:"edge",right:"edge",bottom:"edge",left:"edge"}
         guides = []
         selectedId = ""
@@ -596,6 +599,25 @@ Item {
                 }
 
                 GridLayout {
+                    visible:!root.editingPopups && root.edgeWidthAffectsModules[root.editingEdge]===false
+                    Layout.fillWidth:true
+                    columns:root.toolbarOnHorizontalEdge ? 3 : 1
+                    AbyssLabel {text:"Module rounding"}
+                    AbyssSlider {
+                        objectName:"abyssModuleRounding"
+                        Layout.fillWidth:true;unit:"px";from:0;to:64;stepSize:1
+                        value:(root.edgeModuleRadii[root.editingEdge] ?? -1)<0
+                            ? AbyssStyle.neckRadius : root.edgeModuleRadii[root.editingEdge]
+                        onMoved:root.edgeModuleRadii=Object.assign({},root.edgeModuleRadii,{[root.editingEdge]:value})
+                    }
+                    AbyssButton {
+                        text:"Inherit rounding";glyph:"rounded_corner"
+                        enabled:(root.edgeModuleRadii[root.editingEdge] ?? -1)>=0
+                        onClicked:root.edgeModuleRadii=Object.assign({},root.edgeModuleRadii,{[root.editingEdge]:-1})
+                    }
+                }
+
+                GridLayout {
                     visible:!root.editingPopups
                     Layout.fillWidth:true
                     columns:root.toolbarOnHorizontalEdge ? 3 : 1
@@ -704,8 +726,9 @@ Item {
                         }
                     }
                     AbyssCheckBox {
+                        objectName:"abyssModuleJoinCorner"
                         text:root.nearbyCorner
-                            ? "Join "+root.nearbyCorner+" Edge"
+                            ? "Connect to "+root.nearbyCorner+" corner"
                             : "Join nearby corner"
                         checked:root.selected?.joinCorner ?? false
                         enabled:root.selected !== undefined
@@ -714,8 +737,8 @@ Item {
                         onToggled:root.change("joinCorner",checked)
                         StyledToolTip {
                             text:root.nearbyCorner
-                                ? "Fuse this module's nearby popup with both Screen Edges, preserving its content layout."
-                                : "Move the module within 160 px of a corner to join the adjacent Screen Edge."
+                                ? "Extend this module's local surface to the corner and attach its popup to both Screen Edges. Module size stays unchanged."
+                                : "The nearest visible module within 160 px of a corner can connect to it."
                         }
                     }
                     AbyssSlider {

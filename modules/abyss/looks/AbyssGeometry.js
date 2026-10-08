@@ -151,7 +151,7 @@ function distance(x, y, width, height, insets, radius, records, softness, record
     for (var i=0;i<records.length;i++) {
         var rec=records[i];
         if (rec.surface.width>0 && rec.surface.height>0)
-            d=smoothUnion(d,roundedDistance(x,y,rec.surface,rec.radius || recordRadius || radius),softness);
+            d=smoothUnion(d,roundedDistance(x,y,rec.surface,rec.radius ?? recordRadius ?? radius),softness);
     }
     return d;
 }

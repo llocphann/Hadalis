@@ -6,6 +6,23 @@ import subprocess
 root = Path(__file__).resolve().parents[1]
 program = (root / "modules/abyss/looks/AbyssLayout.js").read_text() + r"""
 const assert = require('node:assert/strict');
+for(const edge of ['top','right','bottom','left'])for(const end of ['start','end']) {
+ const horizontal=['top','bottom'].includes(edge),length=horizontal?1920:1080;
+ const entries=normalize([{id:'nearest',kind:'clock',edge,alignment:end,position:end==='start'?0:1,joinCorner:true},
+  {id:'inner',kind:'clock',edge,alignment:end,position:end==='start'?.12:.88,joinCorner:true}],edge);
+ const options={edgeThicknesses:{[edge]:0},edgeWidthAffectsModules:{[edge]:false},edgeModuleRadii:{[edge]:0}};
+ const foreground=geometry(entries,1920,1080,options,1),snapshot=JSON.stringify(foreground);
+ const sorted=foreground.slice().sort((a,b)=>a.along-b.along),nearest=end==='start'?sorted[0]:sorted[1],inner=end==='start'?sorted[1]:sorted[0];
+ assert(cornerForModule(foreground,nearest.id,1920,1080));assert.equal(cornerForModule(foreground,inner.id,1920,1080),'','inner modules cannot weld through their neighbor');
+ const local=localSurfaces(foreground,1920,1080,options,1,48),joined=local.find(p=>p.content===nearest.content),separate=local.find(p=>p.content===inner.content);
+ assert.equal(joined.radius,0,'square is a real override');assert.equal(separate.radius,0);
+ assert.equal(end==='start'?joined.along:joined.along+joined.span,end==='start'?0:length,'paint reaches selected corner');
+ assert.equal(separate.along,inner.along,'interior backing stays local');assert.equal(JSON.stringify(foreground),snapshot,'corner weld never moves input/modules');
+ assert(localSurfaces(foreground,1920,1080,{...options,edgeModuleRadii:{[edge]:-1}},1,48).every(p=>p.radius===undefined),'inherit preserves the field material rounding');
+ assert(localSurfaces(foreground,1920,1080,{...options,edgeModuleRadii:{[edge]:1000}},1,48).every(p=>p.radius===64),'rounding is bounded');
+ const writes=saveProfile({outputLayouts:[{outputName:'B',placements:[],edgeModuleRadii:{left:24}}]},'A',entries,8,true,undefined,undefined,undefined,undefined,undefined,undefined,{[edge]:0});
+ assert.equal(writes['abyss.modules.outputLayouts'][0].edgeModuleRadii.left,24);assert.equal(optionsForOutput({outputLayouts:writes['abyss.modules.outputLayouts']},'A').edgeModuleRadii[edge],0);
+}
 for(const edge of ['top','right','bottom','left']) {
  const placements=normalize([{id:'a',kind:'clock',edge,position:.35,depth:1.4},
   {id:'b',kind:'clock',edge,position:.35,depth:.7},{id:'far',kind:'clock',edge,position:.9}],edge);

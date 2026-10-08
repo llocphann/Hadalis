@@ -22,6 +22,7 @@ ShellRoot {
     id: root
     property int step: 0
     property bool finished: false
+    property bool executing: false
     property string beforePositions: ""
     property string before: ""
     property var originalModule: null
@@ -47,7 +48,8 @@ ShellRoot {
     Timer {
         interval:200;running:!root.finished;repeat:true
         onTriggered: {
-            if(!Config.ready) return
+            if(!Config.ready || root.executing) return
+            root.executing=true
             if(root.step===0) {
                 Config.setNestedValue("panelFamily","abyss")
                 GlobalStates.deferredPanelsReady=true
@@ -77,6 +79,20 @@ ShellRoot {
                     if(!root.check(Math.abs(thickCross-cross*2)<.1 && editor.edgeInsets[edge]===32,"physical px thickness updates the actual "+edge+" module and resting Edge")) return
                     editor.edgeWidthAffectsModules=Object.assign({},editor.edgeWidthAffectsModules,{[edge]:false})
                     editor.edgeThicknesses=Object.assign({},editor.edgeThicknesses,{[edge]:0})
+                    editor.move("clock",edge==="left"?10:edge==="right"?editor.width-10:40,edge==="top"?10:edge==="bottom"?editor.height-10:40,false)
+                    driver.wait(30)
+                    const corner=driver.findChild(editor,"abyssModuleJoinCorner")
+                    if(!root.check(corner?.enabled && !!editor.nearbyCorner,"nearest module exposes corner control on "+edge)) return
+                    driver.mouseClick(corner)
+                    if(!root.check(editor.selected.joinCorner && layer.deformations[0].along===0,"corner checkbox extends the actual local paint on "+edge)) return
+                    driver.mouseClick(corner)
+                    const rounding=driver.findChild(editor,"abyssModuleRounding")
+                    if(!root.check(rounding?.visible,"edge-only policy exposes rounding on "+edge)) return
+                    rounding.value=0;rounding.moved()
+                    if(!root.check(editor.edgeModuleRadii[edge]===0 && layer.deformations[0].radius===0,"rounding slider propagates square field geometry on "+edge)) return
+                    editor.edgeModuleRadii=Object.assign({},editor.edgeModuleRadii,{[edge]:32})
+                    if(!root.check(layer.deformations[0].radius===32,"per-Edge rounding updates local record")) return
+                    editor.move("clock",x,y,false)
                     if(!root.check(editor.edgeInsets[edge]===0 && layer.layoutRecords.length===1 && layer.deformations.length===1,"zero bare "+edge+" retains independent module and backing")) return
                     editor.add("battery")
                     driver.wait(30)
@@ -116,6 +132,7 @@ ShellRoot {
                 editor.moduleScale=1.3;editor.singleModuleExpansion={right:"local"}
                 editor.edgeWidthAffectsModules=Object.assign({},editor.edgeWidthAffectsModules,{right:false})
                 editor.edgeJoinModules=Object.assign({},editor.edgeJoinModules,{right:true})
+                editor.edgeModuleRadii=Object.assign({},editor.edgeModuleRadii,{right:28})
                 editor.change("alignment","center");editor.change("joinCorner",true)
                 if(!root.check(editor.selected.joinCorner,"corner option belongs to draft module")) return
                 editor.add("media");editor.change("enabled",false)
@@ -125,6 +142,7 @@ ShellRoot {
                 const profiles=Array.from(Config.options.abyss.modules.outputLayouts)
                 if(!root.check(profiles.length===2 && profiles[0].outputName==="B","Done merges latest output profiles")) return
                 if(!root.check(profiles[0].edgeJoinModules.left && profiles[1].edgeJoinModules.right && layer.layoutOptions.edgeJoinModules.right,"Done scopes module joining to this output and preserves another")) return
+                if(!root.check(profiles[1].edgeModuleRadii.right===28 && layer.layoutOptions.edgeModuleRadii.right===28,"Done saves this output's module curvature")) return
                 if(!root.check(layer.layoutRecords[0].edge==="right" && profiles[1].gap===17 && !profiles[1].placements[1].enabled,"persisted normalized edge, gap and disable")) return
                 if(!root.check(profiles[1].edgeThicknesses.right===24 && editor.edgeInsets.right===24,"Done preserves pixel thickness scoped to this output")) return
                 if(!root.check(profiles[1].edgeSizes.right===1.25 && !profiles[1].placements[0].customSize && profiles[1].placements[0].alignment==="center" && profiles[1].placements[0].joinCorner,"Done persists shared edge sizes and grouped alignment")) return
@@ -165,6 +183,7 @@ ShellRoot {
                 console.info("EDITOR_PASS");root.finished=true
             }
             root.step++
+            root.executing=false
         }
     }
 }

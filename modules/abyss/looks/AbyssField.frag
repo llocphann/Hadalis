@@ -24,6 +24,16 @@ layout(std140,binding=0) uniform buf {
     vec4 rim;
     vec4 shadow;
     vec4 glow;
+    vec4 radii0;
+    vec4 radii1;
+    vec4 radii2;
+    vec4 radii3;
+    vec4 radii4;
+    vec4 radii5;
+    vec4 radii6;
+    vec4 radii7;
+    vec4 radii8;
+    vec4 radii9;
     vec4 rect0; vec4 rect1; vec4 rect2; vec4 rect3;
     vec4 rect4; vec4 rect5; vec4 rect6; vec4 rect7;
     vec4 rect8; vec4 rect9; vec4 rect10; vec4 rect11;
@@ -121,9 +131,9 @@ float fuse(float a, float b) {
     float h = max(k-abs(a-b),0.0)/k;
     return min(a,b)-h*h*k*0.25;
 }
-float record(float d, vec2 p, vec4 rect) {
+float record(float d, vec2 p, vec4 rect, float radius) {
     if(rect.z <= 0.0 || rect.w <= 0.0) return d;
-    return fuse(d,roundedBox(p,rect,material.z));
+    return fuse(d,roundedBox(p,rect,radius));
 }
 vec4 workspaceRect() {
     // A disabled Edge lies outside the render target, including its AA/rim
@@ -134,16 +144,16 @@ vec4 workspaceRect() {
 float field(vec2 p) {
     vec4 hole=workspaceRect();
     float d=-roundedBox(p,hole,material.x);
-    d=record(d,p,rect0); d=record(d,p,rect1); d=record(d,p,rect2); d=record(d,p,rect3);
-    d=record(d,p,rect4); d=record(d,p,rect5); d=record(d,p,rect6); d=record(d,p,rect7);
-    d=record(d,p,rect8); d=record(d,p,rect9); d=record(d,p,rect10); d=record(d,p,rect11);
-    d=record(d,p,rect12); d=record(d,p,rect13); d=record(d,p,rect14); d=record(d,p,rect15);
-    d=record(d,p,rect16); d=record(d,p,rect17); d=record(d,p,rect18); d=record(d,p,rect19);
-    d=record(d,p,rect20); d=record(d,p,rect21); d=record(d,p,rect22); d=record(d,p,rect23);
-    d=record(d,p,rect24); d=record(d,p,rect25); d=record(d,p,rect26); d=record(d,p,rect27);
-    d=record(d,p,rect28); d=record(d,p,rect29); d=record(d,p,rect30); d=record(d,p,rect31);
-    d=record(d,p,rect32); d=record(d,p,rect33); d=record(d,p,rect34); d=record(d,p,rect35);
-    d=record(d,p,rect36); d=record(d,p,rect37); d=record(d,p,rect38); d=record(d,p,rect39);
+    d=record(d,p,rect0,radii0.x); d=record(d,p,rect1,radii0.y); d=record(d,p,rect2,radii0.z); d=record(d,p,rect3,radii0.w);
+    d=record(d,p,rect4,radii1.x); d=record(d,p,rect5,radii1.y); d=record(d,p,rect6,radii1.z); d=record(d,p,rect7,radii1.w);
+    d=record(d,p,rect8,radii2.x); d=record(d,p,rect9,radii2.y); d=record(d,p,rect10,radii2.z); d=record(d,p,rect11,radii2.w);
+    d=record(d,p,rect12,radii3.x); d=record(d,p,rect13,radii3.y); d=record(d,p,rect14,radii3.z); d=record(d,p,rect15,radii3.w);
+    d=record(d,p,rect16,radii4.x); d=record(d,p,rect17,radii4.y); d=record(d,p,rect18,radii4.z); d=record(d,p,rect19,radii4.w);
+    d=record(d,p,rect20,radii5.x); d=record(d,p,rect21,radii5.y); d=record(d,p,rect22,radii5.z); d=record(d,p,rect23,radii5.w);
+    d=record(d,p,rect24,radii6.x); d=record(d,p,rect25,radii6.y); d=record(d,p,rect26,radii6.z); d=record(d,p,rect27,radii6.w);
+    d=record(d,p,rect28,radii7.x); d=record(d,p,rect29,radii7.y); d=record(d,p,rect30,radii7.z); d=record(d,p,rect31,radii7.w);
+    d=record(d,p,rect32,radii8.x); d=record(d,p,rect33,radii8.y); d=record(d,p,rect34,radii8.z); d=record(d,p,rect35,radii8.w);
+    d=record(d,p,rect36,radii9.x); d=record(d,p,rect37,radii9.y); d=record(d,p,rect38,radii9.z); d=record(d,p,rect39,radii9.w);
     return d;
 }
 layout(binding=3) uniform sampler2D bodyTexture;

@@ -30,7 +30,6 @@ Window {
  property string prefix:"file://"+Quickshell.env("WALLPAPER_FIXTURES")+"/"
  property int starts:0
  property int finishes:0
- property int presentedPrime:0
  WallpaperLauncherContent {id:picker;width:parent.width;height:300;monitorName:"fixture-output";browseFolder:Quickshell.env("WALLPAPER_FIXTURES")}
  AbyssOrbitalWeather {id:orbit;x:650;y:320;width:280;height:230}
  WallpaperCrossfader {
@@ -40,8 +39,6 @@ Window {
   onTransitionFinished:root.finishes++
  }
  ThumbnailImage {id:quoted;visible:false;sourcePath:Quickshell.env("QUOTED_IMAGE");generateThumbnail:true;sourceSize:Qt.size(64,64)}
- // Read the counter before performSwitch resets it by observing presented frames.
- Connections {target:root;function onFrameSwapped(){if(wall._shaderTexturePrimePending)root.presentedPrime++}}
  TestCase {
   id:test;when:false;optional:true
   function check(value,message){if(!value)throw new Error(message)}
@@ -85,9 +82,10 @@ Window {
    tryVerify(()=>!wall.transitionBusy,3000)
    const count=root.starts
    wall.source=root.prefix+"b.png"
-   tryVerify(()=>wall._shaderTexturePrimePending || wall._transitioning,3000)
+   tryVerify(()=>wall._transitioning,3000)
    tryVerify(()=>root.starts>count,3000)
-   check(root.presentedPrime>=2,"liquid switch did not wait for presented texture frames")
+   check(!wall.shaderTransitionRequested && !wall._shaderTexturePrimePending && wall._effectiveType==="crossfade",
+      "legacy melt retained a shader prime dependency")
    tryVerify(()=>!wall.transitionBusy,3000)
    check(wall.ready,"wallpaper disappeared at transition end")
    wall.source=root.prefix+"a.png";wait(25);wall.source=root.prefix+"c.png"
@@ -95,7 +93,7 @@ Window {
    check(wall.ready && String(wall.data.find(c=>c.activeIndex!==undefined)?.displayedSource ?? '').endsWith('/c.png'),"rapid source changes did not coalesce to the final image")
    wall.enableTransitions=false;wall.source=root.prefix+"b.png";wait(80)
    check(!wall._transitioning,"disabled motion still rendered a liquid transition")
-   console.info("WALLPAPER_CAROUSEL_PASS native-library search navigation single-owner presented-frame-prime rapid-switch reduced-motion")
+   console.info("WALLPAPER_CAROUSEL_PASS native-library search navigation single-owner safe-legacy-melt rapid-switch reduced-motion")
   }catch(e){console.error("WALLPAPER_CAROUSEL_FAIL",e.message,e.stack)}Qt.quit()}
  }
  Timer {interval:100;running:true;onTriggered:test.runChecks()}
@@ -105,7 +103,7 @@ Window {
   if env is None:print('SKIP: wallpaper native test requires private Niri');raise SystemExit(0)
   config=folder/'config/illogical-impulse';config.mkdir(parents=True,exist_ok=True)
   data=json.loads((ROOT/'defaults/config.json').read_text());data.setdefault('wallpapers',{})['directory']=str(folder/'wallpapers');(config/'config.json').write_text(json.dumps(data))
-  env.update(WALLPAPER_FIXTURES=str(folder/"wallpapers"),QUOTED_IMAGE=str(odd),WALLPAPER_CAPTURE='/tmp/hadalis-wallpaper-carousel-20261007.png',QSG_RHI_BACKEND='opengl')
+  env.update(WALLPAPER_FIXTURES=str(folder/"wallpapers"),QUOTED_IMAGE=str(odd),WALLPAPER_CAPTURE='/tmp/hadalis-wallpaper-carousel-20261007.png',QSG_RHI_BACKEND='opengl',INIR_EXPERIMENTAL_MELT='0')
   result=run_qs(folder,env,timeout=40);output=result.stdout
   if result.returncode or 'WALLPAPER_CAROUSEL_PASS' not in output or any(e in output for e in ['WALLPAPER_CAROUSEL_FAIL','ReferenceError:','TypeError:','Unable to assign','Binding loop','Failed to load configuration']):print(output);raise SystemExit(1)
   for line in output.splitlines():

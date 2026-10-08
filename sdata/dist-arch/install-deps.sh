@@ -213,10 +213,10 @@ done
 
 #####################################################################################
 # Pre-install: resolve quickshell package conflicts
-# quickshell-git and quickshell-bin conflict with quickshell (official extra repo).
+# Source, binary and custom WebEngine builds conflict with quickshell (official extra repo).
 # pacman --noconfirm does NOT auto-remove conflicting packages — it aborts instead.
 #####################################################################################
-for qs_conflict in quickshell-git quickshell-bin; do
+for qs_conflict in quickshell-git quickshell-bin quickshell-webengine-git; do
   if pacman -Qi "$qs_conflict" &>/dev/null 2>&1; then
     log_warning "$qs_conflict is installed and conflicts with quickshell (stable, extra repo)"
     if $ask; then

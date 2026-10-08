@@ -15,6 +15,7 @@ Item {
     property int screenWidth: 1920
     property int screenHeight: 1080
     property bool embeddedSurface: false
+    property bool warmContent: false
     property bool presentationActive: GlobalStates.dashboardOpen || GlobalStates.overviewOpen
 
     property alias editMode: dashboardCanvas.editMode
@@ -102,6 +103,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 presentationActive: root.presentationActive
+                warmContent: root.warmContent
                 onRequestEventsDialog: event => root.openAgendaDialog(event)
             }
         }

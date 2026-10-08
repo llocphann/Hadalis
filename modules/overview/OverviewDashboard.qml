@@ -13,6 +13,7 @@ Item {
     property bool panelVisible: true
     property bool embeddedSurface: false
     property bool externalEditToolbar: false
+    property bool warmContent: false
     readonly property var canvasController: dashboardContent.canvasController
     property bool directBottomAttachment: false
     property bool popupPresented: true
@@ -269,6 +270,7 @@ Item {
                 id: dashboardContent
                 anchors.fill: parent
                 embeddedSurface: true
+                warmContent: root.warmContent
                 presentationActive: root.panelVisible && root.popupPresented
                     && root.dashboardOpacity > 0.001
                 screenWidth: root.availableWidth

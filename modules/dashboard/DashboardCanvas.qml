@@ -18,6 +18,7 @@ Item {
 
     property bool editMode: false
     property bool presentationActive: true
+    property bool warmContent: false
     readonly property bool responsiveWorkspace: (Config.options?.panelFamily ?? "abyss") === "abyss"
     readonly property var workspace: {
         if (!responsiveWorkspace) return {width:Math.max(1,width),height:Math.max(1,height),rects:({}),overflow:[]}
@@ -1977,7 +1978,8 @@ Item {
                     Loader {
                         anchors.fill: parent
                         sourceComponent: root._widgetMap[String(cardWrap.modelData)] ?? null
-                        active: cardWrap.visible
+                        active: cardWrap.visible || root.warmContent
+                            && root.visibleIds.includes(String(cardWrap.modelData))
                         enabled: !root.editMode
                         opacity: root.editMode ? 0.92 : 1
                         Behavior on opacity {

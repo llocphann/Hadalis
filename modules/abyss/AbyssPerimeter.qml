@@ -1170,6 +1170,7 @@ Scope {
             AbyssBodyHost {
                 id: aux
                 stableContentSize: true
+                warmContent: true
                 identity: "aux"
                 controller: liquid
                 anchors.fill: parent
@@ -1209,6 +1210,7 @@ Scope {
             AbyssBodyHost {
                 id: dashboardBody
                 stableContentSize: true
+                warmContent: true
                 identity: "dashboard"
                 controller: liquid
                 anchors.fill: parent

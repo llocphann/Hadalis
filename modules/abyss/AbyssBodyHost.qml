@@ -29,6 +29,20 @@ Item {
     // Keep those contents resident so open never depends on a Loader whose
     // activation itself depends on open.
     property bool residentContent: false
+    // Large canvases get a short reuse window, never a permanent residency.
+    // Warm content is hidden and has no input after the final closing pixel.
+    property bool warmContent: false
+    property bool warmHeld: false
+    onWarmContentChanged: if (!warmContent) { warmExpiry.stop(); warmHeld=false }
+    onVisualResidentChanged: {
+        if (visualResident) warmExpiry.stop()
+        else if (warmHeld) warmExpiry.restart()
+    }
+    Timer {
+        id: warmExpiry
+        interval: 1200
+        onTriggered: root.warmHeld=false
+    }
     // Allocator changes (another popup/body entering, leaving, or reflowing)
     // should travel to their new tier instead of snapping the shared field to a
     // larger silhouette in one frame. Editor/Dock geometry stays immediate.
@@ -445,9 +459,9 @@ Item {
             : (root.placementVisible
                 ? root.record.content.height : root.targetRecord.content.height)
         clip: true
-        visible: root.pyramidPresentationActive
+        visible: (!root.warmContent || root.visualResident) && (root.pyramidPresentationActive
             ? (root.semanticOpen || root.progress > 0.001)
-            : (root.placementVisible || root.progress > 0.001)
+            : (root.placementVisible || root.progress > 0.001))
         // Pyramid uses the same pure slide-under principle as StyledPopup:
         // content remains full-size behind a moving clip; it never fades/shrinks.
         opacity: root.pyramidPresentationActive
@@ -494,13 +508,14 @@ Item {
         // A space-constrained body retains drafts/focus state while hidden. It
         // unloads only after a semantic close and completion of the reveal.
         active: !root.embeddedItem
-            && (root.residentContent || root.visualResident)
+            && (root.residentContent || root.visualResident || root.warmHeld)
             && GlobalStates.deferredPanelsReady
         source: root.source
         clip: true
         opacity: 1
         enabled: root.acceptsInput
         onLoaded: {
+            root.warmHeld = root.warmContent && root.visualResident
             if (item.participant !== undefined) item.participant = root
             if (item.outputName !== undefined) item.outputName = Qt.binding(() => root.outputName)
             if (item.kind !== undefined) item.kind = Qt.binding(() => root.contentKind)

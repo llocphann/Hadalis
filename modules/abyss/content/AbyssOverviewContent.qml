@@ -15,13 +15,17 @@ Item {
     readonly property real desiredHeight: taskView ? Math.min(650,(participant?.height ?? 1080)*.5)
         : overview.item ? (overview.item.presentingSearch ? overview.item.searchOnlyHeight : overview.item.configuredHeight) : (participant?.height ?? 1080)*.72
     readonly property string sortingLease: "abyssOverview:"+(participant?.outputName ?? "")
+    readonly property bool presentationVisible: participant?.visualResident ?? true
     property string heldLease: ""
     function synchronize(): void {
+        const wanted = presentationVisible ? sortingLease : ""
+        if (heldLease === wanted) return
         if (heldLease) CompositorService.setSortingConsumer(heldLease,false)
-        heldLease = sortingLease
-        CompositorService.setSortingConsumer(heldLease,true)
+        heldLease = wanted
+        if (heldLease) CompositorService.setSortingConsumer(heldLease,true)
     }
-    onSortingLeaseChanged: if (heldLease) synchronize()
+    onSortingLeaseChanged: synchronize()
+    onPresentationVisibleChanged: synchronize()
     Component.onCompleted: synchronize()
     Component.onDestruction: if (heldLease) CompositorService.setSortingConsumer(heldLease,false)
     Loader {
@@ -40,10 +44,29 @@ Item {
             anchors.fill: parent
             embeddedSurface: true
             externalEditToolbar: true
+            warmContent: root.participant?.warmContent ?? false
             panelVisible: root.participant?.open ?? true
             popupPresented: root.participant?.open ?? true
             availableWidth: root.participant?.width ?? 1920
             availableHeight: root.participant?.height ?? 1080
+            property bool completedClose: false
+            Connections {
+                target: root
+                function onPresentationVisibleChanged(): void {
+                    if (!root.presentationVisible) {
+                        completedClose=true
+                        cancelSearch()
+                    }
+                }
+            }
+            onPopupPresentedChanged: {
+                syncReveal()
+                if (popupPresented) {
+                    if (completedClose) setSearchingText(GlobalStates.overviewSearchPrefix || "")
+                    completedClose=false
+                    Qt.callLater(focusSearchInput)
+                }
+            }
             Component.onCompleted: {
                 if (GlobalStates.overviewSearchPrefix) setSearchingText(GlobalStates.overviewSearchPrefix)
                 Qt.callLater(focusSearchInput)

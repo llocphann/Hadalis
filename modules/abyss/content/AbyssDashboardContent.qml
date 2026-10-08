@@ -11,6 +11,7 @@ Item {
         id: content
         anchors.fill: parent
         embeddedSurface: true
+        warmContent: root.participant?.warmContent ?? false
         presentationActive: root.participant?.open ?? true
         screenWidth: root.participant?.width ?? 1920
         screenHeight: root.participant?.height ?? 1080

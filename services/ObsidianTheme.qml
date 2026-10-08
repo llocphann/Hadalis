@@ -13,7 +13,9 @@ Singleton {
  readonly property string applicationConfigPath:options?.applicationConfigPath ?? ""
  readonly property var palette:({background:hex(Appearance.colors.colLayer0Base),foreground:hex(Appearance.m3colors.m3onSurface),accent:hex(Appearance.colors.colPrimary)})
  readonly property string signature:JSON.stringify({vault:vaultPath,config:configPath,application:applicationConfigPath,palette:palette})
- readonly property bool busy:worker?.running ?? false
+ // A direct alias preserves Process notifications without evaluating a JS
+ // binding after the worker context has been torn down.
+ readonly property alias busy:worker.running
  property var info:({})
  property string error:""
  property var queued:null

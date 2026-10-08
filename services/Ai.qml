@@ -73,6 +73,7 @@ Singleton {
         const url = queryKey ? '"${AI_ENDPOINT}${API_KEY}"' : '"${AI_ENDPOINT}"'
         return {command:["/usr/bin/bash", "-c",
             'IFS= read -r ai_payload; printf \'%s\' "$ai_payload" | curl -sS --no-buffer --max-time 75'
+            + (model.local ? " --noproxy '*'" : "")
             + ' --url ' + url + ' -H \'Content-Type: application/json\''
             + (auth ? " " + auth : "") + " --data @- --write-out '\\n__INIR_HTTP_STATUS__:"+status+"\\n'"],
             environment:environment, payload:data}

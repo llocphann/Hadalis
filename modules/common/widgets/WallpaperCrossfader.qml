@@ -35,6 +35,17 @@ Item {
     signal transitionStarted()
     signal transitionFinished()
 
+    function renderState(): var {
+        return {source: root.source, displayedSource: internal.displayedSource,
+            pendingSource: internal.pendingSource, loadingSource: internal.loadingSource,
+            transitioning: root._transitioning, primePending: root._shaderTexturePrimePending,
+            primeSwaps: root._shaderTexturePrimeSwaps, shader: root._activeShader,
+            shaderReady: shaderTransition.shaderReady, shaderPresented: shaderTransition.shaderPresented,
+            slot0Status: img0.status, slot1Status: img1.status, visible: root.visible,
+            windowVisible: root.Window.window?.visible ?? false, graphicsApi: root.GraphicsInfo.api,
+            shaderStatus: shaderTransition.status, opacity: root.opacity}
+    }
+
     // ── Internal state ─────────────────────────────────────────────────
     property bool _transitioning: false
     // iNiR db2233ce73: liquid shader with presented-frame texture priming.
@@ -147,6 +158,27 @@ Item {
             root._activeShader = ""
     }
 
+    function _requestShaderPrimeFrame(): void {
+        const window = root.Window.window
+        if (root._shaderTexturePrimePending && root.visible && window?.visible)
+            window.update()
+    }
+
+    function _finishShaderWaitWithoutShader(): void {
+        root._cancelShaderTexturePrime()
+        if (root._transitioning) {
+            root._activeShader = ""
+            if (!transitionAnim.running)
+                transitionAnim.restart()
+        } else {
+            const inactive = internal.inactiveImage()
+            if (String(inactive.source) === internal.pendingSource && inactive.status === Image.Ready)
+                internal.performSwitch(true)
+            else
+                internal.loadPending()
+        }
+    }
+
     function _primeShaderTexturesForPending(): void {
         if (!root.shaderTransitionRequested || !root._canTransition) {
             root._cancelShaderTexturePrime()
@@ -163,6 +195,16 @@ Item {
         if (pending === "" || String(inactive.source) !== pending || inactive.status !== Image.Ready)
             return
 
+        // ShaderEffect is unsupported by the software renderer and an unshown
+        // window cannot present texture frames. Applying the image must still
+        // finish; the existing image-slot crossfade works in both cases.
+        if (root.GraphicsInfo.api === GraphicsInfo.Software || !root.visible
+                || (root.Window.window && !root.Window.window.visible)) {
+            root._cancelShaderTexturePrime()
+            internal.performSwitch(true)
+            return
+        }
+
         root._activeShader = root._resolvedShaderName()
         if (root._activeShader === "") {
             root._cancelShaderTexturePrime()
@@ -172,6 +214,7 @@ Item {
         root._shaderTexturePrimeSource = pending
         root._shaderTexturePrimeSwaps = 0
         root._shaderTexturePrimePending = true
+        Qt.callLater(root._requestShaderPrimeFrame)
     }
 
     function _normalizedTransitionType(rawType: string): string {
@@ -331,6 +374,7 @@ Item {
             if (newSource === displayedSource && !root._transitioning && loadingSource === "") {
                 pendingSource = ""
                 loadingSource = ""
+                root._cancelShaderTexturePrime()
                 return
             }
 
@@ -393,8 +437,11 @@ Item {
         }
 
         function performSwitch(skipShader = false): void {
-            if (pendingSource === "" || pendingSource === displayedSource)
+            if (pendingSource === "" || pendingSource === displayedSource) {
+                pendingSource = ""
+                loadingSource = ""
                 return
+            }
 
             if (skipShader || !root.shaderTransitionRequested)
                 root._activeShader = ""
@@ -452,10 +499,29 @@ Item {
     }
 
     onSourceChanged: internal.switchTo(source)
+    onVisibleChanged: {
+        if (!visible && (root._shaderTexturePrimePending
+                || (root._shaderRequestedActive && !transitionAnim.running)))
+            root._finishShaderWaitWithoutShader()
+    }
+
+    // No idle polling. A failed render/compile handoff must not pin the old
+    // wallpaper forever, even if the backend never emits ShaderEffect.Error.
+    Timer {
+        interval: 1500
+        running: root._shaderTexturePrimePending
+            || (root._shaderRequestedActive && !transitionAnim.running)
+        onTriggered: root._finishShaderWaitWithoutShader()
+    }
 
     Connections {
         target: root.Window.window
         enabled: root._shaderTexturePrimePending
+
+        function onVisibleChanged(): void {
+            if (!root.Window.window.visible)
+                root._finishShaderWaitWithoutShader()
+        }
 
         function onFrameSwapped(): void {
             if (!root._shaderTexturePrimePending)
@@ -470,12 +536,18 @@ Item {
                 return
             }
 
-            if (shaderTransition.status !== ShaderEffect.Compiled)
+            if (shaderTransition.status !== ShaderEffect.Compiled) {
+                Qt.callLater(root._requestShaderPrimeFrame)
                 return
+            }
 
             root._shaderTexturePrimeSwaps++
-            if (root._shaderTexturePrimeSwaps < 2)
+            if (root._shaderTexturePrimeSwaps < 2) {
+                // A static background has no animation to request another
+                // frame. Explicitly present the second texture snapshot.
+                Qt.callLater(root._requestShaderPrimeFrame)
                 return
+            }
 
             root._shaderTexturePrimePending = false
             root._shaderTexturePrimeSource = ""
@@ -918,9 +990,16 @@ Item {
     }
 
     Component.onCompleted: {
-        if (root.source !== "") {
-            img0.source = root.source
-            internal.displayedSource = root.source
-        }
+        // Construction can assign source before this handler, starting a load
+        // into the inactive slot. Initial presentation is immediate: discard
+        // that pending transition as well as its prime/compile wait.
+        internal.resetTransition()
+        root._transitioning = false
+        internal.activeIndex = 0
+        internal.pendingSource = ""
+        internal.loadingSource = ""
+        img1.source = ""
+        img0.source = root.source
+        internal.displayedSource = root.source
     }
 }

@@ -209,6 +209,10 @@ Scope {
             });
         }
 
+        function wallpaperState(): string {
+            return JSON.stringify(root.instances.map(window => window.wallpaperRenderState()))
+        }
+
         function clockDebugSetMode(style: string, adaptToWallpaper: bool): string {
             if (Quickshell.env("INIR_REGION_DEBUG") !== "1")
                 return "clock diagnostics disabled; load with INIR_REGION_DEBUG=1";
@@ -294,6 +298,7 @@ Scope {
 
     Variants {
         id: root
+        objectName: "desktopBackgroundOutputs"
         model: Quickshell.screens
 
         // Shared cache for magick identify results across all monitor instances.
@@ -348,6 +353,11 @@ Scope {
         property int lastWorkspaceId: relevantWindows[relevantWindows.length - 1]?.workspace.id || 10
         readonly property string screenName: screen?.name ?? ""
         readonly property var backgroundOptions: Config.options?.background ?? {}
+        function wallpaperRenderState(): var {
+            return {output: monitorName, configuredPath: wallpaperPathRaw,
+                visible: visible, external: externalMainWallpaperActive,
+                backdrop: backdropActive, wallpaper: wallpaper.renderState()}
+        }
         readonly property var parallaxOptions: backgroundOptions.parallax ?? {}
         readonly property var effectsOptions: backgroundOptions.effects ?? {}
         readonly property var workSafetyOptions: Config.options?.workSafety ?? {}
@@ -1275,6 +1285,7 @@ Scope {
                 // renderer and uses the user's transition settings.
                 WallpaperCrossfader {
                     id: wallpaper
+                    objectName: "desktopWallpaper"
                     anchors.fill: parent
                     visible: !blurLoader.active && !bgRoot.backdropActive && !bgRoot.wallpaperIsGif && !bgRoot.wallpaperIsVideo
                     opacity: (wallpaperContainer.showInternalStaticWallpaper ? 1 : 0) * bgRoot._awwwRevealOpacity

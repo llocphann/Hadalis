@@ -61,7 +61,7 @@ Window {
     check(!button.outlined && button.background.border.width===0,"search action still has a decorative border")
    }
    const mode=named(picker,"wallpaperMode"),tip=findChild(mode,"abyssButtonToolTip")
-   mouseMove(mode);tryVerify(()=>tip.contentItem.shown,2500);wait(200)
+   mouseMove(mode,mode.width/2,mode.height/2);tryVerify(()=>tip.contentItem.shown,2500);wait(200)
    const surface=findChild(tip.contentItem,"styledToolTipSurface")
    check(tip.contentItem.abyss && surface.radius>=12 && surface.color===AbyssStyle.surface,"hover tip did not use the Abyss material")
    root.contentItem.grabToImage(result=>result.saveToFile("/tmp/hadalis-wallpaper-hover-20261007.png"))
@@ -69,7 +69,7 @@ Window {
    Weather.data={hourly:[{label:"12:00",temp:"24°",code:0,isNight:false}]}
    tryVerify(()=>findChild(orbit,"abyssWeatherNode")!==null,2000)
    const weather=findChild(orbit,"abyssWeatherNode"),weatherTip=findChild(weather,"abyssButtonToolTip")
-   mouseMove(weather);wait(800)
+   mouseMove(weather,weather.width/2,weather.height/2);wait(800)
    check(!weatherTip.enabled && !weatherTip.internalVisibleCondition && orbit.activeIndex===0,"weather duplicated information in a hover popup or lost selection")
    mouseMove(search)
    search.text="b";tryCompare(picker,"count",1,2000)

@@ -81,3 +81,10 @@ window-rule {
 //     match app-id=r#"^org\.gnome\.Calculator$"#
 //     open-floating true
 // }
+
+// Nested compositor/debug hosts keep the current application focused.
+// A capture runner may explicitly focus its own window when required.
+window-rule {
+    match app-id=r#"^niri$"#
+    open-focused false
+}

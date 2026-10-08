@@ -152,7 +152,7 @@ Item {
             anchors.fill:parent;hoverEnabled:true
             // Right corner is click-only; hover and pointer movement must not open the system sidebar.
             onEntered: if((corner.leftSide || corner.atBottom) && (corner.options.clickless ?? false)) corner.activate(true)
-            onPressed: if(!(corner.options.clickless ?? false)) corner.activate(false)
+            onPressed: if((!corner.leftSide && !corner.atBottom) || !(corner.options.clickless ?? false)) corner.activate(false)
             onPositionChanged: {
                 if((!corner.leftSide && !corner.atBottom) || (corner.options.clickless ?? false) || !(corner.options.clicklessCornerEnd ?? false)) return
                 const offset=corner.options.clicklessCornerVerticalOffset ?? 1

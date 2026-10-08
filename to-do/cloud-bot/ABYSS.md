@@ -370,3 +370,62 @@ historical. **NOT_COMPLETE:** physical owner-session acceptance and comparable
 whole-shell CPU/RAM/GPU/latency measurements. No approximation or stacked small
 tradeoff was introduced by the two research candidates; intentional UI/audio
 redesigns are recorded separately. No automation or timer was created.
+
+## Maintainer additions and checkpoint — 2026-10-09
+
+The earlier completed source groups do not close the new requirements below.
+
+- [x] Keep nested Niri debug windows unfocused unless a capture needs focus;
+  run only tests relevant to the changes being finished. `86d976a2c` adds the
+  window rule and an idempotent, state-based migration that preserves owner
+  overrides. Actual new-window readback retains the previous focused window.
+- [ ] Extract TLP, Thinkfan and Obsidian into optional Hadalird packages.
+  Hadalird exists and its empty repository was cloned; extraction, optional
+  host adapters, installation and missing-package behavior are not implemented.
+- [ ] Complete the current Hadanion requirements in its canonical task files.
+  Hadanion owns Companion code after `56336cd18`; do not restore its former
+  implementation in Hadalis. At Hadanion `a8fa298a4c52849f91dc511f6dae15b2a08dfc19`,
+  the focused offline QML/local reply guards pass. This does not qualify live
+  model output, physical interaction or hardware resource measurements.
+- [ ] Move Local Music from Sidebar Left into a Dashboard page. Center page
+  dots between left actions and right uptime; support horizontal navigation.
+  Provide Genre, Folders, Results, Playback and Lyrics columns. Results start
+  empty and display either a selected genre or the selected folder's children.
+  Reuse the existing MPD owner and stop presentation work on the hidden page.
+- [ ] Apply the below-3% stop policy and resume scheduling as clarified by the
+  maintainer: timers may use only the 5-hour reset, delayed by 2–5 minutes.
+  Whether the stop threshold also includes the weekly window is awaiting the
+  optional clarification. Never consume the available reset credit implicitly.
+
+### Validation and unfinished working tree
+
+`991e69e72` preserves Dashboard widget workspace dimensions while making room
+for the connected editor controls. The focused real field test passes 16
+route/edge/size cases. `4e3dcde86` removes stale desktop parallax translation
+when editing widgets and when parallax is disabled; the real coordinate test
+passes. These changes have not yet received post-update owner acceptance.
+
+The canonical run at `4e3dcde86878fc1cad4957ca08434e0f837fb925` reports 405 checks,
+404 PASS, one wallpaper hover failure and two deferred skips. Log identity:
+`899ecdd804f5978bf7a0314f737d6d509107889cf68bd640532978840a6ba89f`.
+It is not a canonical PASS. `4aed04ebb` synchronizes the wallpaper action
+layout and requires genuine native hover; the focused carousel test passes
+after the unfocused Niri policy is installed. No full-suite result is inferred
+for this later source or the current concurrent `dev`.
+
+The Music implementation remains uncommitted WIP. The pure folder/genre model
+passes its behavior test; QV4's missing `flatMap` support was corrected after a
+native failure. The latest native test still reports all five column positions
+as zero. Diagnose effective visibility/Row readiness and verify actual layout
+before committing or deploying this page; do not weaken the overlap assertion.
+Settings routing, retained library actions, narrow layout and directly affected
+Dashboard editing/warm-cache behavior still need qualification.
+
+Private logs and the owned Music working-file archive are preserved under the
+local validation state directory for 2026-10-09. The archive includes its base
+SHA and file hashes. No WIP product code was deployed. Unrelated evidence files
+remain untouched. The quota readback reached 2% weekly / 64% five-hour remaining;
+development and tests stopped while the active state was checkpointed.
+
+**NOT_COMPLETE:** Music, Hadalird extraction, remaining Hadanion requirements,
+owner-session acceptance and comparable CPU/RAM/GPU/latency measurements.

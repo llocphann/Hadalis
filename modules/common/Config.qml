@@ -133,13 +133,20 @@ Singleton {
         }
     }
 
-    function _recordReloadMutation(nestedKey, value): void {
-        if (!root._reloadInFlight)
+    function _recordPendingMutation(nestedKey, value): void {
+        if (!root._reloadInFlight && !root._writeInFlight)
             return;
         const path = Array.isArray(nestedKey) ? nestedKey.join(".") : String(nestedKey);
-        let overlay = root._cloneObject(root._reloadOverlay);
-        overlay[path] = value;
-        root._reloadOverlay = overlay;
+        if (root._reloadInFlight) {
+            let overlay = root._cloneObject(root._reloadOverlay);
+            overlay[path] = value;
+            root._reloadOverlay = overlay;
+        }
+        if (root._writeInFlight) {
+            let overlay = root._cloneObject(root._writeOverlay);
+            overlay[path] = value;
+            root._writeOverlay = overlay;
+        }
     }
 
     function _beginLocalMutation(): void {
@@ -152,7 +159,7 @@ Singleton {
 
     function setNestedValue(nestedKey, value) {
         _beginLocalMutation();
-        _recordReloadMutation(nestedKey, value);
+        _recordPendingMutation(nestedKey, value);
         _applyNestedKey(nestedKey, value);
         _applyToMirror(nestedKey, value);
         fileWriteTimer.restart();
@@ -167,7 +174,7 @@ Singleton {
         if (paths.length > 0)
             _beginLocalMutation();
         for (let i = 0; i < paths.length; ++i) {
-            _recordReloadMutation(paths[i], updates[paths[i]]);
+            _recordPendingMutation(paths[i], updates[paths[i]]);
             _applyNestedKey(paths[i], updates[paths[i]]);
             _applyToMirror(paths[i], updates[paths[i]]);
         }
@@ -273,12 +280,27 @@ Singleton {
     property bool _pendingReload: false
     property bool _reloadInFlight: false
     property var _reloadOverlay: ({})
+    property var _writeOverlay: ({})
     property int _writeRetries: 0
 
     function _endWriteFlight(reason: string): void {
         writeFlightGuard.stop();
+        const overlay = root._writeOverlay;
+        root._writeOverlay = ({});
         root._writeInFlight = false;
         root._writeRetries = 0;
+        // FileView deserializes the saved snapshot before emitting onSaved.
+        // Local edits made during that save must remain authoritative, just
+        // like mutations made during a reload of an older disk snapshot.
+        const paths = Object.keys(overlay);
+        for (let i = 0; i < paths.length; ++i) {
+            root._applyNestedKey(paths[i], overlay[paths[i]]);
+            root._applyToMirror(paths[i], overlay[paths[i]]);
+        }
+        if (paths.length > 0) {
+            root._pendingWrite = true;
+            root._pendingReload = false;
+        }
         if (reason.length > 0)
             console.warn("[Config] write flight released:", reason);
         if (root._pendingCustomInject) {

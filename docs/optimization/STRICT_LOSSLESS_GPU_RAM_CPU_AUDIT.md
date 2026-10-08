@@ -9166,3 +9166,45 @@ process but complicate distinct result ownership; below promotion threshold.
 
 No whole-Hadalis CPU/RAM/GPU/FPS percentage is claimed without comparable
 before/after measurement.
+
+## Research continuation — round 49
+
+Baseline: `dev` at `e094f125352b597cce68e071b8917a7ea9949fda`. Compared with Round 48's `7a31777674ae8e1ccb69824f988e720118ad038a`, GitHub reports **3 subsequent commits**. The runtime delta includes `Background.qml`, `WallpaperCrossfader.qml`, `WaveVisualizer.qml` and an IPC-registry edit plus tests. No runtime changes are authorized by this research round.
+
+Exact source blobs inspected:
+
+- `modules/common/widgets/BarCavaVisualizer.qml`: `f4f0d2ebc36a85d6fafdfa21b7d27ec47a67d06c`;
+- `modules/bar/BarContent.qml`: `3afa7aa5e27c069ceed6c3db71d34f1e7ef445d1`;
+- `modules/common/widgets/WallpaperCrossfader.qml`: `3511869bf7f731a31514eff645dd20d108605e63`;
+- `modules/common/widgets/wallpaperTransitions/inirMelt.frag`: `5e530ac1c15de5b32b50a915cd7a92ad40385a3d`;
+- `services/ObsidianTodoBackend.qml`: `75d8f69588f7e4a1f0eb922863544e52bb65fa02`.
+
+### R49.1 — Bar CAVA applies frame-invariant frequency-profile functions to every sample on every audio publication
+
+**HIGH-CONFIDENCE source-level CPU candidate; not an implemented or benchmarked optimization.**
+
+`BarCavaVisualizer._processedSource()` is entered by `_rebuildLevels()`, which is directly triggered by `onPointsChanged`. In its per-sample loop, when `accentStrength > 0` and `frequencyProfile !== "flat"`, it computes each sample's normalized index/frequency, calls `_profileWeight(frequency)`, then multiplies the incoming value by `1 + (weight - 1) * strength`.
+
+The profile calculation itself depends only on **source sample count, profile string, mirroredStereo and clamped accentStrength**, not on sample amplitudes. Bass/vocal profiles call `Math.exp`; treble/smile call `Math.pow`; warm has arithmetic-only weights. Under an unchanged active profile and sample count, the same scalar profile factors are recomputed for every frame. The Bar's actual consumer (`BarContent.qml`) forwards CAVA points and the configurable profile/strength into this renderer. Existing selection/smoothing scratch and dual output buffers already avoid per-frame array allocation; do not replace that correct design.
+
+**Strict-lossless candidate:** maintain a private, reusable factor vector keyed by the exact source count + profile + mirroredStereo + **clamped** strength. Build the factor vector only on a key change; retain the exact existing `_profileWeight`, domain calculation and `1 + (weight - 1) * strength` arithmetic when populating it. The hot path retains `Number(source[i]) || 0`, writes the same selected scratch array in source order and multiplies by the precomputed factor. Bypass the vector for the existing flat / zero-strength fast path. Neither levels/smoothing/bar counts nor CAVA subscriptions, publish identity, rendering nodes, animation cadence or `onPointsChanged` may change.
+
+For N samples and F incoming CAVA frames per second, the active non-flat path currently executes up to **N × F profile-function evaluations per second** (structural count only, not an FPS or CPU benchmark). The candidate should move profile-function evaluation to source-shape/config transitions; frame-by-frame per-sample multiplication remains.
+
+**Oracle before promotion to implementation:** compare the real QV4 implementation's selected source and final `_levels` element-by-element across flat, warm, bass, vocal, treble and smile, stereo true/false, strength 0/boundary/out-of-range, N=0/1/2/64/128/256/variable, changing amplitude including 0/negative/non-finite input, smoothing radius cases, bar and all wave modes, repeated same-size frames, immediate config changes between frames and active/hidden/visible changes. Verify identical source-order math and factor invalidation when N/config changes, identical QML NOTIFY and double-buffer object identity, no additional per-frame allocations, and same rendered frames. Also instrument profile-function call counts and before/after CPU frame cost on a live Bar. Existing `scripts/test-performance-lifecycle.sh` asserts scene-graph and scratch-buffer contracts; extend behavioral tests rather than weakening those assertions.
+
+### R49.2 — crossfader shader-source residency is an instrumentation target, not yet a GPU saving
+
+**MEASURE FIRST.** The current `WallpaperCrossfader.qml` creates two full-parent `ShaderEffectSource` objects bound to `img0` and `img1`; they have `visible: false` and `live: root._shaderTexturePrimePending`. It also constructs a `ShaderEffect`, visible only during priming/requested shader transitions. The recently reinforced priming path deliberately waits for presented frames before starting the transition, and the inactive image is cleared after finishing. **QML object presence alone does not prove that idle ShaderEffectSources retain GPU textures/FBOs**; `visible:false` plus `live:false` may already avoid work.
+
+Instrument QSG/RHI texture allocations and scene-graph resource residency for initial non-shader wallpaper, regular crossfade, `inirMelt` priming/animation/tail, subsequent idle, repeated transitions, multiple outputs and resize/DPR changes. Only if significant idle resource residency is actually observed, investigate cold/loading shader-source ownership while preserving the two presented-frame texture-prime handshake, image fill-mode/crop, transitions, cancellation, compile-failure/software-renderer fallback and exact first frame. No estimated VRAM or GPU percentage is justified before measurements.
+
+**Explicit non-candidate:** `shaderTransition.time`'s 16 ms active timer is **not dead**: the actual `inirMelt.frag` samples `ubuf.time` to animate the wave edge. Do not remove or slow that clock under a strict-lossless claim.
+
+### R49.3 — a possible duplicate legacy Obsidian capability probe is not promoted yet
+
+`ObsidianTodoBackend._scheduleRefresh()` schedules a scan after 80 ms and a capability probe after 120 ms; a successful scan completion restarts the capability debounce. If the first probe runs and finishes before a slower scan, the scan can schedule a second probe. This is a **conditional process fan-out**, not proof of a duplicate every startup. The backend is the legacy managed-note route, whereas the normal Markdown mode uses `DailyNoteTodoBackend`. Probes can reflect external Obsidian/Tasks changes; their results also drive capability state and mutation authorization. Record timestamped process traces and capability publication order before coalescing, and retain the source-key/CLI-running safety contracts. No promotion without a freshness and read-order oracle.
+
+Rechecked and rejected as duplicate/low value: `DailyNoteTodoBackend`'s 60 s date comparison was already classified MEASURE-FIRST in R31.4; its timer does **not** run a Python scan every minute. Existing `BarCavaVisualizer` scratch reuse, wave strip cap and CAVA subscription lifecycle are intentional baselines, not new optimization targets.
+
+This is source research only. No tests or owner-session GPU/RAM profiling were performed for these proposals. Do not attribute whole-Hadalis CPU/GPU/RAM/FPS percentages to them.

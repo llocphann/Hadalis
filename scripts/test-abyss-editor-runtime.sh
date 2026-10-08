@@ -10,6 +10,7 @@ mkdir -p "$abyss_editor_test/config/illogical-impulse"
 cp "$repo_root/defaults/config.json" "$abyss_editor_test/config/illogical-impulse/config.json"
 cat > "$abyss_editor_test/shell.qml" <<'QML'
 import QtQuick
+import QtTest
 import Quickshell
 import qs
 import qs.modules.common
@@ -29,6 +30,7 @@ ShellRoot {
         console.error("EDITOR_FAIL",message);root.finished=true;return false
     }
     AbyssSurfaceController { id: liquid }
+    TestCase { id:driver;when:false;optional:true }
     FloatingWindow {
         color: "#111820"
         visible: true;implicitWidth:1000;implicitHeight:700
@@ -51,7 +53,7 @@ ShellRoot {
                 GlobalStates.deferredPanelsReady=true
                 Config.setNestedValue("abyss.modules.configured",true)
                 Config.setNestedValue("abyss.modules.placements",[{id:"clock",kind:"clock",edge:"top",position:.4}])
-                Config.setNestedValue("abyss.modules.outputLayouts",[{outputName:"B",placements:[]}])
+                Config.setNestedValue("abyss.modules.outputLayouts",[{outputName:"B",placements:[],edgeJoinModules:{left:true}}])
                 root.before=JSON.stringify(Config.options.abyss.modules.placements)
                 GlobalStates.abyssEditing=true
             }
@@ -76,6 +78,17 @@ ShellRoot {
                     editor.edgeWidthAffectsModules=Object.assign({},editor.edgeWidthAffectsModules,{[edge]:false})
                     editor.edgeThicknesses=Object.assign({},editor.edgeThicknesses,{[edge]:0})
                     if(!root.check(editor.edgeInsets[edge]===0 && layer.layoutRecords.length===1 && layer.deformations.length===1,"zero bare "+edge+" retains independent module and backing")) return
+                    editor.add("battery")
+                    driver.wait(30)
+                    const join=driver.findChild(editor,"abyssJoinNearbyModules")
+                    const beforeJoin=layer.itemForId("clock")
+                    if(!root.check(join?.visible && layer.deformations.length===2,"edge-only width exposes the join checkbox on "+edge)) return
+                    driver.mouseClick(join)
+                    if(!root.check(editor.edgeJoinModules[edge] && layer.deformations.length===1 && layer.layoutRecords.length===2 && layer.itemForId("clock")===beforeJoin,"actual checkbox joins local paint while preserving modules on "+edge)) return
+                    driver.mouseClick(join)
+                    if(!root.check(!editor.edgeJoinModules[edge] && layer.deformations.length===2,"unchecking restores individual backing")) return
+                    editor.draft=editor.draft.filter(p=>p.id==="clock");editor.selectedId="clock";editor.refreshHandles()
+                    root.originalModule=layer.itemForId("clock")
                     editor.edgeThicknesses=Object.assign({},editor.edgeThicknesses,{[edge]:32})
                     editor.edgeWidthAffectsModules=Object.assign({},editor.edgeWidthAffectsModules,{[edge]:true})
                     if(!root.check((Config.options.abyss.modules.edgeThicknesses[edge] ?? -1)===-1,"thickness slider stays in draft")) return
@@ -92,6 +105,7 @@ ShellRoot {
             if(root.step===2) {
                 if(!root.check(layer.layoutRecords[0].edge==="top","Cancel restores saved presentation")) return
                 if(!root.check(!layer.placements[0].joinCorner,"Cancel restores unchecked corner preference")) return
+                if(!root.check(!layer.layoutOptions.edgeJoinModules.right,"Cancel restores saved module-join preference")) return
                 if(!root.check(layer.layoutOptions.size===1 && layer.deformations.length===0 && editor.edgeInsets.top===48 && layer.layoutOptions.edgeThicknesses.right===-1,"Cancel restores saved scale, thickness and full Edge presentation")) return
                 GlobalStates.abyssEditing=true
             }
@@ -100,6 +114,8 @@ ShellRoot {
                 editor.edgeSizes={top:1.1,right:1.25,bottom:1,left:1}
                 editor.edgeThicknesses={top:-1,right:24,bottom:-1,left:-1}
                 editor.moduleScale=1.3;editor.singleModuleExpansion={right:"local"}
+                editor.edgeWidthAffectsModules=Object.assign({},editor.edgeWidthAffectsModules,{right:false})
+                editor.edgeJoinModules=Object.assign({},editor.edgeJoinModules,{right:true})
                 editor.change("alignment","center");editor.change("joinCorner",true)
                 if(!root.check(editor.selected.joinCorner,"corner option belongs to draft module")) return
                 editor.add("media");editor.change("enabled",false)
@@ -108,6 +124,7 @@ ShellRoot {
             if(root.step===4) {
                 const profiles=Array.from(Config.options.abyss.modules.outputLayouts)
                 if(!root.check(profiles.length===2 && profiles[0].outputName==="B","Done merges latest output profiles")) return
+                if(!root.check(profiles[0].edgeJoinModules.left && profiles[1].edgeJoinModules.right && layer.layoutOptions.edgeJoinModules.right,"Done scopes module joining to this output and preserves another")) return
                 if(!root.check(layer.layoutRecords[0].edge==="right" && profiles[1].gap===17 && !profiles[1].placements[1].enabled,"persisted normalized edge, gap and disable")) return
                 if(!root.check(profiles[1].edgeThicknesses.right===24 && editor.edgeInsets.right===24,"Done preserves pixel thickness scoped to this output")) return
                 if(!root.check(profiles[1].edgeSizes.right===1.25 && !profiles[1].placements[0].customSize && profiles[1].placements[0].alignment==="center" && profiles[1].placements[0].joinCorner,"Done persists shared edge sizes and grouped alignment")) return

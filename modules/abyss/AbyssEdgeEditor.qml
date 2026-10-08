@@ -26,6 +26,7 @@ Item {
     property var edgeSizes: ({top:1,right:1,bottom:1,left:1})
     property var edgeThicknesses: ({top:-1,right:-1,bottom:-1,left:-1})
     property var edgeWidthAffectsModules: ({top:true,right:true,bottom:true,left:true})
+    property var edgeJoinModules: ({top:false,right:false,bottom:false,left:false})
     property real moduleScale: 1
     property var singleModuleExpansion: ({top:"edge",right:"edge",bottom:"edge",left:"edge"})
     property string editingEdge: "top"
@@ -52,7 +53,7 @@ Item {
     readonly property string nearbyCorner: Placement.adjacentEdge(moduleLayer.layoutRecords.find(p=>p.id===selectedId),width,height)
     readonly property var selected: draft.find(p => p.id === selectedId)
     readonly property var draftOptions: Object.assign({},Config.options?.abyss?.modules,{gap:gap,edgeSizes:edgeSizes,size:moduleScale,
-        singleModuleExpansion:singleModuleExpansion,edgeThicknesses:edgeThicknesses,edgeWidthAffectsModules:edgeWidthAffectsModules,edgeThickness:AbyssStyle.perimeterThickness})
+        singleModuleExpansion:singleModuleExpansion,edgeThicknesses:edgeThicknesses,edgeWidthAffectsModules:edgeWidthAffectsModules,edgeJoinModules:edgeJoinModules,edgeThickness:AbyssStyle.perimeterThickness})
 
     function toolbarEdgeScore(edge): real {
         let score = (edge === toolbarEdge ? -4 : 0)
@@ -127,6 +128,7 @@ Item {
         edgeSizes = Object.assign({top:1,right:1,bottom:1,left:1},options.edgeSizes)
         edgeThicknesses = Object.assign({top:-1,right:-1,bottom:-1,left:-1},options.edgeThicknesses)
         edgeWidthAffectsModules = Object.assign({top:true,right:true,bottom:true,left:true},options.edgeWidthAffectsModules)
+        edgeJoinModules = Object.assign({top:false,right:false,bottom:false,left:false},options.edgeJoinModules)
         moduleScale = options.size
         singleModuleExpansion = Object.assign({top:"edge",right:"edge",bottom:"edge",left:"edge"},options.singleModuleExpansion)
         editingEdge = moduleLayer.edge
@@ -140,7 +142,7 @@ Item {
     }
     function finish(save): void {
         if (save) {
-            const writes=Placement.saveProfile(Config.options?.abyss?.modules,outputName,draft,gap,outputOnly,edgeSizes,singleModuleExpansion,moduleScale,edgeThicknesses,edgeWidthAffectsModules)
+            const writes=Placement.saveProfile(Config.options?.abyss?.modules,outputName,draft,gap,outputOnly,edgeSizes,singleModuleExpansion,moduleScale,edgeThicknesses,edgeWidthAffectsModules,edgeJoinModules)
             let positions=Config.options?.abyss?.positions ?? []
             positionEdits.forEach(edit=>positions=Presentation.save(positions,edit.kind,edit.outputName,edit.values))
             if(positionEdits.length) writes["abyss.positions"]=positions
@@ -156,6 +158,7 @@ Item {
         moduleScale = 1
         edgeThicknesses = {top:-1,right:-1,bottom:-1,left:-1}
         edgeWidthAffectsModules = {top:true,right:true,bottom:true,left:true}
+        edgeJoinModules = {top:false,right:false,bottom:false,left:false}
         singleModuleExpansion = {top:"edge",right:"edge",bottom:"edge",left:"edge"}
         guides = []
         selectedId = ""
@@ -580,6 +583,16 @@ Item {
                     description:"Scale inherited modules with this Edge (0px hides them), or change only the bare Edge and retain local module bulges. Custom module sizes stay independent."
                     checkable:true;checked:root.edgeWidthAffectsModules[root.editingEdge]!==false
                     onToggled:root.edgeWidthAffectsModules=Object.assign({},root.edgeWidthAffectsModules,{[root.editingEdge]:checked})
+                }
+
+                AbyssCheckBox {
+                    objectName:"abyssJoinNearbyModules"
+                    visible:!root.editingPopups && root.edgeWidthAffectsModules[root.editingEdge]===false
+                    text:"Join nearby modules"
+                    checked:root.edgeJoinModules[root.editingEdge]===true
+                    Layout.fillWidth:true
+                    onToggled:root.edgeJoinModules=Object.assign({},root.edgeJoinModules,{[root.editingEdge]:checked})
+                    StyledToolTip {text:"Connect neighboring module surfaces on this Edge. Distant groups keep their own bulges; module sizes stay unchanged."}
                 }
 
                 GridLayout {

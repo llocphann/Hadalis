@@ -6,6 +6,23 @@ import subprocess
 root = Path(__file__).resolve().parents[1]
 program = (root / "modules/abyss/looks/AbyssLayout.js").read_text() + r"""
 const assert = require('node:assert/strict');
+for(const edge of ['top','right','bottom','left']) {
+ const placements=normalize([{id:'a',kind:'clock',edge,position:.35,depth:1.4},
+  {id:'b',kind:'clock',edge,position:.35,depth:.7},{id:'far',kind:'clock',edge,position:.9}],edge);
+ const options={edgeThickness:16,edgeThicknesses:{[edge]:0},edgeWidthAffectsModules:{[edge]:false}};
+ const records=geometry(placements,1920,1080,options,1),snapshot=JSON.stringify(records);
+ const separate=localSurfaces(records,1920,1080,options,1,48);
+ const joined=localSurfaces(records,1920,1080,{...options,edgeJoinModules:{[edge]:true}},1,48);
+ assert.equal(separate.length,3);assert.equal(joined.length,2,'join only the adjacent group on '+edge);
+ assert(joined[0].span>=records[1].along+records[1].span-records[0].along,'joined backing bridges the internal gap');
+ assert.equal(joined[0].depth,Math.max(separate[0].depth,separate[1].depth),'mixed heights retain the taller module');
+ assert.equal(JSON.stringify(records),snapshot,'paint joins do not change foreground/input geometry');
+ const all={edgeJoinModules:{top:false},outputLayouts:[{outputName:'B',placements:[],edgeJoinModules:{left:true}}]};
+ const writes=saveProfile(all,'A',placements,8,true,undefined,undefined,undefined,undefined,{[edge]:false},{[edge]:true});
+ assert.equal(writes['abyss.modules.outputLayouts'][0].edgeJoinModules.left,true,'preserve the other output');
+ assert.equal(optionsForOutput({...all,outputLayouts:writes['abyss.modules.outputLayouts']},'A').edgeJoinModules[edge],true);
+ assert.equal(saveProfile(all,'A',placements,8,false,undefined,undefined,undefined,undefined,undefined,{[edge]:true})['abyss.modules.edgeJoinModules'][edge],true);
+}
 for (const edge of ['top','right','bottom','left']) {
  const placements=normalize([{kind:'clock',edge},{kind:'battery',edge}],edge);
  const off={edgeThickness:16,edgeThicknesses:{[edge]:0}};

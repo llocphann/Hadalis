@@ -12,6 +12,8 @@ dash = (ROOT / "modules/dashboard/DashNotes.qml").read_text(encoding="utf-8")
 quick_notes = (ROOT / "modules/sidebarRight/notepad/QuickNotesView.qml").read_text(encoding="utf-8")
 helper = (ROOT / "scripts" / "notes" / "zettelkasten.py").read_text(encoding="utf-8")
 settings = (ROOT / "modules" / "settings" / "IntegrationsConfig.qml").read_text(encoding="utf-8")
+obsidian_settings = (ROOT / "modules" / "settings" / "ObsidianThemeSettings.qml").read_text(encoding="utf-8")
+shared_settings = settings + obsidian_settings
 system_services = (ROOT / "modules" / "settings" / "ServicesConfig.qml").read_text(encoding="utf-8")
 assert 'title: Translation.tr("To-do & Quick Notes")' not in system_services
 qmldir = (ROOT / "services/qmldir").read_text(encoding="utf-8")
@@ -86,7 +88,6 @@ for token in (
     'title: Translation.tr("To-do & Quick Notes")',
     'title: Translation.tr("Quick Notes")',
     'text: Todo.sharedVaultPath',
-    'Config.setNestedValue("todo.obsidian.vaultPath", value)',
     'Config.setNestedValue("notes.zettelkasten.folder", value)',
     'Config.setNestedValue("notes.zettelkasten.defaultType", newValue)',
     'Translation.tr("Default Zettelkasten type")',
@@ -95,7 +96,7 @@ for token in (
     'value: "Permanent"',
     "Zettelkasten.folder",
 ):
-    assert token in settings, f"Zettelkasten settings contract lost: {token}"
+    assert token in shared_settings, f"Zettelkasten settings contract lost: {token}"
 
 assert "singleton Zettelkasten 1.0 Zettelkasten.qml" in qmldir
 assert "property JsonObject notes: JsonObject {" in config
@@ -131,7 +132,7 @@ assert 'text: Translation.tr("Capture")' not in dash
 unified_settings = settings[unified_start:zettel_end]
 assert settings.count('title: Translation.tr("To-do & Quick Notes")') == 1
 assert 'title: Translation.tr("Quick Notes & Zettelkasten")' not in settings
-assert unified_settings.count('id: todoObsidianVaultPath') == 1
+assert shared_settings.count('id: todoObsidianVaultPath') == 1
 assert 'id: zettelkastenVaultPath' not in unified_settings
 assert 'Translation.tr("Vault path override")' not in unified_settings
 assert 'Translation.tr("Canonical task store")' not in unified_settings
@@ -140,6 +141,8 @@ assert 'Config.options?.todo?.obsidian?.vaultPath ?? ""' in todo_service
 assert 'Config.options?.notes?.zettelkasten?.vaultPath ?? ""' in todo_service
 assert todo_service.count("vaultPath: root.sharedVaultPath") == 2
 assert "readonly property string configuredVaultPath: Todo.sharedVaultPath" in service
-assert 'Config.setNestedValue("notes.zettelkasten.vaultPath", "")' in unified_settings
+assert 'updates["todo.obsidian.vaultPath"] = value' in obsidian_settings
+assert 'updates["notes.zettelkasten.vaultPath"] = ""' in obsidian_settings
+assert 'Config.setNestedValues(updates)' in obsidian_settings
 assert "notes.zettelkasten.vaultPath" not in service
 assert 'GlobalStates.openSettingsSection(7, "To-do & Quick Notes")' in quick_notes

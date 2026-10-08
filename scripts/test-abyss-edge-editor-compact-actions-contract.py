@@ -34,7 +34,6 @@ assert 'description:"Reset popup or IPC position"' in positions
 for needle in [
     'text:"This output only"',
     'text:"Custom size"',
-    '"Join "+root.nearbyCorner+" Edge"',
 ]:
     assert needle in editor, needle
 
@@ -46,7 +45,7 @@ subprocess.run(["node","-e",r'''
 const assert=require('node:assert/strict'),vm=require('node:vm');
 for(const nearbyCorner of ['', 'top', 'right', 'bottom', 'left']) {
  const actual=vm.runInNewContext(process.argv[1],{root:{nearbyCorner}},{timeout:100});
- assert.equal(actual,nearbyCorner ? 'Join '+nearbyCorner+' Edge' : 'Join nearby corner');
+ assert.equal(actual,nearbyCorner ? 'Connect to '+nearbyCorner+' corner' : 'Join nearby corner');
 }
 ''',label.group(1)],check=True)
 

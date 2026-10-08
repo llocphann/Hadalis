@@ -879,14 +879,31 @@ console.log('Selection group palette: PASS (18 family/shape/state cases)');
     ):
         require(ripple_button_with_icon, token, "RippleButtonWithIcon.qml")
 
-    for token in (
-        "color: Appearance.colors.colLayer3",
-        "radius: Appearance.rounding.verysmall",
-        "border.width: 1",
-        "border.color: Appearance.colors.colLayer3Hover",
-        "color: Appearance.colors.colOnLayer3",
-    ):
-        require(styled_tooltip_content, token, "StyledToolTipContent.qml")
+    # Shared tooltip content follows the selected shell family. Evaluate its
+    # real bindings so Abyss can keep its material while ii/Waffle retain the
+    # existing Material fallback in both light and dark palettes.
+    tooltip_surface = styled_tooltip_content.split("id: backgroundRectangle", 1)[1].split("StyledText {", 1)[0]
+    tooltip_text = styled_tooltip_content.split("id: tooltipTextObject", 1)[1]
+    bindings = {}
+    for name in ("color", "radius", "border.color"):
+        match = re.search(r"^\s*" + re.escape(name) + r":(.*)$", tooltip_surface, re.M)
+        assert match, "tooltip surface binding missing: " + name
+        bindings[name] = match.group(1)
+    bindings["text"] = re.search(r"^\s*color:(.*)$", tooltip_text, re.M).group(1)
+    subprocess.run(["node", "-e", r'''
+const assert=require('node:assert/strict'),vm=require('node:vm'),bindings=JSON.parse(process.argv[1]);
+for(const abyss of [false,true])for(const darkmode of [false,true]) {
+ const context={root:{abyss},implicitHeight:30,AbyssStyle:{surface:'abyss',accent:'accent',textColor:'abyss ink'},
+  Appearance:{m3colors:{darkmode},colors:{colLayer3:'material',colLayer3Hover:'outline',colOnLayer3:'material ink'},rounding:{verysmall:6}},
+  Qt:{alpha:(color,alpha)=>color+'@'+alpha}};
+ const evaluate=name=>vm.runInNewContext(bindings[name],context,{timeout:100});
+ assert.equal(evaluate('color'),abyss?'abyss':'material');
+ assert.equal(evaluate('radius'),abyss?15:6);
+ assert.equal(evaluate('border.color'),abyss?'accent@0.28':'outline');
+ assert.equal(evaluate('text'),abyss?(darkmode?'abyss ink':'#000000'):'material ink');
+}
+''', json.dumps(bindings)], check=True)
+    require(styled_tooltip_content, "border.width: 1", "StyledToolTipContent.qml")
     for token in ("RegaliaPlate {", "AngelPartialBorder {"):
         forbid(styled_tooltip_content, token, "StyledToolTipContent.qml")
     for token in (

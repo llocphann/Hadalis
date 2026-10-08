@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 README = (ROOT / "README.md").read_text(encoding="utf-8")
 INTEGRATIONS = (ROOT / "modules" / "settings" / "IntegrationsConfig.qml").read_text(encoding="utf-8")
+OBSIDIAN = (ROOT / "modules" / "settings" / "ObsidianThemeSettings.qml").read_text(encoding="utf-8")
 SERVICES = (ROOT / "modules" / "settings" / "ServicesConfig.qml").read_text(encoding="utf-8")
 OVERLAY = (ROOT / "modules" / "settings" / "SettingsOverlay.qml").read_text(encoding="utf-8")
 FOCUS = (ROOT / "modules" / "settings" / "SettingsFocus.qml").read_text(encoding="utf-8")
@@ -32,7 +33,7 @@ for token in (
     'Translation.tr("Shared by To-do and Zettelkasten.")',
     'Translation.tr("Activate verified source.")',
 ):
-    assert token in INTEGRATIONS, f"combined Settings label/help lost: {token}"
+    assert token in INTEGRATIONS or token in OBSIDIAN, f"combined Settings label/help lost: {token}"
     assert token not in SERVICES, f"application integration duplicated in Services: {token}"
 
 for removed_copy in (

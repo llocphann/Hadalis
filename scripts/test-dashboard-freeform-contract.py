@@ -207,7 +207,6 @@ def main() -> None:
         "id: availableModulesViewport",
         "id: availableModulesRow",
         "readonly property real toolbarRowNaturalWidth:",
-        "editActions.implicitWidth",
         "root.availableModulesNaturalWidth",
         "Layout.preferredWidth: root.availableModulesNaturalWidth",
         "flickableDirection: Flickable.HorizontalFlick",
@@ -219,6 +218,9 @@ def main() -> None:
     ):
         require(toolbar, token, "DashboardEditToolbar.qml")
     forbid(toolbar, "Flow {", "DashboardEditToolbar.qml")
+    # The adaptive GridLayout is assigned the toolbar's width; feeding its
+    # implicit width back into that same width creates a sizing cycle.
+    forbid(toolbar, "editActions.implicitWidth", "Dashboard toolbar width dependency")
     for source, text in (
         ("Dashboard.qml", standalone),
         ("OverviewDashboard.qml", overview),
@@ -311,8 +313,8 @@ def main() -> None:
     require(weather, "OrbitalWeather {", "DashWeather.qml")
     for token in (
         "function hourFromLabel(label): real",
-        "function arcAngle(startAngle, endAngle, fraction): real",
-        "function orbitAngleForHour(label): real",
+        "function arcAngle(",
+        "function orbitAngleForHour(",
     ):
         require(orbital, token, "OrbitalWeather.qml")
 

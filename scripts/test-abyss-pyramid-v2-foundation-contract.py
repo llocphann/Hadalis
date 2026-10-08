@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+from abyss_body_lifecycle_contract import verify_loader_residency
 
 r=Path(__file__).resolve().parents[1]
 host=(r/"modules/abyss/AbyssBodyHost.qml").read_text()
@@ -12,7 +13,7 @@ assert "property var semanticOpenOverride: undefined" in host
 assert "open:root.semanticOpen" in host
 assert "stackPolicy:root.stackPolicy" in host
 assert "root.semanticOpen && root.placementVisible" in host
-assert "(root.residentContent || root.visualResident)" in host
+verify_loader_residency(host)
 
 # Static same-neighborhood ordering is deterministic and contains no close lifecycle.
 assert 'a?.stackPolicy === "pyramid"' in placement

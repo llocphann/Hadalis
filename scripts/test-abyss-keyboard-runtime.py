@@ -37,7 +37,9 @@ ShellRoot {
    check(participant?.identity==="keyboard" && participant.ready,"keyboard did not join the shared field")
    const a=key(content,"a")
    check(a && a.abyss,"keycaps did not use Abyss palette")
-   tryVerify(()=>participant.progress>.99,3000)
+   // A 99% reveal can still leave several pixels of valid entrance motion.
+   // Measure the fitted body only once its presentation has actually ended.
+   tryCompare(participant,"progress",1,3000)
    const keys=findChild(content,"abyssKeyboardKeys")
    check(keys!==null,"actual key layout missing")
    const keyRect=keys.mapToItem(content,0,0,keys.width,keys.height)

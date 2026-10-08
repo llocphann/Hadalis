@@ -84,6 +84,11 @@ Window {
     TestCase {
         id: input
         name:"WullLively";when:false
+        SignalSpy {
+            id: ownershipExpiry
+            target:root.named(curiosity,"wullCuriosityOwnershipDeadline")
+            signalName:"triggered"
+        }
         function check(value,message): void {if(!value)throw new Error(message)}
         function runChecks() {
             try {
@@ -180,21 +185,29 @@ Window {
                 check(frozen===JSON.stringify([actor.x,actor.y,gait.phase,gait.weight]),"disabled clocks did not freeze")
                 root.place(280,40)
                 root.testPhase="initial curiosity"
+                // Isolate proximity from the separate TTL close rule. This
+                // tall-popup flight needs more than the production 3 s lease;
+                // its unmodified expiry is exercised independently below.
+                curiosity.ownedLifetimeMin=12000;curiosity.ownedLifetimeMax=12000
                 curiosity.lastVisit=0;presence.randomState=2000
                 check(curiosity.offer(),"curiosity offer rejected")
                 tryCompare(root,"featureOpen",true,6000)
                 tryCompare(curiosity,"stage","hold",7000)
                 check(root.opens===1 && actor.visible,"owned feature was not explored")
                 tryCompare(curiosity,"reachedFeature",true,1000)
+                check(ownershipExpiry.valid,"ownership deadline signal is unavailable")
+                ownershipExpiry.clear()
                 // Cancel the autonomous hold with a real departure route. The
                 // borrowed surface closes as Wull leaves, not at a later timeout.
                 actor.stopGesture();presence.directed=false
                 root.testPhase="distance departure"
                 check(presence.moveTo(Scene.edgePoint(root.scene,"bottom",.08),false,"fly"),"departure route rejected")
                 tryCompare(root,"featureOpen",false,6000)
-                check(root.closes===1 && !curiosity.busy && presence.traveling && root.closeGap>140,
+                check(root.closes===1 && !curiosity.busy && presence.traveling && root.closeGap>140
+                    && ownershipExpiry.count===0,
                     "distance close interrupted or preceded the departure animation "+root.closeGap)
                 tryCompare(presence,"traveling",false,presence.duration+800)
+                curiosity.ownedLifetimeMin=3000;curiosity.ownedLifetimeMax=3000
                 root.place(280,40)
                 root.testPhase="return close"
                 curiosity.lastVisit=0;presence.randomState=2000;check(curiosity.offer(),"return-close curiosity offer rejected")
@@ -235,6 +248,22 @@ Window {
                 check(presence.grounded && Scene.supportAt(root.scene,presence.position())!==null,
                     "Wull did not land on verified support after its module disappeared")
                 tryCompare(curiosity,"busy",false,1200)
+                root.place(280,40)
+                root.testPhase="production TTL departure"
+                curiosity.lastVisit=0;presence.randomState=2000
+                check(curiosity.offer(),"TTL curiosity offer rejected")
+                tryCompare(root,"featureOpen",true,6000)
+                tryVerify(()=>["inspect","hold"].includes(curiosity.stage),7000)
+                const ownershipDeadline=root.named(curiosity,"wullCuriosityOwnershipDeadline")
+                check(ownershipDeadline.running && ownershipDeadline.interval===3000,
+                    "production ownership lease changed")
+                ownershipExpiry.clear()
+                actor.stopGesture();presence.directed=false
+                check(presence.moveTo(Scene.edgePoint(root.scene,"bottom",.08),false,"fly"),"TTL departure rejected")
+                tryCompare(root,"featureOpen",false,4000)
+                check(ownershipExpiry.count===1 && !curiosity.busy && presence.traveling && root.closeGap<140,
+                    "TTL did not close independently while preserving departure")
+                tryCompare(presence,"traveling",false,presence.duration+1200)
                 root.place(280,40)
                 curiosity.lastVisit=0;presence.randomState=2000;check(curiosity.offer(),"policy case offer rejected")
                 root.allowed=false;wait(40)

@@ -1325,6 +1325,7 @@ Scope {
             }
             AbyssBodyHost {
                 id: utility
+                property string retainedKind: "session"
                 z: 15
                 identity: "utility"
                 controller: liquid
@@ -1339,7 +1340,10 @@ Scope {
                 span: (Geometry.horizontal(edge) ? (contentItem.item?.desiredWidth ?? 640) : (contentItem.item?.desiredHeight ?? 700))+padding*2
                 along: window.positionAlong(contentKind,edge,span,((Geometry.horizontal(edge) ? window.width : window.height)-span)/2)
                 depth: (Geometry.horizontal(edge) ? (contentItem.item?.desiredHeight ?? 700) : (contentItem.item?.desiredWidth ?? 640))+padding*2
-                contentKind: root.utilityKind
+                // A closing host still paints its previous feature. Empty
+                // utilityKind must not select the Update fallback mid-slide.
+                contentKind: root.utilityKind || retainedKind
+                onContentKindChanged: if(contentKind) retainedKind=contentKind
                 source: "content/AbyssUtilityContent.qml"
                 onCloseRequested: root.closeUtility()
             }

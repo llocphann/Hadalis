@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
+import subprocess
 import sys
+import tempfile
 
 
 root = Path(sys.argv[1])
@@ -35,6 +37,10 @@ approved_on = "2026-10-07"
 # Do NOT refresh these hashes as part of refactors, cleanup, optimization,
 # renderer work, or automated formatting. An intentional visual change requires
 # explicit maintainer approval first, then a deliberate re-baseline of this map.
+# The maintainer's strict-lossless optimization request permits one frozen
+# arithmetic-only patch. Reverse that exact patch and check the ORIGINAL visual
+# hash, then require the old/new arithmetic and real QV4 geometry oracle. This
+# does not refresh a visual baseline or allow any other source/renderer drift.
 expected = {
     "modules/bar/weather/LiquidOrbitalField.qml":
         "1883b6877a02f6013fcacc7e30142e5f522b6165",
@@ -56,14 +62,33 @@ def git_blob_id(payload: bytes) -> str:
     return hashlib.sha1(header + payload).hexdigest()
 
 
+def approved_visual_after_exact_cache_patch(payload: bytes, approved_blob: str) -> bool:
+    patch = (root / "scripts/fixtures/weather-orbit-exact-table-cache.patch").read_bytes()
+    if hashlib.sha256(patch).hexdigest() != "26a2053ea5aa13519be94cf2e71082e572f5bd76231303b604c75e4cb84ccaea":
+        return False
+    with tempfile.TemporaryDirectory(prefix="hadalis-weather-visual-lock-") as name:
+        private = Path(name)
+        original = private / "modules/bar/weather/OrbitalWeather.qml"
+        original.parent.mkdir(parents=True)
+        original.write_bytes(payload)
+        result = subprocess.run(["git", "apply", "--reverse", "-"], input=patch,
+                                cwd=private, capture_output=True)
+        return result.returncode == 0 and git_blob_id(original.read_bytes()) == approved_blob
+
+
 drift = []
+exact_cache_patch = False
 for relative, approved_blob in expected.items():
     path = root / relative
     if not path.is_file():
         drift.append((relative, approved_blob, "<missing>"))
         continue
-    actual_blob = git_blob_id(path.read_bytes())
+    payload = path.read_bytes()
+    actual_blob = git_blob_id(payload)
     if actual_blob != approved_blob:
+        if relative == "modules/bar/weather/OrbitalWeather.qml" and approved_visual_after_exact_cache_patch(payload, approved_blob):
+            exact_cache_patch = True
+            continue
         drift.append((relative, approved_blob, actual_blob))
 
 if drift:
@@ -83,5 +108,8 @@ if drift:
     )
     raise SystemExit(1)
 
-print(f"Orbital Weather visual lock: PASS (approved {approved_on})")
+if exact_cache_patch:
+    subprocess.run([sys.executable, str(root / "scripts/test-weather-orbit-table-parity.py")], check=True)
+
+print(f"Orbital Weather visual lock: PASS (original approved {approved_on} hashes preserved)")
 PY

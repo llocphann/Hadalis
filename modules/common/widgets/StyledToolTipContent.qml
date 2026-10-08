@@ -1,5 +1,6 @@
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.abyss.looks
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -7,6 +8,7 @@ import QtQuick.Layouts
 Item {
     id: root
     required property string text
+    readonly property bool abyss:Config.options?.panelFamily === "abyss"
     property bool shown: false
     property string position: "bottom" // "bottom", "top", "left", "right"
     property real horizontalPadding: 10
@@ -19,6 +21,7 @@ Item {
 
     Rectangle {
         id: backgroundRectangle
+        objectName:"styledToolTipSurface"
         // Grow from the edge nearest to the anchor
         x: root.position === "left" ? root.implicitWidth - implicitWidth
          : root.position === "right" ? 0
@@ -26,10 +29,10 @@ Item {
         y: root.position === "top" ? root.implicitHeight - implicitHeight
          : root.position === "bottom" ? 0
          : (root.implicitHeight - implicitHeight) / 2
-        color: Appearance.colors.colLayer3
-        radius: Appearance.rounding.verysmall
+        color: root.abyss ? AbyssStyle.surface : Appearance.colors.colLayer3
+        radius: root.abyss ? Math.min(18,implicitHeight/2) : Appearance.rounding.verysmall
         border.width: 1
-        border.color: Appearance.colors.colLayer3Hover
+        border.color: root.abyss ? Qt.alpha(AbyssStyle.accent,.28) : Appearance.colors.colLayer3Hover
         opacity: shown ? 1 : 0
         scale: shown ? 1 : 0.94
         transformOrigin: root.position === "top" ? Item.Bottom
@@ -63,9 +66,8 @@ Item {
             text: root.text
             font.pixelSize: Appearance.font.pixelSize.smaller
             font.hintingPreference: Font.PreferNoHinting // Prevent shaky text
-            color: Appearance.colors.colOnLayer3
+            color: root.abyss ? (Appearance.m3colors.darkmode ? AbyssStyle.textColor : "#000000") : Appearance.colors.colOnLayer3
             wrapMode: Text.Wrap
         }
     }   
 }
-

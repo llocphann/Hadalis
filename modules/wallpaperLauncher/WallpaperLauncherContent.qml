@@ -97,10 +97,10 @@ FocusScope {
             Rectangle {anchors.fill:parent;radius:22;color:Qt.alpha(AbyssStyle.surfaceRaised,.72)}
             RowLayout {
                 anchors.fill:parent;anchors.leftMargin:10;anchors.rightMargin:5;spacing:4
-                AbyssLabel {text:"⌕";font.pixelSize:24;color:AbyssStyle.textColorMuted}
+                MaterialSymbol {objectName:"wallpaperSearchIcon";text:"search";iconSize:20;color:AbyssStyle.textColorMuted;Layout.alignment:Qt.AlignVCenter}
                 AbyssSearchField {
                     id:search;objectName:"wallpaperSearch";Layout.fillWidth:true
-                    placeholderText:">wallpaper";background:Item {}
+                    placeholderText:Translation.tr("Search wallpapers");background:Item {}
                     text:GlobalStates.wallpaperLauncherSearchText
                     onTextChanged:GlobalStates.wallpaperLauncherSearchText=text
                     onAccepted:root.activateCurrent()
@@ -108,10 +108,10 @@ FocusScope {
                     Keys.onUpPressed:root.moveSelection(-1)
                     Keys.onEscapePressed:GlobalStates.wallpaperLauncherOpen=false
                 }
-                AbyssButton {glyph:root.mode==="static" ? "image" : "movie";description:root.mode==="static" ? "Show animated wallpapers" : "Show images";onClicked:root.setMode(root.mode==="static" ? "animated" : "static")}
-                AbyssButton {glyph:"folder_open";description:root.browseFolder || "Choose wallpaper folder";onClicked:folderPicker.open()}
-                AbyssButton {glyph:"refresh";description:"Refresh wallpapers";enabled:!root.loading;onClicked:root.refreshLibrary(true)}
-                AbyssButton {glyph:"close";description:"Close wallpaper selector";onClicked:GlobalStates.wallpaperLauncherOpen=false}
+                AbyssButton {objectName:"wallpaperMode";outlined:false;glyph:root.mode==="static" ? "image" : "movie";description:root.mode==="static" ? "Show animated wallpapers" : "Show images";onClicked:root.setMode(root.mode==="static" ? "animated" : "static")}
+                AbyssButton {objectName:"wallpaperFolder";outlined:false;glyph:"folder_open";description:root.browseFolder || "Choose wallpaper folder";onClicked:folderPicker.open()}
+                AbyssButton {objectName:"wallpaperRefresh";outlined:false;glyph:"refresh";description:"Refresh wallpapers";enabled:!root.loading;onClicked:root.refreshLibrary(true)}
+                AbyssButton {objectName:"wallpaperClose";outlined:false;glyph:"close";description:"Close wallpaper selector";onClicked:GlobalStates.wallpaperLauncherOpen=false}
             }
         }
 

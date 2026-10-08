@@ -68,6 +68,7 @@ Item {
         model:root.hours
         AbyssButton {
             id: node
+            objectName:"abyssWeatherNode"
             required property var modelData
             required property int index
             readonly property real orbitAngle:root.angle(modelData.label,index)
@@ -77,6 +78,7 @@ Item {
             leftPadding:4;rightPadding:4
             checked:root.activeIndex===index
             description:(modelData.label ?? "")+" · "+(modelData.temp ?? "--°")
+            toolTipEnabled:false
             onHoveredChanged:if(hovered) root.activeIndex=index
             onActiveFocusChanged:if(activeFocus) root.activeIndex=index
             onClicked:root.activeIndex=index

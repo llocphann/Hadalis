@@ -9,6 +9,8 @@ AbstractButton {
     id: root
     property string glyph: ""
     property bool compact: false
+    property bool outlined: true
+    property bool toolTipEnabled: true
     property string description: text
     readonly property color baseInk: Appearance.m3colors.darkmode
         ? AbyssStyle.textColor : "#000000"
@@ -26,7 +28,7 @@ AbstractButton {
     background: Rectangle {
         radius: height/2
         color: Qt.alpha(AbyssStyle.accent,root.down ? .24 : root.checked ? .2 : root.hovered ? .12 : .05)
-        border.width: 1
+        border.width: root.visualFocus ? 2 : root.outlined ? 1 : 0
         border.color: Qt.alpha(AbyssStyle.accent,root.activeFocus ? .8 : root.hovered || root.checked ? .35 : .15)
         Behavior on color { enabled: AbyssStyle.motionEnabled; ColorAnimation { duration: AbyssStyle.motionFast } }
         Behavior on border.color { enabled: AbyssStyle.motionEnabled; ColorAnimation { duration: AbyssStyle.motionFast } }
@@ -51,7 +53,10 @@ AbstractButton {
             Layout.alignment: Qt.AlignVCenter
         }
     }
-    ToolTip.visible: hovered && description.length > 0 && (compact || text.length === 0)
-    ToolTip.text: description
-    ToolTip.delay: 700
+    StyledToolTip {
+        objectName:"abyssButtonToolTip"
+        enabled:root.toolTipEnabled && (root.compact || root.text.length === 0)
+        text:root.description
+        delay:700
+    }
 }

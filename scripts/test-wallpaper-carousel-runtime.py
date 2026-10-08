@@ -20,6 +20,8 @@ import qs
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import qs.modules.abyss.looks
+import qs.modules.bar.weather
 import qs.modules.wallpaperLauncher
 import qs.services
 Window {
@@ -30,6 +32,7 @@ Window {
  property int finishes:0
  property int presentedPrime:0
  WallpaperLauncherContent {id:picker;width:parent.width;height:300;monitorName:"fixture-output";browseFolder:Quickshell.env("WALLPAPER_FIXTURES")}
+ AbyssOrbitalWeather {id:orbit;x:650;y:320;width:280;height:230}
  WallpaperCrossfader {
   id:wall;x:80;y:380;width:820;height:260;sourceSize:Qt.size(820,260)
   transitionType:"inirMelt";transitionBaseDuration:350
@@ -52,6 +55,23 @@ Window {
    tryVerify(()=>picker.count===5,7000)
    check(picker.displayMode==="static" && picker.entries.length===5,"library lost image files")
    const search=named(picker,"wallpaperSearch"),carousel=named(picker,"wallpaperCarousel")
+   check(search.placeholderText==="Search wallpapers" && named(picker,"wallpaperSearchIcon").text==="search","search retained the old prefix or malformed glyph")
+   for(const name of ["wallpaperMode","wallpaperFolder","wallpaperRefresh","wallpaperClose"]){
+    const button=named(picker,name)
+    check(!button.outlined && button.background.border.width===0,"search action still has a decorative border")
+   }
+   const mode=named(picker,"wallpaperMode"),tip=findChild(mode,"abyssButtonToolTip")
+   mouseMove(mode);tryVerify(()=>tip.contentItem.shown,2500);wait(200)
+   const surface=findChild(tip.contentItem,"styledToolTipSurface")
+   check(tip.contentItem.abyss && surface.radius>=12 && surface.color===AbyssStyle.surface,"hover tip did not use the Abyss material")
+   root.contentItem.grabToImage(result=>result.saveToFile("/tmp/hadalis-wallpaper-hover-20261007.png"))
+   wait(120);mouseMove(search);tryVerify(()=>!tip.contentItem.shown,2000)
+   Weather.data={hourly:[{label:"12:00",temp:"24°",code:0,isNight:false}]}
+   tryVerify(()=>findChild(orbit,"abyssWeatherNode")!==null,2000)
+   const weather=findChild(orbit,"abyssWeatherNode"),weatherTip=findChild(weather,"abyssButtonToolTip")
+   mouseMove(weather);wait(800)
+   check(!weatherTip.enabled && !weatherTip.internalVisibleCondition && orbit.activeIndex===0,"weather duplicated information in a hover popup or lost selection")
+   mouseMove(search)
    search.text="b";tryCompare(picker,"count",1,2000)
    check(picker.selectedPath.endsWith('/b.png'),"search did not select the matching wallpaper")
    search.text="";tryCompare(picker,"count",5,2000);wait(80)

@@ -251,34 +251,122 @@ No savings percentage or CI qualification is inferred from these source changes.
 The maintainer resumes implementation and reopens Dashboard acceptance. The
 earlier 21-group source checklist does not close these newly reported problems.
 
-- [ ] **DSP presentation isolation:** a non-Flat EQ preset must keep playing
+- [x] **DSP presentation isolation:** a non-Flat EQ preset must keep playing
   uninterrupted when opening/reopening any popup, Sidebar or Dashboard. Trace
   DSP writes and analyzer restarts; presentation changes must not reapply a
   preset or reconstruct the audio pipeline.
-- [ ] **Finish Dashboard editing:** the Abyss editor controls belong above the
+- [x] **Finish Dashboard editing:** the Abyss editor controls belong above the
   Dashboard in the existing connected field. Entering edit mode must preserve
   the actual widget workspace and dimensions. Qualify packed/empty layouts,
   move/resize/collision, Add, undo/cancel/save and narrow outputs on the composed
   native surface, not only an isolated toolbar.
-- [ ] **Research-backed optimization:** implement the highest-value current
+- [x] **Research-backed optimization:** implement the highest-value current
   candidates in `docs/optimization/STRICT_LOSSLESS_GPU_RAM_CPU_AUDIT.md` after
   current-source verification and behavior parity. Prefer strict lossless. Any
   justified small tradeoff requires a measured large gain and one cumulative
   budget below 1%; independent small losses must not silently accumulate.
-- [ ] **Light warm readiness:** reduce unnecessary RAM/CPU/GPU work and heavy
+- [x] **Light warm readiness:** reduce unnecessary RAM/CPU/GPU work and heavy
   residency while preserving prompt open/reopen. Separate retained lightweight
   state from expensive running work; do not cold-start every surface on demand.
   Record lifecycle and latency evidence without extrapolating synthetic counts
   to whole-shell resource percentages.
-- [ ] **Individual Edge 0px:** each physical edge accepts zero width. Preserve
+- [x] **Individual Edge 0px:** each physical edge accepts zero width. Preserve
   independent per-edge edge-only/module-inheritance controls and per-output
   drafts. The new iRiS reference shows thin bare edges and local module bulges:
   a zero-width bare edge must not erase separately sized modules or their input.
-- [ ] **Audio Spectrum bounce and cost:** compare the old iNiR upstream wave,
+- [x] **Audio Spectrum bounce and cost:** compare the old iNiR upstream wave,
   restore its responsive bounce, and remove avoidable analyzer/solver/render
   churn. Keep one shared analyzer, finite idle teardown and fast warm reopen.
 
 Reference: `codex-clipboard-16fe5201-4a20-4c62-973e-553a2cafe08e.png`, supplied by
 the maintainer; it illustrates edge/module geometry rather than authorizing
-unrelated wallpaper or desktop changes. These additions are **IN_PROGRESS**;
+unrelated wallpaper or desktop changes. These additions are **SOURCE_COMPLETE / CANONICAL_PENDING**;
 the existing exact-SHA validation result above remains historical evidence.
+
+### Additional visual requirements — 2026-10-07
+
+- [x] **Join local modules:** when an Edge uses edge-only width, provide a
+  per-edge checkbox to join nearby module bulges, analogous to the existing
+  nearby Edge/corner join. Keep distant groups separate and preserve module
+  dimensions/input and per-output draft/cancel/save behavior.
+- [x] **Compact OSK:** fit the connected keyboard body to its actual keys and
+  controls; remove the large unused margin shown in the new screenshot while
+  preserving drag/pin, typing focus and held-key release.
+- [x] **Wallpaper search / hover surfaces:** replace the malformed search icon,
+  remove the Caelestia `>wallpaper` prefix, remove search action borders and use
+  Abyss presentation for retained hover tips. Audit shared hover surfaces;
+  remove Orbital Weather's redundant tooltip because the orbit already displays
+  the same information.
+
+The three new screenshots illustrate current OSK margins, Wallpaper search and
+bordered action controls. These additions extend the active work above.
+
+
+### Maintainer additions — 2026-10-08
+
+All checkboxes here identify implemented source and focused regression coverage.
+They do not substitute for owner-session visual/audio/hardware acceptance.
+
+- [x] Aqua and Octo keep the takeoff support orientation during Jump/Fly on
+  top/right/bottom/left Edges; landing adopts the destination frame.
+- [x] Place the shared Obsidian Vault Path first, followed by vault/application
+  configuration paths and executable, in one Obsidian card above task options.
+  Preserve the canonical Todo/Quick Notes path and clear the legacy override.
+- [x] Keep Cheatsheet's feature and dimensions through the closing slide;
+  an empty utility selector must not swap in Update. Explicit Update still opens.
+- [x] Let the nearest visible module within 160px connect its local backing to
+  a Screen Corner, with a real checkbox; preserve foreground dimensions/input.
+- [x] Give edge-only module backing a 0–64px rounding override per Edge/output
+  and an inherit action. The GPU field and immersion mask share record radii.
+- [x] Expose CSS Snippet theming explicitly. Apply/disable owns only
+  `.obsidian/snippets/99_Hadalis_Theme.css` and its enabled-snippet entry.
+  Read the existing Carbon Cyan stops from Abyssal-Vault and Obsidian-Vault;
+  exercise their appearance layouts on temporary copies, preserving theme,
+  fonts, other snippets and user preferences.
+
+### Source milestones and bounded evidence — 2026-10-08
+
+- DSP isolation `3142861f9`: four real Bass reopen cycles generate zero DSP
+  writes; genuine keyboard edits apply once and finish after closing. Fake owned
+  helper/socket tests preserve the audio-pipeline contract; physical audio remains
+  owner acceptance.
+- Edge 0px `57c5fca52`, joins `8d99a6534`, corners/rounding `f28c3f508`:
+  four-edge/output draft Cancel/Done and actual input/paint geometry pass.
+  Real GPU captures prove inherit/default pixel parity, square/rounded contours
+  and a painted corner weld. Wave/immersion packages are regenerated together.
+- Dashboard editor `8f625d1f0`: 16 native route/edge/size cases, stable workspace,
+  controls above the shared field, empty layouts, Undo/Cancel/Done and input release.
+- Warm readiness `8ecb12748`: both real Dashboard routes reuse the same canvas
+  and card objects during a bounded 1.2s cache. Hidden paint/input, media activity,
+  sampling and sorting leases are off; expiry unloads the tree. Closed startup
+  does not allocate a Dashboard. This is a lifecycle proof, not RSS/latency percent.
+- Spectrum `000b5b9a1`: old iNiR signed carrier/phase bounce, one shared CAVA
+  owner, 800ms idle grace, bounded warm capacity. Five 64-bar popup cycles cause
+  zero analyzer restarts; only real capacity growth restarts once. Audio-only
+  frames cause zero elastic-solver steps. Thirty frozen interaction traces /
+  18,000 frames preserve all original physics samples exactly. Spectrum appearance
+  is an authorized redesign, separate from strict-lossless physics optimization.
+- OSK `faef460b0`, Wallpaper/tips `1518f95b2`: real content sizing, key/pin/drag
+  lifecycle, search/navigation/actions, shared hover presentation and redundant
+  Orbital Weather tooltip removal pass focused native contracts.
+- Airborne orientation `6bf1338bd`: 16 real cast/edge/mode frames and landing.
+  Utility slide `bf650f931`: actual output retains Cheatsheet, unloads after close
+  and opens deliberate Update. Obsidian `1ab03d221`: native ordered path fields,
+  shared-vault migration/clear plus 11 filesystem tests including both reference
+  layouts. Owner vaults were inspected read-only, not rewritten by test fixtures.
+- Music `9376fa34f`: no runtime consumer of the removed folder snapshot root;
+  100 frozen/new snapshot cases preserve retained state and array identities.
+  MPD payload/protocol and Songs folder derivation remain unchanged. JSON may
+  still allocate the unused folders transiently; no RSS saving is asserted.
+- Weather `63ea47423`: exact existing 72-sample tables reused only inside one
+  binding evaluation, with fresh tables after resize/data/mode changes. 10,800
+  arithmetic cases and 288 native QV4 reactive geometry cases match old values.
+  Eight qualifying hours in one quadrant build 8 → 1 tables (87.5% fewer builds
+  at this step). The liquid direct formula and uncached delegate fallback remain.
+
+**CANONICAL_PENDING:** run the maintainer validator on the new committed exact
+SHA, with direct strict QML parsing. The earlier `3881227eb` result remains
+historical. **NOT_COMPLETE:** physical owner-session acceptance and comparable
+whole-shell CPU/RAM/GPU/latency measurements. No approximation or stacked small
+tradeoff was introduced by the two research candidates; intentional UI/audio
+redesigns are recorded separately. No automation or timer was created.

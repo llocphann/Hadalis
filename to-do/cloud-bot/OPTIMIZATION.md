@@ -130,3 +130,21 @@ and search/task-view lifecycle, then commit and validate a new exact SHA. Furthe
 related bug finding/lossless work and owner-session acceptance remain pending.
 The earlier 415/0/11 canonical result applies only to its recorded source SHA.
 Preserve concurrent owner work.
+
+
+### Resumed product implementation — 2026-10-08
+
+The October 5 stop checkpoint is historical: the maintainer explicitly resumed
+and authorized the product repairs and research-backed implementation. Current
+source completion, atomic refs, native parity/lifecycle evidence and pending
+exact-SHA canonical qualification are recorded in [ABYSS.md](ABYSS.md), the active
+product checklist. The connected Dashboard editor is implemented at `8f625d1f0`
+and both routes have bounded warm readiness at `8ecb12748`.
+
+The new strict-lossless candidates release LocalMusic's unused folder subtree
+(`9376fa34f`) and reuse identical per-quadrant Weather tables within one layout
+binding (`63ea47423`). Their focused oracles preserve retained state/identity and
+exact geometry; their local operation counts are not whole-shell resource gains.
+General research remains active. Historical consumed or missing worker evidence
+and owner-session acceptance remain distinct; this continuation does not repair
+or reclassify those historical records.

@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Effects
+import Quickshell
 
 import qs.modules.common
 
@@ -16,7 +17,7 @@ Item {
     // Transition config — read from Config with sensible defaults
     property int transitionBaseDuration: Config.options?.background?.transition?.duration ?? 800
     property int transitionDuration: Appearance.calcEffectiveDuration(transitionBaseDuration)
-    property string transitionType: Config.options?.background?.transition?.type ?? "inirMelt"
+    property string transitionType: Config.options?.background?.transition?.type ?? "crossfade"
     property string transitionDirection: Config.options?.background?.transition?.direction ?? "right"
     property bool enableTransitions: Config.options?.background?.transition?.enable ?? true
     readonly property list<real> _defaultBezier: [0.54, 0.0, 0.34, 0.99]
@@ -48,10 +49,15 @@ Item {
 
     // ── Internal state ─────────────────────────────────────────────────
     property bool _transitioning: false
-    // iNiR db2233ce73: liquid shader with presented-frame texture priming.
+    // Melt's frame-swapped/ShaderEffect handoff is unreliable on real desktop
+    // compositors. Existing saved inirMelt profiles must still change images.
+    // Only opt in to the experimental shader explicitly; the safe path uses
+    // the already-loaded image slots and an ordinary crossfade (no frame lease).
+    readonly property bool experimentalMelt: Quickshell.env("INIR_EXPERIMENTAL_MELT") === "1"
     readonly property var shaderTransitionTypes: ["inirMelt"]
-    readonly property bool shaderTransitionRequested: isShaderTransitionType(transitionType)
-        || String(transitionType ?? "") === "shaderRandom"
+    readonly property bool shaderTransitionRequested: experimentalMelt
+        && (isShaderTransitionType(transitionType)
+            || String(transitionType ?? "") === "shaderRandom")
     readonly property bool transitionBusy: _transitioning
         || internal.pendingSource !== "" || internal.loadingSource !== ""
     readonly property bool shaderTransitionBusy: shaderTransitionRequested && transitionBusy
@@ -218,7 +224,10 @@ Item {
     }
 
     function _normalizedTransitionType(rawType: string): string {
-        switch (String(rawType ?? "inirMelt")) {
+        switch (String(rawType ?? "crossfade")) {
+        case "inirMelt":
+        case "shaderRandom":
+            return "crossfade"
         case "none":
             return "none"
         case "simple":

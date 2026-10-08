@@ -123,6 +123,8 @@ ShellRoot {
         data = json.loads((ROOT / "defaults/config.json").read_text())
         data["panelFamily"] = "abyss"
         data["background"]["wallpaperPath"] = str(folder / "wallpapers/a.png")
+        # Exercise an existing user config: legacy melt must remain usable without shader priming.
+        data["background"]["transition"]["type"] = "inirMelt"
         data["background"]["effects"]["enableBlur"] = False
         data["background"]["widgets"] = {"clock": {"enable": False}}
         data.setdefault("wallpapers", {})["directory"] = str(folder / "wallpapers")

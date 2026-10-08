@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Finite GGUF inventory. Never download or load a model while scanning."""
+import argparse
 import hashlib
 import json
 import os
@@ -8,14 +9,20 @@ import re
 import shutil
 import struct
 
-def roots():
+def roots(extra_root=''):
     override=os.environ.get('INIR_GGUF_ROOTS')
     if override is not None:
-        return [Path(p).expanduser() for p in json.loads(override)[:8]]
-    home=Path.home()
-    hub=Path(os.environ.get('HUGGINGFACE_HUB_CACHE',str(Path(os.environ.get('HF_HOME',str(home/'.cache/huggingface')))/'hub')))
-    return [hub,home/'.unsloth/studio/exports',home/'.unsloth/studio/library',home/'Models',
-        home/'.local/share/inir/models',home/'Downloads']
+        standard=[Path(p).expanduser() for p in json.loads(override)[:8]]
+    else:
+        home=Path.home()
+        hub=Path(os.environ.get('HUGGINGFACE_HUB_CACHE',str(Path(os.environ.get('HF_HOME',str(home/'.cache/huggingface')))/'hub')))
+        standard=[hub,home/'.unsloth/studio/exports',home/'.unsloth/studio/library',home/'Models',
+            home/'.local/share/inir/models',home/'Downloads']
+    if not extra_root:return standard
+    if not isinstance(extra_root,str) or len(extra_root)>4096:raise ValueError('Invalid model folder')
+    custom=Path(extra_root).expanduser()
+    if not custom.is_absolute():raise ValueError('Model folder must be an absolute path')
+    return [custom]+[p for p in standard if p!=custom]
 
 def runtime():
     candidates=[shutil.which('llama-server'),str(Path.home()/'.unsloth/llama.cpp/llama-server'),
@@ -67,5 +74,12 @@ def inventory(search_roots=None):
     return {'models':entries,'runtimePath':runtime(),'scanned':visited}
 
 if __name__=='__main__':
-    try:print(json.dumps(inventory(),separators=(',',':')))
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--extra-root',default='',help='additional user-selected GGUF folder; default roots remain')
+    args=parser.parse_args()
+    try:
+        folders=roots(args.extra_root)
+        found=inventory(folders)
+        if args.extra_root and not folders[0].is_dir():found['error']='Model folder not found'
+        print(json.dumps(found,separators=(',',':')))
     except (OSError,ValueError,TypeError):print(json.dumps({'models':[],'runtimePath':'','error':'Model inventory unavailable'}))

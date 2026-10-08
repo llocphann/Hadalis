@@ -1,4 +1,7 @@
 {
+    "GGUF runtime unavailable": "GGUF runtime unavailable",
+    "Local GGUF models": "Local GGUF models",
+    "Model folder": "Model folder",
     "Allow cloud models": "Allow cloud models",
     "Performance uses simpler lighting. Balanced adds liquid detail. Quality adds deeper reflections.": "Performance uses simpler lighting. Balanced adds liquid detail. Quality adds deeper reflections.",
     "Use Performance in Power Saver and Balanced in other power profiles.": "Use Performance in Power Saver and Balanced in other power profiles.",

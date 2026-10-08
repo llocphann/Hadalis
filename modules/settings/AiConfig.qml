@@ -120,12 +120,16 @@ ContentPage {
             StatusRow {
                 readonly property bool localFound: AiProviderCatalog.localModelCount > 0
                     || Ai.modelList.some(m => Ai.models[m]?.local === true)
+                readonly property bool localReady: Ai.modelList.some(m => Ai.models[m]?.local === true
+                    && (Ai.models[m]?.api_format !== "gguf" || !!Ai.models[m]?.runtime_path))
                 statusIcon: "computer"
-                ok: localFound
+                ok: localReady
                 label: localFound
                     ? Translation.tr("Local models detected")
                     : Translation.tr("No local models")
-                detail: localFound ? Translation.tr("%1 local model(s) available").arg(AiProviderCatalog.localModelCount+LocalModels.models.length)
+                detail: LocalModels.models.length > 0 && !LocalModels.runtimePath && !localReady
+                    ? Translation.tr("GGUF runtime unavailable")
+                    : localFound ? Translation.tr("%1 local model(s) available").arg(AiProviderCatalog.localModelCount+LocalModels.models.length)
                     : Translation.tr("Start Ollama or LM Studio to chat privately without an account or key")
             }
 
@@ -162,7 +166,7 @@ ContentPage {
                     buttonRadius: Appearance.rounding.full
                     colBackground: Appearance.colors.colLayer2
                     colBackgroundHover: Appearance.colors.colLayer2Hover
-                    onClicked: AiProviderCatalog.refreshAll()
+                    onClicked: { AiProviderCatalog.refreshAll(); LocalModels.refresh() }
                     contentItem: MaterialSymbol {
                         anchors.centerIn: parent
                         text: "refresh"
@@ -177,6 +181,29 @@ ContentPage {
     }
 
     // ── Providers ────────────────────────────────────────────────
+    SettingsCardSection {
+        settingsTaskSection: "providers"
+        visible: root.activeSection === "providers"
+        expanded: true
+        icon: "computer"
+        title: Translation.tr("Local GGUF models")
+        SettingsGroup {
+            MaterialTextField {
+                objectName: "localModelFolder"
+                Layout.fillWidth: true
+                placeholderText: Translation.tr("Model folder")
+                text: Config.options?.ai?.localModelFolder ?? ""
+                onEditingFinished: Config.setNestedValue("ai.localModelFolder", text.trim())
+            }
+            StyledText {
+                Layout.fillWidth: true
+                visible: LocalModels.error.length > 0
+                text: LocalModels.error
+                color: Appearance.colors.colError
+                wrapMode: Text.WordWrap
+            }
+        }
+    }
     SettingsCardSection {
         settingsTaskSection: "providers"
         visible: root.activeSection === "providers"

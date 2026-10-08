@@ -137,7 +137,7 @@ done
 # need Cargo at build time, must be architecture-specific, and must install all
 # four baseline helpers under the selector-owned runtime directory. The pinned
 # non-VCS package source currently predates current-source helpers, so the rolling
-# package has an additional Wull companion assertion below.
+# Companion is separately installed from Hadanion.
 arch_native_bins=(inir-inputd inir-mpdd inir-native inir-theme)
 for pair in \
   "$stable_pkg:$stable_srcinfo" \
@@ -159,8 +159,6 @@ for pair in \
   done
 done
 
-grep -Fq 'inir-companiond' "$git_pkg" \
-  || fail "$git_pkg does not package current-source Rust helper: inir-companiond"
 
 # The primary local aggregate should exercise the same fast release-boundary
 # contracts even when hosted CI cannot start a runner. Target membership is the

@@ -805,7 +805,7 @@ inir abyss cancelEdit
 
 ### wull
 
-Companion chat and diagnostics while the Abyss perimeter is loaded. `chat`
+Optional Hadanion Companion chat and diagnostics. The compatibility target remains available when the package is absent. `chat`
 toggles the speech editor and requests keyboard focus on the permitted output.
 `status` reports bounded visibility, bridge, field/scene and placement state
 without changing preferences. Super + Alt + Comma opens or closes chat; Enter
@@ -813,11 +813,27 @@ sends and Escape closes it.
 
 | Function | Description |
 |----------|-------------|
-| `chat` | Toggle Wull's chat editor (Super+Alt+Comma) |
-| `status` | Return bounded JSON explaining Wull visibility and placement on each output |
+| `chat` | Toggle the Companion chat editor (Super+Alt+Comma) |
+| `status` | Return bounded JSON explaining Companion visibility and placement on each output |
 
 ```bash
 inir wull status
+```
+
+---
+
+### hadanion
+
+Manage discovery of the separately installed [Hadanion](https://github.com/llocphann/Hadanion) package. Refresh unloads the current Companion session, rechecks the compatible local package and reloads it only if enabled. It never installs a package, changes preferences or loads a model.
+
+| Function | Description |
+|----------|-------------|
+| `refresh` | Recheck the optional package after installation, update or removal |
+| `status` | Report optional installation and Companion runtime status |
+
+```bash
+inir ipc hadanion refresh
+inir ipc hadanion status
 ```
 
 ---

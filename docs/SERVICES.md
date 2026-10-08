@@ -4,6 +4,12 @@
 
 > Only some services expose an IPC handler. The real IPC targets are listed where they exist; if a service has no `IPC target:` note, it has no `IpcHandler` and is not callable from the `inir` CLI. To regenerate the authoritative list: `grep -rl IpcHandler services/ | xargs grep -oP 'target:\s*"\K[^"]+'`.
 
+## Optional features
+
+| Service | What it does |
+|---------|-------------|
+| **Hadanion** | Discovers the separately installed Companion package and loads its session only when enabled. IPC target: `hadanion`. Compatibility IPC target: `wull`. Missing packages keep keyboard/input ownership empty. |
+
 ## Compositor
 
 | Service | What it does |

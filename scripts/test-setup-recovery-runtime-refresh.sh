@@ -48,7 +48,7 @@ cat > "$XDG_BIN_HOME/cargo" <<'EOF'
 set -euo pipefail
 release="${CARGO_TARGET_DIR:?}/release"
 mkdir -p "$release"
-for binary in inir-inputd inir-mpdd inir-native inir-theme inir-companiond; do
+for binary in inir-inputd inir-mpdd inir-native inir-theme; do
     printf '#!/usr/bin/env sh\nexit 0\n' > "$release/$binary"
     chmod +x "$release/$binary"
 done

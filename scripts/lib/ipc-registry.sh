@@ -3,7 +3,7 @@
 # Do not edit manually.
 # Regenerate: python3 scripts/lib/generate-ipc-registry.py
 # IPC.md metadata: docs/IPC.md
-# Targets: 60
+# Targets: 61
 
 declare -gA IPC_TARGET_DESC=(
   [abyss]="Edit the Abyss module layout on the focused output. The editor uses a draft: Done saves its changes; Cancel or Escape restores the saved layout. These methods apply while Abyss is active."
@@ -26,6 +26,7 @@ declare -gA IPC_TARGET_DESC=(
   [dev]="Development navigation for loading lazy surfaces and internal views without automating pointer or keyboard input. Destination identifiers are stable and returned as JSON by \`list\`."
   [gamemode]="Performance mode for gaming. Auto-detects fullscreen apps and disables animations/effects. Can also be toggled manually for those stubborn games that don't go fullscreen properly."
   [globalActions]="Command palette / action registry. Search and execute shell actions from scripts or keybinds."
+  [hadanion]="Manage discovery of the separately installed [Hadanion](https://github.com/llocphann/Hadanion) package. Refresh unloads the current Companion session, rechecks the compatible local package and reloads it only if enabled. It never installs a package, changes preferences or loads a model."
   [keyboard]="Keyboard layout switching (Niri only). Cycles through configured keyboard layouts and queries layout info."
   [lock]="Lock screen. For when you need to pretend you're working."
   [mediaControls]="Floating media controls panel."
@@ -62,7 +63,7 @@ declare -gA IPC_TARGET_DESC=(
   [wbar]="Waffle taskbar visibility."
   [widgetpower]="Desktop-widget power management (pauses widget rendering on game mode, fullscreen, present windows, or edit mode). Service: \`services/WidgetPowerManager.qml\`."
   [wnotificationCenter]="Waffle notification center."
-  [wull]="Companion chat and diagnostics while the Abyss perimeter is loaded. \`chat\` toggles the speech editor and requests keyboard focus on the permitted output. \`status\` reports bounded visibility, bridge, field/scene and placement state without changing preferences. Super + Alt + Comma opens or closes chat; Enter sends and Escape closes it."
+  [wull]="Optional Hadanion Companion chat and diagnostics. The compatibility target remains available when the package is absent. \`chat\` toggles the speech editor and requests keyboard focus on the permitted output. \`status\` reports bounded visibility, bridge, field/scene and placement state without changing preferences. Super + Alt + Comma opens or closes chat; Enter sends and Escape closes it."
   [wwidgets]="Waffle widgets panel."
   [ytmusic]="Direct YtMusic player control. Use these if you want to control YtMusic specifically, regardless of what other players are active."
   [zoom]="Screen zoom. Accessibility feature, or for reading tiny UI without pretending your monitor is the problem."
@@ -89,6 +90,7 @@ declare -gA IPC_TARGET_FAMILY=(
   [dev]="shared"
   [gamemode]="shared"
   [globalActions]="shared"
+  [hadanion]="shared"
   [keyboard]="shared"
   [lock]="shared"
   [mediaControls]="shared"
@@ -152,6 +154,7 @@ declare -gA IPC_TARGET_FUNCTIONS=(
   [dev]="list open close current"
   [gamemode]="toggle activate deactivate status"
   [globalActions]="run runWithArgs list search open"
+  [hadanion]="refresh status"
   [keyboard]="switchLayout switchLayoutPrevious getCurrentLayout getLayouts"
   [lock]="activate deactivate status focus"
   [mediaControls]="toggle close open"
@@ -280,6 +283,8 @@ declare -gA IPC_FUNCTION_DESC=(
   ["globalActions:list"]="List all actions, optionally filtered by category"
   ["globalActions:search"]="Fuzzy search actions by name/description/keywords"
   ["globalActions:open"]="Open the overview in action mode"
+  ["hadanion:refresh"]="Recheck the optional package after installation, update or removal"
+  ["hadanion:status"]="Report optional installation and Companion runtime status"
   ["keyboard:switchLayout"]="Switch to next keyboard layout"
   ["keyboard:switchLayoutPrevious"]="Switch to previous keyboard layout"
   ["keyboard:getCurrentLayout"]="Get the current layout name"
@@ -429,8 +434,8 @@ declare -gA IPC_FUNCTION_DESC=(
   ["wnotificationCenter:toggle"]="Open/close notification center"
   ["wnotificationCenter:close"]="Close notification center"
   ["wnotificationCenter:open"]="Open notification center"
-  ["wull:chat"]="Toggle Wull's chat editor (Super+Alt+Comma)"
-  ["wull:status"]="Return bounded JSON explaining Wull visibility and placement on each output"
+  ["wull:chat"]="Toggle the Companion chat editor (Super+Alt+Comma)"
+  ["wull:status"]="Return bounded JSON explaining Companion visibility and placement on each output"
   ["wwidgets:toggle"]="Open/close widgets"
   ["wwidgets:close"]="Close widgets"
   ["wwidgets:open"]="Open widgets"
@@ -518,8 +523,8 @@ bind "Ctrl+Alt+A" { spawn "inir" "wallpaperSelector" "openLauncher" "animated"; 
   [ytmusic]='bind "Mod+M+Space" { spawn "inir" "ytmusic" "playPause"; }'
 )
 
-IPC_ALL_TARGETS=(abyss ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wull wwidgets ytmusic zoom)
-IPC_SHARED_TARGETS=(abyss ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily region session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector wull ytmusic zoom)
+IPC_ALL_TARGETS=(abyss ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions hadanion keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wull wwidgets ytmusic zoom)
+IPC_SHARED_TARGETS=(abyss ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector dashboard dev gamemode globalActions hadanion keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily region session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector wull ytmusic zoom)
 IPC_II_TARGETS=()
 IPC_WAFFLE_TARGETS=(autostart customWidgets recordingOsd search wactionCenter waffleAltSwitcher wbar widgetpower wnotificationCenter wwidgets)
 

@@ -93,29 +93,6 @@ Item {
             }
         }
 
-        StyledText {
-            text: "Wull · "+AbyssRenderPolicy.wullQualityLabel
-            color: Appearance.colors.colOnSurfaceVariant
-            font.pixelSize: Appearance.font.pixelSize.small
-        }
-        RowLayout {
-            spacing: 5
-            Repeater {
-                model: [
-                    {label:"Performance",value:"performance",icon:"bolt"},
-                    {label:"Quality",value:"quality",icon:"water_drop"}
-                ]
-                delegate: CompactChoice {
-                    required property var modelData
-                    labelText: modelData.label
-                    iconName: modelData.icon
-                    selected: AbyssRenderPolicy.wullQuality===modelData.value
-                    onClicked: Config.setNestedValues({
-                        "abyss.companion.renderQuality":modelData.value,
-                        "abyss.companion.autoQuality":false})
-                }
-            }
-        }
         Rectangle {
             Layout.fillWidth: true
             implicitHeight: 1

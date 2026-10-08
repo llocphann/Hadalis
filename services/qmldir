@@ -80,5 +80,5 @@ singleton WindowPreviewService 1.0 WindowPreviewService.qml
 singleton WorldClock 1.0 WorldClock.qml
 singleton Zettelkasten 1.0 Zettelkasten.qml
 singleton YtMusic 1.0 YtMusic.qml
-singleton WullMind 1.0 WullMind.qml
+singleton Hadanion 1.0 Hadanion.qml
 singleton ObsidianTheme 1.0 ObsidianTheme.qml

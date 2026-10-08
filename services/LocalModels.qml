@@ -18,7 +18,7 @@ Singleton {
     Timer {id:scanDeadline;interval:5000;onTriggered:{scan.running=false;root.error="Local model discovery timed out."}}
     Process {
         id:scan
-        command:["/usr/bin/python3",Quickshell.shellPath("scripts/wull/local_models.py")]
+        command:["/usr/bin/python3",Quickshell.shellPath("scripts/ai/local_models.py")]
         onStarted:scanDeadline.restart()
         stdout:StdioCollector {id:result}
         onExited:(code,status)=>{

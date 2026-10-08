@@ -7,98 +7,15 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.abyss.bar
-import qs.modules.abyss.companion
 import qs.modules.abyss.looks
 import "looks/AbyssGeometry.js" as Geometry
 import "looks/AbyssLayout.js" as ModuleLayout
 import "looks/AbyssPresentation.js" as Presentation
-import "companion/WullHostPolicy.js" as WullHostPolicy
-import "companion/WullScene.js" as WullScene
-import "companion/WullPreferences.js" as WullPreferences
 
 Scope {
     id: root
     readonly property var outputHosts:outputWindows.instances
     property string largeTargetOutput: GlobalStates.resolveOutputName("",[])
-    readonly property var companionOptions: Config.options?.abyss?.companion
-    readonly property var companionPreferences: WullPreferences.normalize(companionOptions)
-    readonly property string selectedCompanion: companionPreferences.character
-    readonly property bool alternatingCompanions: companionPreferences.alternateCompanions
-    property string companionCharacter: selectedCompanion
-    Binding {target:WullMind;property:"character";value:root.companionCharacter}
-    function resetCompanionCast(): void {
-        companionCharacter=selectedCompanion
-        for (const window of outputWindows.instances) window.resetCompanionCast()
-    }
-    onSelectedCompanionChanged: Qt.callLater(root.resetCompanionCast)
-    onAlternatingCompanionsChanged: if (!alternatingCompanions) Qt.callLater(root.resetCompanionCast)
-    readonly property bool companionEnabled: Config.ready && companionPreferences.enabled
-    Binding {target:WullMind;property:"hostVisible";value:root.companionSessionVisible && companionBridge.ready && companionBridge.visibility==="present"}
-    Binding {target:WullMind;property:"hostIdle";value:companionBridge.activity==="idle"}
-    Connections {
-        target:WullMind
-        function onReactionRequested(expression): void {
-            if(root.companionSessionVisible && companionBridge.visibility==="present")
-                companionBridge.sendIntent(expression,.5,3000)
-        }
-    }
-    readonly property string companionTargetOutput: GlobalStates.resolveOutputName(
-        "", Config.options?.bar?.screenList ?? [])
-    readonly property string companionEdge: root.barEdge
-    readonly property real companionScale: companionPreferences.size
-    readonly property bool companionInteractive: companionPreferences.interactive
-    readonly property bool companionSessionVisible: companionEnabled
-        && companionTargetOutput.length > 0
-        && !GlobalStates.screenLocked
-        && !Appearance.gameModeMinimal
-        && (!GameMode.hasFullscreenOnOutput(companionTargetOutput)
-            || (!companionPreferences.hideInFullscreen
-                && (Config.options?.abyss?.perimeter?.visibleInFullscreen ?? false)))
-
-    function syncCompanionVisibility(): void {
-        if (root.companionSessionVisible)
-            companionBridge.show()
-        else
-            companionBridge.hide()
-    }
-
-    onCompanionSessionVisibleChanged: root.syncCompanionVisibility()
-
-    CompanionBridge {
-        id: companionBridge
-        // Guard the development binary override as well as the dispatcher.
-        // An inherited INIR_COMPANIOND must not bypass default-off.
-        binaryPath: root.companionEnabled ? (Quickshell.env("INIR_COMPANIOND") ?? "") : ""
-        useNativeDispatcher: root.companionEnabled
-        personality: root.companionPreferences.personality
-        appearanceFrequency: root.companionPreferences.appearanceFrequency
-    }
-    // Read the existing gates on demand; no polling, state mutation or backend
-    // activation. This also explains why an enabled companion stays hidden.
-    IpcHandler {
-        target: "wull"
-        function chat(): void {
-            if (!root.companionSessionVisible || !root.companionInteractive || !WullMind.talkEnabled) return
-            if (WullMind.conversationOpen) {WullMind.cancel();WullMind.dismiss();return}
-            companionBridge.show()
-            companionBridge.sendEvent("hover",true)
-            for (const window of outputWindows.instances)
-                if(window.outputName===root.companionTargetOutput)window.requestCompanionChat()
-        }
-        function status(): string {
-            const outputs=[]
-            for (let i=0;i<outputWindows.instances.length;i++)
-                outputs.push(outputWindows.instances[i].companionStatus())
-            return JSON.stringify({enabled:root.companionEnabled,
-                sessionVisible:root.companionSessionVisible,
-                targetOutput:root.companionTargetOutput,
-                backend:{ready:companionBridge.ready,
-                    requestedVisible:companionBridge.requestedVisible,
-                    visibility:companionBridge.visibility,
-                    sequence:companionBridge.inboundSeq,
-                    restartAttempts:companionBridge.restartAttempts},outputs:outputs})
-        }
-    }
     // Match the mature ScreenCorners keyboard lease: hover previews may exist on
     // several outputs, but only one Quick Notes editor may own keyboard focus.
     property string quickNotesEditorOutput: ""
@@ -175,7 +92,6 @@ Scope {
     AbyssOsdController {}
     Component.onCompleted: {
         Notifications.ensureInitialized()
-        root.syncCompanionVisibility()
     }
     Variants {
         id: outputWindows
@@ -193,257 +109,6 @@ Scope {
             readonly property bool presented: !GlobalStates.screenLocked
                 && (!fullscreenCovered || (Config.options?.abyss?.perimeter?.visibleInFullscreen ?? false))
             readonly property bool editorOpen: GlobalStates.abyssEditing && GlobalStates.abyssEditorTargetOutput === outputName
-            // Ordinary Abyss surfaces are Wull's habitat. Actual modal/security
-            // owners still preempt it; moving bodies remain scene obstacles.
-            readonly property bool companionOccluded: window.editorOpen
-                || liquid.activeDialog || GlobalStates.settingsNativeDialogOpen
-                || PolkitService.active || GlobalStates.regionSelectorOpen || window.overviewDragging
-            readonly property var companionScene: WullScene.fromParticipants({
-                width:window.width,height:window.height,
-                hostWidth:112*root.companionScale,hostHeight:98*root.companionScale,
-                scale:root.companionScale,insets:window.nativeInsets,rimRadius:AbyssStyle.neckRadius},
-                liquid.participants,bar.visible ? bar.layoutRecords.map(record=>({
-                    edge:record.edge,along:record.along,span:record.span})) : [])
-            readonly property bool companionPermission: WullHostPolicy.hostActive(
-                root.companionSessionVisible,companionBridge.ready,
-                root.companionTargetOutput,window.outputName,window.presented,field.ready)
-                && !window.companionOccluded
-                && liquid.records.length<=field.capacity
-            readonly property bool companionHostActive: window.companionPermission && companionPresence.qualified
-            function requestCompanionChat(): void {
-                if(!window.companionPermission) return
-                companionTurns.cancel()
-                companionCuriosity.interrupt()
-                companionPresence.hiddenUntil=0
-                if(!companionPresence.visitActive || companionPresence.retreating)companionPresence.appear()
-                companionPresence.peekOnly=false;companionPresence.peekIntro=false;companionPresence.renderedReveal=1
-                WullMind.openChat()
-            }
-            function resetCompanionCast(): void {
-                companionTurns.cancel()
-                companionPresence.hideImmediately()
-                Qt.callLater(companionPresence.synchronize)
-            }
-            function companionStatus() {
-                const scene=window.companionScene
-                return {output:outputName,presented:window.presented,
-                    occluded:window.companionOccluded,permission:window.companionPermission,
-                    active:window.companionHostActive,
-                    field:{ready:field.ready,framePresented:field.framePresented,
-                        diagnostic:String(field.diagnostic).slice(0,512),
-                        records:liquid.records.length,capacity:field.capacity},
-                    scene:{valid:WullScene.valid(scene),width:scene.width,height:scene.height,
-                        hostWidth:scene.hostWidth,hostHeight:scene.hostHeight,insets:scene.insets,
-                        records:scene.records?.slice(0,256),blockers:scene.blockers?.slice(0,128),
-                        surfaces:scene.surfaces?.slice(0,40)},
-                    presence:{qualified:companionPresence.qualified,
-                        portalActive:companionPresence.portalActive,portalProgress:companionPresence.portalProgress,
-                        visitActive:companionPresence.visitActive,
-                        traveling:companionPresence.traveling,mode:companionPresence.mode,
-                        dragging:companionPresence.dragging,arc:companionPresence.arc,
-                        requestedReveal:companionPresence.requestedReveal,
-                        renderedReveal:companionPresence.renderedReveal,
-                        placement:companionPresence.placement},
-                    curiosity:{enabled:root.companionPreferences.exploreFeatures,
-                        stage:companionCuriosity.stage,owned:companionCuriosity.owned,
-                        feature:companionCuriosity.feature?.kind ?? ""},
-                    turns:{enabled:root.alternatingCompanions,active:companionTurns.active,paired:companionTurns.paired,
-                        incoming:companionTurns.active ? companionTurns.incoming : ""},
-                    actor:{character:companion.character,visible:companion.visible,inputReady:companion.inputReady,
-                        moving:companion.moving,walking:companion.walking,rolling:companion.rolling,flying:companion.flying,
-                        presentation:companion.presentation,opacity:companion.opacity,
-                        x:companion.x,y:companion.y}}
-            }
-            readonly property bool companionHoverHeld: window.companionHostActive
-                && companion.interactive && (companion.hovered || cloudActions.hovered || cloudActions.visible || companion.dragging || talkCloud.controlsVisible || WullMind.conversationOpen)
-            onCompanionHoverHeldChanged: if (root.companionTargetOutput===window.outputName && companionBridge.ready)
-                companionBridge.sendEvent("hover",window.companionHoverHeld)
-            WullPresence {
-                id: companionPresence
-                scene: window.companionScene
-                actor: companion
-                permitted: window.companionPermission
-                requestedReveal: companionBridge.visibility==="present" ? 1
-                    : companionBridge.visibility==="peeking" ? .46 : 0
-                motionEnabled: root.companionPreferences.animationsEnabled && AbyssStyle.motionEnabled
-                interactionHeld: companionBridge.activity!=="idle" || talkCloud.controlsVisible || WullMind.conversationOpen
-                pointerFresh: window.companionPointerFresh
-                pointerX: window.companionPointerX
-                pointerY: window.companionPointerY
-                pointerReactionsEnabled: root.companionInteractive && !talkCloud.controlsVisible
-                    && !WullMind.conversationOpen
-                personality: root.companionPreferences.personality
-                travelId: companionBridge.travelId
-                travelFraction: companionBridge.travelTarget
-                onStopRequested: companion.stopTravel()
-                onResetRequested: (px,py,sourceEdge)=>companion.resetTo(
-                    px+(root.companionScale-1)*companion.implicitWidth/2,
-                    py+(root.companionScale-1)*companion.implicitHeight/2,sourceEdge)
-            }
-            WullAbyssLink {
-                id: companionWater
-                presence: companionPresence
-                actor: companion
-                controller: liquid
-                allowed: window.companionHostActive
-            }
-            CompanionTurns {
-                id:companionTurns
-                presence:companionPresence;actor:companion
-                allowed:window.companionHostActive && companionBridge.ready
-                alternating:root.alternatingCompanions
-                interactionHeld:companionPresence.interactionHeld || companionCuriosity.busy
-                onStarting:companionCuriosity.interrupt()
-                onCharacterChosen:character=>root.companionCharacter=character
-            }
-            CompanionChallenger {turns:companionTurns;actor:companion;z:24}
-            function companionFeaturesIdle(): bool {
-                return !companionTurns.active && window.companionPermission && !window.companionOccluded
-                    && !liquid.popupsOpen && !GlobalStates.abyssPopupKind
-                    && !GlobalStates.sidebarLeftOpen && !GlobalStates.sidebarRightOpen
-                    && !GlobalStates.settingsOverlayOpen && !GlobalStates.overviewOpen
-                    && !GlobalStates.clipboardOpen && !GlobalStates.dashboardOpen
-                    && !GlobalStates.controlPanelOpen && !GlobalStates.notificationCenterOpen
-                    && !GlobalStates.widgetEditMode && !utility.open && !window.dockHovered
-                    && !barHover.hovered && !revealHover.hovered
-            }
-            readonly property var companionFeatures: {
-                const result=[]
-                if (!root.companionEnabled || !root.companionPreferences.exploreFeatures) return result
-                const panels=Config.options?.enabledPanels ?? []
-                const gestures={clock:"inspect",resources:"inspect",battery:"inspect",
-                    weather:"inspect",media:"wave",utilButtons:"press"}
-                if (bar.visible && panels.includes("abyssPopup")) {
-                    for (const record of bar.layoutRecords) {
-                        const module=bar.itemForId(record.id)
-                        const kind=module?.kind
-                        const mature=module?.companionPopup ?? null
-                        if (record.span>0 && gestures[kind] && (mature || kind==="utilButtons")) result.push({
-                            kind:kind==="utilButtons" ? "utilities" : kind,
-                            popup:mature,key:kind==="utilButtons" ? "popup" : "",edge:record.edge,
-                            along:record.along+record.span/2,openGesture:"press",gesture:gestures[kind]})
-                    }
-                }
-                const sidebarOutput=GlobalStates.resolveOutputName(window.outputName,Config.options?.sidebar?.screenList ?? [])
-                for (const side of ["left","right"]) {
-                    const key=side+"Panel", body=side==="left" ? leftPanel : rightPanel
-                    if (panels.includes(side==="left" ? "abyssSidebarLeft" : "abyssSidebarRight")
-                            && sidebarOutput===window.outputName && !body.open)
-                        result.push({kind:key,key:key,edge:body.edge,along:body.along+body.span/2,
-                            openGesture:"reach",gesture:side==="left" ? "inspect" : "press"})
-                }
-                for (const [kind,available,mature,along] of [
-                        ["quickNotes",corners.notesAvailable,corners.notesPopup,window.nativeInsets.left+80],
-                        ["notificationCenter",corners.centerAvailable,corners.centerPopup,window.width-window.nativeInsets.right-80]]) {
-                    if (available && !mature.presentationActive)
-                        result.push({kind:kind,popup:mature,key:"",edge:"bottom",along:along,
-                            openGesture:"reach",gesture:kind==="quickNotes" ? "inspect" : "wave"})
-                }
-                return result
-            }
-            function companionSurfaceKey(feature): string {
-                if (!feature?.popup) return feature?.key ?? ""
-                const slot=liquid._popupSlot(feature.popup)
-                return slot>=0 ? "styledPopup"+slot : ""
-            }
-            function openCompanionFeature(feature): bool {
-                if (!companionFeaturesIdle() || !feature) return false
-                if (["clock","resources","battery","weather","media","quickNotes","notificationCenter"].includes(feature.kind)) {
-                    // Borrow the module/corner's mature StyledPopup. Its hover
-                    // path and Wull share one slot, one content and one host.
-                    return !!feature.popup && feature.popup.acquireCompanion(window)
-                }
-                if (feature.kind==="leftPanel") GlobalStates.openSidebarLeft(window.outputName,false)
-                else if (feature.kind==="rightPanel") GlobalStates.openSidebarRight(window.outputName,false)
-                else if (feature.kind==="utilities") {
-                    GlobalStates.abyssPopupTargetOutput=window.outputName
-                    GlobalStates.abyssPopupEdge=feature.edge
-                    GlobalStates.abyssPopupAlong=feature.along
-                    GlobalStates.abyssPopupKind="utilities"
-                } else return false
-                return ownsCompanionFeature(feature)
-            }
-            function ownsCompanionFeature(feature): bool {
-                if (!feature) return false
-                if (feature.popup) return feature.popup.companionLease===window
-                if (feature.kind==="leftPanel") return GlobalStates.sidebarLeftOpen
-                    && GlobalStates.sidebarLeftTargetOutput===window.outputName
-                if (feature.kind==="rightPanel") return GlobalStates.sidebarRightOpen
-                    && GlobalStates.sidebarRightTargetOutput===window.outputName
-                return feature.kind==="utilities" && GlobalStates.abyssPopupTargetOutput===window.outputName
-                    && GlobalStates.abyssPopupKind==="utilities"
-            }
-            function closeCompanionFeature(feature): void {
-                if (!ownsCompanionFeature(feature)) return
-                if (feature.popup) feature.popup.releaseCompanion(window)
-                else if (feature.kind==="leftPanel") GlobalStates.closeSidebarLeft()
-                else if (feature.kind==="rightPanel") GlobalStates.closeSidebarRight()
-                else if (feature.kind==="utilities") window.closeGenericPopup("utilities")
-            }
-            function releaseCompanionFeature(feature): void {
-                if (feature?.popup) feature.popup.releaseCompanion(window)
-                else if (ownsCompanionFeature(feature)) {
-                    // A sidebar visited by Wull becomes an ordinary transient
-                    // hover surface after a real user hand-off, not a sticky IPC open.
-                    if (feature.kind==="leftPanel") GlobalStates.sidebarLeftTransient=true
-                    else if (feature.kind==="rightPanel") GlobalStates.sidebarRightTransient=true
-                }
-            }
-            readonly property string companionFeatureState: [GlobalStates.sidebarLeftOpen,
-                GlobalStates.sidebarLeftTargetOutput,GlobalStates.sidebarRightOpen,GlobalStates.sidebarRightTargetOutput,
-                GlobalStates.abyssPopupKind,GlobalStates.abyssPopupTargetOutput].join("|")
-            onCompanionFeatureStateChanged: if (companionCuriosity) companionCuriosity.checkOwnership()
-            Connections {
-                target: companionCuriosity.feature?.popup ?? null
-                function onCompanionLeaseChanged(): void {companionCuriosity.checkOwnership()}
-            }
-            WullCuriosity {
-                id: companionCuriosity
-                presence: companionPresence
-                actor: companion
-                adapter: window
-                features: window.companionFeatures
-                allowed: window.companionHostActive && root.companionPreferences.exploreFeatures
-                    && root.companionPreferences.animationsEnabled && AbyssStyle.motionEnabled
-                idle: companionBridge.activity==="idle" && companionBridge.visibility==="present"
-                eventId: companionBridge.travelId
-            }
-            property real companionPointerX: 0
-            property real companionPointerY: 0
-            property bool companionPointerFresh: false
-            Item {
-                anchors.fill: parent
-                HoverHandler {
-                    id: companionPointer
-                    target: null
-                    blocking: false
-                    enabled: window.companionHostActive && (root.companionInteractive || companionCuriosity.busy)
-                    onPointChanged: if (hovered) {
-                        window.companionPointerX=point.scenePosition.x
-                        window.companionPointerY=point.scenePosition.y
-                        window.companionPointerFresh=true
-                        companionPointerExpiry.restart()
-                        companionCuriosity.pointerMoved(window.companionPointerX,window.companionPointerY)
-                    }
-                    onHoveredChanged: if (!hovered) window.companionPointerFresh=false
-                }
-                PointHandler {
-                    enabled: window.companionHostActive && root.companionInteractive
-                    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-                    onActiveChanged: if (active) {
-                        if (companionCuriosity.containsPoint(point.scenePosition.x,point.scenePosition.y))
-                            companionCuriosity.yieldToUser()
-                        else companionCuriosity.interrupt()
-                        if (!talkCloud.containsScenePoint(point.scenePosition))
-                            companionPresence.nearbyClick(point.scenePosition.x,point.scenePosition.y)
-                    }
-                }
-            }
-            Timer {
-                id: companionPointerExpiry
-                interval: 1400; repeat: false
-                onTriggered: window.companionPointerFresh=false
-            }
             onPresentedChanged: if (!presented && editorOpen) GlobalStates.abyssEditing = false
             screen: modelData
             // Keep the Top surface mapped across fullscreen, preserving stack order.
@@ -452,11 +117,11 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
-            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || wallpaperBody.open || (keyboardBody.open && (Config.options?.osk?.keepOnTop ?? false)) || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || talkCloud.editing || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
-            WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging || companionCuriosity.owned
+            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || wallpaperBody.open || (keyboardBody.open && (Config.options?.osk?.keepOnTop ?? false)) || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || companionExtension.editing || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging || companionExtension.curiosityOwned
                 ? WlrKeyboardFocus.None
-                : (talkCloud.editing || window.editorOpen || (utility.presented && utility.ready) || liquid.popupExclusiveFocus || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (wallpaperBody.presented && wallpaperBody.ready) || (clipboardBody.presented && clipboardBody.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive
-                : (talkCloud.editing || liquid.popupOnDemandFocus || (leftPanel.presented && leftPanel.ready) || (rightPanel.presented && rightPanel.ready) || (popup.presented && popup.ready) || (notification.presented && notification.ready && notification.contentKind === "center"))
+                : (companionExtension.editing || window.editorOpen || (utility.presented && utility.ready) || liquid.popupExclusiveFocus || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (wallpaperBody.presented && wallpaperBody.ready) || (clipboardBody.presented && clipboardBody.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive
+                : (companionExtension.editing || liquid.popupOnDemandFocus || (leftPanel.presented && leftPanel.ready) || (rightPanel.presented && rightPanel.ready) || (popup.presented && popup.ready) || (notification.presented && notification.ready && notification.contentKind === "center"))
                     ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             anchors { top: true; bottom: true; left: true; right: true }
             Item { id: emptyInput; width: 0; height: 0 }
@@ -474,25 +139,11 @@ Scope {
                     width: window.presented && field.ready ? utility.inputBounds.width : 0
                     height: utility.inputBounds.height
                 }
-                Region { regions: [window.companionInputMask] }
-                Region { regions: [window.companionRimInputMask] }
-            }
-            readonly property Region companionInputMask: Region { item: WullHostPolicy.acceptsInput(window.companionHostActive, companion.interactive, companion.visible && companion.inputReady) ? companion : emptyInput }
-            readonly property bool companionRimInputActive: window.presented && field.ready
-                && WullHostPolicy.acceptsInput(window.companionHostActive,companion.interactive,companion.visible && companion.inputReady)
-            readonly property real companionRimThickness: Math.min(AbyssStyle.perimeterThickness,window.width/2,window.height/2)
-            // Observe Wull's surrounding water on all four painted rims. The
-            // interior desktop retains its existing pass-through/input owners.
-            readonly property Region companionRimInputMask: Region {
-                Region { x:0; y:0; width:window.companionRimInputActive ? window.width : 0; height:window.companionRimThickness }
-                Region { x:0; y:window.height-window.companionRimThickness; width:window.companionRimInputActive ? window.width : 0; height:window.companionRimThickness }
-                Region { x:0; y:0; width:window.companionRimInputActive ? window.companionRimThickness : 0; height:window.height }
-                Region { x:window.width-window.companionRimThickness; y:0; width:window.companionRimInputActive ? window.companionRimThickness : 0; height:window.height }
+                Region { regions: companionExtension.inputRegions }
             }
             readonly property Region nativeInputMask: Region {
                 Region { regions: window.presented && field.ready && bar.visible ? bar.inputRegions : [] }
-                Region { regions: [window.companionInputMask] }
-                Region { regions: [window.companionRimInputMask] }
+                Region { regions: companionExtension.inputRegions }
                 Region { regions: window.presented && field.ready && editor.visible ? editor.regions : [] }
                 Region { item: window.presented && revealTrigger.visible ? revealTrigger : emptyInput }
                 Region { item: window.presented && dockTrigger.visible ? dockTrigger : emptyInput }
@@ -507,9 +158,6 @@ Scope {
                 Region { x: liquid.popupInputBounds[3]?.x ?? 0; y: liquid.popupInputBounds[3]?.y ?? 0; width: window.presented && field.ready ? (liquid.popupInputBounds[3]?.width ?? 0) : 0; height: liquid.popupInputBounds[3]?.height ?? 0 }
                 Region { x: popup.inputBounds.x; y: popup.inputBounds.y; width: window.presented && field.ready ? popup.inputBounds.width : 0; height: popup.inputBounds.height }
                 Region { x: dock.inputBounds.x; y: dock.inputBounds.y; width: window.presented && field.ready ? dock.inputBounds.width : 0; height: dock.inputBounds.height }
-                Region { item:talkCloud.visible ? talkCloud : emptyInput }
-                Region { item:cloudActions.visible ? cloudActions.obsidianTarget : emptyInput }
-                Region { item:cloudActions.visible ? cloudActions.aiTarget : emptyInput }
                 Region { item:corners.notesAvailable ? corners.notesAnchor : emptyInput }
                 Region { item:corners.centerAvailable ? corners.centerAnchor : emptyInput }
                 Region { regions:corners.sidebarRegions }
@@ -586,7 +234,7 @@ Scope {
                 HoverHandler { id: barHover; onHoveredChanged: { if (hovered) { barClose.stop(); root.setBarRevealed(window.outputName,true) } else barClose.restart() } }
                 onInteraction: (edge,along,span,strength) => liquid.impulse(edge,along,span,strength)
                 onPopupRequested: (kind,edge,along) => {
-                    companionCuriosity.yieldToUser()
+                    companionExtension.yieldToUser()
                     const same = GlobalStates.abyssPopupKind === kind
                         && GlobalStates.abyssPopupTargetOutput === window.outputName
                     // Utilities is hover-owned. A click while it is already open
@@ -602,7 +250,7 @@ Scope {
                     }
                 }
                 onPopupHoveredRequested: (kind,edge,along) => {
-                    companionCuriosity.yieldToUser()
+                    companionExtension.yieldToUser()
                     const same = GlobalStates.abyssPopupKind === kind
                         && GlobalStates.abyssPopupTargetOutput === window.outputName
                     if (same)
@@ -624,99 +272,19 @@ Scope {
                         window.transientPopupHoverKind = ""
                 }
             }
-            WullPortals {presence:companionPresence;z:23}
-            Loader {
-                id:waterImmersion
-                active:window.companionHostActive && field.ready && companion.visible && companion.leaving
-                    && ["sink","pulled"].includes(companion.hideClip) && companion.presentation<.999
-                z:24
-                x:companionPresence.position().x-48*root.companionScale
-                y:companionPresence.position().y-100*root.companionScale
-                width:208*root.companionScale;height:298*root.companionScale
-                sourceComponent:field.immersionComponent
-                Binding {target:waterImmersion.item;property:"bodyItem";value:companion;when:waterImmersion.active && !!waterImmersion.item}
-                Binding {target:waterImmersion.item;property:"renderRect";value:Qt.vector4d(waterImmersion.x,waterImmersion.y,waterImmersion.width,waterImmersion.height);when:waterImmersion.active && !!waterImmersion.item}
-                Binding {target:waterImmersion.item;property:"renderScale";value:window.modelData?.devicePixelRatio ?? 1;when:waterImmersion.active && !!waterImmersion.item}
-            }
-            AbyssCompanion {
-                id: companion
-                character:root.companionCharacter
-                z: 24
-                opacity: companionBridge.ready ? 1 : 0
-                edge: companionPresence.emergenceEdge
-                scale: root.companionScale
-                interactive: root.companionInteractive && window.companionHostActive && !companionPresence.retreating
-                // Drag is allowed, but release never leaves Wull parked in open
-                // space. A fast release becomes a bounded throw to a verified
-                // grounded destination; a slow release settles back to support.
-                dragEnabled: interactive
-                motionEnabled: root.companionPreferences.animationsEnabled && AbyssStyle.motionEnabled
-                effectsEnabled: root.companionPreferences.effectsEnabled && Appearance.effectsEnabled
-                    && AbyssStyle.quality!=="performance"
-                motionScale: WullPreferences.motionScale(root.companionPreferences.personality)
-                renderQuality: AbyssRenderPolicy.wullQuality
-                translucency: root.companionPreferences.translucency
-                travelEnabled: companionPresence.traveling && !companionPresence.portalActive
-                portalReveal:companionPresence.portalReveal
-                travelMode: companionPresence.mode
-                surfaceSupported: companionPresence.grounded
-                travelDuration: companionPresence.duration
-                travelArc: companionPresence.arc
-                travelDirection: companionPresence.directionX/Math.max(1,Math.hypot(companionPresence.directionX,companionPresence.directionY))
-                travelDirectionY: companionPresence.directionY/Math.max(1,Math.hypot(companionPresence.directionX,companionPresence.directionY))
-                managedPlacement: true
-                emergenceEdge: companionPresence.emergenceEdge
-                upright: true
-                standingAngle: companionPresence.standingAngle
-                appearClip: companionPresence.appearClip
-                appearanceOffsetX: companionPresence.appearanceOffsetX
-                appearanceOffsetY: companionPresence.appearanceOffsetY
-                hideClip: companionPresence.hideClip
-                travelNormalX: companionPresence.normalX
-                travelNormalY: companionPresence.normalY
-                connectedWater: true
-                curvedImmersion:waterImmersion.active && !!waterImmersion.item && waterImmersion.item.status!==ShaderEffect.Error
-                reveal: companionPresence.renderedReveal
-                pointerFresh: window.companionPointerFresh
-                    && Math.hypot(window.companionPointerX-(x+width/2),window.companionPointerY-(y+height/2))<companionPresence.pointerNoticeRadius
-                pointerX: (window.companionPointerX-(x+width/2))/(140*scale)
-                pointerY: (window.companionPointerY-(y+height/2))/(140*scale)
-                gazeX: companionBridge.gazeX
-                gazeY: companionBridge.gazeY
-                energy: companionBridge.energy
-                bodySquash: companionBridge.squash
-                bodyStretch: companionBridge.stretch
-                bodyLean: companionBridge.lean
-                bodyTip: companionBridge.tip
-                ripple: companionBridge.ripple
-                eyeOpen: companionBridge.eyeOpen
-                mouthCurve: companionBridge.mouthCurve
-                pulse: companionBridge.pulse
-                expression: companionBridge.expression
-                mood: companionBridge.mood
-                activity: companionBridge.activity
-                targetX: companionPresence.targetX+(root.companionScale-1)*implicitWidth/2
-                targetY: companionPresence.targetY+(root.companionScale-1)*implicitHeight/2
-                onTravelCompleted: companionPresence.arrived()
-                onDragStarted: companionPresence.beginDrag()
-                onDragPositionRequested: (px,py)=>companionPresence.dragTo(
-                    px-(root.companionScale-1)*implicitWidth/2,
-                    py-(root.companionScale-1)*implicitHeight/2)
-                onDragEnded: companionPresence.endDrag()
-                onActivated: {companionWater.tap();companionBridge.sendEvent("click")}
-                onChatRequested: {companionCuriosity.interrupt();WullMind.openChat()}
-                onSettingsRequested: GlobalStates.openSettingsSection(37,"Overview")
-            }
-            WullTalkCloud {
-                id:talkCloud;actor:companion
-                outputWidth:window.width;outputHeight:window.height
-                allowed:window.companionHostActive && root.companionInteractive
-                onControlsVisibleChanged: if (controlsVisible) companionCuriosity.interrupt()
-            }
-            WullCloudActions {
-                id:cloudActions;actor:companion
-                outputWidth:window.width;outputHeight:window.height
-                allowed:window.companionHostActive && root.companionInteractive
+            HadanionSurface {
+                id: companionExtension
+                anchors.fill: parent
+                host: window
+                hostLiquid: liquid
+                hostField: field
+                hostBar: bar
+                hostLeftPanel: leftPanel
+                hostRightPanel: rightPanel
+                hostCorners: corners
+                hostUtility: utility
+                hostBarHover: barHover
+                hostRevealHover: revealHover
             }
             Item {
                 id: revealTrigger
@@ -915,9 +483,7 @@ Scope {
                     GlobalStates.abyssPopupEdge || root.barEdge
                 requestedAlongCenter: GlobalStates.abyssPopupAlong
                 hoverKind: window.transientPopupHoverKind
-                companionVisitActive: companionCuriosity.owned
-                    && companionCuriosity.feature?.kind==="utilities"
-                    && window.ownsCompanionFeature(companionCuriosity.feature)
+                companionVisitActive: companionExtension.utilitiesVisitActive
                 bodyInsetsResolver: (edge,along,span) =>
                     window.bodyInsets(edge,along,span)
 
@@ -1019,10 +585,7 @@ Scope {
             // This reads semantic placement and the actor's presentation, not
             // the derived scene/permission, so Dock geometry cannot bind back
             // into its own open decision. Policy reset removes the hold at once.
-            readonly property bool companionDockHeld: companionBridge.ready && companion.visible
-                && (companionPresence.placement.key==="dock"
-                    || companionPresence.placement.support?.key==="dock"
-                    || (companionPresence.traveling && companionPresence.destination.key==="dock"))
+
             readonly property string dockEdge: ["top","bottom","left","right"].includes(Config.options?.dock?.position) ? Config.options.dock.position : "bottom"
             AbyssBodyHost {
                 id: dock
@@ -1050,7 +613,7 @@ Scope {
                         || attachedPopupHold
                         || !liquid.hasPopupOverlapRect(requestedRecord.surface, 10))
                     && (((Config.options?.dock?.pinnedOnStartup ?? false) && !(Config.options?.dock?.hoverToReveal ?? false)) || window.dockHovered
-                        || window.companionDockHeld
+                        || companionExtension.dockHeld
                         || attachedPopupHold
                         || (contentItem.item?.requestDockShow ?? false)
                         || ((Config.options?.dock?.showOnDesktop ?? true) && !ToplevelManager.activeToplevel?.activated))
@@ -1377,7 +940,7 @@ Scope {
                 edgeInsets: window.nativeInsets
                 records: liquid.records
                 waveTexture: liquid.waves.texture
-                waterLink: companionWater
+                waterLink: companionExtension.waterLink
             }
         }
     }

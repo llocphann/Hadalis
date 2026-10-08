@@ -1,3 +1,5 @@
+<!-- hadalis-doc-kind: research -->
+
 # Wull original BOTTOM fractional virtual panel-band diagnostic
 
 **Status:** Source staged on `dev`; fake-only and owner-local actual Qt are NOT yet verified.

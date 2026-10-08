@@ -62,7 +62,7 @@ test-perimeter-contracts:
 	@python3 scripts/test-iris-production-surface-contract.py
 	@python3 scripts/test-connected-input-lifecycle.py
 	@python3 scripts/test-quick-notes-corner-contract.py
-	@python3 scripts/test-wull-production-contract.py
+	@python3 scripts/test-hadanion-optional.py
 	@bash scripts/test-perimeter-compatibility-placement-contract.sh
 	@bash scripts/test-perimeter-family-contracts.sh
 	@bash scripts/test-perimeter-route-contracts.sh
@@ -87,7 +87,7 @@ test-prefix-install:
 		docs="$$stage/opt/inir/share/doc/inir-shell"; \
 		test -f "$$runtime/shell.qml"; \
 		test -f "$$runtime/qmldir"; \
-		for binary in inir-inputd inir-mpdd inir-native inir-theme inir-companiond; do test -x "$$runtime/native/bin/$$binary"; done; \
+		for binary in inir-inputd inir-mpdd inir-native inir-theme; do test -x "$$runtime/native/bin/$$binary"; done; \
 		test -f "$$docs/README.md"; \
 		test -f "$$docs/AUDIO_MEDIA.md"; \
 		test -f "$$docs/INSTALL.md"; \

@@ -62,7 +62,7 @@ Singleton {
     }
     function textTransport(model, strategy, data, effort = "off"): var {
         if (model.api_format === "gguf") return {
-            command:["/usr/bin/python3", Quickshell.shellPath("scripts/wull/gguf_runtime.py")],
+            command:["/usr/bin/python3", Quickshell.shellPath("scripts/ai/gguf_runtime.py")],
             environment:({}), payload:root.localRequestForModel(model, data, effort)}
         const endpoint = String(strategy.buildEndpoint(model))
         const queryKey = endpoint.endsWith("${API_KEY}")
@@ -1449,7 +1449,7 @@ Singleton {
             if(model.api_format==="gguf") {
                 requester.localPayload=root.localRequestForModel(model,data)
                 root.pendingFilePath=""
-                requester.command=["/usr/bin/python3",Quickshell.shellPath("scripts/wull/gguf_runtime.py")]
+                requester.command=["/usr/bin/python3",Quickshell.shellPath("scripts/ai/gguf_runtime.py")]
                 Qt.callLater(()=>{requester.running=true})
                 return
             }

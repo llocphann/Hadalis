@@ -1,5 +1,0 @@
-{
-  "source_sha": "9a0146f03a92fdf3abe888e933b69f007785e83b",
-  "source_path": "modules/abyss/companion/WullScene.js",
-  "function": "function clearSegment(scene, from, to) {\n    if (!clearAt(scene,from) || !clearAt(scene,to)) return false\n    const dx=to.x-from.x, dy=to.y-from.y\n    for (const b of scene.blockers) {\n        const lo=[b.x-scene.hostWidth-1.5,b.y-scene.hostHeight-1.5]\n        const hi=[b.x+b.width+1.5,b.y+b.height+1.5]\n        let enter=0, exit=1, hit=true\n        for (let axis=0;axis<2;axis++) {\n            const start=axis ? from.y : from.x, delta=axis ? dy : dx\n            if (Math.abs(delta)<1e-9) {\n                if (start<=lo[axis] || start>=hi[axis]) {hit=false;break}\n            } else {\n                const a=(lo[axis]-start)/delta, z=(hi[axis]-start)/delta\n                enter=Math.max(enter,Math.min(a,z)); exit=Math.min(exit,Math.max(a,z))\n                if (enter>=exit-1e-9) {hit=false;break}\n            }\n        }\n        if (hit && enter<exit-1e-9) return false\n    }\n    return true\n}"
-}

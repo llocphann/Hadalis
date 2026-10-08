@@ -668,14 +668,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "inir-companiond"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "inir-inputd"
 version = "0.1.0"
 dependencies = [

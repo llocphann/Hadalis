@@ -76,7 +76,6 @@ if [[ "$MODE" == rust && "$STRICT" == 1 ]]; then
         niri|clipboard-store|desktop-icons) required_binary=inir-native ;;
         mpd|mpd-daemon|mpd-subscribe|lyrics) required_binary=inir-mpdd ;;
         theme) required_binary=inir-theme ;;
-        companion) required_binary=inir-companiond ;;
     esac
     if [[ -n "$required_binary" ]] && ! rust_ready "$required_binary"; then
         echo "[native-dispatch] missing Rust binary: $BIN_DIR/$required_binary" >&2
@@ -88,24 +87,13 @@ case "$cmd" in
     backend-info)
         printf 'mode=%s\n' "$MODE"
         printf 'bin_dir=%s\n' "$BIN_DIR"
-        for binary in inir-inputd inir-native inir-mpdd inir-theme inir-companiond; do
+        for binary in inir-inputd inir-native inir-mpdd inir-theme; do
             if rust_ready "$binary"; then
                 printf '%s=ready\n' "$binary"
             else
                 printf '%s=missing\n' "$binary"
             fi
         done
-        ;;
-
-    companion)
-        # Wull is a long-lived Rust-only state/scheduling backend. The dispatcher
-        # execs it in-place so QML owns one child process without an extra shell
-        # process and without introducing any polling or per-event subprocesses.
-        if rust_ready inir-companiond; then
-            exec "$BIN_DIR/inir-companiond" "$@"
-        fi
-        echo "[native-dispatch] Wull requires the dedicated Rust helper: $BIN_DIR/inir-companiond" >&2
-        exit 127
         ;;
 
     input-lock)

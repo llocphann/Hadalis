@@ -1,3 +1,5 @@
+<!-- hadalis-doc-kind: research -->
+
 # Wull — nested Niri real pointer acceptance design
 
 Status: **underlay fixture and inert target contract staged; no physical pointer test executed**.

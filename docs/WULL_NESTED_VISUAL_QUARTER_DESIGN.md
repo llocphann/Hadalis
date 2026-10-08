@@ -1,3 +1,5 @@
+<!-- hadalis-doc-kind: research -->
+
 # Wull nested actual-panel visual A/B: private quarter-margin preparation
 
 Status: **private source-shadow generator and INERT prerequisite/test staging

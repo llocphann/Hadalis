@@ -1,3 +1,5 @@
+<!-- hadalis-doc-kind: research -->
+
 # Wull BOTTOM ×1.5 private moving margin0 / margin0.25 dual-raster gate
 
 Status: **source staged on `dev`; not yet owner-run or visually accepted**.

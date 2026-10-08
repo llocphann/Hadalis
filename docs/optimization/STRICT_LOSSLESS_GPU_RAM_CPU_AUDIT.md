@@ -412,6 +412,7 @@ Earlier `NO ACTION`, `ALREADY OPTIMIZED`, `MEASURE FIRST`, `SUPERSEDED`, and `NO
 134. **MPRIS player/stream name-score normalized-node reuse** — measure mixer/player binding frequency first; preserve each `_streamMatchScore()` identity/total, resolver ordering, QV4 coercion/getter behavior and every selected stream/label/icon before moving repeated normalization outside the inner player-hint loop.
 135. **GlobalActions query-token hoist** — split each nonempty action-search query once per `fuzzyQuery` call instead of once per action; preserve every scoring branch, tie order, action identity, empty-query alias and reactive result lifecycle; measure UI latency before implementation.
 136. **Events fully-settled reminder Date-parse guard** — evaluate a narrow skip only for records with both notification flags strictly `true`, retaining every unsettled record, recurrence insertion and notification/persistence signal order; native object-coercion/read-order oracle required.
+137. **Notepad tab-ID Set normalization** — keep `_normalizeTabs()` behavior and allocation order, replace only the growing seen-ID array membership tests with an invocation-local `Set` of the same canonical strings; measure realistic load and duplicate-ID repair costs before implementation.
 
 ## Explicit non-candidates from this pass
 
@@ -9590,3 +9591,34 @@ Required oracle: pinned real `Events.qml` execution with 0/1/10/1,000/10,000 rec
 - New promotion-order slots are **#135** (`GlobalActions`) and **#136** (`Events`); the latest unmodified previous slot was #134.
 
 **Research-only write**: this round changes neither QML/service/native runtime code nor test fixtures or branch `stable`. No local repo regression, Quickshell/QV4 runtime test, canonical maintainer validator, owner-session visual verification, or whole-Hadalis before/after CPU/GPU/RAM/FPS measurement was executed. Continue into a separate round only with fresh SHA, nonduplicated paths and oracle-qualified evidence.
+
+## Research continuation — round 59
+
+Baseline: `dev` at `c1f8f5ea7a1545b97d5d98fa192f7f737541ee23`; the canonical ledger ended at R58. The recursive tree inventory has 3,142 blobs and 3,526 entries (not truncated). Source-file analysis was targeted, not an assertion that all 3,142 contents were opened. Since the previous source check at `2df34098fed67b0cad59c450effa9186cb8e3046`, concurrent changes were observed in `modules/screenCorners/ScreenCorners.qml`; this unrelated file was not edited.
+
+Pinned blobs:
+- `services/Notepad.qml`: `6f17567be8417cef499086138db5884336e2eb3f`;
+- `modules/sidebarRight/notepad/NotepadWidget.qml`: `9e301303f455e788652d9e8034ddb196b079a4f5`;
+- `services/LyricsService.qml`: `69df76941fa3d0fd7f069d9df6488950eb5972f3`;
+- `services/LocalMusic.qml`: `c9abd1f07efda91d9545bd6ea1eda89d970c6c35`;
+- `services/Audio.qml`: `a62722abc4d24495e6ee52b56989c18628150582`.
+
+### R59.1 — Notepad duplicate-tab-ID repair repeatedly scans a growing array
+
+**HIGH-CONFIDENCE ALGORITHMIC SOURCE OPPORTUNITY / LOW–MEDIUM PRODUCT PRIORITY / NATIVE PARITY PENDING.** On the storage file's `FileView.onLoaded` path, `Notepad._normalizeTabs(value)` traverses every persisted tab, rejects malformed item shapes, converts `tab.id` to a trimmed string and tests membership in `seenIds` using `Array.includes`. Valid unique tabs cost O(N²) aggregate visited-array positions as the seen-ID array grows, while invalid/duplicate IDs additionally test each generated candidate in the `do…while` loop. This is storage load/reload and migration-repair work, **not per-keystroke or per-frame**.
+
+Narrow strict-lossless proposal: only inside `_normalizeTabs`, use a fresh private `Set` instead of the `seenIds` array; replace `includes(id)` with `has(id)` and `push(id)` with `add(id)`. Do not reorder the input iteration, normalize before membership, change the truthiness short-circuit for empty IDs, or move ID generation out of its `do…while`. Preserve `String(tab.id ?? "")`, `trim()`, titles, bodies, the default numbering based on `normalized.length + 1`, fresh record/array identity, `_normalizedTabsNeedSave`, generated ID collision order, and the exact persisted result. For a non-array top-level value the original method returns immediately **without resetting** `_normalizedTabsNeedSave`; preserve that precondition. Every collected ID is a primitive string, so Set membership and array includes use the same string equality, even with Unicode and unsafe object-property names. Do not replace this with a plain JavaScript object dictionary.
+
+**Standalone seeded pure-JS differential probe (NOT repository/QV4 acceptance):** 16,000 cases of 0–94 tabs or malformed top-level values, with valid and invalid records, blank/duplicate/whitespace/Unicode/numeric IDs, missing/null fields, generated-ID collisions, initial save-flag state, and identical deterministic ID-generator sequences. Baseline and Set candidate matched **16,000/16,000 cases, zero mismatches** in final ordered records, IDs, title/text fields, save-required state and number/order of ID generations. Instrumented membership calls were **805,621 in each version**; the original growing array had an **18,825,044 upper bound** on inspected slots across cases. With 1,500 duplicate IDs, both produced identical outputs and made **2,999 membership calls**, while the original had a **2,248,500 inspected-slot upper bound**. Array slot bounds are deliberately *not exact comparisons* because `includes` can stop early; `Set.has` lookups have different overhead and temporary retained memory. These counts do not measure CPU time, real allocations, GC, frame rate or Hadalis-wide optimization percentages.
+
+Real oracle required before implementation: QV4/Quickshell run actual `Notepad.qml` with 0/1/10/100/1,000/10,000 valid and malformed tabs; duplicate IDs including generator collisions; preservation of error/side-effect order for exotic `String` inputs, Unicode/trim, currentTab selection, `tabsChanged` notifications, fresh object identities, FileView loaded/saved/no-op/error state and exact healed JSON bytes. Check concurrent edits, reloads and mounted `NotepadWidget` editor ID/focus reconciliation. Measure actual size distribution, load latency, QV4 GC/temporary Set RAM and performance crossover. Most ordinary notebooks may have only a few tabs; do not assume a material benefit.
+
+### R59.2 — Paths deliberately not promoted in this continuation
+
+- The visible `NotepadWidget` already coalesces text edits through an **800 ms one-shot** `saveTimer`, compares text before calling `Notepad.setTabTextById` and flushes on relevant editor/tab transitions. The Notepad service serializes and coalesces FileView saves. Thus this round does **not** claim a disk write or full JSON serialization on each keystroke. Altering persistence timing is a separate data-loss/contract investigation, not a proven strict-lossless speedup.
+- `LyricsService._indexForPosition` already uses an upper-bound binary search of sorted lyric time points and schedules one-shot lyric transitions. `LocalMusic.localLyricsActiveIndex` is a separate existing R37.2 open candidate; do not duplicate it.
+- The four independent PipeWire node-filter projections in `Audio.qml` were already scoped as MEASURE FIRST in R53.3. They are reactive topology projections, not four subprocesses or unconditional per-frame rescans.
+- A source-local call-site scan found no invocation of `LocalMusic._trackForIdentity` elsewhere **within that file**. Without proof of live external use, building an index for the entire music library has no established advantage; this path is not promoted.
+- Existing R57 MPRIS, R58 GlobalActions and R58 Events candidates remain OPEN with native/QV4 oracles unmet. Round 59 adds only priority **#137** for Notepad's *load-time* ID membership.
+
+**Research only.** No QML/native code, product behavior, timers, persisted config, tests, visual assets or `stable` branch changed. No native QV4 fixture, maintainer validator, live desktop A/B or measured whole-Hadalis GPU/RAM/CPU/FPS performance gain. Continue research with pinned newest source and native acceptance gates.

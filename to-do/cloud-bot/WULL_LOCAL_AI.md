@@ -1,3 +1,5 @@
+> **HISTORICAL / SUPERSEDED BY HADANION (2026-10-08).** Companion local-AI planning now belongs to [Hadanion `main` — WULL_LOCAL_AI.md](https://github.com/llocphann/Hadanion/blob/main/to-do/cloud-bot/WULL_LOCAL_AI.md). Old references to `llocphann/Hadalis`, `dev`, model/runtime implementation paths, current ownership and historical receipts below describe the pre-extraction context, not active Companion development. Hadalis retains the shared AI provider/text transport and optional host API. Do not add new Companion AI tasks in this historical copy.
+
 # Wull Local AI / Desktop Agent — Canonical TODO
 
 > **Single source of truth for Wull local-AI work.** All future planning, status updates, architecture/model/runtime decisions, benchmark summaries, fine-tuning/distillation notes, rollout state, and acceptance evidence for this effort MUST be edited into this file only. Do not create another Wull-AI TODO/task-board/handoff document.

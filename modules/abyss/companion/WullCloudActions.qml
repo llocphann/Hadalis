@@ -42,6 +42,7 @@ Item {
         required property int orbitIndex
         readonly property var placement: root.orbit.nodes[orbitIndex]
         readonly property bool hovered: nodeHover.hovered || button.buttonHovered
+        readonly property color paintInk: glyphLoader.item?.color ?? AbyssStyle.accent
         x: placement?.x ?? 0; y: placement?.y ?? 0
         width: placement?.width ?? 38; height: placement?.height ?? 33.25
         HoverHandler { id:nodeHover;enabled:root.visible;blocking:false;cursorShape:Qt.PointingHandCursor }
@@ -49,6 +50,17 @@ Item {
             objectName: cloud.kind==="obsidian" ? "wullObsidianCloudShape" : "wullAiCloudShape"
             anchors.centerIn:parent
             width:48; height:42; scale:cloud.width/48
+            // Reflect only the cloud paint across the orbit's bisector. The
+            // icon and hit target stay upright, including on vertical Edges.
+            transform: Matrix4x4 {
+                readonly property real axis: root.orbit.axisAngle ?? 0
+                readonly property real c: Math.cos(2*axis)
+                readonly property real s: Math.sin(2*axis)
+                matrix: cloud.orbitIndex === 0
+                    ? Qt.matrix4x4(c,s,0,24-c*24-s*21,
+                        s,-c,0,21-s*24+c*21,0,0,1,0,0,0,0,1)
+                    : Qt.matrix4x4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)
+            }
             ShapePath {
                 strokeWidth:1.1
                 strokeColor:Qt.alpha(AbyssStyle.accent,cloud.hovered ? .88 : .48)
@@ -76,15 +88,21 @@ Item {
             Accessible.name:cloud.kind==="obsidian" ? "Daily check-in and schedule" : "AI chat"
             onClicked:cloud.kind==="obsidian" ? WullMind.openContext() : WullMind.openChat()
             contentItem:Item {
-                Image {
-                    id:appIcon;anchors.centerIn:parent
-                    width:cloud.width*.4;height:width;source:cloud.kind==="obsidian" ? Quickshell.iconPath("obsidian",true) : ""
-                    visible:status===Image.Ready
-                }
-                MaterialSymbol {
+                Loader {
+                    id:glyphLoader
                     anchors.centerIn:parent
-                    visible:!appIcon.visible;iconSize:cloud.width*.4;color:AbyssStyle.accent
-                    text:cloud.kind==="obsidian" ? "diamond" : "auto_awesome"
+                    width:cloud.width*.4;height:width
+                    sourceComponent:cloud.kind==="obsidian" ? obsidianGlyph : aiGlyph
+                    Component {
+                        id:obsidianGlyph
+                        // Reuse AI's animated ink, so both glyphs follow the
+                        // same transition without a second color animator.
+                        WullObsidianIcon {objectName:"wullObsidianGlyph";color:ai?.paintInk ?? AbyssStyle.accent}
+                    }
+                    Component {
+                        id:aiGlyph
+                        MaterialSymbol {objectName:"wullAiGlyph";iconSize:cloud.width*.4;color:AbyssStyle.accent;text:"auto_awesome"}
+                    }
                 }
             }
         }

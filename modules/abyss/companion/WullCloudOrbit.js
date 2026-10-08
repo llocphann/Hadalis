@@ -23,26 +23,27 @@ function layout(outputWidth, outputHeight, actor) {
     }
     const normal = edge==="top" ? Math.PI/2 : edge==="bottom" ? -Math.PI/2
         : edge==="right" ? Math.PI : 0;
-    const offsets = [[-1.13,1.13,0,-.5,.5,-.85,.85,-1.35,1.35],
-        [.5,-.5,0,.85,-.85,1.13,-1.13,1.35,-1.35]];
-    function node(offset, radius) {
-        const angle = normal+offset;
-        return {x:cx+Math.cos(angle)*(width/2+nodeWidth/2+14)*radius-nodeWidth/2,
-            y:cy+Math.sin(angle)*(height/2+nodeHeight/2+14)*radius-nodeHeight/2,
+    const baseRadius = Math.max(width/2+nodeWidth/2,height/2+nodeHeight/2)+14;
+    function node(angle, radius) {
+        return {x:cx+Math.cos(angle)*baseRadius*radius-nodeWidth/2,
+            y:cy+Math.sin(angle)*baseRadius*radius-nodeHeight/2,
             width:nodeWidth,height:nodeHeight};
     }
     function fits(n) {
+        const nx = n.x+n.width/2, ny = n.y+n.height/2;
         return n.x>=8 && n.y>=8 && n.x+n.width<=outputWidth-8
-            && n.y+n.height<=outputHeight-8 && !overlaps(n,body,3);
+            && n.y+n.height<=outputHeight-8 && !overlaps(n,body,3)
+            && (nx-cx)*Math.cos(normal)+(ny-cy)*Math.sin(normal)>0;
     }
-    for (const radius of [1,1.15,1.35]) {
-        for (const first of offsets[0]) {
-            const a = node(first,radius);
-            if (!fits(a)) continue;
-            for (const second of offsets[1]) {
-                const b = node(second,radius);
-                if (fits(b) && !overlaps(a,b,4) && Math.abs(a.x-b.x)>=5 && Math.abs(a.y-b.y)>=5)
-                    return {available:true,nodes:[a,b]};
+    // Keep equal distances and mirrored angles. Near a corner, turn the pair
+    // inward together instead of shifting just one action out of symmetry.
+    for (const turn of [0,-Math.PI/8,Math.PI/8,-Math.PI/4,Math.PI/4]) {
+        for (const radius of [1,1.15,1.35]) {
+            for (const spread of [.8,1.05,.65,.5,.4]) {
+                const axis = normal+turn;
+                const a = node(axis-spread,radius), b = node(axis+spread,radius);
+                if (fits(a) && fits(b) && !overlaps(a,b,4))
+                    return {available:true,nodes:[a,b],axisAngle:axis};
             }
         }
     }

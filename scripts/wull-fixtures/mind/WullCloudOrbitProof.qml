@@ -5,6 +5,7 @@ import Quickshell
 import qs.services
 import qs.modules.common
 import qs.modules.abyss.companion
+import qs.modules.abyss.looks
 
 Window {
     id: root
@@ -65,7 +66,13 @@ Window {
                         check(p.x>=8 && p.y>=8 && p.x+node.width<=board.width-8
                             && p.y+node.height<=board.height-8,"painted cloud outside "+edge)
                     }
-                    check(Math.abs(a.x-b.x)>=5 && Math.abs(a.y-b.y)>=5,"painted nodes form a row on "+edge)
+                    const ax=a.x+a.width/2-actor.cx,ay=a.y+a.height/2-actor.cy
+                    const bx=b.x+b.width/2-actor.cx,by=b.y+b.height/2-actor.cy
+                    check(Math.abs(Math.hypot(ax,ay)-Math.hypot(bx,by))<1e-6,"painted cloud distances lost symmetry on "+edge)
+                    check(Math.abs((ax-bx)*Math.cos(actions.orbit.axisAngle)+(ay-by)*Math.sin(actions.orbit.axisAngle))<1e-6,
+                        "painted actions are not mirrored on "+edge)
+                    const obsidian=findChild(a,"wullObsidianGlyph"),ai=findChild(b,"wullAiGlyph")
+                    check(obsidian?.visible && ai?.visible && obsidian.color===ai.color,"theme-matched vector glyphs missing")
                     mouseMove(board,a.x+a.width/2,a.y+a.height/2);wait(50)
                     check(actions.hovered,"cloud hover did not hold its orbit "+JSON.stringify({
                         edge:edge,visible:actions.visible,eligible:actions.eligible,revealed:actions.revealed,
@@ -84,13 +91,28 @@ Window {
                     mouseMove(board,10,10);wait(60)
                     root.capture(edge);tryCompare(root,"captured",true,3000)
                 }
+                const obsidian=findChild(actions.obsidianTarget,"wullObsidianGlyph"),ai=findChild(actions.aiTarget,"wullAiGlyph")
+                let previous=String(obsidian.color)
+                for(const color of ["#ab70fa","#20d7ba","#e6ae36"]) {
+                    Appearance.m3colors.m3primary=color
+                    for(let frame=0;frame<5;frame++) {
+                        wait(30)
+                        check(obsidian.color===ai.color,"glyphs diverged during the shared color transition")
+                    }
+                    tryVerify(()=>obsidian.color===AbyssStyle.accent && ai.color===AbyssStyle.accent,3000)
+                    check(String(obsidian.color)!==previous,
+                        "Obsidian glyph failed a live theme change "+JSON.stringify({
+                            input:color,previous:previous,obsidian:String(obsidian.color),ai:String(ai.color),
+                            accent:String(AbyssStyle.accent),primary:String(Appearance.colors.colPrimary),m3primary:String(Appearance.m3colors.m3primary)}))
+                    previous=String(obsidian.color)
+                }
                 root.edge="bottom";root.previewHeight=640;wait(100)
                 WullMind.historyLoaded=true;WullMind.history=[];WullMind.openChat();wait(120)
                 check(chat.visible && chat.editing && !actions.visible,"explicit chat did not replace the orbit")
                 root.capture("chat");tryCompare(root,"captured",true,3000)
                 WullMind.dismiss();actions.allowed=false;wait(30)
                 check(!actions.visible && !actions.hovered,"disabled orbit retained input")
-                console.log("WULL_CLOUD_ORBIT=PASS fourEdges AquaOcto cornerSafe nodeHover emptySpacePassThrough finiteHide contextAndChatClicks explicitChat themedBorder")
+                console.log("WULL_CLOUD_ORBIT=PASS symmetricFourEdges AquaOcto cornerSafe uprightThemedVectorGlyphs livePaletteChanges nodeHover emptySpacePassThrough finiteHide contextAndChatClicks explicitChat themedBorder")
             }catch(e){console.error("WULL_CLOUD_ORBIT=FAIL "+e+" "+e.stack)}
             Qt.quit()
         }

@@ -49,7 +49,6 @@ Singleton {
 
     property var libraryTracks: []
     property var playlists: []
-    property var folderCollections: []
     // "Playlists" is semantically reserved for MPD saved playlists. Folder
     // navigation is handled independently by the Songs browser.
     readonly property var collections: playlists
@@ -186,7 +185,6 @@ Singleton {
         if (includeLibrary) {
             libraryTracks = payload.tracks ?? []
             playlists = payload.playlists ?? []
-            folderCollections = payload.folders ?? []
         }
 
         if (Array.isArray(payload.queue))

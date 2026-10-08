@@ -6,7 +6,7 @@ from PIL import Image
 from native_test_session import private_wayland,run_qs
 ROOT=Path(__file__).resolve().parents[1]
 # Native and Quickshell window declarations from the repaired active fixtures.
-samples=[('Window','scripts/test-wull-collapsed-bar.py'),('FloatingWindow','scripts/test-notification-settings-runtime.py')]
+samples=[('Window','scripts/test-wave-visualizer-lifecycle-runtime.py'),('FloatingWindow','scripts/test-notification-settings-runtime.py')]
 with tempfile.TemporaryDirectory(prefix='hadalis-debug-first-frame-') as name:
  folder=Path(name)
  capture_script=folder/'capture-frame.py'

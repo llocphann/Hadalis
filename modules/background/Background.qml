@@ -1695,12 +1695,14 @@ Scope {
                     y: widgetCanvas._parallaxActive ? (bgRoot.parallaxTotalY * wallpaperContainer.activeValueY * (1 - bgRoot.parallaxWidgetDepth)) : 0
                     Behavior on x {
                         enabled: Appearance.animationsEnabled
+                            && !GlobalStates.widgetEditMode
                             && ((!bgRoot.parallaxTransitionActive && bgRoot.parallaxResumeProgress >= 1)
                                 || bgRoot._parallaxWaitingCrossfader)
                         animation: NumberAnimation { duration: Appearance.animation.elementMove.duration; easing.type: Appearance.animation.elementMove.type; easing.bezierCurve: Appearance.animation.elementMove.bezierCurve }
                     }
                     Behavior on y {
                         enabled: Appearance.animationsEnabled
+                            && !GlobalStates.widgetEditMode
                             && ((!bgRoot.parallaxTransitionActive && bgRoot.parallaxResumeProgress >= 1)
                                 || bgRoot._parallaxWaitingCrossfader)
                         animation: NumberAnimation { duration: Appearance.animation.elementMove.duration; easing.type: Appearance.animation.elementMove.type; easing.bezierCurve: Appearance.animation.elementMove.bezierCurve }
@@ -1708,8 +1710,11 @@ Scope {
                 }
                 width: parent.width
                 height: parent.height
-                // Disable parallax transform when locked/safe/backdrop
+                // Static fill/zoom must not move widgets when parallax is off.
+                // Editing uses physical output coordinates for the grid, drag
+                // snapping, native input and the reparented connected toolbar.
                 readonly property bool _parallaxActive: useParallax
+                    && bgRoot.dynamicParallaxRequested && !GlobalStates.widgetEditMode
                     && !GlobalStates.screenLocked && !bgRoot.wallpaperSafetyTriggered && !bgRoot.backdropActive
 
                 // Managed desktop items are a separate, lightweight canvas model.

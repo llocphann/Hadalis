@@ -553,6 +553,7 @@ Singleton {
                 }
                 property JsonObject companionMind: JsonObject {
                     property bool talkEnabled: true
+                    property bool localOnly: true
                     property bool aiEnabled: false
                     property string endpoint: "http://127.0.0.1:11434"
                     property string model: ""

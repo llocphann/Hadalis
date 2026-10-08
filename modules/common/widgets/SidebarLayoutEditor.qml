@@ -18,7 +18,7 @@ ColumnLayout {
     property string liftedId: ""
 
     readonly property var rightDefaultOrder: ["system", "sliders", "toggles", "widgets"]
-    readonly property var leftDefaultOrder: ["ai", "translator", "anime", "animeSchedule", "news", "music", "tools"]
+    readonly property var leftDefaultOrder: ["ai", "translator", "anime", "animeSchedule", "news", "tools"]
 
     readonly property var rightDescriptors: ({
         system: { icon: "computer", label: Translation.tr("System") },
@@ -33,7 +33,6 @@ ColumnLayout {
         anime: { icon: "bookmark_heart", label: Translation.tr("Anime") },
         animeSchedule: { icon: "calendar_month", label: Translation.tr("Schedule") },
         news: { icon: "newspaper", label: Translation.tr("News") },
-        music: { icon: "library_music", label: Translation.tr("Music") },
         tools: { icon: "build", label: Translation.tr("Tools") }
     })
 
@@ -47,13 +46,9 @@ ColumnLayout {
     readonly property var leftOrder: {
         root.configVersion
         const saved = Config.options?.sidebar?.left?.tabOrder ?? root.leftDefaultOrder
-        // Existing installs may still persist the retired YT Music tab id.
-        // Normalize it before sanitizing so arranging tabs never drops Music
-        // to an unrelated fallback position.
-        const normalized = Array.isArray(saved)
-            ? saved.map(id => id === "ytmusic" ? "music" : id)
-            : root.leftDefaultOrder
-        return root.sanitizeOrder(normalized, root.leftDefaultOrder)
+        // Music now belongs to Dashboard. Sanitization preserves the relative
+        // order of retained Sidebar tabs and ignores either old Music id.
+        return root.sanitizeOrder(saved, root.leftDefaultOrder)
     }
 
     function sanitizeOrder(saved, defaults): var {

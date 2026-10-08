@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Source contract for the Left Sidebar MPD/MPRIS Music player."""
+"""Backend contract for the Dashboard MPD/MPRIS Music player."""
 from __future__ import annotations
 import importlib.util
 import json
@@ -19,9 +19,9 @@ def forbid(source: str, token: str, message: str) -> None:
         raise SystemExit(message)
 
 service = read("services/LocalMusic.qml")
-view = read("modules/sidebarLeft/LocalMusicView.qml")
+view = read("modules/dashboard/DashboardMusic.qml")
 sidebar = read("modules/sidebarLeft/SidebarLeftContent.qml")
-settings = read("modules/settings/SidebarsConfig.qml")
+settings = read("modules/settings/DashboardMusicSettings.qml")
 config = read("modules/common/Config.qml")
 defaults = json.loads(read("defaults/config.json"))
 mpd = read("scripts/local_music_mpd.py")
@@ -34,8 +34,9 @@ for key in ("enable", "libraryFolder", "mpdHost", "mpdPort"):
     if key not in music_defaults:
         raise SystemExit(f"default config missing sidebar.music.{key}")
 left_order = defaults.get("sidebar", {}).get("left", {}).get("tabOrder", [])
-if "music" not in left_order or "ytmusic" in left_order:
-    raise SystemExit("default Left Sidebar order must use music.")
+if "music" in left_order or "ytmusic" in left_order:
+    raise SystemExit("Music navigation must belong to Dashboard.")
+assert isinstance(defaults["dashboard"]["music"]["enable"],bool)
 
 for token in (
     'readonly property string nativeDispatchPath: Directories.scriptsPath + "/native-dispatch"',
@@ -64,57 +65,13 @@ for token in (
 ):
     require(dispatch, token, f"native selector must retain reversible Python fallback: {token}")
 
-for token in (
-    'Translation.tr("Songs")',
-    'Translation.tr("Playlists")',
-    'Translation.tr("Queue")',
-    'Translation.tr("Lyrics")',
-    'Layout.fillHeight: false',
-    'ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }',
-    'PlayerControl {',
-    'id: nowPlayingPanel',
-    'player: LocalMusic.mprisPlayer',
-    'visualizerPoints: localMusicCava.points',
-    'active: root.visible && GlobalStates.sidebarLeftOpen',
-    'LocalMusic.localLyricsLines',
-    'readonly property var songEntries: root.buildSongEntries()',
-    'property var selectedTrackKeys: []',
-    'property var selectedFolderPaths: []',
-    'function selectFolder(folder, entryIndex, modifiers): void',
-    'root.isFolderSelected(modelData.path)',
-    'Qt.ControlModifier',
-    'Qt.ShiftModifier',
-    'model: LocalMusic.playlists',
-    'ContextMenu {',
-    'LocalMusic.createPlaylist(name, root.pendingPlaylistTracks)',
-    'LocalMusic.addTracksToPlaylist(name, snapshot)',
-    'id: classicPlaybackOptions',
-    'Layout.preferredWidth: 100',
-    'configuration: StyledSlider.Configuration.XS',
-    'playbackAdapter: localMusicPlayerAdapter',
-    'LocalMusic.toggleShuffle()',
-    'LocalMusic.cycleRepeatMode()',
-    'LocalMusic.setVolume(value)',
-    'id: clearQueueContent',
-    'anchors.centerIn: parent',
-):
-    require(view, token, f"Local Music frontend contract missing: {token}")
+# The previous Songs/Queue/Playlists tab spelling is superseded by the requested
+# five-column browser. Native navigation/actions are exercised independently in
+# test-dashboard-music-runtime.py; model selection/search/identity is behavioral.
+subprocess.run(["node",str(ROOT/"scripts/test-dashboard-music-model.cjs")],cwd=ROOT,check=True)
 for forbidden in ("YtMusic", "InnerTune", "yt-dlp", "youtube"):
     forbid(view, forbidden, f"Local Music frontend must stay local-only: {forbidden}")
-
-if "model: LocalMusic.collections" in view:
-    raise SystemExit("Playlists must contain only saved MPD playlists, not folder collections.")
-if 'symbol: LocalMusic.shuffleMode ? "shuffle_on" : "shuffle"' in view:
-    raise SystemExit("Local Music must not duplicate Shuffle below the shared PlayerControl.")
-if "symbol: LocalMusic.repeatMode === 1" in view:
-    raise SystemExit("Local Music must not duplicate Repeat below the shared PlayerControl.")
-if view.index("id: nowPlayingPanel") > view.index('model: ['):
-    raise SystemExit("Now-playing media must render above the Music section tabs.")
-
-require(sidebar, 'Component { id: musicComp; LocalMusicView {} }',
-        "Left Sidebar must load LocalMusicView.")
-require(settings, 'Config.setNestedValue("sidebar.music.enable", checked)',
-        "Sidebar Settings must use canonical Music state.")
+forbid(sidebar,"LocalMusicView", "Sidebar must not instantiate a second Music surface.")
 
 for token in ('client.command("listallinfo")', 'client.command("listplaylists")',
               'client.command("playlistinfo")', "def replace_queue(",

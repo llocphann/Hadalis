@@ -11,9 +11,10 @@ import qs.modules.common.functions
 Singleton {
     id: root
 
-    readonly property bool enabled: Config.options?.sidebar?.music?.enable ?? false
+    readonly property bool enabled: Config.ready && (Config.options?.dashboard?.music?.enable ?? true)
     readonly property int fallbackPollIntervalMs:
-        GlobalStates.sidebarLeftOpen ? 900 : 30000
+        ((GlobalStates.dashboardOpen || (GlobalStates.overviewOpen && GlobalStates.overviewMode === "dashboard"))
+            && GlobalStates.dashboardPage === 1) ? 900 : 30000
     readonly property string configuredLibraryFolder:
         Config.options?.sidebar?.music?.libraryFolder ?? ""
     readonly property string configuredHost:

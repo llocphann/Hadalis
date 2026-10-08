@@ -1061,6 +1061,9 @@
         "style": "panel"
     },
     "dashboard": {
+        "music": {
+            "enable": true
+        },
         "keepLoaded": false,
         "showHeader": true,
         "showPowerButtons": true,
@@ -1473,8 +1476,7 @@
                 "ai",
                 "translator",
                 "anime",
-                "animeSchedule",
-                "music"
+                "animeSchedule"
             ]
         },
         "right": {

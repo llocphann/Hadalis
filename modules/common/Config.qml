@@ -2085,6 +2085,9 @@ Singleton {
             }
 
             property JsonObject dashboard: JsonObject {
+                property JsonObject music: JsonObject {
+                    property bool enable: true
+                }
                 property bool keepLoaded: false
                 property bool showHeader: true
                 property bool showPowerButtons: true
@@ -2674,7 +2677,7 @@ Singleton {
                     property bool showBrightness: true
                 }
                 property JsonObject left: JsonObject {
-                    property list<string> tabOrder: ["ai", "translator", "anime", "animeSchedule", "news", "music", "tools"]
+                    property list<string> tabOrder: ["ai", "translator", "anime", "animeSchedule", "news", "tools"]
                 }
                 property JsonObject right: JsonObject {
                     property list<string> enabledWidgets: ["calculator", "sysmon"]

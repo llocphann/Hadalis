@@ -3396,8 +3396,8 @@ EOF
                         *Anime*) select_prefix "sidebar-left/anime" ;;
                         *News*) select_prefix "sidebar-left/news" ;;
                         *Software*) select_prefix "sidebar-left/software" ;;
-                        *LocalMusic*) select_prefix "sidebar-left/music" ;;
-                        *YtMusic*|innertune) select_prefix "sidebar-left/ytmusic" ;;
+                        *LocalMusic*) select_prefix "dashboard/music" ;;
+                        *YtMusic*|innertune) select_prefix "dashboard/music" ;;
                         *Translator*) select_prefix "sidebar-left/translator" ;;
                         *Wallhaven*) select_prefix "sidebar-left/wallhaven" ;;
                         *Tools*|plugins) select_prefix "sidebar-left/tools" ;;
@@ -3413,6 +3413,7 @@ EOF
                 modules/sidebarRight/weather/*) select_prefix "sidebar-right/weather" ;;
                 modules/sidebarRight/*) : ;;
                 modules/controlPanel/*) select_prefix "control-panel" ;;
+                modules/dashboard/DashboardMusic*) select_prefix "dashboard/music" ;;
                 modules/dashboard/*) select_prefix "dashboard" ;;
                 modules/mediaControls/*) select_prefix "media-controls" ;;
                 modules/clipboard/*) select_prefix "clipboard"; select_prefix "overview/clipboard" ;;

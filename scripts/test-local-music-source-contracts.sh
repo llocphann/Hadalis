@@ -2,7 +2,6 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-view="$root/modules/sidebarLeft/LocalMusicView.qml"
 service="$root/services/LocalMusic.qml"
 helper="$root/scripts/local_music_mpd.py"
 
@@ -11,13 +10,8 @@ fail() {
     exit 1
 }
 
-grep -Fq 'onDoubleClicked: trackRow.activated()' "$view" \
-    || fail 'song rows must activate on double click'
-if grep -Fq 'onClicked: trackRow.activated()' "$view"; then
-    fail 'single click must not preempt the double-click queue action'
-fi
-grep -Fq 'onActivated: LocalMusic.enqueueTrack(modelData, true)' "$view" \
-    || fail 'Songs double click must append and play through LocalMusic.enqueueTrack'
+# The Dashboard native test verifies selection versus double-click activation.
+# This check retains the MPD append/play protocol and stable-id routing.
 grep -Fq 'function enqueueTrack(track, playNow = true): void' "$service" \
     || fail 'LocalMusic must expose append-to-MPD-queue behavior'
 grep -Fq 'root.nativeDispatchPath, "mpd", "enqueue"' "$service" \

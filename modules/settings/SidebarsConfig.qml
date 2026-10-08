@@ -95,7 +95,6 @@ ContentPage {
                 wrapMode: Text.WordWrap
             }
 
-
             SettingsSwitch {
                 buttonIcon: "folder_open"
                 text: Translation.tr("Open folder after wallpaper download")
@@ -106,7 +105,6 @@ ContentPage {
                 }
             }
             }
-
 
             ContentSubsection {
                 title: Translation.tr("Arrange")
@@ -194,14 +192,6 @@ ContentPage {
                     StyledToolTip {
                         text: Translation.tr("Niri debug options and quick actions")
                     }
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "library_music"
-                    text: Translation.tr("Music")
-                    checked: Config.options.sidebar?.music?.enable ?? false
-                    onCheckedChanged: Config.setNestedValue("sidebar.music.enable", checked)
-                    StyledToolTip { text: LocalMusic.libraryFolder }
                 }
 
                 // DISABLED: webapps — requires quickshell-webengine rebuild
@@ -305,7 +295,6 @@ ContentPage {
                 }
             }
 
-
             ContentSubsection {
                 id: rightSidebarWidgets
                 title: Translation.tr("Right Sidebar")
@@ -393,7 +382,6 @@ ContentPage {
                 }
             }
 
-
             ContentSubsection {
                 title: Translation.tr("Sliders")
 
@@ -460,98 +448,6 @@ ContentPage {
         title: Translation.tr("Media & content")
 
         SettingsGroup {
-            ContentSubsection {
-                title: Translation.tr("Music")
-                tooltip: "MPD + MPRIS"
-                visible: Config.options.sidebar?.music?.enable ?? false
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 10
-
-                    MaterialSymbol {
-                        text: "dns"
-                        iconSize: 20
-                        color: Appearance.colors.colSubtext
-                    }
-
-                    MaterialTextField {
-                        Layout.fillWidth: true
-                        text: Config.options.sidebar?.music?.mpdHost ?? "127.0.0.1"
-                        onEditingFinished: {
-                            const value = text.trim()
-                            Config.setNestedValue("sidebar.music.mpdHost",
-                                value.length > 0 ? value : "127.0.0.1")
-                        }
-                    }
-
-                    ConfigSpinBox {
-                        icon: "tag"
-                        text: "MPD"
-                        value: Config.options.sidebar?.music?.mpdPort ?? 6600
-                        from: 1
-                        to: 65535
-                        stepSize: 1
-                        onValueChanged: Config.setNestedValue("sidebar.music.mpdPort", value)
-                    }
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 10
-
-                    MaterialTextField {
-                        Layout.fillWidth: true
-                        readOnly: true
-                        // A wrapped read-only path must not derive preferred width from its assigned layout width.
-                        implicitWidth: 220
-                        text: LocalMusic.libraryFolder
-                    }
-
-                    RippleButton {
-                        implicitWidth: 44
-                        implicitHeight: 44
-                        buttonRadius: Appearance.rounding.full
-                        colBackground: Appearance.colors.colLayer2
-                        onClicked: musicFolderDialog.open()
-                        contentItem: MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "folder_open"
-                            iconSize: 21
-                            color: Appearance.colors.colOnLayer2
-                        }
-                        StyledToolTip { text: Translation.tr("Folder") }
-                    }
-
-                    RippleButton {
-                        implicitWidth: 44
-                        implicitHeight: 44
-                        buttonRadius: Appearance.rounding.full
-                        colBackground: Appearance.colors.colLayer2
-                        enabled: LocalMusic.available && !LocalMusic.scanning
-                        onClicked: LocalMusic.updateDatabase()
-                        contentItem: MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "database"
-                            iconSize: 21
-                            color: Appearance.colors.colOnLayer2
-                        }
-                        StyledToolTip { text: Translation.tr("Update") }
-                    }
-                }
-
-                StyledText {
-                    Layout.fillWidth: true
-                    text: "MPD"
-                        + (LocalMusic.mprisAvailable ? " · MPRIS" : "")
-                        + " · " + (LocalMusic.available
-                            ? Translation.tr("Connected") : LocalMusic.error)
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    wrapMode: Text.Wrap
-                }
-            }
-
 
             ContentSubsection {
                 title: Translation.tr("Anime Schedule")
@@ -609,7 +505,6 @@ ContentPage {
                     }
                 }
             }
-
 
             ContentSubsection {
                 title: Translation.tr("Gelbooru")
@@ -669,7 +564,6 @@ ContentPage {
                 }
             }
 
-
         }
     }
 
@@ -706,7 +600,6 @@ ContentPage {
                     }
                 }
             }
-
 
             ContentSubsection {
                 visible: Config.options?.panelFamily !== "abyss"
@@ -837,17 +730,6 @@ ContentPage {
                 }
             }
         }
-    }
-
-    FolderDialog {
-        id: musicFolderDialog
-        title: Translation.tr("Music")
-        onAccepted: LocalMusic.setLibraryFolder(String(selectedFolder))
-    }
-
-    SettingsNativeDialogGuard {
-        dialog: musicFolderDialog
-        dialogKey: "sidebar-local-music-folder"
     }
 
 }

@@ -1575,6 +1575,7 @@ Singleton {
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("Panel height"), description: Translation.tr("Dashboard height as a percentage of the screen"), keywords: ["dashboard", "height", "size", "ratio", "screen", "scroll"] },
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("GitHub username"), description: Translation.tr("GitHub user for the contributions heatmap widget"), keywords: ["dashboard", "github", "contributions", "heatmap", "username", "activity"] },
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("Canvas"), label: Translation.tr("Dashboard canvas"), description: Translation.tr("Move and resize Dashboard modules freely with grid snapping"), keywords: ["dashboard", "widgets", "modules", "canvas", "grid", "snap", "resize", "move", "weather", "media", "calendar"] },
+        { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("Music"), label: Translation.tr("Local Music"), description: Translation.tr("Dashboard music page, MPD connection and library folder"), keywords: ["dashboard", "music", "local", "mpd", "host", "port", "library", "folder", "lyrics", "genre"] },
         {
             pageIndex: 17, pageName: root.pages[17].name,
             section: Translation.tr("How autostart works"),

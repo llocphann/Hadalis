@@ -19,8 +19,8 @@ Singleton {
         { id: "sidebar-left/anime-schedule", family: "shared", surface: "sidebar-left", view: "anime-schedule", safe: true, settleMs: 500 },
         { id: "sidebar-left/wallhaven", family: "shared", surface: "sidebar-left", view: "wallhaven", safe: true, settleMs: 450 },
         { id: "sidebar-left/news", family: "shared", surface: "sidebar-left", view: "news", safe: true, settleMs: 500 },
-        { id: "sidebar-left/music", family: "shared", surface: "sidebar-left", view: "music", safe: true, settleMs: 450 },
-        { id: "sidebar-left/ytmusic", family: "shared", surface: "sidebar-left", view: "ytmusic", safe: true, settleMs: 450 },
+        { id: "sidebar-left/music", family: "ii", surface: "dashboard", view: "music", safe: true, settleMs: 450 },
+        { id: "sidebar-left/ytmusic", family: "ii", surface: "dashboard", view: "music", safe: true, settleMs: 450 },
         { id: "sidebar-left/tools", family: "shared", surface: "sidebar-left", view: "tools", safe: true, settleMs: 350 },
         { id: "sidebar-left/software", family: "shared", surface: "sidebar-left", view: "software", safe: true, settleMs: 450 },
         { id: "sidebar-right/controls", family: "shared", surface: "sidebar-right", view: "controls", safe: true, settleMs: 350 },
@@ -34,6 +34,7 @@ Singleton {
         { id: "sidebar-right/timer", family: "shared", surface: "sidebar-right", view: "timer", safe: true, settleMs: 350 },
         { id: "control-panel", family: "ii", surface: "control-panel", view: "", safe: true, settleMs: 350 },
         { id: "dashboard", family: "ii", surface: "dashboard", view: "", safe: true, settleMs: 450 },
+        { id: "dashboard/music", family: "ii", surface: "dashboard", view: "music", safe: true, settleMs: 450 },
         { id: "notification-center", family: "ii", surface: "notification-center", view: "", safe: true, settleMs: 350 },
         { id: "media-controls", family: "shared", surface: "media-controls", view: "", safe: true, settleMs: 350 },
         { id: "clipboard", family: "shared", surface: "clipboard", view: "", safe: true, settleMs: 350 },
@@ -105,7 +106,8 @@ Singleton {
         const entry = entryFor(destination)
         if (!entry) return "error:unknown-destination"
         const family = Config.options?.panelFamily ?? "ii"
-        if (entry.family !== "shared" && entry.family !== family)
+        if (entry.family !== "shared" && entry.family !== family
+                && !(entry.family === "ii" && family === "abyss"))
             return "error:requires-family-" + entry.family
 
         closeAll()
@@ -123,7 +125,10 @@ Singleton {
             }
             break
         case "control-panel": GlobalStates.controlPanelOpen = true; break
-        case "dashboard": GlobalStates.dashboardOpen = true; break
+        case "dashboard":
+            GlobalStates.dashboardPage = entry.view === "music" ? 1 : 0
+            GlobalStates.dashboardOpen = true
+            break
         case "media-controls": GlobalStates.mediaControlsOpen = true; break
         case "clipboard": GlobalStates.clipboardOpen = true; break
         case "cheatsheet": GlobalStates.cheatsheetOpen = true; break

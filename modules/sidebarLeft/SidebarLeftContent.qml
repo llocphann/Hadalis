@@ -43,7 +43,6 @@ Item {
     property bool animeScheduleEnabled: Config.options?.sidebar?.animeSchedule?.enable ?? false
     property bool newsEnabled: Config.options?.sidebar?.news?.enable ?? true
     property bool toolsEnabled: Config.options?.sidebar?.tools?.enable ?? false
-    property bool musicEnabled: Config.options?.sidebar?.music?.enable ?? false
     // DISABLED: webapps — requires quickshell-webengine
     property bool pluginsEnabled: false // Config.options?.sidebar?.plugins?.enable ?? false
 
@@ -92,7 +91,7 @@ Item {
     function _doRestoreLastPlugin(): void {}
 
     readonly property var _tabDefaultOrder: [
-        "ai", "translator", "anime", "animeSchedule", "news", "music", "tools"
+        "ai", "translator", "anime", "animeSchedule", "news", "tools"
     ]
     readonly property var resolvedTabOrder: {
         const result = []
@@ -119,7 +118,7 @@ Item {
         if (root.animeEnabled && !root.animeCloset) result.push({ id: "anime", icon: "bookmark_heart", name: Translation.tr("Anime") })
         if (root.animeScheduleEnabled) result.push({ id: "animeSchedule", icon: "calendar_month", name: Translation.tr("Schedule") })
         if (root.newsEnabled) result.push({ id: "news", icon: "newspaper", name: Translation.tr("News") })
-        if (root.musicEnabled) result.push({ id: "music", icon: "library_music", name: Translation.tr("Music") })
+        // Local Music is a Dashboard page; saved Sidebar orders remain readable.
         if (root.toolsEnabled) result.push({ id: "tools", icon: "build", name: Translation.tr("Tools") })
         // DISABLED: webapps — requires quickshell-webengine rebuild
         // if (root.pluginsEnabled) result.push({ id: "plugins", icon: "extension", name: Translation.tr("Web Apps") })
@@ -427,7 +426,6 @@ Item {
                                     case "bookmark_heart": return animeComp
                                     case "calendar_month": return animeScheduleComp
                                     case "newspaper": return newsComp
-                                    case "library_music": return musicComp
                                     case "build": return toolsComp
                                     // DISABLED: webapps
                                     // case "extension": return pluginsComp
@@ -455,7 +453,6 @@ Item {
         Component { id: animeComp; Anime {} }
         Component { id: animeScheduleComp; AnimeScheduleView {} }
         Component { id: newsComp; NewsView {} }
-        Component { id: musicComp; LocalMusicView {} }
         Component { id: toolsComp; ToolsView {} }
         // DISABLED: webapps — requires quickshell-webengine rebuild
         // Component {

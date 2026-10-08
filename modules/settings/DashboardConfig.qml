@@ -17,14 +17,24 @@ ContentPage {
         icon: "space_dashboard"
         title: Translation.tr("Dashboard")
         description: Translation.tr("Tune the Dashboard surface, then arrange and resize modules directly on its canvas.")
-        summary: Translation.tr("Behavior · appearance · canvas")
+        summary: Translation.tr("Behavior · appearance · canvas · music")
         currentValue: root.activeSection
         onSelected: value => root.activeSection = value
         options: [
             { displayName: Translation.tr("General"), icon: "tune", value: "general" },
             { displayName: Translation.tr("Appearance"), icon: "palette", value: "appearance" },
-            { displayName: Translation.tr("Canvas"), icon: "dashboard_customize", value: "layout" }
+            { displayName: Translation.tr("Canvas"), icon: "dashboard_customize", value: "layout" },
+            { displayName: Translation.tr("Music"), icon: "library_music", value: "music" }
         ]
+    }
+
+    SettingsCardSection {
+        settingsTaskSection: "music"
+        visible: root.isIiActive && root.activeSection === "music"
+        expanded: true
+        icon: "library_music"
+        title: Translation.tr("Local Music")
+        DashboardMusicSettings { Layout.fillWidth: true }
     }
 
     SettingsCardSection {

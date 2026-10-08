@@ -400,6 +400,9 @@ Singleton {
     }
     property bool controlPanelOpen: false
     property bool dashboardOpen: false
+    property int dashboardPage: 0
+    // Lightweight browsing identity survives the bounded Dashboard UI cache.
+    property var dashboardMusicBrowser: ({})
     property bool workspaceShowNumbers: false
     property var activeBooruImageMenu: null  // Track which BooruImage has its menu open
     property var activeTaskViewMenu: null  // Track which WindowThumbnail has its menu open

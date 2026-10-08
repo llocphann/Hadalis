@@ -19,6 +19,14 @@ Item {
     property bool presentationActive: GlobalStates.dashboardOpen || GlobalStates.overviewOpen
 
     property alias editMode: dashboardCanvas.editMode
+    readonly property bool musicEnabled: Config.options?.dashboard?.music?.enable ?? true
+    readonly property int currentPage: musicEnabled ? Math.max(0, Math.min(1, GlobalStates.dashboardPage)) : 0
+    property var musicBackend: null
+    property bool musicVisited: currentPage === 1
+    onCurrentPageChanged: if (currentPage === 1)
+        musicVisited = true
+    onEditModeChanged: if (editMode)
+        GlobalStates.dashboardPage = 0
     readonly property var canvasController: dashboardCanvas
 
     readonly property bool showHeader: Config.options?.dashboard?.showHeader ?? true
@@ -29,20 +37,20 @@ Item {
     property bool _agendaDialogLoaded: false
 
     function openAgendaDialog(arg) {
-        const isDate = arg instanceof Date
-        root._agendaEditEvent = (arg && !isDate) ? arg : null
-        root._agendaPrefillDate = isDate ? arg : null
-        root._agendaDialogLoaded = true
+        const isDate = arg instanceof Date;
+        root._agendaEditEvent = (arg && !isDate) ? arg : null;
+        root._agendaPrefillDate = isDate ? arg : null;
+        root._agendaDialogLoaded = true;
         if (agendaDialogLoader.item) {
             if (root._agendaEditEvent) {
-                agendaDialogLoader.item.loadEvent(root._agendaEditEvent)
+                agendaDialogLoader.item.loadEvent(root._agendaEditEvent);
             } else {
-                agendaDialogLoader.item.resetForm()
+                agendaDialogLoader.item.resetForm();
                 if (root._agendaPrefillDate)
-                    agendaDialogLoader.item.eventDate = root._agendaPrefillDate
+                    agendaDialogLoader.item.eventDate = root._agendaPrefillDate;
             }
         }
-        root._agendaDialogShown = true
+        root._agendaDialogShown = true;
     }
 
     // Dashboard does not own a separate background renderer. Detached Dashboard
@@ -54,16 +62,11 @@ Item {
         radius: background.radius
         // Detached Dashboard retains its own shadow owner, but shares the
         // physical Screen Edge elevation controls with connected surfaces.
-        blur: Math.max(0, Math.min(32,
-            Math.round(Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15)))
+        blur: Math.max(0, Math.min(32, Math.round(Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15)))
         spread: 0
         offset: Qt.vector2d(0, 0)
-        color: Qt.alpha(Appearance.m3colors.m3shadow,
-            Math.max(0, Math.min(1.0,
-                Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70))))
-        visible: !root.embeddedSurface
-            && (Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true)
-            && !Appearance.gameModeMinimal
+        color: Qt.alpha(Appearance.m3colors.m3shadow, Math.max(0, Math.min(1.0, Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70))))
+        visible: !root.embeddedSurface && (Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true) && !Appearance.gameModeMinimal
     }
 
     Rectangle {
@@ -77,34 +80,74 @@ Item {
 
         ColumnLayout {
             id: mainColumn
-            readonly property bool compact:
-                (Config.options?.dashboard?.appearance?.density ?? "comfortable")
-                    === "compact"
+            readonly property bool compact: (Config.options?.dashboard?.appearance?.density ?? "comfortable") === "compact"
             anchors.fill: parent
-            anchors.margins: root.embeddedSurface
-                ? 0 : (compact ? 12 : 16)
+            anchors.margins: root.embeddedSurface ? 0 : (compact ? 12 : 16)
             spacing: compact ? 8 : 12
 
             DashboardHeader {
                 id: dashboardHeader
                 Layout.fillWidth: true
-                visible: root.showHeader
+                visible: root.showHeader || root.musicEnabled
+                showActions: root.showHeader
+                currentPage: root.currentPage
+                pageCount: root.musicEnabled ? 2 : 1
+                onPageRequested: index => GlobalStates.dashboardPage = index
                 editMode: dashboardCanvas.editMode
                 onEditModeRequested: {
                     if (dashboardCanvas.editMode)
-                        dashboardCanvas.commitEditMode()
+                        dashboardCanvas.commitEditMode();
                     else
-                        dashboardCanvas.beginEditMode()
+                        dashboardCanvas.beginEditMode();
                 }
             }
 
-            DashboardCanvas {
-                id: dashboardCanvas
+            Item {
+                id: pages
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                presentationActive: root.presentationActive
-                warmContent: root.warmContent
-                onRequestEventsDialog: event => root.openAgendaDialog(event)
+                clip: true
+                DashboardCanvas {
+                    id: dashboardCanvas
+                    anchors.fill: parent
+                    visible: root.currentPage === 0
+                    presentationActive: root.presentationActive && root.currentPage === 0
+                    warmContent: root.warmContent
+                    onRequestEventsDialog: event => root.openAgendaDialog(event)
+                }
+                Loader {
+                    id: musicPage
+                    anchors.fill: parent
+                    visible: root.currentPage === 1
+                    active: root.musicEnabled && root.musicVisited && (root.presentationActive || root.warmContent)
+                    sourceComponent: DashboardMusic {
+                        backend: root.musicBackend ?? LocalMusic
+                        presentationActive: root.presentationActive && root.currentPage === 1
+                    }
+                }
+                // Handle page gestures above the canvas and its scrollable widgets.
+                // Pointer handlers leave clicks and vertical scrolling to those widgets.
+                Item {
+                    anchors.fill: parent
+                    z: 100
+                    WheelHandler {
+                        target: null
+                        orientation: Qt.Horizontal
+                        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                        enabled: root.presentationActive && root.musicEnabled && !root.editMode && !root._agendaDialogShown && !(musicPage.item?.playlistDialogVisible ?? false)
+                        onWheel: event => {
+                            const delta = event.pixelDelta.x || event.angleDelta.x / 3;
+                            if (delta === 0)
+                                return;
+                            if (root.currentPage === 1 && musicPage.item?.panHorizontally(delta)) {
+                                event.accepted = true;
+                                return;
+                            }
+                            GlobalStates.dashboardPage = Math.max(0, Math.min(1, root.currentPage + (delta < 0 ? 1 : -1)));
+                            event.accepted = true;
+                        }
+                    }
+                }
             }
         }
 
@@ -115,20 +158,20 @@ Item {
             active: root._agendaDialogLoaded
             sourceComponent: EventsDialog {}
             onLoaded: {
-                item.show = Qt.binding(() => root._agendaDialogShown)
+                item.show = Qt.binding(() => root._agendaDialogShown);
                 if (root._agendaEditEvent) {
-                    item.loadEvent(root._agendaEditEvent)
+                    item.loadEvent(root._agendaEditEvent);
                 } else {
-                    item.resetForm()
+                    item.resetForm();
                     if (root._agendaPrefillDate)
-                        item.eventDate = root._agendaPrefillDate
+                        item.eventDate = root._agendaPrefillDate;
                 }
-                item.forceActiveFocus()
+                item.forceActiveFocus();
             }
             Connections {
                 target: agendaDialogLoader.item
                 function onDismiss() {
-                    root._agendaDialogShown = false
+                    root._agendaDialogShown = false;
                 }
             }
         }

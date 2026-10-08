@@ -12,8 +12,8 @@ Item {
  property string outputName:""
  property bool pinned:Config.options?.osk?.pinnedOnStartup ?? false
  property bool open:participant?.open ?? false
- implicitWidth:keyboard.implicitWidth+70
- implicitHeight:Math.max(keyboard.implicitHeight,200)
+ implicitWidth:keyboard.implicitWidth+60
+ implicitHeight:Math.max(keyboard.implicitHeight,controls.implicitHeight)
  onOpenChanged:if(!open)Ydotool.releaseAllKeys()
  Component.onDestruction:if(open)Ydotool.releaseAllKeys()
  Item {
@@ -23,6 +23,7 @@ Item {
   RowLayout {
    anchors.fill:parent;spacing:12
    ColumnLayout {
+    id:controls
     Layout.preferredWidth:48;Layout.fillHeight:true;spacing:8
     AbyssButton {objectName:"oskPin";glyph:root.pinned ? "lock" : "keep";checked:root.pinned;description:"Lock keyboard position";onClicked:root.pinned=!root.pinned}
     AbyssButton {glyph:"flip_to_front";checked:Config.options?.osk?.keepOnTop ?? false;description:"Keep keyboard above other popups";onClicked:Config.setNestedValue("osk.keepOnTop",!(Config.options?.osk?.keepOnTop ?? false))}
@@ -38,7 +39,7 @@ Item {
      }
     }
    }
-   OskContent {id:keyboard;Layout.fillWidth:true}
+   OskContent {id:keyboard;objectName:"abyssKeyboardKeys";Layout.fillWidth:true}
   }
  }
 }

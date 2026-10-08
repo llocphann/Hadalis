@@ -1095,7 +1095,13 @@ Scope {
                     && (Config.options?.enabledPanels ?? []).includes("iiOnScreenKeyboard")
                     && GlobalStates.resolveOutputName(GlobalStates.oskTargetMonitor,[])===window.outputName
                 edgeInsets:window.bodyInsets(edge,along,span)
-                span:Math.min(1010,window.width*.94);depth:Math.min(440,window.height*.72)
+                readonly property real naturalWidth:Math.max(1,contentItem.item?.implicitWidth ?? 970)
+                readonly property real naturalHeight:Math.max(1,contentItem.item?.implicitHeight ?? 300)
+                readonly property real fitScale:Math.max(.01,Math.min(1,
+                    (Math.min(1010,window.width*.94)-2*padding)/naturalWidth,
+                    (window.height*.72-2*padding)/naturalHeight))
+                span:naturalWidth*fitScale+2*padding
+                depth:naturalHeight*fitScale+2*padding
                 placementCanResize:false
                 along:Number.isFinite(draftAlong) ? draftAlong : window.positionAlong(identity,edge,span,window.width/2-span/2)
                 source:"../onScreenKeyboard/AbyssKeyboardContent.qml"

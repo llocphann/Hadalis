@@ -35,9 +35,11 @@ MouseArea {
     Accessible.name: Translation.tr("Weather")
     Accessible.focusable: true
 
+    // Keyboard activation opens the existing connected Weather popup; left
+    // click is hover-owned and must never route to Sidebar Right.
     function activatePrimary(): void {
-        GlobalStates.sidebarRightRequestedWidget = "weather"
-        GlobalStates.openSidebarRight(root.QsWindow.window?.screen?.name ?? "")
+        root._pointerFocused = false
+        root.forceActiveFocus()
     }
 
     Keys.onPressed: event => {
@@ -50,7 +52,8 @@ MouseArea {
         event.accepted = true
     }
 
-    // Left-click opens the right sidebar's Weather tab; right-click refreshes.
+    // Hover opens WeatherPopup. A left click simply keeps that same popup,
+    // while the existing explicit right-click refresh remains available.
     onClicked: (mouse) => {
         if (mouse.button === Qt.RightButton) {
             Weather.forceRefresh();
@@ -61,7 +64,7 @@ MouseArea {
             ])
             return
         }
-        root.activatePrimary()
+        // No sidebar or separate popup action on mouse click.
     }
 
     KeyboardFocusRing {

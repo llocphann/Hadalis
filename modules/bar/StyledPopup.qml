@@ -107,6 +107,9 @@ LazyLoader {
     property string attachmentEdgeOverride: ""
     property real attachmentThicknessOverride: -1
     property bool hoverActivates: true
+    // Mirrored from the actual Screen Edge module, independent of interactive
+    // descendants. The source + popup still release after pointer/focus exit.
+    property bool moduleHoverActive: false
     property bool barAutoHideHoldEnabled: true
     property int _barPopupHoverLeaseId: 0
     property bool alternativeVisibleCondition: false
@@ -217,7 +220,7 @@ LazyLoader {
     // hover-activated, the body itself also counts as the request so the pointer
     // can travel from the bar through the connected shoulder without collapse.
     readonly property bool humanVisibleRequest: root.alternativeVisibleCondition
-        || (root.hoverActivates && (root._anchorHover.hovered || root.popupHovered))
+        || (root.hoverActivates && (root.moduleHoverActive || root._anchorHover.hovered || root.popupHovered))
     onHumanVisibleRequestChanged: if (humanVisibleRequest) companionLease = null
     readonly property bool _rawVisibleRequest: root.companionLease !== null || root.humanVisibleRequest
     readonly property bool requestedVisible: !root._liquidDismissed && root._rawVisibleRequest
@@ -277,6 +280,7 @@ LazyLoader {
         root.offsetScale = 1
     }
     onHoverTargetChanged: {
+        root.moduleHoverActive = false
         root._liquidDismissed = false
         root._liquidSemanticHold = false
         root._bodyHovered = false

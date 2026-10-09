@@ -8,7 +8,7 @@ import qs.modules.common.widgets
 import qs.modules.abyss.looks
 
 /**
- * Dashboard navigation: actions at left, page dots at center, uptime at right.
+ * Dashboard navigation: uptime at left, page dots at center, actions at right.
  */
 Item {
     id: root
@@ -63,7 +63,7 @@ Item {
     RowLayout {
         id: actions
         visible: root.showActions
-        anchors.left: parent.left
+        anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         spacing: root.narrow ? 3 : 8
 
@@ -153,7 +153,7 @@ Item {
     RowLayout {
         id: uptime
         visible: root.showActions
-        anchors.right: parent.right
+        anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
         width: Math.min(implicitWidth, Math.max(0, root.width / 2 - pages.width / 2 - 12))
         spacing: 8

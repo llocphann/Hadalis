@@ -863,3 +863,35 @@ they do *not* prove a particular Quickshell/Niri internal defect.
   re-created Perimeter, then test a native creation dependency in a full host
   fixture. Do not claim a generic Wayland or Qt bug without tracing.
 - [ ] Do not call the hover bug DONE or promote `stable` before owner native PASS.
+
+### 2026-10-09 — Cold-start delayed-first-mount native FAIL and proven subtree-remount remedy
+
+Owner's exact-source `hadalis-abyss-cold-acceptance-20261009-213449.tar.gz`
+on `c17390e2b455`: HEAD and installed source match; host status
+`perimeterLoaded=true`, `initialMountReady=true`,
+`shellEntryReady=true`, `deferredPanelsReady=true`.
+All 24 samples have `fieldReady=true`, valid 12 input regions,
+`barHover=false`, and no popup requests. The deferred+150ms initial-mount
+change is **not sufficient** and must not be called a successful fix.
+
+The distinct owner controlled experiment
+`hadalis-abyss-perimeter-remount-20261009-212258.tar.gz` showed that
+destroying/recreating **only the entire AbyssPerimeter subtree** (without
+Waffle) changed native hover and popup presentation from 0/16 to 16/16.
+RefreshMask, equivalent mask identity swap, and PanelWindow visibility
+remap all failed independently. This supports a first-native-generation
+lifecycle issue, not the internal cause of that lifecycle bug.
+
+- [x] Candidate exact-known-remedy: once at a cold direct-Abyss Niri boot,
+  wait for actual frame readiness on the presented output(s), let it settle
+  600 ms, then reuse the existing 450ms host destruction/recreation path.
+  Root records cold family and clears pending on family switch; warm Waffle
+  switches, other compositors and non-presented outputs must not loop.
+- [x] Extend source regression contract for gate/one-shot and proper imports.
+- [ ] **Owner real Niri acceptance**: restart on exact updated SHA directly
+  into Abyss at least two times, hover Clock/Weather without switching family,
+  capture `abyssHostProbe.status` and `abyssHoverProbe.snapshot`; inspect
+  whether coldRecreated becomes true and 24/24 hover+popup requests succeed.
+- [ ] Check multi-output/fullscreen and quick family switch lifecycle; do not
+  call DONE until owner captures real cold input success. No claim about
+  Quickshell or Niri upstream root cause without protocol-level trace.

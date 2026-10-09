@@ -27,4 +27,18 @@ assert "onTriggered: root.perimeterInitialMountReady = true" in critical
 assert "&& root.perimeterInitialMountReady" in critical
 assert "&& !root.diagnosticPerimeterUnmounted" in critical
 assert "source: \"../AbyssPerimeter.qml\"" in critical
-print("PASS: Abyss critical host IO imports and post-deferred perimeter mount gate")
+assert "import qs.services" in imports
+assert "property bool coldPerimeterRecreated: false" in critical
+assert "root.nativeFirstFramesReady" in critical
+assert "GlobalStates.abyssColdPerimeterRecreatePending" in critical
+assert "perimeterProbeRestore.restart()" in critical
+assert "GlobalStates.abyssColdPerimeterRecreatePending = false" in critical
+perimeter = (root / "modules/abyss/AbyssPerimeter.qml").read_text()
+assert "readonly property bool nativeInputFramesReady:" in perimeter
+assert "readonly property bool nativeFieldReady: field.ready" in perimeter
+shell = (root / "shell.qml").read_text()
+assert 'root.activePanelFamily === "abyss" && !!Quickshell.env("NIRI_SOCKET")' in shell
+assert "GlobalStates.abyssColdPerimeterRecreatePending = false" in shell
+states = (root / "GlobalStates.qml").read_text()
+assert "property bool abyssColdPerimeterRecreatePending: false" in states
+print("PASS: critical host IO imports and post-first-frame Niri cold native remount")

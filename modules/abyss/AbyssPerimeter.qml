@@ -15,6 +15,18 @@ import "looks/AbyssPresentation.js" as Presentation
 Scope {
     id: root
     readonly property var outputHosts:outputWindows.instances
+    // First native output frame, not merely Loader completion. The critical
+    // host uses this to perform its one-time cold input recovery *after* Wayland
+    // has had a real Perimeter frame to configure.
+    readonly property bool nativeInputFramesReady: {
+        let presented = 0
+        for (const output of (root.outputHosts ?? [])) {
+            if (!output?.presented) continue
+            presented++
+            if (!output.nativeFieldReady) return false
+        }
+        return presented > 0
+    }
     property string largeTargetOutput: GlobalStates.resolveOutputName("",[])
     // Match the mature ScreenCorners keyboard lease: hover previews may exist on
     // several outputs, but only one Quick Notes editor may own keyboard focus.
@@ -168,6 +180,7 @@ Scope {
             objectName:"abyssOutputHost_"+modelData.name
             required property var modelData
             readonly property string outputName: modelData?.name ?? ""
+            readonly property bool nativeFieldReady: field.ready
             property bool _probeMaskProxy: false
             property bool _probeUnmapped: false
             Timer {

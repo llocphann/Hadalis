@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs
+import qs.services
 import qs.modules.common
 
 // URL boundaries keep optional presentation errors out of the family entry.
@@ -30,6 +31,41 @@ Item {
         onTriggered: root.perimeterInitialMountReady = true
     }
 
+    // Native acceptance isolated this exact remedy: refreshing Region.changed,
+    // swapping Region identity and hiding/showing PanelWindow all failed;
+    // destroying and reconstructing the entire AbyssPerimeter subtree restored
+    // hover (16/16 native samples). A delayed *first* construction still failed
+    // (0/24), so delay alone is not a remedy.
+    //
+    // Recreate once, only if the shell booted directly into Abyss on Niri,
+    // after all presented output fields have emitted their first frame and
+    // remained ready for 600 ms. The automatic cycle shares the same bounded
+    // destruction/restoration path as the proven manual remount experiment.
+    // This is a native-initialization workaround, not a claim that the internal
+    // Quickshell/Niri cause is proven.
+    readonly property bool nativeFirstFramesReady:
+        perimeterLoader.item?.nativeInputFramesReady ?? false
+    property bool coldPerimeterRecreated: false
+    Timer {
+        id: nativeColdPerimeterRecreate
+        interval: 600
+        repeat: false
+        running: CompositorService.isNiri
+            && GlobalStates.abyssColdPerimeterRecreatePending
+            && GlobalStates.deferredPanelsReady
+            && root.perimeterInitialMountReady
+            && root.nativeFirstFramesReady
+            && !root.coldPerimeterRecreated
+            && !root.diagnosticPerimeterUnmounted
+        onTriggered: {
+            root.coldPerimeterRecreated = true
+            GlobalStates.abyssColdPerimeterRecreatePending = false
+            root.diagnosticPerimeterUnmounted = true
+            perimeterProbeRestore.restart()
+            console.info("[Abyss] Cold Niri perimeter re-created after first native frame")
+        }
+    }
+
     // Production-host lifecycle experiment: recreate Perimeter but leave
     // the shell, config and current panelFamily unchanged. Unlike toggling
     // PanelWindow.visible, setting LazyLoader.active=false destroys its QML
@@ -51,7 +87,10 @@ Item {
                 diagnosticUnmounted: root.diagnosticPerimeterUnmounted,
                 shellEntryReady: GlobalStates.shellEntryReady,
                 deferredPanelsReady: GlobalStates.deferredPanelsReady,
-                initialMountReady: root.perimeterInitialMountReady
+                initialMountReady: root.perimeterInitialMountReady,
+                nativeFirstFramesReady: root.nativeFirstFramesReady,
+                coldRecreatePending: GlobalStates.abyssColdPerimeterRecreatePending,
+                coldRecreated: root.coldPerimeterRecreated
             })
         }
         function remountPerimeter(): string {

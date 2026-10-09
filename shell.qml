@@ -136,8 +136,11 @@ ShellRoot {
         // Reset shell entry state (hot-reload may preserve singletons)
         GlobalStates.shellEntryReady = false;
         GlobalStates.deferredPanelsReady = false;
+        GlobalStates.abyssColdPerimeterRecreatePending = false;
 
         if (Config.ready) {
+            GlobalStates.abyssColdPerimeterRecreatePending =
+                root.activePanelFamily === "abyss" && !!Quickshell.env("NIRI_SOCKET");
             root._bootConfigReadyAt = Date.now();
             console.info("[Boot] T+" + (root._bootConfigReadyAt - root._bootCompletedAt) + "ms: Config.ready (immediate)");
             // Config was already ready before this root was (re)built (hot-reload / preserved
@@ -260,6 +263,8 @@ ShellRoot {
         target: Config
         function onReadyChanged() {
             if (Config.ready) {
+                GlobalStates.abyssColdPerimeterRecreatePending =
+                    root.activePanelFamily === "abyss" && !!Quickshell.env("NIRI_SOCKET");
                 if (!root._bootConfigReadyAt) {
                     root._bootConfigReadyAt = Date.now();
                     console.info("[Boot] T+" + (root._bootConfigReadyAt - root._bootCompletedAt) + "ms: Config.ready (async)");
@@ -859,6 +864,7 @@ ShellRoot {
     // Direct config edits and IPC switching share migration and transient cleanup.
     onActivePanelFamilyChanged: {
         if (!Config.ready || !root._migrationDone) return
+        GlobalStates.abyssColdPerimeterRecreatePending = false
         root.closeFamilySurfaces()
         root._ensureFamilyPanels(root.activePanelFamily)
         if (Config.options.panelFamily !== root.activePanelFamily)

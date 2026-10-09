@@ -15,6 +15,10 @@ Singleton {
     property bool shellEntryReady: false
     // Deferred panel loading gate — non-critical panels wait for this before activating
     property bool deferredPanelsReady: false
+    // Captured once per shell root at Config.ready: only a cold Abyss/Niri
+    // session should perform the empirically validated perimeter recreation.
+    // Cleared before the recreation, and on manual family changes.
+    property bool abyssColdPerimeterRecreatePending: false
     // Startup lifecycle — singleton preserves one-shot state across hot reloads.
     property bool bootGreetingOpen: false
     property bool bootGreetingDone: false

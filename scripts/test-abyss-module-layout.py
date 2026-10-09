@@ -150,8 +150,23 @@ assert.equal(merged['abyss.modules.outputLayouts'][0].outputName,'B','save prese
 assert.equal(optionsForOutput({gap:8,outputLayouts:merged['abyss.modules.outputLayouts']},'A').gap,16);
 const measured=geometry(initial.filter(p=>['clock','timer'].includes(p.kind)),1920,1200,{extents:{clock:300,timer:0}},1.5);
 assert.equal(measured.find(p=>p.kind==='clock').span,300,'mature module sizes already include font scale');
-assert.equal(measured.find(p=>p.kind==='timer').span,0,'idle indicators have no empty input');
+assert.equal(measured.some(p=>p.kind==='timer'),false,'idle indicators must not keep layout gaps or physical Edge deformations');
 assert(geometry(initial,1920,1200,{extents:{timer:0},editing:true},1).find(p=>p.kind==='timer').span>0,'editor can select inactive indicators');
+const conditional=normalize([{id:'timer',kind:'timer',edge:'top',position:.30},
+    {id:'shellUpdate',kind:'shellUpdate',edge:'top',position:.45},
+    {id:'clock',kind:'clock',edge:'top',position:.60}], 'top');
+const empty=geometry(conditional,1920,1080,{edgeWidthAffectsModules:{top:false},
+    edgeThickness:18,extents:{timer:0,shellUpdate:0,clock:120}},1);
+assert.deepEqual(empty.map(p=>p.kind),['clock'],
+    'Width affects modules off must not retain idle Timer/Update gaps');
+assert.equal(localSurfaces(empty,1920,1080,{},1,32).length,1,
+    'idle Timer/Update cannot leave tiny Edge backing deformations');
+const populated=geometry(conditional,1920,1080,{edgeWidthAffectsModules:{top:false},
+    edgeThickness:18,extents:{timer:65,shellUpdate:55,clock:120}},1);
+assert.equal(populated.length,3,'Timer/Update return with content without changing placements');
+assert.equal(geometry(conditional,1920,1080,{editing:true,edgeWidthAffectsModules:{top:false},
+    edgeThickness:18,extents:{timer:0,shellUpdate:0,clock:120}},1).length,3,
+    'editing must keep selectable placeholders for inactive indicator modules');
 const sized=normalize([{id:'a',kind:'clock',edge:'top',position:.1},{id:'b',kind:'clock',edge:'top',position:.4},
     {id:'c',kind:'clock',edge:'right',position:.5},{id:'custom',kind:'clock',edge:'top',position:.8,size:1.6,customSize:true}], 'top');
 const sizing={edgeSizes:{top:1.25,right:.8},extents:{a:100,b:100,c:100,custom:100}};

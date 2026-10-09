@@ -33,6 +33,10 @@ Item {
     readonly property real naturalSpan: {
         const item = feature
         if (!item) return 0
+        // Timer/Update are conditional indicators. Their old implicitWidth
+        // animation must never reserve an empty Edge slot after they hide.
+        if ((kind === "timer" || kind === "shellUpdate") && !item.contentAvailable)
+            return 0
         if (kind === "activeWindow") return vertical ? 48 : Math.min(220,Math.max(60,item.contentImplicitWidth))
         if (kind === "taskbar") return vertical ? Math.max(40,item.dockItems.length*item.itemPitch+item.contentInset)
             : Math.min(320,Math.max(40,item.dockItems.length*item.itemPitch+item.contentInset))

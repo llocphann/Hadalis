@@ -604,3 +604,28 @@ This section supersedes the previous static 57% Queue default sizing decision.
 Layout safety: on short monitors, Queue hover keeps at least 208 px of
 player/volume space when available, bounded by the actual column height; the
 nominal 34%/66% split applies when it does not clip transport controls.
+
+## Music intrinsic sizing + conditional Screen Edge indicators — 2026-10-09
+
+- [x] Bound Music Player/Queue combined column width to 315–380 px rather
+  than proportionally consuming a third of wide dashboards. Give freed width
+  to Results; keep library and optional lyrics proportional and retain
+  horizontal panning on narrower windows.
+- [x] Size the shared `DashMedia` card to its actual implicit media/player/
+  volume/EQ height rather than 78% of the entire column. Queue owns the
+  reclaimed vertical space. On hover the same EQ temporarily disappears,
+  intrinsic height falls, and Queue naturally expands upward. On pointer
+  leave the card/EQ returns; short-screen Queue keeps a 108 px minimum
+  viewport before clipping the media card.
+- [x] Timer and Shell Update now have explicit `contentAvailable` status
+  that immediately releases their widths/visibility when idle. Physical
+  Screen Edge geometry excludes zero measured extents entirely (including
+  associated gaps and deformations) while Edit mode still exposes selectable
+  placeholders. This applies with `edgeWidthAffectsModules=false` too.
+- [ ] Native Niri/Quickshell check: verify measured/visible Module state
+  transitions while timer starts/stops, pinned idle toggles, Update
+  appears/disappears, both width-affects settings, multiple outputs and
+  corner placement. Verify Queue hover, normal and short viewport, media
+  artwork controls, and zero wasted vertical space before release.
+- [ ] Exact-HEAD canonical and native test receipts required; no owner
+  desktop acceptance or stable release is claimed.

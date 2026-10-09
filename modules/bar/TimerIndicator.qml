@@ -39,6 +39,7 @@ MouseArea {
     readonly property bool anyActive: pomodoroActive || countdownActive || stopwatchActive
 
     readonly property bool showPinnedIdle: pinnedToBar && !anyActive
+    readonly property bool contentAvailable: anyActive || showPinnedIdle
 
     readonly property bool currentRunning: {
         if (root.pomodoroActive) return root.pomodoroRunning && !(TimerService?.pomodoroPaused ?? false)
@@ -93,11 +94,11 @@ MouseArea {
         return Appearance.colors.colOnLayer1
     }
 
-    visible: implicitWidth > 0
-    implicitWidth: (anyActive || showPinnedIdle)
+    visible: root.contentAvailable
+    implicitWidth: root.contentAvailable
         ? (root.vertical ? 34 * Appearance.sizes.barModuleScale : pill.width + 4 * Appearance.sizes.barModuleScale) : 0
     implicitHeight: root.vertical
-        ? ((anyActive || showPinnedIdle) ? 34 * Appearance.sizes.barModuleScale : 0)
+        ? (root.contentAvailable ? 34 * Appearance.sizes.barModuleScale : 0)
         : Appearance.sizes.barHeight
 
     hoverEnabled: true
@@ -166,7 +167,8 @@ MouseArea {
     }
 
     Behavior on implicitWidth {
-        enabled: Appearance.animationsEnabled
+        // Closing immediately releases Screen Edge geometry and hit testing.
+        enabled: Appearance.animationsEnabled && root.contentAvailable
         NumberAnimation {
             duration: Appearance.animation.elementMoveFast.duration
             easing.type: Appearance.animation.elementMoveFast.type

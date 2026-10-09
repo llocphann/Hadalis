@@ -409,7 +409,7 @@ Item {
         id: horizontal
         objectName: "musicColumnsViewport"
         anchors.fill: parent
-        contentWidth: Math.max(width, root.hasLyrics ? 1040 : 800)
+        contentWidth: Math.max(width, root.hasLyrics ? 1120 : 980)
         contentHeight: height
         onContentWidthChanged: contentX = Math.max(0, Math.min(contentX, contentWidth - width))
         flickableDirection: Flickable.HorizontalFlick
@@ -422,13 +422,19 @@ Item {
             width: horizontal.contentWidth
             height: horizontal.height
             spacing: 8
+            // The media/DSP controls need a bounded width; Results gets the
+            // recovered horizontal space instead of an oversized media column.
             readonly property int shownColumns: root.hasLyrics ? 4 : 3
-            readonly property real weight: root.hasLyrics ? 106 : 90
-            readonly property real unit: (width - spacing * (shownColumns - 1)) / weight
+            readonly property real mediaColumnWidth: Math.min(380, Math.max(315, width * .29))
+            readonly property real remainingWidth: width - spacing * (shownColumns - 1) - mediaColumnWidth
+            readonly property real libraryWidth: remainingWidth * (root.hasLyrics ? .32 : .34)
+            readonly property real resultsWidth: remainingWidth * (root.hasLyrics ? .45 : .66)
+            readonly property real lyricsWidth: root.hasLyrics
+                ? Math.max(0, remainingWidth - libraryWidth - resultsWidth) : 0
             Pane {
                 id: libraryPane
                 objectName: "musicLibrary"
-                width: parent.unit * 24
+                width: parent.libraryWidth
                 height: parent.height
                 title: Translation.tr("Library")
                 ColumnLayout {
@@ -546,7 +552,7 @@ Item {
             }
             Pane {
                 objectName: "musicResults"
-                width: parent.unit * (root.hasLyrics ? 30 : 34)
+                width: parent.resultsWidth
                 height: parent.height
                 title: root.sourceMode === "queue" ? Translation.tr("Queue") : root.sourceMode === "playlist" ? String(root.selectedPlaylist?.name ?? Translation.tr("Playlist")) : root.sourceMode === "genre" ? (root.selectedGenre || Translation.tr("Unknown genre")) : root.sourceMode === "folder" ? (root.resultFolder || Translation.tr("Music library")) : Translation.tr("Results")
                 ColumnLayout {
@@ -680,7 +686,7 @@ Item {
             }
             Column {
                 objectName: "musicPlaybackAndQueue"
-                width: parent.unit * (root.hasLyrics ? 30 : 32)
+                width: parent.mediaColumnWidth
                 height: parent.height
                 spacing: 8
                 // Render the same Dashboard Media card as the Dashboard tab.
@@ -690,12 +696,14 @@ Item {
                     id: musicPlayer
                     objectName: "musicPlayer"
                     width: parent.width
-                    // Preserve room for player transport and MPD volume on
-                    // shorter monitors; Queue still grows as far as available.
-                    height: root.queueExpanded
-                        ? Math.min(Math.max(0, parent.height - parent.spacing),
-                            Math.max(208, (parent.height - parent.spacing) * .34))
-                        : Math.round((parent.height - parent.spacing) * .78)
+                    // Natural media height includes PlayerControl, LocalMusic
+                    // volume and (unless Queue hovered) the shared DSP.
+                    // Never stretch the card into a tall empty container.
+                    // Remaining height belongs to Queue, keeping a small queue
+                    // viewport available on short screens.
+                    height: Math.max(0, Math.min(
+                        Math.ceil(implicitHeight),
+                        parent.height - parent.spacing - 108))
                     mediaBackend: root.backend
                     playbackAdapter: playerAdapter
                     showEqualizer: !root.queueExpanded
@@ -774,7 +782,7 @@ Item {
             Pane {
                 objectName: "musicLyrics"
                 visible: root.hasLyrics
-                width: root.hasLyrics ? parent.unit * 22 : 0
+                width: root.hasLyrics ? parent.lyricsWidth : 0
                 height: parent.height
                 title: Translation.tr("Lyrics")
                 ListView {

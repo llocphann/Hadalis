@@ -228,7 +228,14 @@ function geometry(placements, width, height, options, fontScale) {
         // The full edge is editable. Foreground bounds and collision packing
         // keep controls on screen without a permanent corner exclusion zone.
         var margin = 0, gap = bounded(options?.gap,8,0,32);
-        var list = placements.filter(function(p) { return p.enabled && p.edge === edge && moduleSize(p,options)>0; })
+        // A measured empty module must not keep a zero-span placement:
+        // even a zero-sized record consumes gaps and can leave a tiny
+        // deformation at Screen Edges. Preserve edit-mode placeholders.
+        var list = placements.filter(function(p) {
+            if (!p.enabled || p.edge !== edge || moduleSize(p,options) <= 0) return false;
+            var measured = options?.extents?.[p.id];
+            return options?.editing || !Number.isFinite(measured) || measured > 0;
+        })
             .sort(function(a,b) { return a.position-b.position || a.id.localeCompare(b.id); });
         var sizes = list.map(function(p) {
             var measured = options?.extents?.[p.id];

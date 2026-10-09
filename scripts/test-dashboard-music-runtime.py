@@ -95,8 +95,12 @@ ShellRoot {
    check(genreTab && folderTab && genreTab.parent===folderTab.parent,
       "Genre and Folders are not tab buttons in the same Library column")
    const playerPanel=findChild(music,"musicPlayer"), queuePanel=findChild(music,"musicQueuePanel")
-   check(playerPanel && queuePanel && playerPanel.parent===queuePanel.parent && playerPanel.height>queuePanel.height && queuePanel.height>0,
-      "Queue must be compact by default while the shared Dashboard media card is full size")
+   check(playerPanel && queuePanel && playerPanel.parent===queuePanel.parent && playerPanel.height>0 && queuePanel.height>0,
+      "Media card and Queue must share one vertical column with real content")
+   check(playerPanel.height <= Math.ceil(playerPanel.implicitHeight)+1,
+      "Media card vertically stretched and left blank space above/below player or DSP")
+   check(columns[2].width <= 381,
+      "Media/Queue column is wider than its intended control footprint")
    check(playerPanel.mediaBackend===fake && playerPanel.playbackAdapter!==null && playerPanel.showEqualizer,
       "Music tab did not reuse DashMedia with the LocalMusic adapter")
    check(findChild(music,"musicQueueList")!==null,"secondary Queue list missing")
@@ -111,12 +115,14 @@ ShellRoot {
    tryCompare(music,"queueExpanded",true,1500)
    check(!playerPanel.showEqualizer && !eq.visible && !eq.active,
       "Queue hover did not hide/suspend the shared EQ/DSP panel")
-   tryVerify(()=>queuePanel.height>playerPanel.height && playerPanel.height<mediaHeight,2000)
+   tryVerify(()=>queuePanel.height>0 && playerPanel.height<mediaHeight,2000)
+   check(playerPanel.height <= Math.ceil(playerPanel.implicitHeight)+1,
+      "Expanded Queue left unused vertical space inside the media card")
    mouseMove(columns[1],columns[1].width/2,columns[1].height/2)
    tryCompare(music,"queueExpanded",false,1500)
    check(playerPanel.showEqualizer && eq.visible && eq.active,
       "Queue exit did not restore the shared Dashboard EQ")
-   tryVerify(()=>playerPanel.height>queuePanel.height,2000)
+   tryVerify(()=>playerPanel.height>0 && playerPanel.height<=Math.ceil(playerPanel.implicitHeight)+1,2000)
    const lyricLines=fake.localLyricsLines, originalWidths=columns.map(column=>column.width)
    fake.localLyricsLines=[]
    renderFrame(dashboard,"three-column frame pending")

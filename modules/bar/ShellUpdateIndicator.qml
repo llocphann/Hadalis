@@ -22,15 +22,17 @@ MouseArea {
     }
     property bool vertical: false
 
-    visible: implicitWidth > 0
-    implicitWidth: (ShellUpdates.showUpdate || ShellUpdates.isUpdating)
+    readonly property bool contentAvailable: ShellUpdates.showUpdate || ShellUpdates.isUpdating
+    visible: root.contentAvailable
+    implicitWidth: root.contentAvailable
         ? (root.vertical ? 34 * Appearance.sizes.barModuleScale : pill.width) : 0
     implicitHeight: root.vertical
-        ? ((ShellUpdates.showUpdate || ShellUpdates.isUpdating) ? 34 * Appearance.sizes.barModuleScale : 0)
+        ? (root.contentAvailable ? 34 * Appearance.sizes.barModuleScale : 0)
         : Appearance.sizes.barHeight
 
     Behavior on implicitWidth {
-        enabled: Appearance.animationsEnabled
+        // No lingering empty slot while the update status disappears.
+        enabled: Appearance.animationsEnabled && root.contentAvailable
         animation: NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve }
     }
 

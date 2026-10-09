@@ -28,7 +28,14 @@ assert "GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom" in expression
 assert "PolkitService.active ? WlrLayer.Top" in expression
 assert "(CompositorService.isNiri && window.presented) || window.editorOpen" in expression
 assert 'Region { regions: window.presented && field.ready && bar.visible ? bar.inputRegions : [] }' in perimeter
-assert 'mask: window.overviewDragging ? dragPassThrough : liquid.activeDialog ? dialogInputMask : utility.open ? utilityInputMask : nativeInputMask' in perimeter
+# The diagnostic same-shape mask identity toggle was introduced for cold Niri
+# hover isolation; both branches must remain shaped and the ordinary case
+# must still use nativeInputMask. This is not a full-window input mask.
+assert ('mask: window.overviewDragging ? dragPassThrough : liquid.activeDialog ? dialogInputMask'
+        ' : utility.open ? utilityInputMask : (window._probeMaskProxy ? probeProxyInputMask'
+        ' : nativeInputMask)') in perimeter
+assert 'readonly property Region probeProxyInputMask: Region {' in perimeter
+assert 'regions: [nativeInputMask]' in perimeter
 assert 'readonly property Region inputRegion: Region {' in bar
 assert 'x: Math.floor(module.x)' in bar
 assert 'y: Math.floor(module.y)' in bar

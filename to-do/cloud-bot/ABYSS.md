@@ -895,3 +895,40 @@ lifecycle issue, not the internal cause of that lifecycle bug.
 - [ ] Check multi-output/fullscreen and quick family switch lifecycle; do not
   call DONE until owner captures real cold input success. No claim about
   Quickshell or Niri upstream root cause without protocol-level trace.
+
+### 2026-10-09 — Direct Abyss cold-start native acceptance #1: PASS (408e4df2)
+
+**Owner artifact:** `hadalis-abyss-cold-acceptance-20261009-215143.tar.gz`.
+Repo and installed runtime match exact `408e4df281469ee0bd314d3f6e95c108ec0ac34b`.
+Shell log states `[Abyss] Cold Niri perimeter re-created after first native frame`.
+Native critical host: `coldRecreated=true`,
+`coldRecreatePending=false`, `perimeterLoaded=true`,
+`perimeterActive=true`, `diagnosticUnmounted=false`,
+`nativeFirstFramesReady=true`, `shellEntryReady=true`,
+`deferredPanelsReady=true`.
+
+During the owner's 24 consecutive Clock hover samples (~6.5 seconds), all
+24/24 had `barHover=true`, the Clock module's `hovered=true`,
+`popup.requestedVisible=true`, `popup.presentationActive=true`,
+`fieldReady=true`, and 12 positive bar input regions.
+Owner answered `cold_hover_popupSeen=true`; no script exceptions.
+Abyss worked **without a Waffle family switch** in this boot.
+
+**Status: one native cold-boot PASS, not a 100% cure / not DONE.**
+- [x] Exact-SHA owner cold restart #1: 24/24 hover, requested and presented.
+- [ ] Exact-SHA owner cold restart #2 (independent restart): repeat same
+  script; keep wallpaper, panels and mouse behavior in normal daily use.
+- [ ] Multiple independent cold logins, quick family changes, multi-output,
+  fullscreen/hotplug/suspend-resume, if applicable, before production claim.
+- [ ] Long-term: investigate upstream first native generation loss and whether
+  the guarded one-time subtree rebuild can eventually be removed. It is an
+  evidenced workaround; protocol-level cause is still unknown.
+
+**CI check on SHA `408e4df2`:** Documentation and Nix succeeded;
+canonical CI reports 300 PASS / 20 FAIL / 2 SKIP. One failure in
+`scripts/test-abyss-niri-hover-layer-contract.py` was a stale static mask
+expression assertion left behind by the earlier diagnostic `swapMask`
+addition, not a native hover rejection. Update this test to require both
+input branches to retain the shaped mask. Other observed failures are largely
+unavailable native Quickshell/Niri, Python Pillow, or ImageMagick in the CI
+runner; do not describe the entire run as green.

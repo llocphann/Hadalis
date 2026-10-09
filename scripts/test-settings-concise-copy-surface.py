@@ -25,16 +25,19 @@ for token in (
     'title: Translation.tr("To-do & Quick Notes")',
     'title: Translation.tr("To-do")',
     'title: Translation.tr("Quick Notes")',
-    'Translation.tr("Obsidian vault folder")',
     'Translation.tr("Note path pattern")',
     'Translation.tr("Heading")',
     'Translation.tr("Zettelkasten folder")',
     'Translation.tr("Default Zettelkasten type")',
-    'Translation.tr("Shared by To-do and Zettelkasten.")',
     'Translation.tr("Activate verified source.")',
 ):
     assert token in INTEGRATIONS or token in OBSIDIAN, f"combined Settings label/help lost: {token}"
     assert token not in SERVICES, f"application integration duplicated in Services: {token}"
+
+# Hadalird tests its owned vault labels/help and native field behavior. Core
+# must retain the disabled-by-default wrapper instead of a duplicate editor.
+assert 'active: Hadalird.obsidianEnabled' in OBSIDIAN
+assert 'source: Hadalird.settingsSource("obsidian")' in OBSIDIAN
 
 for removed_copy in (
     'Translation.tr("One Markdown file and heading.")',

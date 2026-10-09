@@ -18,7 +18,6 @@ required = [
     'Translation.tr("Heading")',
     'id: todoMarkdownNotePattern',
     'id: todoMarkdownHeading',
-    'updates["todo.obsidian.vaultPath"] = value',
     'Config.setNestedValue("todo.obsidian.dailyNote.folder", folder)',
     'Config.setNestedValue("todo.obsidian.dailyNote.format", format)',
     'Config.setNestedValue("todo.obsidian.dailyNote.plannerHeading", value)',
@@ -33,11 +32,15 @@ required = [
     'Todo.activateObsidian()',
     'Todo.openObsidianSource()',
     'Translation.tr("Use Obsidian source")',
-    'text: Todo.sharedVaultPath',
 ]
 for token in required:
     assert token in integration_surface, f"unified Todo settings contract lost: {token}"
     assert token not in system_services, f"application integration duplicated in Services: {token}"
+
+# The optional package owns the one shared-vault editor and its native ordered
+# path/migration/clear test. Core retains the selected loader and Todo surface.
+assert 'active: Hadalird.obsidianEnabled' in shared_paths
+assert 'source: Hadalird.settingsSource("obsidian")' in shared_paths
 
 todo_start = services.index('title: Translation.tr("To-do & Quick Notes")')
 todo_end = services.index('title: Translation.tr("Calendar Sync")', todo_start)

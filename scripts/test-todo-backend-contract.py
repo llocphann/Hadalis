@@ -90,8 +90,8 @@ for snippet in required_internal:
 assert "pragma Singleton" not in internal, "internal backend must not become a second singleton"
 assert facade.count("if (root._migrationInFlight)") >= 7, "internal mutations must freeze during migration"
 assert "signal migrationFinished(bool success, var payload)" in obsidian
-assert 'root._notifyMigrationFinished(false, null)' in obsidian
-assert 'root._notifyMigrationFinished(true, payload)' in obsidian
+assert 'function onMigrationFinished(success, payload): void' in obsidian
+assert 'root.migrationFinished(success, payload)' in obsidian
 
 assert "InternalTodoBackend 1.0 InternalTodoBackend.qml" in qmldir
 assert "ObsidianTodoBackend 1.0 ObsidianTodoBackend.qml" in qmldir

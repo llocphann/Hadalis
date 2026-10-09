@@ -19,6 +19,7 @@ import qs.modules.settings
 import qs.services
 Window {
  id:root;visible:true;width:1120;height:820;color:"#111820"
+ property int frames:0
  Component.onCompleted:Quickshell.watchFiles=false
  Item {id:host;anchors.fill:parent}
  SettingsOverlay {id:overlay;embeddedHost:host;settingsOpen:true}
@@ -26,6 +27,15 @@ Window {
   id:test;when:false;optional:true
   function check(value,message){if(!value)throw new Error(message)}
   function find(item,name){if(!item)return null;if(item.objectName===name)return item;for(const child of item.children ?? []){const result=find(child,name);if(result)return result}return null}
+  function clickNavigation(name){
+   tryVerify(()=>find(host,name)!==null,5000)
+   const before=root.frames
+   check(host.grabToImage(image=>root.frames++),"navigation frame request failed")
+   tryVerify(()=>root.frames>before,2500)
+   const button=find(host,name)
+   check(button && button.width>0 && button.height>0 && button.enabled,"navigation button unavailable: "+name)
+   mouseClick(button,button.width/2,button.height/2)
+  }
   function runChecks(){try {
    tryCompare(Config,"ready",true,4000)
    tryCompare(Persistent,"ready",true,4000)
@@ -34,11 +44,11 @@ Window {
    tryVerify(()=>find(host,"settingsNav_abyss")!==null,8000)
    overlay.navGroup="";wait(100)
    check(overlay.visibleNavItems.length<=7,"root sidebar is not compact")
-   mouseClick(find(host,"settingsNav_abyss"));wait(180)
+   clickNavigation("settingsNav_abyss");wait(180)
    check(overlay.navGroup==="abyss" && overlay.visibleNavItems[0].back,"parent did not reveal child pages")
-   mouseClick(find(host,"settingsNav_abyss-waves"));wait(180)
-   check(overlay.overlayCurrentPage===32,"child changed its numeric route")
-   mouseClick(find(host,"settingsNav_back"));wait(80)
+   clickNavigation("settingsNav_abyss-waves");wait(180)
+   check(overlay.overlayCurrentPage===32,"child changed its numeric route: "+overlay.overlayCurrentPage)
+   clickNavigation("settingsNav_back");wait(80)
    check(overlay.navGroup==="" && overlay.overlayCurrentPage===32,"Back lost current page")
    check(SettingsPageRegistry.navigateToKey("integrations","Calendar Sync"),"integration deep link is unreachable")
    tryVerify(()=>overlay.pageHost?.currentIndex===38 && overlay.pageHost?.currentItem?.activeSection==="calendar",7000)
@@ -48,9 +58,10 @@ Window {
    overlay.pageHost.currentItem.activateSettingsSearchSection("To-do & Quick Notes")
    check(overlay.pageHost.currentItem.activeSection==="obsidian","legacy data search lost its destination")
    Config.setNestedValues({"todo.obsidian.vaultPath":Quickshell.env("OBSIDIAN_VAULT"),"integrations.obsidian.autoTheme":true})
-   tryVerify(()=>ObsidianTheme.info.enabled===true && !ObsidianTheme.busy,5000)
-   check(ObsidianTheme.info.activeTheme==="Border","automatic theming changed the active theme")
-   ObsidianTheme.restore();tryVerify(()=>!ObsidianTheme.enabled && ObsidianTheme.info.enabled===false && !ObsidianTheme.busy,5000)
+   // Actual theme apply/restore and vault fields belong to Hadalird's native
+   // suite. Core navigation must work without activating a missing package.
+   check(!Hadalird.obsidianEnabled && !ObsidianTheme.enabled && !ObsidianTheme.busy,
+         "missing optional integration activated a worker")
    overlay.navEditMode=true;wait(100)
    check(overlay.visibleNavItems.length===overlay.navPageOrder.length,"navigation editor lost full page order")
    overlay.navEditMode=false;overlay.settingsOpen=false;wait(200)
@@ -88,6 +99,6 @@ Window {
   env.update(QT_QUICK_BACKEND='software',OBSIDIAN_VAULT=str(vault.parent))
   result=run_qs(folder,env,timeout=40);output=result.stdout
   if result.returncode or 'SETTINGS_HIERARCHY_NATIVE_PASS' not in output or any(e in output for e in ['SETTINGS_HIERARCHY_NATIVE_FAIL','ReferenceError:','TypeError:','Unable to assign','Binding loop','Failed to load configuration']):print(output);raise SystemExit(1)
-  final=json.loads((vault/'appearance.json').read_text());assert final=={'cssTheme':'Border','enabledCssSnippets':['user-snippet'],'ownerSetting':42},'restore lost unrelated preferences'
+  final=json.loads((vault/'appearance.json').read_text());assert final=={'cssTheme':'Border','enabledCssSnippets':['user-snippet'],'ownerSetting':42},'core changed a vault without its optional integration'
   for line in output.splitlines():
    if 'SETTINGS_HIERARCHY_NATIVE_PASS' in line:print(line)

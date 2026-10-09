@@ -119,10 +119,21 @@ ShellRoot {
 }
 QML
 status=0
-env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST QT_QPA_PLATFORM=wayland \
-    XDG_CONFIG_HOME="$settings_test_root/config" XDG_STATE_HOME="$settings_test_root/state" \
-    XDG_CACHE_HOME="$settings_test_root/cache" timeout 20s qs -p "$settings_test_root" --no-color \
-    > "$settings_test_root/runtime.log" 2>&1 || status=$?
+python3 - "$repo_root" "$settings_test_root" > "$settings_test_root/runtime.log" 2>&1 <<'PY' || status=$?
+import sys
+from pathlib import Path
+sys.path.insert(0,str(Path(sys.argv[1])/"scripts"))
+from native_test_session import private_wayland,run_qs
+folder=Path(sys.argv[2])
+with private_wayland(folder) as env:
+    if env is None:
+        print("SKIP: embedded Settings require private Niri")
+        raise SystemExit(77)
+    result=run_qs(folder,env,timeout=20)
+    print(result.stdout)
+    raise SystemExit(result.returncode)
+PY
+if [[ "$status" == 77 ]];then cat "$settings_test_root/runtime.log";exit 0;fi
 # Keep the scene alive after its assertions: an early exit/crash fails, including
 # one after PASS. Avoid Qt.quit tearing down a live embedded Settings scene.
 if [[ "$status" != 124 ]] || ! rg -q 'EMBEDDED_SETTINGS_PASS' "$settings_test_root/runtime.log" || rg -q 'EMBEDDED_SETTINGS_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign' "$settings_test_root/runtime.log"; then

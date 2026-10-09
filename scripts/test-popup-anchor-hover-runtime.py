@@ -80,6 +80,7 @@ ShellRoot {
    const before=root.frames
    check(scene.grabToImage(image=>root.frames++),"frame request refused")
    tryVerify(()=>root.frames>before,2000)
+   check(root.frames>before,"scene render deadline")
   }
   function outside() { mouseMove(scene,600,20);wait(160);render() }
   function runChecks() { try {
@@ -136,7 +137,10 @@ ShellRoot {
         data["panelFamily"] = "abyss"
         data["abyss"]["companion"]["enabled"] = False
         (config / "config.json").write_text(json.dumps(data))
-        result = run_qs(folder, env, timeout=25)
+        # The unchanged workload has 22 grabs, each with a 2-second deadline,
+        # plus readiness and input waits. Unfocused nested Niri can throttle
+        # frames; the process bound must cover these per-step deadlines.
+        result = run_qs(folder, env, timeout=60)
         if result.returncode or "POPUP_ANCHOR_HOVER_PASS" not in result.stdout or any(
             token in result.stdout for token in ["POPUP_ANCHOR_HOVER_FAIL", "ReferenceError:", "TypeError:", "Binding loop", "Failed to load configuration"]
         ):

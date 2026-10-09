@@ -1243,10 +1243,18 @@ resume at that window's reset +3 minutes; weekly usage never triggers it.
 
 ### Remaining Hadalis-only acceptance (no Hadanion work)
 
-- [ ] Verify new `dev` source using the canonical validator on exact SHA;
-  confirm the manager, gateway and packaging fixture checks pass. GitHub-hosted
-  CI may still fail environment-required native Qt/Niri cases and does not
-  substitute for the private local validator.
+- [x] Focused GitHub Actions offline qualification for exact
+  `a570d13f993cfd07d5fff68d528598e6c034963d`: the standalone
+  `Hadalird offline contracts` workflow run
+  https://github.com/llocphann/Hadalis/actions/runs/37975587559 completed
+  **SUCCESS** on user-package manager, private-root Polkit helper simulator,
+  existing host removal safety and Arch PKGBUILD shell syntax. The earlier
+  `9be1e9c1402055bb16b2aba97a6fa140a5b3a314` focused run also passed.
+  The latest `a570d13` additionally bounds ignored tar archive entries.
+- [ ] Run canonical maintainer validation and strict Qt 6/QML parser on an
+  exact committed `dev` SHA, then owner-native Niri Settings/Polkit testing.
+  GitHub-hosted canonical CI may still fail required private Qt/Niri or
+  missing-runner-dependency checks; an offline PASS is not native acceptance.
 - [ ] Real Arch install/update to deploy the root-owned Polkit gateway and
   policy. Then exercise Settings > Integrations install/update/rollback/remove,
   popup focus, offline/GitHub errors, and root helper consent/cancellation.

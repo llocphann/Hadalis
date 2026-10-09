@@ -172,8 +172,10 @@ Item {
                             if (root.currentPage === 1 && musicPage.item) {
                                 const at = dashboardVerticalWheel.point.position
                                 const local = musicPage.item.mapFromItem(pages, at.x, at.y)
-                                if (!musicPage.item.acceptsPageWheel(local.x, local.y))
+                                if (!musicPage.item.acceptsPageWheel(local.x, local.y)) {
+                                    event.accepted = false
                                     return // Preserve vertical scrolling inside music lists.
+                                }
                             }
                             GlobalStates.dashboardPage = delta < 0 ? 1 : 0
                             event.accepted = true

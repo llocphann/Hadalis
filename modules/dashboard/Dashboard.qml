@@ -255,7 +255,9 @@ Scope {
             focus: GlobalStates.dashboardOpen
             Keys.onPressed: (event) => {
                 if (event.key === Qt.Key_Escape) {
-                    panelRoot.hide()
+                    if (!contentLoader.item?.handleEscape())
+                        panelRoot.hide()
+                    event.accepted = true
                 }
             }
 
@@ -263,6 +265,9 @@ Scope {
                 id: standaloneDashboardHost
 
                 property alias editMode: standaloneContent.editMode
+                function handleEscape(): bool {
+                    return standaloneContent.handleEscape()
+                }
                 readonly property real editToolbarHeight:
                     standaloneEditToolbar.implicitHeight
 

@@ -36,6 +36,18 @@ Item {
     property bool _agendaDialogShown: false
     property bool _agendaDialogLoaded: false
 
+    function handleEscape(): bool {
+        if (_agendaDialogShown) {
+            _agendaDialogShown = false
+            return true
+        }
+        if (dashboardCanvas.editMode) {
+            dashboardCanvas.cancelEditMode()
+            return true
+        }
+        return currentPage === 1 && (musicPage.item?.restoreBrowserColumns() ?? false)
+    }
+
     function openAgendaDialog(arg) {
         const isDate = arg instanceof Date;
         root._agendaEditEvent = (arg && !isDate) ? arg : null;
@@ -148,6 +160,24 @@ Item {
                 Item {
                     anchors.fill: parent
                     z: 100
+                    WheelHandler {
+                        target: null
+                        orientation: Qt.Vertical
+                        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                        enabled: root.presentationActive && root.musicEnabled && !root.editMode && !root._agendaDialogShown && !(musicPage.item?.playlistDialogVisible ?? false)
+                        onWheel: event => {
+                            const delta = event.pixelDelta.y || event.angleDelta.y / 3
+                            if (!delta) return
+                            if (root.currentPage === 1 && musicPage.item) {
+                                const at = event.point.position
+                                const local = musicPage.item.mapFromItem(pages, at.x, at.y)
+                                if (!musicPage.item.acceptsPageWheel(local.x, local.y))
+                                    return // Preserve vertical scrolling inside music lists.
+                            }
+                            GlobalStates.dashboardPage = delta < 0 ? 1 : 0
+                            event.accepted = true
+                        }
+                    }
                     WheelHandler {
                         target: null
                         orientation: Qt.Horizontal

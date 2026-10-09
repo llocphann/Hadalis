@@ -22,6 +22,17 @@ Item {
     readonly property bool abyss: Config.options?.panelFamily === "abyss"
     signal pageRequested(int index)
     signal editModeRequested
+    WheelHandler {
+        target: null
+        orientation: Qt.Vertical
+        enabled: root.pageCount > 1 && !root.editMode
+        onWheel: event => {
+            const delta = event.pixelDelta.y || event.angleDelta.y / 3
+            if (!delta) return
+            root.pageRequested(delta < 0 ? 1 : 0)
+            event.accepted = true
+        }
+    }
 
     readonly property bool inirEverywhere: Appearance.inirEverywhere
     readonly property bool auroraEverywhere: Appearance.auroraEverywhere

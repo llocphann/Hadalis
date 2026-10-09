@@ -32,6 +32,7 @@ PAYLOAD = ("HadalisSession.qml", "services/", "modules/", "assets/",
 MAX_ARCHIVE = 8 * 1024 * 1024
 MAX_PAYLOAD = 24 * 1024 * 1024
 MAX_FILES = 512
+MAX_MEMBERS = 4096
 SYSTEM_PROVISIONER = "/usr/libexec/inir-hadalird-system-provision"
 EXECUTABLE = {"assets/helpers/inir-battery-charge-limit", "assets/helpers/inir-thinkfan"}
 SHA = re.compile(r"[0-9a-f]{40}\Z")
@@ -75,8 +76,12 @@ def unpack(data):
     """Copy regular allowlisted files only: never extract arbitrary archive members."""
     result = {}
     total = 0
+    members = 0
     with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
         for member in archive:
+            members += 1
+            if members > MAX_MEMBERS:
+                raise ValueError("Package archive contains too many entries")
             parts = PurePosixPath(member.name).parts
             if len(parts) < 2:
                 continue

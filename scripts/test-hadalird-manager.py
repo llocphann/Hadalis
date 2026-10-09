@@ -138,6 +138,11 @@ with tempfile.TemporaryDirectory(prefix="hadalird-manager-test-") as location:
         except ValueError:
             pass
     try:
+        manager.unpack(make_tar([("ignored/" + str(n), b"") for n in range(manager.MAX_MEMBERS + 1)]))
+        raise AssertionError("Unbounded archive members accepted")
+    except ValueError:
+        pass
+    try:
         manager.unpack(make_tar([("../escape", b"bad")]))
         raise AssertionError("Path traversal accepted")
     except ValueError:

@@ -19,14 +19,18 @@ def expect(source, *tokens):
     for token in tokens:
         assert token in source, f"missing contract token: {token}"
 
-expect(music, 'visible: !root.browseFolderOnly', 'visible: !root.browseGenreOnly',
+expect(music, 'objectName: "musicLibrary"', 'objectName: "musicGenreTab"',
+       'objectName: "musicFolderTab"', 'function switchLibraryTab(tab): void',
        'function restoreBrowserColumns(): bool', 'sourceMode = ""',
+       'visible: root.libraryTab === "genre"', 'visible: root.libraryTab === "folder"',
        'function acceptsPageWheel(x, y): bool',
        'objectName: "musicPlayAll"', 'objectName: "musicPlaySelection"',
        'root.backend.playQueue(root.allResultTracks, 0',
        'root.backend.playQueue(root.selectedTracks, 0',
        'objectName: "musicPlaybackAndQueue"', 'objectName: "musicQueuePanel"',
        'objectName: "musicQueueList"', 'onDoubleClicked: root.backend.playTrackAt(index)',
+       'height: Math.round((parent.height - parent.spacing) * .43)',
+       'contentHeight: musicControlsStack.implicitHeight',
        'objectName: "musicEqualizer"')
 expect(pages, 'function handleEscape(): bool', 'dashboardCanvas.cancelEditMode()',
        'musicPage.item?.restoreBrowserColumns()', 'orientation: Qt.Horizontal',
@@ -42,4 +46,4 @@ expect(popup, 'readonly property bool moduleHoverActive: !!(',
        'root.moduleHoverActive || root._anchorHover.hovered || root.popupHovered')
 assert "openSidebarRight" not in weather, "Weather click still opens Sidebar Right"
 assert "sidebarRightRequestedWidget" not in weather, "Weather still routes to Sidebar Right"
-print("Dashboard Music, Escape, wheel and hover source contracts: PASS")
+print("Dashboard library tabs, Queue sizing, Esc and hover contracts: PASS")

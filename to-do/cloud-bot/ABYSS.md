@@ -544,3 +544,33 @@ Source-only fixes on Hadalis `dev` (do not cherry-pick to `stable` without quali
   and MPD continuity at normal/narrow/fractional scales.
 - [ ] **Deployment:** source changes have **not** been applied to the installed
   owner desktop. No real Niri/Quickshell or physical audio acceptance is claimed.
+
+## Maintainer follow-up — 2026-10-09: retry Screen Edge hover; tabbed Music library
+
+This is a source-only continuation of the previous follow-up; it does **not**
+imply the installed local desktop has received these patches.
+
+- [x] Remove the imperative `moduleHoverActive` mirroring path. The existing
+  `StyledPopup` now reacts to the live Screen Edge module hover and underlying
+  `hoverTarget.containsMouse` / feature pointer state. One popup/controller
+  owner remains; the hover/leave transfer hold and click/focus policy are kept.
+  Source commit `3de9e30c41bf`. This is a defensively broadened detection
+  path, not evidence that the owner-desktop cause was reproduced.
+- [x] Replace separate Genre and Folders columns with one Library pane
+  containing Genre/Folders tabs; preserve each source list, Folder Playlists,
+  independent MPD backend and lightweight tab choice over cold UI. The first
+  Escape clears a selected library drill-down; the second closes Dashboard.
+  Source commit `4202d77a8d56`.
+- [x] Reserve **57%** of the playback/queue height for Queue and 43% for
+  Now playing/DSP. Now playing can scroll its own controls if the physical
+  viewport is too short; no secondary EQ/CAVA backend was introduced. Rebalanced
+  horizontal widths for Library / Results / Playback+Queue / optional Lyrics.
+- [ ] Run updated static and real QML/Niri tests against the **latest** commit;
+  validate hover **without any click** in Weather, Battery, Resources, Clock,
+  Media, Launcher and tray, plus focus-loss dismissal, transfer, and
+  per-output masks. Confirm actual installed source SHA matches tested SHA.
+- [ ] Native Dashboard Music: tab switch, folder traversal and playlist
+  preservation, first/second Escape, queue larger than controls, both scroll
+  areas, narrow/wide/fractional DPI, and real MPD/EQ playback.
+- [ ] Keep exact-source whole-suite failures and local Wayland acceptance open,
+  and preserve unrelated Hadalird/Companion work and `stable`.

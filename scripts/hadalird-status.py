@@ -65,7 +65,15 @@ def inspect(shell_root, data_home=None):
         version, sha = data.get("version"), data.get("sourceSha")
         if not isinstance(version, str) or not version or len(version) > 64 or not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{40}", sha):
             raise ValueError("invalid revision")
-        return {"available": True, "diagnostic": "ready", "root": str(root), "version": version, "sourceSha": sha}
+        user_data = Path(data_home or os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")) / "hadalird"
+        previous_file = user_data / ".previous"
+        can_rollback = False
+        if previous_file.is_file() and previous_file.stat().st_size <= 64:
+            previous = previous_file.read_text().strip()
+            can_rollback = bool(re.fullmatch(r"[0-9a-f]{40}", previous) and
+                                (user_data / "releases" / previous / "manifest.json").is_file())
+        return {"available": True, "diagnostic": "ready", "root": str(root),
+                "version": version, "sourceSha": sha, "canRollback": can_rollback}
     except (OSError, ValueError, TypeError):
         return {**result, "diagnostic": "invalid-package"}
 

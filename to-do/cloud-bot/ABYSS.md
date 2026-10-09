@@ -1103,3 +1103,42 @@ Companion disabled, preserve concurrent work and unrelated
 INCONCLUSIVE_CAPTURE_VARIANCE, no replay or weaker RGBA. Only five-hour
 remaining below 3% triggers a stop/checkpoint/push and a one-shot resume at
 that window's reset +3 minutes; weekly limits never trigger scheduling.
+
+
+## Hadalird UX — Hadalis-managed optional package (2026-10-10)
+
+**Maintainer requirement:** Users must not need to clone Hadalird or run its
+installer manually. Hadalis owns installation, update checks, version status,
+uninstall and rollback from Settings > Integrations. The opt-in package is
+still owned by Hadalird; Hadalis retains the verified discovery and loader.
+No stable branch or running user system is modified by source work.
+
+**Source implementation for qualification (not owner desktop acceptance):**
+
+- Hadalis `scripts/hadalird-manager.py` fetches only the official
+  `llocphann/Hadalird` revision when a user clicks a package action.
+  Source identity is an immutable 40-digit Git SHA, downloaded archive entries
+  are bounded and explicitly allowlisted, and host API/entrypoint compatibility
+  and payload hashes are verified before an atomic user-owned release switch.
+  No fetched installer script executes, and there is no idle network polling.
+- `services/Hadalird.qml` owns explicit package actions and unloads disposable
+  integration workers before changing the release link. It reads the result,
+  refreshes package discovery, reports errors and preserves stored selection
+  preferences. It does not auto-enable integrations.
+- `modules/settings/IntegrationsConfig.qml` supplies Install, Check updates,
+  Update, Restore previous and confirm-Remove controls. Removal retains
+  user data and previous versions. `scripts/test-hadalird-manager.py` proves
+  the bounded offline package lifecycle with synthetic archive fixtures.
+- **Deliberate security boundary:** The optional package manager has no
+  `sudo`/`pkexec` action and never modifies fan, charging, TLP, services,
+  system package managers or Obsidian vaults. A later Hadalis-owned trusted,
+  independently packaged Polkit helper and explicit permission UI would be
+  required for system-level helper provisioning. Never run a downloaded package
+  installer as root or hide user authorization behind a toggle.
+
+**Acceptance still required:** current-source Python offline test, Qt/QML
+parse, canonical validator, actual Settings install/check/update/reopen/
+rollback/uninstall on an installed compatible Hadalis and exact Hadalird SHA,
+disconnected/offline error handling, input/focus and retained-user-data proof.
+No automatic background update, no owner/hardware test, and no stable
+promotion should be claimed before those receipts are recorded.

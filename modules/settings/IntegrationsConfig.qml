@@ -30,7 +30,7 @@ ContentPage {
        : "Install Hadalird directly from Hadalis to use TLP, Thinkfan and Obsidian."
   }
   Flow {
-   Layout.fillWidth:true;width:parent.width;spacing:8;implicitHeight:childrenRect.height
+   Layout.fillWidth:true;spacing:8
    DialogButton {
     visible:!Hadalird.available
     enabled:!Hadalird.managerBusy
@@ -100,7 +100,7 @@ ContentPage {
    text:"System helpers (TLP / Thinkfan): "+Hadalird.systemHelpersDiagnostic
   }
   Flow {
-   Layout.fillWidth:true;width:parent.width;spacing:8;implicitHeight:childrenRect.height
+   Layout.fillWidth:true;spacing:8
    DialogButton {
     buttonText:"Check helper status";enabled:!Hadalird.managerBusy
     onClicked:Hadalird.manage("helpers-status")

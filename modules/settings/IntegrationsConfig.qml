@@ -149,6 +149,12 @@ ContentPage {
   Flow {
    Layout.fillWidth:true;spacing:8
    DialogButton {
+    visible:Hadalird.available
+    enabled:!Hadalird.managerBusy
+    buttonText:"Check Arch gateway status"
+    onClicked:Hadalird.manage("gateway-status")
+   }
+   DialogButton {
     visible:Hadalird.available && !Hadalird.systemProvisionerAvailable && !hadalirdPackageSection.confirmGatewayInstall
     enabled:!Hadalird.managerBusy
     buttonText:"Install Arch system gateway"

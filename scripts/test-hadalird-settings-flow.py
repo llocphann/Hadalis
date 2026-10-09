@@ -64,5 +64,7 @@ for i, match in enumerate(flows):
     expected = ("Install Hadalird", "Install system helpers", "Install Arch system gateway")[i]
     assert expected in inside, f"Flow #{i + 1} changed roles or was emptied"
 
+assert '"Check Arch gateway status"' in qml
+assert 'Hadalird.manage("gateway-status")' in qml
 assert "settingsPageIndex:38" in qml
 print("HADALIRD_SETTINGS_FLOW_PASS all package, helper and gateway flows use Qt-safe layouts")

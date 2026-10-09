@@ -1362,3 +1362,10 @@ alter charge limits, or install the remaining hardware helpers.
   ownership, package removal and error/cancel flows on the owner's Arch
   desktop. No claim of root/package installation without owner evidence.
 - [ ] Keep existing `repo-copy` shell and Obsidian user package intact.
+
+### 2026-10-10 — Owner gateway install reported missing receipt
+
+Owner Settings reported `System gateway package did not return an operation receipt` after an explicit Arch standalone package install request. Source inspection found a definite post-transaction exception in `scripts/hadalird-system-package.py`: `system_state()` referenced unbound variable `p` in the root-file inventory. It could crash **after** successful `pacman -U`, losing the JSON receipt and leaving user-visible state stale. Fixed state reconciliation; failures now surface bounded child stderr/exit status. Offline CI: https://github.com/llocphann/Hadalis/actions/runs/37985086814 **PASS** for `66425869`. UI adds a read-only **Check Arch gateway status** action so a package already installed can be rediscovered without rerunning a privileged installer.
+
+- [ ] Owner native read-only check `pacman -Q inir-hadalird-gateway` or Settings gateway status, record installed/not-installed and file ownership. **Do not automatically retry installation:** earlier pacman transaction may have succeeded despite missing receipt.
+- [ ] Only if package is missing, user explicitly retries via Settings after updating Hadalis. Capture stdout/stderr/exit status on failure, distinguish makepkg, Polkit authentication, and pacman errors. Never auto-modify TLP/Thinkfan hardware state.

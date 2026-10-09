@@ -23,6 +23,10 @@ Item {
     property string libraryTab: "genre"
     property string selectedGenre: ""
     property string selectedFolder: ""
+    property var selectedGenres: []
+    property var selectedFolders: []
+    property int genreSelectionAnchor: -1
+    property int folderSelectionAnchor: -1
     property string resultFolder: ""
     property alias query: search.text
     property var selectedKeys: []
@@ -63,7 +67,8 @@ Item {
                         track,
                         name: String(track.title || track.uri || "")
                     }));
-        return Library.results(tracks, sourceMode, selectedGenre, resultFolder);
+        return Library.results(tracks, sourceMode, selectedGenres,
+            selectedFolders.length === 1 ? resultFolder : selectedFolders);
     }
     readonly property var selectedTracks: Library.selectedTracks(sourceMode === "playlist" ? (selectedPlaylist?.tracks ?? []) : sourceMode === "queue" ? (backend.activeQueue ?? []) : tracks, selectedKeys)
      readonly property var allResultTracks: Library.selectedTracks(
@@ -87,6 +92,8 @@ Item {
             tab: libraryTab,
             genre: selectedGenre,
             folder: selectedFolder,
+            genres: selectedGenres,
+            folders: selectedFolders,
             path: resultFolder,
             query,
             playlist: selectedPlaylistName
@@ -99,6 +106,10 @@ Item {
             : (sourceMode === "folder" || sourceMode === "playlist" ? "folder" : "genre");
         selectedGenre = String(saved.genre ?? "");
         selectedFolder = String(saved.folder ?? "");
+        selectedGenres = Array.isArray(saved.genres) ? saved.genres.filter(value => typeof value === "string")
+            : (sourceMode === "genre" ? [selectedGenre] : []);
+        selectedFolders = Array.isArray(saved.folders) ? saved.folders.filter(value => typeof value === "string")
+            : (sourceMode === "folder" ? [selectedFolder] : []);
         resultFolder = String(saved.path ?? "");
         query = String(saved.query ?? "");
         selectedPlaylistName = String(saved.playlist ?? "");
@@ -119,6 +130,8 @@ Item {
     onLibraryTabChanged: rememberBrowser()
     onSelectedGenreChanged: rememberBrowser()
     onSelectedFolderChanged: rememberBrowser()
+    onSelectedGenresChanged: rememberBrowser()
+    onSelectedFoldersChanged: rememberBrowser()
     onSelectedPlaylistNameChanged: rememberBrowser()
     // First Escape clears the active library drill-down, second closes Dashboard.
     function restoreBrowserColumns(): bool {
@@ -131,6 +144,10 @@ Item {
         sourceMode = ""
         selectedGenre = ""
         selectedFolder = ""
+        selectedGenres = []
+        selectedFolders = []
+        genreSelectionAnchor = -1
+        folderSelectionAnchor = -1
         selectedPlaylistName = ""
         resultFolder = ""
         query = ""
@@ -146,6 +163,10 @@ Item {
             sourceMode = ""
             selectedGenre = ""
             selectedFolder = ""
+            selectedGenres = []
+            selectedFolders = []
+            genreSelectionAnchor = -1
+            folderSelectionAnchor = -1
             selectedPlaylistName = ""
             resultFolder = ""
             query = ""
@@ -153,19 +174,29 @@ Item {
         }
         rememberBrowser()
     }
-    function chooseGenre(value): void {
+    function chooseGenre(value, modifiers = 0): void {
+        const values = genres.map(entry => entry.key);
+        const next = Library.selectValues(values, sourceMode === "genre" ? selectedGenres : [],
+            genreSelectionAnchor, values.indexOf(value), !!(modifiers & Qt.ControlModifier), !!(modifiers & Qt.ShiftModifier));
         libraryTab = "genre"
         query = "";
         sourceMode = "genre";
         selectedGenre = value;
+        selectedGenres = next.keys;
+        genreSelectionAnchor = next.anchor;
         clearSelection();
     }
-    function chooseFolder(path): void {
+    function chooseFolder(path, modifiers = 0): void {
+        const values = folders.map(entry => entry.path);
+        const next = Library.selectValues(values, sourceMode === "folder" ? selectedFolders : [],
+            folderSelectionAnchor, values.indexOf(path), !!(modifiers & Qt.ControlModifier), !!(modifiers & Qt.ShiftModifier));
         libraryTab = "folder"
         query = "";
         sourceMode = "folder";
         selectedFolder = path;
-        resultFolder = path;
+        selectedFolders = next.keys;
+        folderSelectionAnchor = next.anchor;
+        resultFolder = next.keys.length === 1 ? next.keys[0] : "";
         clearSelection();
     }
     function choosePlaylist(value): void {
@@ -181,9 +212,10 @@ Item {
         selectionAnchor = next.anchor;
     }
     function activate(entry): void {
-        if (entry.kind === "folder")
+        if (entry.kind === "folder") {
+            selectedFolders = [entry.path];
             resultFolder = entry.path;
-        else if (sourceMode === "queue")
+        } else if (sourceMode === "queue")
             backend.jumpTo(entry.queueIndex);
         else
             backend.enqueueTrack(entry.track, true);
@@ -352,9 +384,18 @@ Item {
         property bool selected: false
         property string glyph: ""
         property string artUrl: ""
+        property bool modifierSelection: false
+        signal modifierClicked(int modifiers)
         hoverEnabled: true
         implicitHeight: detail ? 52 : 38
         Accessible.name: caption
+        MouseArea {
+            anchors.fill: parent
+            enabled: entry.modifierSelection
+            acceptedButtons: Qt.LeftButton
+            cursorShape: Qt.PointingHandCursor
+            onClicked: event => entry.modifierClicked(event.modifiers)
+        }
         background: Rectangle {
             radius: 10
             color: Qt.alpha(root.accent, entry.selected ? .20 : entry.hovered ? .10 : 0)
@@ -482,7 +523,9 @@ Item {
                                 width: ListView.view.width
                                 caption: modelData.key || Translation.tr("Unknown genre")
                                 detail: Translation.tr("%1 tracks").arg(modelData.count)
-                                selected: root.sourceMode === "genre" && root.selectedGenre === modelData.key
+                                selected: root.sourceMode === "genre" && root.selectedGenres.includes(modelData.key)
+                                modifierSelection: true
+                                onModifierClicked: modifiers => root.chooseGenre(modelData.key, modifiers)
                                 onClicked: root.chooseGenre(modelData.key)
                             }
                         }
@@ -509,7 +552,9 @@ Item {
                                     width: ListView.view.width
                                     caption: modelData.name
                                     detail: Translation.tr("%1 tracks").arg(modelData.count)
-                                    selected: root.sourceMode === "folder" && root.selectedFolder === modelData.path
+                                    selected: root.sourceMode === "folder" && root.selectedFolders.includes(modelData.path)
+                                    modifierSelection: true
+                                    onModifierClicked: modifiers => root.chooseFolder(modelData.path, modifiers)
                                     onClicked: root.chooseFolder(modelData.path)
                                 }
                             }
@@ -554,7 +599,7 @@ Item {
                 objectName: "musicResults"
                 width: parent.resultsWidth
                 height: parent.height
-                title: root.sourceMode === "queue" ? Translation.tr("Queue") : root.sourceMode === "playlist" ? String(root.selectedPlaylist?.name ?? Translation.tr("Playlist")) : root.sourceMode === "genre" ? (root.selectedGenre || Translation.tr("Unknown genre")) : root.sourceMode === "folder" ? (root.resultFolder || Translation.tr("Music library")) : Translation.tr("Results")
+                title: root.sourceMode === "queue" ? Translation.tr("Queue") : root.sourceMode === "playlist" ? String(root.selectedPlaylist?.name ?? Translation.tr("Playlist")) : root.sourceMode === "genre" ? root.selectedGenres.map(value => value || Translation.tr("Unknown genre")).join(", ") : root.sourceMode === "folder" ? (root.selectedFolders.length > 1 ? root.selectedFolders.map(value => value || Translation.tr("Music library")).join(", ") : root.resultFolder || Translation.tr("Music library")) : Translation.tr("Results")
                 ColumnLayout {
                     anchors.fill: parent
                     spacing: 4
@@ -684,11 +729,11 @@ Item {
                     }
                 }
             }
-            Column {
+            Item {
                 objectName: "musicPlaybackAndQueue"
                 width: parent.mediaColumnWidth
                 height: parent.height
-                spacing: 8
+                readonly property real spacing: 8
                 // Render the same Dashboard Media card as the Dashboard tab.
                 // The optional playback adapter keeps this card on LocalMusic/
                 // MPD even when a global MPRIS player is absent.
@@ -716,13 +761,12 @@ Item {
                 Pane {
                     id: musicQueuePanel
                     objectName: "musicQueuePanel"
+                    anchors.bottom: parent.bottom
                     width: parent.width
                     height: Math.max(0, parent.height - musicPlayer.height - parent.spacing)
                     title: Translation.tr("Queue")
-                    Behavior on height {
-                        enabled: root.presentationActive && Appearance.animationsEnabled
-                        NumberAnimation { duration: 190; easing.type: Easing.OutCubic }
-                    }
+                    // One animation clock (Player height) keeps the Queue's
+                    // bottom fixed while its top edge slides upwards.
                     HoverHandler {
                         id: queueHover
                         parent: musicQueuePanel

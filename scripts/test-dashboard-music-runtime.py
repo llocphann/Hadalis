@@ -115,10 +115,20 @@ ShellRoot {
    check(eq && eq.active && eq.visible && eq.compactLayout,
       "Music tab must show the shared Dashboard EQ when Queue is collapsed")
    const mediaHeight=playerPanel.height
+   const queueBottom=queuePanel.y+queuePanel.height, queueTop=queuePanel.y
+   Config.setNestedValue("performance.reduceAnimations",false)
    mouseMove(queuePanel,queuePanel.width/2,Math.max(8,queuePanel.height/2))
    tryCompare(music,"queueExpanded",true,1500)
    check(!playerPanel.showEqualizer && !eq.visible && !eq.active,
       "Queue hover did not hide/suspend the shared EQ/DSP panel")
+   tryVerify(()=>queuePanel.y<queueTop && playerPanel.height>playerPanel.implicitHeight,1000)
+   for(let frame=0;frame<16;frame++) {
+    check(Math.abs(queuePanel.y+queuePanel.height-queueBottom)<.5,
+       "Queue bottom moved during upward expansion")
+    check(playerPanel.y===0 && queuePanel.y>=playerPanel.y+playerPanel.height+7,
+       "Queue animation moved or overlapped the Player")
+    wait(16)
+   }
    tryVerify(()=>queuePanel.height>0 && playerPanel.height<mediaHeight,2000)
    check(playerPanel.height <= Math.ceil(playerPanel.implicitHeight)+1,
       "Expanded Queue left unused vertical space inside the media card")
@@ -126,6 +136,12 @@ ShellRoot {
    tryCompare(music,"queueExpanded",false,1500)
    check(playerPanel.showEqualizer && eq.visible && eq.active,
       "Queue exit did not restore the shared Dashboard EQ")
+   for(let frame=0;frame<16;frame++) {
+    check(Math.abs(queuePanel.y+queuePanel.height-queueBottom)<.5,
+       "Queue bottom moved during downward collapse")
+    wait(16)
+   }
+   Config.setNestedValue("performance.reduceAnimations",true)
    tryVerify(()=>playerPanel.height>0 && playerPanel.height<=Math.ceil(playerPanel.implicitHeight)+1,2000)
    const lyricLines=fake.localLyricsLines, originalWidths=columns.map(column=>column.width)
    fake.localLyricsLines=[]
@@ -154,6 +170,21 @@ ShellRoot {
    check(music.results.length===2,"genre did not fill results column")
    check(music.libraryTab==="genre" && columns[0].visible && !findChild(music,"musicFolders").visible,
       "Genre tab did not remain active after choosing a genre")
+   const genreList=findChild(music,"musicGenreList")
+   tryVerify(()=>genreList.itemAtIndex(1)!==null,2000)
+   mouseClick(genreList.itemAtIndex(1),10,10,Qt.LeftButton,Qt.ControlModifier)
+   check(music.selectedGenres.length===2 && music.results.length===3,
+      "Ctrl Genre selection did not combine results")
+   mouseClick(genreList.itemAtIndex(0),10,10,Qt.LeftButton,Qt.ShiftModifier)
+   check(music.selectedGenres.length===2 && music.results.length===3,
+      "Shift Genre selection lost its anchor range")
+   mouseClick(genreList.itemAtIndex(1),10,10,Qt.LeftButton,Qt.ControlModifier)
+   check(music.selectedGenres.length===1 && music.results.length===2,
+      "Ctrl Genre deselection removed other genres")
+   mouseClick(genreList.itemAtIndex(0),10,10,Qt.LeftButton,Qt.ControlModifier)
+   check(music.selectedGenres.length===0 && music.results.length===0,
+      "empty Genre selection retained results")
+   mouseClick(genreList.itemAtIndex(0))
    mouseClick(findChild(music,"musicPlayAll"))
    check(fake.enqueued.length===2,"Play All did not use current result tracks")
    tryCompare(list,"count",2,2000);check(waitForPolish(list.contentItem,2000),"genre result layout pending")
@@ -182,6 +213,15 @@ ShellRoot {
    mouseClick(findChild(music,"musicFolderList").itemAtIndex(0))
    check(music.libraryTab==="folder","selecting a folder lost the Folder tab")
    check(music.results.length===2 && music.results[0].kind==="folder","folder did not show children and files")
+   tryVerify(()=>folderList.itemAtIndex(1)!==null,2000)
+   mouseClick(folderList.itemAtIndex(1),10,10,Qt.LeftButton,Qt.ControlModifier)
+   check(music.selectedFolders.length===2 && music.allResultTracks.length===3,
+      "Ctrl Folder selection lost a folder or duplicated playback")
+   mouseClick(findChild(music,"musicPlayAll"))
+   check(fake.enqueued.length===3,"Play All did not include both selected folders")
+   mouseClick(folderList.itemAtIndex(0),10,10,Qt.LeftButton,Qt.ShiftModifier)
+   check(music.selectedFolders.length===2,"Shift Folder range selection failed")
+   mouseClick(folderList.itemAtIndex(0))
    tryVerify(()=>list.itemAtIndex(0)!==null,2000)
    check(waitForPolish(list.contentItem,2000),"folder result layout pending")
    renderFrame(dashboard,"folder frame pending")
@@ -239,6 +279,16 @@ ShellRoot {
    tryVerify(()=>findChild(dashboard,"dashboardMusic")!==null,2000)
    music=findChild(dashboard,"dashboardMusic")
    check(music!==beforeUnload && music.sourceMode==="queue","cold UI did not restore browsing identity")
+   music.chooseGenre("Jazz");music.chooseGenre("Rock",Qt.ControlModifier)
+   Config.setNestedValue("dashboard.music.enable",false)
+   tryVerify(()=>findChild(dashboard,"dashboardMusic")===null,2000)
+   check(GlobalStates.dashboardMusicBrowser.genres.length===2,
+      "unload lost Genre multi selection")
+   Config.setNestedValue("dashboard.music.enable",true)
+   tryVerify(()=>findChild(dashboard,"dashboardMusic")!==null,2000)
+   music=findChild(dashboard,"dashboardMusic")
+   check(music.selectedGenres.length===2 && music.results.length===3,
+      "cold UI did not restore Genre multi selection")
    check(waitForPolish(dots,2000),"restored page navigation layout pending");renderFrame(dashboard,"restored page frame pending")
    Config.setNestedValue("performance.reduceAnimations",false)
    dashboard.canvasController.beginEditMode();wait(60)

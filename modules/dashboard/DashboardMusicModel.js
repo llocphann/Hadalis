@@ -59,9 +59,17 @@ function roots(tracks) {
 }
 
 function results(tracks, mode, genre, path) {
-    if (mode === "genre") return (tracks ?? []).filter(track => track && labels(track).includes(genre))
-        .map(track => ({kind: "track", track, name: String(track.title || track.uri || "")}))
-    return mode === "folder" ? contents(tracks, path) : []
+    if (mode === "genre") {
+        const selected = new Set(Array.isArray(genre) ? genre : [genre])
+        return (tracks ?? []).filter(track => track && labels(track).some(label => selected.has(label)))
+            .map(track => ({kind: "track", track, name: String(track.title || track.uri || "")}))
+    }
+    if (mode !== "folder") return []
+    if (!Array.isArray(path)) return contents(tracks, path)
+    const entries = new Map()
+    for (const current of path) for (const entry of contents(tracks, current))
+        if (!entries.has(key(entry))) entries.set(key(entry), entry)
+    return Array.from(entries.values())
 }
 
 function parent(path) {
@@ -92,6 +100,20 @@ function select(entries, selected, anchor, index, control, shift) {
     if(control && keys.has(value)) keys.delete(value)
     else keys.add(value)
     return {keys:Array.from(keys),anchor:index}
+}
+
+// Genre names and folder paths include the empty string (unknown/root).
+function selectValues(values, selected, anchor, index, control, shift) {
+    if (index < 0 || index >= values.length) return {keys:selected, anchor}
+    if (shift && anchor >= 0 && anchor < values.length) {
+        const keys = new Set(control ? selected : [])
+        for (const value of values.slice(Math.min(anchor,index), Math.max(anchor,index)+1)) keys.add(value)
+        return {keys:Array.from(keys), anchor}
+    }
+    const keys = new Set(control ? selected : []), value = values[index]
+    if (control && keys.has(value)) keys.delete(value)
+    else keys.add(value)
+    return {keys:Array.from(keys), anchor:index}
 }
 
 function selectedTracks(tracks, keys) {

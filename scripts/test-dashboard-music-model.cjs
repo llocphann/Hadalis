@@ -15,6 +15,20 @@ assert.equal(model.results(tracks,'','','').length,0,'results must start empty')
 assert.deepEqual(json(model.genres(tracks)).find(x=>x.key==='Jazz'),{key:'Jazz',count:3});
 assert.equal(model.results(tracks,'genre','Jazz','').length,3);
 assert.equal(model.results(tracks,'genre','','').length,1);
+assert.deepEqual(json(model.results(tracks,'genre',['Jazz','Fusion'],'')).map(e=>e.track.uri),
+ ['Jazz/Live/one.flac','Jazz/two.flac','root.flac'],'genre union preserves order without duplicate tracks');
+assert.equal(model.results(tracks,'genre',[],'').length,0,'deselected genres leave no phantom results');
+assert.equal(model.results(tracks,'genre',[''],'').length,1,'unknown genre is a selectable value');
+assert.deepEqual(json(model.results(tracks,'folder','',['Jazz','Jazz/Live'])).map(model.key),
+ ['d:Jazz/Live','t:Jazz/two.flac','t:Jazz/Live/one.flac']);
+assert.equal(model.results(tracks,'folder','',[]).length,0,'deselected folders leave no phantom results');
+let sources=model.selectValues(['','Jazz','Rock'],[],-1,0,false,false);
+sources=model.selectValues(['','Jazz','Rock'],sources.keys,sources.anchor,2,true,false);
+assert.deepEqual(json(sources.keys),['','Rock'],'Ctrl supports unknown/root values');
+sources=model.selectValues(['','Jazz','Rock'],sources.keys,sources.anchor,0,false,true);
+assert.deepEqual(json(sources.keys),['','Jazz','Rock'],'Shift selects a source range');
+sources=model.selectValues(['','Jazz','Rock'],sources.keys,sources.anchor,1,true,false);
+assert.deepEqual(json(sources.keys),['','Rock'],'Ctrl deselects only the clicked source');
 const jazz=json(model.contents(tracks,'/Jazz/'));
 assert.deepEqual(jazz.map(x=>x.kind),['folder','track']);
 assert.equal(jazz[0].path,'Jazz/Live');assert.equal(jazz[1].track.uri,'Jazz/two.flac');

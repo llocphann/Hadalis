@@ -30,6 +30,7 @@ PAYLOAD = ("HadalisSession.qml", "services/", "modules/", "assets/",
 MAX_ARCHIVE = 8 * 1024 * 1024
 MAX_PAYLOAD = 24 * 1024 * 1024
 MAX_FILES = 512
+EXECUTABLE = {"assets/helpers/inir-battery-charge-limit", "assets/helpers/inir-thinkfan"}
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 
 
@@ -135,6 +136,7 @@ def assemble(files, revision, target):
         dest = target / name
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(data)
+        dest.chmod(0o755 if name in EXECUTABLE else 0o644)
         digests[name] = sha256(data)
     manifest["sourceSha"] = revision
     manifest["files"] = digests

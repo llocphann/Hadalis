@@ -47,6 +47,7 @@ def bundle(version):
     for entry in set(manager.discovery.ENTRYPOINTS.values()):
         files.append((entry, ("import QtQuick\nItem {} // " + version).encode()))
     files.append(("scripts/notes/worker.py", b"no execution"))
+    files.append(("assets/helpers/inir-thinkfan", b"fake helper"))
     return make_tar(files)
 
 
@@ -79,6 +80,7 @@ with tempfile.TemporaryDirectory(prefix="hadalird-manager-test-") as location:
     assert manager.discovery.inspect(shell, base / "data")["available"]
     files = json.loads((home / "current/manifest.json").read_text())["files"]
     assert "scripts/notes/worker.py" in files
+    assert (home / "current/assets/helpers/inir-thinkfan").stat().st_mode & 0o111
     assert "manifest.json" not in files
     assert run("status")["available"]
     assert requested.count("archive") == 1

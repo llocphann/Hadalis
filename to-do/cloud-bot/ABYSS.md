@@ -450,3 +450,58 @@ been deployed to the owner's desktop. Unrelated working-tree changes and
 **NOT_COMPLETE:** optional Hadalird extraction, remaining Hadanion requirements,
 final exact-source canonical validation, owner-session acceptance and comparable
 whole-shell CPU/RAM/GPU/latency measurements. No resource percentages are claimed.
+
+## Latest maintainer UI additions — 2026-10-09
+
+All five additions below have source implementations and focused evidence;
+owner-session acceptance and canonical validation of the combined candidate
+remain open. These changes have been pushed on `dev` and are not yet deployed.
+
+- [x] **Colors while browsing wallpapers** (`f845b07a8`): highlighted images
+  preview the shell's shared palette through the existing native/Python color
+  backend. Only one generator runs with the latest pending selection; closed
+  pickers invalidate late results. Cancel restores independent copies of every
+  color/mode, and a real theme update during browsing becomes the restore point.
+  Configuration, active colors files and external application themes are not
+  written by preview. External apply requests are deferred until preview ends.
+  The cache has at most 32 palette entries, with image/stat/options/backend
+  invalidation. Actual native Abyss field repaint, all-color restore, fast
+  changes, failed generation, apply handoff and private external-hook behavior
+  pass in `test-wallpaper-color-preview-runtime.py`; the actual worker/cache
+  contract and existing native carousel also pass. No percentage saving is
+  inferred from cache size or job ownership.
+- [x] **Hover opening and automatic dismissal** (`68e4fa144`): StyledPopup
+  observes its actual source Item across interactive descendants instead of
+  relying on legacy MouseArea hover flags. Generic hover popups retain genuine
+  editable text focus while the window is active; a clicked button's retained
+  Qt focus no longer prevents idle dismissal. Native pointer entry, four
+  reopen/transfer/exit cycles, explicit dismissal/reentry, disabled anchors,
+  click-only requests and editable/read-only text pass. Both old nested-anchor
+  hover failure and retained-focus dismissal failure were reproduced before
+  their fixes. Live System Tray/menu/application behavior still needs acceptance.
+- [x] **Dashboard Music refinement** (`c0a4f97a5`): Dashboard and Music slide
+  horizontally with outgoing input/sampling disabled; editing sees the original
+  workspace immediately even during a page transition. Music reuses Media
+  Popup's compact EqualizerPanel and removes its second decorative CAVA owner.
+  Lyrics hides when empty, expanding the remaining four columns; narrow layouts
+  remain pannable. Native Music navigation/playback/queue/selection/volume/cold
+  restore/edit lock and all 16 composed Dashboard editor cases pass. Four
+  non-flat DSP reopen cycles pass with zero presentation-driven DSP writes.
+  Actual audio, MPD idle resume and owner-session appearance remain separate.
+- [x] **One Change Wallpaper action** (`2f82895ec`): remove the old Grid and
+  Coverflow labels/actions from the public command list; retain the historic
+  coverflow action ID as a compatibility route to the same selector. Actual
+  GlobalActions search parity (Node 960 and QV4 220 cases), English catalog/source
+  and Qt 6 parsing pass. Supported Waffle presentation/IPC is preserved.
+- [x] **Modules at physical corners** (`45f456c6c`): remove the fixed 34 px
+  placement inset from snap/geometry without rewriting persisted layouts.
+  Pure boundary/snap/join cases cover both ends of all four Edges at small,
+  normal and fractional dimensions; native field inherited/square/rounded
+  contours and corner fill pass. Owner drag/drop at every corner remains open.
+
+Hadalird `696fb5f` separately qualifies relocated helper/schema/config paths
+and polkit authorization through staged package behavior; duplicate core
+ownership and stale implementation-specific core tests still require cleanup.
+The broad product task remains **NOT_COMPLETE**; no full canonical PASS,
+installed-file update, hardware/owner acceptance or shell resource measurement
+is asserted for these source milestones.

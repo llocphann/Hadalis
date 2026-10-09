@@ -803,6 +803,25 @@ inir abyss cancelEdit
 
 ---
 
+
+### abyssHoverProbe
+
+Read-only diagnostic snapshots of **production Abyss Screen Edge hover**
+during cold start and after Waffle → Abyss. Contains module geometry,
+input regions and boolean popup/field lifecycle state. Does not move
+the pointer, toggle surfaces or change configuration. Loaded only when
+the Abyss critical host is active. For support investigations only.
+
+| Function | Description |
+|----------|-------------|
+| `snapshot` | Return the current per-output hover, input region and popup lifecycle state as JSON |
+
+```bash
+inir abyssHoverProbe snapshot
+```
+
+---
+
 ### wull
 
 Optional Hadanion Companion chat and diagnostics. The compatibility target remains available when the package is absent. `chat`

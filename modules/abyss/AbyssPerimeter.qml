@@ -90,6 +90,33 @@ Scope {
         }
     }
     AbyssOsdController {}
+    // Diagnostic only: no input mutations, popup leases, or timers. The
+    // single read-only IPC snapshot is deliberately tied to the production
+    // PanelWindow, not an isolated hover fixture.
+    function hoverProbeSnapshot(): string {
+        const outputs = []
+        for (const host of (root.outputHosts ?? [])) {
+            try {
+                outputs.push(host?.hoverProbeOutput ? host.hoverProbeOutput()
+                    : { unavailable: true })
+            } catch (error) {
+                outputs.push({ probeError: String(error) })
+            }
+        }
+        return JSON.stringify({
+            timestamp: Date.now(),
+            family: String(Config.options?.panelFamily ?? ""),
+            shellEntryReady: GlobalStates.shellEntryReady,
+            deferredPanelsReady: GlobalStates.deferredPanelsReady,
+            compositorNiri: CompositorService.isNiri,
+            outputCount: outputs.length,
+            outputs: outputs
+        })
+    }
+    IpcHandler {
+        target: "abyssHoverProbe"
+        function snapshot(): string { return root.hoverProbeSnapshot() }
+    }
     Component.onCompleted: {
         Notifications.ensureInitialized()
     }
@@ -101,6 +128,67 @@ Scope {
             objectName:"abyssOutputHost_"+modelData.name
             required property var modelData
             readonly property string outputName: modelData?.name ?? ""
+            // This function is evaluated only by abyssHoverProbe.snapshot.
+            // No perpetual logging, pointer handlers or geometry changes.
+            function hoverProbeOutput(): var {
+                const modules = []
+                for (const id of (bar.moduleIds ?? [])) {
+                    const item = bar.itemForId(id)
+                    if (!item) {
+                        modules.push({ id: String(id), constructed: false })
+                        continue
+                    }
+                    const region = item.inputRegion
+                    const popup = item.companionPopup
+                    modules.push({
+                        id: String(id),
+                        kind: String(item.kind ?? ""),
+                        constructed: true,
+                        visible: Boolean(item.visible),
+                        enabled: Boolean(item.enabled),
+                        hovered: Boolean(item.hovered),
+                        featureHovered: item.feature?.hovered ?? null,
+                        featureContainsMouse: item.feature?.containsMouse ?? null,
+                        rect: { x: item.x, y: item.y, w: item.width, h: item.height },
+                        input: region ? { x: region.x, y: region.y,
+                            w: region.width, h: region.height } : null,
+                        popup: popup ? {
+                            anchorReady: Boolean(popup._anchorReady),
+                            liquidOwner: Boolean(popup._liquidAnchor),
+                            liquidControllerMatches: popup._liquidController === liquid,
+                            windowBound: Boolean(popup._anchorWindow),
+                            screenBound: Boolean(popup._anchorScreen),
+                            moduleHoverActive: Boolean(popup.moduleHoverActive),
+                            anchorHover: Boolean(popup._anchorHover?.hovered),
+                            requestedVisible: Boolean(popup.requestedVisible),
+                            presentationActive: Boolean(popup.presentationActive),
+                            hosted: popup._hostedController === liquid
+                        } : null
+                    })
+                }
+                return {
+                    output: window.outputName,
+                    windowVisible: Boolean(window.visible),
+                    presented: Boolean(window.presented),
+                    editorOpen: Boolean(window.editorOpen),
+                    fullscreenCovered: Boolean(window.fullscreenCovered),
+                    fieldReady: Boolean(field.ready),
+                    framePresented: Boolean(field.framePresented),
+                    barVisible: Boolean(bar.visible),
+                    barEnabled: Boolean(bar.enabled),
+                    barOnOutput: root.barOnOutput(window.outputName),
+                    barEditing: Boolean(bar.editing),
+                    barInputRegionCount: bar.inputRegions.length,
+                    editorRegionCount: editor.regions.length,
+                    liquidPresented: Boolean(liquid.presented),
+                    liquidPopupsOpen: Boolean(liquid.popupsOpen),
+                    popupSlots: liquid.popupSlots.map(slot => slot
+                        ? { kind: String(slot.popup?._liquidAnchor?.kind ?? ""),
+                            active: Boolean(slot.popup?.presentationActive) }
+                        : null),
+                    modules: modules
+                }
+            }
             function presentation(kind) { return Presentation.resolve(Config.options?.abyss?.positions,kind,outputName) }
             function positionEdge(kind,fallback) { return Presentation.edge(presentation(kind),fallback) }
             function positionAlong(kind,edge,span,fallback) { return Presentation.along(presentation(kind),edge,span,width,height,fallback,nativeInsets) }

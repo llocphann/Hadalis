@@ -120,6 +120,28 @@ Scope {
         // rebuild without remounting Abyss or changing any configuration.
         // Do not use as an automatic startup workaround: first determine
         // whether this alone restores native pointer delivery.
+        function swapMask(): string {
+            const results = []
+            for (const host of (root.outputHosts ?? [])) {
+                try {
+                    results.push(host?.hoverProbeSwapMask
+                        ? host.hoverProbeSwapMask()
+                        : { unavailable: true })
+                } catch (e) { results.push({ error: String(e) }) }
+            }
+            return JSON.stringify({ diagnostic: "identity-swap", outputs: results })
+        }
+        function remapWindow(): string {
+            const results = []
+            for (const host of (root.outputHosts ?? [])) {
+                try {
+                    results.push(host?.hoverProbeRemapWindow
+                        ? host.hoverProbeRemapWindow()
+                        : { unavailable: true })
+                } catch (e) { results.push({ error: String(e) }) }
+            }
+            return JSON.stringify({ diagnostic: "one-shot-remap", outputs: results })
+        }
         function refreshMask(): string {
             const results = []
             for (const host of (root.outputHosts ?? [])) {
@@ -146,6 +168,36 @@ Scope {
             objectName:"abyssOutputHost_"+modelData.name
             required property var modelData
             readonly property string outputName: modelData?.name ?? ""
+            property bool _probeMaskProxy: false
+            property bool _probeUnmapped: false
+            Timer {
+                id: probeRemapTimer
+                interval: 260
+                repeat: false
+                onTriggered: window._probeUnmapped = false
+            }
+            function _probeNormalIdle(): bool {
+                return window.presented && !window.editorOpen && field.ready
+                    && !liquid.activeDialog && !utility.open
+                    && !window.overviewDragging
+            }
+            function hoverProbeSwapMask(): var {
+                if (!window._probeNormalIdle())
+                    return { output: window.outputName, skipped: true,
+                        reason: "not normal idle" }
+                window._probeMaskProxy = !window._probeMaskProxy
+                return { output: window.outputName, skipped: false,
+                    maskProxy: window._probeMaskProxy }
+            }
+            function hoverProbeRemapWindow(): var {
+                if (!window._probeNormalIdle() || window._probeUnmapped)
+                    return { output: window.outputName, skipped: true,
+                        reason: "not safe to remap" }
+                window._probeUnmapped = true
+                probeRemapTimer.restart()
+                return { output: window.outputName, skipped: false,
+                    remapDurationMs: 260 }
+            }
             // Diagnostic only: force a one-shot Region.changed notification
             // while preserving the same mapped PanelWindow, layer and family.
             // This is not an automatically scheduled fix.
@@ -218,6 +270,9 @@ Scope {
                     barEnabled: Boolean(bar.enabled),
                     barOnOutput: root.barOnOutput(window.outputName),
                     barEditing: Boolean(bar.editing),
+                    barHover: Boolean(barHover.hovered),
+                    probeMaskProxy: window._probeMaskProxy,
+                    probeUnmapped: window._probeUnmapped,
                     barInputRegionCount: bar.inputRegions.length,
                     editorRegionCount: editor.regions.length,
                     liquidPresented: Boolean(liquid.presented),
@@ -240,7 +295,7 @@ Scope {
             onPresentedChanged: if (!presented && editorOpen) GlobalStates.abyssEditing = false
             screen: modelData
             // Keep the Top surface mapped across fullscreen, preserving stack order.
-            visible: Config.ready && !GlobalStates.screenLocked
+            visible: Config.ready && !GlobalStates.screenLocked && !window._probeUnmapped
             color: "transparent"
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
@@ -261,7 +316,13 @@ Scope {
             Item { id: emptyInput; width: 0; height: 0 }
             readonly property bool overviewDragging: aux.open && (aux.contentItem.item?.applicationDragActive ?? false)
             readonly property Region dragPassThrough: Region {}
-            mask: window.overviewDragging ? dragPassThrough : liquid.activeDialog ? dialogInputMask : utility.open ? utilityInputMask : nativeInputMask
+            mask: window.overviewDragging ? dragPassThrough : liquid.activeDialog ? dialogInputMask : utility.open ? utilityInputMask : (window._probeMaskProxy ? probeProxyInputMask : nativeInputMask)
+            // Equally shaped alternative Region identity. An explicit IPC
+            // toggle tests re-binding QWindow.mask instead of only sending
+            // Region.changed. No full-output/unmasked pointer interception.
+            readonly property Region probeProxyInputMask: Region {
+                regions: [nativeInputMask]
+            }
             readonly property Region dialogInputMask: Region {
                 x: dialogBody.inputBounds.x; y: dialogBody.inputBounds.y
                 width: window.presented && field.ready ? dialogBody.inputBounds.width : 0

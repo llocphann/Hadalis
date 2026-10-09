@@ -19,6 +19,9 @@ Singleton {
     property string managerMessage: ""
     property string latestSha: ""
     property bool updateAvailable: false
+    property bool systemProvisionerAvailable: false
+    property bool systemHelpersInstalled: false
+    property string systemHelpersDiagnostic: "unchecked"
     readonly property var options: Config.options?.integrations?.hadalird
     readonly property bool tlpEnabled: available && !loadFailed && Config.ready && options?.tlp === true
     readonly property bool thinkfanEnabled: available && !loadFailed && Config.ready && options?.thinkfan === true
@@ -29,13 +32,14 @@ Singleton {
     // Explicit user action only. Hadalis owns transport and the signed-off
     // optional-package lifecycle, not an external installer run by the user.
     function manage(action): void {
-        if (managerBusy || probe.running || !["check","install","remove","rollback"].includes(action))
+        if (managerBusy || probe.running || !["check","install","remove","rollback",
+                "helpers-status","helpers-install","helpers-remove"].includes(action))
             return
         managerAction = action
         managerBusy = true
         managerError = ""
         managerMessage = ""
-        if (action !== "check") {
+        if (["install","remove","rollback","helpers-install","helpers-remove"].includes(action)) {
             // Release all disposable workers before switching the immutable package link.
             available = false
             loadFailed = false
@@ -72,6 +76,7 @@ Singleton {
     function status(): string {
         return JSON.stringify({available, enabled, diagnostic, version, sourceSha,
             managerBusy, managerError, updateAvailable, canRollback,
+            systemProvisionerAvailable, systemHelpersInstalled, systemHelpersDiagnostic,
             integrations:{tlp:tlpEnabled,thinkfan:thinkfanEnabled,obsidian:obsidianEnabled}})
     }
     Loader {
@@ -122,6 +127,10 @@ Singleton {
                     if (root.managerAction === "check") {
                         root.latestSha = String(result.latestSha ?? "")
                         root.updateAvailable = result.updateAvailable === true
+                    } else if (root.managerAction.startsWith("helpers-")) {
+                        root.systemHelpersInstalled = result.systemHelpersInstalled === true
+                        root.systemProvisionerAvailable = result.systemProvisionerAvailable === true
+                        root.systemHelpersDiagnostic = String(result.systemHelpersDiagnostic ?? "unknown")
                     } else {
                         root.updateAvailable = false
                         root.canRollback = result.canRollback === true
@@ -130,7 +139,8 @@ Singleton {
             } catch (_error) {
                 root.managerError = String(managerStderr.text ?? "Could not read Hadalird manager result").slice(0, 256)
             }
-            if (root.managerAction !== "check") Qt.callLater(root.refresh)
+            if (["install","remove","rollback","helpers-install","helpers-remove"].includes(root.managerAction))
+                Qt.callLater(root.refresh)
         }
     }
     Timer {

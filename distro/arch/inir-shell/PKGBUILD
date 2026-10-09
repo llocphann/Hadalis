@@ -150,6 +150,10 @@ package() {
 
   install -Dm755 "$srcroot/scripts/inir" "$pkgdir/usr/bin/inir"
   install -Dm644 "$srcroot/assets/systemd/inir.service" "$pkgdir/usr/lib/systemd/user/inir.service"
+  # Privileged gateway is shipped by the trusted Hadalis system package.
+  # Optional Hadalird helper payloads are not bundled in Core.
+  install -Dm755 "$srcroot/assets/helpers/inir-hadalird-system-provision" "$pkgdir/usr/libexec/inir-hadalird-system-provision"
+  install -Dm644 "$srcroot/assets/polkit/org.inir.hadalird-system-provision.policy" "$pkgdir/usr/share/polkit-1/actions/org.inir.hadalird-system-provision.policy"
 
   for launcher in "$pkgdir/usr/bin/inir" "$shellroot/scripts/inir"; do
     python3 - "$launcher" <<'PY'

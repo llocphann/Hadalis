@@ -20,15 +20,17 @@ ContentPage {
  }
  SettingsCardSection {
   title:"Optional integrations";icon:"extension";expanded:true
-  id:hadalirdPackageSection\n  property bool confirmRemoval:false
+  id:hadalirdPackageSection
+  property bool confirmRemoval:false
+  property bool confirmSystemRemoval:false
   StyledText {
    Layout.fillWidth:true;wrapMode:Text.WordWrap;color:Appearance.colors.colSubtext
    text: Hadalird.managerBusy ? "Managing the optional Hadalird package…"
        : Hadalird.available ? "Hadalird "+Hadalird.version+" is installed. Hadalis manages its package and preferences."
        : "Install Hadalird directly from Hadalis to use TLP, Thinkfan and Obsidian."
   }
-  RowLayout {
-   Layout.fillWidth:true;spacing:8
+  Flow {
+   Layout.fillWidth:true;width:parent.width;spacing:8;implicitHeight:childrenRect.height
    DialogButton {
     visible:!Hadalird.available
     enabled:!Hadalird.managerBusy
@@ -70,7 +72,6 @@ ContentPage {
     buttonText:"Cancel"
     onClicked:hadalirdPackageSection.confirmRemoval=false
    }
-   Item {Layout.fillWidth:true}
    DialogButton {
     buttonText:"Refresh status"
     enabled:!Hadalird.managerBusy
@@ -92,6 +93,48 @@ ContentPage {
   StyledText {
    Layout.fillWidth:true;wrapMode:Text.WordWrap;color:Appearance.colors.colSubtext
    text:"Package actions are initiated here, require no manual Git checkout, and preserve saved integration preferences. TLP/Thinkfan system helpers require separate authorization."
+  }
+  StyledText {
+   Layout.fillWidth:true;wrapMode:Text.WordWrap
+   color:Appearance.colors.colSubtext
+   text:"System helpers (TLP / Thinkfan): "+Hadalird.systemHelpersDiagnostic
+  }
+  Flow {
+   Layout.fillWidth:true;width:parent.width;spacing:8;implicitHeight:childrenRect.height
+   DialogButton {
+    buttonText:"Check helper status";enabled:!Hadalird.managerBusy
+    onClicked:Hadalird.manage("helpers-status")
+   }
+   DialogButton {
+    visible:Hadalird.available && !Hadalird.systemHelpersInstalled
+    buttonText:"Install system helpers"
+    enabled:!Hadalird.managerBusy
+    onClicked:Hadalird.manage("helpers-install")
+   }
+   DialogButton {
+    visible:Hadalird.systemHelpersInstalled && !hadalirdPackageSection.confirmSystemRemoval
+    buttonText:"Remove system helpers"
+    enabled:!Hadalird.managerBusy
+    onClicked:hadalirdPackageSection.confirmSystemRemoval=true
+   }
+   DialogButton {
+    visible:Hadalird.systemHelpersInstalled && hadalirdPackageSection.confirmSystemRemoval
+    buttonText:"Confirm system removal"
+    enabled:!Hadalird.managerBusy
+    onClicked:{
+     hadalirdPackageSection.confirmSystemRemoval=false
+     Hadalird.manage("helpers-remove")
+    }
+   }
+   DialogButton {
+    visible:hadalirdPackageSection.confirmSystemRemoval
+    buttonText:"Cancel"
+    onClicked:hadalirdPackageSection.confirmSystemRemoval=false
+   }
+  }
+  StyledText {
+   Layout.fillWidth:true;wrapMode:Text.WordWrap;color:Appearance.colors.colSubtext
+   text:"Installing or removing system helpers requests administrator authorization through Polkit. It does not enable TLP, change fan speeds, modify charging limits or delete your power configuration."
   }
   SettingsSwitch {text:"TLP";enabled:!Hadalird.managerBusy;autoToggle:false;checked:Config.options?.integrations?.hadalird?.tlp ?? false;onToggledByUser:value=>Config.setNestedValue("integrations.hadalird.tlp",value)}
   SettingsSwitch {text:"Thinkfan";enabled:!Hadalird.managerBusy;autoToggle:false;checked:Config.options?.integrations?.hadalird?.thinkfan ?? false;onToggledByUser:value=>Config.setNestedValue("integrations.hadalird.thinkfan",value)}

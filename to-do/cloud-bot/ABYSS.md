@@ -1129,12 +1129,26 @@ No stable branch or running user system is modified by source work.
   Update, Restore previous and confirm-Remove controls. Removal retains
   user data and previous versions. `scripts/test-hadalird-manager.py` proves
   the bounded offline package lifecycle with synthetic archive fixtures.
-- **Deliberate security boundary:** The optional package manager has no
-  `sudo`/`pkexec` action and never modifies fan, charging, TLP, services,
-  system package managers or Obsidian vaults. A later Hadalis-owned trusted,
-  independently packaged Polkit helper and explicit permission UI would be
-  required for system-level helper provisioning. Never run a downloaded package
-  installer as root or hide user authorization behind a toggle.
+- **System-helper boundary now implemented for Arch packaging (native
+  acceptance pending):** Hadalis owns the root-installed
+  `/usr/libexec/inir-hadalird-system-provision` gateway and its dedicated
+  `auth_admin` Polkit action, installed only by Hadalis' trusted distro
+  package. The unprivileged Settings action requests Polkit authorization
+  explicitly, then the gateway copies **only** five approved Hadalird 0.2
+  helper/policy/schema payloads whose SHA-256 values are pinned in the trusted
+  gateway. It verifies the exact content from a single buffered read, rejects
+  unrelated system files or symlinks, and tracks root-owned installation
+  state to permit owner-safe uninstall. No downloaded script runs as root.
+  No TLP/Thinkfan service, charge policy, fan state or owner config is modified.
+  New Hadalird helper versions require an audited Hadalis trust-pin update,
+  not silent privileged auto-upgrade. Nothing is enabled without explicit
+  user choice.
+- `scripts/test-hadalird-system-provision.py` uses private filesystem
+  fixtures to test byte pins, foreign files, symlink refusal, Polkit policy
+  and remove safety. It performs no real privileged operation. The manager
+  regression exercises status/install/remove with injected synthetic receipts.
+  Other distro packaging remains open beyond Arch; do not imply that the
+  root gateway is already present on every installation.
 
 **Acceptance still required:** current-source Python offline test, Qt/QML
 parse, canonical validator, actual Settings install/check/update/reopen/
@@ -1226,3 +1240,22 @@ owner defects. Preserve `docs/evidence/megaqml/` and Hadanion's concurrent files
 Companion stays disabled, G0 `dc4d5ecfe118` remains offline-only. Only the
 five-hour window remaining **below** 3% triggers checkpoint/push and a one-shot
 resume at that window's reset +3 minutes; weekly usage never triggers it.
+
+### Remaining Hadalis-only acceptance (no Hadanion work)
+
+- [ ] Verify new `dev` source using the canonical validator on exact SHA;
+  confirm the manager, gateway and packaging fixture checks pass. GitHub-hosted
+  CI may still fail environment-required native Qt/Niri cases and does not
+  substitute for the private local validator.
+- [ ] Real Arch install/update to deploy the root-owned Polkit gateway and
+  policy. Then exercise Settings > Integrations install/update/rollback/remove,
+  popup focus, offline/GitHub errors, and root helper consent/cancellation.
+  Do not perform a privileged helper install without the owner's consent.
+- [ ] Qualify actual selected TLP/Thinkfan/Obsidian behavior with the owner
+  desktop after the user explicitly enables it. Preserve TLP/Thinkfan hardware
+  defaults, charging config, running services and Obsidian vault data.
+- [ ] Add trusted system-package provisioning for supported non-Arch
+  distributions rather than using `sudo` on a user-owned checkout. No
+  cross-distro support claim before packaging/Polkit checks.
+- [ ] Continue unrelated outstanding Hadalis `dev` fixes and strict-lossless
+  parity/measurement gates separately; leave Hadanion and `stable` untouched.

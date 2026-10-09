@@ -57,6 +57,17 @@ with tempfile.TemporaryDirectory(prefix="hadalird-manager-test-") as location:
     shell = base / "shell"
     shell.mkdir()
     requested = []
+    system_calls = []
+    system_enabled = False
+
+    def system_callback(action, package):
+        # no privileged executable runs in this fixture
+        system_calls.append((action, str(package) if package else None))
+        if action == 'helpers-status':
+            return {'ok': True, 'installed': system_enabled, 'provisionerAvailable': True,
+                    'diagnostic': 'ready' if system_enabled else 'not-installed'}
+        return {'ok': True, 'installed': action == 'helpers-install', 'provisionerAvailable': True,
+                'diagnostic': 'ready' if action == 'helpers-install' else 'not-installed'}
 
     def fetch_sha():
         requested.append("lookup")
@@ -69,7 +80,8 @@ with tempfile.TemporaryDirectory(prefix="hadalird-manager-test-") as location:
         return bundle("0.2.0" if revision1 in url else "0.3.0")
 
     def run(action):
-        return manager.operate(action, home, shell, fetch_sha, fetch_archive)
+        return manager.operate(action, home, shell, fetch_sha, fetch_archive,
+                               system_callback)
 
     state = run("status")
     assert not state["available"] and requested == []
@@ -84,6 +96,12 @@ with tempfile.TemporaryDirectory(prefix="hadalird-manager-test-") as location:
     assert "manifest.json" not in files
     assert run("status")["available"]
     assert requested.count("archive") == 1
+    assert not run("helpers-status")["systemHelpersInstalled"]
+    helpers = run("helpers-install")
+    assert helpers["systemHelpersInstalled"] and helpers["systemProvisionerAvailable"]
+    assert system_calls[-1] == ("helpers-install", str((home / "current").resolve()))
+    assert not run("helpers-remove")["systemHelpersInstalled"]
+    assert (home / "current").exists()  # provisioning never removes the package
 
     upgrade = run("install")
     assert upgrade["installedSha"] == revision2 and upgrade["canRollback"]
@@ -126,6 +144,8 @@ with tempfile.TemporaryDirectory(prefix="hadalird-manager-test-") as location:
         pass
 
     (shell / "optional/hadalird").mkdir(parents=True)
+    assert run('helpers-status')['systemProvisionerAvailable']
+    assert run('helpers-install')['systemHelpersInstalled']
     try:
         run("install")
         raise AssertionError("Bundled integration was overwritten")

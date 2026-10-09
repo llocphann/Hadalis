@@ -12,6 +12,8 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import re
+import shutil
+import subprocess
 import tarfile
 import tempfile
 import urllib.request
@@ -30,6 +32,7 @@ PAYLOAD = ("HadalisSession.qml", "services/", "modules/", "assets/",
 MAX_ARCHIVE = 8 * 1024 * 1024
 MAX_PAYLOAD = 24 * 1024 * 1024
 MAX_FILES = 512
+SYSTEM_PROVISIONER = "/usr/libexec/inir-hadalird-system-provision"
 EXECUTABLE = {"assets/helpers/inir-battery-charge-limit", "assets/helpers/inir-thinkfan"}
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 
@@ -189,10 +192,39 @@ def switch(home, revision):
         temporary.unlink(missing_ok=True)
 
 
-def operate(action, home, shell_root, revision_fetch=latest_sha, archive_fetch=request_bytes):
+def call_system_helper(action, package=None):
+    if not os.path.isfile(SYSTEM_PROVISIONER) or not os.access(SYSTEM_PROVISIONER, os.X_OK):
+        if action == "helpers-status":
+            return {"ok": True, "installed": False, "managed": False,
+                    "provisionerAvailable": False, "diagnostic": "system-provisioner-not-installed"}
+        raise ValueError("Hadalis system provisioner is unavailable; update your Hadalis system package")
+    if action == "helpers-status":
+        argv = [SYSTEM_PROVISIONER, "status"]
+    else:
+        if not shutil.which("pkexec"):
+            raise ValueError("Polkit pkexec is missing; no system files were modified")
+        argv = ["pkexec", SYSTEM_PROVISIONER, "install" if action == "helpers-install" else "remove"]
+        if action == "helpers-install":
+            argv.append(str(package))
+    try:
+        result = subprocess.run(argv, capture_output=True, text=True, timeout=80, check=False)
+    except subprocess.TimeoutExpired as error:
+        raise ValueError("System authorization timed out; inspect the helper status before retrying") from error
+    try:
+        data = json.loads(result.stdout.strip())
+    except (ValueError, TypeError) as error:
+        raise ValueError("System helper did not return a valid receipt (authorization may have been cancelled)") from error
+    if result.returncode != 0 or data.get("ok") is not True:
+        raise ValueError(str(data.get("error") or "System helper operation failed"))
+    data["provisionerAvailable"] = True
+    return data
+
+
+def operate(action, home, shell_root, revision_fetch=latest_sha, archive_fetch=request_bytes,
+            system_call=call_system_helper):
     home.mkdir(parents=True, exist_ok=True)
     # Bundled distro payload takes precedence in Hadalis discovery.
-    if action != "status" and (shell_root / "optional/hadalird").exists():
+    if action in ("check", "install", "remove", "rollback") and (shell_root / "optional/hadalird").exists():
         raise ValueError("Hadalis has a bundled Hadalird; update it through the host distribution")
     lock = home / ".install.lock"
     with lock.open("a") as fd:
@@ -206,6 +238,29 @@ def operate(action, home, shell_root, revision_fetch=latest_sha, archive_fetch=r
                       (home / "releases" / previous).is_dir())}
         if current:
             result["version"] = json.loads((home / "releases" / current / "manifest.json").read_text())["version"]
+        if action.startswith("helpers-"):
+            if action not in ("helpers-status", "helpers-install", "helpers-remove"):
+                raise ValueError("Unsupported system helper action")
+            if action == "helpers-install":
+                bundled = shell_root / "optional/hadalird"
+                active_package = bundled if bundled.is_dir() else home / "current"
+                if not active_package.is_dir():
+                    raise ValueError("Install Hadalird before installing its system helpers")
+                package_dir = active_package.resolve()
+                if not package_dir.is_dir():
+                    raise ValueError("Invalid Hadalird release")
+                # All bytes must match the system package's root-owned pinned
+                # allowlist. The privileged gateway will re-open and check them.
+                payload = system_call(action, package_dir)
+            else:
+                payload = system_call(action, None)
+            result.update(systemHelpersInstalled=payload.get("installed") is True,
+                          systemProvisionerAvailable=payload.get("provisionerAvailable") is True,
+                          systemHelpersDiagnostic=str(payload.get("diagnostic", "")),
+                          message=("System helper files installed" if action == "helpers-install"
+                              else "System helper files removed" if action == "helpers-remove"
+                              else "System helper status refreshed"))
+            return result
         if action == "status":
             return result
         if action == "check":
@@ -260,7 +315,8 @@ def operate(action, home, shell_root, revision_fetch=latest_sha, archive_fetch=r
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("status", "check", "install", "remove", "rollback"))
+    parser.add_argument("action", choices=("status", "check", "install", "remove", "rollback",
+                                                    "helpers-status", "helpers-install", "helpers-remove"))
     parser.add_argument("--shell-root", type=Path, default=ROOT)
     parser.add_argument("--data-home", type=Path, default=Path(
         os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share"))))

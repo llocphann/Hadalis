@@ -1369,3 +1369,32 @@ Owner Settings reported `System gateway package did not return an operation rece
 
 - [ ] Owner native read-only check `pacman -Q inir-hadalird-gateway` or Settings gateway status, record installed/not-installed and file ownership. **Do not automatically retry installation:** earlier pacman transaction may have succeeded despite missing receipt.
 - [ ] Only if package is missing, user explicitly retries via Settings after updating Hadalis. Capture stdout/stderr/exit status on failure, distinguish makepkg, Polkit authentication, and pacman errors. Never auto-modify TLP/Thinkfan hardware state.
+
+### 2026-10-10 — Hadalird Settings simplification and Polkit foreground
+
+Owner confirms Hadalird 0.2.0 and the system helpers are ready but the
+Settings card is text-heavy, privileged reinstallation is confusing, and
+the Polkit dialog can be hidden behind the Abyss Settings surface.
+
+Hadalis `dev` repair scope only (Hadanion and stable untouched):
+- Keep only short Gateway/Helpers status and primary `Install helpers`
+  or `Reinstall helpers` (same explicit, integrity-checked, idempotent
+  helper install), plus Update/Refresh. Move destructive package/helper
+  controls and gateway maintenance into collapsed Advanced.
+- A single explicit `helpers-ensure` action checks a valid Hadalird
+  install, installs the trusted Arch gateway if absent, then performs
+  a verified privileged helper install; each Polkit operation retains
+  independent authorization. Do not remove existing helpers or change
+  TLP/Thinkfan behavior during reinstall. Refusal of gateway auth blocks
+  subsequent helper installation.
+- Native rail/focus Settings surfaces yield to Polkit by using
+  `WlrLayer.Bottom` instead of `WlrLayer.Top` while authentication
+  is pending. Abyss embedded Settings temporarily closes before auth
+  and reopens on completion; standalone Settings lowers its toplevel.
+  The Settings surface must never hold exclusive keyboard focus
+  while the authorization dialog is active.
+- [ ] Record exact-SHA offline CI, Qt native parse and live Niri Polkit
+  focused-front authentication, cancellation, double-auth initial install,
+  idempotent reinstall and restored Settings page, including any standalone
+  or Waffle Settings host variants. Do not claim native acceptance based
+  solely on offline checks.

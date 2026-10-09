@@ -9,6 +9,9 @@ on:
       - 'assets/polkit/org.inir.hadalird-system-provision.policy'
       - 'modules/settings/IntegrationsConfig.qml'
       - 'services/Hadalird.qml'
+      - 'scripts/test-hadalird-polkit-visibility.py'
+      - 'modules/settings/SettingsFocus.qml'
+      - 'modules/settings/SettingsOverlayNativeHost.qml'
       - 'distro/arch/inir-shell/PKGBUILD'
       - 'distro/arch/inir-shell-git/PKGBUILD'
       - '.github/workflows/hadalird-offline.yml'
@@ -42,6 +45,8 @@ jobs:
         run: python3 scripts/test-hadalird-manager.py
       - name: Validate Hadalird Settings Flow layout
         run: python3 scripts/test-hadalird-settings-flow.py
+      - name: Validate Polkit elevation and one-click helper installer
+        run: python3 scripts/test-hadalird-polkit-visibility.py
       - name: Validate Obsidian host wrapper width
         run: python3 scripts/test-hadalird-obsidian-wrapper.py
       - name: Validate root provisioning without root

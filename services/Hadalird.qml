@@ -14,6 +14,9 @@ Singleton {
     property string sourceSha: ""
     property bool canRollback: false
     property bool managerBusy: false
+    // Force Settings below external or shell Polkit while auth is pending.
+    property bool authorizationPending: false
+    property bool _restoreEmbeddedSettings: false
     property string managerAction: ""
     property string managerError: ""
     property string managerMessage: ""
@@ -34,14 +37,24 @@ Singleton {
     // optional-package lifecycle, not an external installer run by the user.
     function manage(action): void {
         if (managerBusy || probe.running || !["check","install","remove","rollback",
-                "helpers-status","helpers-install","helpers-remove",
+                "helpers-status","helpers-install","helpers-remove","helpers-ensure",
                 "gateway-status","gateway-install","gateway-remove"].includes(action))
             return
         managerAction = action
         managerBusy = true
+        authorizationPending = ["helpers-ensure","helpers-install","helpers-remove",
+            "gateway-install","gateway-remove"].includes(action)
+        // Abyss embeds Settings in another layer-shell surface. Hiding only
+        // the native Settings window cannot lower that parent; temporarily
+        // release the embedded surface so pkexec always remains visible.
+        _restoreEmbeddedSettings = authorizationPending
+            && (Config.options?.panelFamily === "abyss")
+            && (GlobalStates.settingsOverlayOpen ?? false)
+        if (_restoreEmbeddedSettings)
+            GlobalStates.settingsOverlayOpen = false
         managerError = ""
         managerMessage = ""
-        if (["install","remove","rollback","helpers-install","helpers-remove"].includes(action)) {
+        if (["install","remove","rollback","helpers-install","helpers-remove","helpers-ensure"].includes(action)) {
             // Release all disposable workers before switching the immutable package link.
             available = false
             loadFailed = false
@@ -77,7 +90,7 @@ Singleton {
     }
     function status(): string {
         return JSON.stringify({available, enabled, diagnostic, version, sourceSha,
-            managerBusy, managerError, updateAvailable, canRollback,
+            managerBusy, authorizationPending, managerError, updateAvailable, canRollback,
             systemProvisionerAvailable, systemHelpersInstalled, systemHelpersDiagnostic,
             gatewayPackageInstalled,
             integrations:{tlp:tlpEnabled,thinkfan:thinkfanEnabled,obsidian:obsidianEnabled}})
@@ -137,6 +150,8 @@ Singleton {
                     } else if (root.managerAction.startsWith("helpers-")) {
                         root.systemHelpersInstalled = result.systemHelpersInstalled === true
                         root.systemProvisionerAvailable = result.systemProvisionerAvailable === true
+                        if (root.managerAction === "helpers-ensure")
+                            root.gatewayPackageInstalled = result.gatewayPackageInstalled === true
                         root.systemHelpersDiagnostic = String(result.systemHelpersDiagnostic ?? "unknown")
                     } else {
                         root.updateAvailable = false
@@ -146,8 +161,13 @@ Singleton {
             } catch (_error) {
                 root.managerError = String(managerStderr.text ?? "Could not read Hadalird manager result").slice(0, 256)
             }
+            root.authorizationPending = false
+            if (root._restoreEmbeddedSettings) {
+                root._restoreEmbeddedSettings = false
+                GlobalStates.settingsOverlayOpen = true
+            }
             if (["install","remove","rollback","helpers-install","helpers-remove",
-                "gateway-install","gateway-remove"].includes(root.managerAction))
+                "helpers-ensure","gateway-install","gateway-remove"].includes(root.managerAction))
                 Qt.callLater(root.refresh)
         }
     }
@@ -159,6 +179,11 @@ Singleton {
             managerProcess.running = false
             root.managerBusy = false
             root.managerError = "Hadalird package operation timed out"
+            root.authorizationPending = false
+            if (root._restoreEmbeddedSettings) {
+                root._restoreEmbeddedSettings = false
+                GlobalStates.settingsOverlayOpen = true
+            }
             root.refresh()
         }
     }

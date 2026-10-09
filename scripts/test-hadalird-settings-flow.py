@@ -61,10 +61,20 @@ for i, match in enumerate(flows):
     assert not re.search(r"\bwidth\s*:\s*parent\.width\b", outer), (
         f"Flow #{i + 1} bypasses Layout width management"
     )
-    expected = ("Install Hadalird", "Install system helpers", "Install Arch system gateway")[i]
+    expected = ("Install Hadalird", "Reinstall helpers", "Check gateway")[i]
     assert expected in inside, f"Flow #{i + 1} changed roles or was emptied"
 
-assert '"Check Arch gateway status"' in qml
+assert '"Check status"' in qml
+assert '"Reinstall helpers"' in qml
+assert '"Advanced"' in qml
+assert not any(legacy in qml for legacy in (
+    "Package actions are initiated here",
+    "Installing or removing system helpers requests administrator",
+    "On Arch repo-copy installations"))
+assert 'visible:hadalirdPackageSection.advanced' in qml
 assert 'Hadalird.manage("gateway-status")' in qml
+assert 'Hadalird.manage("helpers-ensure")' not in qml  # authorization wrapper owns this
+assert 'privilegedAction("helpers-ensure")' in qml
+assert 'if(window && window.lower) window.lower()' in qml
 assert "settingsPageIndex:38" in qml
 print("HADALIRD_SETTINGS_FLOW_PASS all package, helper and gateway flows use Qt-safe layouts")

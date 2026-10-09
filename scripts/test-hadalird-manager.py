@@ -132,6 +132,56 @@ with tempfile.TemporaryDirectory(prefix="hadalird-manager-test-") as location:
     assert not run("helpers-remove")["systemHelpersInstalled"]
     assert (home / "current").exists()  # provisioning never removes the package
 
+    # One-click install and reinstall: gateway provisioning happens only
+    # when absent; the privileged helper install is idempotent and does not
+    # remove already-verified existing files.
+    ensure_calls = []
+    gateway_present = [False]
+
+    def gateway_ensure(action):
+        ensure_calls.append(action)
+        if action == "gateway-install":
+            gateway_present[0] = True
+        return {"ok": True, "installed": gateway_present[0],
+                "packageInstalled": gateway_present[0],
+                "diagnostic": "ready" if gateway_present[0] else "not-installed"}
+
+    def helpers_ensure(action, package):
+        ensure_calls.append((action, str(package)))
+        assert action == "helpers-install"
+        assert pathlib.Path(package) == (home / "current").resolve()
+        return {"ok": True, "installed": True, "provisionerAvailable": True,
+                "diagnostic": "ready"}
+
+    def ensure():
+        return manager.operate("helpers-ensure", home, shell, fetch_sha,
+                               fetch_archive, helpers_ensure, gateway_ensure)
+
+    first = ensure()
+    assert first["systemHelpersInstalled"] and first["gatewayPackageInstalled"]
+    assert ensure_calls == ["gateway-status", "gateway-install",
+                            ("helpers-install", str((home / "current").resolve()))]
+    ensure_calls.clear()
+    again = ensure()
+    assert again["systemHelpersInstalled"]
+    assert ensure_calls == ["gateway-status",
+                            ("helpers-install", str((home / "current").resolve()))]
+    # A cancelled gateway auth must never fall through to root-helper install.
+    gateway_present[0] = False
+    ensure_calls.clear()
+    def refused_gateway(action):
+        ensure_calls.append(action)
+        if action == "gateway-install":
+            raise ValueError("authorization cancelled")
+        return {"installed": False}
+    try:
+        manager.operate("helpers-ensure", home, shell, fetch_sha,
+                        fetch_archive, helpers_ensure, refused_gateway)
+        raise AssertionError("Cancelled gateway authorization accepted")
+    except ValueError as error:
+        assert "cancelled" in str(error)
+    assert ensure_calls == ["gateway-status", "gateway-install"]
+
     upgrade = run("install")
     assert upgrade["installedSha"] == revision2 and upgrade["canRollback"]
     assert (home / "releases" / revision1).is_dir()

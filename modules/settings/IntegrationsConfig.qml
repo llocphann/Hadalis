@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Window
 import Quickshell
 import qs.services
 import qs.services.deferred
@@ -19,17 +20,27 @@ ContentPage {
   return true;
  }
  SettingsCardSection {
-  title:"Optional integrations";icon:"extension";expanded:true
   id:hadalirdPackageSection
+  title:"Optional integrations";icon:"extension";expanded:true
+  property bool advanced:false
   property bool confirmRemoval:false
   property bool confirmSystemRemoval:false
   property bool confirmGatewayInstall:false
   property bool confirmGatewayRemoval:false
+
+  // For a standalone Settings window, lower the toplevel as well.
+  // Layer-shell Settings are lowered by the Hadalird authorization state.
+  function privilegedAction(action:string):void {
+   const window=root.Window.window
+   if(window && window.lower) window.lower()
+   Hadalird.manage(action)
+  }
+
   StyledText {
-   Layout.fillWidth:true;wrapMode:Text.WordWrap;color:Appearance.colors.colSubtext
-   text: Hadalird.managerBusy ? "Managing the optional Hadalird package…"
-       : Hadalird.available ? "Hadalird "+Hadalird.version+" is installed. Hadalis manages its package and preferences."
-       : "Install Hadalird directly from Hadalis to use TLP, Thinkfan and Obsidian."
+   Layout.fillWidth:true;color:Appearance.colors.colSubtext
+   text:Hadalird.managerBusy ? "Working…"
+       : Hadalird.available ? "Hadalird "+Hadalird.version+" · installed"
+       : "Hadalird · not installed"
   }
   Flow {
    Layout.fillWidth:true;spacing:8
@@ -48,36 +59,16 @@ ContentPage {
    DialogButton {
     visible:Hadalird.available && Hadalird.updateAvailable
     enabled:!Hadalird.managerBusy
-    buttonText:"Update Hadalird"
+    buttonText:"Update"
     onClicked:Hadalird.manage("install")
    }
    DialogButton {
-    visible:Hadalird.available && Hadalird.canRollback
+    buttonText:"Refresh"
     enabled:!Hadalird.managerBusy
-    buttonText:"Restore previous"
-    onClicked:Hadalird.manage("rollback")
-   }
-   DialogButton {
-    visible:Hadalird.available && !hadalirdPackageSection.confirmRemoval
-    enabled:!Hadalird.managerBusy
-    buttonText:"Remove"
-    onClicked:hadalirdPackageSection.confirmRemoval=true
-   }
-   DialogButton {
-    visible:Hadalird.available && hadalirdPackageSection.confirmRemoval
-    enabled:!Hadalird.managerBusy
-    buttonText:"Confirm removal"
-    onClicked:{hadalirdPackageSection.confirmRemoval=false;Hadalird.manage("remove")}
-   }
-   DialogButton {
-    visible:Hadalird.available && hadalirdPackageSection.confirmRemoval
-    buttonText:"Cancel"
-    onClicked:hadalirdPackageSection.confirmRemoval=false
-   }
-   DialogButton {
-    buttonText:"Refresh status"
-    enabled:!Hadalird.managerBusy
-    onClicked:Hadalird.refresh()
+    onClicked:{
+     Hadalird.refresh()
+     // Read-only status is available from the independent helper action.
+    }
    }
   }
   StyledText {
@@ -94,79 +85,51 @@ ContentPage {
   }
   StyledText {
    Layout.fillWidth:true;wrapMode:Text.WordWrap;color:Appearance.colors.colSubtext
-   text:"Package actions are initiated here, require no manual Git checkout, and preserve saved integration preferences. TLP/Thinkfan system helpers require separate authorization."
-  }
-  StyledText {
-   Layout.fillWidth:true;wrapMode:Text.WordWrap
-   color:Appearance.colors.colSubtext
-   text:"System helpers (TLP / Thinkfan): "+(
-    Hadalird.systemHelpersDiagnostic === "unchecked"
-    ? "Not checked yet — use Check helper status."
-    : Hadalird.systemHelpersDiagnostic === "system-provisioner-not-installed"
-    ? "System Polkit gateway is not installed. A source-only Hadalis update cannot deploy root-owned files; upgrade the trusted Hadalis system package."
-    : Hadalird.systemHelpersDiagnostic)
-  }
-  Flow {
-   Layout.fillWidth:true;spacing:8
-   DialogButton {
-    buttonText:"Check helper status";enabled:!Hadalird.managerBusy
-    onClicked:Hadalird.manage("helpers-status")
-   }
-   DialogButton {
-    visible:Hadalird.available && !Hadalird.systemHelpersInstalled
-    buttonText:"Install system helpers"
-    // A source-only Hadalis update does not install the trusted root helper.
-    // Do not offer an action which is guaranteed to fail in that state.
-    enabled:!Hadalird.managerBusy && Hadalird.systemProvisionerAvailable
-    onClicked:Hadalird.manage("helpers-install")
-   }
-   DialogButton {
-    visible:Hadalird.systemHelpersInstalled && !hadalirdPackageSection.confirmSystemRemoval
-    buttonText:"Remove system helpers"
-    enabled:!Hadalird.managerBusy
-    onClicked:hadalirdPackageSection.confirmSystemRemoval=true
-   }
-   DialogButton {
-    visible:Hadalird.systemHelpersInstalled && hadalirdPackageSection.confirmSystemRemoval
-    buttonText:"Confirm system removal"
-    enabled:!Hadalird.managerBusy
-    onClicked:{
-     hadalirdPackageSection.confirmSystemRemoval=false
-     Hadalird.manage("helpers-remove")
-    }
-   }
-   DialogButton {
-    visible:hadalirdPackageSection.confirmSystemRemoval
-    buttonText:"Cancel"
-    onClicked:hadalirdPackageSection.confirmSystemRemoval=false
-   }
-  }
-  StyledText {
-   Layout.fillWidth:true;wrapMode:Text.WordWrap;color:Appearance.colors.colSubtext
-   visible:Hadalird.available && !Hadalird.systemProvisionerAvailable
-   text:"On Arch repo-copy installations, Hadalis can install its own small system gateway package. The package contains only the audited Polkit gateway and policy; the action builds as your user, then requests administrator authentication for pacman. It does not change TLP or fan settings."
+   text:"Gateway: "+(Hadalird.systemProvisionerAvailable?"Ready":"Not installed")
+       +"  ·  Helpers: "+(Hadalird.systemHelpersDiagnostic==="unchecked"?"Not checked"
+           : Hadalird.systemHelpersInstalled?"Ready":"Not installed")
   }
   Flow {
    Layout.fillWidth:true;spacing:8
    DialogButton {
     visible:Hadalird.available
     enabled:!Hadalird.managerBusy
-    buttonText:"Check Arch gateway status"
+    buttonText:Hadalird.systemHelpersInstalled?"Reinstall helpers":"Install helpers"
+    onClicked:hadalirdPackageSection.privilegedAction("helpers-ensure")
+   }
+   DialogButton {
+    enabled:!Hadalird.managerBusy
+    buttonText:"Check status"
+    onClicked:Hadalird.manage("helpers-status")
+   }
+   DialogButton {
+    buttonText:hadalirdPackageSection.advanced?"Hide advanced":"Advanced"
+    enabled:!Hadalird.managerBusy
+    onClicked:hadalirdPackageSection.advanced=!hadalirdPackageSection.advanced
+   }
+  }
+  Flow {
+   visible:hadalirdPackageSection.advanced
+   Layout.fillWidth:true;spacing:8
+   DialogButton {
+    buttonText:"Check gateway"
+    enabled:!Hadalird.managerBusy
     onClicked:Hadalird.manage("gateway-status")
    }
    DialogButton {
-    visible:Hadalird.available && !Hadalird.systemProvisionerAvailable && !hadalirdPackageSection.confirmGatewayInstall
+    visible:Hadalird.available && !Hadalird.systemProvisionerAvailable
+        && !hadalirdPackageSection.confirmGatewayInstall
+    buttonText:"Install gateway"
     enabled:!Hadalird.managerBusy
-    buttonText:"Install Arch system gateway"
     onClicked:hadalirdPackageSection.confirmGatewayInstall=true
    }
    DialogButton {
     visible:hadalirdPackageSection.confirmGatewayInstall
+    buttonText:"Confirm gateway install"
     enabled:!Hadalird.managerBusy
-    buttonText:"Confirm package installation"
     onClicked:{
      hadalirdPackageSection.confirmGatewayInstall=false
-     Hadalird.manage("gateway-install")
+     hadalirdPackageSection.privilegedAction("gateway-install")
     }
    }
    DialogButton {
@@ -175,18 +138,61 @@ ContentPage {
     onClicked:hadalirdPackageSection.confirmGatewayInstall=false
    }
    DialogButton {
+    visible:Hadalird.available && Hadalird.canRollback
+    buttonText:"Restore Hadalird"
+    enabled:!Hadalird.managerBusy
+    onClicked:Hadalird.manage("rollback")
+   }
+   DialogButton {
+    visible:Hadalird.available && !hadalirdPackageSection.confirmRemoval
+    buttonText:"Remove Hadalird"
+    enabled:!Hadalird.managerBusy
+    onClicked:hadalirdPackageSection.confirmRemoval=true
+   }
+   DialogButton {
+    visible:hadalirdPackageSection.confirmRemoval
+    buttonText:"Confirm removal"
+    enabled:!Hadalird.managerBusy
+    onClicked:{hadalirdPackageSection.confirmRemoval=false;Hadalird.manage("remove")}
+   }
+   DialogButton {
+    visible:hadalirdPackageSection.confirmRemoval
+    buttonText:"Cancel"
+    onClicked:hadalirdPackageSection.confirmRemoval=false
+   }
+   DialogButton {
+    visible:Hadalird.systemHelpersInstalled && !hadalirdPackageSection.confirmSystemRemoval
+    buttonText:"Remove helpers"
+    enabled:!Hadalird.managerBusy
+    onClicked:hadalirdPackageSection.confirmSystemRemoval=true
+   }
+   DialogButton {
+    visible:hadalirdPackageSection.confirmSystemRemoval
+    buttonText:"Confirm helper removal"
+    enabled:!Hadalird.managerBusy
+    onClicked:{
+     hadalirdPackageSection.confirmSystemRemoval=false
+     hadalirdPackageSection.privilegedAction("helpers-remove")
+    }
+   }
+   DialogButton {
+    visible:hadalirdPackageSection.confirmSystemRemoval
+    buttonText:"Cancel"
+    onClicked:hadalirdPackageSection.confirmSystemRemoval=false
+   }
+   DialogButton {
     visible:Hadalird.gatewayPackageInstalled && !hadalirdPackageSection.confirmGatewayRemoval
+    buttonText:"Remove gateway"
     enabled:!Hadalird.managerBusy && !Hadalird.systemHelpersInstalled
-    buttonText:"Remove Arch gateway"
     onClicked:hadalirdPackageSection.confirmGatewayRemoval=true
    }
    DialogButton {
     visible:hadalirdPackageSection.confirmGatewayRemoval
-    enabled:!Hadalird.managerBusy && !Hadalird.systemHelpersInstalled
     buttonText:"Confirm gateway removal"
+    enabled:!Hadalird.managerBusy && !Hadalird.systemHelpersInstalled
     onClicked:{
      hadalirdPackageSection.confirmGatewayRemoval=false
-     Hadalird.manage("gateway-remove")
+     hadalirdPackageSection.privilegedAction("gateway-remove")
     }
    }
    DialogButton {
@@ -194,10 +200,6 @@ ContentPage {
     buttonText:"Cancel"
     onClicked:hadalirdPackageSection.confirmGatewayRemoval=false
    }
-  }
-  StyledText {
-   Layout.fillWidth:true;wrapMode:Text.WordWrap;color:Appearance.colors.colSubtext
-   text:"Installing or removing system helpers requests administrator authorization through Polkit. It does not enable TLP, change fan speeds, modify charging limits or delete your power configuration."
   }
   SettingsSwitch {text:"TLP";enabled:!Hadalird.managerBusy;autoToggle:false;checked:Config.options?.integrations?.hadalird?.tlp ?? false;onToggledByUser:value=>Config.setNestedValue("integrations.hadalird.tlp",value)}
   SettingsSwitch {text:"Thinkfan";enabled:!Hadalird.managerBusy;autoToggle:false;checked:Config.options?.integrations?.hadalird?.thinkfan ?? false;onToggledByUser:value=>Config.setNestedValue("integrations.hadalird.thinkfan",value)}

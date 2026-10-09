@@ -10,11 +10,15 @@ PanelWindow {
     visible: controller?.settingsOpen || controller?._closeAnimRunning || false
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: "quickshell:settingsOverlay"
-    WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom
-        : PolkitService.active ? WlrLayer.Top : WlrLayer.Overlay
+    // Both external pkexec agents and the shell's own Polkit window must
+    // overlay Settings. Never promote Settings to Top during authentication.
+    WlrLayershell.layer: (GlobalStates.settingsNativeDialogOpen
+        || Hadalird.authorizationPending || PolkitService.active)
+        ? WlrLayer.Bottom : WlrLayer.Overlay
     WlrLayershell.keyboardFocus: controller?.settingsOpen
         && !GlobalStates.regionSelectorOpen && !GlobalStates.settingsNativeDialogOpen
-        && !PolkitService.active ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+        && !PolkitService.active && !Hadalird.authorizationPending
+        ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     color: "transparent"
     anchors { top: true; bottom: true; left: true; right: true }
 }

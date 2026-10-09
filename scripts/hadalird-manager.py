@@ -293,6 +293,32 @@ def operate(action, home, shell_root, revision_fetch=latest_sha, archive_fetch=r
                     str(gateway.get("diagnostic", "system-provisioner-not-installed"))),
                 message=str(gateway.get("message") or "System gateway package status refreshed"))
             return result
+        if action == "helpers-ensure":
+            # One explicit Settings action: provision the trusted standalone
+            # gateway when absent, then idempotently install verified helpers.
+            # Both privileged stages still require their own Polkit consent.
+            bundled = shell_root / "optional/hadalird"
+            active_package = bundled if bundled.is_dir() else home / "current"
+            if not active_package.is_dir():
+                raise ValueError("Install Hadalird before system helpers")
+            package_dir = active_package.resolve()
+            if not package_dir.is_dir():
+                raise ValueError("Invalid Hadalird release")
+            gateway = gateway_call("gateway-status")
+            if gateway.get("installed") is not True:
+                gateway = gateway_call("gateway-install")
+                if gateway.get("installed") is not True:
+                    raise ValueError("System gateway installation was not confirmed")
+            # Root gateway revalidates its audited allowlist and existing
+            # ownership; never delete helpers merely to reinstall them.
+            payload = system_call("helpers-install", package_dir)
+            result.update(
+                systemHelpersInstalled=payload.get("installed") is True,
+                systemProvisionerAvailable=payload.get("provisionerAvailable") is True,
+                gatewayPackageInstalled=gateway.get("packageInstalled") is True,
+                systemHelpersDiagnostic=str(payload.get("diagnostic", "unknown")),
+                message="System helpers ready")
+            return result
         if action.startswith("helpers-"):
             if action not in ("helpers-status", "helpers-install", "helpers-remove"):
                 raise ValueError("Unsupported system helper action")
@@ -371,7 +397,7 @@ def operate(action, home, shell_root, revision_fetch=latest_sha, archive_fetch=r
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("status", "check", "install", "remove", "rollback",
-                                                    "helpers-status", "helpers-install", "helpers-remove",
+                                                    "helpers-status", "helpers-install", "helpers-remove", "helpers-ensure",
                                                     "gateway-status", "gateway-install", "gateway-remove"))
     parser.add_argument("--shell-root", type=Path, default=ROOT)
     parser.add_argument("--data-home", type=Path, default=Path(

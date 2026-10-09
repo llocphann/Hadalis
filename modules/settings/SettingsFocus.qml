@@ -431,13 +431,16 @@ Scope {
             visible: root.settingsOpen || root._closeAnimRunning
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.namespace: "quickshell:settingsFocus"
-            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen
-                ? WlrLayer.Bottom
-                : PolkitService.active ? WlrLayer.Top : WlrLayer.Overlay
+            // Polkit owns the foreground during either external pkexec
+            // or Quickshell's internal authorization dialog.
+            WlrLayershell.layer: (GlobalStates.settingsNativeDialogOpen
+                || Hadalird.authorizationPending || PolkitService.active)
+                ? WlrLayer.Bottom : WlrLayer.Overlay
             WlrLayershell.keyboardFocus: root.settingsOpen
                 && !GlobalStates.regionSelectorOpen
                 && !GlobalStates.settingsNativeDialogOpen
                 && !PolkitService.active
+                && !Hadalird.authorizationPending
                 ? WlrKeyboardFocus.Exclusive
                 : WlrKeyboardFocus.None
             color: "transparent"

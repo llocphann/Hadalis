@@ -23,9 +23,19 @@ DashCard {
     property bool presentationActive:
         GlobalStates.dashboardOpen || GlobalStates.overviewOpen
 
-    readonly property MprisPlayer player: MprisController.activePlayer
-    readonly property bool hasPlayer: root.player !== null
-    readonly property bool isPlaying: root.player?.isPlaying ?? false
+    // Both Dashboard pages use this exact card. The standard Dashboard binds
+    // to the current MPRIS player; the Music page supplies LocalMusic plus its
+    // existing adapter, so no second transport or DSP implementation is created.
+    property var mediaBackend: null
+    property var playbackAdapter: null
+    property bool showEqualizer: true
+    readonly property MprisPlayer player: mediaBackend
+        ? (mediaBackend.mprisPlayer ?? null) : MprisController.activePlayer
+    readonly property bool hasPlayer: playbackAdapter
+        ? (Boolean(playbackAdapter.canSeek) || String(playbackAdapter.title ?? "").length > 0)
+        : root.player !== null
+    readonly property bool isPlaying: playbackAdapter
+        ? Boolean(playbackAdapter.isPlaying) : (root.player?.isPlaying ?? false)
 
     ColumnLayout {
         Layout.fillWidth: true
@@ -50,6 +60,7 @@ DashCard {
                 active: root.hasPlayer
                 sourceComponent: PlayerControl {
                     player: root.player
+                    playbackAdapter: root.playbackAdapter
                     visualizerPoints: []
                     showVisualizer: false
                     compactLayout: true
@@ -89,12 +100,35 @@ DashCard {
             }
         }
 
+        // MPD volume is needed only in the Music-page instance; the Dashboard
+        // card's original playback surface remains unchanged.
+        RowLayout {
+            visible: root.mediaBackend !== null
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? implicitHeight : 0
+            spacing: 6
+            MaterialSymbol {
+                text: "volume_up"
+                color: root.colSubtext
+                iconSize: 18
+            }
+            StyledSlider {
+                objectName: "musicVolume"
+                Layout.fillWidth: true
+                configuration: StyledSlider.Configuration.XS
+                value: root.mediaBackend?.volume ?? 1
+                onMoved: root.mediaBackend?.setVolume(value)
+            }
+        }
+
         EqualizerPanel {
             id: equalizer
+            objectName: root.mediaBackend ? "musicEqualizer" : "dashboardMediaEqualizer"
+            visible: root.showEqualizer
             Layout.fillWidth: true
-            Layout.preferredHeight: implicitHeight
+            Layout.preferredHeight: visible ? implicitHeight : 0
             compactLayout: true
-            active: root.presentationActive && root.visible
+            active: root.showEqualizer && root.presentationActive && root.visible
         }
     }
 }

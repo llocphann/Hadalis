@@ -377,7 +377,7 @@ Earlier completed source groups do not close the new requirements below.
 
 - [x] Source and live new-window readback: nested Niri debug windows stay
   unfocused (`86d976a2c`). Run focused checks relevant to the affected product.
-- [ ] Extract TLP, Thinkfan and Obsidian into optional Hadalird packages.
+- [x] Source/package extraction: TLP, Thinkfan and Obsidian are optional Hadalird integrations (final qualification below).
   Hadalird `e9922c53a261a9b47be7f521f6a64cff334dde27` is pushed on `main`:
   disposable selected workers/settings, verified immutable user package and
   separately requested privileged helpers. Native host tests use the actual
@@ -389,9 +389,10 @@ Earlier completed source groups do not close the new requirements below.
   `41bd19306` removes mandatory Arch helper/policy/schema installation and
   destructive removal hooks; actual stable/git package functions and private
   removal hooks pass. No optional integration has been deployed to the owner.
-  Remaining: remove duplicate core helpers/assets and obsolete explicit helper
-  targets, move implementation-specific coverage to Hadalird while retaining
-  host/interface coverage, and qualify final source/update/desktop behavior.
+  Duplicate payloads/implementation tests and obsolete helper targets were
+  removed in `e17c7edc0`. Remaining app-specific settings moved in `8ca68efe4`;
+  source/package/update qualification is complete below. Owner hardware and
+  actual installed desktop acceptance remain separate.
 - [ ] Complete current Hadanion requirements using its own canonical task files.
   Companion source belongs to Hadanion, not Hadalis. Refetch `main` before work;
   concurrent source changes exist. Offline guards are bounded evidence only.
@@ -1035,3 +1036,70 @@ hover-loss 700ms later. Unlike preview menus, the desktop menu is
   items remain clickable, Escape and desktop left-click dismiss.
 - [ ] Native Active Window setting: validate max width 120/220/420 and
   ordinary text elision on Abyss and classic Bar. No stable branch changes.
+
+
+## 2026-10-10 — Hadalird extraction: source/package qualification complete
+
+The maintainer prioritized completing Hadalird before other product work.
+**This extraction milestone is complete at source/package scope; the broader
+Hadalis/Hadanion task remains NOT_COMPLETE.**
+
+- [x] Hadalird `642ba4e`, `1e4496e`, `4186832` own the remaining Classic and
+  Waffle TLP row/editor implementations, Obsidian Todo/Quick Notes settings,
+  and Thinkfan per-profile settings. Version 0.2.0 retains host API 1 and
+  includes every settings entrypoint in the immutable hashed package.
+  Shared Core widgets/configuration/services remain in Hadalis.
+- [x] Hadalis `8ca68efe423223bdf40059155748c53b38200de2` retains only selected
+  loaders, stable navigation/input contracts, service facades and generic
+  Battery/internal Todo fallback. Missing/incomplete/disabled packages do
+  not construct owned controls. Closing and reopening Waffle preserves its
+  category/filter. Removing Obsidian leaves a user action to restore the
+  preserved internal Todo store without clearing saved source paths.
+- [x] Implementation guards moved to Hadalird; Core keeps host/interface,
+  shared UI and lifecycle coverage. Owned deferred worker/editor callbacks
+  stop when their disposable QML context retires. Native unload previously
+  exposed invalid-context/editor creation warnings and a delayed refresh
+  TypeError; the same workload now passes. Owned task fields also avoid the
+  observed Material TextField implicit-width loop.
+- [x] Clean source-pair qualification: Hadalird
+  `418683285d28c5b2a673ffc387f96047aca4306b` with Hadalis `8ca68efe4` passes
+  all 19 `make test` entries, including 16-file Qt 6.12 parsing, actual
+  Classic/Waffle/Obsidian/Thinkfan settings lifecycle, synthetic vault actions
+  and injected status-only helper receipts. Test host discovery works from
+  sibling checkouts without a maintainer-specific absolute path.
+  Receipt/log: `~/.local/state/hadalis-validation/20261009/hadalird-ui-pair.json`
+  and `hadalird-ui-pair-tests.log` in the same directory.
+- [x] Actual committed-package upgrade from Hadalird `d4bad57` to `1e4496e`:
+  27 payload files match source, Core accepts the complete 0.2 package,
+  reinstall is idempotent, older release bytes are retained, and uninstall
+  removes only the owned link while preserving release/user fixture data.
+  `4186832` changes test-host discovery/documentation only; runtime payload
+  bytes are unchanged. Receipt: `hadalird-exact-upgrade-receipt.json` in the
+  same validation directory. Default install/uninstall does not install
+  privileged helpers or alter system services/policies.
+- [x] Canonical maintainer validator on a clean clone of **exact `8ca68efe4`**:
+  **323 PASS, 0 FAIL, 1 SKIP** (Nix deferred/non-blocking), Qt 6.12 parser PASS.
+  Log: `~/.local/state/hadalis-validation/20261009/8ca68efe4-canonical.log`.
+  This is local canonical evidence, not GitHub CI or owner hardware acceptance.
+- [x] Non-VCS Arch metadata now pins the qualified `8ca68efe4` payload
+  (`pkgrel=14`); regenerated `.SRCINFO` also includes already-declared Fcitx
+  dependencies. Packaging/update/metadata and actual private stable/git
+  package/removal-hook contracts pass. No actual Arch build was claimed.
+- [ ] Owner desktop/hardware acceptance for selected TLP/Thinkfan/Obsidian
+  remains open. No package was installed into the owner session, no vault,
+  fan/charge policy or system service was changed, and `stable` is untouched.
+
+Other fixes qualified before this milestone: guarded StyledPopup retirement
+(`8f8fcc60c`), private IPC corner fixture (`48d01a54b`), exact embedded Settings
+host geometry (`ccc6c4308`), and Edge Editor intrinsic toolbar depth with small
+viewport scrolling (`53af215df`). The real private four-edge editor input
+workload and a 360px-high logical host pass; the prior source fails the full
+control clipping oracle. Canonical `53af215df` separately passed 323 checks.
+Owner layout/normal-hover/multi-output/focus acceptance remains separate.
+
+Next: continue Hadanion canonical TODOs and strict-lossless work. Keep owner
+Companion disabled, preserve concurrent work and unrelated
+`docs/evidence/megaqml/`, and keep G0 `dc4d5ecfe118` offline-only:
+INCONCLUSIVE_CAPTURE_VARIANCE, no replay or weaker RGBA. Only five-hour
+remaining below 3% triggers a stop/checkpoint/push and a one-shot resume at
+that window's reset +3 minutes; weekly limits never trigger scheduling.

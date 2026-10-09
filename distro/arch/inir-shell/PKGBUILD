@@ -1,6 +1,6 @@
 pkgname=inir-shell
 pkgver=2.29.3
-pkgrel=13
+pkgrel=14
 pkgdesc='Hadalis shell payload, launcher, and user service'
 arch=('x86_64')
 url='https://github.com/llocphann/Hadalis'
@@ -9,7 +9,7 @@ install=inir-shell.install
 # Hadalis does not publish version tags/releases yet. Keep the non-VCS package
 # reproducible by pinning the reviewed source snapshot; release automation can
 # switch this to a tag once the project publishes one.
-_source_ref="${INIR_SOURCE_REF:-e6573beb3b78b9de4002945583265d2796eb8e8e}"
+_source_ref="${INIR_SOURCE_REF:-8ca68efe423223bdf40059155748c53b38200de2}"
 _default_source_archive="https://github.com/llocphann/Hadalis/archive/${_source_ref}.tar.gz"
 _source_archive="${INIR_SOURCE_ARCHIVE:-${_default_source_archive}}"
 _source_dir="${INIR_SOURCE_DIR:-Hadalis-${_source_ref}}"
@@ -141,7 +141,7 @@ package() {
   python3 "$srcroot/sdata/lib/runtime-payload.py" copy --root "$srcroot" --target "$shellroot" || return
   mkdir -p "$shellroot/native/bin"
   for binary in inir-inputd inir-mpdd inir-native inir-theme; do install -Dm0755 "$srcdir/inir-native-target/release/$binary" "$shellroot/native/bin/$binary"; done
-  # The pinned 2.29.3 snapshot predates qmldir in the canonical root manifest.
+  # Keep the root namespace present for older source overrides as well.
   install -Dm644 "$srcroot/qmldir" "$shellroot/qmldir"
   chmod +x "$shellroot/setup" "$shellroot/scripts/inir"
   find "$shellroot/scripts" -type f \( -name '*.sh' -o -name '*.fish' -o -name '*.py' \) -exec chmod +x {} +

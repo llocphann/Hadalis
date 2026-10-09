@@ -86,6 +86,24 @@ with tempfile.TemporaryDirectory(prefix='local-model-folder-') as temporary:
         assert inventory.roots(str(b)) == [b, a]
         assert inventory.roots(str(a)) == [a]
         assert inventory.roots() == [a]
+    with patch.dict(os.environ):
+        for key in ('INIR_GGUF_ROOTS','HF_HUB_CACHE','HUGGINGFACE_HUB_CACHE','HF_HOME','XDG_CACHE_HOME'):
+            os.environ.pop(key,None)
+        assert inventory.roots()[0]==Path.home()/'.cache/huggingface/hub'
+        os.environ['XDG_CACHE_HOME']=str(private/'xdg-cache')
+        assert inventory.roots()[0]==private/'xdg-cache/huggingface/hub'
+        os.environ['HF_HOME']=str(private/'hub-home')
+        assert inventory.roots()[0]==private/'hub-home/hub'
+        os.environ['HUGGINGFACE_HUB_CACHE']=str(a)
+        assert inventory.roots()[0]==a
+        os.environ['HF_HUB_CACHE']=str(b)
+        assert inventory.roots()[0]==b
+        cached=inventory.inventory(inventory.roots()[:1])
+        assert [m['name'] for m in cached['models']]==['B'],'modern cache must beat stale alias'
+        assert inventory.roots(str(a))[:2]==[a,b],'explicit extra root remains first'
+        assert inventory.roots(str(b)).count(b)==1,'selected cache root is not duplicated'
+        os.environ['INIR_GGUF_ROOTS']='[]'
+        assert inventory.roots()==[],'fixture override must isolate all standard caches'
     result = subprocess.run(['python3', str(SCRIPT), '--extra-root', str(private / 'missing')], env=env, capture_output=True, text=True, check=True)
     assert json.loads(result.stdout)['error'] == 'Model folder not found'
 
@@ -126,4 +144,4 @@ with tempfile.TemporaryDirectory(prefix='local-model-folder-') as temporary:
     saved = json.loads((config/'config.json').read_text())
     assert saved['ai']['localModelFolder'] == str(b)
     assert saved['abyss']['companion']['enabled'] is False
-print('LOCAL_MODEL_FOLDER_DIRECT_ARGV_LAZY_QUEUE_AND_PERSISTENCE_PASS')
+print('LOCAL_MODEL_FOLDER_DIRECT_ARGV_HF_CACHE_PRECEDENCE_LAZY_QUEUE_AND_PERSISTENCE_PASS')

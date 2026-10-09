@@ -15,7 +15,10 @@ def roots(extra_root=''):
         standard=[Path(p).expanduser() for p in json.loads(override)[:8]]
     else:
         home=Path.home()
-        hub=Path(os.environ.get('HUGGINGFACE_HUB_CACHE',str(Path(os.environ.get('HF_HOME',str(home/'.cache/huggingface')))/'hub')))
+        # Match Hub's modern cache precedence; retain the older alias as fallback.
+        cache=Path(os.environ.get('XDG_CACHE_HOME',str(home/'.cache'))).expanduser()
+        hf_home=Path(os.environ.get('HF_HOME',str(cache/'huggingface'))).expanduser()
+        hub=Path(os.environ.get('HF_HUB_CACHE',os.environ.get('HUGGINGFACE_HUB_CACHE',str(hf_home/'hub')))).expanduser()
         standard=[hub,home/'.unsloth/studio/exports',home/'.unsloth/studio/library',home/'Models',
             home/'.local/share/inir/models',home/'Downloads']
     if not extra_root:return standard

@@ -981,3 +981,35 @@ the cold hover static contract. Full CI is not green.
 - [ ] Longer-term replace the one-shot full Perimeter recreation with an
   upstream-correct native input lifecycle solution when protocol evidence
   identifies it. The workaround is evidence-backed, the root cause unknown.
+
+### 2026-10-09 — Active Window footprint + desktop context menu in retracted Edge gaps
+
+Owner request on `dev`:
+1. Active Window must bound its horizontal natural span and expose a
+   configurable maximum like Media. Prior `AbyssBarModule.naturalSpan` had
+   fixed `Math.min(220, Math.max(60, titleWidth))`; the classic bar also
+   hardcoded 220.
+2. When `Width affects modules = OFF`, right-clicking the *bare desktop*
+   in gaps of the retracted Screen Edge can produce a context popup that
+   briefly appears then vanishes.
+
+- [x] Add `bar.activeWindow.width` (default 220 px; range 120–420) to
+  typed config, defaults, Settings > Bar > Modules, and shared ActiveWindow
+  maxContentWidth, consumed by classic and Abyss. Do not change vertical
+  Active Window footprint. Text still elides and natural width never exceeds cap.
+- [x] Guard desktop ContextMenu's `closeOnHoverLostAfterEntered` against
+  transient hover during its entrance animation. Only a genuine hovered
+  settled menu arms its existing 700ms auto-close timer. Preserve
+  outside-desktop left-click, item selection and Escape paths. This is a
+  source-grounded candidate, NOT yet owner-native validated.
+- [x] Add focused source/contract regression tests.
+- [ ] Native acceptance (owner, after `dev` install): test multiple long active
+  titles at 120/220/420 px in Abyss; adjust config in Bar Modules without
+  changing family; ensure classic bar still fits.
+- [ ] Native menu acceptance: test right-click *in Edge gaps* with each of
+  top/left/bottom/right `Width affects modules OFF`; verify no transient
+  disappearance, selectable items, Escape, desktop left-click close, and
+  normal mode with width affecting modules ON. If still reproducible, trace
+  `popupWasHovered`, `entranceSettled`, and LayerWindow ordering, rather
+  than speculating about compositor focus.
+- [ ] Keep stable untouched; no DONE until live menu verification.

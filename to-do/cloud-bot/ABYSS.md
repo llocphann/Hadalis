@@ -1202,10 +1202,12 @@ remains qualified at `418683285d28c5b2a673ffc387f96047aca4306b`; do not redo it.
 
 Canonical validation launched on the clean exact pre-merge source **be8902259**:
 `/home/llocphann/.local/state/hadalis-validation/20261010/abyss-connection-canonical.log`
-and `/tmp/hadalis-current-canonical-20261010-console.log`. Until its final result
-is recorded it is **IN_PROGRESS**, not PASS. Even a PASS there does not qualify
-the later merged source; run canonical on a clean clone of the final runtime
-SHA after affected-source qualification.
+and `/tmp/hadalis-current-canonical-20261010-console.log`. It was explicitly
+stopped at the five-hour budget threshold (exit 143): 217 completed checks
+reported PASS, check 218 did not finish and no aggregate result was emitted.
+**STOPPED / NOT_COMPLETE**, never canonical PASS. The maintainer subsequently
+stopped local work, then explicitly resumed all Hadalis tasks. Run canonical on
+a clean clone of the final runtime SHA after affected-source qualification.
 
 Remaining owner requirements, in this same active list:
 
@@ -1215,7 +1217,7 @@ Remaining owner requirements, in this same active list:
   a stale semantic/input lease. The installed Weather content matches source,
   but installed Dashboard Music and Perimeter bytes differ; no owner installation,
   reload or preference change was performed by this repair.
-- [ ] Add persistent images to generic Quick Notes (paste/import and visible
+- [x] Add persistent images to generic Quick Notes (paste/import and visible
   preview), retaining existing note/editor/tab autosave. Optional **Hadalird**
   owns Obsidian attachment placement/export, using the vault's configured auto
   attachment location. Transfer referenced images with notes, preserve originals
@@ -1451,3 +1453,56 @@ connected, even when MPD `status.error` reported a decoder failure.
   queue mutation race, codec/output capabilities and audible playback
   without altering music files, queue or output routing during tests.
   A DISPLAYED decoder error is a diagnosis surface, not a codec fix.
+
+### 2026-10-10 — Continued owner follow-ups: Weather and Quick Notes images
+
+The maintainer explicitly resumed all Hadalis work. The earlier local resume
+automation was deleted on the stop request; it was not restarted on resumption.
+The established five-hour-only below-3% checkpoint policy still applies to a
+future budget exhaustion. Keep Hadanion and unrelated native-authoring files
+untouched while completing the current Hadalis requirements.
+
+- **Weather qualification:** `test-weather-popup-handoff-runtime.py` exercises
+  actual ClockCalendarPopup and WeatherPopup with stable slots, pyramid motion,
+  source/body pointer ownership and connection input on top/bottom/left/right.
+  Rapid hover reversal, content transfer and final exit passed: 1,148 sampled
+  geometry states in `/tmp/hadalis-weather-handoff-bounded-20261010.log`.
+  Weather production code was unchanged by this test; do not claim a new
+  source fix or owner-session visual PASS. Early fixture attempts lacked
+  unfocused frame synchronization and used an exit point inside a side popup;
+  those are not authoritative product RED receipts. The corrected workload
+  preserves the owner's non-focus debug policy. The video overlap gate remains
+  open until installation identity and first/repeated visual handoff agree.
+- **Hadalis `add29d6f8`:** shared Notepad paste, Ctrl+V and context-menu Paste
+  route binary images through a bounded helper; image import and a virtualized
+  preview strip are shared by Quick Notes hosts. Save original image bytes in
+  the state attachment store and persist local Markdown links through the
+  existing note autosave. Resolve asynchronous receipts against the original
+  note ID; selection replacement preserves changes made after the snapshot.
+  Generic Notes work without Hadalird. An older package reports an explicit
+  update requirement for image export.
+- **Hadalird `b0c975a7f40bdf531012be326bc728f5c014b696` (0.2.1):** optional
+  Obsidian owns image export for both capture and Notepad migration. Read the
+  chosen vault-config `app.json` attachment location (vault root, current note
+  folder, a subfolder or specified vault folder), copy and verify bytes, replace
+  source links with vault-relative links, preserve collisions and all drafts.
+  The folder behavior follows [Obsidian attachment settings](https://obsidian.md/help/attachments).
+  Package installation remains opt-in; no owner vault/hardware state changed.
+- **Focused receipts:** six synthetic Core filesystem/clipboard tests, eight
+  optional image-export tests and nine existing Zettelkasten tests passed.
+  Actual shared Notes QML preview/import, delayed tab-switch receipt, selection,
+  saved restart and existing Notes/Timers pin tests passed. The actual optional
+  worker and Core facade captured one synthetic image into a custom-config
+  Unicode vault and preserved the source/draft. Logs:
+  `/tmp/hadalis-notes-image-selection-20261010.log`,
+  `/tmp/hadalis-notes-pin-images-20261010.log`,
+  `/tmp/hadalird-note-image-host-20261010.log`.
+  Qt 6 parsed all 16 Hadalird QML files; scoped package installation contract
+  passed. Clipboard data in these new tests was injected, not read from the
+  owner's clipboard. Canonical and owner-native acceptance remain separate.
+
+Next: connected Recording controls using the existing field/RecorderStatus,
+then actual MPD queue/decoder qualification and the latest exact-SHA canonical
+validator. Continue strict-lossless parity and measured resource work; retain
+G0 `dc4d5ecfe118` as offline-only INCONCLUSIVE_CAPTURE_VARIANCE and make no
+CPU/RAM/GPU percentage claim from these functional tests.

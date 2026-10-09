@@ -104,21 +104,39 @@ Item {
 
             Item {
                 id: pages
+                objectName: "dashboardPages"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
+                // Editing must see the original workspace immediately, including
+                // entry during an already running page transition.
+                readonly property real slideProgress: root.editMode ? 0 : pagePosition
+                property real pagePosition: root.currentPage
+                Behavior on pagePosition {
+                    enabled: root.presentationActive && Appearance.animationsEnabled && !root.editMode
+                    NumberAnimation {
+                        duration: Appearance.animation.elementMove.duration
+                        easing.type: Easing.OutCubic
+                    }
+                }
                 DashboardCanvas {
                     id: dashboardCanvas
-                    anchors.fill: parent
-                    visible: root.currentPage === 0
+                    width: pages.width
+                    height: pages.height
+                    x: -pages.slideProgress * pages.width
+                    visible: pages.slideProgress < 1
+                    enabled: root.currentPage === 0
                     presentationActive: root.presentationActive && root.currentPage === 0
                     warmContent: root.warmContent
                     onRequestEventsDialog: event => root.openAgendaDialog(event)
                 }
                 Loader {
                     id: musicPage
-                    anchors.fill: parent
-                    visible: root.currentPage === 1
+                    width: pages.width
+                    height: pages.height
+                    x: (1 - pages.slideProgress) * pages.width
+                    visible: pages.slideProgress > 0
+                    enabled: root.currentPage === 1
                     active: root.musicEnabled && root.musicVisited && (root.presentationActive || root.warmContent)
                     sourceComponent: DashboardMusic {
                         backend: root.musicBackend ?? LocalMusic

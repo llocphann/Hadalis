@@ -32,6 +32,7 @@ Item {
     readonly property var tracks: backend.libraryTracks ?? []
     readonly property var genres: Library.genres(tracks)
     readonly property var folders: Library.roots(tracks)
+    readonly property bool hasLyrics: (backend.localLyricsLines ?? []).some(line => String(line.text ?? "").trim().length > 0)
     readonly property var results: {
         if (sourceMode === "queue") {
             const entries = (backend.activeQueue ?? []).map((track, index) => ({
@@ -250,10 +251,6 @@ Item {
             root.backend.cycleRepeatMode();
         }
     }
-    CavaProcess {
-        id: analyzer
-        active: root.presentationActive && (root.backend.playing ?? false) && (root.backend.hasCurrentTrack ?? false)
-    }
     component Pane: Rectangle {
         property string title: ""
         default property alias content: body.data
@@ -342,8 +339,9 @@ Item {
         id: horizontal
         objectName: "musicColumnsViewport"
         anchors.fill: parent
-        contentWidth: Math.max(width, 980)
+        contentWidth: Math.max(width, root.hasLyrics ? 980 : 760)
         contentHeight: height
+        onContentWidthChanged: contentX = Math.max(0, Math.min(contentX, contentWidth - width))
         flickableDirection: Flickable.HorizontalFlick
         boundsBehavior: Flickable.StopAtBounds
         clip: true
@@ -354,7 +352,7 @@ Item {
             width: horizontal.contentWidth
             height: horizontal.height
             spacing: 8
-            readonly property real unit: (width - spacing * 4) / 100
+            readonly property real unit: (width - spacing * (root.hasLyrics ? 4 : 3)) / (root.hasLyrics ? 100 : 79)
             Pane {
                 objectName: "musicGenres"
                 width: parent.unit * 13
@@ -581,12 +579,13 @@ Item {
                     PlayerControl {
                         Layout.fillWidth: true
                         Layout.fillHeight: false
-                        Layout.preferredHeight: Math.min(320, Math.max(180, parent.height - 52))
+                        Layout.preferredHeight: Math.min(280, Math.max(180, parent.height - musicEqualizer.implicitHeight - 48))
                         player: root.backend.mprisPlayer ?? null
                         playbackAdapter: playerAdapter
                         compactLayout: true
-                        visualizerPoints: analyzer.points
-                        visualizerMaxValue: Math.max(1, analyzer.normalizationCeiling)
+                        // The shared DSP panel below owns the only analyzer,
+                        // matching the Media Popup presentation.
+                        visualizerPoints: []
                         radius: root.abyss ? 18 : Appearance.rounding.normal
                     }
                     RowLayout {
@@ -605,14 +604,19 @@ Item {
                             onMoved: root.backend.setVolume(value)
                         }
                     }
-                    Item {
-                        Layout.fillHeight: true
+                    EqualizerPanel {
+                        id: musicEqualizer
+                        objectName: "musicEqualizer"
+                        Layout.fillWidth: true
+                        compactLayout: true
+                        active: root.presentationActive && root.visible
                     }
                 }
             }
             Pane {
                 objectName: "musicLyrics"
-                width: parent.unit * 21
+                visible: root.hasLyrics
+                width: root.hasLyrics ? parent.unit * 21 : 0
                 height: parent.height
                 title: Translation.tr("Lyrics")
                 ListView {
@@ -635,15 +639,6 @@ Item {
                         wrapMode: Text.WordWrap
                         color: index === ListView.view.currentIndex ? root.ink : root.mutedInk
                         font.weight: index === ListView.view.currentIndex ? Font.DemiBold : Font.Normal
-                    }
-                    StyledText {
-                        anchors.centerIn: parent
-                        width: parent.width - 12
-                        wrapMode: Text.WordWrap
-                        horizontalAlignment: Text.AlignHCenter
-                        color: root.mutedInk
-                        visible: (root.backend.localLyricsLines ?? []).length === 0
-                        text: Translation.tr("No local lyrics for this track")
                     }
                 }
             }

@@ -117,14 +117,12 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
-            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : // Niri must keep the hit-tested Screen Edge modules on a stable overlay
-                // layer even before their hover-owned popup is open. Otherwise
-                // entering an icon flips Top -> Overlay as liquid.popupsOpen
-                // changes and the compositor can invalidate pointer enter,
-                // causing the popup to retract before the hover is observed.
-                // Keep the original non-Niri policy and the native-dialog /
-                // polkit overrides; input remains limited to nativeInputMask.
-                (CompositorService.isNiri || window.editorOpen || wallpaperBody.open || (keyboardBody.open && (Config.options?.osk?.keepOnTop ?? false)) || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || companionExtension.editing || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
+            // Niri needs a stable overlay for hit-tested Screen Edge modules
+            // even before the first hover popup. Otherwise liquid.popupsOpen
+            // switches Top -> Overlay at pointer entry, which can invalidate
+            // hover just as the popup begins opening. Keep native-dialog/
+            // Polkit overrides and the existing shaped input mask.
+            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (CompositorService.isNiri || window.editorOpen || wallpaperBody.open || (keyboardBody.open && (Config.options?.osk?.keepOnTop ?? false)) || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || companionExtension.editing || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
             WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging || companionExtension.curiosityOwned
                 ? WlrKeyboardFocus.None
                 : (companionExtension.editing || window.editorOpen || (utility.presented && utility.ready) || liquid.popupExclusiveFocus || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (wallpaperBody.presented && wallpaperBody.ready) || (clipboardBody.presented && clipboardBody.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive

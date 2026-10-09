@@ -26,7 +26,10 @@ Text {
     
     font {
         hintingPreference: Font.PreferDefaultHinting
-        family: defaultFont
+        // Tooltip content can bind the font before defaultFont is initialized.
+        // Keep a valid family during construction; the live binding still
+        // selects the configured text/number font as soon as it is available.
+        family: root.defaultFont ?? Appearance.font.family.main ?? "Roboto Flex"
         pixelSize: Appearance?.font.pixelSize.small ?? 15
         variableAxes: shouldUseNumberFont ? ({}) : Appearance.font.variableAxes.main
         letterSpacing: (Appearance?.zzzEverywhere && !root.shouldUseNumberFont)

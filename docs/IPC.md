@@ -804,6 +804,27 @@ inir abyss cancelEdit
 ---
 
 
+### abyssHostProbe
+
+Diagnostic-only IPC in the Abyss critical host. A one-shot
+`remountPerimeter` destroys and recreates only the **production
+AbyssPerimeter.qml** LazyLoader subtree after 450 ms. It does **not**
+switch Waffle/Abyss, rewrite configuration, or restart the shell.
+Use only to isolate cold-boot native pointer delivery failures; there
+may be a short visual interruption.
+
+| Function | Description |
+|----------|-------------|
+| `status` | Report production perimeter Loader state |
+| `remountPerimeter` | Destroy/recreate only AbyssPerimeter, diagnostic only |
+
+```bash
+inir abyssHostProbe status
+inir abyssHostProbe remountPerimeter
+```
+
+---
+
 ### abyssHoverProbe
 
 Read-only diagnostic snapshots of **production Abyss Screen Edge hover**

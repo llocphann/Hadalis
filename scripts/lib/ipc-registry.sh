@@ -3,10 +3,11 @@
 # Do not edit manually.
 # Regenerate: python3 scripts/lib/generate-ipc-registry.py
 # IPC.md metadata: docs/IPC.md
-# Targets: 63
+# Targets: 64
 
 declare -gA IPC_TARGET_DESC=(
   [abyss]="Edit the Abyss module layout on the focused output. The editor uses a draft: Done saves its changes; Cancel or Escape restores the saved layout. These methods apply while Abyss is active."
+  [abyssHostProbe]="Diagnostic-only IPC in the Abyss critical host. A one-shot \`remountPerimeter\` destroys and recreates only the **production AbyssPerimeter.qml** LazyLoader subtree after 450 ms. It does **not** switch Waffle/Abyss, rewrite configuration, or restart the shell. Use only to isolate cold-boot native pointer delivery failures; there may be a short visual interruption."
   [abyssHoverProbe]="Read-only diagnostic snapshots of **production Abyss Screen Edge hover** during cold start and after Waffle → Abyss. Contains module geometry, input regions and boolean popup/field lifecycle state. Does not move the pointer, toggle surfaces or change configuration. Loaded only when the Abyss critical host is active. For support investigations only."
   [ai]="Shared multi-provider AI service. It supports Gemini, OpenAI-compatible chat and Responses APIs, Mistral and Anthropic; live provider catalogs are normalized into capability-aware model records. Catalog visibility is separate from execution readiness, so public model lists remain browseable without pretending an API key exists. OpenCode Zen and Go resolve their current model lists and per-model API routes dynamically. Normal shell tools use typed actions and approval cards, while arbitrary commands are isolated in Advanced mode."
   [altSwitcher]="Alt+Tab window switcher. Works across workspaces, unlike some other implementations we won't name."
@@ -73,6 +74,7 @@ declare -gA IPC_TARGET_DESC=(
 
 declare -gA IPC_TARGET_FAMILY=(
   [abyss]="shared"
+  [abyssHostProbe]="shared"
   [abyssHoverProbe]="shared"
   [ai]="shared"
   [altSwitcher]="shared"
@@ -139,6 +141,7 @@ declare -gA IPC_TARGET_FAMILY=(
 
 declare -gA IPC_TARGET_FUNCTIONS=(
   [abyss]="editLayout cancelEdit"
+  [abyssHostProbe]="status remountPerimeter"
   [abyssHoverProbe]="snapshot swapMask remapWindow refreshMask"
   [ai]="ensureInitialized diagnose refreshCatalog catalog providers run runGet"
   [altSwitcher]="open close toggle next previous"
@@ -206,6 +209,8 @@ declare -gA IPC_TARGET_FUNCTIONS=(
 declare -gA IPC_FUNCTION_DESC=(
   ["abyss:editLayout"]="Open the Abyss module editor on the focused output"
   ["abyss:cancelEdit"]="Cancel editing and restore the saved layout"
+  ["abyssHostProbe:status"]="Report production perimeter Loader state"
+  ["abyssHostProbe:remountPerimeter"]="Destroy/recreate only AbyssPerimeter, diagnostic only"
   ["abyssHoverProbe:snapshot"]="Return the current per-output hover, input region and popup lifecycle state as JSON"
   ["abyssHoverProbe:swapMask"]="Toggle the normal input mask between the original shaped Region and an equivalent Region wrapper. Calling again restores the original identity; no full-output input interception."
   ["abyssHoverProbe:remapWindow"]="Briefly unmap/remap only the Abyss perimeter window (260 ms), preserving panel family and settings; visible flicker is possible. Diagnostic only."
@@ -535,12 +540,13 @@ bind "Ctrl+Alt+A" { spawn "inir" "wallpaperSelector" "openLauncher" "animated"; 
   [ytmusic]='bind "Mod+M+Space" { spawn "inir" "ytmusic" "playPause"; }'
 )
 
-IPC_ALL_TARGETS=(abyss abyssHoverProbe ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions hadalird hadanion keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wull wwidgets ytmusic zoom)
-IPC_SHARED_TARGETS=(abyss abyssHoverProbe ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector dashboard dev gamemode globalActions hadalird hadanion keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily region session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector wull ytmusic zoom)
+IPC_ALL_TARGETS=(abyss abyssHostProbe abyssHoverProbe ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions hadalird hadanion keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wull wwidgets ytmusic zoom)
+IPC_SHARED_TARGETS=(abyss abyssHostProbe abyssHoverProbe ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector dashboard dev gamemode globalActions hadalird hadanion keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily region session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector wull ytmusic zoom)
 IPC_II_TARGETS=()
 IPC_WAFFLE_TARGETS=(autostart customWidgets recordingOsd search wactionCenter waffleAltSwitcher wbar widgetpower wnotificationCenter wwidgets)
 
 declare -gA IPC_KEBAB_ALIASES=(
+  [abyss-host-probe]=abyssHostProbe
   [abyss-hover-probe]=abyssHoverProbe
   [alt-switcher]=altSwitcher
   [app-catalog]=appCatalog

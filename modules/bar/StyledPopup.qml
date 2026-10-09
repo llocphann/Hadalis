@@ -24,8 +24,69 @@ LazyLoader {
             if (ancestor.liquidController) return ancestor
         return null
     }
-    readonly property Item _liquidAnchor: liquidAnchor(hoverTarget)
+    // A fresh Loader can create the popup before the anchor's ancestor chain
+    // is attached to AbyssBarModule. Rescan when ancestor parents/controllers
+    // change; bounded cold-mount retries cover out-of-order QML completion.
+    property int _anchorTreeRevision: 0
+    readonly property Item _liquidAnchor: {
+        const revision = root._anchorTreeRevision
+        return root.liquidAnchor(root.hoverTarget)
+    }
     readonly property var _liquidController: embeddedHost ? null : _liquidAnchor?.liquidController ?? null
+    function refreshAnchorOwnership(): void {
+        root._anchorTreeRevision += 1
+        Qt.callLater(() => {
+            root.syncCompanionAnchor()
+            root.syncLiquidPresentation()
+            root._syncBarAutoHideLease()
+        })
+    }
+    function startColdAnchorResolution(): void {
+        if (!root.hoverTarget) return
+        anchorResolveRetry.remaining = 18
+        root.refreshAnchorOwnership()
+        if (!root._liquidController && !root.embeddedHost)
+            anchorResolveRetry.restart()
+    }
+    property QtObject _anchorTargetConnections: Connections {
+        target: root.hoverTarget
+        ignoreUnknownSignals: true
+        function onParentChanged() { root.startColdAnchorResolution() }
+        function onLiquidControllerChanged() { root.refreshAnchorOwnership() }
+    }
+    property QtObject _anchorParentConnections: Connections {
+        target: root.hoverTarget?.parent ?? null
+        ignoreUnknownSignals: true
+        function onParentChanged() { root.startColdAnchorResolution() }
+        function onLiquidControllerChanged() { root.refreshAnchorOwnership() }
+    }
+    property QtObject _anchorGrandparentConnections: Connections {
+        target: root.hoverTarget?.parent?.parent ?? null
+        ignoreUnknownSignals: true
+        function onParentChanged() { root.startColdAnchorResolution() }
+        function onLiquidControllerChanged() { root.refreshAnchorOwnership() }
+    }
+    property QtObject _anchorOwnerConnections: Connections {
+        target: root._liquidAnchor
+        ignoreUnknownSignals: true
+        function onParentChanged() { root.refreshAnchorOwnership() }
+        function onLiquidControllerChanged() { root.refreshAnchorOwnership() }
+    }
+    property QtObject _anchorResolveTimer: Timer {
+        id: anchorResolveRetry
+        interval: 60
+        repeat: true
+        running: false
+        property int remaining: 18
+        onTriggered: {
+            if (!root.hoverTarget || root._liquidController || remaining <= 0) {
+                stop()
+                return
+            }
+            remaining--
+            root.refreshAnchorOwnership()
+        }
+    }
     property var _hostedController: null
     property bool _liquidDismissed: false
     property bool _liquidSemanticHold: false
@@ -53,7 +114,10 @@ LazyLoader {
     function releaseCompanion(owner): void {
         if (companionLease === owner) companionLease = null
     }
-    on_AnchorReadyChanged: if (!_anchorReady) companionLease = null
+    on_AnchorReadyChanged: {
+        if (!_anchorReady) companionLease = null
+        else if (!root._liquidController) root.startColdAnchorResolution()
+    }
     readonly property bool presentationActive: embeddedHost ? embeddedHost.visible
         : _liquidController ? _anchorReady && _liquidController.presented
             && (requestedVisible || _lingerVisible) : active
@@ -79,7 +143,11 @@ LazyLoader {
         target: root
         function onPresentationActiveChanged() { root.syncLiquidPresentation(); root._syncBarAutoHideLease() }
         function onContentItemChanged() { root.syncLiquidPresentation() }
-        function on_LiquidControllerChanged() { root.syncLiquidPresentation() }
+        function on_LiquidControllerChanged() {
+            if (root._liquidController) anchorResolveRetry.stop()
+            root.syncCompanionAnchor()
+            root.syncLiquidPresentation()
+        }
     }
     function syncEmbeddedContent(): void {
         if (!embeddedHost || !contentItem) return
@@ -198,8 +266,10 @@ LazyLoader {
     // screen selection and geometry attached to the actual source Item mirrors the
     // layer-surface model used by edge shells: a full-output presentation window
     // with a shape-aware input region, driven by a control already on that output.
-    readonly property var _anchorWindow: root.hoverTarget
-        ? root.hoverTarget.QsWindow.window : null
+    readonly property var _anchorWindow: {
+        const revision = root._anchorTreeRevision
+        return root.hoverTarget ? root.hoverTarget.QsWindow.window : null
+    }
     readonly property var _anchorScreen: root._anchorWindow
         ? root._anchorWindow.screen : null
     readonly property bool _anchorReady: root.hoverTarget !== null
@@ -218,7 +288,13 @@ LazyLoader {
         anchors.fill: parent
         enabled: root.hoverActivates && root._anchorReady
         readonly property bool hovered: sourceHover.hovered
-        HoverHandler { id: sourceHover }
+        HoverHandler {
+            id: sourceHover
+            onHoveredChanged: {
+                if (hovered && !root._liquidController)
+                    root.refreshAnchorOwnership()
+            }
+        }
     }
 
     // Keep the loader resident for the reverse morph. `requestedVisible` is the
@@ -286,6 +362,8 @@ LazyLoader {
         root.offsetScale = 1
     }
     onHoverTargetChanged: {
+        anchorResolveRetry.stop()
+        if (root.hoverTarget) Qt.callLater(root.startColdAnchorResolution)
         root._liquidDismissed = false
         root._liquidSemanticHold = false
         root._bodyHovered = false
@@ -346,6 +424,7 @@ LazyLoader {
 
     onRequestedVisibleChanged: root._syncRequestedVisibility()
     Component.onCompleted: {
+        Qt.callLater(root.startColdAnchorResolution)
         root.syncCompanionAnchor()
         root.syncEmbeddedContent()
         root._barPopupHoverLeaseId = GlobalStates.allocateBarPopupHoverLease()
@@ -354,6 +433,7 @@ LazyLoader {
         root.syncLiquidPresentation()
     }
     Component.onDestruction: {
+        anchorResolveRetry.stop()
         if (root._companionAnchor?.unregisterCompanionPopup)
             root._companionAnchor.unregisterCompanionPopup(root)
         if (root._hostedController) root._hostedController.releasePopup(root, false)

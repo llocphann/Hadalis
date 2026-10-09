@@ -716,3 +716,32 @@ still require clicks. Git checkout freshness does not guarantee the synced
   StyledPopup `_anchorReady` / `requestedVisible` /
   `presentationActive`, and `liquid.popupSlots`, without assuming
   Hadalird caused a pointer-input failure.
+
+## 2026-10-09 — Cold-start Abyss hover differs from Waffle → Abyss remount
+
+**Owner observation:** after installing/updating Hadalis, initial Abyss module
+hover does not show popups; switching **Abyss → Waffle → Abyss** restores
+hover for every module. This is a more discriminating lifecycle clue than
+the previous standalone pointer/layer tests; neither Hadalird nor input
+mask has been proven responsible.
+
+- [x] In `StyledPopup.qml`, force owner/window anchor rediscovery on
+  hoverTarget/ancestor reparenting or controller changes, and during a
+  **bounded 18×60 ms cold-mount window**; never poll permanently.
+  Read-only derived `_liquidAnchor` and `_anchorWindow` now depend on an
+  explicit hierarchy generation. Keep existing popup slots, focus behavior,
+  click/hover rules and other compositor policy; no additional popup owner.
+- [x] Add source contract and **private Niri pointer test** that creates
+  StyledPopup before attachment to an Abyss-like parent, then mounts its
+  parent/controller, verifies hover without a click, removes/restores
+  controller like a family switch, and repeats open/close.
+- [ ] Exact-source CI and native private Niri run; inspect failures rather
+  than interpreting static token checks as end-to-end coverage.
+- [ ] **Owner real desktop:** compare initial cold Abyss boot hover to
+  Waffle→Abyss remount at the same installed SHA. Capture `_anchorReady`,
+  `_liquidAnchor`, `_liquidController`, `requestedVisible`,
+  `presentationActive`, `bar.inputRegions`, and `liquid.popupSlots`
+  only if symptoms persist. Check unmodified input click-through, Weather
+  no Sidebar Right, and hover dismissal on losing focus.
+- [ ] Do not promote to `stable` or claim root cause proven until the
+  owner reproduces a PASS on a fresh shell start.

@@ -694,6 +694,23 @@ ContentPage {
             }
 
             ContentSubsection {
+                title: Translation.tr("Active window")
+                visible: !root.isVertical
+
+                ConfigSpinBox {
+                    icon: "width_normal"
+                    text: Translation.tr("Active window max width (px)")
+                    value: Config.options?.bar?.activeWindow?.width ?? 220
+                    from: 120
+                    to: 420
+                    stepSize: 10
+                    enabled: root.abyssContent || (Config.options?.bar?.modules?.activeWindow ?? true)
+                    opacity: enabled ? 1 : 0.5
+                    onValueChanged: Config.setNestedValue("bar.activeWindow.width", value)
+                }
+            }
+
+            ContentSubsection {
                 title: Translation.tr("Media")
                 visible: !root.isVertical
 

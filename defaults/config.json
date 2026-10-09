@@ -800,7 +800,8 @@
     },
     "bar": {
         "activeWindow": {
-            "showTitle": true
+            "showTitle": true,
+            "width": 220
         },
         "autoHide": {
             "enable": false,

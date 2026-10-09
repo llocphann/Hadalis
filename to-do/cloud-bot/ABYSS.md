@@ -1398,3 +1398,35 @@ Hadalis `dev` repair scope only (Hadanion and stable untouched):
   idempotent reinstall and restored Settings page, including any standalone
   or Waffle Settings host variants. Do not claim native acceptance based
   solely on offline checks.
+
+
+### 2026-10-10 — Hadalird package/helper state reconciliation
+
+The owner confirmed the system-helper UI displayed **ready** and offered
+`Remove system helpers` before the Settings simplification. This screenshot
+is status evidence; it does not by itself prove native Polkit layering,
+hardware behavior, individual file ownership or per-operation rollback.
+
+Continuation after `3729ca5a5`:
+- [x] Add a read-only `system-status` operation to the Hadalis manager,
+  combining independent trusted gateway availability and helper status.
+  Handle systems where a full distro package owns the gateway but the
+  standalone Arch package does not exist; non-Arch package-query failure
+  does not break the passive helper status.
+- [x] Refresh the local status once on Hadalis service startup, from the
+  compact Settings **Refresh** action and after any completed/failed/
+  cancelled privileged operation; never infer final state from a missing
+  receipt or require the user to retry an indeterminate installation.
+  The status collector ignores results while an explicit package manager
+  action is busy, preventing an old read from overwriting the new state.
+- [x] Make the QML operation deadline exceed the maximum serialized
+  gateway build/authorization and helper-authorization budgets; do not
+  label an authorized second stage timed out while the child continues.
+  Focused synthetic test covers normal and full-package-provisioner
+  discovery, non-Arch gateway query, startup status wiring, and absence
+  of implicit privileged installs.
+- [ ] Owner-native Niri/Quickshell confirmation that Polkit appears above
+  all Settings presentations and returns focus after success/cancel,
+  and that gateway/helper state is accurate after restart and rollback.
+- [ ] Canonical maintainer validation on an exact `dev` SHA with native
+  Qt/QML runtime parser and user-session acceptance remains separately open.

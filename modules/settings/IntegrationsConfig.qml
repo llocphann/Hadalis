@@ -67,7 +67,7 @@ ContentPage {
     enabled:!Hadalird.managerBusy
     onClicked:{
      Hadalird.refresh()
-     // Read-only status is available from the independent helper action.
+     Hadalird.refreshSystemStatus()
     }
    }
   }
@@ -96,11 +96,6 @@ ContentPage {
     enabled:!Hadalird.managerBusy
     buttonText:Hadalird.systemHelpersInstalled?"Reinstall helpers":"Install helpers"
     onClicked:hadalirdPackageSection.privilegedAction("helpers-ensure")
-   }
-   DialogButton {
-    enabled:!Hadalird.managerBusy
-    buttonText:"Check status"
-    onClicked:Hadalird.manage("helpers-status")
    }
    DialogButton {
     buttonText:hadalirdPackageSection.advanced?"Hide advanced":"Advanced"

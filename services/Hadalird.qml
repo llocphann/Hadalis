@@ -88,6 +88,12 @@ Singleton {
         loadFailed = false
         probe.running = true
     }
+    // Always reconcile installed helper and gateway state from the local
+    // system. No network, system writes, authentication or auto-install.
+    function refreshSystemStatus(): void {
+        if (systemStatusProbe.running || managerBusy) return
+        systemStatusProbe.running = true
+    }
     function status(): string {
         return JSON.stringify({available, enabled, diagnostic, version, sourceSha,
             managerBusy, authorizationPending, managerError, updateAvailable, canRollback,
@@ -121,6 +127,27 @@ Singleton {
                     root.available = result.available === true
                     root.canRollback = result.canRollback === true
                 } catch (_error) {root.available=false;root.diagnostic="invalid-package";root.canRollback=false}
+            }
+        }
+    }
+    Process {
+        id: systemStatusProbe
+        command: ["/usr/bin/python3",
+            Quickshell.shellPath("scripts/hadalird-manager.py"), "system-status",
+            "--shell-root", Quickshell.shellPath("")]
+        stdout: StdioCollector { id: systemStatusOutput }
+        onExited: (exitCode) => {
+            // Ignore a stale read while an explicit user action is underway.
+            if (root.managerBusy) return
+            try {
+                const report = JSON.parse(String(systemStatusOutput.text ?? "").trim())
+                if (exitCode !== 0 || report.ok !== true) return
+                root.systemProvisionerAvailable = report.systemProvisionerAvailable === true
+                root.systemHelpersInstalled = report.systemHelpersInstalled === true
+                root.gatewayPackageInstalled = report.gatewayPackageInstalled === true
+                root.systemHelpersDiagnostic = String(report.systemHelpersDiagnostic ?? "unchecked")
+            } catch (_error) {
+                // Retain last known status; an invalid receipt is not "absent".
             }
         }
     }
@@ -169,11 +196,17 @@ Singleton {
             if (["install","remove","rollback","helpers-install","helpers-remove",
                 "helpers-ensure","gateway-install","gateway-remove"].includes(root.managerAction))
                 Qt.callLater(root.refresh)
+            // An unsuccessful or cancelled Polkit operation may have changed
+            // just one stage. Re-read reality rather than assume success/fail.
+            Qt.callLater(root.refreshSystemStatus)
         }
     }
     Timer {
         id: managerDeadline
-        interval: 290000
+        // Chained gateway build/auth (<=260s) plus helper auth (<=80s)
+        // needs a deadline longer than the sum; otherwise the UI can claim
+        // failure while a privileged child transaction is still completing.
+        interval: 390000
         repeat: false
         onTriggered: {
             managerProcess.running = false
@@ -185,6 +218,7 @@ Singleton {
                 GlobalStates.settingsOverlayOpen = true
             }
             root.refresh()
+            Qt.callLater(root.refreshSystemStatus)
         }
     }
     IpcHandler {
@@ -192,5 +226,8 @@ Singleton {
         function refresh(): void {root.refresh()}
         function status(): string {return root.status()}
     }
-    Component.onCompleted: root.refresh()
+    Component.onCompleted: {
+        root.refresh()
+        root.refreshSystemStatus()
+    }
 }

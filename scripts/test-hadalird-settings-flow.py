@@ -64,7 +64,9 @@ for i, match in enumerate(flows):
     expected = ("Install Hadalird", "Reinstall helpers", "Check gateway")[i]
     assert expected in inside, f"Flow #{i + 1} changed roles or was emptied"
 
-assert '"Check status"' in qml
+assert '"Refresh"' in qml
+assert 'Hadalird.refreshSystemStatus()' in qml
+assert '"Check status"' not in qml
 assert '"Reinstall helpers"' in qml
 assert '"Advanced"' in qml
 assert not any(legacy in qml for legacy in (

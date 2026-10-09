@@ -282,6 +282,25 @@ def operate(action, home, shell_root, revision_fetch=latest_sha, archive_fetch=r
                       (home / "releases" / previous).is_dir())}
         if current:
             result["version"] = json.loads((home / "releases" / current / "manifest.json").read_text())["version"]
+        if action == "system-status":
+            # Startup/reconciliation is read-only. The full Arch shell can
+            # own the gateway independently of the standalone package, and
+            # non-Arch sessions must still report helper availability.
+            try:
+                gateway = gateway_call("gateway-status")
+            except (ValueError, OSError):
+                gateway = {"installed": False, "packageInstalled": False,
+                           "diagnostic": "standalone-package-unavailable"}
+            helper = system_call("helpers-status", None)
+            result.update(
+                gatewayPackageInstalled=gateway.get("packageInstalled") is True,
+                systemProvisionerAvailable=helper.get("provisionerAvailable") is True
+                    or gateway.get("installed") is True,
+                systemHelpersInstalled=helper.get("installed") is True,
+                systemHelpersDiagnostic=str(helper.get("diagnostic", "unchecked")),
+                gatewayDiagnostic=str(gateway.get("diagnostic", "not-installed")),
+                message="System status refreshed")
+            return result
         if action.startswith("gateway-"):
             if action not in ("gateway-status", "gateway-install", "gateway-remove"):
                 raise ValueError("Unsupported system gateway action")
@@ -401,7 +420,7 @@ def operate(action, home, shell_root, revision_fetch=latest_sha, archive_fetch=r
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("status", "check", "install", "remove", "rollback",
-                                                    "helpers-status", "helpers-install", "helpers-remove", "helpers-ensure",
+                                                    "system-status", "helpers-status", "helpers-install", "helpers-remove", "helpers-ensure",
                                                     "gateway-status", "gateway-install", "gateway-remove"))
     parser.add_argument("--shell-root", type=Path, default=ROOT)
     parser.add_argument("--data-home", type=Path, default=Path(

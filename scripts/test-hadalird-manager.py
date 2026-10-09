@@ -125,6 +125,22 @@ with tempfile.TemporaryDirectory(prefix="hadalird-manager-test-") as location:
     assert not run("gateway-remove")["gatewayPackageInstalled"]
     assert gateway_calls == ["gateway-status", "gateway-install", "gateway-install", "gateway-remove"]
     assert (home / "current").exists()  # gateway never touches the user package
+    # Read-only post-restart system reconciliation uses no codeload/network.
+    before = requested[:]
+    state = run("system-status")
+    assert not state["systemHelpersInstalled"]
+    assert state["systemProvisionerAvailable"]
+    assert not state["gatewayPackageInstalled"]
+    assert state["systemHelpersDiagnostic"] == "not-installed"
+    assert requested == before
+    # Full distro-owned provisioners work even without standalone gateway.
+    state = manager.operate(
+        "system-status", home, shell, fetch_sha, fetch_archive,
+        lambda action, package: {"installed": True,
+                                 "provisionerAvailable": True, "diagnostic": "ready"},
+        lambda action: (_ for _ in ()).throw(ValueError("not Arch")))
+    assert state["systemHelpersInstalled"] and state["systemProvisionerAvailable"]
+    assert not state["gatewayPackageInstalled"]
     assert not run("helpers-status")["systemHelpersInstalled"]
     helpers = run("helpers-install")
     assert helpers["systemHelpersInstalled"] and helpers["systemProvisionerAvailable"]

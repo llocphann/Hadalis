@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Real Dashboard page navigation and five columns with an owned MPD adapter."""
+"""Real Dashboard navigation, responsive Music columns and owned MPD adapter."""
 import json, os, tempfile
 from pathlib import Path
 from native_test_session import private_wayland, run_qs
@@ -107,6 +107,9 @@ ShellRoot {
    check(columns.every(column=>column && column.width>0 && column.height>0),"missing music column")
    check(waitForPolish(columns[0].parent,2000),"music Row layout pending")
    check(columns.every((column,index)=>index===0 || column.x>=columns[index-1].x+columns[index-1].width),"music columns overlap: "+JSON.stringify(columns.map(column=>({x:column.x,width:column.width,height:column.height,visible:column.visible,parent:String(column.parent),rowVisible:column.parent.visible,musicVisible:music.visible}))))
+   mouseMove(columns[0],columns[0].width/2,columns[0].height/2)
+   tryCompare(music,"queueExpanded",false,1500)
+   renderFrame(dashboard,"collapsed Queue frame pending")
    const eq=findChild(music,"musicEqualizer")
    check(eq && eq.active && eq.visible && eq.compactLayout,
       "Music tab must show the shared Dashboard EQ when Queue is collapsed")
@@ -127,7 +130,8 @@ ShellRoot {
    fake.localLyricsLines=[]
    renderFrame(dashboard,"three-column frame pending")
    check(!columns[3].visible && columns[3].width===0,"missing Lyrics left an empty column")
-   check(columns.slice(0,3).every((column,index)=>column.width>originalWidths[index]),"remaining columns did not expand")
+   check(columns[1].width>originalWidths[1] && columns[0].width>=200,"missing Lyrics did not expand Results while preserving a readable Library: "+JSON.stringify({music:music.width,row:columns[0].parent.width,before:originalWidths,after:columns.map(column=>column.width)}))
+   check(columns[2].width>=315 && columns[2].width<=381,"missing Lyrics violated the bounded Media/Queue control width")
    check(Math.abs(columns[2].x+columns[2].width-columns[0].parent.width)<1,"three-column row left unused space")
    fake.localLyricsLines=lyricLines
    renderFrame(dashboard,"restored Lyrics frame pending")
@@ -170,6 +174,10 @@ ShellRoot {
    mouseClick(folderTab)
    check(music.libraryTab==="folder" && !findChild(music,"musicGenres").visible
       && findChild(music,"musicFolders").visible,"Folder tab did not select the shared Library column")
+   const folderList=findChild(music,"musicFolderList")
+   tryVerify(()=>folderList.itemAtIndex(0)!==null,2000)
+   check(waitForPolish(folderList,2000),"Folder tab layout pending")
+   renderFrame(dashboard,"Folder tab frame pending")
    mouseClick(findChild(music,"musicFolderList").itemAtIndex(0))
    check(music.libraryTab==="folder","selecting a folder lost the Folder tab")
    check(music.results.length===2 && music.results[0].kind==="folder","folder did not show children and files")
@@ -249,7 +257,7 @@ ShellRoot {
    const settingsItem=settings.createObject(window.contentItem,{visible:false})
    check(settingsItem!==null,"Music settings failed to load")
    settingsItem.destroy()
-   console.info("DASHBOARD_MUSIC_RUNTIME_PASS native-page-dots five-columns genre folder child-folder actual-playback-click stable-canvas hidden-presentation edit-lock")
+   console.info("DASHBOARD_MUSIC_RUNTIME_PASS native-page-dots responsive-columns genre folder child-folder actual-playback-click stable-canvas hidden-presentation edit-lock")
   } catch(e) { console.error("DASHBOARD_MUSIC_RUNTIME_FAIL",e.message,e.stack) } Qt.quit() }
  }
  Timer { interval:100; running:true; onTriggered:test.runChecks() }
@@ -265,4 +273,4 @@ ShellRoot {
   result=run_qs(folder,env,timeout=40)
   if result.returncode or "DASHBOARD_MUSIC_RUNTIME_PASS" not in result.stdout or any(x in result.stdout for x in ["DASHBOARD_MUSIC_RUNTIME_FAIL","TypeError:","ReferenceError:","Binding loop","Unable to assign","Failed to load configuration"]):
    print(result.stdout);raise SystemExit(1)
-  print("DASHBOARD_MUSIC_RUNTIME_PASS native dots/wheel/panning, five columns, genre/folder/search, single/double/Ctrl actions, queue/playlist/volume, cold restore and edit lock")
+  print("DASHBOARD_MUSIC_RUNTIME_PASS native dots/wheel/panning, tabbed Library/Results/Media+Queue/optional Lyrics, genre/folder/search, single/double/Ctrl actions, queue/playlist/volume, cold restore and edit lock")

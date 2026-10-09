@@ -32,10 +32,8 @@ grep -Fq 'keyboardFocus: root.barMediaPopupVisible' "$media" \
     || fail 'Media expanded presentation must preserve focused connected-popup routing'
 grep -Fq 'StyledPopup {' "$weather_popup" \
     || fail 'Weather hover presentation must use StyledPopup'
-grep -Fq 'GlobalStates.sidebarRightRequestedWidget = "weather"' "$weather_bar" \
-    || fail 'Weather primary activation must target the right-sidebar Weather tab'
-grep -Fq 'GlobalStates.openSidebarRight' "$weather_bar" \
-    || fail 'Weather primary activation must use the supported right-sidebar route'
+python3 "$root/scripts/test-connected-route-lifecycle.py" \
+    || fail 'Weather connected actions or hover-owned route regressed'
 grep -Fq 'ConnectedSurfaceIrisEdgeSurface {' "$sidebar" \
     || fail 'left/right SidebarHost must use the shared iRiS edge adapter'
 grep -Fq 'readonly property real hiddenTranslateDistance:' "$sidebar" \

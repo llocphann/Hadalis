@@ -329,7 +329,7 @@ def main() -> None:
 
     require(media, "import qs.modules.mediaControls", "DashMedia.qml")
     require(media, "EqualizerPanel {", "DashMedia.qml")
-    require(media, "active: root.presentationActive && root.visible", "DashMedia.qml")
+    require(media, "active: root.showEqualizer && root.presentationActive && root.visible", "DashMedia.qml")
     require(canvas, "presentationActive: root.presentationActive", "DashboardCanvas.qml")
 
     for token in (

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Regression checks for supported connected-surface presentation lifecycle."""
 from pathlib import Path
+import json
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 failures: list[str] = []
@@ -13,6 +15,47 @@ def read(path: str) -> str:
 def check(condition: bool, message: str) -> None:
     if not condition:
         failures.append(message)
+
+
+def body(source: str, marker: str) -> str:
+    start = source.index("{", source.index(marker))
+    depth = 1
+    end = start + 1
+    while depth:
+        depth += (source[end] == "{") - (source[end] == "}")
+        end += 1
+    return source[start + 1:end - 1]
+
+
+def weather_actions(source: str) -> None:
+    # Execute the actual handlers. Pointer activation must stay with the hover
+    # popup, keyboard activation keeps its focus affordance, and right-click
+    # refresh retains exactly one explicit notification. No desktop is touched.
+    handlers = {
+        "primary": body(source, "function activatePrimary("),
+        "click": body(source, "onClicked:"),
+    }
+    program = r'''
+const assert=require('node:assert/strict');
+const handlers=HANDLERS;
+let focus=0,sidebar=0,refresh=0,notify=0;
+const root={_pointerFocused:true,forceActiveFocus(){focus++}};
+const GlobalStates={openSidebarRight(){sidebar++}};
+const Qt={LeftButton:1,RightButton:2,MiddleButton:4};
+const Weather={forceRefresh(){refresh++}};
+const Quickshell={execDetached(){notify++}};
+const Translation={tr:value=>value};
+new Function('root','GlobalStates',handlers.primary)(root,GlobalStates);
+assert.equal(root._pointerFocused,false);assert.equal(focus,1);assert.equal(sidebar,0);
+const click=new Function('mouse','root','GlobalStates','Qt','Weather','Quickshell','Translation',handlers.click);
+for(const button of [Qt.LeftButton,Qt.MiddleButton]){
+ click({button},root,GlobalStates,Qt,Weather,Quickshell,Translation);
+ assert.equal(sidebar,0);assert.equal(refresh,0);assert.equal(notify,0);
+}
+click({button:Qt.RightButton},root,GlobalStates,Qt,Weather,Quickshell,Translation);
+assert.equal(sidebar,0);assert.equal(refresh,1);assert.equal(notify,1);
+'''.replace("HANDLERS", json.dumps(handlers))
+    subprocess.run(["node", "-e", program], check=True)
 
 
 def main() -> None:
@@ -49,9 +92,7 @@ def main() -> None:
 
     check("StyledPopup {" in weather_popup,
           "Weather hover popup must use the supported StyledPopup shell")
-    check('GlobalStates.sidebarRightRequestedWidget = "weather"' in weather_bar
-          and "GlobalStates.openSidebarRight" in weather_bar,
-          "Weather primary activation must route to the right-sidebar Weather tab")
+    weather_actions(weather_bar)
     check("SurfaceRouteController" not in weather_bar
           and "SurfaceRouteController" not in weather_popup,
           "Normal Weather UX must not depend on retired broad perimeter routing")

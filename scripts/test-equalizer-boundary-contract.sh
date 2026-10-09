@@ -35,7 +35,7 @@ grep -Fq 'EqualizerPanel {' "$media_popup"     || fail 'Bar Media Popup does not
 grep -Fq 'import qs.modules.mediaControls' "$dashboard_media" || fail 'Dashboard Media does not import the shared media controls module'
 grep -Fq 'EqualizerPanel {' "$dashboard_media" || fail 'Dashboard Media does not host the shared DSP panel'
 grep -Fq 'property bool presentationActive:' "$dashboard_media" || fail 'Dashboard Media does not expose presentation lifecycle'
-grep -Fq 'active: root.presentationActive && root.visible' "$dashboard_media" || fail 'Dashboard DSP lifecycle is not presentation-gated'
+grep -Fq 'active: root.showEqualizer && root.presentationActive && root.visible' "$dashboard_media" || fail 'Dashboard DSP lifecycle is not gated by presentation and panel visibility'
 grep -Fq 'EqualizerService.registerConsumer()' "$equalizer_panel"     || fail 'DSP panel does not acquire the optional service on presentation'
 grep -Fq 'EqualizerService.unregisterConsumer()' "$equalizer_panel"     || fail 'DSP panel does not release the optional service on teardown'
 grep -Fq 'model: ["Flat", "Bass", "Treble", "Vocal",' "$equalizer_panel"     || fail 'Serpantinum DSP preset row is missing'

@@ -2379,11 +2379,15 @@ console.log('Onscreen keyboard palette and key shape: PASS (12 cases)');
         "AnimeScheduleView {}",
         'case "newspaper": return newsComp',
         "NewsView {}",
-        'case "library_music": return musicComp',
         "ToolsView {}",
         'case "build": return toolsComp',
     ):
         require(sidebar_left_content, token, "sidebarLeft/SidebarLeftContent.qml")
+
+    forbid(sidebar_left_content, 'case "library_music": return musicComp',
+           "sidebarLeft/SidebarLeftContent.qml")
+    require(dashboard_content, "DashboardMusic {",
+            "dashboard/DashboardContent.qml")
 
     # VerticalBarContent owns the supported ii vertical Hug chrome. Keep its
     # compositor blur and connected BarContextMenu behavior while ensuring

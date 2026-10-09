@@ -76,6 +76,19 @@ Item {
                 height: module.visible && module.enabled
                     ? Math.max(0, Math.ceil(module.y + module.height) - Math.floor(module.y)) : 0
             }
+            // Quickshell Region documents cases where geometry does not
+            // invalidate its compositor mask automatically. Explicitly
+            // announce source-bound changes, including same-pixel fractional
+            // moves. Do not broaden the region to the full-output host.
+            function invalidateInputRegion(): void {
+                if (inputRegion) inputRegion.changed()
+            }
+            onXChanged: invalidateInputRegion()
+            onYChanged: invalidateInputRegion()
+            onWidthChanged: invalidateInputRegion()
+            onHeightChanged: invalidateInputRegion()
+            onVisibleChanged: invalidateInputRegion()
+            onEnabledChanged: invalidateInputRegion()
             readonly property var geometry: root.layoutRecords.find(rec => rec.id === modelData)
             liquidController: root.liquidController
             attachedEdge: placement?.edge ?? "top"

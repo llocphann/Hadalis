@@ -685,3 +685,34 @@ nominal 34%/66% split applies when it does not clip transport controls.
 
 **Status:** source-fix staged on `dev`, not installed, not native-qualified,
 not eligible for stable promotion.
+
+## 2026-10-09 — Normal Screen Edge hover / Hadalird migration boundary
+
+**Evidence:** owner's Niri + Quickshell startup reports installed Git source
+`999455dc0`; Edit Abyss Layout exposes hover but normal Screen Edges
+still require clicks. Git checkout freshness does not guarantee the synced
+`~/.config/quickshell/inir` QML tree has identical files.
+
+**Changes on dev (not a claimed native fix):**
+- [x] Native Mask: replace `AbyssBar.qml` Region `item: module` with
+  bounded integer regions derived from actual `AbyssBarModule` x/y/width/
+  height. Keep each region zero sized when module is hidden or disabled
+  (Edit Mode already supplies independent handle regions). Invalidate
+  `Region.changed()` on source geometry/availability transitions.
+- [x] Add source and production QML guards for normal/edited hitbox
+  bounds, fractional outward rounding, module drag position updates,
+  and re-enabling normal mode without remounting.
+- [x] Hadalis optional settings wrapper
+  `modules/settings/ObsidianThemeSettings.qml` explicitly accepts
+  `settingsTaskSection`; fixes IntegrationsConfig page 38 instantiation
+  independent of whether Hadalird is installed. No Hadalird repo edits.
+- [ ] **Do not mark DONE** until owner Niri/Quickshell verifies hover
+  without clicking at Weather, Clock, Battery, Media, Resources, Launcher,
+  tray and Wi-Fi/Bluetooth, with normal/edit toggles, focus/pointer exit
+  dismissal, full-output transparency click-through, hot corners, multi-output
+  and 125% DPI. Collect exact installed QML SHA / source checkout comparison.
+- [ ] In case of continued failure, capture live normal/edit
+  `bar.inputRegions` sizes/positions, hoverTarget MouseArea.containsMouse,
+  StyledPopup `_anchorReady` / `requestedVisible` /
+  `presentationActive`, and `liquid.popupSlots`, without assuming
+  Hadalird caused a pointer-input failure.

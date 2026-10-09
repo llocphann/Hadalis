@@ -16,6 +16,12 @@ for token in (
     'Math.ceil(module.x + module.width) - Math.floor(module.x)',
     'Math.ceil(module.y + module.height) - Math.floor(module.y)',
     'module.visible && module.enabled',
+    'inputRegion.changed()',
+    'onXChanged: invalidateInputRegion()',
+    'onYChanged: invalidateInputRegion()',
+    'onWidthChanged: invalidateInputRegion()',
+    'onHeightChanged: invalidateInputRegion()',
+    'onEnabledChanged: invalidateInputRegion()',
     'root.inputRegions = root.inputRegions.concat([item.inputRegion])',
     'enabled: !root.editing',
 ):
@@ -26,4 +32,5 @@ assert 'Region { regions: window.presented && field.ready && editor.visible ? ed
 assert 'readonly property Region inputRegion: Region { item:handle;' in editor
 assert 'normal-mode pointer region must track real rendered module geometry' in runtime
 assert 'normal-mode input region must recover without recreating modules' in runtime
+assert 'moving a module must refresh the already-bound input Region' in runtime
 print('ABYSS_MODULE_POINTER_REGION_SOURCE_PASS dynamic geometry/edit mask boundaries')

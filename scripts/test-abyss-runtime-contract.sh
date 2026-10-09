@@ -101,6 +101,14 @@ ShellRoot {
                     clockRegion.width === Math.ceil(clock.x + clock.width) - Math.floor(clock.x) &&
                     clockRegion.height === Math.ceil(clock.y + clock.height) - Math.floor(clock.y),
                     "normal-mode pointer region must track real rendered module geometry")) return
+                // Move the module after the Region object is already in the
+                // parent mask; it must follow geometry without remounting.
+                const oldX = clockRegion.x
+                moduleLayer.draftPlacements = moduleLayer.draftPlacements.map(p =>
+                    p.id === "clock" ? Object.assign({}, p, {position:.62}) : p)
+                if (!check(clockRegion.x !== oldX
+                    && clockRegion.x === Math.floor(clock.x),
+                    "moving a module must refresh the already-bound input Region")) return
                 moduleLayer.editing = true
                 if (!check(moduleLayer.inputRegions.every(region => region.width === 0 && region.height === 0),
                     "Edit Mode must leave module hitboxes to the editor handles")) return

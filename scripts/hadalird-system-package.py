@@ -74,11 +74,16 @@ def expected_files(root):
     return out
 
 
-def system_state():
-    exists = {p: Path("/" + d).is_file() for d, _, _ in FILES.values()}
-    hashes = all(exists[d] and digest(Path("/" + d).read_bytes()) == sha
-                 for d, sha, _ in FILES.values())
-    owned = installed(PACKAGE)
+def system_state(root=Path("/"), package_checker=installed):
+    # Inspect the exact packaged destinations; do not use an unbound dict key.
+    # Crucially this runs AFTER a successful pacman -U and must return a
+    # receipt instead of crashing after a completed privileged action.
+    hashes = True
+    for destination, expected, _ in FILES.values():
+        path = root / destination
+        if path.is_symlink() or not path.is_file() or digest(path.read_bytes()) != expected:
+            hashes = False
+    owned = package_checker(PACKAGE)
     return {"packageInstalled": owned, "sourcePackageAvailable": True,
             "installed": owned and hashes,
             "diagnostic": "ready" if owned and hashes else

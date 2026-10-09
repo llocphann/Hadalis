@@ -206,4 +206,19 @@ with tempfile.TemporaryDirectory(prefix="hadalird-manager-test-") as location:
     except ValueError:
         pass
 
+# A child crash after a privileged transaction cannot disappear as an
+# unexplained generic receipt failure. Show the exit status and bounded cause.
+from unittest.mock import patch
+from types import SimpleNamespace
+for result, diagnostic in (
+    (SimpleNamespace(returncode=1, stdout="", stderr="NameError: name 'p' is not defined"), "NameError"),
+    (SimpleNamespace(returncode=0, stdout="garbage", stderr=""), "check gateway package status"),
+):
+    with patch.object(manager.subprocess, "run", return_value=result):
+        try:
+            manager.gateway_package("gateway-status")
+            raise AssertionError("Non-JSON gateway result was accepted")
+        except ValueError as error:
+            assert diagnostic in str(error), str(error)
+
 print("HADALIRD_MANAGER_PASS explicit install/update/rollback/remove, immutable SHA, package validation, no shell/privilege")

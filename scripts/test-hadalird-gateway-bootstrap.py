@@ -27,6 +27,25 @@ assert "$startdir/payload/" in module.PKGBUILD
 assert "pacman" not in module.PKGBUILD
 assert "curl" not in module.PKGBUILD
 
+# Source package can have been committed by pacman -U even if a later
+# status probe crashed; the reconciler must identify it without reinstallation.
+with tempfile.TemporaryDirectory(prefix="hadalis-gateway-state-") as fixture:
+    base = Path(fixture)
+    assert not module.system_state(base, lambda _: False)["installed"]
+    for destination, (content, _, _) in trusted.items():
+        path = base / destination
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    assert module.system_state(base, lambda _: True)["installed"]
+    assert module.system_state(base, lambda _: True)["diagnostic"] == "ready"
+    assert not module.system_state(base, lambda _: False)["installed"]
+    first = base / next(iter(trusted))
+    first.write_bytes(b"unexpected bytes")
+    assert module.system_state(base, lambda _: True)["diagnostic"] == "modified"
+    first.unlink()
+    first.symlink_to(ROOT / next(iter(module.FILES)))
+    assert module.system_state(base, lambda _: True)["diagnostic"] == "modified"
+
 with tempfile.TemporaryDirectory(prefix="hadalis-gateway-") as where:
     folder = Path(where)
     root = folder / "runtime"

@@ -246,8 +246,19 @@ def gateway_package(action):
         raise ValueError("Gateway package operation timed out; inspect package status before retrying") from error
     try:
         payload = json.loads(outcome.stdout.strip())
+        if not isinstance(payload, dict):
+            raise ValueError("Expected JSON object")
     except (ValueError, TypeError) as error:
-        raise ValueError("System gateway package did not return an operation receipt") from error
+        # When the child crashes (e.g. a Python NameError after pacman -U),
+        # propagate a bounded stderr diagnostic and exit status. The user
+        # must check installed package state before re-running the action.
+        detail = outcome.stderr.strip()[-700:]
+        status = "exit " + str(outcome.returncode)
+        if detail:
+            raise ValueError("Gateway operation returned no valid receipt (" +
+                             status + "): " + detail) from error
+        raise ValueError("Gateway operation returned no valid receipt (" +
+                         status + "); check gateway package status before retrying") from error
     if outcome.returncode != 0 or payload.get("ok") is not True:
         raise ValueError(str(payload.get("error") or "System gateway package operation failed"))
     return payload

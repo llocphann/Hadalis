@@ -95,14 +95,28 @@ ShellRoot {
    check(genreTab && folderTab && genreTab.parent===folderTab.parent,
       "Genre and Folders are not tab buttons in the same Library column")
    const playerPanel=findChild(music,"musicPlayer"), queuePanel=findChild(music,"musicQueuePanel")
-   check(playerPanel && queuePanel && playerPanel.parent===queuePanel.parent && playerPanel.height>0 && queuePanel.height>playerPanel.height,
-      "Queue must own more vertical space than Now playing / DSP")
+   check(playerPanel && queuePanel && playerPanel.parent===queuePanel.parent && playerPanel.height>queuePanel.height && queuePanel.height>0,
+      "Queue must be compact by default while the shared Dashboard media card is full size")
+   check(playerPanel.mediaBackend===fake && playerPanel.playbackAdapter!==null && playerPanel.showEqualizer,
+      "Music tab did not reuse DashMedia with the LocalMusic adapter")
    check(findChild(music,"musicQueueList")!==null,"secondary Queue list missing")
    check(columns.every(column=>column && column.width>0 && column.height>0),"missing music column")
    check(waitForPolish(columns[0].parent,2000),"music Row layout pending")
    check(columns.every((column,index)=>index===0 || column.x>=columns[index-1].x+columns[index-1].width),"music columns overlap: "+JSON.stringify(columns.map(column=>({x:column.x,width:column.width,height:column.height,visible:column.visible,parent:String(column.parent),rowVisible:column.parent.visible,musicVisible:music.visible}))))
    const eq=findChild(music,"musicEqualizer")
-   check(eq && eq.active && eq.compactLayout,"Music does not reuse the compact Media Popup DSP panel")
+   check(eq && eq.active && eq.visible && eq.compactLayout,
+      "Music tab must show the shared Dashboard EQ when Queue is collapsed")
+   const mediaHeight=playerPanel.height
+   mouseMove(queuePanel,queuePanel.width/2,Math.max(8,queuePanel.height/2))
+   tryCompare(music,"queueExpanded",true,1500)
+   check(!playerPanel.showEqualizer && !eq.visible && !eq.active,
+      "Queue hover did not hide/suspend the shared EQ/DSP panel")
+   tryVerify(()=>queuePanel.height>playerPanel.height && playerPanel.height<mediaHeight,2000)
+   mouseMove(columns[1],columns[1].width/2,columns[1].height/2)
+   tryCompare(music,"queueExpanded",false,1500)
+   check(playerPanel.showEqualizer && eq.visible && eq.active,
+      "Queue exit did not restore the shared Dashboard EQ")
+   tryVerify(()=>playerPanel.height>queuePanel.height,2000)
    const lyricLines=fake.localLyricsLines, originalWidths=columns.map(column=>column.width)
    fake.localLyricsLines=[]
    renderFrame(dashboard,"three-column frame pending")
@@ -174,6 +188,7 @@ ShellRoot {
    tryVerify(()=>root.captures>count,3000)
    mouseClick(findChild(music,"musicQueue"));tryCompare(list,"count",2,2000)
    check(findChild(music,"musicQueueList").count===2,"secondary Queue must remain populated independently of Results")
+   check(!music.queueExpanded,"Queue expansion must reset after pointer leaves")
    tryVerify(()=>list.itemAtIndex(0)!==null,2000)
    check(waitForPolish(list.contentItem,2000),"queue layout pending")
    mouseDoubleClickSequence(list.itemAtIndex(0));check(fake.queueIndex===0,"queue playback changed the queue order")

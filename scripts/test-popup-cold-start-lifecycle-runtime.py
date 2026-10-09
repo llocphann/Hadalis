@@ -85,6 +85,14 @@ ShellRoot {
         hoverTarget: anchor
         Rectangle { implicitWidth: 180; implicitHeight: 95; color: "#334d58" }
     }
+    Loader {
+        id: retiringPopup
+        active: false
+        sourceComponent: StyledPopup {
+            hoverTarget: anchor
+            Rectangle { implicitWidth: 90; implicitHeight: 50; color: "#334d58" }
+        }
+    }
     TestCase {
         id: test
         when: false
@@ -125,6 +133,22 @@ ShellRoot {
                       "re-mounted owner failed to restore hover")
                 outside()
                 check(root.clicks === 0, "hover regression used a click")
+                // Destroy the actual popup Loader in the same turn that queued
+                // cold-resolution and presentation callbacks. The surviving
+                // popup must retain its owner and those callbacks must cancel.
+                for (let cycle = 0; cycle < 24; cycle++) {
+                    retiringPopup.active = true
+                    check(retiringPopup.item !== null, "retiring popup did not load")
+                    retiringPopup.item.startColdAnchorResolution()
+                    retiringPopup.item.refreshAnchorOwnership()
+                    retiringPopup.item.alternativeVisibleCondition = true
+                    retiringPopup.active = false
+                    check(retiringPopup.item === null, "popup Loader retained its item")
+                }
+                wait(180)
+                render()
+                check(popup._liquidController === controller && controller.activePopup === null,
+                      "retired popup callbacks retained a stale presentation owner")
                 console.info("POPUP_COLD_MOUNT_PASS")
             } catch(error) {
                 console.error("POPUP_COLD_MOUNT_FAIL", error.message, error.stack)

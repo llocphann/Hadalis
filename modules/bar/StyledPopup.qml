@@ -10,6 +10,10 @@ import Quickshell.Wayland
 
 LazyLoader {
     id: root
+    // QML deferred closures can outlive a Loader's destroyed popup subtree.
+    // A disposed wrapper no longer exposes its methods; cancel before invoking
+    // any of them, including callbacks queued during ancestor replacement.
+    property bool _live: true
 
     property Item hoverTarget
     // Optional semantic kind used only when a mature popup is rehosted by the
@@ -34,15 +38,17 @@ LazyLoader {
     }
     readonly property var _liquidController: embeddedHost ? null : _liquidAnchor?.liquidController ?? null
     function refreshAnchorOwnership(): void {
+        if (!root || !root._live) return
         root._anchorTreeRevision += 1
         Qt.callLater(() => {
+            if (!root || !root._live) return
             root.syncCompanionAnchor()
             root.syncLiquidPresentation()
             root._syncBarAutoHideLease()
         })
     }
     function startColdAnchorResolution(): void {
-        if (!root.hoverTarget) return
+        if (!root || !root._live || !root.hoverTarget) return
         anchorResolveRetry.remaining = 18
         root.refreshAnchorOwnership()
         if (!root._liquidController && !root.embeddedHost)
@@ -417,7 +423,7 @@ LazyLoader {
             }
             root.offsetScale = 1
             Qt.callLater(() => {
-                if (root.requestedVisible)
+                if (root && root._live && root.requestedVisible)
                     root.offsetScale = 0
             })
             return
@@ -450,6 +456,7 @@ LazyLoader {
         root.syncLiquidPresentation()
     }
     Component.onDestruction: {
+        root._live = false
         anchorResolveRetry.stop()
         if (root._companionAnchor?.unregisterCompanionPopup)
             root._companionAnchor.unregisterCompanionPopup(root)

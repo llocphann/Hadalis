@@ -107,9 +107,15 @@ LazyLoader {
     property string attachmentEdgeOverride: ""
     property real attachmentThicknessOverride: -1
     property bool hoverActivates: true
-    // Mirrored from the actual Screen Edge module, independent of interactive
-    // descendants. The source + popup still release after pointer/focus exit.
-    property bool moduleHoverActive: false
+    // Read live module and source pointer state, never an event-copied latch:
+    // nested controls can consume hover transitions while still tracking their
+    // own MouseArea.containsMouse. All sources release when the pointer leaves.
+    readonly property bool moduleHoverActive: !!(
+        root._liquidAnchor?.hovered
+        || root._liquidAnchor?.feature?.containsMouse
+        || root._liquidAnchor?.feature?.hovered
+        || root.hoverTarget?.containsMouse
+        || root.hoverTarget?.hovered)
     property bool barAutoHideHoldEnabled: true
     property int _barPopupHoverLeaseId: 0
     property bool alternativeVisibleCondition: false
@@ -280,7 +286,6 @@ LazyLoader {
         root.offsetScale = 1
     }
     onHoverTargetChanged: {
-        root.moduleHoverActive = false
         root._liquidDismissed = false
         root._liquidSemanticHold = false
         root._bodyHovered = false

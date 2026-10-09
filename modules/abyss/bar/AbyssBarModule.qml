@@ -26,13 +26,9 @@ Item {
     property var companionPopup: null
     function registerCompanionPopup(popup): void {
         if (!companionPopup) companionPopup = popup
-        // The physical Screen Edge module is the pointer source. Descendant
-        // MouseAreas must not be able to starve its popup hover request.
-        popup.moduleHoverActive = root.hovered
     }
     function unregisterCompanionPopup(popup): void {
         if (companionPopup === popup) companionPopup = null
-        popup.moduleHoverActive = false
     }
     readonly property real naturalSpan: {
         const item = feature
@@ -49,11 +45,7 @@ Item {
     signal hoverState(string kind, bool hovered)
     HoverHandler {
         id: hoverTracker
-        onHoveredChanged: {
-            root.interaction(hovered ? .35 : -.15)
-            if (root.companionPopup)
-                root.companionPopup.moduleHoverActive = hovered
-        }
+        onHoveredChanged: root.interaction(hovered ? .35 : -.15)
     }
     PointHandler { acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton; onActiveChanged: root.interaction(active ? 1 : -.3) }
     Loader {

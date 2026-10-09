@@ -34,9 +34,11 @@ expect(pages, 'function handleEscape(): bool', 'dashboardCanvas.cancelEditMode()
 expect(dashboard, 'contentLoader.item?.handleEscape()', 'event.accepted = true')
 expect(header, 'id: uptime', 'anchors.left: parent.left',
        'id: actions', 'anchors.right: parent.right', 'orientation: Qt.Vertical')
-expect(module, 'popup.moduleHoverActive = root.hovered',
-       'root.companionPopup.moduleHoverActive = hovered')
-expect(popup, 'property bool moduleHoverActive: false',
+expect(module, 'readonly property bool hovered: hoverTracker.hovered',
+       'onHoveredChanged: root.interaction(hovered ? .35 : -.15)')
+expect(popup, 'readonly property bool moduleHoverActive: !!(',
+       'root._liquidAnchor?.hovered', 'root._liquidAnchor?.feature?.containsMouse',
+       'root.hoverTarget?.containsMouse',
        'root.moduleHoverActive || root._anchorHover.hovered || root.popupHovered')
 assert "openSidebarRight" not in weather, "Weather click still opens Sidebar Right"
 assert "sidebarRightRequestedWidget" not in weather, "Weather still routes to Sidebar Right"

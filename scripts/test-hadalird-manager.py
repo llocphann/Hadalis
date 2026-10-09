@@ -33,9 +33,24 @@ manifest = {
 
 
 def make_tar(entries):
+    """Simulate codeload tarballs, including explicit nested directory headers."""
     with io.BytesIO() as stream:
         with tarfile.open(fileobj=stream, mode="w:gz") as handle:
+            created = set()
+
+            def add_dir(directory):
+                if directory in created:
+                    return
+                info = tarfile.TarInfo("source/" + directory + "/")
+                info.type = tarfile.DIRTYPE
+                handle.addfile(info)
+                created.add(directory)
+
+            add_dir("")
             for name, data in entries:
+                parts = pathlib.PurePosixPath(name).parts
+                for index in range(1, len(parts)):
+                    add_dir("/".join(parts[:index]))
                 info = tarfile.TarInfo("source/" + name)
                 info.size = len(data)
                 handle.addfile(info, io.BytesIO(data))
@@ -147,6 +162,26 @@ with tempfile.TemporaryDirectory(prefix="hadalird-manager-test-") as location:
         raise AssertionError("Path traversal accepted")
     except ValueError:
         pass
+
+    # Empty directory members are legal codeload metadata; links in an
+    # allowlisted QML directory are not. This is independent of the user
+    # package lifecycle tests above, which include nested directory headers.
+    assert manager.unpack(make_tar([("modules/settings/Control.qml", b"safe")])) == {
+        "modules/settings/Control.qml": b"safe"
+    }
+    for link_type in (tarfile.SYMTYPE, tarfile.LNKTYPE):
+        with io.BytesIO() as stream:
+            with tarfile.open(fileobj=stream, mode="w:gz") as handle:
+                info = tarfile.TarInfo("source/modules/settings/linked.qml")
+                info.type = link_type
+                info.linkname = "Control.qml"
+                handle.addfile(info)
+            invalid_archive = stream.getvalue()
+        try:
+            manager.unpack(invalid_archive)
+            raise AssertionError("Nonregular package link accepted")
+        except ValueError:
+            pass
 
     (shell / "optional/hadalird").mkdir(parents=True)
     assert run('helpers-status')['systemProvisionerAvailable']

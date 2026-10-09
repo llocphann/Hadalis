@@ -88,6 +88,12 @@ def unpack(data):
             path = PurePosixPath(*parts[1:])
             if any(p in ("", ".", "..") for p in path.parts):
                 raise ValueError("Unsafe archive path")
+            # GitHub/codeload tarballs contain ordinary directory headers
+            # (e.g. modules/settings/). Directories carry no payload bytes;
+            # never attempt to copy them as regular files. Other nonregular
+            # members, including links and devices, remain forbidden.
+            if member.isdir():
+                continue
             name = path.as_posix()
             if name == "manifest.json":
                 if not member.isfile() or member.size > 65536:

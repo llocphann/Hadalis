@@ -1142,3 +1142,87 @@ rollback/uninstall on an installed compatible Hadalis and exact Hadalird SHA,
 disconnected/offline error handling, input/focus and retained-user-data proof.
 No automatic background update, no owner/hardware test, and no stable
 promotion should be claimed before those receipts are recorded.
+
+## 2026-10-10 — Owner video: Music, popup connections and remaining follow-up
+
+Owner reference: `/home/llocphann/Videos/2026-10-10_00.19.58.mp4`
+(24.9 seconds). Read the recording offline; private Niri tests stayed
+unfocused. **Overall NOT_COMPLETE; source fixes below are not owner desktop
+or audio-output acceptance.**
+
+- [x] `b373d0f4a`: Queue playback in Dashboard used nonexistent
+  `LocalMusic.playTrackAt`; both Results and the secondary Queue now use the
+  actual `jumpTo` API. The previous test double invented that missing method;
+  its corrected API reproduced the old TypeError and filtered-queue failure,
+  then passed the same navigation/queue/selection/volume workload after repair.
+  Receipts: `/tmp/hadalis-music-queue-api-{red,green}-20261010.log`.
+- [x] `4c1acc088`: Queue is bottom-anchored and follows one Player-height
+  animation clock, expanding upwards without moving its bottom or Player
+  origin. Genre/Folders support single, Ctrl toggle and Shift range selection;
+  unions retain track identity/order and avoid duplicate playback. Lightweight
+  browser state retains multi selection across UI unload/recreation and imports
+  older single-selection state. Pure model and real private Dashboard tests
+  passed, including opening/closing frame samples, both source lists, Play All,
+  empty selection and cold restoration. Receipt:
+  `/tmp/hadalis-music-bottom-multi-20261010.log`.
+- [x] `be8902259598d60f74945f19d0eb0b5d6adf2430`: Styled and generic Abyss
+  hover popups include their tangent-bounded connection to the owning inner
+  Edge in input/hover, measured from current clipped geometry. Other bodies
+  retain the content-only input contract. Four-rim private Qt pointer dwell,
+  handoff, exit, explicit dismissal, disabled source and click-only policy passed;
+  SDF/geometry and pyramid motion regressions passed. Source `4c1acc088` fails
+  the connection dwell oracle with equivalent module-clearance geometry.
+  Receipts: `/tmp/hadalis-popup-connection-green-20261010.log` and
+  `/tmp/hadalis-popup-connection-old-source-red-20261010.log`. The earlier
+  fixed-coordinate trial used an incorrect requested window extent; retain it
+  as harness evidence, not the old-source regression authority. Actual owner
+  mask/focus/click-through and multi-output acceptance remain open.
+
+Fresh sync preserved concurrent Hadalird package-management source `4737960f5`
+and merged it with these fixes as `9ebaa5e0c6e959850ecf1cf2989983251708a714`,
+then pushed `dev`. Its offline manager fixture passed; actual optional UI
+qualification is tracked separately. Hadanion `main` documentation commit
+`732136ef65bb3c84d9339207210c955759a85b76` was reviewed and pushed without
+staging its concurrent native-authoring edits. Hadalird source/package extraction
+remains qualified at `418683285d28c5b2a673ffc387f96047aca4306b`; do not redo it.
+
+Canonical validation launched on the clean exact pre-merge source **be8902259**:
+`/home/llocphann/.local/state/hadalis-validation/20261010/abyss-connection-canonical.log`
+and `/tmp/hadalis-current-canonical-20261010-console.log`. Until its final result
+is recorded it is **IN_PROGRESS**, not PASS. Even a PASS there does not qualify
+the later merged source; run canonical on a clean clone of the final runtime
+SHA after affected-source qualification.
+
+Remaining owner requirements, in this same active list:
+
+- [ ] Reproduce Clock/other module → Weather rapid hover and the overlapping
+  visual tail seen near 5–8 seconds. Use actual Weather content and the production
+  popup slots/pyramid/clips; distinguish overlapping close/reveal geometry from
+  a stale semantic/input lease. The installed Weather content matches source,
+  but installed Dashboard Music and Perimeter bytes differ; no owner installation,
+  reload or preference change was performed by this repair.
+- [ ] Add persistent images to generic Quick Notes (paste/import and visible
+  preview), retaining existing note/editor/tab autosave. Optional **Hadalird**
+  owns Obsidian attachment placement/export, using the vault's configured auto
+  attachment location. Transfer referenced images with notes, preserve originals
+  until successful completion and qualify Unicode/collisions/failure/restart with
+  synthetic notes/vaults; do not read personal note stores as test fixtures.
+- [ ] Rework Recording popup/controls for Abyss surface presentation, reusing
+  RecorderStatus and existing stop/audio/drag/auto-hide behavior with one owner.
+  Keep ii/Waffle supported. Test injected recording state; do not stop an owner
+  recording as a fixture action.
+- [ ] Qualify Music on actual MPD/audio. Read-only status observed stopped,
+  empty queue and enabled PipeWire output; MPD logs also contain FLAC decoding
+  failures and Bad song index. These are separate evidence from the repaired
+  QML API; do not claim audible playback PASS or alter music files. Surface
+  backend failures in Dashboard and diagnose queue/decoder races with a bounded
+  synthetic MPD fixture before another runtime repair.
+- [ ] Qualify the merged Hadalird Settings install/check/update/rollback/remove
+  lifecycle and exact final Core SHA; do not infer its native acceptance from
+  offline manager PASS or from be8902259's canonical run.
+
+Continue Hadanion's two canonical TODOs and strict-lossless work after these
+owner defects. Preserve `docs/evidence/megaqml/` and Hadanion's concurrent files;
+Companion stays disabled, G0 `dc4d5ecfe118` remains offline-only. Only the
+five-hour window remaining **below** 3% triggers checkpoint/push and a one-shot
+resume at that window's reset +3 minutes; weekly usage never triggers it.

@@ -305,10 +305,14 @@ def operate(action, home, shell_root, revision_fetch=latest_sha, archive_fetch=r
             if not package_dir.is_dir():
                 raise ValueError("Invalid Hadalird release")
             gateway = gateway_call("gateway-status")
-            if gateway.get("installed") is not True:
-                gateway = gateway_call("gateway-install")
+            provisioner = system_call("helpers-status", None)
+            # A full inir-shell Arch package can already own the trusted
+            # provisioner without installing the separate repo-copy package.
+            if provisioner.get("provisionerAvailable") is not True:
                 if gateway.get("installed") is not True:
-                    raise ValueError("System gateway installation was not confirmed")
+                    gateway = gateway_call("gateway-install")
+                    if gateway.get("installed") is not True:
+                        raise ValueError("System gateway installation was not confirmed")
             # Root gateway revalidates its audited allowlist and existing
             # ownership; never delete helpers merely to reinstall them.
             payload = system_call("helpers-install", package_dir)

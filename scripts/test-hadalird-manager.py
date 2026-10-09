@@ -147,7 +147,11 @@ with tempfile.TemporaryDirectory(prefix="hadalird-manager-test-") as location:
                 "diagnostic": "ready" if gateway_present[0] else "not-installed"}
 
     def helpers_ensure(action, package):
-        ensure_calls.append((action, str(package)))
+        ensure_calls.append((action, str(package) if package else None))
+        if action == "helpers-status":
+            return {"ok": True, "installed": False,
+                    "provisionerAvailable": gateway_present[0],
+                    "diagnostic": "ready" if gateway_present[0] else "not-installed"}
         assert action == "helpers-install"
         assert pathlib.Path(package) == (home / "current").resolve()
         return {"ok": True, "installed": True, "provisionerAvailable": True,
@@ -159,12 +163,13 @@ with tempfile.TemporaryDirectory(prefix="hadalird-manager-test-") as location:
 
     first = ensure()
     assert first["systemHelpersInstalled"] and first["gatewayPackageInstalled"]
-    assert ensure_calls == ["gateway-status", "gateway-install",
+    assert ensure_calls == ["gateway-status", ("helpers-status", None),
+                            "gateway-install",
                             ("helpers-install", str((home / "current").resolve()))]
     ensure_calls.clear()
     again = ensure()
     assert again["systemHelpersInstalled"]
-    assert ensure_calls == ["gateway-status",
+    assert ensure_calls == ["gateway-status", ("helpers-status", None),
                             ("helpers-install", str((home / "current").resolve()))]
     # A cancelled gateway auth must never fall through to root-helper install.
     gateway_present[0] = False
@@ -180,7 +185,23 @@ with tempfile.TemporaryDirectory(prefix="hadalird-manager-test-") as location:
         raise AssertionError("Cancelled gateway authorization accepted")
     except ValueError as error:
         assert "cancelled" in str(error)
-    assert ensure_calls == ["gateway-status", "gateway-install"]
+    assert ensure_calls == ["gateway-status", ("helpers-status", None),
+                            "gateway-install"]
+
+    # Existing trusted gateway owned by the full Arch shell must be reused
+    # without trying to install a conflicting standalone pacman package.
+    ensure_calls.clear()
+    def installed_system_gateway(action, package):
+        if action == "helpers-status":
+            ensure_calls.append(("helpers-status", None))
+            return {"ok": True, "installed": False, "provisionerAvailable": True}
+        return helpers_ensure(action, package)
+    out = manager.operate("helpers-ensure", home, shell, fetch_sha,
+                          fetch_archive, installed_system_gateway,
+                          lambda action: {"installed": False, "packageInstalled": False})
+    assert out["systemHelpersInstalled"]
+    assert ensure_calls == [("helpers-status", None),
+                            ("helpers-install", str((home / "current").resolve()))]
 
     upgrade = run("install")
     assert upgrade["installedSha"] == revision2 and upgrade["canRollback"]

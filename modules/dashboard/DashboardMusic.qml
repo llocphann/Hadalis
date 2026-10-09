@@ -430,7 +430,8 @@ Item {
                             Layout.fillWidth: true
                             text: Translation.tr("Genre")
                             outlined: false
-                            checkable: true
+                            // Keep tab highlight declarative; a button click must
+                            // not imperatively toggle away the bound checked state.
                             checked: root.libraryTab === "genre"
                             onClicked: root.switchLibraryTab("genre")
                         }
@@ -439,7 +440,8 @@ Item {
                             Layout.fillWidth: true
                             text: Translation.tr("Folders")
                             outlined: false
-                            checkable: true
+                            // Keep tab highlight declarative; a button click must
+                            // not imperatively toggle away the bound checked state.
                             checked: root.libraryTab === "folder"
                             onClicked: root.switchLibraryTab("folder")
                         }

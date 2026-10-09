@@ -1267,3 +1267,47 @@ resume at that window's reset +3 minutes; weekly usage never triggers it.
   cross-distro support claim before packaging/Polkit checks.
 - [ ] Continue unrelated outstanding Hadalis `dev` fixes and strict-lossless
   parity/measurement gates separately; leave Hadanion and `stable` untouched.
+
+
+## 2026-10-10 — Owner Hadalird installed: Obsidian wrapper width and CPU probes
+
+Owner screenshots confirm Hadalird **0.2.0** installed at source SHA
+`418683285d28c5b2a673ffc387f96047aca4306b` through
+Hadalis Settings; Niri/Quickshell no longer reports `page 38` load
+failure. This is real owner **package-install discovery evidence**, not
+endorsement of the settings UI or privileged helper functionality.
+
+- [x] Hadalis `bcbccaf43f2823217848ab3f26a3d5fcd22e24c7`: fix
+  `modules/settings/ObsidianThemeSettings.qml` wrapper missing
+  `QtQuick.Layouts` / `Layout.fillWidth: true`; in the Settings
+  `ColumnLayout` the wrapper could have zero width yet preserve a large
+  deferred card implicit height, consistent with the almost-empty owner
+  Obsidian panel. Add focused offline regression; focused GitHub Actions
+  workflow **PASS** at
+  https://github.com/llocphann/Hadalis/actions/runs/37979594747 .
+  Disable the **Install system helpers** button until the root-owned
+  Hadalis provisioner exists. The missing provisioner is not a missing
+  Hadalird user package, and source updates alone cannot install it.
+- [x] External owner Hadalird package `aa49d0556e62db5f7358db96abac9d1626e5135e`
+  resolves the owner log's repeated missing Intel pstate status reads on
+  a non-Intel driver; gate both Intel/AMD `FileView.path` reads by the
+  active CPU scaling driver, preserve passive-mode detection, unload on
+  driver change and preserve capability-clearing behavior. Exact
+  source-level contract GitHub Actions **PASS**:
+  https://github.com/llocphann/Hadalird/actions/runs/37979900616 .
+  The Hadalird package SHA changed; it must be updated through Hadalis'
+  own **Check updates → Update** UI to load the fix.
+- [ ] Owner Niri live acceptance: refresh Hadalis `dev` at least
+  `bcbccaf`, open **Settings → Integrations → Obsidian**, ensure
+  visible normal-width vault/path/theme controls and no blank/overlapping
+  panel; update Hadalird through Settings; confirm no repeated Intel
+  sysfs FileView warning after reload. Record exact Hadalis and
+  Hadalird SHAs. No vault writes, TLP/Thinkfan changes or automatic
+  helper provision requested.
+- [ ] The trusted root-owned Arch **system provisioner** remains absent
+  in this owner session. Resolve through an audited Hadalis distro
+  package install/upgrade with explicit authentication, and test
+  Polkit cancellation/consent. Never copy user-downloaded helpers as root
+  or equate an active preference toggle with working hardware access.
+- [ ] Unrelated `qt.svg` warning is not diagnosed by these logs; obtain
+  its source before applying unrelated asset changes.

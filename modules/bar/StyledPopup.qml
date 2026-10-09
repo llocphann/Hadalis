@@ -72,6 +72,20 @@ LazyLoader {
         function onParentChanged() { root.refreshAnchorOwnership() }
         function onLiquidControllerChanged() { root.refreshAnchorOwnership() }
     }
+    // Initial QsWindow can become available after the shell's first frame
+    // (observed boot log: shellEntryReady at T+1390ms). A one-second retry
+    // started at QML construction is not sufficient by itself.
+    property QtObject _shellReadinessConnections: Connections {
+        target: GlobalStates
+        function onShellEntryReadyChanged() {
+            if (GlobalStates.shellEntryReady && root.hoverTarget)
+                root.startColdAnchorResolution()
+        }
+        function onDeferredPanelsReadyChanged() {
+            if (GlobalStates.deferredPanelsReady && root.hoverTarget)
+                root.startColdAnchorResolution()
+        }
+    }
     property QtObject _anchorResolveTimer: Timer {
         id: anchorResolveRetry
         interval: 60

@@ -745,3 +745,9 @@ mask has been proven responsible.
   no Sidebar Right, and hover dismissal on losing focus.
 - [ ] Do not promote to `stable` or claim root cause proven until the
   owner reproduces a PASS on a fresh shell start.
+
+The owner boot log also shows `shellEntryReady` at **T+1390 ms**, longer
+than the bounded construction-time retry. Readiness signals now explicitly
+restart a bounded anchor rescan when `shellEntryReady` or
+`deferredPanelsReady` becomes true, covering asynchronous initial window
+attachment without any permanent idle polling.

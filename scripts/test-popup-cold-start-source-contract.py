@@ -14,6 +14,8 @@ for token in (
     "function on_LiquidControllerChanged()",
     "anchorResolveRetry.stop()",
     "remaining <= 0",
+    "onShellEntryReadyChanged()",
+    "onDeferredPanelsReadyChanged()",
     "Qt.callLater(root.startColdAnchorResolution)",
 ):
     assert token in popup, f"missing cold mount anchor dependency: {token}"

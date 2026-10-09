@@ -71,9 +71,23 @@ ShellRoot {
     }
 }
 QML
-if ! dbus-run-session -- env -u QS_CONFIG_NAME -u QS_CONFIG_PATH -u QS_MANIFEST QT_QPA_PLATFORM=wayland \
- XDG_CONFIG_HOME="$ipc_test_root/config" XDG_STATE_HOME="$ipc_test_root/state" XDG_CACHE_HOME="$ipc_test_root/cache" \
- timeout 15s qs -p "$ipc_test_root" --no-color > "$ipc_test_root/runtime.log" 2>&1; then
+status=0
+python3 - "$repo_root" "$ipc_test_root" > "$ipc_test_root/runtime.log" 2>&1 <<'PY' || status=$?
+import sys
+from pathlib import Path
+sys.path.insert(0,str(Path(sys.argv[1])/"scripts"))
+from native_test_session import private_wayland,run_qs
+folder=Path(sys.argv[2])
+with private_wayland(folder) as env:
+    if env is None:
+        print("SKIP: Abyss IPC corner requires private Niri")
+        raise SystemExit(77)
+    result=run_qs(folder,env,timeout=15)
+    print(result.stdout)
+    raise SystemExit(result.returncode)
+PY
+if [[ "$status" == 77 ]];then cat "$ipc_test_root/runtime.log";exit 0;fi
+if [[ "$status" != 0 ]];then
     cat "$ipc_test_root/runtime.log";exit 1
 fi
 if ! rg -q IPC_CORNER_PASS "$ipc_test_root/runtime.log" || rg -q 'IPC_CORNER_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign|is not a type|Type .* unavailable' "$ipc_test_root/runtime.log"; then

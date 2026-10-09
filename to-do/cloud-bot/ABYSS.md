@@ -1430,3 +1430,24 @@ Continuation after `3729ca5a5`:
   and that gateway/helper state is accurate after restart and rollback.
 - [ ] Canonical maintainer validation on an exact `dev` SHA with native
   Qt/QML runtime parser and user-session acceptance remains separately open.
+
+### 2026-10-10 — Dashboard MPD error visibility
+
+Owner's prior read-only MPD diagnostics mentioned a stopped/empty queue,
+FLAC decoder errors and `Bad song index`. The existing `LocalMusic`
+reducer erroneously cleared its `error` field whenever the socket was
+connected, even when MPD `status.error` reported a decoder failure.
+
+- [x] Feed the MPD server's `status.error` into the existing `LocalMusic.error`
+  signal, preserving its state and removing it only on a later healthy
+  status response. Dashboard Music displays a slim error banner using
+  that same backend and offers a read-only status retry, rather than
+  introducing a second MPD owner. Hidden/no-error UI retains the original
+  full-size Music columns.
+- [x] Add a simulated MPD error/healthy/disconnect fixture exercising the
+  real QML payload reducer via a JS VM, and a native Dashboard fixture with
+  injected decoder error, expected banner visibility and unchanged queue.
+- [ ] **Not audio/decoder acceptance:** Confirm the actual owner MPD logs,
+  queue mutation race, codec/output capabilities and audible playback
+  without altering music files, queue or output routing during tests.
+  A DISPLAYED decoder error is a diagnosis surface, not a codec fix.

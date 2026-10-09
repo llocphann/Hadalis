@@ -75,6 +75,9 @@ Item {
         sourceMode === "playlist" ? (selectedPlaylist?.tracks ?? []) :
         sourceMode === "queue" ? (backend.activeQueue ?? []) : tracks,
         results.map(entry => Library.key(entry)))
+    // MPD command/decoder/connection errors must be visible to the user.
+    // This is a read-only presentation of the existing LocalMusic backend.
+    readonly property string backendError: String(root.backend?.error ?? "").trim()
     readonly property bool abyss: Config.options?.panelFamily === "abyss"
     readonly property color ink: abyss ? (Appearance.m3colors.darkmode ? AbyssStyle.textColor : "#000000") : Appearance.colors.colOnSurface
     readonly property color mutedInk: abyss ? (Appearance.m3colors.darkmode ? AbyssStyle.textColorMuted : Qt.alpha("#000000", .66)) : Appearance.colors.colSubtext
@@ -446,10 +449,48 @@ Item {
         topPadding: 6
         bottomPadding: 6
     }
+    Rectangle {
+        id: backendErrorBar
+        objectName: "musicBackendError"
+        visible: root.presentationActive && root.backendError.length > 0
+        z: 2
+        anchors { top: parent.top; left: parent.left; right: parent.right }
+        height: visible ? 36 : 0
+        radius: 10
+        color: Qt.alpha(Appearance.colors.colError, 0.12)
+        border.width: 1
+        border.color: Qt.alpha(Appearance.colors.colError, 0.28)
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 10
+            anchors.rightMargin: 8
+            spacing: 7
+            MaterialSymbol {
+                text: "error_outline"
+                iconSize: 16
+                color: Appearance.colors.colError
+            }
+            StyledText {
+                Layout.fillWidth: true
+                text: "MPD: " + root.backendError
+                color: Appearance.colors.colError
+                elide: Text.ElideRight
+                maximumLineCount: 1
+            }
+            AbyssButton {
+                visible: typeof root.backend?.refreshStatus === "function"
+                text: Translation.tr("Retry")
+                outlined: true
+                onClicked: root.backend.refreshStatus()
+            }
+        }
+    }
     Flickable {
         id: horizontal
         objectName: "musicColumnsViewport"
         anchors.fill: parent
+        anchors.topMargin: backendErrorBar.visible ? backendErrorBar.height + 6 : 0
         contentWidth: Math.max(width, root.hasLyrics ? 1120 : 980)
         contentHeight: height
         onContentWidthChanged: contentX = Math.max(0, Math.min(contentX, contentWidth - width))

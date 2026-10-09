@@ -188,7 +188,6 @@ Singleton {
         }
 
         mpdConnected = true
-        error = ""
         MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)
         if (String(payload.musicRoot ?? "").length > 0)
             detectedLibraryFolder = String(payload.musicRoot)
@@ -202,6 +201,10 @@ Singleton {
             activeQueue = payload.queue
 
         const status = payload.status ?? {}
+        // MPD can remain connected while its decoder reports a failure.
+        // Keep the server's status error visible instead of treating a
+        // successful socket poll as successful audio decoding.
+        error = String(status.error ?? "").trim()
         mpdState = String(status.state ?? "stop")
         currentIndex = Number(status.song ?? -1)
         if (currentIndex >= 0)

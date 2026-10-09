@@ -1,0 +1,29 @@
+name: Dashboard MPD diagnostics
+
+on:
+  push:
+    paths:
+      - 'services/LocalMusic.qml'
+      - 'modules/dashboard/DashboardMusic.qml'
+      - 'scripts/test-dashboard-music-diagnostics.cjs'
+      - 'scripts/test-dashboard-music-runtime.py'
+      - '.github/workflows/dashboard-mpd-diagnostics.yml'
+  pull_request:
+    paths:
+      - 'services/LocalMusic.qml'
+      - 'modules/dashboard/DashboardMusic.qml'
+      - 'scripts/test-dashboard-music-diagnostics.cjs'
+      - 'scripts/test-dashboard-music-runtime.py'
+      - '.github/workflows/dashboard-mpd-diagnostics.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local-fixture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Exercise real MPD status reducer and Dashboard error contract
+        run: node scripts/test-dashboard-music-diagnostics.cjs

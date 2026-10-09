@@ -34,6 +34,7 @@ ShellRoot {
   property bool playing: false
   property bool hasCurrentTrack: false
   property bool available: true
+  property string error: ""
   property string currentTitle: "One"
   property string currentArtist: "Aqua"
   property var localLyricsLines: [{time:0,text:"A little rhythm beneath the water"},{time:10,text:"A quiet song for the evening"}]
@@ -290,6 +291,18 @@ ShellRoot {
    check(music.selectedGenres.length===2 && music.results.length===3,
       "cold UI did not restore Genre multi selection")
    check(waitForPolish(dots,2000),"restored page navigation layout pending");renderFrame(dashboard,"restored page frame pending")
+   // Backend errors are surfaced without altering playback queue, audio or
+   // browser state. A successful later status update hides the notification.
+   const musicQueueBefore=fake.activeQueue
+   fake.error="ACK [50@0] {play} Bad song index"
+   const backendError=findChild(music,"musicBackendError")
+   tryVerify(()=>backendError && backendError.visible,1000)
+   check(backendError.height>0 && backendError.width>0,
+      "MPD failure lacks a visible in-Dashboard banner")
+   check(fake.activeQueue===musicQueueBefore,"diagnostic mutated playback queue")
+   renderFrame(dashboard,"visible MPD error pending")
+   fake.error=""
+   tryCompare(backendError,"visible",false,1000)
    Config.setNestedValue("performance.reduceAnimations",false)
    dashboard.canvasController.beginEditMode();wait(60)
    check(dashboard.currentPage===0 && pages.slideProgress===0,"entering edit mode slid or offset the widget workspace: "+JSON.stringify({page:dashboard.currentPage,progress:pages.slideProgress,editing:dashboard.editMode}))

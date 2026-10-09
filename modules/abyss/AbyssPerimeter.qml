@@ -116,6 +116,24 @@ Scope {
     IpcHandler {
         target: "abyssHoverProbe"
         function snapshot(): string { return root.hoverProbeSnapshot() }
+        // One-shot diagnostic experiment: request a compositor input-mask
+        // rebuild without remounting Abyss or changing any configuration.
+        // Do not use as an automatic startup workaround: first determine
+        // whether this alone restores native pointer delivery.
+        function refreshMask(): string {
+            const results = []
+            for (const host of (root.outputHosts ?? [])) {
+                try {
+                    results.push(host?.hoverProbeRefreshMask
+                        ? host.hoverProbeRefreshMask()
+                        : { unavailable: true })
+                } catch (error) {
+                    results.push({ error: String(error) })
+                }
+            }
+            return JSON.stringify({ timestamp: Date.now(),
+                experimentalOneShot: true, outputs: results })
+        }
     }
     Component.onCompleted: {
         Notifications.ensureInitialized()
@@ -128,6 +146,28 @@ Scope {
             objectName:"abyssOutputHost_"+modelData.name
             required property var modelData
             readonly property string outputName: modelData?.name ?? ""
+            // Diagnostic only: force a one-shot Region.changed notification
+            // while preserving the same mapped PanelWindow, layer and family.
+            // This is not an automatically scheduled fix.
+            function hoverProbeRefreshMask(): var {
+                if (!window.presented || window.editorOpen || !field.ready
+                        || liquid.activeDialog || utility.open
+                        || window.overviewDragging)
+                    return { output: window.outputName,
+                        skipped: true, reason: "mask mode not normal idle" }
+                let count = 0
+                for (const region of (bar.inputRegions ?? [])) {
+                    if (region) {
+                        region.changed()
+                        count++
+                    }
+                }
+                nativeInputMask.changed()
+                return { output: window.outputName, skipped: false,
+                    regionSignals: count, barVisible: bar.visible,
+                    fieldReady: field.ready,
+                    popupOpen: liquid.popupsOpen }
+            }
             // This function is evaluated only by abyssHoverProbe.snapshot.
             // No perpetual logging, pointer handlers or geometry changes.
             function hoverProbeOutput(): var {

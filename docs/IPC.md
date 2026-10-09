@@ -815,9 +815,12 @@ the Abyss critical host is active. For support investigations only.
 | Function | Description |
 |----------|-------------|
 | `snapshot` | Return the current per-output hover, input region and popup lifecycle state as JSON |
+| `refreshMask` | **One-shot experiment**: emit Region.changed for the current input regions, without remount or family switch. Only runs in normal Abyss idle, otherwise skipped. This tests whether resubmitting the shaped input mask restores pointer hover; it is not an automatic startup fix. |
 
 ```bash
 inir abyssHoverProbe snapshot
+# Only for guided debugging, before the Waffle workaround:
+inir abyssHoverProbe refreshMask
 ```
 
 ---

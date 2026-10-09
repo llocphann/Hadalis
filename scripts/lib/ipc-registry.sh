@@ -139,7 +139,7 @@ declare -gA IPC_TARGET_FAMILY=(
 
 declare -gA IPC_TARGET_FUNCTIONS=(
   [abyss]="editLayout cancelEdit"
-  [abyssHoverProbe]="snapshot"
+  [abyssHoverProbe]="snapshot refreshMask"
   [ai]="ensureInitialized diagnose refreshCatalog catalog providers run runGet"
   [altSwitcher]="open close toggle next previous"
   [appCatalog]="refresh search install list"
@@ -207,6 +207,7 @@ declare -gA IPC_FUNCTION_DESC=(
   ["abyss:editLayout"]="Open the Abyss module editor on the focused output"
   ["abyss:cancelEdit"]="Cancel editing and restore the saved layout"
   ["abyssHoverProbe:snapshot"]="Return the current per-output hover, input region and popup lifecycle state as JSON"
+  ["abyssHoverProbe:refreshMask"]="One-shot Region.changed input-mask resubmission experiment (only in normal Abyss idle)"
   ["ai:ensureInitialized"]="Force-load models, provider catalogs and API keys"
   ["ai:diagnose"]="Dump current AI, catalog and tool state as JSON"
   ["ai:refreshCatalog"]="Refresh every live provider model catalog"

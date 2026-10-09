@@ -5,6 +5,10 @@ import qs.modules.common.widgets
 
 Item {
     id: root
+    // Settings navigation metadata belongs to this Hadalis-side wrapper.
+    // Without it IntegrationsConfig page 38 fails to instantiate before its
+    // optional Hadalird payload can be loaded or checked.
+    property string settingsTaskSection: ""
     implicitHeight: content.item ? content.item.implicitHeight : unavailable.implicitHeight
     Loader {
         id: content

@@ -10,6 +10,15 @@ import tempfile
 from native_test_session import run_qs
 
 ROOT = Path(__file__).resolve().parents[1]
+# The wrapper exposed by Hadalis must accept SettingsTaskSection metadata even
+# when the optional Hadalird package is absent: page creation precedes payload
+# discovery. Regression for IntegrationsConfig.qml:38 (owner desktop log).
+integration_page = (ROOT / "modules/settings/IntegrationsConfig.qml").read_text()
+obsidian_wrapper = (ROOT / "modules/settings/ObsidianThemeSettings.qml").read_text()
+assert 'ObsidianThemeSettings {settingsTaskSection:"obsidian"' in integration_page
+assert 'property string settingsTaskSection: ""' in obsidian_wrapper, (
+    "Integrations page passes settingsTaskSection to the Hadalis-owned wrapper"
+)
 spec = importlib.util.spec_from_file_location("discovery", ROOT / "scripts/hadalird-status.py")
 discovery = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(discovery)

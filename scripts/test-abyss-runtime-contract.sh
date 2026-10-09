@@ -92,7 +92,21 @@ ShellRoot {
                 if (!check(!body.ready,"reopen unload")) return
                 if (!check(moduleLayer.layoutRecords.length === 2 && moduleLayer.inputRegions.length === 2,"module-only input regions follow cross-edge placement")) return
                 if (!check(moduleLayer.deformations.length === 0,"resting modules do not dent the flat Screen Edge")) return
-                if (!check(moduleLayer.inputRegions.every(region => region.item.width <= 200 && region.item.height <= 100),"no fullscreen module input")) return
+                if (!check(moduleLayer.inputRegions.every(region => region.width > 0 && region.height > 0 && region.width <= 200 && region.height <= 100),"no fullscreen module input")) return
+                const clock = moduleLayer.itemForId("clock")
+                const clockRegion = moduleLayer.inputRegions[moduleLayer.moduleIds.indexOf("clock")]
+                if (!check(clock && clockRegion &&
+                    clockRegion.x === Math.floor(clock.x) &&
+                    clockRegion.y === Math.floor(clock.y) &&
+                    clockRegion.width === Math.ceil(clock.x + clock.width) - Math.floor(clock.x) &&
+                    clockRegion.height === Math.ceil(clock.y + clock.height) - Math.floor(clock.y),
+                    "normal-mode pointer region must track real rendered module geometry")) return
+                moduleLayer.editing = true
+                if (!check(moduleLayer.inputRegions.every(region => region.width === 0 && region.height === 0),
+                    "Edit Mode must leave module hitboxes to the editor handles")) return
+                moduleLayer.editing = false
+                if (!check(clockRegion.width > 0 && clockRegion.height > 0,
+                    "normal-mode input region must recover without recreating modules")) return
                 console.info("ABYSS_RUNTIME_PASS")
                 Qt.quit()
             }

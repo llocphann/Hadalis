@@ -29,7 +29,13 @@ assert "PolkitService.active ? WlrLayer.Top" in expression
 assert "(CompositorService.isNiri && window.presented) || window.editorOpen" in expression
 assert 'Region { regions: window.presented && field.ready && bar.visible ? bar.inputRegions : [] }' in perimeter
 assert 'mask: window.overviewDragging ? dragPassThrough : liquid.activeDialog ? dialogInputMask : utility.open ? utilityInputMask : nativeInputMask' in perimeter
-assert 'readonly property Region inputRegion: Region { item: module }' in bar
+assert 'readonly property Region inputRegion: Region {' in bar
+assert 'x: Math.floor(module.x)' in bar
+assert 'y: Math.floor(module.y)' in bar
+assert 'Math.ceil(module.x + module.width) - Math.floor(module.x)' in bar
+assert 'Math.ceil(module.y + module.height) - Math.floor(module.y)' in bar
+assert 'module.visible && module.enabled' in bar
+assert 'Region { item: module }' not in bar
 assert 'enabled: !root.editing' in bar
 assert "CompositorService.isNiri" in classic and "WlrLayer.Overlay" in classic
 assert 'root.moduleHoverActive || root._anchorHover.hovered || root.popupHovered' in popup

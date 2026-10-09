@@ -62,7 +62,20 @@ Item {
             required property string modelData
             required property int index
             readonly property var placement: root.placements.find(p=>p.id===modelData)
-            readonly property Region inputRegion: Region { item: module }
+            // The full-output PanelWindow and this bar share item coordinates.
+            // Bind the compositor hit box to the *computed* module geometry,
+            // not an item-backed Region whose transformed position may remain
+            // stale after dynamic placement/scale changes. Round outwards so
+            // fractional DPI never clips the first/last hover pixel.
+            // Edit Mode uses its own dedicated handle regions instead.
+            readonly property Region inputRegion: Region {
+                x: Math.floor(module.x)
+                y: Math.floor(module.y)
+                width: module.visible && module.enabled
+                    ? Math.max(0, Math.ceil(module.x + module.width) - Math.floor(module.x)) : 0
+                height: module.visible && module.enabled
+                    ? Math.max(0, Math.ceil(module.y + module.height) - Math.floor(module.y)) : 0
+            }
             readonly property var geometry: root.layoutRecords.find(rec => rec.id === modelData)
             liquidController: root.liquidController
             attachedEdge: placement?.edge ?? "top"

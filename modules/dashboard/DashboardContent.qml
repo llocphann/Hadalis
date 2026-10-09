@@ -161,6 +161,7 @@ Item {
                     anchors.fill: parent
                     z: 100
                     WheelHandler {
+                        id: dashboardVerticalWheel
                         target: null
                         orientation: Qt.Vertical
                         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
@@ -169,7 +170,7 @@ Item {
                             const delta = event.pixelDelta.y || event.angleDelta.y / 3
                             if (!delta) return
                             if (root.currentPage === 1 && musicPage.item) {
-                                const at = event.point.position
+                                const at = dashboardVerticalWheel.point.position
                                 const local = musicPage.item.mapFromItem(pages, at.x, at.y)
                                 if (!musicPage.item.acceptsPageWheel(local.x, local.y))
                                     return // Preserve vertical scrolling inside music lists.

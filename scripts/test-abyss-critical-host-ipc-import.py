@@ -17,4 +17,14 @@ assert "import Quickshell.Io" in imports, (
     "this blocks Abyss startup (IpcHandler is not a type)"
 )
 assert "import Quickshell" in imports
-print("PASS: Abyss critical host resolves IpcHandler via Quickshell.Io")
+assert "GlobalStates.deferredPanelsReady" in critical, (
+    "AbyssPerimeter cannot mount during Config.ready before deferred shell readiness"
+)
+assert "property bool perimeterInitialMountReady: false" in critical
+assert "interval: 150" in critical
+assert "&& !root.perimeterInitialMountReady" in critical
+assert "onTriggered: root.perimeterInitialMountReady = true" in critical
+assert "&& root.perimeterInitialMountReady" in critical
+assert "&& !root.diagnosticPerimeterUnmounted" in critical
+assert "source: \"../AbyssPerimeter.qml\"" in critical
+print("PASS: Abyss critical host IO imports and post-deferred perimeter mount gate")

@@ -11,6 +11,25 @@ Item {
     readonly property bool abyssBackgroundEnabled:
         Config.ready && (Config.options?.enabledPanels ?? []).includes("abyssBackground")
 
+    // Niri cold-start pointer contract: a perimeter constructed as soon as
+    // Config.ready can paint correctly while its initial native input path
+    // never delivers hover. The owner reproduced 0/16 hover at startup and
+    // recovered by *recreating only this subtree* after deferred readiness,
+    // without a family switch (2026-10-09 native evidence).
+    //
+    // Mount the actual production host once the shell's deferred services
+    // and panel surfaces have settled. This avoids a blind startup remount
+    // and does not change popup content, its geometry or shaped hitboxes.
+    property bool perimeterInitialMountReady: false
+    Timer {
+        id: perimeterInitialMountTimer
+        interval: 150
+        repeat: false
+        running: Config.ready && GlobalStates.deferredPanelsReady
+            && !root.perimeterInitialMountReady
+        onTriggered: root.perimeterInitialMountReady = true
+    }
+
     // Production-host lifecycle experiment: recreate Perimeter but leave
     // the shell, config and current panelFamily unchanged. Unlike toggling
     // PanelWindow.visible, setting LazyLoader.active=false destroys its QML
@@ -31,7 +50,8 @@ Item {
                 perimeterActive: perimeterLoader.active,
                 diagnosticUnmounted: root.diagnosticPerimeterUnmounted,
                 shellEntryReady: GlobalStates.shellEntryReady,
-                deferredPanelsReady: GlobalStates.deferredPanelsReady
+                deferredPanelsReady: GlobalStates.deferredPanelsReady,
+                initialMountReady: root.perimeterInitialMountReady
             })
         }
         function remountPerimeter(): string {
@@ -51,6 +71,7 @@ Item {
     LazyLoader {
         id: perimeterLoader
         active: Config.ready
+            && root.perimeterInitialMountReady
             && (Config.options?.enabledPanels ?? []).includes("abyssPerimeter")
             && !root.diagnosticPerimeterUnmounted
         source: "../AbyssPerimeter.qml"

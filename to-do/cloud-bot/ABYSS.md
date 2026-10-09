@@ -833,3 +833,33 @@ new source. No CPU/RAM/GPU/FPS percentage or visual parity claim is justified.
 
 Only five-hour remaining below 3% may stop work and schedule this thread
 after that window's reset +3 minutes. Weekly usage never triggers a timer.
+
+## 2026-10-09 — Native cold-start pointer loss narrowed to full AbyssPerimeter construction
+
+**Owner evidence:** `hadalis-abyss-perimeter-remount-20261009-212258.tar.gz`
+collected at exact `e8dab310f6145b3aa8a447f10c464b905fa8154b`.
+Installed QML matched source; before remount the 16 hover samples showed
+`barHover=false`, `fieldReady=true`, `barVisible=true`,
+`barInputRegionCount=12`. `abyssHostProbe.remountPerimeter` returned
+`skipped=false`, and the diagnostic critical-host Loader was re-created
+450 ms later with `shellEntryReady=true` and `deferredPanelsReady=true`.
+After remount, `barHover=true`, and owner confirmed popup was visible,
+**without switching to Waffle**.
+
+Previous owner-controlled experiments on the same class of failure:
+`Region.changed()`, equivalent `PanelWindow.mask` identity swap, and
+`PanelWindow.visible` unmap/remap did **not** restore hover. These
+experiments reject superficial mask refresh and simple visibility toggles;
+they do *not* prove a particular Quickshell/Niri internal defect.
+
+- [x] Source remedy on `dev`: gate initial production Perimeter Loader until
+  `GlobalStates.deferredPanelsReady` plus a one-shot 150 ms settle. Avoid
+  unnecessary destroy/recreate and preserve all current geometry/input masks.
+- [x] Source contract asserts post-deferred gate and critical IO import.
+- [ ] **Required live cold boot:** install exact SHA, restart into Abyss (do not
+  switch family), hover Clock/Weather; record `abyssHostProbe.status` and
+  `abyssHoverProbe.snapshot`. Repeat across a second clean restart.
+- [ ] If still broken, compare first mounted Perimeter native layer order to
+  re-created Perimeter, then test a native creation dependency in a full host
+  fixture. Do not claim a generic Wayland or Qt bug without tracing.
+- [ ] Do not call the hover bug DONE or promote `stable` before owner native PASS.

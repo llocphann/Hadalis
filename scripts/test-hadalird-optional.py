@@ -21,6 +21,16 @@ def package_at(path):
         target = path / filename
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text("import QtQuick\nItem {implicitHeight:32}\n")
+    (path / discovery.ENTRYPOINTS["tlpSettings"]).write_text('''
+import QtQuick
+Item {
+ objectName:"fixture-tlp-settings"
+ implicitHeight:32
+ property int selectedCategoryIndex:0
+ readonly property var navigationCategories:[{id:"processor"},{id:"devices"}]
+ function selectCategory(index){selectedCategoryIndex=index}
+}
+''')
     (path / "HadalisSession.qml").write_text('''
 import QtQuick
 Item {
@@ -93,7 +103,7 @@ ShellRoot {
  property var notes:Zettelkasten
  ObsidianTodoBackend {id:managed;active:true;vaultPath:"/not-owner-vault";notePath:"Todo.md"}
  DailyNoteTodoBackend {id:daily;active:true;vaultPath:"/not-owner-vault"}
- TlpPowerSettings {width:400;visible:false}
+ TlpPowerSettings {id:power;width:400;visible:false}
  ObsidianThemeSettings {width:400;visible:false}
  TestCase {
   id:test;when:false;optional:true
@@ -111,9 +121,18 @@ ShellRoot {
    }else{
     tryCompare(Hadalird,"available",true,4000)
     check(!Hadalird.enabled && Hadalird.session===null,"installed package enabled itself")
+    check(power.navigationCategories.length===0,"disabled settings retained package categories")
+    power.selectedCategoryIndex=1
     Config.setNestedValue("integrations.hadalird.tlp",true)
     tryVerify(()=>Hadalird.session!==null,2000)
     const owned=Hadalird.session
+    tryVerify(()=>power.navigationCategories.length===2,1000)
+    const page=findChild(power,"fixture-tlp-settings")
+    check(page!==null && page.selectedCategoryIndex===1,"deferred settings lost the selected category")
+    power.selectedCategoryIndex=0
+    tryCompare(page,"selectedCategoryIndex",0,1000)
+    page.selectCategory(1)
+    tryCompare(power,"selectedCategoryIndex",1,1000)
     tryCompare(TlpService,"currentLimit",42,1000)
     check(TlpSettingsService.categories[0].id==="battery-care" && TlpRuntimeCapabilities.values.MODE[0]==="auto","host lost reactive data")
     TlpService.apply();check(owned.operations===1,"charge action did not reach its sole owner")
@@ -125,6 +144,8 @@ ShellRoot {
     check(ThinkFanService.applyProfile("managed") && owned.operations===3,"fan action lost its owner")
     Config.setNestedValue("integrations.hadalird.tlp",false)
     tryCompare(TlpService,"available",false,1000)
+    tryVerify(()=>power.navigationCategories.length===0,1000)
+    tryVerify(()=>findChild(power,"fixture-tlp-settings")===null,1000)
     TlpService.apply();check(owned.operations===3,"disabled charge leaked an action")
     Config.setNestedValue("integrations.hadalird.thinkfan",false)
     tryVerify(()=>Hadalird.session===null,2000)

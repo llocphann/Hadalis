@@ -373,59 +373,80 @@ redesigns are recorded separately. No automation or timer was created.
 
 ## Maintainer additions and checkpoint — 2026-10-09
 
-The earlier completed source groups do not close the new requirements below.
+Earlier completed source groups do not close the new requirements below.
 
-- [x] Keep nested Niri debug windows unfocused unless a capture needs focus;
-  run only tests relevant to the changes being finished. `86d976a2c` adds the
-  window rule and an idempotent, state-based migration that preserves owner
-  overrides. Actual new-window readback retains the previous focused window.
+- [x] Source and live new-window readback: nested Niri debug windows stay
+  unfocused (`86d976a2c`). Run focused checks relevant to the affected product.
 - [ ] Extract TLP, Thinkfan and Obsidian into optional Hadalird packages.
-  Hadalird exists and its empty repository was cloned; extraction, optional
-  host adapters, installation and missing-package behavior are not implemented.
-- [ ] Complete the current Hadanion requirements in its canonical task files.
-  Hadanion owns Companion code after `56336cd18`; do not restore its former
-  implementation in Hadalis. At Hadanion `a8fa298a4c52849f91dc511f6dae15b2a08dfc19`,
-  the focused offline QML/local reply guards pass. This does not qualify live
-  model output, physical interaction or hardware resource measurements.
-- [ ] Move Local Music from Sidebar Left into a Dashboard page. Center page
-  dots between left actions and right uptime; support horizontal navigation.
-  Provide Genre, Folders, Results, Playback and Lyrics columns. Results start
-  empty and display either a selected genre or the selected folder's children.
-  Reuse the existing MPD owner and stop presentation work on the hidden page.
-- [ ] Apply the below-3% stop policy and resume scheduling as clarified by the
-  maintainer: timers may use only the 5-hour reset, delayed by 2–5 minutes.
-  Whether the stop threshold also includes the weekly window is awaiting the
-  optional clarification. Never consume the available reset credit implicitly.
+  Hadalird `e9922c53a261a9b47be7f521f6a64cff334dde27` is pushed on `main`:
+  disposable selected workers/settings, verified immutable user package and
+  separately requested privileged helpers. Native host tests use the actual
+  package entry and private vault/hardware fixtures. Hadalis `d10fc5f87` provides
+  bounded package discovery, default-off switches and typed reactive facades;
+  absent, invalid and disabled packages fail closed. Migration `e793a4f80`
+  retains explicitly selected old features and explicit new true/false choices
+  without installing packages or touching system state (49 cases pass).
+  `41bd19306` removes mandatory Arch helper/policy/schema installation and
+  destructive removal hooks; actual stable/git package functions and private
+  removal hooks pass. No optional integration has been deployed to the owner.
+  Remaining: remove duplicate core helpers/assets and obsolete explicit helper
+  targets, move implementation-specific coverage to Hadalird while retaining
+  host/interface coverage, and qualify final source/update/desktop behavior.
+- [ ] Complete current Hadanion requirements using its own canonical task files.
+  Companion source belongs to Hadanion, not Hadalis. Refetch `main` before work;
+  concurrent source changes exist. Offline guards are bounded evidence only.
+- [x] Source and focused validation: Local Music moves from Sidebar Left into a
+  lazy Dashboard page (`6abf56328350b5871f1c626b2752d5e25d658539`). Centered round
+  dots, native horizontal gestures, five columns, empty initial Results, genre
+  or folder children, queue search/play/removal, selection, playlists, shared
+  playback/volume, Lyrics and narrow panning are covered. Existing MPD settings
+  and enabled/disabled intent are preserved by migration 059; cold UI restores
+  lightweight browsing state and Edit Layout locks page switching.
+- [x] Policy clarified by the maintainer: ONLY five-hour remaining below 3%
+  stops work and schedules continuation after that window's reset +3 minutes.
+  Weekly usage never triggers this policy. Do not consume reset credits.
+  Five-hour readback reached 2% remaining: development and test jobs stopped.
+  A single continuation heartbeat was scheduled for **2026-10-09 12:28:09 GMT+7**,
+  exactly three minutes after that window's reset (12:25:09 GMT+7), and fired at
+  12:28:36. New five-hour readback is 100% remaining; work resumed. Timer ID:
+  `ti-p-t-c-hadalis-sau-reset-5-gi`. The weekly window was ignored.
 
-### Validation and unfinished working tree
+### Validation and deployment boundaries
 
-`991e69e72` preserves Dashboard widget workspace dimensions while making room
-for the connected editor controls. The focused real field test passes 16
-route/edge/size cases. `4e3dcde86` removes stale desktop parallax translation
-when editing widgets and when parallax is disabled; the real coordinate test
-passes. These changes have not yet received post-update owner acceptance.
+Focused native Music, migration/model, MPD/lyrics, English catalog/source and
+Qt 6 QML parsing pass. Actual unfocused field input passes all 16 Dashboard
+route/edge/size cases, preserving Undo/Cancel/Done. Fixture `d8b40c8a0` renders
+its owned field before input; the earlier readiness failure also reproduced
+on the pre-Music baseline. Both Dashboard routes pass bounded warm-cache checks:
+no eager tree, hidden leases/input/paint off, immediate reuse, expiry at 1.2 s.
+Focused logs are in the private validation state directory for 2026-10-09.
 
-The canonical run at `4e3dcde86878fc1cad4957ca08434e0f837fb925` reports 405 checks,
-404 PASS, one wallpaper hover failure and two deferred skips. Log identity:
+Hadalird's focused package/helper/Obsidian checks and real host fixture pass.
+The current core Arch fixture executes both package functions with private
+native-binary placeholders, verifies privileged payload absence and preserves
+private TLP files on removal. It does not prove a compiled Arch transaction,
+actual hardware behavior or final extraction completeness.
+The non-VCS Arch source pin still predates optional host adapters; update that
+reviewed snapshot only after the final candidate is qualified. The focused
+package fixture explicitly uses current source, not the default archive pin.
+
+Resume first with duplicate ownership and stale regression contracts:
+`Makefile` helper targets, `scripts/test-local-distribution.sh`, the old core
+TLP/helper/Obsidian implementation tests and runtime payload exclusions. Move
+their implementation oracles to Hadalird; preserve generic host and shared
+policy contracts. Inspect native Todo ownership before removing any backend.
+Register the new host/migration/lifecycle checks in the canonical acceptance
+path, then continue Hadanion's current task files from fresh `main`.
+
+These checks are not a canonical PASS or post-update owner-session acceptance.
+The canonical `4e3dcde86878fc1cad4957ca08434e0f837fb925` result remains historical:
+405 checks, 404 PASS, one wallpaper hover failure, two deferred skips; log hash
 `899ecdd804f5978bf7a0314f737d6d509107889cf68bd640532978840a6ba89f`.
-It is not a canonical PASS. `4aed04ebb` synchronizes the wallpaper action
-layout and requires genuine native hover; the focused carousel test passes
-after the unfocused Niri policy is installed. No full-suite result is inferred
-for this later source or the current concurrent `dev`.
+The subsequent focused wallpaper-hover correction passes, but no full-suite
+result is inferred for later source. Music and newer product changes have not
+been deployed to the owner's desktop. Unrelated working-tree changes and
+`docs/evidence/megaqml/` are preserved.
 
-The Music implementation remains uncommitted WIP. The pure folder/genre model
-passes its behavior test; QV4's missing `flatMap` support was corrected after a
-native failure. The latest native test still reports all five column positions
-as zero. Diagnose effective visibility/Row readiness and verify actual layout
-before committing or deploying this page; do not weaken the overlap assertion.
-Settings routing, retained library actions, narrow layout and directly affected
-Dashboard editing/warm-cache behavior still need qualification.
-
-Private logs and the owned Music working-file archive are preserved under the
-local validation state directory for 2026-10-09. The archive includes its base
-SHA and file hashes. No WIP product code was deployed. Unrelated evidence files
-remain untouched. The quota readback reached 2% weekly / 64% five-hour remaining;
-development and tests stopped while the active state was checkpointed.
-
-**NOT_COMPLETE:** Music, Hadalird extraction, remaining Hadanion requirements,
-owner-session acceptance and comparable CPU/RAM/GPU/latency measurements.
+**NOT_COMPLETE:** optional Hadalird extraction, remaining Hadanion requirements,
+final exact-source canonical validation, owner-session acceptance and comparable
+whole-shell CPU/RAM/GPU/latency measurements. No resource percentages are claimed.

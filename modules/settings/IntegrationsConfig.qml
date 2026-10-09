@@ -20,14 +20,82 @@ ContentPage {
  }
  SettingsCardSection {
   title:"Optional integrations";icon:"extension";expanded:true
+  id:hadalirdPackageSection\n  property bool confirmRemoval:false
   StyledText {
    Layout.fillWidth:true;wrapMode:Text.WordWrap;color:Appearance.colors.colSubtext
-   text:Hadalird.available ? "Hadalird is installed. Choose the integrations to use." : "Install Hadalird to use TLP, Thinkfan and Obsidian."
+   text: Hadalird.managerBusy ? "Managing the optional Hadalird package…"
+       : Hadalird.available ? "Hadalird "+Hadalird.version+" is installed. Hadalis manages its package and preferences."
+       : "Install Hadalird directly from Hadalis to use TLP, Thinkfan and Obsidian."
   }
-  SettingsSwitch {text:"TLP";autoToggle:false;checked:Config.options?.integrations?.hadalird?.tlp ?? false;onToggledByUser:value=>Config.setNestedValue("integrations.hadalird.tlp",value)}
-  SettingsSwitch {text:"Thinkfan";autoToggle:false;checked:Config.options?.integrations?.hadalird?.thinkfan ?? false;onToggledByUser:value=>Config.setNestedValue("integrations.hadalird.thinkfan",value)}
-  SettingsSwitch {text:"Obsidian";autoToggle:false;checked:Config.options?.integrations?.hadalird?.obsidian ?? false;onToggledByUser:value=>Config.setNestedValue("integrations.hadalird.obsidian",value)}
-  DialogButton {buttonText:"Refresh installed integrations";onClicked:Hadalird.refresh()}
+  RowLayout {
+   Layout.fillWidth:true;spacing:8
+   DialogButton {
+    visible:!Hadalird.available
+    enabled:!Hadalird.managerBusy
+    buttonText:"Install Hadalird"
+    onClicked:Hadalird.manage("install")
+   }
+   DialogButton {
+    visible:Hadalird.available
+    enabled:!Hadalird.managerBusy
+    buttonText:"Check updates"
+    onClicked:Hadalird.manage("check")
+   }
+   DialogButton {
+    visible:Hadalird.available && Hadalird.updateAvailable
+    enabled:!Hadalird.managerBusy
+    buttonText:"Update Hadalird"
+    onClicked:Hadalird.manage("install")
+   }
+   DialogButton {
+    visible:Hadalird.available && Hadalird.canRollback
+    enabled:!Hadalird.managerBusy
+    buttonText:"Restore previous"
+    onClicked:Hadalird.manage("rollback")
+   }
+   DialogButton {
+    visible:Hadalird.available && !hadalirdPackageSection.confirmRemoval
+    enabled:!Hadalird.managerBusy
+    buttonText:"Remove"
+    onClicked:hadalirdPackageSection.confirmRemoval=true
+   }
+   DialogButton {
+    visible:Hadalird.available && hadalirdPackageSection.confirmRemoval
+    enabled:!Hadalird.managerBusy
+    buttonText:"Confirm removal"
+    onClicked:{hadalirdPackageSection.confirmRemoval=false;Hadalird.manage("remove")}
+   }
+   DialogButton {
+    visible:Hadalird.available && hadalirdPackageSection.confirmRemoval
+    buttonText:"Cancel"
+    onClicked:hadalirdPackageSection.confirmRemoval=false
+   }
+   Item {Layout.fillWidth:true}
+   DialogButton {
+    buttonText:"Refresh status"
+    enabled:!Hadalird.managerBusy
+    onClicked:Hadalird.refresh()
+   }
+  }
+  StyledText {
+   Layout.fillWidth:true;wrapMode:Text.WordWrap
+   visible:Hadalird.managerError.length>0
+   color:Appearance.colors.colError
+   text:Hadalird.managerError
+  }
+  StyledText {
+   Layout.fillWidth:true;wrapMode:Text.WordWrap
+   visible:Hadalird.managerMessage.length>0 && Hadalird.managerError.length===0
+   color:Appearance.colors.colSubtext
+   text:Hadalird.managerMessage
+  }
+  StyledText {
+   Layout.fillWidth:true;wrapMode:Text.WordWrap;color:Appearance.colors.colSubtext
+   text:"Package actions are initiated here, require no manual Git checkout, and preserve saved integration preferences. TLP/Thinkfan system helpers require separate authorization."
+  }
+  SettingsSwitch {text:"TLP";enabled:!Hadalird.managerBusy;autoToggle:false;checked:Config.options?.integrations?.hadalird?.tlp ?? false;onToggledByUser:value=>Config.setNestedValue("integrations.hadalird.tlp",value)}
+  SettingsSwitch {text:"Thinkfan";enabled:!Hadalird.managerBusy;autoToggle:false;checked:Config.options?.integrations?.hadalird?.thinkfan ?? false;onToggledByUser:value=>Config.setNestedValue("integrations.hadalird.thinkfan",value)}
+  SettingsSwitch {text:"Obsidian";enabled:!Hadalird.managerBusy;autoToggle:false;checked:Config.options?.integrations?.hadalird?.obsidian ?? false;onToggledByUser:value=>Config.setNestedValue("integrations.hadalird.obsidian",value)}
  }
  SettingsTaskNavigator {
   title:Translation.tr("Third-party integrations");icon:"extension";currentValue:root.activeSection

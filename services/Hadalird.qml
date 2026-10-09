@@ -12,6 +12,13 @@ Singleton {
     property string packageRoot: ""
     property string version: ""
     property string sourceSha: ""
+    property bool canRollback: false
+    property bool managerBusy: false
+    property string managerAction: ""
+    property string managerError: ""
+    property string managerMessage: ""
+    property string latestSha: ""
+    property bool updateAvailable: false
     readonly property var options: Config.options?.integrations?.hadalird
     readonly property bool tlpEnabled: available && !loadFailed && Config.ready && options?.tlp === true
     readonly property bool thinkfanEnabled: available && !loadFailed && Config.ready && options?.thinkfan === true
@@ -19,6 +26,26 @@ Singleton {
     readonly property bool enabled: tlpEnabled || thinkfanEnabled || obsidianEnabled
     readonly property var session: worker.status === Loader.Ready ? worker.item : null
 
+    // Explicit user action only. Hadalis owns transport and the signed-off
+    // optional-package lifecycle, not an external installer run by the user.
+    function manage(action): void {
+        if (managerBusy || probe.running || !["check","install","remove","rollback"].includes(action))
+            return
+        managerAction = action
+        managerBusy = true
+        managerError = ""
+        managerMessage = ""
+        if (action !== "check") {
+            // Release all disposable workers before switching the immutable package link.
+            available = false
+            loadFailed = false
+        }
+        managerProcess.command = ["/usr/bin/python3",
+            Quickshell.shellPath("scripts/hadalird-manager.py"), action,
+            "--shell-root", Quickshell.shellPath("")]
+        managerProcess.running = true
+        managerDeadline.restart()
+    }
     function settingsSource(integration): string {
         if (!available) return ""
         if (integration === "thinkfan") return packageRoot + "/modules/settings/ThinkfanSettings.qml"
@@ -44,6 +71,7 @@ Singleton {
     }
     function status(): string {
         return JSON.stringify({available, enabled, diagnostic, version, sourceSha,
+            managerBusy, managerError, updateAvailable, canRollback,
             integrations:{tlp:tlpEnabled,thinkfan:thinkfanEnabled,obsidian:obsidianEnabled}})
     }
     Loader {
@@ -70,8 +98,50 @@ Singleton {
                     root.sourceSha = String(result.sourceSha ?? "")
                     root.diagnostic = String(result.diagnostic ?? "invalid-package")
                     root.available = result.available === true
-                } catch (_error) {root.available=false;root.diagnostic="invalid-package"}
+                    root.canRollback = result.canRollback === true
+                } catch (_error) {root.available=false;root.diagnostic="invalid-package";root.canRollback=false}
             }
+        }
+    }
+    Process {
+        id: managerProcess
+        stdout: StdioCollector { id: managerOutput }
+        stderr: StdioCollector { id: managerStderr }
+        onExited: (exitCode) => {
+            managerDeadline.stop()
+            root.managerBusy = false
+            try {
+                const result = JSON.parse(String(managerOutput.text ?? "").trim())
+                if (exitCode !== 0 || result.ok !== true) {
+                    root.managerError = String(result.error ?? "Hadalird operation failed")
+                } else {
+                    root.managerMessage = String(result.message ?? (
+                        root.managerAction === "check"
+                            ? (result.updateAvailable ? "An update is available" : "Already up to date")
+                            : "Operation completed"))
+                    if (root.managerAction === "check") {
+                        root.latestSha = String(result.latestSha ?? "")
+                        root.updateAvailable = result.updateAvailable === true
+                    } else {
+                        root.updateAvailable = false
+                        root.canRollback = result.canRollback === true
+                    }
+                }
+            } catch (_error) {
+                root.managerError = String(managerStderr.text ?? "Could not read Hadalird manager result").slice(0, 256)
+            }
+            if (root.managerAction !== "check") Qt.callLater(root.refresh)
+        }
+    }
+    Timer {
+        id: managerDeadline
+        interval: 90000
+        repeat: false
+        onTriggered: {
+            managerProcess.running = false
+            root.managerBusy = false
+            root.managerError = "Hadalird package operation timed out"
+            root.refresh()
         }
     }
     IpcHandler {

@@ -914,10 +914,15 @@ During the owner's 24 consecutive Clock hover samples (~6.5 seconds), all
 Owner answered `cold_hover_popupSeen=true`; no script exceptions.
 Abyss worked **without a Waffle family switch** in this boot.
 
-**Status: one native cold-boot PASS, not a 100% cure / not DONE.**
-- [x] Exact-SHA owner cold restart #1: 24/24 hover, requested and presented.
-- [ ] Exact-SHA owner cold restart #2 (independent restart): repeat same
-  script; keep wallpaper, panels and mouse behavior in normal daily use.
+**Status: two owner-submitted native cold-start acceptances PASS
+(2/2), not a 100% cure / not DONE.**
+- [x] Exact-SHA owner cold restart #1: 24/24 hover, requested and presented
+  (`408e4df281469ee0bd314d3f6e95c108ec0ac34b`).
+- [x] Owner cold-start acceptance #2: 24/24 hover, requested and presented
+  (`5e5cf274d05bf30730836dfce1b7dcd22b7372dc`, same QML as #1).
+  Two separate capture archives; the scripts record host flags and timestamps,
+  not native process identity, so treat the restart itself as guided owner
+  execution rather than independently authenticated process evidence.
 - [ ] Multiple independent cold logins, quick family changes, multi-output,
   fullscreen/hotplug/suspend-resume, if applicable, before production claim.
 - [ ] Long-term: investigate upstream first native generation loss and whether
@@ -932,3 +937,101 @@ addition, not a native hover rejection. Update this test to require both
 input branches to retain the shaped mask. Other observed failures are largely
 unavailable native Quickshell/Niri, Python Pillow, or ImageMagick in the CI
 runner; do not describe the entire run as green.
+
+### 2026-10-09 — Direct Abyss cold-start native acceptance #2: PASS (5e5cf274)
+
+**Owner artifact:** `hadalis-abyss-cold-acceptance-20261009-220221.tar.gz`.
+On exact repository SHA `5e5cf274d05bf30730836dfce1b7dcd22b7372dc`,
+installed source matched all 3 tested QML files:
+`ShellAbyssCriticalPanels.qml`, `AbyssPerimeter.qml`, `AbyssBar.qml`.
+This commit differs from `408e4df2` only in regression test/TODO files.
+
+`abyssHostProbe.status` confirmed:
+`family=abyss`, `perimeterLoaded=true`, `perimeterActive=true`,
+`diagnosticUnmounted=false`, `shellEntryReady=true`,
+`deferredPanelsReady=true`, `initialMountReady=true`,
+`nativeFirstFramesReady=true`, `coldRecreatePending=false`,
+`coldRecreated=true`. In 24/24 samples of live Clock hover
+(2026-10-09 22:02:27–22:02:33 local UTC+7), **all** had
+`barHover=true`, Clock module `hovered=true`,
+`popup.requestedVisible=true`, `popup.presentationActive=true`,
+`liquidPopupsOpen=true`, `fieldReady=true`,
+and the normal 12 bar input regions. Owner confirmed
+`cold_hover_popupSeen=true`; diagnostic script errors `[]`.
+
+**Native acceptance tally:** 2/2 separate owner capture sessions PASS.
+Owner was instructed to use distinct `inir restart` cold boot sessions
+without switching Waffle; the reports do not independently encode the
+previous Quickshell PID/boot identity. It is fair to call 2/2 owner-driven
+acceptance samples PASS; it is **not** proof of all startup sequences or of
+the underlying Wayland root cause.
+
+**CI on `5e5cf274`:** Nix PASS, canonical validator
+321 checks = 301 PASS / 19 FAIL / 2 SKIP. The previously stale
+`test-abyss-niri-hover-layer-contract.py` now **PASSES**.
+Remaining observed CI failures include unavailable `qs`/private Niri,
+Pillow, and ImageMagick in the runner, not a reported regression in
+the cold hover static contract. Full CI is not green.
+
+- [x] User-visible original Clock hover/popup regression: mitigated across
+  2 owner-run cold acceptance sessions on Niri without family switching.
+- [ ] Before closure as broadly stable: run extended normal/edit/family
+  transitions; multiple outputs and focus/fullscreen if applicable;
+  avoid startup flicker and timing races. Do not merge to `stable`.
+- [ ] Longer-term replace the one-shot full Perimeter recreation with an
+  upstream-correct native input lifecycle solution when protocol evidence
+  identifies it. The workaround is evidence-backed, the root cause unknown.
+
+### 2026-10-09 — Active Window footprint + desktop context menu in retracted Edge gaps
+
+Owner request on `dev`:
+1. Active Window must bound its horizontal natural span and expose a
+   configurable maximum like Media. Prior `AbyssBarModule.naturalSpan` had
+   fixed `Math.min(220, Math.max(60, titleWidth))`; the classic bar also
+   hardcoded 220.
+2. When `Width affects modules = OFF`, right-clicking the *bare desktop*
+   in gaps of the retracted Screen Edge can produce a context popup that
+   briefly appears then vanishes.
+
+- [x] Add `bar.activeWindow.width` (default 220 px; range 120–420) to
+  typed config, defaults, Settings > Bar > Modules, and shared ActiveWindow
+  maxContentWidth, consumed by classic and Abyss. Do not change vertical
+  Active Window footprint. Text still elides and natural width never exceeds cap.
+- [x] Guard desktop ContextMenu's `closeOnHoverLostAfterEntered` against
+  transient hover during its entrance animation. Only a genuine hovered
+  settled menu arms its existing 700ms auto-close timer. Preserve
+  outside-desktop left-click, item selection and Escape paths. This is a
+  source-grounded candidate, NOT yet owner-native validated.
+- [x] Add focused source/contract regression tests.
+- [ ] Native acceptance (owner, after `dev` install): test multiple long active
+  titles at 120/220/420 px in Abyss; adjust config in Bar Modules without
+  changing family; ensure classic bar still fits.
+- [ ] Native menu acceptance: test right-click *in Edge gaps* with each of
+  top/left/bottom/right `Width affects modules OFF`; verify no transient
+  disappearance, selectable items, Escape, desktop left-click close, and
+  normal mode with width affecting modules ON. If still reproducible, trace
+  `popupWasHovered`, `entranceSettled`, and LayerWindow ordering, rather
+  than speculating about compositor focus.
+- [ ] Keep stable untouched; no DONE until live menu verification.
+
+
+### 2026-10-09 — Follow-up: stable desktop right-click lifecycle
+
+The source-only entrance-hover guard in `3a3d806acca` is not
+sufficient to guarantee the menu persists: even after animation settles,
+an animated popup can intersect the stationary cursor, then report
+hover-loss 700ms later. Unlike preview menus, the desktop menu is
+**right-click-initiated** and should remain until explicit dismissal.
+
+- [x] On `dev`, set `closeOnHoverLost: false` only on bare desktop
+  `desktopContextMenu` and `desktopItemContextMenu`.
+  Existing left-click on desktop, selecting any action and Escape remain
+  dismissal paths. Shared `ContextMenu` default hover behavior is unchanged.
+- [x] Focused source regression asserts both menu instances opt out,
+  shared timer still available to other consumers, and dismissal actions.
+- [ ] Live Niri acceptance at retracted Screen Edge gaps with
+  `Width affects modules OFF`: top/bottom/left/right where applicable;
+  verify menu stays visible at least 2s without mouse movement, menu
+  items remain clickable, Escape and desktop left-click dismiss.
+- [ ] Native Active Window setting: validate max width 120/220/420 and
+  ordinary text elision on Abyss and classic Bar. No stable branch changes.

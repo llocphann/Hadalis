@@ -1826,6 +1826,7 @@ Singleton {
             property JsonObject bar: JsonObject {
                 property JsonObject activeWindow: JsonObject {
                     property bool showTitle: true
+                    property int width: 220
                 }
                 property JsonObject autoHide: JsonObject {
                     property bool enable: false

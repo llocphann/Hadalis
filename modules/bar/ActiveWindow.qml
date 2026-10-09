@@ -86,6 +86,17 @@ Item {
         onTriggered: root.stableDisplayTitle = root.displayTitle
     }
 
+    // Same persisted, bounded footprint policy as Bar Media: long active
+    // titles must not grow the local Abyss Screen Edge indefinitely.
+    // A setting supplies the maximum natural span (not a fixed blank width);
+    // text remains elided inside the available space.
+    readonly property real maxContentWidth: {
+        const configured = Number(Config.options?.bar?.activeWindow?.width ?? 220)
+        return Number.isFinite(configured)
+            ? Math.max(120, Math.min(420, configured))
+            : 220
+    }
+
     // Intentionally NOT binding implicitWidth to colLayout.implicitWidth:
     // the bar wrapper assigns this item its width via Layout.fillWidth, and the
     // texts elide to fit. Binding to content width would let a long title push

@@ -85,6 +85,11 @@ Loader {
         visible: true
         grabFocus: root.keyboardGrab && CompositorService.isNiri
         property bool closing: false
+        // Popup animations can sweep the content under a stationary pointer,
+        // especially when the desktop menu opens near a retracted Abyss Edge.
+        // A transient hover during this entrance is not a user visit: only
+        // arm hover-loss dismissal after the content has settled.
+        property bool entranceSettled: false
         property bool popupWasHovered: false
 
         // Keep the Niri click surface below the popup content, matching the
@@ -200,6 +205,12 @@ Loader {
             duration: Appearance.animation.elementMoveEnter.duration
             easing.type: Appearance.animation.elementMoveEnter.type
             easing.bezierCurve: Appearance.motion.popupReveal.enterBezierCurve
+            onStopped: {
+                if (popupWindow.closing) return
+                popupWindow.entranceSettled = true
+                if (popupWindow.popupContainsMouse)
+                    popupWindow.popupWasHovered = true
+            }
         }
         SequentialAnimation {
             id: closeAnim
@@ -389,7 +400,10 @@ Loader {
 
         HoverHandler {
             id: popupHoverHandler
-            onHoveredChanged: if (hovered) popupWindow.popupWasHovered = true
+            onHoveredChanged: {
+                if (hovered && popupWindow.entranceSettled)
+                    popupWindow.popupWasHovered = true
+            }
         }
         readonly property bool popupContainsMouse: popupHoverHandler.hovered
 

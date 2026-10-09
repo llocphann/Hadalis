@@ -593,7 +593,7 @@ Item {
         Item {
             id: awWrapper
             property bool fillSlot: true
-            implicitWidth: fillSlot ? 0 : Math.min(_awItem.contentImplicitWidth, 220 * Appearance.sizes.barModuleScale)
+            implicitWidth: fillSlot ? 0 : Math.min(_awItem.contentImplicitWidth, _awItem.maxContentWidth)
             implicitHeight: Appearance.sizes.baseBarHeight
             clip: true
             Behavior on implicitWidth {

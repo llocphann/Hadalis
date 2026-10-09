@@ -751,3 +751,85 @@ than the bounded construction-time retry. Readiness signals now explicitly
 restart a bounded anchor rescan when `shellEntryReady` or
 `deferredPanelsReady` becomes true, covering asynchronous initial window
 attachment without any permanent idle polling.
+
+## 2026-10-09 18:41 +07 — Optional extraction and runtime qualification checkpoint
+
+**Overall: NOT_COMPLETE.** Source milestones below are pushed to `dev`;
+they have not been installed on the owner's desktop or promoted to `stable`.
+Preserve the existing normal/cold hover acceptance items above.
+
+- [x] `fb0ea45b0`: Local Music demand refresh follows Dashboard/Overview
+  Music visibility. Private production-QML demand oracle and performance
+  lifecycle checks passed; no owner MPD session was changed.
+- [x] `e17c7edc0`: remove ten byte-identical optional payload duplicates and
+  seven implementation tests from Core; Hadalird owns TLP/Thinkfan helpers,
+  policies/schema and Obsidian/Todo/Zettelkasten workers. Core retains host
+  facades/shared UI. Default staged install/update/uninstall prunes stale
+  managed duplicates and preserves separately installed optional files.
+  Ownership receipt: `~/.local/state/hadalis-validation/20261009/optional-ownership-source-parity.json`.
+- [x] `751c1f294`: Core battery warning/suspend controls remain available
+  without optional TLP. Native absent/disabled/selected/unload cases passed;
+  old wrapper failed the same control-presence oracle.
+- [x] Hadalird `d4bad57`: package owns native vault/config/application path
+  editing and actual theme apply/restore coverage. Focused path and host
+  lifecycle tests passed; Core navigation verifies missing integration stays
+  dormant. No owner Obsidian vault/theme was edited.
+- [x] `663e18909`, `8d693c5f9`: qualify current responsive Music columns,
+  tabbed Library, shared Media/Queue/EQ, optional Lyrics, playback actions and
+  slide transitions. Move obsolete optional implementation assertions into
+  their owning package. Native bar auxiliary indicator tests passed.
+- [x] `d227b961e`: defer cold anchor rescan beyond `_anchorWindow` binding
+  evaluation. Existing native cold/remount test now passes without the old
+  binding-loop warning. Full private pointer test also passed in
+  `/tmp/hadalis-popup-hover-final-20261009.log`, including all four transfers,
+  dismissal/reentry, click-only request and editable/read-only focus leases.
+  Its process deadline covers the unchanged 22 frame/input steps; frame
+  completion is asserted explicitly (QtTest `tryVerify` returns no value).
+- [x] `85ecb55a3`: valid font during tooltip construction. Diagnostic clone
+  located undefined `defaultFont` on actual tooltip text; Settings hierarchy
+  native test now passes without font warnings. Live font binding is retained.
+- [x] `6e8781e58`: hydrate notification history once, establish native ID
+  offset before publishing cold ingress, and preserve active wrappers/timers/
+  hover holds on subsequent persistence completions and history refresh.
+  Native lifetime test passed with missing history and seeded ID 37;
+  old source fails the explicit refresh identity/hold oracle at stage 18.
+  Original canonical timeout failure was independently traced to owner
+  fullscreen enabling GameMode suppression, not proven history corruption.
+  The headless lifetime fixture now disables auto fullscreen detection and
+  Niri animation control only in its private configuration.
+- [x] `8e0a70628`: actual pointer navigation waits for rendered controls;
+  Core hierarchy checks shared/legacy/deep links and optional absence.
+  Dock/taskbar and embedded Settings shell tests now use private dark Niri
+  plus private D-Bus. Owner nested-Niri rule is `open-focused false`.
+  Dock/taskbar private test passed.
+
+**Canonical receipt:** clean-clone `--current-repo --strict-qml` at exact
+`751c1f2947eb622a3186b35b40fc9ccdebf22c5c` completed **FAIL: 300 PASS,
+20 FAIL, 1 SKIP**. Log:
+`~/.local/state/hadalis-validation/20261009/751c1f294-canonical.log`, SHA256
+`3aac5cc044cbc7412912cc67078e48bafbbad4f514c1bf3ad8a323cc3669ace5`.
+Most failures have focused fixes above; this is not a canonical PASS at the
+new source. No CPU/RAM/GPU/FPS percentage or visual parity claim is justified.
+
+**Continue in this order:**
+1. Fix remaining focused native failures before another canonical run:
+   embedded Settings fixture's >1000x700 assumption fails on private Niri's
+   smaller output (`/tmp/hadalis-settings-embedded-private-20261009.log`);
+   inspect actual host/card/output geometry rather than weakening layout.
+   Editor runtime has delayed callbacks invoking destroyed StyledPopup
+   methods; IPC corner's top join assertion also failed. Preserve workloads.
+2. Run canonical validation on a clean clone of the new exact SHA after
+   focused repairs. Keep owner cold boot, normal/edit/family switches,
+   click-through/focus, multi-output and fractional scaling acceptance open.
+3. Finish package qualification/source pin/update only after source qualifies.
+   Continue Hadanion canonical TODOs while preserving concurrent
+   `scripts/companion-export-cowork-native.py` edits. G0 dc4d5ecfe118 remains
+   INCONCLUSIVE_CAPTURE_VARIANCE: offline receipt/PNG analysis only, no replay
+   and no relaxed RGBA. Five varying states' changed pixels are translucent;
+   cause remains unestablished. Do not modify shader tiers on this hypothesis.
+4. Continue highest-value strict-lossless work from the optimization audit;
+   avoid speculative cumulative quality trades. Do not modify unrelated
+   `docs/evidence/megaqml/` or owner Companion preference.
+
+Only five-hour remaining below 3% may stop work and schedule this thread
+after that window's reset +3 minutes. Weekly usage never triggers a timer.

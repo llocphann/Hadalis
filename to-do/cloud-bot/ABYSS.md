@@ -1311,3 +1311,32 @@ endorsement of the settings UI or privileged helper functionality.
   or equate an active preference toggle with working hardware access.
 - [ ] Unrelated `qt.svg` warning is not diagnosed by these logs; obtain
   its source before applying unrelated asset changes.
+
+## 2026-10-10 — Hadalird helper gateway missing on owner system
+
+Owner Settings screenshot confirms that Hadalird 0.2.0 is installed and
+"Check helper status" reports the **Hadalis system Polkit gateway missing**.
+The inactive "Install system helpers" button is an intentional fail-closed
+safeguard, not an uninstall failure. The available screenshot does not
+prove whether an Arch shell package is installed on the owner machine.
+
+**Source/package parity repair:** frozen `inir-shell` PKGBUILD and
+`.SRCINFO` previously pinned `8ca68ef`, predating the gateway. Pin an
+immutable source commit that contains the trusted gateway and policy; advance
+`pkgrel` to force a package rebuild. Keep the `inir-shell-git` recipe
+and `.SRCINFO` in sync. Extend release/package contracts to verify the
+pinned source contains both root files, not just that current `dev` does.
+No other repository or `stable` branch is changed.
+
+- [ ] Owner acceptance: determine whether `pacman -Q inir-shell` or
+  `inir-shell-git` owns the shell on this machine. `inir update` alone
+  cannot install root-owned package files.
+- [ ] Install/rebuild only a trusted, reviewed Hadalis system package with
+  explicit administrator consent. Verify root gateway/policy are package
+  owned and read-only to the regular user, then check status in Settings.
+  Do not auto-run a remote installer as root or self-elevate during QML
+  startup. Hardware actions remain opt-in.
+- [ ] Keep Obsidian and user-level Hadalird functional if the gateway is
+  absent. Integration toggles describe stored preferences, not verified
+  availability of a hardware backend. No fan/charge policy changed by
+  this package metadata repair.

@@ -1,7 +1,7 @@
 pkgbase = inir-shell
 	pkgdesc = Hadalis shell payload, launcher, and user service
 	pkgver = 2.29.3
-	pkgrel = 14
+	pkgrel = 15
 	url = https://github.com/llocphann/Hadalis
 	install = inir-shell.install
 	arch = x86_64
@@ -107,7 +107,7 @@ pkgbase = inir-shell
 	conflicts = noctalia-qs
 	conflicts = noctalia-shell
 	conflicts = cachyos-niri-noctalia
-	source = hadalis-2.29.3-8ca68efe423223bdf40059155748c53b38200de2.tar.gz::https://github.com/llocphann/Hadalis/archive/8ca68efe423223bdf40059155748c53b38200de2.tar.gz
+	source = hadalis-2.29.3-5a94e8ef8f19851d1d1c565603bc5dc72064950f.tar.gz::https://github.com/llocphann/Hadalis/archive/5a94e8ef8f19851d1d1c565603bc5dc72064950f.tar.gz
 	sha256sums = SKIP
 
 pkgname = inir-shell

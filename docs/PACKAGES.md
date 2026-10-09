@@ -277,3 +277,33 @@ For pacman installs, `/usr/lib/systemd/user/inir.service` remains the authoritat
 Run `inir service disable` as each affected user before removing `inir-shell` or `inir-shell-git`. Pacman package hooks deliberately do not mutate users' home directories. If a package is removed while compositor wiring is still enabled, the removal message explains how to delete the resulting dangling `*.wants/inir.service` symlink and reload the user systemd manager.
 
 For release-specific version/source invariants, see [RELEASING.md](RELEASING.md).
+
+## Hadalird optional system gateway on Arch
+
+Hadalird's regular package, downloaded through **Hadalis → Settings →
+Integrations**, is user-owned. It does not need root and can be used for
+Obsidian without the optional TLP/Thinkfan system helpers.
+
+For TLP/Thinkfan system helper management, the trusted **Hadalis Arch system
+package** (`inir-shell` or `inir-shell-git`) additionally owns
+`/usr/libexec/inir-hadalird-system-provision` and
+`/usr/share/polkit-1/actions/org.inir.hadalird-system-provision.policy`.
+These two root-owned files must arrive through the system package manager;
+`inir update`, `./setup update`, and installing Hadalird from Settings
+update *user-mode shell files* only. They cannot safely bootstrap the
+system-side Polkit gateway from user-writable source files.
+
+The non-VCS Arch recipe's reviewed pre-release source snapshot has been
+advanced to include these files; both Arch recipes declare them and keep
+their `.SRCINFO` metadata synchronized. A source checkout does not imply
+either package is actually installed. After a trusted package
+install/upgrade, use **Check helper status**, then explicitly consent to
+**Install system helpers** if needed. This is separate from enabling any
+integration. No default action starts a service, changes a TLP policy, alters
+battery charge thresholds, or changes fan speed.
+
+If a machine is running only a `repo-setup` installation, the optional
+user-package UI remains usable, but the *privileged* helper controls remain
+unavailable until the maintainer has installed a supported system package.
+Do not use an ad-hoc `sudo cp` of downloaded helpers or run the downloaded
+installer as root.

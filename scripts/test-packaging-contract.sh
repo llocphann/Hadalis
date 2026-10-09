@@ -101,7 +101,9 @@ for required_path in \
   docs/PACKAGES.md \
   docs/RELEASING.md \
   native/Cargo.toml \
-  native/Cargo.lock; do
+  native/Cargo.lock \
+  assets/helpers/inir-hadalird-system-provision \
+  assets/polkit/org.inir.hadalird-system-provision.policy; do
   git cat-file -e "$source_ref:$required_path" 2>/dev/null \
     || fail "inir-shell source snapshot lacks $required_path"
 done
@@ -115,6 +117,15 @@ fi
 srcinfo_source="$(srcinfo_value "$stable_srcinfo" source)"
 [[ "$srcinfo_source" == *"/archive/${source_ref}.tar.gz" ]] \
   || fail 'inir-shell .SRCINFO source archive drifted from _source_ref'
+
+# The frozen Arch source must ship the root-owned Hadalird Polkit gateway;
+# checking the current checkout alone missed a stale pre-gateway source pin.
+for recipe in "$stable_pkg" "$git_pkg"; do
+  grep -Fq 'install -Dm755 "$srcroot/assets/helpers/inir-hadalird-system-provision"' "$recipe" \
+    || fail "$recipe does not ship the trusted Hadalird system provisioner"
+  grep -Fq 'install -Dm644 "$srcroot/assets/polkit/org.inir.hadalird-system-provision.policy"' "$recipe" \
+    || fail "$recipe does not ship the Hadalird Polkit policy"
+done
 
 # The packaged color pipeline runs without the source installer's managed venv.
 # Both direct Arch shell packages therefore need the generator's Python imports

@@ -101,7 +101,7 @@ ContentPage {
     Hadalird.systemHelpersDiagnostic === "unchecked"
     ? "Not checked yet — use Check helper status."
     : Hadalird.systemHelpersDiagnostic === "system-provisioner-not-installed"
-    ? "Hadalis system package does not provide the Polkit gateway yet."
+    ? "System Polkit gateway is not installed. A source-only Hadalis update cannot deploy root-owned files; upgrade the trusted Hadalis system package."
     : Hadalird.systemHelpersDiagnostic)
   }
   Flow {

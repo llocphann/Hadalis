@@ -1,6 +1,6 @@
 pkgname=inir-shell
 pkgver=2.29.3
-pkgrel=14
+pkgrel=15
 pkgdesc='Hadalis shell payload, launcher, and user service'
 arch=('x86_64')
 url='https://github.com/llocphann/Hadalis'
@@ -9,7 +9,7 @@ install=inir-shell.install
 # Hadalis does not publish version tags/releases yet. Keep the non-VCS package
 # reproducible by pinning the reviewed source snapshot; release automation can
 # switch this to a tag once the project publishes one.
-_source_ref="${INIR_SOURCE_REF:-8ca68efe423223bdf40059155748c53b38200de2}"
+_source_ref="${INIR_SOURCE_REF:-5a94e8ef8f19851d1d1c565603bc5dc72064950f}"
 _default_source_archive="https://github.com/llocphann/Hadalis/archive/${_source_ref}.tar.gz"
 _source_archive="${INIR_SOURCE_ARCHIVE:-${_default_source_archive}}"
 _source_dir="${INIR_SOURCE_DIR:-Hadalis-${_source_ref}}"

@@ -574,3 +574,29 @@ imply the installed local desktop has received these patches.
   areas, narrow/wide/fractional DPI, and real MPD/EQ playback.
 - [ ] Keep exact-source whole-suite failures and local Wayland acceptance open,
   and preserve unrelated Hadalird/Companion work and `stable`.
+
+## Media/Queue hover rework — 2026-10-09
+
+- [x] Reuse **actual `DashMedia`** component from Dashboard tab in Music
+  page rather than a separate PlayerControl/EQ panel. Keep Dashboard tab's
+  active MPRIS path unchanged; Music supplies its current LocalMusic MPD
+  playback adapter and optional volume slider. No duplicated player/DSP
+  implementation, no separate CAVA consumer.
+- [x] Queue defaults to a **compact 22%** preview, leaving **78%** of vertical
+  column space for the full Dashboard music module. Hover over the Queue body
+  expands its share to **66% upwards** while the player shrinks to 34% and
+  DashMedia suspends/hides its EQ/DSP. Pointer exit applies a 160 ms
+  anti-flicker grace before collapsing and restoring EQ/DSP. Reset when
+  presentation closes. Native test assertions added for both transitions.
+- [ ] **Owner native acceptance:** run current-head `test-dashboard-music-runtime.py`,
+  `test-dashboard-media-shared-player-contract.py`,
+  `test-dashboard-music-browser-navigation-contract.py`,
+  plus canonical validation. Inspect source-matched rendered images at
+  small/normal/fractional sizes, pointer movement (including queue row hover),
+  sustained DSP off during expansion, DSP recovery without reapplying EQ
+  presets, idle/local MPD and global MPRIS playback. 
+- [ ] **Deployment:** the installed desktop has not been updated by these
+  commits. This is source-implemented, not native-qualified or DONE; leave
+  the installed/owner GPU+audio QA gate open.
+
+This section supersedes the previous static 57% Queue default sizing decision.

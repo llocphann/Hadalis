@@ -17,8 +17,10 @@ def forbid(source: str, token: str, label: str) -> None:
     if token in source:
         failures.append(f"{label}: forbidden {token!r}")
 
-# Dashboard and Bar popup must converge on PlayerControl rather than carrying
-# separate artwork/progress/transport implementations.
+music = (ROOT / "modules" / "dashboard" / "DashboardMusic.qml").read_text(encoding="utf-8")
+
+# Dashboard, Music and Bar popup must converge on PlayerControl rather than
+# carrying separate artwork/progress/transport implementations.
 for token in (
     "PlayerControl {",
     "visualizerPoints: []",
@@ -79,8 +81,23 @@ forbid(dash, "active: root.presentationActive && root.hasPlayer",
        "Dashboard shared-player visual residency")
 require(dash, "showVisualizer: false",
         "Dashboard decorative visualizer suppression")
-require(dash, "active: root.presentationActive && root.visible",
-        "Dashboard equalizer lifecycle")
+require(dash, "active: root.showEqualizer && root.presentationActive && root.visible",
+        "Dashboard equalizer lifecycle and hover suppression")
+for token in (
+    "mediaBackend: root.backend",
+    "playbackAdapter: playerAdapter",
+    "showEqualizer: !root.queueExpanded",
+    "DashMedia {",
+):
+    require(music, token, "Music reuses Dashboard shared media")
+for token in (
+    "property var mediaBackend: null",
+    "property var playbackAdapter: null",
+    "playbackAdapter: root.playbackAdapter",
+    "visible: root.showEqualizer",
+    'objectName: "musicVolume"',
+):
+    require(dash, token, "Shared Dashboard/MPD card")
 
 # The shared control must remain usable in narrow Dashboard tiles: preserve
 # both time labels and compact the artwork/transport metrics before overflow.

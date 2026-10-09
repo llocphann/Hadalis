@@ -29,9 +29,11 @@ expect(music, 'objectName: "musicLibrary"', 'objectName: "musicGenreTab"',
        'root.backend.playQueue(root.selectedTracks, 0',
        'objectName: "musicPlaybackAndQueue"', 'objectName: "musicQueuePanel"',
        'objectName: "musicQueueList"', 'onDoubleClicked: root.backend.playTrackAt(index)',
-       'height: Math.round((parent.height - parent.spacing) * .43)',
-       'contentHeight: musicControlsStack.implicitHeight',
-       'objectName: "musicEqualizer"')
+       'DashMedia {', 'playbackAdapter: playerAdapter',
+       'showEqualizer: !root.queueExpanded',
+       'id: queueHover', 'root.queueExpanded = true',
+       'id: queueCollapseTimer',
+       'root.queueExpanded ? .34 : .78')
 expect(pages, 'function handleEscape(): bool', 'dashboardCanvas.cancelEditMode()',
        'musicPage.item?.restoreBrowserColumns()', 'orientation: Qt.Horizontal',
        'orientation: Qt.Vertical', 'acceptsPageWheel(local.x, local.y)')

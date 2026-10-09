@@ -505,3 +505,42 @@ ownership and stale implementation-specific core tests still require cleanup.
 The broad product task remains **NOT_COMPLETE**; no full canonical PASS,
 installed-file update, hardware/owner acceptance or shell resource measurement
 is asserted for these source milestones.
+
+## Maintainer follow-up — 2026-10-09: Screen Edge hover and Music browser
+
+Source-only fixes on Hadalis `dev` (do not cherry-pick to `stable` without qualified release acceptance):
+
+- [x] Screen Edge module pointer hover is forwarded to the existing
+  `StyledPopup` source lease (no second popup owner); clicking Weather no
+  longer routes to Sidebar Right. The existing right-click Weather refresh,
+  keyboard entry and pointer leave/retract remain routed through WeatherBar.
+  Source commit `19dcbf7e59b6`.
+- [x] Swap Dashboard Uptime and the header icon action group, keeping centered
+  page dots. Source commit `19dcbf7e59b6`.
+- [x] Add vertical WheelHandler navigation alongside horizontal page gestures;
+  pass nested Music list wheel input through instead of stealing scrolling.
+  Dashboard Edit mode locks navigation. First Escape exits Edit mode or restores
+  the currently selected Genre/Folder filter, second Escape closes Dashboard;
+  the unfiltered Dashboard tab closes on Escape. Source commits `1a67aaacb5b6`,
+  `bd7d6c8c739d` and `9e7dadde66c9`.
+- [x] Hide Folders while browsing a Genre and vice versa, restoring both on
+  first Escape. Add explicit Play All and Play Selected controls to Results
+  and split the existing Music playback/EQ column into Now Playing and a
+  separate live Queue list (same MPD/Equalizer backends). Source commits
+  `bd7d6c8c739d`, `ec1b98c1467e`. Adjust source/native regression
+  expectations for the new column structure; never reduce existing assertions.
+- [ ] **P0 exact-source qualification:** run the new
+  `scripts/test-dashboard-music-browser-navigation-contract.py`, the
+  affected native `test-dashboard-music-runtime.py` and
+  `test-popup-anchor-hover-runtime.py`, plus canonical
+  `bash scripts/validate-maintainer-local.sh` on the newest `dev` HEAD.
+  Record PASS/FAIL/SKIP and distinguish missing CI dependencies from defects.
+- [ ] **Owner desktop acceptance:** hover Weather/Clock/Resources/Battery/Media/
+  Launcher/System Tray across supported Screen Edges, move pointer into popup
+  and away, verify dismissal on pointer/focus loss and keyboard behavior;
+  verify Weather left click never opens Sidebar Right. Test mouse/touchpad
+  horizontal and vertical page switching without hijacking Music list scrolling;
+  two-step Escape, Library/Queue/Results selection, Play All/Selected, EQ DSP
+  and MPD continuity at normal/narrow/fractional scales.
+- [ ] **Deployment:** source changes have **not** been applied to the installed
+  owner desktop. No real Niri/Quickshell or physical audio acceptance is claimed.

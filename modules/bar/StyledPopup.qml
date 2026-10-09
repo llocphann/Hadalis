@@ -130,7 +130,10 @@ LazyLoader {
     }
     on_AnchorReadyChanged: {
         if (!_anchorReady) companionLease = null
-        else if (!root._liquidController) root.startColdAnchorResolution()
+        // Readiness can change while QsWindow is evaluating _anchorWindow.
+        // Rescanning writes its hierarchy revision, so defer that write until
+        // the current binding evaluation has completed.
+        else if (!root._liquidController) Qt.callLater(root.startColdAnchorResolution)
     }
     readonly property bool presentationActive: embeddedHost ? embeddedHost.visible
         : _liquidController ? _anchorReady && _liquidController.presented

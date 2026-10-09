@@ -647,14 +647,14 @@ nominal 34%/66% split applies when it does not clip transport controls.
   duplicated pointer handler.
 
 ### Source completed on dev
-- [x] Keep Niri Abyss host at `WlrLayer.Overlay` during ordinary idle and
-  hover-owned popup lifecycle, so it cannot transition from Top to Overlay
+- [x] Keep Niri Abyss host at `WlrLayer.Overlay` while output is presented during ordinary idle and
+  hover-owned popup lifecycle (not while fullscreen-hidden), so it cannot transition from Top to Overlay
   as `liquid.popupsOpen` toggles. Non-Niri layer behavior remains unchanged;
   `settingsNativeDialogOpen -> Bottom` and `PolkitService.active -> Top`
   retain priority, with existing `nativeInputMask`, dialog mask, utility
   mask and input-region ownership unchanged.
 - [x] Add `scripts/test-abyss-niri-hover-layer-contract.py`: evaluate the
-  **actual extracted QML layer expression** in Node across 13 scenarios
+  **actual extracted QML layer expression** in Node across 14 scenarios
   (normal, popup, editor, overrides, Niri/non-Niri). Assert module input
   regions and `StyledPopup` source-hover ownership remain unchanged.
 

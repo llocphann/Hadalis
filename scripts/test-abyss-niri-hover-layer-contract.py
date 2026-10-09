@@ -26,7 +26,7 @@ assert "CompositorService.isNiri" in expression, "Niri is still on the idle Top 
 assert "liquid.popupsOpen" in expression, "popup layer policy changed unexpectedly"
 assert "GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom" in expression
 assert "PolkitService.active ? WlrLayer.Top" in expression
-assert "CompositorService.isNiri || window.editorOpen" in expression
+assert "(CompositorService.isNiri && window.presented) || window.editorOpen" in expression
 assert 'Region { regions: window.presented && field.ready && bar.visible ? bar.inputRegions : [] }' in perimeter
 assert 'mask: window.overviewDragging ? dragPassThrough : liquid.activeDialog ? dialogInputMask : utility.open ? utilityInputMask : nativeInputMask' in perimeter
 assert 'readonly property Region inputRegion: Region { item: module }' in bar
@@ -45,17 +45,19 @@ const layer = new Function(
 );
 const options = {abyss:{},osk:{keepOnTop:false}};
 function policy({
-  niri=false, editing=false, popup=false, polkit=false, dialog=false,
+  niri=false, presented=true, editing=false, popup=false, polkit=false, dialog=false,
   wallpaper=false, utility=false
 }={}) {
   return layer({isNiri:niri},{settingsNativeDialogOpen:dialog},
-    {active:polkit},{editorOpen:editing,fullscreenCovered:false,presented:true},
+    {active:polkit},{editorOpen:editing,fullscreenCovered:false,presented},
     {open:wallpaper},{open:false},{options},
     {open:utility},{popupsOpen:popup},{open:false},
     {open:false},{editing:false},{open:false},{open:false},{open:false},
     {Bottom:'bottom',Top:'top',Overlay:'overlay'});
 }
 assert.equal(policy({niri:true}), 'overlay','normal Niri edge must accept hover before any popup');
+assert.equal(policy({niri:true,presented:false}), 'top',
+  'non-presented fullscreen/covered output must keep its old Top fallback');
 assert.equal(policy({niri:true,popup:true}), 'overlay','popup opening must not remap the Niri edge');
 assert.equal(policy({niri:true,editing:true}), 'overlay','editing and normal Niri share a steady layer');
 assert.equal(policy({niri:true,wallpaper:true}), 'overlay');
@@ -68,7 +70,7 @@ assert.equal(policy({popup:true}), 'overlay','non-Niri popup can still promote t
 assert.equal(policy({editing:true}), 'overlay','non-Niri editor still promotes to overlay');
 assert.equal(policy({polkit:true}), 'top');
 assert.equal(policy({dialog:true}), 'bottom');
-console.log('PASS: 13 Niri/non-Niri exact-QML layer policy cases');
+console.log('PASS: 14 Niri/non-Niri exact-QML layer policy cases');
 """
 result = subprocess.run(
     ["node", "-e", node, expression],

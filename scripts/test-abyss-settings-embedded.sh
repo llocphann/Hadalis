@@ -68,7 +68,14 @@ ShellRoot {
                 if(!root.check(body.ready,"mature Settings wrapper loaded")) return
                 const card=Array.from(body.contentItem.item.children).find(c=>c.maxCardWidth!==undefined)
                 if(!root.check(!!card && card.parent===body.contentItem.item,"same Settings card reparented into the liquid host")) return
-                if(!root.check(card.width>1000 && card.height>700,"mature layout remains large and usable")) return
+                const canvas=body.contentItem.item,content=body.record.content
+                // A private output may be narrower than the requested window.
+                // Check the real host's complete content area and original
+                // scale, instead of imposing the owner's monitor dimensions.
+                if(!root.check(card.scale===1 && card.width>0 && card.height>0
+                    && card.width===canvas.width && card.height===canvas.height
+                    && canvas.width===content.width && canvas.height===content.height,
+                    "mature layout fills the actual host at original scale")) return
                 if(!root.check(GlobalStates.settingsOverlayCurrentPage===10,"deep link survives page initialization")) return
                 GlobalStates.openSettingsPage(1)
             }

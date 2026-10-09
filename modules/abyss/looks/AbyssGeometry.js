@@ -2,6 +2,20 @@
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, Number(v) || 0)); }
 function edge(vertical, bottom) { return vertical ? (bottom ? "right" : "left") : (bottom ? "bottom" : "top"); }
 function horizontal(edge) { return edge === "top" || edge === "bottom"; }
+// Only the popup's tangent footprint reaches its owning inner Edge. Never
+// capture the output-wide strip or the full content canvas hidden by reveal.
+function popupInput(content,width,height,insets,edge) {
+    if (!content || content.width <= 0 || content.height <= 0)
+        return {x:0,y:0,width:0,height:0};
+    var x=content.x,y=content.y,right=x+content.width,bottom=y+content.height;
+    if (edge === "top") y=Math.min(y,insets.top);
+    else if (edge === "bottom") bottom=Math.max(bottom,height-insets.bottom);
+    else if (edge === "left") x=Math.min(x,insets.left);
+    else if (edge === "right") right=Math.max(right,width-insets.right);
+    x=clamp(x,0,width);y=clamp(y,0,height);
+    right=clamp(right,x,width);bottom=clamp(bottom,y,height);
+    return {x:x,y:y,width:right-x,height:bottom-y};
+}
 function insets(thickness, barEdge, barThickness, barShown) {
     var result = {left: thickness, top: thickness, right: thickness, bottom: thickness};
     if (barShown && barEdge in result) result[barEdge] = Math.max(thickness, barThickness);

@@ -25,22 +25,29 @@ ShellRoot {
  property int frames: 0
  property int clicks: 0
  property int idleCloses: 0
+ property string edge: "bottom"
  QtObject { id: trigger; property bool triggerHovered: true }
  Component.onCompleted: Quickshell.watchFiles=false
  AbyssSurfaceController {
   id: controller
   presentationItem: scene
   outputWidth: scene.width; outputHeight: scene.height
-  edgeInsets: ({left:8,right:8,top:8,bottom:8})
+  // Production clearanceInsets includes the source module's inward depth.
+  edgeInsets: ({left:root.edge==="left" ? 40 : 8,right:root.edge==="right" ? 40 : 8,
+     top:root.edge==="top" ? 40 : 8,bottom:root.edge==="bottom" ? 40 : 8})
  }
  FloatingWindow {
   id: window; visible:true; implicitWidth:640; implicitHeight:360; color:"#111820"
   Item {
    id: scene; anchors.fill:parent
    Item {
-    id: anchor; x:160; y:320; width:80; height:32
+    id: anchor
+    x: root.edge==="left" ? 8 : root.edge==="right" ? scene.width-40 : 160
+    y: root.edge==="top" ? 8 : root.edge==="bottom" ? scene.height-40 : 160
+    width: root.edge==="left" || root.edge==="right" ? 32 : 80
+    height: root.edge==="left" || root.edge==="right" ? 80 : 32
     property var liquidController: controller
-    property string attachedEdge: "bottom"
+    property string attachedEdge: root.edge
     property string kind: "clock"
     MouseArea { anchors.fill:parent; hoverEnabled:true; onClicked:root.clicks++ }
    }
@@ -48,16 +55,18 @@ ShellRoot {
     id: host; anchors.fill:parent
     readonly property var popupEntry: controller.popupSlots[0]
     readonly property var hostedPopup: popupEntry?.popup ?? null
-    identity:"styledPopup0"; controller:controller; edge:"bottom"
+    identity:"styledPopup0"; controller:controller; edge:root.edge
+    includeEdgeConnection:true
     open:hostedPopup?.presentationActive ?? false
     externalProgress:hostedPopup?.revealProgress ?? 0
     embeddedItem:hostedPopup?.contentItem ?? null
-    padding:14; span:208; depth:128; along:136
+    padding:14; span:root.edge==="left" || root.edge==="right" ? 128 : 208
+    depth:root.edge==="left" || root.edge==="right" ? 208 : 128; along:136
     edgeInsets:controller.edgeInsets
     Component.onCompleted:controller.registerPopupHost(0,host)
     Component.onDestruction:controller.unregisterPopupHost(0,host)
     HoverHandler {
-     parent:host.contentParent; enabled:host.open
+     parent:host.hoverParent; enabled:host.open
      onHoveredChanged:if(host.hostedPopup) host.hostedPopup._contentHovered=hovered
     }
    }
@@ -88,15 +97,26 @@ ShellRoot {
    Config.setNestedValue("performance.reduceAnimations",true)
    render();outside()
    check(!popup.requestedVisible,"popup starts open")
-   for(let cycle=0;cycle<4;cycle++) {
-    mouseMove(anchor,40,16);wait(80);render()
-    check(popup.requestedVisible && controller.activePopup===popup,"bare Item anchor did not open by hover on cycle "+cycle)
+   for(const edge of ["bottom","top","left","right"]) {
+    root.edge=edge;render();outside()
+    mouseMove(anchor,anchor.width/2,anchor.height/2);wait(80);render()
+    check(popup.requestedVisible && controller.activePopup===popup,"bare Item anchor did not open by hover on "+edge)
     check(popup.contentItem.parent===host.contentParent,"popup content was not hosted by the existing field")
+    // This point lies on the drawn connector, outside both source and content.
+    const content=host.record.content
+    const ins=controller.edgeInsets
+    const x=edge==="left" ? ins.left+6 : edge==="right" ? scene.width-ins.right-6 : content.x+content.width/2
+    const y=edge==="top" ? ins.top+6 : edge==="bottom" ? scene.height-ins.bottom-6 : content.y+content.height/2
+    const before=JSON.stringify({content,input:host.inputBounds,x,y,edge:host.edge})
+    mouseMove(scene,x,y);wait(220);render()
+    check(popup.requestedVisible && popup._contentHovered,
+       "dwelling on the visible "+edge+" connection closed the popup: "+before)
     mouseMove(host.contentParent,host.contentParent.width/2,host.contentParent.height/2);wait(50);render()
     check(popup.requestedVisible && popup._contentHovered,"anchor-to-popup handoff collapsed the popup")
     outside()
     check(!popup.requestedVisible && !popup.presentationActive && controller.activePopup===null,"pointer exit left a stale popup lease")
    }
+   root.edge="bottom";render();outside()
    mouseMove(anchor,40,16);wait(80);render()
    popup.dismissPresentation();wait(40)
    check(!popup.requestedVisible,"explicit dismissal failed")

@@ -720,6 +720,7 @@ Scope {
                     }
 
                     identity: "styledPopup" + index
+                    includeEdgeConnection: true
                     stackPolicy: "pyramid"
                     semanticOpenOverride:
                         hostedPopup?.liquidSemanticVisible ?? false
@@ -779,7 +780,7 @@ Scope {
                         liquid.unregisterPopupHost(index,styledPopupHost)
 
                     HoverHandler {
-                        parent: styledPopupHost.contentParent
+                        parent: styledPopupHost.hoverParent
                         enabled: styledPopupHost.open
                         onHoveredChanged: {
                             if (styledPopupHost.hostedPopup)

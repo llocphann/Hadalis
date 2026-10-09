@@ -7,7 +7,8 @@ import "looks/AbyssPyramidMotion.js" as PyramidMotion
 import "looks/AbyssWave.js" as Wave
 
 // This host never paints a panel. Its geometry record is consumed by the one
-// output field, and its clipped content rectangle is the entire input region.
+// output field. Hover popups may include their drawn connection to the Edge;
+// other bodies retain only the clipped content rectangle as their input region.
 Item {
     id: root
     required property string edge
@@ -23,6 +24,7 @@ Item {
         && vacancyBodyHover.hovered
     property int vacancyHoverOrder: 0
     property Item embeddedItem: null
+    property bool includeEdgeConnection: false
     property bool animatePresentation: true
     property bool stableContentSize: false
     // Some owners need content-owned hold-open state even while visually closed.
@@ -202,8 +204,14 @@ Item {
     readonly property Item contentItem: content
     readonly property bool ready: embeddedItem !== null || content.status === Loader.Ready
     readonly property Item contentParent: contentCanvas
-    readonly property rect inputBounds: acceptsInput && ready
-        ? Qt.rect(contentFrame.x,contentFrame.y,contentFrame.width,contentFrame.height) : Qt.rect(0,0,0,0)
+    readonly property Item hoverParent: root.includeEdgeConnection ? inputFrame : contentCanvas
+    readonly property rect inputBounds: {
+        if (!root.acceptsInput || !root.ready) return Qt.rect(0,0,0,0)
+        const contentRect=Qt.rect(contentFrame.x,contentFrame.y,contentFrame.width,contentFrame.height)
+        if (!root.includeEdgeConnection) return contentRect
+        const region=Geometry.popupInput(contentRect,root.width,root.height,root.edgeInsets,root.edge)
+        return Qt.rect(region.x,region.y,region.width,region.height)
+    }
     signal closeRequested()
     AbyssParticipant {
         id: participant
@@ -450,6 +458,12 @@ Item {
                 easing.type: Easing.OutCubic
             }
         }
+    }
+    Item {
+        id: inputFrame
+        x: root.inputBounds.x; y: root.inputBounds.y
+        width: root.inputBounds.width; height: root.inputBounds.height
+        enabled: root.acceptsInput && root.ready
     }
     Item {
         id: contentFrame

@@ -5,6 +5,27 @@ import subprocess
 root = Path(__file__).resolve().parents[1]
 program = (root / "modules/abyss/looks/AbyssGeometry.js").read_text() + r"""
 const assert = require('node:assert/strict');
+for(const owner of ['top','bottom','left','right']) {
+ const ins={left:40,top:40,right:40,bottom:40};
+ for(const scale of [1,1.25,1.5,2]) {
+  const w=1920/scale,h=1200/scale;
+  for(const progress of [0,.2,.5,1]) {
+   const rec=panel(w,h,ins,owner,100,240,180,progress,14);
+   const original=JSON.stringify(rec.content);
+   const hit=popupInput(rec.content,w,h,ins,owner);
+   assert.equal(JSON.stringify(rec.content),original,'connection hitbox must not alter presentation geometry');
+   assert(hit.x>=0 && hit.y>=0 && hit.x+hit.width<=w && hit.y+hit.height<=h);
+   if(progress===0) { assert.equal(hit.width*hit.height,0); continue; }
+   if(horizontal(owner)) {
+    assert.equal(hit.x,rec.content.x);assert.equal(hit.width,rec.content.width,'no output-wide hover strip');
+    assert.equal(owner==='top'?hit.y:hit.y+hit.height,owner==='top'?ins.top:h-ins.bottom);
+   } else {
+    assert.equal(hit.y,rec.content.y);assert.equal(hit.height,rec.content.height,'no output-wide hover strip');
+    assert.equal(owner==='left'?hit.x:hit.x+hit.width,owner==='left'?ins.left:w-ins.right);
+   }
+  }
+ }
+}
 for(const edge of ['top','right','bottom','left']) {
  const ins={left:16,top:16,right:16,bottom:16,[edge]:0};
  const x=edge==='left'?0.5:edge==='right'?1919.5:960;

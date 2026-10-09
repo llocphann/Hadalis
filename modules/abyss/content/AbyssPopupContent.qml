@@ -50,6 +50,7 @@ FocusScope {
 
     HoverHandler {
         id: popupHover
+        parent: root.participant?.hoverParent ?? root
         enabled: root.hoverDismissEnabled
         onHoveredChanged: root.refreshIdleDismiss()
     }

@@ -152,6 +152,7 @@ Item {
         id: body
         anchors.fill: parent
         identity: "popup"
+        includeEdgeConnection: true
         controller: root.controller
         outputName: root.outputName
 

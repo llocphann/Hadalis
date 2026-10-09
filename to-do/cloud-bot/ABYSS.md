@@ -1013,3 +1013,25 @@ Owner request on `dev`:
   `popupWasHovered`, `entranceSettled`, and LayerWindow ordering, rather
   than speculating about compositor focus.
 - [ ] Keep stable untouched; no DONE until live menu verification.
+
+
+### 2026-10-09 — Follow-up: stable desktop right-click lifecycle
+
+The source-only entrance-hover guard in `3a3d806acca` is not
+sufficient to guarantee the menu persists: even after animation settles,
+an animated popup can intersect the stationary cursor, then report
+hover-loss 700ms later. Unlike preview menus, the desktop menu is
+**right-click-initiated** and should remain until explicit dismissal.
+
+- [x] On `dev`, set `closeOnHoverLost: false` only on bare desktop
+  `desktopContextMenu` and `desktopItemContextMenu`.
+  Existing left-click on desktop, selecting any action and Escape remain
+  dismissal paths. Shared `ContextMenu` default hover behavior is unchanged.
+- [x] Focused source regression asserts both menu instances opt out,
+  shared timer still available to other consumers, and dismissal actions.
+- [ ] Live Niri acceptance at retracted Screen Edge gaps with
+  `Width affects modules OFF`: top/bottom/left/right where applicable;
+  verify menu stays visible at least 2s without mouse movement, menu
+  items remain clickable, Escape and desktop left-click dismiss.
+- [ ] Native Active Window setting: validate max width 120/220/420 and
+  ordinary text elision on Abyss and classic Bar. No stable branch changes.

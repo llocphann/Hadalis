@@ -1593,9 +1593,13 @@ Scope {
                 // own items on Niri. Left-click-to-close is handled by that
                 // MouseArea directly instead.
                 closeOnFocusLost: false
-                closeOnHoverLost: true
-                closeOnHoverLostAfterEntered: true
-                closeOnHoverLostDelay: 700
+                // A desktop context menu is click-initiated, not a hover
+                // preview. Retracted Abyss Edge gaps allow clicks at points
+                // where the popup's entrance animation temporarily sweeps
+                // across the stationary pointer. A hover-loss timer would
+                // dismiss that menu even though the user never left it.
+                // Close on desktop left-click, action selection or Escape.
+                closeOnHoverLost: false
                 model: GlobalStates.widgetEditMode ? [
                     { text: Translation.tr("Manage widgets"), iconName: "tune", monochromeIcon: true,
                         action: () => { widgetManagerPanel.shown = true } },
@@ -1661,9 +1665,9 @@ Scope {
                 anchorItem: desktopMenuAnchor
                 popupAbove: false
                 closeOnFocusLost: false
-                closeOnHoverLost: true
-                closeOnHoverLostAfterEntered: true
-                closeOnHoverLostDelay: 700
+                // Same click-initiated lifecycle as the bare-desktop menu.
+                // Do not let pointer transitions across edge gaps cancel it.
+                closeOnHoverLost: false
             }
 
             WidgetCanvas {

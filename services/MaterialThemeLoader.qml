@@ -23,6 +23,115 @@ Singleton {
     property string filePath: Directories.generatedMaterialThemePath
     property bool ready: false
 
+    property bool previewActive: false
+    property string previewPath: ""
+    property int _previewSerial: 0
+    property var _previewBaseline: null
+    property var _previewPalette: null
+    property var _previewPending: null
+    property bool _previewExternalDeferred: false
+
+    function _snapshotColors(): var {
+        const result = {}
+        for (const key of Object.keys(Appearance.m3colors))
+            if (key.startsWith("m3") || /^term\d+$/.test(key) || ["darkmode", "transparent"].includes(key))
+                if (typeof Appearance.m3colors[key] !== "function") {
+                    const value = Appearance.m3colors[key]
+                    // QColor wrappers can refer back to a mutable QML property.
+                    // Store independent values so preview cannot change its own
+                    // restore point while applying the highlighted palette.
+                    result[key] = typeof value === "boolean" ? value : String(value)
+                }
+        return result
+    }
+
+    function previewWallpaperColors(path: string, thumbnail = ""): void {
+        if (!path) { root.cancelColorPreview(); return }
+        if (!root.previewActive) {
+            root._previewBaseline = root._snapshotColors()
+            root.previewActive = true
+        }
+        const settings = Config.options?.appearance
+        const theming = settings?.wallpaperTheming
+        const terminal = theming?.terminalColorAdjustments
+        const generation = theming?.terminalGenerationProps
+        const options = {
+            mode: root._previewBaseline.darkmode ? "dark" : "light",
+            scheme: settings?.palette?.type ?? "auto", thumbnail: String(thumbnail),
+            "color-strength": theming?.colorStrength ?? 1,
+            term_saturation: terminal?.saturation ?? .65,
+            term_brightness: terminal?.brightness ?? .60,
+            harmony: terminal?.harmony ?? generation?.harmony ?? .40,
+            term_bg_brightness: terminal?.backgroundBrightness ?? .50,
+            harmonize_threshold: generation?.harmonizeThreshold ?? 100,
+            term_fg_boost: generation?.termFgBoost ?? .35,
+            soften: settings?.softenColors ?? false, "invert-hue": settings?.colorInvert ?? false
+        }
+        root.previewPath = path
+        root._previewPending = {serial: ++root._previewSerial, command: ["/usr/bin/python3",
+            Quickshell.shellPath("scripts/colors/preview-palette.py"), path, JSON.stringify(options)]}
+        root._startNextPreview()
+    }
+
+    function _startNextPreview(): void {
+        if (previewProcess.running || !root._previewPending) return
+        const request = root._previewPending
+        root._previewPending = null
+        previewProcess.serial = request.serial
+        previewProcess.command = request.command
+        previewProcess.running = true
+    }
+
+    function _finishPreview(code: int): void {
+        if (code === 0 && root.previewActive && previewProcess.serial === root._previewSerial) {
+            try {
+                const palette = JSON.parse(previewProcess.output)
+                if (palette?.background && palette?.primary) {
+                    root._previewPalette = palette
+                    root._applyPalette(palette)
+                }
+            } catch (error) { root._log("[MaterialThemeLoader] invalid preview:", error) }
+        } else if (root.previewActive && previewProcess.serial === root._previewSerial) {
+            root._previewPalette = null
+            root._restorePreviewBaseline()
+        }
+        Qt.callLater(root._startNextPreview)
+    }
+
+    function cancelColorPreview(): void {
+        if (!root.previewActive) return
+        root.previewActive = false
+        root.previewPath = ""
+        ++root._previewSerial
+        root._previewPending = null
+        root._restorePreviewBaseline()
+        root._previewBaseline = null
+        root._previewPalette = null
+        if (root._previewExternalDeferred) {
+            root._previewExternalDeferred = false
+            root.requestExternalApply()
+        }
+    }
+
+    function _restorePreviewBaseline(): void {
+        for (const key of Object.keys(root._previewBaseline ?? {}))
+            Appearance.m3colors[key] = root._previewBaseline[key]
+    }
+
+    Process {
+        id: previewProcess
+        property int serial: 0
+        property string output: ""
+        property bool started: false
+        stdout: StdioCollector { onStreamFinished: previewProcess.output = text }
+        onStarted: previewProcess.started = true
+        onRunningChanged: {
+            if (running) { started = false; output = "" }
+            else if (!started) root._finishPreview(-1)
+        }
+        onExited: code => root._finishPreview(code)
+    }
+
     // Set to true ONLY when a variant generation process exits successfully.
     // Consumed by the next applyColors call. Unlike the old _schemeVariantPending
     // (set at start, consumed by any file-change callback), this flag cannot be
@@ -170,6 +279,16 @@ Singleton {
         root._forceApply = false
 
         _log("[MaterialThemeLoader] Applying", Object.keys(json).length, "color keys, bg:", json.background, "primary:", json.primary)
+        root._applyPalette(json)
+        // A real update during browsing becomes the new restore point. The
+        // highlighted palette remains transient until the picker closes.
+        if (root.previewActive) {
+            root._previewBaseline = root._snapshotColors()
+            if (root._previewPalette) root._applyPalette(root._previewPalette)
+        }
+    }
+
+    function _applyPalette(json): void {
         for (const key in json) {
             if (json.hasOwnProperty(key)) {
                 const camelCaseKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase())
@@ -413,6 +532,10 @@ Singleton {
 
     function _applyExternalTheming(): void {
         if (!root.defaultApplyExternal) return;
+        if (root.previewActive) {
+            root._previewExternalDeferred = true
+            return
+        }
         const applyColorPath = Directories.scriptsPath + "/colors/applycolor.sh"
         const overlay = root._styleAppPaletteOverlay()
         if (!overlay) {

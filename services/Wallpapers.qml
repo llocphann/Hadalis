@@ -34,7 +34,8 @@ Singleton {
 
     // ─── Transient wallpaper preview ───
     // Single entry point for pickers that show a wallpaper before it is applied.
-    // Nothing here writes Config or starts the colour pipeline.
+    // Browsing updates shell colors transiently without writing Config or
+    // applying colors to external applications.
     //
     // Which engine is visible depends on the file and the configuration: awww
     // paints static images, while the internal Video/AnimatedImage/crossfader
@@ -57,6 +58,8 @@ Singleton {
 
         root.internalPreviewMonitor = String(monitorName ?? "")
         root.internalPreviewPath = normalizedPath
+        MaterialThemeLoader.previewWallpaperColors(normalizedPath,
+            root._videoThumbDir + "/" + MD5.hash(normalizedPath) + ".jpg")
         // No-op for videos, GIFs, and when awww is not running.
         AwwwBackend.previewImage(normalizedPath, monitorName)
     }
@@ -65,12 +68,14 @@ Singleton {
     // engine. Called from every launcher exit path that is not an apply.
     function cancelWallpaperPreview(): void {
         root._clearInternalPreview()
+        MaterialThemeLoader.cancelColorPreview()
         AwwwBackend.cancelPreview()
     }
 
     // The caller is about to apply for real; that apply repaints on its own.
     function clearWallpaperPreview(): void {
         root._clearInternalPreview()
+        MaterialThemeLoader.cancelColorPreview()
         AwwwBackend.clearPreview()
     }
 

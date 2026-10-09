@@ -117,6 +117,31 @@ ShellRoot {
  TestCase {
   id:test;when:false;optional:true
   function check(value,message){if(!value)throw new Error(message)}
+  function checkCoreBattery(){
+   const original=JSON.stringify(Config.options.battery)
+   tryVerify(()=>findChild(power,"batteryLowWarningControl")!==null,1000)
+   check(power.implicitHeight>100,"generic battery settings collapsed to a package hint")
+   check(JSON.stringify(Config.options.battery)===original,"constructing core battery settings changed preferences")
+   const low=findChild(power,"batteryLowWarningControl")
+   const critical=findChild(power,"batteryCriticalWarningControl")
+   const full=findChild(power,"batteryFullWarningControl")
+   const automatic=findChild(power,"batteryAutomaticSuspendControl")
+   const suspend=findChild(power,"batterySuspendThresholdControl")
+   check(critical!==null && full!==null && automatic!==null && suspend!==null,"generic battery controls depend on an optional package")
+   check(low.to===100 && full.to===101 && full.from===0,"battery warning bounds changed")
+   low.valueModified(25);critical.valueModified(10);full.valueModified(101)
+   tryCompare(Config.options.battery,"low",25,1000)
+   tryCompare(Config.options.battery,"critical",10,1000)
+   tryCompare(Config.options.battery,"full",101,1000)
+   automatic.toggledByUser(false)
+   tryCompare(suspend,"enabled",false,1000)
+   automatic.toggledByUser(true)
+   tryCompare(suspend,"enabled",true,1000)
+   suspend.valueModified(5)
+   tryCompare(Config.options.battery,"suspend",5,1000)
+   Config.setNestedValue("battery.low",30)
+   tryCompare(low,"value",30,1000)
+  }
   function runChecks(){try{
    tryCompare(Config,"ready",true,4000)
    const present=Quickshell.env("HADALIRD_PRESENT")==="1"
@@ -127,16 +152,19 @@ ShellRoot {
     check(!TlpService.available && !ThinkFanService.available && !managed.ready && !daily.ready,"missing worker reported ready")
     check(!TlpSettingsService.apply() && !ThinkFanService.applyProfile("managed") && !managed.addTask("no write") && !Zettelkasten.capture("no write","no write"),"missing action reported success")
     check(TlpSettingsService.lastError.length>0 && managed.errorMessage.length>0,"missing action gave no reason")
+    checkCoreBattery()
    }else{
     tryCompare(Hadalird,"available",true,4000)
     check(!Hadalird.enabled && Hadalird.session===null,"installed package enabled itself")
     check(power.navigationCategories.length===0,"disabled settings retained package categories")
+    checkCoreBattery()
     power.selectedCategoryIndex=1
     Config.setNestedValue("integrations.hadalird.tlp",true)
     tryVerify(()=>Hadalird.session!==null,2000)
     const owned=Hadalird.session
     tryVerify(()=>power.navigationCategories.length===2,1000)
     const page=findChild(power,"fixture-tlp-settings")
+    tryVerify(()=>findChild(power,"batteryLowWarningControl")===null,1000)
     check(page!==null && page.selectedCategoryIndex===1,"deferred settings lost the selected category")
     power.selectedCategoryIndex=0
     tryCompare(page,"selectedCategoryIndex",0,1000)
@@ -155,6 +183,8 @@ ShellRoot {
     tryCompare(TlpService,"available",false,1000)
     tryVerify(()=>power.navigationCategories.length===0,1000)
     tryVerify(()=>findChild(power,"fixture-tlp-settings")===null,1000)
+    checkCoreBattery()
+    check(Config.options.battery.low===30 && Config.options.battery.full===101 && Config.options.battery.suspend===5,"unloading optional settings lost battery preferences")
     TlpService.apply();check(owned.operations===3,"disabled charge leaked an action")
     Config.setNestedValue("integrations.hadalird.thinkfan",false)
     tryVerify(()=>Hadalird.session===null,2000)

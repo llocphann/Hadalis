@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -9,6 +10,10 @@ Item {
     // Without it IntegrationsConfig page 38 fails to instantiate before its
     // optional Hadalird payload can be loaded or checked.
     property string settingsTaskSection: ""
+    // The page content is a ColumnLayout. Without this hint the wrapper can
+    // receive width=0, so the loaded Obsidian card paints into a zero-width
+    // surface while still reserving its full implicit height.
+    Layout.fillWidth: true
     implicitHeight: content.item ? content.item.implicitHeight : unavailable.implicitHeight
     Loader {
         id: content

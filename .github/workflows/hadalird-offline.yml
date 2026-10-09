@@ -42,6 +42,8 @@ jobs:
         run: python3 scripts/test-hadalird-manager.py
       - name: Validate Hadalird Settings Flow layout
         run: python3 scripts/test-hadalird-settings-flow.py
+      - name: Validate Obsidian host wrapper width
+        run: python3 scripts/test-hadalird-obsidian-wrapper.py
       - name: Validate root provisioning without root
         run: python3 scripts/test-hadalird-system-provision.py
       - name: Check existing host removal safety

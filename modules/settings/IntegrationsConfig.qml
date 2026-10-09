@@ -97,7 +97,12 @@ ContentPage {
   StyledText {
    Layout.fillWidth:true;wrapMode:Text.WordWrap
    color:Appearance.colors.colSubtext
-   text:"System helpers (TLP / Thinkfan): "+Hadalird.systemHelpersDiagnostic
+   text:"System helpers (TLP / Thinkfan): "+(
+    Hadalird.systemHelpersDiagnostic === "unchecked"
+    ? "Not checked yet — use Check helper status."
+    : Hadalird.systemHelpersDiagnostic === "system-provisioner-not-installed"
+    ? "Hadalis system package does not provide the Polkit gateway yet."
+    : Hadalird.systemHelpersDiagnostic)
   }
   Flow {
    Layout.fillWidth:true;spacing:8
@@ -108,7 +113,9 @@ ContentPage {
    DialogButton {
     visible:Hadalird.available && !Hadalird.systemHelpersInstalled
     buttonText:"Install system helpers"
-    enabled:!Hadalird.managerBusy
+    // A source-only Hadalis update does not install the trusted root helper.
+    // Do not offer an action which is guaranteed to fail in that state.
+    enabled:!Hadalird.managerBusy && Hadalird.systemProvisionerAvailable
     onClicked:Hadalird.manage("helpers-install")
    }
    DialogButton {

@@ -537,7 +537,7 @@ Item {
                         AbyssButton {
                             objectName: "musicPlayAll"
                             Layout.fillWidth: true
-                            compact: true
+                            compact: false
                             glyph: "play_arrow"
                             text: Translation.tr("Play All")
                             outlined: false
@@ -547,7 +547,7 @@ Item {
                         AbyssButton {
                             objectName: "musicPlaySelection"
                             Layout.fillWidth: true
-                            compact: true
+                            compact: false
                             glyph: "playlist_play"
                             text: Translation.tr("Play Selected")
                             outlined: false

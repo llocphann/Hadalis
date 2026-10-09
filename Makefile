@@ -119,17 +119,7 @@ test-package-metadata:
 		test "$$srcinfo_version" = "$$git_version"
 
 test-package-hooks:
-	@cmp -s distro/arch/inir-shell/inir-shell.install distro/arch/inir-shell-git/inir-shell-git.install || { \
-		printf 'Arch stable/git install hooks drifted; keep lifecycle cleanup in sync\n' >&2; \
-		exit 1; \
-	}
-	@for hook in distro/arch/inir-shell/inir-shell.install distro/arch/inir-shell-git/inir-shell-git.install; do \
-		grep -Fq 'pre_remove() {' "$$hook"; \
-		grep -Fq '/usr/libexec/inir-battery-charge-limit --config-reset' "$$hook"; \
-		grep -Fq '/usr/libexec/inir-battery-charge-limit --disable' "$$hook"; \
-		grep -Fq '/etc/tlp.d/99-inir-battery-charge-limit.conf' "$$hook"; \
-		grep -Fq '/etc/tlp.d/99-inir-tlp-settings.conf' "$$hook"; \
-	done
+	@python3 scripts/test-hadalird-arch-package.py
 
 test-battery-helper:
 	@sh scripts/test-battery-charge-limit-helper.sh

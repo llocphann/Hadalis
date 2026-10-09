@@ -1,11 +1,13 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Window
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Bluetooth
 import qs.services
 import qs.modules.common.functions
 import qs.modules.abyss.looks
+import "../../common/functions/PopupFocus.js" as PopupFocus
 import qs.modules.sidebarRight.wifiNetworks
 import qs.modules.sidebarRight.bluetoothDevices
 
@@ -19,6 +21,8 @@ FocusScope {
     implicitWidth: 380
     implicitHeight: 500
     property alias dialog: form.item
+    readonly property bool editorFocusHeld: root.activeFocus && root.Window.active
+        && PopupFocus.editableDescendant(root.Window.window?.activeFocusItem, root)
     signal closeRequested()
 
     function refreshIdleDismiss(): void {
@@ -26,7 +30,7 @@ FocusScope {
             idleDismiss.stop()
             return
         }
-        if (root.triggerHovered || popupHover.hovered || root.activeFocus)
+        if (root.triggerHovered || popupHover.hovered || root.editorFocusHeld)
             idleDismiss.stop()
         else
             idleDismiss.restart()
@@ -43,7 +47,7 @@ FocusScope {
     Component.onCompleted: Qt.callLater(refreshIdleDismiss)
     onEnabledChanged: refreshIdleDismiss()
     onTriggerHoveredChanged: refreshIdleDismiss()
-    onActiveFocusChanged: refreshIdleDismiss()
+    onEditorFocusHeldChanged: refreshIdleDismiss()
 
     HoverHandler {
         id: popupHover
@@ -56,7 +60,7 @@ FocusScope {
         repeat: false
         onTriggered: {
             if (root.autoDismissOnIdle && root.enabled
-                    && !root.triggerHovered && !popupHover.hovered && !root.activeFocus)
+                    && !root.triggerHovered && !popupHover.hovered && !root.editorFocusHeld)
                 root.closeRequested()
         }
     }

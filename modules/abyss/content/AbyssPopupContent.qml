@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Window
 import QtQuick.Layouts
 import qs
 import qs.services
@@ -8,6 +9,7 @@ import qs.modules.bar
 import qs.modules.bar.weather
 import qs.modules.mediaControls
 import qs.modules.abyss.looks
+import "../../common/functions/PopupFocus.js" as PopupFocus
 
 // Rehost the mature popup contents, including Events, ThinkFan and Equalizer.
 FocusScope {
@@ -25,6 +27,8 @@ FocusScope {
     readonly property bool hoverDismissEnabled: root.autoDismissOnIdle
         && ["wifi","bluetooth","utilities","launcher","dockAppMenu"].includes(root.kind)
     readonly property bool triggerHovered: root.participant?.triggerHovered ?? false
+    readonly property bool editorFocusHeld: root.activeFocus && root.Window.active
+        && PopupFocus.editableDescendant(root.Window.window?.activeFocusItem, root)
     signal closeRequested()
 
     function refreshIdleDismiss(): void {
@@ -32,7 +36,7 @@ FocusScope {
             idleDismiss.stop()
             return
         }
-        if (root.triggerHovered || popupHover.hovered || root.activeFocus)
+        if (root.triggerHovered || popupHover.hovered || root.editorFocusHeld)
             idleDismiss.stop()
         else
             idleDismiss.restart()
@@ -42,7 +46,7 @@ FocusScope {
     onKindChanged: root.refreshIdleDismiss()
     onEnabledChanged: root.refreshIdleDismiss()
     onTriggerHoveredChanged: root.refreshIdleDismiss()
-    onActiveFocusChanged: root.refreshIdleDismiss()
+    onEditorFocusHeldChanged: root.refreshIdleDismiss()
 
     HoverHandler {
         id: popupHover
@@ -56,7 +60,7 @@ FocusScope {
         repeat: false
         onTriggered: {
             if (root.hoverDismissEnabled && root.enabled
-                    && !root.triggerHovered && !popupHover.hovered && !root.activeFocus)
+                    && !root.triggerHovered && !popupHover.hovered && !root.editorFocusHeld)
                 root.closeRequested()
         }
     }

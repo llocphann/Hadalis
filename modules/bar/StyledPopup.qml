@@ -201,15 +201,23 @@ LazyLoader {
         && root.hoverTarget.width > 0
         && root.hoverTarget.height > 0
 
+    // Observe the actual source Item, including interactive descendants. Legacy
+    // MouseArea flags can stop reporting hover over a child's pointer handler
+    // or survive a focus click; neither is the popup's pointer lease.
+    property Item _anchorHover: Item {
+        parent: root.hoverTarget
+        anchors.fill: parent
+        enabled: root.hoverActivates && root._anchorReady
+        readonly property bool hovered: sourceHover.hovered
+        HoverHandler { id: sourceHover }
+    }
+
     // Keep the loader resident for the reverse morph. `requestedVisible` is the
     // semantic popup state; `active` includes only the short retract tail. While
     // hover-activated, the body itself also counts as the request so the pointer
     // can travel from the bar through the connected shoulder without collapse.
     readonly property bool humanVisibleRequest: root.alternativeVisibleCondition
-        || (root.hoverActivates && (
-            (root.hoverTarget
-                && (root.hoverTarget.containsMouse ?? root.hoverTarget.buttonHovered ?? false))
-            || root.popupHovered))
+        || (root.hoverActivates && (root._anchorHover.hovered || root.popupHovered))
     onHumanVisibleRequestChanged: if (humanVisibleRequest) companionLease = null
     readonly property bool _rawVisibleRequest: root.companionLease !== null || root.humanVisibleRequest
     readonly property bool requestedVisible: !root._liquidDismissed && root._rawVisibleRequest

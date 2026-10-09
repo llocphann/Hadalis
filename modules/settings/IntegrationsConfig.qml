@@ -23,6 +23,8 @@ ContentPage {
   id:hadalirdPackageSection
   property bool confirmRemoval:false
   property bool confirmSystemRemoval:false
+  property bool confirmGatewayInstall:false
+  property bool confirmGatewayRemoval:false
   StyledText {
    Layout.fillWidth:true;wrapMode:Text.WordWrap;color:Appearance.colors.colSubtext
    text: Hadalird.managerBusy ? "Managing the optional Hadalird package…"
@@ -137,6 +139,54 @@ ContentPage {
     visible:hadalirdPackageSection.confirmSystemRemoval
     buttonText:"Cancel"
     onClicked:hadalirdPackageSection.confirmSystemRemoval=false
+   }
+  }
+  StyledText {
+   Layout.fillWidth:true;wrapMode:Text.WordWrap;color:Appearance.colors.colSubtext
+   visible:Hadalird.available && !Hadalird.systemProvisionerAvailable
+   text:"On Arch repo-copy installations, Hadalis can install its own small system gateway package. The package contains only the audited Polkit gateway and policy; the action builds as your user, then requests administrator authentication for pacman. It does not change TLP or fan settings."
+  }
+  Flow {
+   Layout.fillWidth:true;spacing:8
+   DialogButton {
+    visible:Hadalird.available && !Hadalird.systemProvisionerAvailable && !hadalirdPackageSection.confirmGatewayInstall
+    enabled:!Hadalird.managerBusy
+    buttonText:"Install Arch system gateway"
+    onClicked:hadalirdPackageSection.confirmGatewayInstall=true
+   }
+   DialogButton {
+    visible:hadalirdPackageSection.confirmGatewayInstall
+    enabled:!Hadalird.managerBusy
+    buttonText:"Confirm package installation"
+    onClicked:{
+     hadalirdPackageSection.confirmGatewayInstall=false
+     Hadalird.manage("gateway-install")
+    }
+   }
+   DialogButton {
+    visible:hadalirdPackageSection.confirmGatewayInstall
+    buttonText:"Cancel"
+    onClicked:hadalirdPackageSection.confirmGatewayInstall=false
+   }
+   DialogButton {
+    visible:Hadalird.gatewayPackageInstalled && !hadalirdPackageSection.confirmGatewayRemoval
+    enabled:!Hadalird.managerBusy && !Hadalird.systemHelpersInstalled
+    buttonText:"Remove Arch gateway"
+    onClicked:hadalirdPackageSection.confirmGatewayRemoval=true
+   }
+   DialogButton {
+    visible:hadalirdPackageSection.confirmGatewayRemoval
+    enabled:!Hadalird.managerBusy && !Hadalird.systemHelpersInstalled
+    buttonText:"Confirm gateway removal"
+    onClicked:{
+     hadalirdPackageSection.confirmGatewayRemoval=false
+     Hadalird.manage("gateway-remove")
+    }
+   }
+   DialogButton {
+    visible:hadalirdPackageSection.confirmGatewayRemoval
+    buttonText:"Cancel"
+    onClicked:hadalirdPackageSection.confirmGatewayRemoval=false
    }
   }
   StyledText {

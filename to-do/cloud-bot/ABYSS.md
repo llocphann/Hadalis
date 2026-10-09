@@ -1340,3 +1340,25 @@ No other repository or `stable` branch is changed.
   absent. Integration toggles describe stored preferences, not verified
   availability of a hardware backend. No fan/charge policy changed by
   this package metadata repair.
+
+## 2026-10-10 — Arch repo-copy gateway distribution
+
+Owner `inir status`: installed version 2.29.3; `dev` source
+`fb84c8f`; install mode `repo-copy`, update strategy `repo-setup`.
+Neither `inir-shell` nor `inir-shell-git` is installed, which explains
+why package-owned Polkit files are absent. The source-install flow must
+remain supported; do not require switching shell install methods.
+
+Hadalis adds a standalone gateway package action from Settings,
+separate from the user-space Hadalird release. It prepares an Arch package
+from fixed-digest Hadalis system files, verifies its contents, and only
+requests administrator authorization after explicit user confirmation.
+Gateway registration does not automatically start TLP, change fan policy,
+alter charge limits, or install the remaining hardware helpers.
+
+- [ ] Obtain focused offline CI receipts for package build simulation,
+  modified-file rejection, Settings layout and manager action routing.
+- [ ] Verify actual build, native authentication, installed package
+  ownership, package removal and error/cancel flows on the owner's Arch
+  desktop. No claim of root/package installation without owner evidence.
+- [ ] Keep existing `repo-copy` shell and Obsidian user package intact.

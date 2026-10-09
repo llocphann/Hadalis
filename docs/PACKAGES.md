@@ -307,3 +307,21 @@ user-package UI remains usable, but the *privileged* helper controls remain
 unavailable until the maintainer has installed a supported system package.
 Do not use an ad-hoc `sudo cp` of downloaded helpers or run the downloaded
 installer as root.
+
+## Repo-copy optional integrations on Arch
+
+Hadalis supports the existing repo-copy/repo-setup shell without requiring
+`inir-shell` or `inir-shell-git`. The separate user-level Hadalird package
+is managed in Settings. On Arch, the optional system gateway can also be
+packaged separately as `inir-hadalird-gateway`, preserving the shell install.
+
+The small standalone package ships the audited gateway and policy only.
+The package build and integrity checks happen as the regular user. System
+installation requires an explicit confirmation and normal administrator
+authentication through the Arch package manager. The separate hardware
+helper install remains opt-in. No fan, battery charging or TLP configuration
+is changed by installing the gateway alone.
+
+Remove the standalone gateway package before switching to a full
+`inir-shell` package to avoid overlapping file ownership. Native system
+authorization and rollback still require owner-machine acceptance.

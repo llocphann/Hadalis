@@ -231,8 +231,30 @@ def call_system_helper(action, package=None):
     return data
 
 
+def gateway_package(action):
+    # The unprivileged package builder is part of Hadalis' own shipped runtime.
+    # It executes makepkg as the user and requests Polkit for pacman only.
+    task = action.removeprefix("gateway-")
+    runner = ROOT / "scripts/hadalird-system-package.py"
+    if task not in ("status", "install", "remove") or not runner.is_file():
+        raise ValueError("Hadalis system gateway package manager is unavailable")
+    try:
+        outcome = subprocess.run(
+            ["/usr/bin/python3", str(runner), task], capture_output=True,
+            text=True, timeout=260, check=False)
+    except subprocess.TimeoutExpired as error:
+        raise ValueError("Gateway package operation timed out; inspect package status before retrying") from error
+    try:
+        payload = json.loads(outcome.stdout.strip())
+    except (ValueError, TypeError) as error:
+        raise ValueError("System gateway package did not return an operation receipt") from error
+    if outcome.returncode != 0 or payload.get("ok") is not True:
+        raise ValueError(str(payload.get("error") or "System gateway package operation failed"))
+    return payload
+
+
 def operate(action, home, shell_root, revision_fetch=latest_sha, archive_fetch=request_bytes,
-            system_call=call_system_helper):
+            system_call=call_system_helper, gateway_call=gateway_package):
     home.mkdir(parents=True, exist_ok=True)
     # Bundled distro payload takes precedence in Hadalis discovery.
     if action in ("check", "install", "remove", "rollback") and (shell_root / "optional/hadalird").exists():
@@ -249,6 +271,17 @@ def operate(action, home, shell_root, revision_fetch=latest_sha, archive_fetch=r
                       (home / "releases" / previous).is_dir())}
         if current:
             result["version"] = json.loads((home / "releases" / current / "manifest.json").read_text())["version"]
+        if action.startswith("gateway-"):
+            if action not in ("gateway-status", "gateway-install", "gateway-remove"):
+                raise ValueError("Unsupported system gateway action")
+            gateway = gateway_call(action)
+            result.update(
+                gatewayPackageInstalled=gateway.get("packageInstalled") is True,
+                systemProvisionerAvailable=gateway.get("installed") is True,
+                systemHelpersDiagnostic=("not-installed" if gateway.get("installed") else
+                    str(gateway.get("diagnostic", "system-provisioner-not-installed"))),
+                message=str(gateway.get("message") or "System gateway package status refreshed"))
+            return result
         if action.startswith("helpers-"):
             if action not in ("helpers-status", "helpers-install", "helpers-remove"):
                 raise ValueError("Unsupported system helper action")
@@ -327,7 +360,8 @@ def operate(action, home, shell_root, revision_fetch=latest_sha, archive_fetch=r
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("status", "check", "install", "remove", "rollback",
-                                                    "helpers-status", "helpers-install", "helpers-remove"))
+                                                    "helpers-status", "helpers-install", "helpers-remove",
+                                                    "gateway-status", "gateway-install", "gateway-remove"))
     parser.add_argument("--shell-root", type=Path, default=ROOT)
     parser.add_argument("--data-home", type=Path, default=Path(
         os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share"))))

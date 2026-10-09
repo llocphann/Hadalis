@@ -12,7 +12,7 @@ import re
 PAGE = Path(__file__).resolve().parents[1] / "modules/settings/IntegrationsConfig.qml"
 qml = PAGE.read_text(encoding="utf-8")
 flows = list(re.finditer(r"\bFlow\s*\{", qml))
-assert len(flows) == 2, f"expected package and helper action flows, got {len(flows)}"
+assert len(flows) == 3, f"expected package, helper and gateway action flows, got {len(flows)}"
 
 
 def flow_sections(begin):
@@ -61,8 +61,8 @@ for i, match in enumerate(flows):
     assert not re.search(r"\bwidth\s*:\s*parent\.width\b", outer), (
         f"Flow #{i + 1} bypasses Layout width management"
     )
-    expected = "Install Hadalird" if i == 0 else "Install system helpers"
+    expected = ("Install Hadalird", "Install system helpers", "Install Arch system gateway")[i]
     assert expected in inside, f"Flow #{i + 1} changed roles or was emptied"
 
 assert "settingsPageIndex:38" in qml
-print("HADALIRD_SETTINGS_FLOW_PASS both action flows use read-only safe Qt layouts")
+print("HADALIRD_SETTINGS_FLOW_PASS all package, helper and gateway flows use Qt-safe layouts")

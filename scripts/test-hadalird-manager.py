@@ -74,6 +74,14 @@ with tempfile.TemporaryDirectory(prefix="hadalird-manager-test-") as location:
     requested = []
     system_calls = []
     system_enabled = False
+    gateway_calls = []
+
+    def gateway_callback(action):
+        gateway_calls.append(action)
+        installed = action == "gateway-install"
+        return {"ok": True, "installed": installed, "packageInstalled": installed,
+                "diagnostic": "ready" if installed else "not-installed",
+                "message": "Synthetic gateway package receipt"}
 
     def system_callback(action, package):
         # no privileged executable runs in this fixture
@@ -96,7 +104,7 @@ with tempfile.TemporaryDirectory(prefix="hadalird-manager-test-") as location:
 
     def run(action):
         return manager.operate(action, home, shell, fetch_sha, fetch_archive,
-                               system_callback)
+                               system_callback, gateway_callback)
 
     state = run("status")
     assert not state["available"] and requested == []
@@ -111,6 +119,12 @@ with tempfile.TemporaryDirectory(prefix="hadalird-manager-test-") as location:
     assert "manifest.json" not in files
     assert run("status")["available"]
     assert requested.count("archive") == 1
+    assert not run("gateway-status")["systemProvisionerAvailable"]
+    assert run("gateway-install")["systemProvisionerAvailable"]
+    assert run("gateway-install")["gatewayPackageInstalled"]
+    assert not run("gateway-remove")["gatewayPackageInstalled"]
+    assert gateway_calls == ["gateway-status", "gateway-install", "gateway-install", "gateway-remove"]
+    assert (home / "current").exists()  # gateway never touches the user package
     assert not run("helpers-status")["systemHelpersInstalled"]
     helpers = run("helpers-install")
     assert helpers["systemHelpersInstalled"] and helpers["systemProvisionerAvailable"]

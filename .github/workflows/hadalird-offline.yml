@@ -46,6 +46,8 @@ jobs:
         run: python3 scripts/test-hadalird-obsidian-wrapper.py
       - name: Validate root provisioning without root
         run: python3 scripts/test-hadalird-system-provision.py
+      - name: Validate repo-copy Arch gateway package bootstrap
+        run: python3 scripts/test-hadalird-gateway-bootstrap.py
       - name: Check existing host removal safety
         run: python3 scripts/test-hadalird-install-lifecycle.py
       - name: Verify packaging syntax

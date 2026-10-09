@@ -21,6 +21,7 @@ Singleton {
     property bool updateAvailable: false
     property bool systemProvisionerAvailable: false
     property bool systemHelpersInstalled: false
+    property bool gatewayPackageInstalled: false
     property string systemHelpersDiagnostic: "unchecked"
     readonly property var options: Config.options?.integrations?.hadalird
     readonly property bool tlpEnabled: available && !loadFailed && Config.ready && options?.tlp === true
@@ -33,7 +34,8 @@ Singleton {
     // optional-package lifecycle, not an external installer run by the user.
     function manage(action): void {
         if (managerBusy || probe.running || !["check","install","remove","rollback",
-                "helpers-status","helpers-install","helpers-remove"].includes(action))
+                "helpers-status","helpers-install","helpers-remove",
+                "gateway-status","gateway-install","gateway-remove"].includes(action))
             return
         managerAction = action
         managerBusy = true
@@ -77,6 +79,7 @@ Singleton {
         return JSON.stringify({available, enabled, diagnostic, version, sourceSha,
             managerBusy, managerError, updateAvailable, canRollback,
             systemProvisionerAvailable, systemHelpersInstalled, systemHelpersDiagnostic,
+            gatewayPackageInstalled,
             integrations:{tlp:tlpEnabled,thinkfan:thinkfanEnabled,obsidian:obsidianEnabled}})
     }
     Loader {
@@ -127,6 +130,10 @@ Singleton {
                     if (root.managerAction === "check") {
                         root.latestSha = String(result.latestSha ?? "")
                         root.updateAvailable = result.updateAvailable === true
+                    } else if (root.managerAction.startsWith("gateway-")) {
+                        root.gatewayPackageInstalled = result.gatewayPackageInstalled === true
+                        root.systemProvisionerAvailable = result.systemProvisionerAvailable === true
+                        root.systemHelpersDiagnostic = String(result.systemHelpersDiagnostic ?? "unchecked")
                     } else if (root.managerAction.startsWith("helpers-")) {
                         root.systemHelpersInstalled = result.systemHelpersInstalled === true
                         root.systemProvisionerAvailable = result.systemProvisionerAvailable === true
@@ -139,13 +146,14 @@ Singleton {
             } catch (_error) {
                 root.managerError = String(managerStderr.text ?? "Could not read Hadalird manager result").slice(0, 256)
             }
-            if (["install","remove","rollback","helpers-install","helpers-remove"].includes(root.managerAction))
+            if (["install","remove","rollback","helpers-install","helpers-remove",
+                "gateway-install","gateway-remove"].includes(root.managerAction))
                 Qt.callLater(root.refresh)
         }
     }
     Timer {
         id: managerDeadline
-        interval: 90000
+        interval: 290000
         repeat: false
         onTriggered: {
             managerProcess.running = false

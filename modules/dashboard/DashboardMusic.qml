@@ -184,7 +184,7 @@ Item {
         if (entry.kind === "folder")
             resultFolder = entry.path;
         else if (sourceMode === "queue")
-            backend.playTrackAt(entry.queueIndex);
+            backend.jumpTo(entry.queueIndex);
         else
             backend.enqueueTrack(entry.track, true);
     }
@@ -773,7 +773,7 @@ Item {
                                 detail: String(modelData.artist ?? "")
                                 glyph: "music_note"
                                 artUrl: String(modelData.artUrl ?? modelData.art ?? "")
-                                onDoubleClicked: root.backend.playTrackAt(index)
+                                onDoubleClicked: root.backend.jumpTo(index)
                             }
                         }
                     }

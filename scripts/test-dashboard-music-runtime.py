@@ -47,7 +47,8 @@ ShellRoot {
   property int removed: -1
   function enqueueTracks(tracks) { enqueued=tracks }
   function playQueue(tracks,index,name) { enqueued=tracks;queueIndex=index }
-  function playTrackAt(index) { queueIndex=index }
+  // Match LocalMusic's actual public transport API; no invented UI methods.
+  function jumpTo(index) { queueIndex=index }
   function createPlaylist(name,tracks) { created=name;enqueued=tracks }
   function addTracksToPlaylist(name,tracks) { created=name;enqueued=tracks }
   function removeQueueTrack(index) { removed=index }

@@ -332,26 +332,13 @@ require "$easyeffects" 'readonly property bool uiDemand:' 'EasyEffects must expo
 require "$easyeffects" 'interval: root.uiDemand ? 5000 : 30000' 'EasyEffects must use slow background verification'
 require "$easyeffects" 'running: Config.ready && root.available && (root.uiDemand || root.active)' 'EasyEffects polling must sleep when inactive and hidden'
 
-require "$tlp" 'interval: 120000' 'battery/TLP status polling must not run every 30 seconds'
-require "$tlp" 'running: root.enabled || root.managed || root.busy' 'battery/TLP status polling must sleep while charge-limit ownership is irrelevant'
-require "$thinkfan" 'readonly property int _statusFreshnessMs: 30 * 1000' 'ThinkFan profile-follow events must retain a short status freshness bound'
-require "$thinkfan" 'readonly property int _activePollMs: 30 * 1000' 'active ThinkFan status polling must remain responsive'
-require "$thinkfan" 'readonly property int _idleSafetyPollMs: 5 * 60 * 1000' 'idle ThinkFan profile-follow polling must use a sparse safety cadence'
-require "$thinkfan" 'interval: (root.active || root.busy)' 'ThinkFan polling cadence must adapt to active versus idle state'
-require "$thinkfan" '? root._activePollMs : root._idleSafetyPollMs' 'ThinkFan polling must use the active and safety cadence tokens'
-require "$thinkfan" 'Date.now() - root._lastStatusRefreshAt >= root._statusFreshnessMs' 'ThinkFan profile/config changes must demand-refresh stale status'
-require "$thinkfan" 'function onProfileChanged(): void {' 'ThinkFan must keep event-driven power-profile following'
-require "$thinkfan" 'root._handleProfileFollowEvent()' 'ThinkFan profile/config events must route through freshness-aware handling'
-require "$thinkfan" 'running: root.profileFanControlEnabled || root.active || root.busy' 'ThinkFan polling must sleep while fan control is irrelevant'
-require "$tlp_caps" 'readonly property int safetyRefreshIntervalMs: 30 * 60 * 1000' 'TLP runtime capability background probes must use a sparse safety cadence'
-require "$tlp_caps" 'interval: root.safetyRefreshIntervalMs' 'TLP runtime capability timer must use the sparse safety cadence'
-require "$tlp_caps" 'id: rdwCapabilityProbe' 'TLP RDW availability must use one combined capability probe'
-require "$tlp_caps" '[ -x /usr/bin/tlp-rdw ] && ' 'TLP RDW probe must retain executable-presence semantics'
-require "$tlp_caps" '/usr/bin/systemctl is-enabled --quiet NetworkManager-dispatcher.service' 'TLP RDW probe must retain dispatcher-enabled semantics'
-reject "$tlp_caps" 'id: rdwBinaryProbe' 'TLP RDW refresh must not spawn a separate binary probe'
-reject "$tlp_caps" 'id: rdwDispatcherProbe' 'TLP RDW refresh must not spawn a second dispatcher process'
-require "$tlp_settings" 'readonly property int safetyRefreshIntervalMs: 30 * 60 * 1000' 'TLP settings background status refresh must use a sparse safety cadence'
-require "$tlp_settings" 'interval: root.safetyRefreshIntervalMs' 'TLP settings timer must use the sparse safety cadence'
+# Worker cadence/timeout guards now run against the owned Hadalird workers.
+# Core typed facades must not retain a second process/timer owner.
+for facade in "$tlp" "$thinkfan" "$tlp_caps" "$tlp_settings"; do
+    require "$facade" 'Hadalird.session' 'integration facade must use the selected optional session'
+    reject "$facade" 'Process {' 'core facade must not retain a duplicate helper process'
+    reject "$facade" 'Timer {' 'core facade must not retain duplicate background polling'
+done
 require "$power_profiles" 'readonly property int _tlpProbeFreshnessMs: 5 * 60 * 1000' 'tlp-pd ownership demand refresh must preserve the former five-minute freshness bound'
 require "$power_profiles" 'readonly property int _tlpSafetyProbeIntervalMs: 30 * 60 * 1000' 'tlp-pd ownership idle safety probes must stay sparse'
 require "$power_profiles" 'interval: root._tlpSafetyProbeIntervalMs' 'tlp-pd ownership safety timer must use the sparse cadence'

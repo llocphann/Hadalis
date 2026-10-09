@@ -6,6 +6,8 @@ Item {
     id: root
 
     required property var target
+    // Editors with binary attachments can provide their existing paste owner.
+    property var pasteAction: null
 
     anchors.fill: parent
 
@@ -69,7 +71,7 @@ Item {
                 text: Translation.tr("Paste"),
                 iconName: "content_paste",
                 monochromeIcon: true,
-                action: () => root.target?.paste()
+                action: () => root.pasteAction ? root.pasteAction() : root.target?.paste()
             })
         }
 

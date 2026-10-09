@@ -5,6 +5,7 @@ import qs.services
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import Quickshell
 import Quickshell.Io
 
@@ -55,6 +56,61 @@ Item {
     readonly property int wordCount: textArea.text.trim().length > 0
         ? textArea.text.trim().split(/\s+/).length : 0
     readonly property int tabCount: Notepad.tabs.length
+    readonly property string attachmentDirectory: Directories.stateUserPath + "/notepad-attachments"
+    readonly property var imageUrls: {
+        const result = []
+        const pattern = /!\[[^\]\n]*\]\((file:\/\/[^)\r\n]+)\)/g
+        const draft = String(textArea.text)
+        let match
+        while ((match = pattern.exec(draft)) !== null)
+            if (!result.includes(match[1])) result.push(match[1])
+        return result
+    }
+    readonly property bool attachmentBusy: clipboardProc.pending
+    function pasteFromClipboard(): bool {
+        return root._startAttachment("")
+    }
+    function importImage(source): bool {
+        return root._startAttachment(String(source))
+    }
+    function _startAttachment(source): bool {
+        if (!Notepad.ready || root.attachmentBusy || !root._loadedTabId)
+            return false
+        root.flushPendingSave()
+        clipboardProc.noteId = root._loadedTabId
+        clipboardProc.cursor = textArea.cursorPosition
+        clipboardProc.selectionStart = textArea.selectionStart
+        clipboardProc.selectionEnd = textArea.selectionEnd
+        clipboardProc.snapshot = String(textArea.text)
+        clipboardProc.command = ["/usr/bin/python3",
+            Directories.scriptsPath + "/notes/attachments.py", "--root", root.attachmentDirectory]
+        if (source.length > 0)
+            clipboardProc.command = clipboardProc.command.concat(["--import-image", source])
+        clipboardProc.startObserved = false
+        clipboardProc.pending = true
+        clipboardProc.running = true
+        return true
+    }
+    function insertAttachmentResult(noteId, cursor, payload, selectionStart = -1, selectionEnd = -1, snapshot = ""): bool {
+        if (!Notepad.ready || Notepad.indexForTabId(noteId) < 0)
+            return false
+        const value = String(payload.text ?? "")
+        if (!value.length) return true
+        if (root._loadedTabId === noteId) {
+            if (selectionEnd > selectionStart && selectionStart >= 0 && snapshot === textArea.text) {
+                textArea.remove(selectionStart, selectionEnd)
+                cursor = selectionStart
+            }
+            textArea.insert(Math.max(0, Math.min(cursor, textArea.length)), value)
+            root.flushPendingSave()
+        } else {
+            const draft = String(Notepad.tabs[Notepad.indexForTabId(noteId)]?.text ?? "")
+            const selected = selectionEnd > selectionStart && selectionStart >= 0 && snapshot === draft
+            const position = Math.max(0, Math.min(selected ? selectionStart : cursor, draft.length))
+            Notepad.setTabTextById(noteId, draft.slice(0, position) + value + draft.slice(selected ? selectionEnd : position))
+        }
+        return true
+    }
     // The corner Quick Notes capture surface does not expose Zettelkasten
     // actions. Keep that optional singleton (and its Todo backend dependency)
     // cold while the hover popup is only being used as a shared editor.
@@ -78,6 +134,8 @@ Item {
         const tabTitle = String(Notepad.tabs[index]?.title ?? "").trim()
         const title = /^Note \d+$/.test(tabTitle) ? "" : tabTitle
         const draftText = String(textArea.text)
+        if (root.imageUrls.length > 0)
+            return Zettelkasten.captureWithAttachments(title, draftText, root.attachmentDirectory)
         return Zettelkasten.capture(title, draftText)
     }
 
@@ -484,7 +542,14 @@ Item {
                 icon: "content_paste"
                 tooltipText: Translation.tr("Paste from clipboard")
                 enabled: Notepad.ready
-                onClicked: clipboardProc.running = true
+                onClicked: root.pasteFromClipboard()
+            }
+
+            NotepadToolButton {
+                icon: "add_photo_alternate"
+                tooltipText: Translation.tr("Add image")
+                enabled: Notepad.ready && !root.attachmentBusy
+                onClicked: imageDialog.open()
             }
 
             NotepadToolButton {
@@ -655,6 +720,8 @@ Item {
                         id: scrollView
                         anchors.fill: parent
                         anchors.margins: root.compactPresentation ? 6 : 8
+                        anchors.bottomMargin: (root.compactPresentation ? 6 : 8)
+                            + (imagePreview.active ? imagePreview.height + 4 : 0)
                         ScrollBar.vertical.policy: ScrollBar.AsNeeded
                         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                         // Wrapped notes occupy the viewport, with no horizontal
@@ -738,9 +805,16 @@ Item {
 
                             TextInputContextMenu {
                                 target: textArea
+                                pasteAction: () => root.pasteFromClipboard()
                             }
 
                             Keys.onPressed: event => {
+                                if (Notepad.ready && (event.modifiers & Qt.ControlModifier)
+                                        && event.key === Qt.Key_V) {
+                                    root.pasteFromClipboard()
+                                    event.accepted = true
+                                    return
+                                }
                                 if (Notepad.ready
                                         && (event.modifiers & Qt.ControlModifier)
                                         && event.key === Qt.Key_S) {
@@ -761,6 +835,36 @@ Item {
                                         (cursorRectangle.y - scrollView.height / 2)
                                             / contentHeight,
                                         1 - scrollView.height / contentHeight))
+                            }
+                        }
+                    }
+
+                    Loader {
+                        id: imagePreview
+                        anchors.left: parent.left; anchors.right: parent.right
+                        anchors.bottom: parent.bottom; anchors.margins: 6
+                        height: Math.min(92, editorCard.height * .4)
+                        active: root.visible && root.imageUrls.length > 0
+                        visible: active
+                        sourceComponent: ListView {
+                            orientation: ListView.Horizontal
+                            spacing: 6; clip: true; cacheBuffer: 0
+                            model: root.imageUrls
+                            delegate: Rectangle {
+                                required property string modelData
+                                width: 118; height: ListView.view.height
+                                radius: Appearance.rounding.small; color: root.colCard
+                                Image {
+                                    objectName: "quickNoteImage"
+                                    anchors.fill: parent; anchors.margins: 3
+                                    source: parent.modelData
+                                    sourceSize.width: 236; sourceSize.height: 184
+                                    asynchronous: true; fillMode: Image.PreserveAspectFit
+                                }
+                                MouseArea {
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: Quickshell.execDetached(["xdg-open", parent.modelData])
+                                }
                             }
                         }
                     }
@@ -827,7 +931,14 @@ Item {
                             icon: "content_paste"
                             tooltipText: Translation.tr("Paste from clipboard")
                             enabled: Notepad.ready
-                            onClicked: clipboardProc.running = true
+                            onClicked: root.pasteFromClipboard()
+                        }
+
+                        NotepadToolButton {
+                            icon: "add_photo_alternate"
+                            tooltipText: Translation.tr("Add image")
+                            enabled: Notepad.ready && !root.attachmentBusy
+                            onClicked: imageDialog.open()
                         }
 
                         NotepadToolButton {
@@ -860,18 +971,46 @@ Item {
         onTriggered: root._persistEditorText()
     }
 
-    // Clipboard paste process
+    FileDialog {
+        id: imageDialog
+        title: Translation.tr("Add image")
+        nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.gif *.bmp *.tif *.tiff)"]
+        fileMode: FileDialog.OpenFile
+        onAccepted: root.importImage(String(selectedFile))
+    }
+
+    // One bounded receipt, retaining the note ID across tab switches/deletion.
     Process {
         id: clipboardProc
-        command: ["wl-paste", "-n"]
+        property string noteId: ""
+        property int cursor: 0
+        property int selectionStart: 0
+        property int selectionEnd: 0
+        property string snapshot: ""
+        property bool pending: false
+        property bool startObserved: false
         running: false
-        stdout: SplitParser {
-            splitMarker: ""
-            onRead: data => {
-                if (Notepad.ready && data && data.length > 0) {
-                    const cursorPos = textArea.cursorPosition
-                    textArea.insert(cursorPos, data)
-                }
+        stdout: StdioCollector { id: clipboardReceipt }
+        onStarted: startObserved = true
+        onRunningChanged: {
+            if (!running && pending && !startObserved)
+                Qt.callLater(() => {
+                    if (!clipboardProc || !clipboardProc.pending || clipboardProc.startObserved) return
+                    clipboardProc.pending = false
+                    copiedToast.show(Translation.tr("Could not paste attachment"))
+                })
+        }
+        onExited: (code, status) => {
+            try {
+                const payload = JSON.parse(clipboardReceipt.text)
+                if (code !== 0 || !payload.ok)
+                    copiedToast.show(String(payload.error ?? "Could not paste attachment"))
+                else if (!root.insertAttachmentResult(noteId, cursor, payload, selectionStart, selectionEnd, snapshot))
+                    copiedToast.show(Translation.tr("Note no longer exists"))
+            } catch (error) {
+                copiedToast.show(Translation.tr("Could not paste attachment"))
+            } finally {
+                clipboardProc.pending = false
             }
         }
     }

@@ -13,15 +13,26 @@ Singleton {
     readonly property string defaultType: root.implementation?.defaultType ?? ("")
     readonly property bool ready: root.implementation?.ready ?? (false)
     readonly property bool busy: root.implementation?.busy ?? (false)
-    readonly property string errorCode: root.implementation?.errorCode ?? (root.missingOperationError ? "integration-unavailable" : "")
-    readonly property string errorMessage: root.implementation?.errorMessage ?? (root.missingOperationError)
+    readonly property string errorCode: root.missingOperationError ? "integration-unavailable" : (root.implementation?.errorCode ?? "")
+    readonly property string errorMessage: root.missingOperationError || (root.implementation?.errorMessage ?? "")
     readonly property string lastCreatedPath: root.implementation?.lastCreatedPath ?? ("")
     readonly property string lastCreatedFullPath: root.implementation?.lastCreatedFullPath ?? ("")
     readonly property string helperPath: root.implementation?.helperPath ?? ("")
     signal captured(var payload)
     function capture(title, body): bool {
-        if (root.implementation) return root.implementation.capture(title, body)
+        if (root.implementation) {
+            root.missingOperationError = ""
+            return root.implementation.capture(title, body)
+        }
         root.missingOperationError = "Install and enable the Hadalird integration to use this action"
+        return false
+    }
+    function captureWithAttachments(title, body, attachmentRoot): bool {
+        if (root.implementation?.captureWithAttachments) {
+            root.missingOperationError = ""
+            return root.implementation.captureWithAttachments(title, body, attachmentRoot)
+        }
+        root.missingOperationError = "Update and enable Hadalird to export note images"
         return false
     }
     function openLast(): bool {

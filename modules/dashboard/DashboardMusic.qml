@@ -16,6 +16,8 @@ Item {
     required property var backend
     property bool presentationActive: visible
     property string sourceMode: ""
+    // One Library column; tabs only change the browsing surface, not playback.
+    property string libraryTab: "genre"
     property string selectedGenre: ""
     property string selectedFolder: ""
     property string resultFolder: ""
@@ -61,9 +63,7 @@ Item {
         return Library.results(tracks, sourceMode, selectedGenre, resultFolder);
     }
     readonly property var selectedTracks: Library.selectedTracks(sourceMode === "playlist" ? (selectedPlaylist?.tracks ?? []) : sourceMode === "queue" ? (backend.activeQueue ?? []) : tracks, selectedKeys)
-    readonly property bool browseGenreOnly: sourceMode === "genre"
-    readonly property bool browseFolderOnly: sourceMode === "folder"
-    readonly property var allResultTracks: Library.selectedTracks(
+     readonly property var allResultTracks: Library.selectedTracks(
         sourceMode === "playlist" ? (selectedPlaylist?.tracks ?? []) :
         sourceMode === "queue" ? (backend.activeQueue ?? []) : tracks,
         results.map(entry => Library.key(entry)))
@@ -81,6 +81,7 @@ Item {
             return;
         GlobalStates.dashboardMusicBrowser = {
             mode: sourceMode,
+            tab: libraryTab,
             genre: selectedGenre,
             folder: selectedFolder,
             path: resultFolder,
@@ -91,6 +92,8 @@ Item {
     Component.onCompleted: {
         const saved = GlobalStates.dashboardMusicBrowser;
         sourceMode = String(saved.mode ?? "");
+        libraryTab = ["genre", "folder"].includes(saved.tab) ? saved.tab
+            : (sourceMode === "folder" || sourceMode === "playlist" ? "folder" : "genre");
         selectedGenre = String(saved.genre ?? "");
         selectedFolder = String(saved.folder ?? "");
         resultFolder = String(saved.path ?? "");
@@ -110,33 +113,52 @@ Item {
         clearSelection();
         rememberBrowser();
     }
+    onLibraryTabChanged: rememberBrowser()
     onSelectedGenreChanged: rememberBrowser()
     onSelectedFolderChanged: rememberBrowser()
     onSelectedPlaylistNameChanged: rememberBrowser()
-    // First Escape restores both library navigation columns, second closes Dashboard.
+    // First Escape clears the active library drill-down, second closes Dashboard.
     function restoreBrowserColumns(): bool {
         if (playlistDialogVisible) {
             playlistDialogVisible = false
             return true
         }
-        if (!browseGenreOnly && !browseFolderOnly)
+        if (!["genre", "folder", "playlist"].includes(sourceMode))
             return false
         sourceMode = ""
         selectedGenre = ""
         selectedFolder = ""
+        selectedPlaylistName = ""
         resultFolder = ""
         query = ""
         clearSelection()
         rememberBrowser()
         return true
     }
+    function switchLibraryTab(tab): void {
+        if (tab !== "genre" && tab !== "folder")
+            return
+        libraryTab = tab
+        if (["genre", "folder", "playlist"].includes(sourceMode)) {
+            sourceMode = ""
+            selectedGenre = ""
+            selectedFolder = ""
+            selectedPlaylistName = ""
+            resultFolder = ""
+            query = ""
+            clearSelection()
+        }
+        rememberBrowser()
+    }
     function chooseGenre(value): void {
+        libraryTab = "genre"
         query = "";
         sourceMode = "genre";
         selectedGenre = value;
         clearSelection();
     }
     function chooseFolder(path): void {
+        libraryTab = "folder"
         query = "";
         sourceMode = "folder";
         selectedFolder = path;
@@ -144,6 +166,7 @@ Item {
         clearSelection();
     }
     function choosePlaylist(value): void {
+        libraryTab = "folder"
         query = "";
         sourceMode = "playlist";
         selectedPlaylistName = String(value.name ?? "");
@@ -374,7 +397,7 @@ Item {
         id: horizontal
         objectName: "musicColumnsViewport"
         anchors.fill: parent
-        contentWidth: Math.max(width, (root.hasLyrics ? 980 : 760) * (root.browseGenreOnly ? .84 : root.browseFolderOnly ? .87 : 1))
+        contentWidth: Math.max(width, root.hasLyrics ? 1040 : 800)
         contentHeight: height
         onContentWidthChanged: contentX = Math.max(0, Math.min(contentX, contentWidth - width))
         flickableDirection: Flickable.HorizontalFlick
@@ -387,104 +410,129 @@ Item {
             width: horizontal.contentWidth
             height: horizontal.height
             spacing: 8
-            readonly property int shownColumns: (root.hasLyrics ? 5 : 4) - (root.browseGenreOnly || root.browseFolderOnly ? 1 : 0)
-            readonly property real weight: (root.hasLyrics ? 100 : 79) - (root.browseGenreOnly ? 16 : root.browseFolderOnly ? 13 : 0)
+            readonly property int shownColumns: root.hasLyrics ? 4 : 3
+            readonly property real weight: root.hasLyrics ? 106 : 90
             readonly property real unit: (width - spacing * (shownColumns - 1)) / weight
             Pane {
-                objectName: "musicGenres"
-                visible: !root.browseFolderOnly
-                width: visible ? parent.unit * 13 : 0
+                id: libraryPane
+                objectName: "musicLibrary"
+                width: parent.unit * 24
                 height: parent.height
-                title: Translation.tr("Genre")
-                ListView {
-                    id: genreList
-                    objectName: "musicGenreList"
-                    anchors.fill: parent
-                    model: root.genres
-                    clip: true
-                    spacing: 3
-                    ScrollBar.vertical: ScrollBar {
-                        policy: ScrollBar.AsNeeded
-                    }
-                    delegate: Entry {
-                        required property var modelData
-                        width: ListView.view.width
-                        caption: modelData.key || Translation.tr("Unknown genre")
-                        detail: Translation.tr("%1 tracks").arg(modelData.count)
-                        selected: root.sourceMode === "genre" && root.selectedGenre === modelData.key
-                        onClicked: root.chooseGenre(modelData.key)
-                    }
-                }
-            }
-            Pane {
-                objectName: "musicFolders"
-                visible: !root.browseGenreOnly
-                width: visible ? parent.unit * 16 : 0
-                height: parent.height
-                title: Translation.tr("Folders")
+                title: Translation.tr("Library")
                 ColumnLayout {
                     anchors.fill: parent
                     spacing: 6
-                    ListView {
-                        id: folderList
-                        objectName: "musicFolderList"
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+                        AbyssButton {
+                            objectName: "musicGenreTab"
+                            Layout.fillWidth: true
+                            text: Translation.tr("Genre")
+                            outlined: false
+                            checkable: true
+                            checked: root.libraryTab === "genre"
+                            onClicked: root.switchLibraryTab("genre")
+                        }
+                        AbyssButton {
+                            objectName: "musicFolderTab"
+                            Layout.fillWidth: true
+                            text: Translation.tr("Folders")
+                            outlined: false
+                            checkable: true
+                            checked: root.libraryTab === "folder"
+                            onClicked: root.switchLibraryTab("folder")
+                        }
+                    }
+                    Item {
+                        objectName: "musicGenres"
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        model: root.folders
-                        clip: true
-                        spacing: 3
-                        ScrollBar.vertical: ScrollBar {
-                            policy: ScrollBar.AsNeeded
-                        }
-                        delegate: Entry {
-                            required property var modelData
-                            width: ListView.view.width
-                            caption: modelData.name
-                            detail: Translation.tr("%1 tracks").arg(modelData.count)
-                            selected: root.sourceMode === "folder" && root.selectedFolder === modelData.path
-                            onClicked: root.chooseFolder(modelData.path)
+                        visible: root.libraryTab === "genre"
+                        ListView {
+                            id: genreList
+                            objectName: "musicGenreList"
+                            anchors.fill: parent
+                            model: root.genres
+                            clip: true
+                            spacing: 3
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                            delegate: Entry {
+                                required property var modelData
+                                width: ListView.view.width
+                                caption: modelData.key || Translation.tr("Unknown genre")
+                                detail: Translation.tr("%1 tracks").arg(modelData.count)
+                                selected: root.sourceMode === "genre" && root.selectedGenre === modelData.key
+                                onClicked: root.chooseGenre(modelData.key)
+                            }
                         }
                     }
-                    StyledText {
-                        visible: (root.backend.playlists ?? []).length > 0
-                        text: Translation.tr("Playlists")
-                        color: root.ink
-                    }
-                    ListView {
-                        id: playlistList
-                        objectName: "musicPlaylistList"
-                        visible: count > 0
+                    Item {
+                        objectName: "musicFolders"
                         Layout.fillWidth: true
-                        Layout.preferredHeight: Math.min(contentHeight, parent.height * .35)
-                        model: root.backend.playlists ?? []
-                        clip: true
-                        ScrollBar.vertical: ScrollBar {
-                            policy: ScrollBar.AsNeeded
+                        Layout.fillHeight: true
+                        visible: root.libraryTab === "folder"
+                        ColumnLayout {
+                            anchors.fill: parent
+                            spacing: 6
+                            ListView {
+                                id: folderList
+                                objectName: "musicFolderList"
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                model: root.folders
+                                clip: true
+                                spacing: 3
+                                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                                delegate: Entry {
+                                    required property var modelData
+                                    width: ListView.view.width
+                                    caption: modelData.name
+                                    detail: Translation.tr("%1 tracks").arg(modelData.count)
+                                    selected: root.sourceMode === "folder" && root.selectedFolder === modelData.path
+                                    onClicked: root.chooseFolder(modelData.path)
+                                }
+                            }
+                            StyledText {
+                                visible: (root.backend.playlists ?? []).length > 0
+                                text: Translation.tr("Playlists")
+                                color: root.ink
+                            }
+                            ListView {
+                                id: playlistList
+                                objectName: "musicPlaylistList"
+                                visible: count > 0
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: Math.min(contentHeight, parent.height * .35)
+                                model: root.backend.playlists ?? []
+                                clip: true
+                                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                                delegate: Entry {
+                                    required property var modelData
+                                    width: ListView.view.width
+                                    caption: String(modelData.name ?? "")
+                                    detail: Translation.tr("%1 tracks").arg(modelData.tracks?.length ?? 0)
+                                    glyph: "queue_music"
+                                    selected: root.sourceMode === "playlist" && root.selectedPlaylist === modelData
+                                    onClicked: root.choosePlaylist(modelData)
+                                    onDoubleClicked: root.backend.playCollection(modelData)
+                                }
+                            }
+                            AbyssButton {
+                                Layout.fillWidth: true
+                                text: Translation.tr("Update")
+                                glyph: "refresh"
+                                outlined: false
+                                enabled: root.backend.available ?? false
+                                onClicked: root.backend.updateDatabase()
+                            }
                         }
-                        delegate: Entry {
-                            required property var modelData
-                            width: ListView.view.width
-                            caption: String(modelData.name ?? "")
-                            detail: Translation.tr("%1 tracks").arg(modelData.tracks?.length ?? 0)
-                            glyph: "queue_music"
-                            selected: root.sourceMode === "playlist" && root.selectedPlaylist === modelData
-                            onClicked: root.choosePlaylist(modelData)
-                            onDoubleClicked: root.backend.playCollection(modelData)
-                        }
-                    }
-                    AbyssButton {
-                        Layout.fillWidth: true
-                        text: Translation.tr("Update")
-                        glyph: "refresh"
-                        outlined: false
-                        enabled: root.backend.available ?? false
-                        onClicked: root.backend.updateDatabase()
                     }
                 }
             }
             Pane {
                 objectName: "musicResults"
-                width: parent.unit * 24
+                width: parent.unit * (root.hasLyrics ? 30 : 34)
                 height: parent.height
                 title: root.sourceMode === "queue" ? Translation.tr("Queue") : root.sourceMode === "playlist" ? String(root.selectedPlaylist?.name ?? Translation.tr("Playlist")) : root.sourceMode === "genre" ? (root.selectedGenre || Translation.tr("Unknown genre")) : root.sourceMode === "folder" ? (root.resultFolder || Translation.tr("Music library")) : Translation.tr("Results")
                 ColumnLayout {
@@ -618,22 +666,34 @@ Item {
             }
             Column {
                 objectName: "musicPlaybackAndQueue"
-                width: parent.unit * 26
+                width: parent.unit * (root.hasLyrics ? 30 : 32)
                 height: parent.height
                 spacing: 8
                 Pane {
                     id: musicPlayer
                     objectName: "musicPlayer"
                     width: parent.width
-                    height: Math.round((parent.height - parent.spacing) * .65)
+                    // Queue owns most of the column. The DSP/player remains
+                    // scrollable when screen height cannot fit both completely.
+                    height: Math.round((parent.height - parent.spacing) * .43)
                     title: Translation.tr("Now playing")
-                    ColumnLayout {
+                    Flickable {
+                        id: musicControlsScroll
                         anchors.fill: parent
-                        spacing: 8
+                        clip: true
+                        contentWidth: width
+                        contentHeight: musicControlsStack.implicitHeight
+                        flickableDirection: Flickable.VerticalFlick
+                        boundsBehavior: Flickable.StopAtBounds
+                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                        ColumnLayout {
+                            id: musicControlsStack
+                            width: musicControlsScroll.width
+                            spacing: 8
                         PlayerControl {
                             Layout.fillWidth: true
                             Layout.fillHeight: false
-                            Layout.preferredHeight: Math.min(280, Math.max(132, parent.height - musicEqualizer.implicitHeight - 48))
+                            Layout.preferredHeight: 142
                             player: root.backend.mprisPlayer ?? null
                             playbackAdapter: playerAdapter
                             compactLayout: true
@@ -662,6 +722,8 @@ Item {
                             Layout.fillWidth: true
                             compactLayout: true
                             active: root.presentationActive && root.visible
+                        }
+
                         }
                     }
                 }
@@ -717,7 +779,7 @@ Item {
             Pane {
                 objectName: "musicLyrics"
                 visible: root.hasLyrics
-                width: root.hasLyrics ? parent.unit * 21 : 0
+                width: root.hasLyrics ? parent.unit * 22 : 0
                 height: parent.height
                 title: Translation.tr("Lyrics")
                 ListView {

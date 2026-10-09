@@ -12,9 +12,19 @@ Singleton {
     id: root
 
     readonly property bool enabled: Config.ready && (Config.options?.dashboard?.music?.enable ?? true)
-    readonly property int fallbackPollIntervalMs:
-        ((GlobalStates.dashboardOpen || (GlobalStates.overviewOpen && GlobalStates.overviewMode === "dashboard"))
-            && GlobalStates.dashboardPage === 1) ? 900 : 30000
+    readonly property bool uiDemand:
+        (GlobalStates.dashboardOpen || (GlobalStates.overviewOpen && GlobalStates.overviewMode === "dashboard"))
+            && GlobalStates.dashboardPage === 1
+    readonly property int fallbackPollIntervalMs: root.uiDemand ? 900 : 30000
+    onUiDemandChanged: {
+        if (root.uiDemand)
+            Qt.callLater(root._refreshPresentedStatus)
+    }
+
+    function _refreshPresentedStatus(): void {
+        if (root.uiDemand && root.enabled && !root._mpdSubscriptionActive)
+            root.refreshStatus()
+    }
     readonly property string configuredLibraryFolder:
         Config.options?.sidebar?.music?.libraryFolder ?? ""
     readonly property string configuredHost:
@@ -852,16 +862,6 @@ Singleton {
         repeat: true
         running: root.enabled && !root._mpdSubscriptionActive
         onTriggered: root.refreshStatus()
-    }
-
-    Connections {
-        target: GlobalStates
-        function onSidebarLeftOpenChanged(): void {
-            if (GlobalStates.sidebarLeftOpen
-                    && root.enabled
-                    && !root._mpdSubscriptionActive)
-                root.refreshStatus()
-        }
     }
 
     Timer {

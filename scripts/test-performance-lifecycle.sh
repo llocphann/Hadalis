@@ -429,8 +429,8 @@ require "$vertical_bar_resources" 'ResourceUsageMonitor {' 'vertical Bar resourc
 require "$vertical_bar_resources" 'active: !GameMode.active' 'vertical Bar resource polling must pause in GameMode'
 require "$recorder_status" '(Config.options?.performance?.lowPower ?? false) ? 30000 : 15000' 'idle recorder detection must not spawn pgrep every five seconds'
 require "$recorder_status" 'interval: root.idlePollIntervalMs' 'RecorderStatus idle polling must use its power-aware cadence'
-require "$local_music" 'GlobalStates.sidebarLeftOpen ? 900 : 30000' 'LocalMusic fallback status polling must slow down while the sidebar is hidden'
-require "$local_music" 'function onSidebarLeftOpenChanged(): void' 'LocalMusic must refresh fallback status immediately when its UI opens'
+# Both Dashboard routes, hidden cadence and event refresh are exercised in
+# test-local-music-demand-runtime.py against the actual QML/status process.
 require "$local_music" 'running: root.enabled && !root._mpdSubscriptionActive' 'LocalMusic fallback polling must remain disabled while native MPD subscription is active'
 
 require "$mpris_controller" 'property bool _browserCapabilitiesProbed: false' 'MPRIS browser capability probing must begin lazy'

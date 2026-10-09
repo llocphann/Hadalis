@@ -29,8 +29,7 @@ build:
 	@bash -n scripts/test-local-distribution.sh
 	@bash -n setup
 
-# test-local-distribution.sh already runs the battery, ThinkFan, updater, and TLP
-# contracts. Keep their standalone targets available without executing them twice here.
+# Host/update contracts remain in core; helper implementations are tested in Hadalird.
 test-local: build test-native-production test-doctor-routing test-optional-audio-deps test-news-contract test-equalizer-contracts test-perimeter-contracts test-weather-contracts test-docs test-install-lifecycle test-prefix-install test-package-docs test-package-metadata test-package-hooks
 	@bash scripts/test-local-distribution.sh
 	@bash scripts/test-packaging-contract.sh
@@ -121,11 +120,9 @@ test-package-metadata:
 test-package-hooks:
 	@python3 scripts/test-hadalird-arch-package.py
 
-test-battery-helper:
-	@sh scripts/test-battery-charge-limit-helper.sh
-
-test-thinkfan-helper:
-	@bash scripts/test-thinkfan-helper.sh
+test-battery-helper test-thinkfan-helper:
+	@printf '%s\n' 'Run helper tests in optional Hadalird: https://github.com/llocphann/Hadalird' >&2
+	@exit 2
 
 install-bin:
 	@mkdir -p "$(DESTDIR)$(BINDIR)"

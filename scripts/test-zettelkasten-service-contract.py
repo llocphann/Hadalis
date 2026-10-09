@@ -10,7 +10,6 @@ service = (ROOT / "services/Zettelkasten.qml").read_text(encoding="utf-8")
 todo_service = (ROOT / "services/Todo.qml").read_text(encoding="utf-8")
 dash = (ROOT / "modules/dashboard/DashNotes.qml").read_text(encoding="utf-8")
 quick_notes = (ROOT / "modules/sidebarRight/notepad/QuickNotesView.qml").read_text(encoding="utf-8")
-helper = (ROOT / "scripts" / "notes" / "zettelkasten.py").read_text(encoding="utf-8")
 settings = (ROOT / "modules" / "settings" / "IntegrationsConfig.qml").read_text(encoding="utf-8")
 obsidian_settings = (ROOT / "modules" / "settings" / "ObsidianThemeSettings.qml").read_text(encoding="utf-8")
 shared_settings = settings + obsidian_settings
@@ -37,16 +36,10 @@ for token in (
 ):
     assert token in widget, f"Notepad Zettelkasten UI contract lost: {token}"
 
-for token in (
-    "pragma Singleton",
-    'Quickshell.shellPath("scripts/notes/zettelkasten.py")',
-    "function capture(title, body): bool",
-    "readonly property string configuredVaultPath: Todo.sharedVaultPath",
-    '?? "00_Capture/03_Zettelkasten"',
-    '?? "Fleeting"',
-    "signal captured(var payload)",
-):
-    assert token in service, f"Zettelkasten service contract lost: {token}"
+for token in ("pragma Singleton", "Hadalird.session?.zettelkasten", "function capture(title, body): bool", "signal captured(var payload)"):
+    assert token in service, "Zettelkasten facade lost contract: "+token
+assert "Process {" not in service and "Timer {" not in service
+
 
 for token in (
     'Translation.tr("Quick Notes")',
@@ -71,23 +64,10 @@ for token in (
 ):
     assert token in dash, f"Dashboard Notes shared-view host contract lost: {token}"
 
-for token in (
-    'ALLOWED_TYPES = ("Permanent", "Literature", "Fleeting")',
-    'DEFAULT_FOLDER = "00_Capture/03_Zettelkasten"',
-    'DEFAULT_TYPE = "Fleeting"',
-    '"## Core Idea"',
-    '"## Content"',
-    '"## Context & Connections"',
-    '"## Sources & References"',
-    '"aliases: []"',
-    '"templateCompatible": True',
-):
-    assert token in helper, f"Zettelkasten helper lost vault-template contract: {token}"
 
 for token in (
     'title: Translation.tr("To-do & Quick Notes")',
     'title: Translation.tr("Quick Notes")',
-    'text: Todo.sharedVaultPath',
     'Config.setNestedValue("notes.zettelkasten.folder", value)',
     'Config.setNestedValue("notes.zettelkasten.defaultType", newValue)',
     'Translation.tr("Default Zettelkasten type")',
@@ -132,7 +112,6 @@ assert 'text: Translation.tr("Capture")' not in dash
 unified_settings = settings[unified_start:zettel_end]
 assert settings.count('title: Translation.tr("To-do & Quick Notes")') == 1
 assert 'title: Translation.tr("Quick Notes & Zettelkasten")' not in settings
-assert shared_settings.count('id: todoObsidianVaultPath') == 1
 assert 'id: zettelkastenVaultPath' not in unified_settings
 assert 'Translation.tr("Vault path override")' not in unified_settings
 assert 'Translation.tr("Canonical task store")' not in unified_settings
@@ -140,9 +119,12 @@ assert "readonly property string sharedVaultPath:" in todo_service
 assert 'Config.options?.todo?.obsidian?.vaultPath ?? ""' in todo_service
 assert 'Config.options?.notes?.zettelkasten?.vaultPath ?? ""' in todo_service
 assert todo_service.count("vaultPath: root.sharedVaultPath") == 2
-assert "readonly property string configuredVaultPath: Todo.sharedVaultPath" in service
-assert 'updates["todo.obsidian.vaultPath"] = value' in obsidian_settings
-assert 'updates["notes.zettelkasten.vaultPath"] = ""' in obsidian_settings
-assert 'Config.setNestedValues(updates)' in obsidian_settings
 assert "notes.zettelkasten.vaultPath" not in service
 assert 'GlobalStates.openSettingsSection(7, "To-do & Quick Notes")' in quick_notes
+
+# The optional package owns the shared Obsidian path editor. Core owns only
+# navigation metadata and a selected/disposable settings loader.
+assert 'active: Hadalird.obsidianEnabled' in obsidian_settings
+assert 'source: Hadalird.settingsSource("obsidian")' in obsidian_settings
+assert 'property string settingsTaskSection:' in obsidian_settings
+assert 'id: todoObsidianVaultPath' not in settings

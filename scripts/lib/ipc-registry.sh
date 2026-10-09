@@ -3,7 +3,7 @@
 # Do not edit manually.
 # Regenerate: python3 scripts/lib/generate-ipc-registry.py
 # IPC.md metadata: docs/IPC.md
-# Targets: 61
+# Targets: 62
 
 declare -gA IPC_TARGET_DESC=(
   [abyss]="Edit the Abyss module layout on the focused output. The editor uses a draft: Done saves its changes; Cancel or Escape restores the saved layout. These methods apply while Abyss is active."
@@ -26,6 +26,7 @@ declare -gA IPC_TARGET_DESC=(
   [dev]="Development navigation for loading lazy surfaces and internal views without automating pointer or keyboard input. Destination identifiers are stable and returned as JSON by \`list\`."
   [gamemode]="Performance mode for gaming. Auto-detects fullscreen apps and disables animations/effects. Can also be toggled manually for those stubborn games that don't go fullscreen properly."
   [globalActions]="Command palette / action registry. Search and execute shell actions from scripts or keybinds."
+  [hadalird]="Optional TLP, Thinkfan and Obsidian package discovery. Integration selections remain under Settings → Integrations; discovery does not install or enable a package."
   [hadanion]="Manage discovery of the separately installed [Hadanion](https://github.com/llocphann/Hadanion) package. Refresh unloads the current Companion session, rechecks the compatible local package and reloads it only if enabled. It never installs a package, changes preferences or loads a model."
   [keyboard]="Keyboard layout switching (Niri only). Cycles through configured keyboard layouts and queries layout info."
   [lock]="Lock screen. For when you need to pretend you're working."
@@ -90,6 +91,7 @@ declare -gA IPC_TARGET_FAMILY=(
   [dev]="shared"
   [gamemode]="shared"
   [globalActions]="shared"
+  [hadalird]="shared"
   [hadanion]="shared"
   [keyboard]="shared"
   [lock]="shared"
@@ -154,6 +156,7 @@ declare -gA IPC_TARGET_FUNCTIONS=(
   [dev]="list open close current"
   [gamemode]="toggle activate deactivate status"
   [globalActions]="run runWithArgs list search open"
+  [hadalird]="refresh status"
   [hadanion]="refresh status"
   [keyboard]="switchLayout switchLayoutPrevious getCurrentLayout getLayouts"
   [lock]="activate deactivate status focus"
@@ -283,6 +286,8 @@ declare -gA IPC_FUNCTION_DESC=(
   ["globalActions:list"]="List all actions, optionally filtered by category"
   ["globalActions:search"]="Fuzzy search actions by name/description/keywords"
   ["globalActions:open"]="Open the overview in action mode"
+  ["hadalird:refresh"]="Recheck the installed Hadalird package identity and reload selected integrations"
+  ["hadalird:status"]="Return package availability, enabled state, diagnostic, version, source SHA and selected integration states as JSON"
   ["hadanion:refresh"]="Recheck the optional package after installation, update or removal"
   ["hadanion:status"]="Report optional installation and Companion runtime status"
   ["keyboard:switchLayout"]="Switch to next keyboard layout"
@@ -523,8 +528,8 @@ bind "Ctrl+Alt+A" { spawn "inir" "wallpaperSelector" "openLauncher" "animated"; 
   [ytmusic]='bind "Mod+M+Space" { spawn "inir" "ytmusic" "playPause"; }'
 )
 
-IPC_ALL_TARGETS=(abyss ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions hadanion keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wull wwidgets ytmusic zoom)
-IPC_SHARED_TARGETS=(abyss ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector dashboard dev gamemode globalActions hadanion keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily region session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector wull ytmusic zoom)
+IPC_ALL_TARGETS=(abyss ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions hadalird hadanion keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wull wwidgets ytmusic zoom)
+IPC_SHARED_TARGETS=(abyss ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector dashboard dev gamemode globalActions hadalird hadanion keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily region session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector wull ytmusic zoom)
 IPC_II_TARGETS=()
 IPC_WAFFLE_TARGETS=(autostart customWidgets recordingOsd search wactionCenter waffleAltSwitcher wbar widgetpower wnotificationCenter wwidgets)
 

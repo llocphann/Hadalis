@@ -18,7 +18,7 @@ The integration has three pieces:
   - authorizes the exact installed helper through Polkit;
   - allows it without a password prompt only for the active local session, while inactive/non-local subjects remain denied.
 
-The repo-managed `./setup install`, source/Make, and Arch package paths install the helper and policy. Package-managed setup runs leave those system files to the package manager. The current Nix package does not provision these privileged system-level files; see [NixOS / Home Manager](NIXOS.md#privileged-integration-limitation).
+[Hadalird](https://github.com/llocphann/Hadalird) owns the optional worker, helper and policy. Hadalis source/Make/Arch installation does not install, reset or remove them. Install Hadalird separately and enable Thinkfan in Settings → Integrations. The current Nix package does not provision these privileged system-level files; see [NixOS / Home Manager](NIXOS.md#privileged-integration-limitation).
 
 ## Prerequisites
 
@@ -27,8 +27,8 @@ To use managed fan control, the machine must provide all of the following:
 1. the `thinkfan` executable;
 2. a system `thinkfan.service` visible to `systemctl`;
 3. a valid ThinkFan configuration, normally `/etc/thinkfan.yaml` or `/etc/thinkfan.conf`;
-4. the Hadalis helper at `/usr/libexec/inir-thinkfan`;
-5. the Hadalis Polkit policy for privileged profile changes;
+4. the Hadalird helper at `/usr/libexec/inir-thinkfan`;
+5. the Hadalird Polkit policy for privileged profile changes;
 6. an active local desktop session recognized by Polkit. The shipped policy does not prompt that active session for these narrowly scoped helper operations.
 
 The Arch `inir-shell` packages treat `thinkfan` as an optional dependency. Installing Hadalis therefore does not by itself guarantee that `thinkfan.service` or a machine-specific ThinkFan configuration exists.
@@ -113,10 +113,10 @@ systemctl is-enabled thinkfan.service
 command -v thinkfan
 ```
 
-If the shell reports `ThinkFan helper is unavailable` or `/usr/libexec/inir-thinkfan` does not exist, the upstream `thinkfan` package alone is not enough: Hadalis also needs its bridge helper and Polkit policy. A repo-managed install can be repaired by rerunning the system-setup stage through `./setup install`; for a targeted repair from a current Hadalis checkout, use:
+If the helper is unavailable, install/repair it from the optional Hadalird checkout using its explicitly selected helper target:
 
 ```bash
-sudo make install-thinkfan-helper
+sudo make -C /path/to/Hadalird install-helpers
 ```
 
 Then verify the bridge directly with `/usr/libexec/inir-thinkfan --status` and refresh/restart the shell. Package-managed Arch installs should reinstall/update `inir-shell` or `inir-shell-git` rather than overwrite package-owned files with the Make target.
@@ -131,7 +131,7 @@ If managed mode fails to start, inspect the system service journal:
 journalctl -u thinkfan.service -b
 ```
 
-If the shell reports an apply-start failure, verify that `/usr/bin/pkexec`, the Hadalis helper and the current Polkit policy are installed, and that the desktop session is recognized as active. A stale pre-update policy can still request administrator authentication until the packaged/system policy is refreshed.
+If the shell reports an apply-start failure, verify that `/usr/bin/pkexec`, the Hadalird helper and the current Polkit policy are installed, and that the desktop session is recognized as active. A stale pre-update policy can still request administrator authentication until the packaged/system policy is refreshed.
 
 If the shell reports an apply timeout, inspect ThinkFan/systemd directly before retrying. The UI intentionally times out privileged apply operations instead of leaving its state permanently busy.
 
@@ -139,9 +139,9 @@ For ThinkFan configuration or sensor/fan-curve errors, validate ThinkFan outside
 
 ## Packaging notes
 
-- Repo-managed `./setup install` installs `/usr/libexec/inir-thinkfan` and its Polkit policy during the system-setup stage; package-managed installs are left untouched.
-- `make install` installs `/usr/libexec/inir-thinkfan` and its Polkit policy, with helper paths rewritten when the Makefile packaging variables request a non-default location.
-- `inir-shell` and `inir-shell-git` install the helper/policy under the standard Arch system paths and list `thinkfan` as an optional dependency.
+- Core source/Make/Arch install and removal preserve the independently installed optional package, helpers, profiles and system services.
+- Hadalird installs user-scoped immutable releases separately; its explicit `install-helpers` target stages helper/policy/schema paths without writing hardware profiles.
+- `inir-shell`/`inir-shell-git` advertise ThinkFan as optional. Configure and enable the integration separately.
 - Nix currently packages the shell/runtime but does not install the privileged helper/policy into `/usr/libexec` and `/usr/share/polkit-1/actions`.
 
 The integration should therefore be treated as an optional capability whose availability is discovered at runtime rather than a shell startup requirement.

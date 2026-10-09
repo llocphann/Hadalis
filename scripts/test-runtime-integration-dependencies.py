@@ -24,7 +24,6 @@ def forbid(text: str, token: str, source: str) -> None:
 def main() -> None:
     cava = read("services/deferred/CavaService.qml")
     weather = read("services/Weather.qml")
-    helper = read("assets/helpers/inir-thinkfan")
     doctor = read("sdata/lib/doctor.sh")
     generic = read("sdata/dist-generic/install-deps.sh")
     debian = read("sdata/dist-debian/install-deps.sh")
@@ -65,17 +64,7 @@ def main() -> None:
         require(text, "  curl", source)
         require(text, "'geoclue: GPS-backed weather location detection'", source)
 
-    # ThinkFan is intentionally optional and hardware-specific. Hadalis owns the
-    # bridge, while upstream executable/service/config remain external.
-    for token in (
-        "find_thinkfan()",
-        "service_name=thinkfan.service",
-        'systemctl cat "$service_name"',
-        "[ -r /etc/thinkfan.yaml ]",
-        "[ -r /etc/thinkfan.conf ]",
-    ):
-        require(helper, token, "inir-thinkfan helper")
-
+    # Physical ThinkFan capability guards are owned/tested in optional Hadalird.
     forbid(doctor, '"thinkfan:thinkfan"', "doctor.sh")
     for source, text in (("inir-shell", arch), ("inir-shell-git", arch_git)):
         require(text, "'thinkfan: managed fan-control integration'", source)

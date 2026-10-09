@@ -90,6 +90,21 @@ for path in "${expected_files[@]}"; do
 done
 
 runtime_dir="$stage$prefix/share/quickshell/inir"
+retired_integrations=(
+  assets/helpers/inir-battery-charge-limit
+  assets/helpers/inir-thinkfan
+  assets/polkit/org.inir.battery-charge-limit.policy
+  assets/polkit/org.inir.thinkfan.policy
+  assets/tlp/tlp-settings-schema.json
+  scripts/integrations/obsidian_theme.py
+  scripts/notes/zettelkasten.py
+  scripts/todo/obsidian_todo.py
+  scripts/todo/obsidian_daily_todo.py
+  scripts/todo/obsidian_tasks.py
+)
+for relative in "${retired_integrations[@]}"; do
+  [[ ! -e "$runtime_dir/$relative" ]] || { printf 'FAIL: duplicate optional payload installed in core: %s\n' "$relative" >&2; exit 1; }
+done
 if ! fish "$repo_root/scripts/qml-check.fish" --all --root "$runtime_dir"; then
   printf 'FAIL: fresh staged runtime QML/module resolution is invalid\n' >&2
   exit 1
@@ -107,12 +122,19 @@ mkdir -p "$(dirname "$stale_module")" "$(dirname "$preserved_excluded")"
 printf '%s\n' 'import QtQuick' > "$stale_module"
 printf '%s\n' 'import QtQuick' > "$stale_root_qml"
 printf '%s\n' '# private excluded artifact' > "$preserved_excluded"
+for relative in "${retired_integrations[@]}"; do
+  mkdir -p "$(dirname "$runtime_dir/$relative")"
+  printf '%s\n' 'retired core duplicate' > "$runtime_dir/$relative"
+done
 make -s install "${make_args[@]}"
 for stale_path in "$stale_module" "$stale_root_qml"; do
   if [[ -e "$stale_path" || -L "$stale_path" ]]; then
     printf 'FAIL: make reinstall left stale managed QML path %s\n' "$stale_path" >&2
     exit 1
   fi
+done
+for relative in "${retired_integrations[@]}"; do
+  [[ ! -e "$runtime_dir/$relative" ]] || { printf 'FAIL: core reinstall retained retired optional payload: %s\n' "$relative" >&2; exit 1; }
 done
 if [[ ! -f "$preserved_excluded" ]]; then
   printf 'FAIL: make reinstall deleted an excluded private/test runtime artifact\n' >&2

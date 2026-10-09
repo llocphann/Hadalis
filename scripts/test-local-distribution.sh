@@ -21,8 +21,6 @@ bash -n \
     "$runtime_root/scripts/release.sh" \
     "$runtime_root/scripts/verify-docs.sh" \
     "$runtime_root/scripts/wiki-sync.sh" \
-    "$runtime_root/scripts/ai/gemini-translate.sh" \
-    "$runtime_root/scripts/test-thinkfan-helper.sh" \
     "$runtime_root/scripts/test-tlp-integration-lifecycle.sh" \
     "$runtime_root/scripts/test-tlp-settings-ui-guards.sh" \
     "$runtime_root/scripts/test-update-lifecycle.sh" \
@@ -33,10 +31,6 @@ for dist_installer in "$runtime_root"/sdata/dist-*/install-deps.sh; do
     [[ -f "$dist_installer" ]] || continue
     bash -n "$dist_installer"
 done
-sh -n \
-    "$runtime_root/assets/helpers/inir-battery-charge-limit" \
-    "$runtime_root/scripts/test-battery-charge-limit-helper.sh"
-
 step "Hadalis updater source"
 versioning_lib="$runtime_root/sdata/lib/versioning.sh"
 tracking_lib="$runtime_root/sdata/lib/snapshots.sh"
@@ -53,11 +47,9 @@ if ! grep -Fq '[[ -z "$branch" || "$branch" == "HEAD" ]] && branch="stable"' "$t
     exit 1
 fi
 
-step "battery charge-limit helper"
-sh "$runtime_root/scripts/test-battery-charge-limit-helper.sh"
-
-step "ThinkFan helper"
-bash "$runtime_root/scripts/test-thinkfan-helper.sh"
+step "optional host lifecycle"
+python3 "$runtime_root/scripts/test-hadalird-optional.py"
+python3 "$runtime_root/scripts/test-hadalird-install-lifecycle.py"
 
 step "TLP integration lifecycle"
 bash "$runtime_root/scripts/test-tlp-integration-lifecycle.sh"
@@ -194,37 +186,9 @@ if [[ -f "$runtime_root/Makefile" ]]; then
     step "make install dry run"
     make -n install PREFIX=/tmp/inir-stage-test -C "$runtime_root" >/dev/null
 
-    step "privileged helper path relocation"
-    (
-        privileged_stage="$(mktemp -d)"
-        trap 'rm -rf -- "$privileged_stage"' EXIT
-        make -s -C "$runtime_root" \
-            install-shell install-battery-helper install-thinkfan-helper \
-            DESTDIR="$privileged_stage" \
-            LIBEXECDIR=/opt/inir/libexec \
-            POLKIT_ACTIONS_DIR=/opt/inir/share/polkit-1/actions \
-            TLP_CONFDIR=/opt/inir/etc/tlp.d \
-            INIR_SYSTEM_SHAREDIR=/opt/inir/share/inir
+    step "optional package boundary"
+    python3 "$runtime_root/scripts/test-hadalird-arch-package.py"
 
-        installed_runtime="$privileged_stage/usr/local/share/quickshell/inir"
-        battery_helper="$privileged_stage/opt/inir/libexec/inir-battery-charge-limit"
-        thinkfan_helper="$privileged_stage/opt/inir/libexec/inir-thinkfan"
-        battery_policy="$privileged_stage/opt/inir/share/polkit-1/actions/org.inir.battery-charge-limit.policy"
-        thinkfan_policy="$privileged_stage/opt/inir/share/polkit-1/actions/org.inir.thinkfan.policy"
-        tlp_schema="$privileged_stage/opt/inir/share/inir/tlp-settings-schema.json"
-        tlp_service="$installed_runtime/services/TlpSettingsService.qml"
-        thinkfan_service="$installed_runtime/services/ThinkFanService.qml"
-
-        [[ -x "$battery_helper" && -x "$thinkfan_helper" && -f "$tlp_schema" ]]
-        grep -Fq 'config_dir=/opt/inir/etc/tlp.d' "$battery_helper"
-        grep -Fq 'tlp_settings_schema=/opt/inir/share/inir/tlp-settings-schema.json' "$battery_helper"
-        grep -Fq '<annotate key="org.freedesktop.policykit.exec.path">/opt/inir/libexec/inir-battery-charge-limit</annotate>' "$battery_policy"
-        grep -Fq '<annotate key="org.freedesktop.policykit.exec.path">/opt/inir/libexec/inir-thinkfan</annotate>' "$thinkfan_policy"
-        grep -Fq 'readonly property string helperPath: "/opt/inir/libexec/inir-battery-charge-limit"' "$tlp_service"
-        grep -Fq '"/opt/inir/libexec/inir-thinkfan"' "$thinkfan_service"
-        ! grep -Fq '/usr/libexec/inir-battery-charge-limit' "$tlp_service"
-        ! grep -Fq '/usr/libexec/inir-thinkfan' "$thinkfan_service"
-    )
 fi
 
 if [[ -d "$runtime_root/distro/arch" ]]; then

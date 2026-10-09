@@ -49,8 +49,8 @@ bash scripts/test-optional-audio-deps-contract.sh
 bash scripts/test-reviewed-replacement-manifests.sh
 bash scripts/test-config-namespace-migration.sh
 bash scripts/test-runtime-orphan-cleanup.sh
-bash scripts/test-battery-charge-limit-helper.sh
-bash scripts/test-thinkfan-helper.sh
+python3 scripts/test-hadalird-install-lifecycle.py
+python3 scripts/test-hadalird-arch-package.py
 bash scripts/test-make-install-lifecycle.sh
 bash scripts/test-uninstall-path-safety.sh
 bash scripts/verify-docs.sh
@@ -66,7 +66,13 @@ bash scripts/test-nix-module-contract.sh
 
 A failure or unavailable Nix lane is diagnostic during this phase; it does not override a clean required non-Nix validation result or block release publication. Do not hide the diagnostic result—record it separately and fix it in the deferred compatibility lane.
 
-The battery-charge-limit and ThinkFan helper checks use simulated command/hardware boundaries in their default mode, so they are safe for normal CI and release preflight. Explicit battery lifecycle modes such as `--live-restart`, `--live-display`, and `--live-suspend` are manual machine checks and are not invoked by release publication.
+The optional-package gates verify that Core installation, update and removal
+preserve separately owned Hadalird payloads and user profiles. TLP, Thinkfan and
+Obsidian implementation tests run in the Hadalird repository. These preflight
+checks use private staging and simulated command/hardware boundaries; real
+battery lifecycle modes such as `--live-restart`, `--live-display`, and
+`--live-suspend` remain manual machine checks and are not invoked by release
+publication.
 
 These Equalizer checks validate the current Phase 1 backend/service contract: disabled-by-default behavior, lifecycle/protocol guards, and the boundary that keeps backend execution out of Media presentation code. Future Equalizer presentation work such as the full UI, spectrum, presets surface, or multi-band redesign is not a release prerequisite here.
 

@@ -22,7 +22,6 @@ def main() -> None:
     config_schema = read("modules/common/Config.qml")
     default_config = read("defaults/config.json")
     thinkfan_service = read("services/ThinkFanService.qml")
-    thinkfan_helper = read("assets/helpers/inir-thinkfan")
     shell_root = read("shell.qml")
     system_settings = read("modules/settings/GeneralConfigCore.qml")
     system_facade = read("modules/settings/GeneralConfig.qml")
@@ -159,48 +158,7 @@ def main() -> None:
         check(token in default_config,
               f"Default config must keep per-profile fan levels on Auto: {token}")
 
-    for token in (
-        "import Quickshell.Services.UPower",
-        "property bool directControlAvailable: false",
-        "property bool fanLevelControlSupported: false",
-        "readonly property string activePowerProfileKey:",
-        "readonly property int configuredActiveFanLevel:",
-        "function setConfiguredFanLevel(key: string, requestedLevel): bool",
-        "function setProfileFanControlEnabled(requestedEnabled: bool): bool",
-        "function applyFanLevel(requestedLevel): bool",
-        "function applyConfiguredPowerProfileFanLevel(): bool",
-        "Config.flushWrites()",
-        'root.lastApplyError = "managed-control-active"',
-        '"direct-control-unavailable"',
-        '"helper-update-required"',
-        'Config.getNestedValue("powerProfiles.fanControl.enabled", false)',
-        'Config.getNestedValue(path, 0)',
-        "function _scheduleConfiguredFanLevelApply(): void",
-        "function onConfigChanged(): void",
-        "root._scheduleConfiguredFanLevelApply()",
-        'String(root.fanLevel ?? "").trim().toLowerCase() === normalized',
-        "root._profileFollowArmed",
-        'property string _queuedFanLevel: ""',
-        "function _drainQueuedFanLevel(): void",
-        'completedOperation === "profile:firmware"',
-        "onTriggered: {",
-        "root._profileFollowArmed = true",
-    ):
-        check(token in thinkfan_service,
-              f"ThinkFan service must own guarded power-profile fan levels: {token}")
 
-    for token in (
-        "fan_control_path=/sys/module/thinkpad_acpi/parameters/fan_control",
-        "direct_control_available()",
-        '"fanLevelControlSupported":true',
-        "--set-level auto|1..7",
-        "set_fan_level()",
-        "auto|1|2|3|4|5|6|7",
-        "stop ThinkFan managed control before setting a fixed fan level",
-        "level auto",
-    ):
-        check(token in thinkfan_helper,
-              f"Privileged helper must guard direct fan-level control: {token}")
 
     for token in (
         'settingsTaskSection: "fan"',
@@ -240,7 +198,7 @@ def main() -> None:
               f"Explicit Config flushes must serialize safely before fan apply: {token}")
 
     check("property var _thinkFanService: ThinkFanService" in shell_root,
-          "Shell root must keep ThinkFanService alive so power-profile following works with Settings closed")
+          "Shell root must retain the typed optional fan facade")
 
     for token in (
         'value.includes("fan")',
@@ -281,39 +239,8 @@ def main() -> None:
         check(not (ROOT / path).exists(),
               f"Retired standalone ThinkFan surface must stay removed: {path}")
 
-    for token in (
-        "function setup_thinkfan_helper()",
-        'helper_src="${REPO_ROOT}/assets/helpers/inir-thinkfan"',
-        'policy_src="${REPO_ROOT}/assets/polkit/org.inir.thinkfan.policy"',
-        'helper_dst="/usr/libexec/inir-thinkfan"',
-        'policy_dst="/usr/share/polkit-1/actions/org.inir.thinkfan.policy"',
-        'pkg_sudo install -Dm755 "$helper_src" "$helper_dst"',
-        'pkg_sudo install -Dm644 "$policy_src" "$policy_dst"',
-        "showfun setup_thinkfan_helper",
-        "v setup_thinkfan_helper",
-    ):
-        check(token in source_setup,
-              f"Repo-managed setup must provision the Hadalis ThinkFan bridge: {token}")
 
-    check('update_strategy" == "package-manager"' in source_setup,
-          "Source setup must not overwrite package-manager-owned ThinkFan integration files")
 
-    for token in (
-        'MIGRATION_ID="041-thinkfan-helper-bridge"',
-        "MIGRATION_REQUIRED=true",
-        'get_installed_update_strategy 2>/dev/null || true',
-        '== "package-manager"',
-        'helper_src="${REPO_ROOT}/assets/helpers/inir-thinkfan"',
-        'policy_src="${REPO_ROOT}/assets/polkit/org.inir.thinkfan.policy"',
-        'helper_dst="/usr/libexec/inir-thinkfan"',
-        'policy_dst="/usr/share/polkit-1/actions/org.inir.thinkfan.policy"',
-        'cmp -s "$helper_src" "$helper_dst"',
-        'cmp -s "$policy_src" "$policy_dst"',
-        'pkg_sudo install -Dm755 "$helper_src" "$helper_dst"',
-        'pkg_sudo install -Dm644 "$policy_src" "$policy_dst"',
-    ):
-        check(token in thinkfan_migration,
-              f"Required migration must self-heal the Hadalis ThinkFan bridge: {token}")
 
     for forbidden in (
         "systemctl stop thinkfan",
@@ -328,19 +255,6 @@ def main() -> None:
         check(forbidden not in thinkfan_migration,
               f"ThinkFan bridge migration must preserve upstream ThinkFan ownership: {forbidden}")
 
-    for token in (
-        "uninstall_remove_thinkfan_bridge()",
-        'helper="/usr/libexec/inir-thinkfan"',
-        'policy="/usr/share/polkit-1/actions/org.inir.thinkfan.policy"',
-        "get_installed_update_strategy 2>/dev/null || true",
-        '[[ "$update_strategy" == "package-manager" ]]',
-        'pkg_sudo rm -f "$helper" "$policy"',
-        "upstream ThinkFan preserved",
-    ):
-        check(token in uninstall_lib,
-              f"Repo uninstall must remove only the Hadalis-owned ThinkFan bridge: {token}")
-    check(uninstall_lib.count("uninstall_remove_thinkfan_bridge") >= 3,
-          "Both normal and quick repo uninstall paths must clean the Hadalis ThinkFan bridge")
 
     for forbidden in (
         "systemctl stop thinkfan",
@@ -359,8 +273,10 @@ def main() -> None:
           "Repo update path must run required migrations after pulling source changes")
     check('apply_migration "$migration_id" true' in migration_engine,
           "Required migrations must re-apply from real state when a managed artifact is missing/outdated")
-    check("sudo make install-thinkfan-helper" in thinkfan_docs,
-          "ThinkFan troubleshooting must document the targeted helper repair path")
+
+    check("Hadalird.session?.thinkfan" in thinkfan_service, "fan facade lost its optional owner")
+    check("Process {" not in thinkfan_service and "Timer {" not in thinkfan_service, "fan facade retained duplicate polling")
+    check("Hadalird" in thinkfan_docs, "fan documentation must identify the optional owner")
 
     if failures:
         print("ThinkFan/System Monitor contract regression(s):")

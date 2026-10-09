@@ -838,6 +838,19 @@ inir ipc hadanion status
 
 ---
 
+### hadalird
+
+Optional TLP, Thinkfan and Obsidian package discovery. Integration selections
+remain under Settings → Integrations; discovery does not install or enable a
+package.
+
+| Function | Description |
+|----------|-------------|
+| `refresh` | Recheck the installed Hadalird package identity and reload selected integrations |
+| `status` | Return package availability, enabled state, diagnostic, version, source SHA and selected integration states as JSON |
+
+---
+
 ## Waffle-Specific Targets
 
 These targets only work when using the Waffle (Windows 11) panel style.

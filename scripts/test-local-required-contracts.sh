@@ -128,79 +128,14 @@ require_contains 'for doc in "$srcroot"/docs/*.md; do' distro/arch/inir-shell/PK
 require_contains 'for doc in "$srcroot"/docs/*.md; do' distro/arch/inir-shell-git/PKGBUILD \
     'git Arch package no longer installs the documentation set'
 
-printf '== privileged integration package payload ==\n'
-require_contains 'org.freedesktop.policykit.exec.path">/usr/libexec/inir-thinkfan' \
-    assets/polkit/org.inir.thinkfan.policy \
-    'ThinkFan polkit action no longer targets the installed helper'
-for policy in \
-    assets/polkit/org.inir.thinkfan.policy \
-    assets/polkit/org.inir.battery-charge-limit.policy; do
-    require_contains '<allow_any>no</allow_any>' "$policy" \
-        "$policy must deny non-local/non-session authorization"
-    require_contains '<allow_inactive>no</allow_inactive>' "$policy" \
-        "$policy must deny inactive-session authorization"
-    require_contains '<allow_active>yes</allow_active>' "$policy" \
-        "$policy must allow the active local session without a password prompt"
-    if grep -Fq 'auth_admin' "$policy"; then
-        fail "$policy must not restore password-gated administrator authorization"
-    fi
-done
-
-require_contains 'cmp -s "$policy" "$installed_policy"' \
-    sdata/migrations/037-battery-charge-limit-helper.sh \
-    'battery helper migration must detect a changed installed polkit policy'
-require_contains 'pkg_sudo install -Dm644 "$policy" /usr/share/polkit-1/actions/org.inir.battery-charge-limit.policy' \
-    sdata/migrations/037-battery-charge-limit-helper.sh \
-    'battery helper migration must refresh the installed polkit policy'
-require_contains 'cmp -s "$policy_src" "$policy_dst"' \
-    sdata/migrations/041-thinkfan-helper-bridge.sh \
-    'ThinkFan bridge migration must detect a changed installed polkit policy'
-require_contains 'pkg_sudo install -Dm644 "$policy_src" "$policy_dst"' \
-    sdata/migrations/041-thinkfan-helper-bridge.sh \
-    'ThinkFan bridge migration must refresh the installed polkit policy'
-
+printf '== optional integration ownership ==\n'
+python3 scripts/test-hadalird-install-lifecycle.py || fail 'core lifecycle changed optional system state'
+python3 scripts/test-hadalird-arch-package.py || fail 'Arch package lost optional integration boundary'
 for pkg in distro/arch/inir-shell/PKGBUILD distro/arch/inir-shell-git/PKGBUILD; do
-    for marker in \
-        'assets/applications/inir-settings.desktop' \
-        '$pkgdir/usr/share/applications/inir-settings.desktop' \
-        'distro/arch/inir-shell/inir-quickshell-rebuild.hook' \
-        '$pkgdir/usr/share/libalpm/hooks/inir-quickshell-rebuild.hook' \
-        'assets/helpers/inir-battery-charge-limit' \
-        '$pkgdir/usr/libexec/inir-battery-charge-limit' \
-        'assets/polkit/org.inir.battery-charge-limit.policy' \
-        'assets/tlp/tlp-settings-schema.json' \
-        'assets/helpers/inir-thinkfan' \
-        '$pkgdir/usr/libexec/inir-thinkfan' \
-        'assets/polkit/org.inir.thinkfan.policy'; do
-        require_contains "$marker" "$pkg" "$pkg is missing packaged integration marker: $marker"
+    for marker in 'assets/applications/inir-settings.desktop' '$pkgdir/usr/share/applications/inir-settings.desktop' 'distro/arch/inir-shell/inir-quickshell-rebuild.hook' '$pkgdir/usr/share/libalpm/hooks/inir-quickshell-rebuild.hook'; do
+        require_contains "$marker" "$pkg" "$pkg lost shared shell payload: $marker"
     done
 done
-
-printf '== ThinkFan process timeout lifecycle ==\n'
-python3 - services/ThinkFanService.qml <<'PY'
-from pathlib import Path
-import sys
-
-text = Path(sys.argv[1]).read_text(encoding="utf-8")
-required = [
-    "detectorTimeout.restart()",
-    'root._clearStatus("status-timeout")',
-    "id: detectorTimeout",
-    "interval: 5000",
-    "detector.timedOut = true",
-    "detector.running = false",
-    "applyTimeout.restart()",
-    "root.lastApplySucceeded = exitCode === 0 && !applyProcess.timedOut",
-    '? "apply-timeout"',
-    "id: applyTimeout",
-    "interval: 60000",
-    "applyProcess.timedOut = true",
-    "applyProcess.running = false",
-]
-missing = [marker for marker in required if marker not in text]
-if missing:
-    raise SystemExit("FAIL: ThinkFan timeout/recovery contract missing: " + ", ".join(missing))
-PY
 
 printf '== non-Nix startup and staged install plan ==\n'
 service_unit=assets/systemd/inir.service
@@ -219,9 +154,7 @@ for staged_path in \
     /tmp/inir-stage-test/usr/lib/systemd/user/inir.service \
     /tmp/inir-stage-test/usr/share/applications/inir.desktop \
     /tmp/inir-stage-test/usr/share/doc/inir-shell/README.md \
-    /tmp/inir-stage-test/usr/share/licenses/inir-shell/LICENSE \
-    /tmp/inir-stage-test/usr/libexec/inir-battery-charge-limit \
-    /tmp/inir-stage-test/usr/libexec/inir-thinkfan; do
+    /tmp/inir-stage-test/usr/share/licenses/inir-shell/LICENSE; do
     grep -Fq "$staged_path" <<<"$install_plan" \
         || fail "make install dry-run omits staged path: $staged_path"
 done

@@ -213,8 +213,7 @@ tracked_shell_syntax() {
         [[ -f "$file" ]] || continue
         grep -q '^### DATA ###$' "$file" && mixed=$((mixed + 1))
         check_shell_syntax_file "$file" || failed=1
-    done < <(git ls-files -z -- '*.sh' '*.install' 'setup' 'scripts/inir' '*/PKGBUILD' \
-        'assets/helpers/inir-battery-charge-limit' 'assets/helpers/inir-thinkfan')
+    done < <(git ls-files -z -- '*.sh' '*.install' 'setup' 'scripts/inir' '*/PKGBUILD')
     printf 'Embedded-data shell files checked by executable prefix: %d\n' "$mixed"
     return "$failed"
 }

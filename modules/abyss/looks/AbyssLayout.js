@@ -96,7 +96,7 @@ function snapMove(placements, id, x, y, width, height, options, fontScale) {
     if (!selected) return {placements:moved,guides:[]};
     var horizontal = selected.edge==="top" || selected.edge==="bottom";
     var length = horizontal ? width : height;
-    var margin = Math.min(34,length/12), usable = length-2*margin;
+    var margin = 0, usable = length;
     var records = geometry(moved,width,height,options,fontScale);
     var own = records.find(function(p) { return p.id===id; });
     if (!own || usable<=0) return {placements:moved,guides:[]};
@@ -225,7 +225,9 @@ function geometry(placements, width, height, options, fontScale) {
     ["top","right","bottom","left"].forEach(function(edge) {
         var horizontal = edge === "top" || edge === "bottom";
         var length = horizontal ? width : height;
-        var margin = Math.min(34,length/12), gap = bounded(options?.gap,8,0,32);
+        // The full edge is editable. Foreground bounds and collision packing
+        // keep controls on screen without a permanent corner exclusion zone.
+        var margin = 0, gap = bounded(options?.gap,8,0,32);
         var list = placements.filter(function(p) { return p.enabled && p.edge === edge && moduleSize(p,options)>0; })
             .sort(function(a,b) { return a.position-b.position || a.id.localeCompare(b.id); });
         var sizes = list.map(function(p) {

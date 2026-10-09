@@ -33,7 +33,8 @@ expect(music, 'objectName: "musicLibrary"', 'objectName: "musicGenreTab"',
        'showEqualizer: !root.queueExpanded',
        'id: queueHover', 'root.queueExpanded = true',
        'id: queueCollapseTimer',
-       'root.queueExpanded ? .34 : .78')
+       'root.queueExpanded', 'Math.max(208, (parent.height - parent.spacing) * .34)',
+       'Math.round((parent.height - parent.spacing) * .78)')
 expect(pages, 'function handleEscape(): bool', 'dashboardCanvas.cancelEditMode()',
        'musicPage.item?.restoreBrowserColumns()', 'orientation: Qt.Horizontal',
        'orientation: Qt.Vertical', 'acceptsPageWheel(local.x, local.y)')

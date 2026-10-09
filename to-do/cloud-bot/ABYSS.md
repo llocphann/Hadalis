@@ -600,3 +600,7 @@ imply the installed local desktop has received these patches.
   the installed/owner GPU+audio QA gate open.
 
 This section supersedes the previous static 57% Queue default sizing decision.
+
+Layout safety: on short monitors, Queue hover keeps at least 208 px of
+player/volume space when available, bounded by the actual column height; the
+nominal 34%/66% split applies when it does not clip transport controls.

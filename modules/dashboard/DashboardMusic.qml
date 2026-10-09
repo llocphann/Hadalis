@@ -690,8 +690,12 @@ Item {
                     id: musicPlayer
                     objectName: "musicPlayer"
                     width: parent.width
-                    height: Math.round((parent.height - parent.spacing)
-                        * (root.queueExpanded ? .34 : .78))
+                    // Preserve room for player transport and MPD volume on
+                    // shorter monitors; Queue still grows as far as available.
+                    height: root.queueExpanded
+                        ? Math.min(Math.max(0, parent.height - parent.spacing),
+                            Math.max(208, (parent.height - parent.spacing) * .34))
+                        : Math.round((parent.height - parent.spacing) * .78)
                     mediaBackend: root.backend
                     playbackAdapter: playerAdapter
                     showEqualizer: !root.queueExpanded

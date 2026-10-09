@@ -629,3 +629,59 @@ nominal 34%/66% split applies when it does not clip transport controls.
   artwork controls, and zero wasted vertical space before release.
 - [ ] Exact-HEAD canonical and native test receipts required; no owner
   desktop acceptance or stable release is claimed.
+
+## Niri Screen Edge hover-only-in-Editor fix — 2026-10-09
+
+### Evidence and diagnosis boundary
+- The Abyss full-output PanelWindow in `modules/abyss/AbyssPerimeter.qml`
+  selected `WlrLayer.Top` in ordinary idle use, but `WlrLayer.Overlay`
+  while `editorOpen` or `liquid.popupsOpen`. The same repo's mature
+  `modules/bar/Bar.qml` already selects `Overlay` for Niri at idle.
+- A hover-owned `StyledPopup` may therefore trigger a layer promotion just
+  as it requests visibility. This is an implementation-supported source-level
+  failure mechanism, **not** a proven physical compositor trace; a private
+  Niri/owner-desktop reproduction is still required to confirm causality.
+- The user observes that Edit Abyss Layout renders hover popups while normal
+  mode does not. Earlier fixes only broadened individual hover-state detection;
+  this cutover changes the **upstream compositor layer policy**, not another
+  duplicated pointer handler.
+
+### Source completed on dev
+- [x] Keep Niri Abyss host at `WlrLayer.Overlay` during ordinary idle and
+  hover-owned popup lifecycle, so it cannot transition from Top to Overlay
+  as `liquid.popupsOpen` toggles. Non-Niri layer behavior remains unchanged;
+  `settingsNativeDialogOpen -> Bottom` and `PolkitService.active -> Top`
+  retain priority, with existing `nativeInputMask`, dialog mask, utility
+  mask and input-region ownership unchanged.
+- [x] Add `scripts/test-abyss-niri-hover-layer-contract.py`: evaluate the
+  **actual extracted QML layer expression** in Node across 13 scenarios
+  (normal, popup, editor, overrides, Niri/non-Niri). Assert module input
+  regions and `StyledPopup` source-hover ownership remain unchanged.
+
+### Native acceptance is required before DONE
+- [ ] On the installed **exact dev SHA**, Niri and Quickshell **stable**,
+  log source SHA, timestamp and exit status. Capture normal vs editor
+  hover at Clock, Weather, Battery, Resources, Media, Launcher, System Tray
+  (plus Wi-Fi/Bluetooth/utilities generic hover), without clicking.
+- [ ] For each open, move pointer from icon to interactive popup, then into
+  workspace; verify it stays visible during transfer and closes after
+  pointer/focus exit. Repeat enter/leave 4 times; test keyboard focus
+  separately from hover and confirm Weather never opens Right Sidebar.
+- [ ] Verify the compositor surface stays at Overlay before/during/after
+  a hover popup on Niri, while the input mask captures only actual module/
+  popup regions (no full-screen transparent pointer blocker). Check idle
+  desktop click-through, multiple outputs, fullscreen, editor open/close,
+  native Settings dialog and Polkit.
+- [ ] Run the new source policy test, `test-popup-anchor-hover-runtime.py`,
+  `test-abyss-bar-popup-autohide-contract.py`, `test-connected-input-lifecycle.py`
+  and canonical maintainer validation. Separate CI missing dependency
+  failures from native functional defects; no source-only pass is production
+  acceptance.
+- [ ] If the symptom persists, collect bounded evidence: actual mapped
+  surface layer, module Region/input bounds, `AbyssBarModule.hovered`,
+  `StyledPopup.moduleHoverActive`, `requestedVisible`,
+  `_anchorReady`, `liquid.popupsOpen` and compositor pointer trace.
+  Do not infer another cause or blindly add hover handlers.
+
+**Status:** source-fix staged on `dev`, not installed, not native-qualified,
+not eligible for stable promotion.

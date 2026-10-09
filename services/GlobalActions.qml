@@ -72,7 +72,8 @@ Singleton {
     }
 
     function runById(actionId: string, args: string): bool {
-        const action = allActions.find(a => a.id === actionId)
+        const resolvedId = actionId === "wallpaper-coverflow" ? "change-wallpaper" : actionId
+        const action = allActions.find(a => a.id === resolvedId)
         if (action) {
             action.execute(args ?? "")
             return true
@@ -279,26 +280,13 @@ Singleton {
         },
         {
             id: "change-wallpaper",
-            name: Translation.tr("Change Wallpaper (Grid)"),
-            description: Translation.tr("Open the grid wallpaper selector"),
+            name: Translation.tr("Change Wallpaper"),
+            description: Translation.tr("Open the wallpaper selector"),
             icon: "wallpaper",
             category: "appearance",
-            keywords: ["wallpaper", "background", "wall", "image", "grid"],
+            keywords: ["wallpaper", "background", "wall", "image", "carousel"],
             execute: () => {
-                root.runLauncher(["coverflowSelector", "close"])
                 root.runLauncher(["wallpaperSelector", "open"])
-            }
-        },
-        {
-            id: "wallpaper-coverflow",
-            name: Translation.tr("Change Wallpaper (Coverflow)"),
-            description: Translation.tr("Open the coverflow wallpaper selector"),
-            icon: "view_carousel",
-            category: "appearance",
-            keywords: ["wallpaper", "background", "wall", "coverflow", "carousel"],
-            execute: () => {
-                root.runLauncher(["wallpaperSelector", "close"])
-                root.runLauncher(["coverflowSelector", "open"])
             }
         },
         {

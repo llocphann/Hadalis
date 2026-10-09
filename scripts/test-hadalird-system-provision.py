@@ -105,20 +105,19 @@ for name in ("inir-shell", "inir-shell-git"):
     assert "/usr/libexec/inir-hadalird-system-provision" in recipe
     assert "org.inir.hadalird-system-provision.policy" in recipe
 
-# A valid *recipe* does not guarantee that its pinned immutable source contains
-# that recipe's helper files. The original pin predated the provisioner entirely.
-import re
-stable = (ROOT / "distro/arch/inir-shell/PKGBUILD").read_text()
-source_match = re.search(r'^_source_ref="\$\{INIR_SOURCE_REF:-([0-9a-f]{40})\}"
-print("HADALIRD_SYSTEM_PROVISION_PASS trusted payload, owner marker, consent policy, rollback-safe removal, no root test effects")
-, stable, re.M)
-assert source_match, "non-VCS Arch snapshot must pin a full immutable source commit"
-source_sha = source_match.group(1)
-assert source_sha != "8ca68efe423223bdf40059155748c53b38200de2", (
-    "pre-gateway source snapshot cannot install the Polkit provisioner"
-)
-srcinfo = (ROOT / "distro/arch/inir-shell/.SRCINFO").read_text()
-assert f"/archive/{source_sha}.tar.gz" in srcinfo, (
-    "Arch source metadata must match the updated immutable source pin"
-)
-print("HADALIRD_SYSTEM_PROVISION_PASS trusted payload, owner marker, consent policy, rollback-safe removal, no root test effects")
+# A valid *recipe* does not guarantee that the default immutable source
+# actually contains its declared trusted root-owned files.
+stable = (ROOT / 'distro/arch/inir-shell/PKGBUILD').read_text()
+source_line = next((line for line in stable.splitlines()
+                    if line.startswith('_source_ref=')), '')
+source_prefix = '_source_ref="${INIR_SOURCE_REF:-'
+assert source_line.startswith(source_prefix) and source_line.endswith('}"'), (
+    'non-VCS Arch snapshot must pin a full immutable source commit')
+source_sha = source_line[len(source_prefix):-2]
+assert len(source_sha) == 40 and all(c in '0123456789abcdef' for c in source_sha)
+assert source_sha != '8ca68efe423223bdf40059155748c53b38200de2', (
+    'pre-gateway source snapshot cannot install the Polkit provisioner')
+srcinfo = (ROOT / 'distro/arch/inir-shell/.SRCINFO').read_text()
+assert f'/archive/{source_sha}.tar.gz' in srcinfo, (
+    'Arch source metadata must match the updated immutable source pin')
+print('HADALIRD_SYSTEM_PROVISION_PASS root ownership, Polkit policy, byte pins, source snapshot')

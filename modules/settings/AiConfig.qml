@@ -118,6 +118,7 @@ ContentPage {
             }
 
             StatusRow {
+                objectName: "localModelStatus"
                 readonly property bool localFound: AiProviderCatalog.localModelCount > 0
                     || Ai.modelList.some(m => Ai.models[m]?.local === true)
                 readonly property bool localReady: Ai.modelList.some(m => Ai.models[m]?.local === true
@@ -126,10 +127,12 @@ ContentPage {
                 ok: localReady
                 label: localFound
                     ? Translation.tr("Local models detected")
-                    : Translation.tr("No local models")
+                    : LocalModels.checkpoints.length > 0
+                    ? Translation.tr("Downloaded checkpoints detected") : Translation.tr("No local models")
                 detail: LocalModels.models.length > 0 && !LocalModels.runtimePath && !localReady
                     ? Translation.tr("GGUF runtime unavailable")
                     : localFound ? Translation.tr("%1 local model(s) available").arg(AiProviderCatalog.localModelCount+LocalModels.models.length)
+                    : LocalModels.checkpoints.length > 0 ? Translation.tr("Choose a GGUF export for local chat")
                     : Translation.tr("Start Ollama or LM Studio to chat privately without an account or key")
             }
 
@@ -186,7 +189,7 @@ ContentPage {
         visible: root.activeSection === "providers"
         expanded: true
         icon: "computer"
-        title: Translation.tr("Local GGUF models")
+        title: Translation.tr("Downloaded models")
         SettingsGroup {
             MaterialTextField {
                 objectName: "localModelFolder"
@@ -194,6 +197,15 @@ ContentPage {
                 placeholderText: Translation.tr("Model folder")
                 text: Config.options?.ai?.localModelFolder ?? ""
                 onEditingFinished: Config.setNestedValue("ai.localModelFolder", text.trim())
+            }
+            StyledText {
+                objectName: "localCheckpointStatus"
+                Layout.fillWidth: true
+                visible: LocalModels.checkpoints.length > 0
+                text: LocalModels.checkpoints.map(model => Translation.tr("%1 · Safetensors").arg(model.name)).join("\n")
+                textFormat: Text.PlainText
+                color: Appearance.colors.colSubtext
+                wrapMode: Text.WordWrap
             }
             StyledText {
                 Layout.fillWidth: true

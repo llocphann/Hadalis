@@ -8,6 +8,7 @@ import qs.modules.common
 Singleton {
     id:root
     property var models:[]
+    property var checkpoints:[]
     property string runtimePath:""
     property string error:""
     property bool initialized:false
@@ -45,9 +46,14 @@ Singleton {
             try {
                 if(code!==0 || result.text.length>65536)throw new Error()
                 const found=JSON.parse(result.text)
+                if(!Array.isArray(found.models) || !Array.isArray(found.checkpoints ?? []))throw new Error()
                 root.models=(found.models ?? []).slice(0,32);root.runtimePath=found.runtimePath ?? ""
+                root.checkpoints=(found.checkpoints ?? []).slice(0,8)
                 root.error=found.error ?? ""
-            } catch(e){root.error="Local model discovery failed."}
+            } catch(e){
+                root.models=[];root.checkpoints=[];root.runtimePath=""
+                root.error="Local model discovery failed."
+            }
             root.updated()
         }
     }

@@ -61,6 +61,12 @@ Item {
         return Library.results(tracks, sourceMode, selectedGenre, resultFolder);
     }
     readonly property var selectedTracks: Library.selectedTracks(sourceMode === "playlist" ? (selectedPlaylist?.tracks ?? []) : sourceMode === "queue" ? (backend.activeQueue ?? []) : tracks, selectedKeys)
+    readonly property bool browseGenreOnly: sourceMode === "genre"
+    readonly property bool browseFolderOnly: sourceMode === "folder"
+    readonly property var allResultTracks: Library.selectedTracks(
+        sourceMode === "playlist" ? (selectedPlaylist?.tracks ?? []) :
+        sourceMode === "queue" ? (backend.activeQueue ?? []) : tracks,
+        results.map(entry => Library.key(entry)))
     readonly property bool abyss: Config.options?.panelFamily === "abyss"
     readonly property color ink: abyss ? (Appearance.m3colors.darkmode ? AbyssStyle.textColor : "#000000") : Appearance.colors.colOnSurface
     readonly property color mutedInk: abyss ? (Appearance.m3colors.darkmode ? AbyssStyle.textColorMuted : Qt.alpha("#000000", .66)) : Appearance.colors.colSubtext
@@ -107,6 +113,23 @@ Item {
     onSelectedGenreChanged: rememberBrowser()
     onSelectedFolderChanged: rememberBrowser()
     onSelectedPlaylistNameChanged: rememberBrowser()
+    // First Escape restores both library navigation columns, second closes Dashboard.
+    function restoreBrowserColumns(): bool {
+        if (playlistDialogVisible) {
+            playlistDialogVisible = false
+            return true
+        }
+        if (!browseGenreOnly && !browseFolderOnly)
+            return false
+        sourceMode = ""
+        selectedGenre = ""
+        selectedFolder = ""
+        resultFolder = ""
+        query = ""
+        clearSelection()
+        rememberBrowser()
+        return true
+    }
     function chooseGenre(value): void {
         query = "";
         sourceMode = "genre";
@@ -138,6 +161,18 @@ Item {
             backend.playTrackAt(entry.queueIndex);
         else
             backend.enqueueTrack(entry.track, true);
+    }
+    // Leave nested list scrolling intact when vertical wheel navigates pages.
+    function acceptsPageWheel(x, y): bool {
+        const lists = [genreList, folderList, playlistList, resultList, queueList, lyricsList]
+        for (const item of lists) {
+            if (!item.visible || item.width <= 0 || item.height <= 0)
+                continue
+            const p = item.mapFromItem(root, x, y)
+            if (p.x >= 0 && p.x < item.width && p.y >= 0 && p.y < item.height)
+                return false
+        }
+        return true
     }
     function panHorizontally(amount): bool {
         const next = Math.max(0, Math.min(horizontal.contentWidth - horizontal.width, horizontal.contentX - amount));
@@ -339,7 +374,7 @@ Item {
         id: horizontal
         objectName: "musicColumnsViewport"
         anchors.fill: parent
-        contentWidth: Math.max(width, root.hasLyrics ? 980 : 760)
+        contentWidth: Math.max(width, (root.hasLyrics ? 980 : 760) * (root.browseGenreOnly ? .84 : root.browseFolderOnly ? .87 : 1))
         contentHeight: height
         onContentWidthChanged: contentX = Math.max(0, Math.min(contentX, contentWidth - width))
         flickableDirection: Flickable.HorizontalFlick
@@ -352,13 +387,17 @@ Item {
             width: horizontal.contentWidth
             height: horizontal.height
             spacing: 8
-            readonly property real unit: (width - spacing * (root.hasLyrics ? 4 : 3)) / (root.hasLyrics ? 100 : 79)
+            readonly property int shownColumns: (root.hasLyrics ? 5 : 4) - (root.browseGenreOnly || root.browseFolderOnly ? 1 : 0)
+            readonly property real weight: (root.hasLyrics ? 100 : 79) - (root.browseGenreOnly ? 16 : root.browseFolderOnly ? 13 : 0)
+            readonly property real unit: (width - spacing * (shownColumns - 1)) / weight
             Pane {
                 objectName: "musicGenres"
-                width: parent.unit * 13
+                visible: !root.browseFolderOnly
+                width: visible ? parent.unit * 13 : 0
                 height: parent.height
                 title: Translation.tr("Genre")
                 ListView {
+                    id: genreList
                     objectName: "musicGenreList"
                     anchors.fill: parent
                     model: root.genres
@@ -379,13 +418,15 @@ Item {
             }
             Pane {
                 objectName: "musicFolders"
-                width: parent.unit * 16
+                visible: !root.browseGenreOnly
+                width: visible ? parent.unit * 16 : 0
                 height: parent.height
                 title: Translation.tr("Folders")
                 ColumnLayout {
                     anchors.fill: parent
                     spacing: 6
                     ListView {
+                        id: folderList
                         objectName: "musicFolderList"
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -410,6 +451,7 @@ Item {
                         color: root.ink
                     }
                     ListView {
+                        id: playlistList
                         objectName: "musicPlaylistList"
                         visible: count > 0
                         Layout.fillWidth: true
@@ -490,21 +532,26 @@ Item {
                         onClicked: root.resultFolder = Library.parent(root.resultFolder)
                     }
                     RowLayout {
-                        visible: root.selectedKeys.length > 0
                         Layout.fillWidth: true
                         spacing: 4
-                        StyledText {
+                        AbyssButton {
+                            objectName: "musicPlayAll"
                             Layout.fillWidth: true
-                            text: Translation.tr("%1 selected").arg(root.selectedKeys.length)
-                            color: root.mutedInk
-                            elide: Text.ElideRight
+                            compact: true
+                            glyph: "play_arrow"
+                            text: Translation.tr("Play All")
+                            outlined: false
+                            enabled: root.allResultTracks.length > 0
+                            onClicked: root.backend.playQueue(root.allResultTracks, 0, Translation.tr("Results"))
                         }
                         AbyssButton {
                             objectName: "musicPlaySelection"
+                            Layout.fillWidth: true
                             compact: true
-                            glyph: "play_arrow"
-                            description: Translation.tr("Play selection")
+                            glyph: "playlist_play"
+                            text: Translation.tr("Play Selected")
                             outlined: false
+                            enabled: root.selectedTracks.length > 0
                             onClicked: root.backend.playQueue(root.selectedTracks, 0, Translation.tr("Selection"))
                         }
                         AbyssButton {
@@ -513,6 +560,7 @@ Item {
                             glyph: "playlist_add"
                             description: Translation.tr("Add to queue")
                             outlined: false
+                            enabled: root.selectedTracks.length > 0
                             onClicked: root.backend.enqueueTracks(root.selectedTracks)
                         }
                     }
@@ -568,48 +616,101 @@ Item {
                     }
                 }
             }
-            Pane {
-                objectName: "musicPlayer"
+            Column {
+                objectName: "musicPlaybackAndQueue"
                 width: parent.unit * 26
                 height: parent.height
-                title: Translation.tr("Now playing")
-                ColumnLayout {
-                    anchors.fill: parent
-                    spacing: 8
-                    PlayerControl {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: false
-                        Layout.preferredHeight: Math.min(280, Math.max(180, parent.height - musicEqualizer.implicitHeight - 48))
-                        player: root.backend.mprisPlayer ?? null
-                        playbackAdapter: playerAdapter
-                        compactLayout: true
-                        // The shared DSP panel below owns the only analyzer,
-                        // matching the Media Popup presentation.
-                        visualizerPoints: []
-                        radius: root.abyss ? 18 : Appearance.rounding.normal
-                    }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-                        MaterialSymbol {
-                            text: "volume_up"
-                            color: root.mutedInk
-                            iconSize: 18
-                        }
-                        StyledSlider {
-                            objectName: "musicVolume"
+                spacing: 8
+                Pane {
+                    id: musicPlayer
+                    objectName: "musicPlayer"
+                    width: parent.width
+                    height: Math.round((parent.height - parent.spacing) * .65)
+                    title: Translation.tr("Now playing")
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 8
+                        PlayerControl {
                             Layout.fillWidth: true
-                            configuration: StyledSlider.Configuration.XS
-                            value: root.backend.volume ?? 1
-                            onMoved: root.backend.setVolume(value)
+                            Layout.fillHeight: false
+                            Layout.preferredHeight: Math.min(280, Math.max(132, parent.height - musicEqualizer.implicitHeight - 48))
+                            player: root.backend.mprisPlayer ?? null
+                            playbackAdapter: playerAdapter
+                            compactLayout: true
+                            visualizerPoints: []
+                            radius: root.abyss ? 18 : Appearance.rounding.normal
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            MaterialSymbol {
+                                text: "volume_up"
+                                color: root.mutedInk
+                                iconSize: 18
+                            }
+                            StyledSlider {
+                                objectName: "musicVolume"
+                                Layout.fillWidth: true
+                                configuration: StyledSlider.Configuration.XS
+                                value: root.backend.volume ?? 1
+                                onMoved: root.backend.setVolume(value)
+                            }
+                        }
+                        EqualizerPanel {
+                            id: musicEqualizer
+                            objectName: "musicEqualizer"
+                            Layout.fillWidth: true
+                            compactLayout: true
+                            active: root.presentationActive && root.visible
                         }
                     }
-                    EqualizerPanel {
-                        id: musicEqualizer
-                        objectName: "musicEqualizer"
-                        Layout.fillWidth: true
-                        compactLayout: true
-                        active: root.presentationActive && root.visible
+                }
+                Pane {
+                    id: musicQueuePanel
+                    objectName: "musicQueuePanel"
+                    width: parent.width
+                    height: Math.max(0, parent.height - musicPlayer.height - parent.spacing)
+                    title: Translation.tr("Queue")
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 4
+                        RowLayout {
+                            Layout.fillWidth: true
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: Translation.tr("%1 tracks").arg((root.backend.activeQueue ?? []).length)
+                                color: root.mutedInk
+                            }
+                            AbyssButton {
+                                objectName: "musicClearQueue"
+                                compact: true
+                                glyph: "delete_sweep"
+                                description: Translation.tr("Clear queue")
+                                outlined: false
+                                enabled: (root.backend.activeQueue ?? []).length > 0
+                                onClicked: root.backend.clearQueue()
+                            }
+                        }
+                        ListView {
+                            id: queueList
+                            objectName: "musicQueueList"
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
+                            spacing: 3
+                            model: root.backend.activeQueue ?? []
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                            delegate: Entry {
+                                required property var modelData
+                                required property int index
+                                width: ListView.view.width
+                                caption: String(modelData.title || modelData.uri || "")
+                                detail: String(modelData.artist ?? "")
+                                glyph: "music_note"
+                                artUrl: String(modelData.artUrl ?? modelData.art ?? "")
+                                onDoubleClicked: root.backend.playTrackAt(index)
+                            }
+                        }
                     }
                 }
             }
@@ -620,6 +721,8 @@ Item {
                 height: parent.height
                 title: Translation.tr("Lyrics")
                 ListView {
+                    id: lyricsList
+                    objectName: "musicLyricsList"
                     anchors.fill: parent
                     clip: true
                     spacing: 12

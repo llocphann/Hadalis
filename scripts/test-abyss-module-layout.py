@@ -159,7 +159,7 @@ const empty=geometry(conditional,1920,1080,{edgeWidthAffectsModules:{top:false},
     edgeThickness:18,extents:{timer:0,shellUpdate:0,clock:120}},1);
 assert.deepEqual(empty.map(p=>p.kind),['clock'],
     'Width affects modules off must not retain idle Timer/Update gaps');
-assert.equal(localSurfaces(empty,1920,1080,{},1,32).length,1,
+assert.equal(localSurfaces(empty,1920,1080,{edgeWidthAffectsModules:{top:false}},1,32).length,1,
     'idle Timer/Update cannot leave tiny Edge backing deformations');
 const populated=geometry(conditional,1920,1080,{edgeWidthAffectsModules:{top:false},
     edgeThickness:18,extents:{timer:65,shellUpdate:55,clock:120}},1);

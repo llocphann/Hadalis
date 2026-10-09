@@ -15,6 +15,9 @@ Item {
     objectName: "dashboardMusic"
     required property var backend
     property bool presentationActive: visible
+    // Queue is a compact preview until hovered; expand it upwards by shrinking
+    // the same DashMedia card and suspending only its EQ/DSP consumer.
+    property bool queueExpanded: false
     property string sourceMode: ""
     // One Library column; tabs only change the browsing surface, not playback.
     property string libraryTab: "genre"
@@ -269,9 +272,18 @@ Item {
         pendingPlaylistTracks = [];
     }
     onPresentationActiveChanged: if (!presentationActive) {
+        queueCollapseTimer.stop();
+        queueExpanded = false;
         contextMenu.close();
         playlistDialogVisible = false;
         pendingPlaylistTracks = [];
+    }
+
+    Timer {
+        id: queueCollapseTimer
+        interval: 160
+        repeat: false
+        onTriggered: if (!queueHover.hovered) root.queueExpanded = false
     }
 
     QtObject {
@@ -671,62 +683,22 @@ Item {
                 width: parent.unit * (root.hasLyrics ? 30 : 32)
                 height: parent.height
                 spacing: 8
-                Pane {
+                // Render the same Dashboard Media card as the Dashboard tab.
+                // The optional playback adapter keeps this card on LocalMusic/
+                // MPD even when a global MPRIS player is absent.
+                DashMedia {
                     id: musicPlayer
                     objectName: "musicPlayer"
                     width: parent.width
-                    // Queue owns most of the column. The DSP/player remains
-                    // scrollable when screen height cannot fit both completely.
-                    height: Math.round((parent.height - parent.spacing) * .43)
-                    title: Translation.tr("Now playing")
-                    Flickable {
-                        id: musicControlsScroll
-                        anchors.fill: parent
-                        clip: true
-                        contentWidth: width
-                        contentHeight: musicControlsStack.implicitHeight
-                        flickableDirection: Flickable.VerticalFlick
-                        boundsBehavior: Flickable.StopAtBounds
-                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-                        ColumnLayout {
-                            id: musicControlsStack
-                            width: musicControlsScroll.width
-                            spacing: 8
-                        PlayerControl {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: false
-                            Layout.preferredHeight: 142
-                            player: root.backend.mprisPlayer ?? null
-                            playbackAdapter: playerAdapter
-                            compactLayout: true
-                            visualizerPoints: []
-                            radius: root.abyss ? 18 : Appearance.rounding.normal
-                        }
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
-                            MaterialSymbol {
-                                text: "volume_up"
-                                color: root.mutedInk
-                                iconSize: 18
-                            }
-                            StyledSlider {
-                                objectName: "musicVolume"
-                                Layout.fillWidth: true
-                                configuration: StyledSlider.Configuration.XS
-                                value: root.backend.volume ?? 1
-                                onMoved: root.backend.setVolume(value)
-                            }
-                        }
-                        EqualizerPanel {
-                            id: musicEqualizer
-                            objectName: "musicEqualizer"
-                            Layout.fillWidth: true
-                            compactLayout: true
-                            active: root.presentationActive && root.visible
-                        }
-
-                        }
+                    height: Math.round((parent.height - parent.spacing)
+                        * (root.queueExpanded ? .34 : .78))
+                    mediaBackend: root.backend
+                    playbackAdapter: playerAdapter
+                    showEqualizer: !root.queueExpanded
+                    presentationActive: root.presentationActive
+                    Behavior on height {
+                        enabled: root.presentationActive && Appearance.animationsEnabled
+                        NumberAnimation { duration: 190; easing.type: Easing.OutCubic }
                     }
                 }
                 Pane {
@@ -735,6 +707,23 @@ Item {
                     width: parent.width
                     height: Math.max(0, parent.height - musicPlayer.height - parent.spacing)
                     title: Translation.tr("Queue")
+                    Behavior on height {
+                        enabled: root.presentationActive && Appearance.animationsEnabled
+                        NumberAnimation { duration: 190; easing.type: Easing.OutCubic }
+                    }
+                    HoverHandler {
+                        id: queueHover
+                        parent: musicQueuePanel
+                        enabled: root.presentationActive
+                        onHoveredChanged: {
+                            if (hovered) {
+                                queueCollapseTimer.stop()
+                                root.queueExpanded = true
+                            } else {
+                                queueCollapseTimer.restart()
+                            }
+                        }
+                    }
                     ColumnLayout {
                         anchors.fill: parent
                         spacing: 4

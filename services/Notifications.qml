@@ -25,6 +25,8 @@ Singleton {
     }
 
     property bool _initialized: false
+    property bool _historyReady: false
+    property var _pendingIngress: []
     // Guard against re-entrant discardNotification calls (server dismiss → onNotificationChanged → discard again)
     property var _discardingIds: new Set()
 
@@ -438,45 +440,68 @@ Singleton {
             }
 
             notification.tracked = true
-            const newNotifObject = notifComponent.createObject(root, {
-                "notificationId": notification.id + root.idOffset,
-                "notification": notification,
-                "time": Date.now(),
-            });
-            if (!newNotifObject) {
-                console.warn("[Notifications] Failed to create notification wrapper")
+            const receivedAt = Date.now()
+            if (!root._historyReady) {
+                // Keep the tracked native object alive while its persisted ID
+                // offset is resolved. No popup may be replaced by hydration.
+                root._pendingIngress = root._pendingIngress.concat([{notification, receivedAt}])
+                root.ensureInitialized()
                 return
             }
-            root.list = [...root.list, newNotifObject];
-
-            // Optional notification sound
-            if ((Config.options?.sounds?.notifications ?? true) && !root.silent
-                    && notification.hints?.["suppress-sound"] !== true) {
-                Audio.playEvent(notification.urgency === NotificationUrgency.Critical
-                    ? "notificationCritical" : "notification");
-            }
-
-            // Popup
-            if (!root.popupInhibited) {
-                newNotifObject.popup = true;
-
-                const timeout = _timeoutForNotification(notification);
-                if (timeout !== 0) {
-                    newNotifObject.timer = notifTimerComponent.createObject(root, {
-                        "notificationId": newNotifObject.notificationId,
-                        "interval": timeout,
-                    });
-                }
-
-                // Legacy mode: increment manual counter
-                if (Config.options?.notifications?.useLegacyCounter ?? false) {
-                    root._manualUnreadCounter++;
-                }
-            }
-            root.notify(newNotifObject);
-            // console.log(notifToString(newNotifObject));
-            notifFileView.setText(stringifyList(root.list));
+            root._publishNotification(notification, receivedAt)
         }
+    }
+
+    function _finishHistory(maxId): void {
+        if (root._historyReady) return
+        root.idOffset = maxId
+        root._historyReady = true
+        const pending = root._pendingIngress
+        root._pendingIngress = []
+        for (const entry of pending)
+            if (entry.notification) root._publishNotification(entry.notification, entry.receivedAt)
+        root.initDone()
+    }
+
+    function _publishNotification(notification, receivedAt): void {
+        const newNotifObject = notifComponent.createObject(root, {
+            "notificationId": notification.id + root.idOffset,
+            "notification": notification,
+            "time": receivedAt,
+        });
+        if (!newNotifObject) {
+            console.warn("[Notifications] Failed to create notification wrapper")
+            return
+        }
+        root.list = [...root.list, newNotifObject];
+
+        // Optional notification sound
+        if ((Config.options?.sounds?.notifications ?? true) && !root.silent
+                && notification.hints?.["suppress-sound"] !== true) {
+            Audio.playEvent(notification.urgency === NotificationUrgency.Critical
+                ? "notificationCritical" : "notification");
+        }
+
+        // Popup
+        if (!root.popupInhibited) {
+            newNotifObject.popup = true;
+
+            const timeout = _timeoutForNotification(notification);
+            if (timeout !== 0) {
+                newNotifObject.timer = notifTimerComponent.createObject(root, {
+                    "notificationId": newNotifObject.notificationId,
+                    "interval": timeout,
+                });
+            }
+
+            // Legacy mode: increment manual counter
+            if (Config.options?.notifications?.useLegacyCounter ?? false) {
+                root._manualUnreadCounter++;
+            }
+        }
+        root.notify(newNotifObject);
+        // console.log(notifToString(newNotifObject));
+        notifFileView.setText(stringifyList(root.list));
     }
 
     function markAllRead() {
@@ -736,8 +761,21 @@ Singleton {
         id: notifFileView
         path: Qt.resolvedUrl(filePath)
         onLoaded: {
+            // FileView also emits loaded after our own setText writes. History
+            // is hydrated once; those completions must preserve live wrappers,
+            // timer identities, hover holds and the session's native ID offset.
+            if (root._historyReady) return
             const fileContents = notifFileView.text()
-            root.list = JSON.parse(fileContents).map((notif) => {
+            let records
+            try {
+                records = JSON.parse(fileContents)
+                if (!Array.isArray(records)) throw new Error("Expected a notification array")
+            } catch (error) {
+                console.warn("[Notifications] Invalid history: " + error)
+                root._finishHistory(0)
+                return
+            }
+            root.list = records.map((notif) => {
                 return notifComponent.createObject(root, {
                     "notificationId": notif.notificationId,
                     "actions": [], // Notification actions are meaningless if they're not tracked by the server or the sender is dead
@@ -757,10 +795,10 @@ Singleton {
             })
 
             _log("[Notifications] File loaded")
-            root.idOffset = maxId
-            root.initDone()
+            root._finishHistory(maxId)
         }
         onLoadFailed: (error) => {
+            if (root._historyReady) return
             if(error == FileViewError.FileNotFound) {
                 console.log("[Notifications] File not found, creating new file.")
                 // Ensure parent directory exists
@@ -768,8 +806,10 @@ Singleton {
                 Quickshell.execDetached(["/usr/bin/mkdir", "-p", parentDir])
                 root.list = []
                 notifFileView.setText(stringifyList(root.list));
+                root._finishHistory(0)
             } else {
                 console.log("[Notifications] Error loading file: " + error)
+                root._finishHistory(0)
             }
         }
     }

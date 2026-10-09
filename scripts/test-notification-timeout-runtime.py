@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Real private D-Bus notifications, Qt timers and shared hover-hold lifecycle."""
 from pathlib import Path
+import json
 import os
 import shutil
 import subprocess
@@ -17,7 +18,20 @@ with tempfile.TemporaryDirectory(prefix="hadalis-notification-timeout-") as fold
         (root / name).symlink_to(repo / name)
     config = root / "config/illogical-impulse"
     config.mkdir(parents=True)
-    shutil.copy(repo / "defaults/config.json", config / "config.json")
+    fixture_config = json.loads((repo / "defaults/config.json").read_text())
+    # This headless lifetime oracle does not exercise fullscreen suppression
+    # or change the owner's compositor animations. Those policies have their
+    # own coverage; owner fullscreen state must not consume this timer fixture.
+    fixture_config["gameMode"]["autoDetect"] = False
+    fixture_config["gameMode"]["disableNiriAnimations"] = False
+    (config / "config.json").write_text(json.dumps(fixture_config))
+    seed = int(os.environ.get("HADALIS_TEST_NOTIFICATION_HISTORY_ID", "0"))
+    if seed:
+        history = root / "state/quickshell/user/notifications.json"
+        history.parent.mkdir(parents=True)
+        history.write_text(json.dumps([{"notificationId":seed,"summary":"history seed",
+            "appName":"History QA","time":1,"actions":[],"body":"","image":"",
+            "appIcon":"","urgency":"normal"}]))
     (root / "shell.qml").write_text(r'''
 //@ pragma ShellId hadalis-notification-timeout-test
 import QtQuick
@@ -35,6 +49,9 @@ ShellRoot {
  property bool hoverA:false
  property bool hoverB:false
  property bool failed:false
+ property var pausedNotification:null
+ property var pausedTimer:null
+ property int initialOffset:0
  function advance(value) {stage=value;since=Date.now()}
  function check(ok,message): bool {
   if(ok)return true
@@ -64,8 +81,11 @@ ShellRoot {
    root.send("paused",1800);root.advance(1)
   } else if(root.stage===1 && root.find("paused")) {
    const n=root.find("paused")
+   if(!root.check(Notifications.idOffset===Number(Quickshell.env("HADALIS_TEST_NOTIFICATION_HISTORY_ID") || "0")
+      && n.notificationId===n.notification.id+Notifications.idOffset,"cold ingress uses the persisted native ID offset"))return
    if(!root.check(n.popup && n.timer?.interval===1800 && n.notification.expireTimeout===1800,
       "native app timeout preserves 1800 ms; popup="+n.popup+" interval="+n.timer?.interval+" native="+n.notification.expireTimeout))return
+   root.pausedNotification=n;root.pausedTimer=n.timer;root.initialOffset=Notifications.idOffset
    root.held=[n];root.advance(2)
   } else if(root.stage===2 && elapsed>300) {
    root.hoverA=true;root.hoverB=true
@@ -75,6 +95,12 @@ ShellRoot {
    root.remaining=t.remainingMs;root.advance(3)
   } else if(root.stage===3 && elapsed>1950) {
    if(!root.check(root.find("paused")?.popup,"hover stays readable beyond its initial deadline"))return
+   Notifications.refresh();root.advance(18)
+  } else if(root.stage===18 && elapsed>120) {
+   if(!root.check(root.find("paused")===root.pausedNotification
+      && root.find("paused").timer===root.pausedTimer
+      && !root.pausedTimer.running && root.pausedTimer.hoverOwners.length===2
+      && Notifications.idOffset===root.initialOffset,"history refresh replaced a live wrapper, timer or ID offset"))return
    ownerA.active=false;root.advance(4)
   } else if(root.stage===4 && elapsed>120) {
    const t=root.find("paused").timer
@@ -143,7 +169,7 @@ ShellRoot {
     env = os.environ.copy()
     for name in ("QS_CONFIG_NAME", "QS_CONFIG_PATH", "QS_MANIFEST"):
         env.pop(name, None)
-    env.update(QT_QPA_PLATFORM="offscreen", XDG_CONFIG_HOME=str(root / "config"),
+    env.update(QT_QPA_PLATFORM="offscreen", QT_NO_XDG_DESKTOP_PORTAL="1", XDG_CONFIG_HOME=str(root / "config"),
                XDG_STATE_HOME=str(root / "state"), XDG_CACHE_HOME=str(root / "cache"))
     result = subprocess.run(["dbus-run-session", "--", "qs", "-p", str(root), "--no-color"],
                             env=env, capture_output=True, text=True, timeout=22)

@@ -19,47 +19,10 @@ assert "Settings copy stays terse." in README
 assert "only a few words or one short clause" in README
 assert "paragraph-length explanation" in README
 
-# Keep the combined page concise without throwing away explanatory help:
-# operational labels remain visible and longer guidance lives in tooltips.
-for token in (
-    'title: Translation.tr("To-do & Quick Notes")',
-    'title: Translation.tr("To-do")',
-    'title: Translation.tr("Quick Notes")',
-    'Translation.tr("Note path pattern")',
-    'Translation.tr("Heading")',
-    'Translation.tr("Zettelkasten folder")',
-    'Translation.tr("Default Zettelkasten type")',
-    'Translation.tr("Activate verified source.")',
-):
-    assert token in INTEGRATIONS or token in OBSIDIAN, f"combined Settings label/help lost: {token}"
-    assert token not in SERVICES, f"application integration duplicated in Services: {token}"
-
 # Hadalird tests its owned vault labels/help and native field behavior. Core
 # must retain the disabled-by-default wrapper instead of a duplicate editor.
 assert 'active: Hadalird.obsidianEnabled' in OBSIDIAN
 assert 'source: Hadalird.settingsSource("obsidian")' in OBSIDIAN
-
-for removed_copy in (
-    'Translation.tr("One Markdown file and heading.")',
-    'Translation.tr("Obsidian vault root.")',
-    'Translation.tr("Fixed or date-based Markdown path.")',
-    'Translation.tr("Checkboxes under this heading only.")',
-    'Translation.tr("Direct Markdown sync.")',
-    'Translation.tr("Capture to Zettelkasten; keep the draft.")',
-    'Translation.tr("Blank = reuse Todo vault.")',
-    'Translation.tr("Vault-relative capture folder.")',
-    'Translation.tr("Uses the vault Zettelkasten template.")',
-    'Translation.tr("Vault path override")',
-):
-    assert removed_copy not in INTEGRATIONS, f"redundant Settings copy returned: {removed_copy}"
-
-for stale in (
-    "Use one Markdown note source. The path may be fixed or contain date tokens",
-    "Physical Obsidian vault folder. Hadalis resolves the configured note strictly inside this directory.",
-    "Dashboard Quick Notes are drafts until capture. A successful capture creates one filesystem-canonical Zettelkasten note, then clears the unchanged draft.",
-    "The generated Markdown follows the vault's Zettelkasten schema:",
-):
-    assert stale not in INTEGRATIONS, f"verbose/stale Settings copy returned: {stale}"
 
 overlay_start = OVERLAY.index("id: overlayContentContainer")
 overlay_end = OVERLAY.index("// ── Page header", overlay_start)

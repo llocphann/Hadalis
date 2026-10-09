@@ -45,12 +45,8 @@ assert_not_contains() {
 }
 
 for row in "$classic" "$waffle"; do
-    assert_contains 'gpuFrequencyGroupKeys' "$row" \
-        "$(basename "$row") must stage Intel GPU frequency groups atomically"
-    assert_contains 'editorNumberRange' "$row" \
-        "$(basename "$row") must use runtime numeric bounds"
-    assert_contains 'next.length === 0 && root.settingKey.startsWith("PLATFORM_PROFILE_")' "$row" \
-        "$(basename "$row") must turn an empty TLP 1.11 profile list into inherit/unset"
+    assert_contains 'active: Hadalird.tlpEnabled' "$row" "$(basename "$row") must gate its optional payload"
+    assert_not_contains 'gpuFrequencyGroupKeys' "$row" "$(basename "$row") must not duplicate integration implementation"
 done
 
 # Classic Settings integration: TLP is a System → Power task, not a separate
@@ -71,16 +67,6 @@ assert_contains 'SettingsPageRegistry.consumeLegacyTlpPowerRedirect()' "$general
     'legacy page-28 state must land on the Power task instead of Audio'
 assert_contains 'property string settingsTaskSection: "power"' "$power" \
     'TLP controls must identify themselves as part of the Power task'
-for page in "$waffle_page"; do
-    assert_contains 'property bool _tlpDemandRefreshed: false' "$page" \
-        "$(basename "$page") must coalesce demand refreshes per visible session"
-    assert_contains 'onVisibleChanged:' "$page" \
-        "$(basename "$page") must refresh TLP state when shown again"
-    assert_contains 'TlpRuntimeCapabilities.refresh()' "$page" \
-        "$(basename "$page") must refresh runtime capabilities on demand"
-    assert_contains 'TlpSettingsService.refresh()' "$page" \
-        "$(basename "$page") must refresh TLP status on demand"
-done
 assert_not_contains 'settingsTaskSection: "power"' "$general_core" \
     'System settings must not render a second standalone Battery card'
 assert_not_contains 'No charge limit active' "$charge_limit" \
@@ -114,11 +100,11 @@ assert_contains 'for (const index of retired)' "$arrangement" \
 [ ! -e "$legacy_tlp" ] || fail 'retired TlpConfig compatibility page must be deleted'
 
 # Worker/kernel/schema/batch guards run in Hadalird. Keep host registration
-# and the supported Waffle presentation/explicit-Apply surface in the core.
+# and supported Waffle routing/optional gates in the core.
 assert_contains 'singleton TlpRuntimeCapabilities 1.0 TlpRuntimeCapabilities.qml' "$repo_root/services/qmldir" 'typed capability facade must remain registered'
 assert_contains 'pageTitle: Translation.tr("Battery")' "$waffle_page" 'Waffle Battery page must remain registered'
-assert_contains 'model: root.visibleGroups' "$waffle_page" 'Waffle page must render schema groups'
-assert_contains 'onButtonClicked: TlpSettingsService.apply()' "$waffle_page" 'Waffle page must expose explicit Apply'
+assert_contains 'source: Hadalird.settingsSource("tlpWaffle")' "$waffle_page" 'Waffle page must load the optional presentation'
+assert_contains 'active: root.visible && Hadalird.tlpEnabled' "$waffle_page" 'Waffle settings must be selected and visible'
 assert_contains 'active: Hadalird.tlpEnabled' "$power" 'core TLP card must require selected optional integration'
 
 printf '%s\n' '1..1'

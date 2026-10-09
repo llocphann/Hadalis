@@ -65,19 +65,6 @@ for token in (
     assert token in dash, f"Dashboard Notes shared-view host contract lost: {token}"
 
 
-for token in (
-    'title: Translation.tr("To-do & Quick Notes")',
-    'title: Translation.tr("Quick Notes")',
-    'Config.setNestedValue("notes.zettelkasten.folder", value)',
-    'Config.setNestedValue("notes.zettelkasten.defaultType", newValue)',
-    'Translation.tr("Default Zettelkasten type")',
-    'value: "Fleeting"',
-    'value: "Literature"',
-    'value: "Permanent"',
-    "Zettelkasten.folder",
-):
-    assert token in shared_settings, f"Zettelkasten settings contract lost: {token}"
-
 assert "singleton Zettelkasten 1.0 Zettelkasten.qml" in qmldir
 assert "property JsonObject notes: JsonObject {" in config
 assert 'property string folder: "00_Capture/03_Zettelkasten"' in config
@@ -89,15 +76,6 @@ assert defaults["notes"]["zettelkasten"] == {
 
 print("Zettelkasten quick-note service/UI contract: PASS")
 
-unified_start = settings.index('title: Translation.tr("To-do & Quick Notes")')
-zettel_start = settings.index('title: Translation.tr("Quick Notes")', unified_start)
-zettel_end = settings.index('title: Translation.tr("Calendar Sync")', zettel_start)
-zettel_settings = settings[zettel_start:zettel_end]
-assert "font.pixelSize: Appearance.font.pixelSize.smallest" not in zettel_settings
-assert "color: Appearance.colors.colSubtext" not in zettel_settings
-assert 'placeholderText: Translation.tr("Leave blank to reuse the Todo Obsidian vault")' not in zettel_settings
-assert 'placeholderText: "00_Capture/03_Zettelkasten"' not in zettel_settings
-
 assert 'Translation.tr("Create a Fleeting Zettelkasten note.' not in dash
 assert "font.pixelSize: Appearance.font.pixelSize.smallest" not in dash
 assert "_clearCapturedDraft" not in widget
@@ -108,13 +86,7 @@ assert "if (!Notepad.removeTab(index))" in widget
 assert "draft clears after verified save" not in dash
 assert 'text: Translation.tr("Capture")' not in dash
 
-# A single settings card and one editable shared vault must feed both services.
-unified_settings = settings[unified_start:zettel_end]
-assert settings.count('title: Translation.tr("To-do & Quick Notes")') == 1
-assert 'title: Translation.tr("Quick Notes & Zettelkasten")' not in settings
-assert 'id: zettelkastenVaultPath' not in unified_settings
-assert 'Translation.tr("Vault path override")' not in unified_settings
-assert 'Translation.tr("Canonical task store")' not in unified_settings
+# Generic shared-vault resolution and optional routing remain host-owned.
 assert "readonly property string sharedVaultPath:" in todo_service
 assert 'Config.options?.todo?.obsidian?.vaultPath ?? ""' in todo_service
 assert 'Config.options?.notes?.zettelkasten?.vaultPath ?? ""' in todo_service

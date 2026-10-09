@@ -9,8 +9,13 @@ import sys
 
 ENTRYPOINTS = {
     "session": "HadalisSession.qml",
+    "thinkfanSettings": "modules/settings/ThinkfanSettings.qml",
     "tlpSettings": "modules/settings/TlpPowerSettings.qml",
     "obsidianSettings": "modules/settings/ObsidianThemeSettings.qml",
+    "obsidianTodoSettings": "modules/settings/ObsidianTodoSettings.qml",
+    "tlpRowSettings": "modules/settings/TlpSettingRow.qml",
+    "tlpWaffleSettings": "modules/waffle/settings/WTlpPowerSettings.qml",
+    "tlpWaffleRowSettings": "modules/waffle/settings/WTlpSettingRow.qml",
     "managedTodo": "services/ObsidianTodoBackend.qml",
     "dailyTodo": "services/DailyNoteTodoBackend.qml",
 }
@@ -35,8 +40,11 @@ def inspect(shell_root, data_home=None):
         settings, backends = data.get("settings", {}), data.get("backends", {})
         if not isinstance(settings, dict) or not isinstance(backends, dict):
             raise ValueError("invalid entrypoints")
-        entries = {"session": data.get("session"), "tlpSettings": settings.get("tlp"),
-                   "obsidianSettings": settings.get("obsidian"), "managedTodo": backends.get("managedTodo"),
+        entries = {"session": data.get("session"), "tlpSettings": settings.get("tlp"), "thinkfanSettings": settings.get("thinkfan"),
+                   "obsidianSettings": settings.get("obsidian"),
+                   "obsidianTodoSettings": settings.get("obsidianTodo"), "tlpRowSettings": settings.get("tlpRow"),
+                   "tlpWaffleSettings": settings.get("tlpWaffle"), "tlpWaffleRowSettings": settings.get("tlpWaffleRow"),
+                   "managedTodo": backends.get("managedTodo"),
                    "dailyTodo": backends.get("dailyTodo")}
         if entries != ENTRYPOINTS:
             raise ValueError("unexpected entrypoints")

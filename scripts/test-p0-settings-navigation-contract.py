@@ -85,8 +85,8 @@ require(system, '{ displayName: Translation.tr("Fan Control"), icon: "mode_fan",
         "System task navigator lost Fan Control")
 require(system, 'settingsTaskSection: "fan"',
         "System page lost the Fan Control section")
-require(system, 'ThinkFanService.applyProfile(',
-        "Fan Control no longer uses the shared ThinkFanService backend")
+require(system, "ThinkfanSettings {",
+        "Fan Control no longer hosts the optional integration settings")
 require(data, 'section: Translation.tr("Fan Control")',
         "static Settings search lost Fan Control")
 require(data, 'keywords: ["fan", "fan control", "thinkfan", "thermal", "cooling", "rpm", "temperature", "system"]',

@@ -30,3 +30,6 @@ MonitorVisibilityConfig 1.0 MonitorVisibilityConfig.qml
 CompanionConfig 1.0 CompanionConfig.qml
 IntegrationsConfig 1.0 IntegrationsConfig.qml
 ObsidianThemeSettings 1.0 ObsidianThemeSettings.qml
+
+ObsidianTodoSettings 1.0 ObsidianTodoSettings.qml
+ThinkfanSettings 1.0 ThinkfanSettings.qml

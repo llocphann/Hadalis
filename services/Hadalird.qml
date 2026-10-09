@@ -21,8 +21,13 @@ Singleton {
 
     function settingsSource(integration): string {
         if (!available) return ""
+        if (integration === "thinkfan") return packageRoot + "/modules/settings/ThinkfanSettings.qml"
         if (integration === "tlp") return packageRoot + "/modules/settings/TlpPowerSettings.qml"
         if (integration === "obsidian") return packageRoot + "/modules/settings/ObsidianThemeSettings.qml"
+        if (integration === "obsidianTodo") return packageRoot + "/modules/settings/ObsidianTodoSettings.qml"
+        if (integration === "tlpRow") return packageRoot + "/modules/settings/TlpSettingRow.qml"
+        if (integration === "tlpWaffle") return packageRoot + "/modules/waffle/settings/WTlpPowerSettings.qml"
+        if (integration === "tlpWaffleRow") return packageRoot + "/modules/waffle/settings/WTlpSettingRow.qml"
         return ""
     }
     function backendSource(kind): string {

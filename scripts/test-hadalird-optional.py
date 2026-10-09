@@ -40,6 +40,12 @@ Item {
  function selectCategory(index){selectedCategoryIndex=index}
 }
 ''')
+    for key,tag in (("tlpRowSettings","classic"),("tlpWaffleRowSettings","waffle")):
+        (path/discovery.ENTRYPOINTS[key]).write_text('import QtQuick\nItem { objectName:"fixture-'+tag+'-row";required property var definition;property bool compactProfileRows:false;property bool singleSettingGroup:false;property string groupDescription:"";implicitHeight:32 }\n')
+    (path/discovery.ENTRYPOINTS["obsidianTodoSettings"]).write_text('import QtQuick\nItem {objectName:"fixture-obsidian-todo";implicitHeight:32}\n')
+    common='property bool active:false;property string vaultPath:"";property bool ready:false;property bool busy:false;property var list:[];signal migrationCommitted(var payload);signal migrationFinished(bool success,var payload);'
+    (path/discovery.ENTRYPOINTS["managedTodo"]).write_text('import QtQuick\nItem {'+common+'property string notePath:"";property bool preferTasksPlugin:true;property bool allowBasicOfflineMutation:true;}\n')
+    (path/discovery.ENTRYPOINTS["dailyTodo"]).write_text('import QtQuick\nItem {'+common+'property string folder:"";property string noteFormat:"";property string plannerHeading:"";property int plannerHeadingLevel:2;property int defaultDurationMinutes:30;}\n')
     (path / "HadalisSession.qml").write_text('''
 import QtQuick
 Item {
@@ -61,7 +67,9 @@ Item {
 ''')
     data = {"id":"hadalird","version":"fixture","hostApi":1,"sourceSha":"a"*40,
             "session":discovery.ENTRYPOINTS["session"],
-            "settings":{"tlp":discovery.ENTRYPOINTS["tlpSettings"],"obsidian":discovery.ENTRYPOINTS["obsidianSettings"]},
+            "settings":{key:discovery.ENTRYPOINTS[entry] for key,entry in
+                        (("tlp","tlpSettings"),("thinkfan","thinkfanSettings"),("obsidian","obsidianSettings"),("obsidianTodo","obsidianTodoSettings"),
+                         ("tlpRow","tlpRowSettings"),("tlpWaffle","tlpWaffleSettings"),("tlpWaffleRow","tlpWaffleRowSettings"))},
             "backends":{"managedTodo":discovery.ENTRYPOINTS["managedTodo"],"dailyTodo":discovery.ENTRYPOINTS["dailyTodo"]}}
     data["files"] = {name:hashlib.sha256((path/name).read_bytes()).hexdigest() for name in discovery.ENTRYPOINTS.values()}
     (path / "manifest.json").write_text(json.dumps(data))
@@ -85,6 +93,15 @@ with tempfile.TemporaryDirectory(prefix="hadalird-host-") as name:
     assert not discovery.inspect(private, data_home)["available"]
     (package / "HadalisSession.qml").write_bytes(original)
     assert discovery.inspect(private, data_home)["available"]
+    for entry in ("thinkfanSettings","obsidianTodoSettings","tlpRowSettings","tlpWaffleSettings","tlpWaffleRowSettings"):
+        target=package/discovery.ENTRYPOINTS[entry]
+        saved=target.read_bytes();target.unlink()
+        assert not discovery.inspect(private,data_home)["available"],entry+" incomplete UI accepted"
+        target.write_bytes(saved)
+    old_settings={key:value for key,value in manifest["settings"].items() if key in ("tlp","obsidian")}
+    (package/"manifest.json").write_text(json.dumps({**manifest,"settings":old_settings}))
+    assert not discovery.inspect(private,data_home)["available"],"old incomplete UI package accepted"
+    (package/"manifest.json").write_text(json.dumps(manifest))
     for present in (False, True):
         shell = private / ("present" if present else "absent")
         shell.mkdir()
@@ -112,8 +129,13 @@ ShellRoot {
  property var notes:Zettelkasten
  ObsidianTodoBackend {id:managed;active:true;vaultPath:"/not-owner-vault";notePath:"Todo.md"}
  DailyNoteTodoBackend {id:daily;active:true;vaultPath:"/not-owner-vault"}
+ Window {width:800;height:600;visible:true;color:"#111820"
  TlpPowerSettings {id:power;width:400;visible:false}
  ObsidianThemeSettings {width:400;visible:false}
+ ObsidianTodoSettings {id:todoUi;width:400}
+ TlpSettingRow {id:classicRow;width:400;definition:({key:"fixture"});compactProfileRows:true;groupDescription:"group"}
+
+ }
  TestCase {
   id:test;when:false;optional:true
   function check(value,message){if(!value)throw new Error(message)}
@@ -142,6 +164,17 @@ ShellRoot {
    Config.setNestedValue("battery.low",30)
    tryCompare(low,"value",30,1000)
   }
+  function checkCoreTodo(){
+   const paths=JSON.stringify(Config.options.todo.obsidian)
+   Config.setNestedValue("todo.backend","obsidian")
+   tryCompare(Todo,"backend","obsidian",1000)
+   const button=findChild(todoUi,"hadalisTodoFallbackRestore")
+   tryVerify(()=>button!==null && button.visible && button.enabled,2000)
+   check(button!==null && button.visible && button.enabled,"missing integration trapped the canonical task store "+JSON.stringify({visible:button?.visible,enabled:button?.enabled,busy:Todo.internalPersistenceBusy,parentVisible:todoUi.visible,height:todoUi.height}))
+   button.clicked()
+   tryCompare(Todo,"backend","internal",1000)
+   check(JSON.stringify(Config.options.todo.obsidian)===paths,"fallback erased saved vault/source settings")
+  }
   function runChecks(){try{
    tryCompare(Config,"ready",true,4000)
    const present=Quickshell.env("HADALIRD_PRESENT")==="1"
@@ -153,17 +186,31 @@ ShellRoot {
     check(!TlpSettingsService.apply() && !ThinkFanService.applyProfile("managed") && !managed.addTask("no write") && !Zettelkasten.capture("no write","no write"),"missing action reported success")
     check(TlpSettingsService.lastError.length>0 && managed.errorMessage.length>0,"missing action gave no reason")
     checkCoreBattery()
+    checkCoreTodo()
    }else{
     tryCompare(Hadalird,"available",true,4000)
     check(!Hadalird.enabled && Hadalird.session===null,"installed package enabled itself")
     check(power.navigationCategories.length===0,"disabled settings retained package categories")
     checkCoreBattery()
+    checkCoreTodo()
     power.selectedCategoryIndex=1
     Config.setNestedValue("integrations.hadalird.tlp",true)
     tryVerify(()=>Hadalird.session!==null,2000)
     const owned=Hadalird.session
     tryVerify(()=>power.navigationCategories.length===2,1000)
     const page=findChild(power,"fixture-tlp-settings")
+    tryVerify(()=>findChild(classicRow,"fixture-classic-row")!==null,1000)
+    const row=findChild(classicRow,"fixture-classic-row")
+    check(row.definition.key==="fixture" && row.compactProfileRows && row.groupDescription==="group","deferred row lost required inputs")
+    classicRow.definition=({key:"changed"});tryVerify(()=>row.definition.key==="changed",1000)
+    Config.setNestedValue("integrations.hadalird.obsidian",true)
+    tryVerify(()=>findChild(todoUi,"fixture-obsidian-todo")!==null,1000)
+    todoUi.visible=false
+    tryVerify(()=>findChild(todoUi,"fixture-obsidian-todo")===null,1000)
+    todoUi.visible=true
+    tryVerify(()=>findChild(todoUi,"fixture-obsidian-todo")!==null,1000)
+    Config.setNestedValue("integrations.hadalird.obsidian",false)
+    tryVerify(()=>findChild(todoUi,"fixture-obsidian-todo")===null,1000)
     tryVerify(()=>findChild(power,"batteryLowWarningControl")===null,1000)
     check(page!==null && page.selectedCategoryIndex===1,"deferred settings lost the selected category")
     power.selectedCategoryIndex=0
@@ -183,6 +230,7 @@ ShellRoot {
     tryCompare(TlpService,"available",false,1000)
     tryVerify(()=>power.navigationCategories.length===0,1000)
     tryVerify(()=>findChild(power,"fixture-tlp-settings")===null,1000)
+    tryVerify(()=>findChild(classicRow,"fixture-classic-row")===null,1000)
     checkCoreBattery()
     check(Config.options.battery.low===30 && Config.options.battery.full===101 && Config.options.battery.suspend===5,"unloading optional settings lost battery preferences")
     TlpService.apply();check(owned.operations===3,"disabled charge leaked an action")
@@ -204,7 +252,7 @@ ShellRoot {
         env.pop("NIRI_SOCKET",None)
         env.pop("HYPRLAND_INSTANCE_SIGNATURE",None)
         result = run_qs(shell,env,timeout=20)
-        if result.returncode or "HADALIRD_HOST_PASS" not in result.stdout or any(token in result.stdout for token in ("HADALIRD_HOST_FAIL","TypeError:","ReferenceError:","Binding loop","Unable to assign","Failed to load configuration")):
+        if result.returncode or "HADALIRD_HOST_PASS" not in result.stdout or any(token in result.stdout for token in ("HADALIRD_HOST_FAIL","TypeError:","ReferenceError:","Binding loop","Unable to assign","Failed to load configuration","Cannot assign to non-existent property","invalid context")):
             print(result.stdout)
             raise SystemExit(1)
         if present:

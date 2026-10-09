@@ -333,6 +333,9 @@ Item {
         anchors.fill: parent
         edge: root.toolbarEdge
         identity: "edgeEditor"
+        // Fit the actual control rows instead of applying the compact popup's
+        // 42% depth cap, which can clip the final controls on narrow outputs.
+        largeSurface: true
         outputName: root.outputName
         controller: root.controller
         edgeInsets: root.edgeInsets
@@ -392,8 +395,9 @@ Item {
             contentHeight: toolbarColumn.implicitHeight
             flickableDirection: Flickable.VerticalFlick
             boundsBehavior: Flickable.StopAtBounds
-            interactive: !root.toolbarOnHorizontalEdge
-                && contentHeight > height
+            // Very small outputs can still clamp the requested depth. Keep
+            // all controls reachable on horizontal as well as side Edges.
+            interactive: contentHeight > height
 
             ColumnLayout {
                 id: toolbarColumn

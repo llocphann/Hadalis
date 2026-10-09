@@ -23,6 +23,7 @@ ShellRoot {
     property int step: 0
     property bool finished: false
     property bool executing: false
+    property real smallOutputHeight: 0
     property string beforePositions: ""
     property string before: ""
     property var originalModule: null
@@ -32,17 +33,39 @@ ShellRoot {
     }
     AbyssSurfaceController { id: liquid }
     TestCase { id:driver;when:false;optional:true }
+    function settleControls(): bool {
+        // Relocation is intentionally debounced for 90 ms. Let it complete,
+        // then wait for real layout polish before deriving a pointer position.
+        driver.wait(120)
+        return root.check(driver.waitForPolish(editor.Window.window,3000),"editor controls did not finish layout")
+    }
+    function clickControl(item): bool {
+        let viewport=item.parent
+        while(viewport && viewport.contentHeight===undefined) viewport=viewport.parent
+        if(!root.check(!!viewport,"editor control has a real scroll viewport")) return false
+        const point=item.mapToItem(viewport,0,0)
+        if(!root.check(point.x>=-.01 && point.y>=-.01
+            && point.x+item.width<=viewport.width+.01
+            && point.y+item.height<=viewport.height+.01,
+            "editor control is fully visible inside its input clip")) return false
+        driver.mouseClick(item)
+        return true
+    }
     FloatingWindow {
         color: "#111820"
         visible: true;implicitWidth:1000;implicitHeight:700
-        AbyssBar {
-            id: layer;anchors.fill:parent;outputName:"A";edge:"top"
-            editing: editor.visible;draftPlacements: editor.visible?editor.draft:null
-            draftOptions: editor.visible?editor.draftOptions:null
-        }
-        AbyssEdgeEditor {
-            id: editor;anchors.fill:parent;outputName:"A";moduleLayer:layer;controller:liquid
-            visible: GlobalStates.abyssEditing
+        Item {
+            width:parent.width
+            height:root.smallOutputHeight>0 ? root.smallOutputHeight : parent.height
+            AbyssBar {
+                id: layer;anchors.fill:parent;outputName:"A";edge:"top"
+                editing: editor.visible;draftPlacements: editor.visible?editor.draft:null
+                draftOptions: editor.visible?editor.draftOptions:null
+            }
+            AbyssEdgeEditor {
+                id: editor;anchors.fill:parent;outputName:"A";moduleLayer:layer;controller:liquid
+                visible: GlobalStates.abyssEditing
+            }
         }
     }
     Timer {
@@ -52,6 +75,9 @@ ShellRoot {
             root.executing=true
             if(root.step===0) {
                 Config.setNestedValue("panelFamily","abyss")
+                // Draft/input contract: toolbar motion has separate coverage.
+                // Keep the pointer target stationary while its layout changes.
+                Config.setNestedValue("performance.reduceAnimations",true)
                 GlobalStates.deferredPanelsReady=true
                 Config.setNestedValue("abyss.modules.configured",true)
                 Config.setNestedValue("abyss.modules.placements",[{id:"clock",kind:"clock",edge:"top",position:.4}])
@@ -80,12 +106,12 @@ ShellRoot {
                     editor.edgeWidthAffectsModules=Object.assign({},editor.edgeWidthAffectsModules,{[edge]:false})
                     editor.edgeThicknesses=Object.assign({},editor.edgeThicknesses,{[edge]:0})
                     editor.move("clock",edge==="left"?10:edge==="right"?editor.width-10:40,edge==="top"?10:edge==="bottom"?editor.height-10:40,false)
-                    driver.wait(30)
+                    if(!root.settleControls()) return
                     const corner=driver.findChild(editor,"abyssModuleJoinCorner")
                     if(!root.check(corner?.enabled && !!editor.nearbyCorner,"nearest module exposes corner control on "+edge)) return
-                    driver.mouseClick(corner)
+                    if(!root.clickControl(corner)) return
                     if(!root.check(editor.selected.joinCorner && layer.deformations[0].along===0,"corner checkbox extends the actual local paint on "+edge)) return
-                    driver.mouseClick(corner)
+                    if(!root.clickControl(corner)) return
                     const rounding=driver.findChild(editor,"abyssModuleRounding")
                     if(!root.check(rounding?.visible,"edge-only policy exposes rounding on "+edge)) return
                     rounding.value=0;rounding.moved()
@@ -95,13 +121,13 @@ ShellRoot {
                     editor.move("clock",x,y,false)
                     if(!root.check(editor.edgeInsets[edge]===0 && layer.layoutRecords.length===1 && layer.deformations.length===1,"zero bare "+edge+" retains independent module and backing")) return
                     editor.add("battery")
-                    driver.wait(30)
+                    if(!root.settleControls()) return
                     const join=driver.findChild(editor,"abyssJoinNearbyModules")
                     const beforeJoin=layer.itemForId("clock")
                     if(!root.check(join?.visible && layer.deformations.length===2,"edge-only width exposes the join checkbox on "+edge)) return
-                    driver.mouseClick(join)
+                    if(!root.clickControl(join)) return
                     if(!root.check(editor.edgeJoinModules[edge] && layer.deformations.length===1 && layer.layoutRecords.length===2 && layer.itemForId("clock")===beforeJoin,"actual checkbox joins local paint while preserving modules on "+edge)) return
-                    driver.mouseClick(join)
+                    if(!root.clickControl(join)) return
                     if(!root.check(!editor.edgeJoinModules[edge] && layer.deformations.length===2,"unchecking restores individual backing")) return
                     editor.draft=editor.draft.filter(p=>p.id==="clock");editor.selectedId="clock";editor.refreshHandles()
                     root.originalModule=layer.itemForId("clock")
@@ -180,6 +206,28 @@ ShellRoot {
             if(root.step===9) {
                 const positions=Array.from(Config.options.abyss.positions)
                 if(!root.check(positions.length===2 && positions.some(p=>p.kind==="clock" && p.outputName==="B" && p.edge==="left") && positions.some(p=>p.kind==="volume" && p.outputName==="A" && p.edge==="top" && p.alignment==="custom" && p.joinCorner),"Done merges position and join edits into latest config without overwriting another output")) return
+                root.smallOutputHeight=360
+                GlobalStates.abyssEditing=true
+                editor.move("clock",editor.width-10,40,false)
+                editor.change("joinCorner",false)
+            }
+            if(root.step===11) {
+                if(!root.settleControls()) return
+                const corner=driver.findChild(editor,"abyssModuleJoinCorner")
+                let viewport=corner.parent
+                while(viewport && viewport.contentHeight===undefined) viewport=viewport.parent
+                if(!root.check(viewport.contentHeight>viewport.height && viewport.interactive,
+                    "small horizontal output retains access to overflow controls")) return
+                driver.mouseWheel(viewport,viewport.width/2,viewport.height/2,0,-1200)
+                driver.wait(120)
+                // A wheel scroll can retain a kinetic grab; a press during it
+                // stops the flick instead of activating the child checkbox.
+                for(let n=0;viewport.moving && n<20;++n) driver.wait(100)
+                if(!root.check(!viewport.moving,"small-output scrolling settles")) return
+                if(!root.clickControl(corner)) return
+                if(!root.check(editor.selected.joinCorner && layer.deformations[0].along===0,
+                    "small output accepts a real corner-control click after scrolling")) return
+                editor.finish(false)
                 console.info("EDITOR_PASS");root.finished=true
             }
             root.step++
@@ -189,8 +237,20 @@ ShellRoot {
 }
 QML
 status=0
-dbus-run-session -- env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST QT_QPA_PLATFORM=wayland \
- XDG_CONFIG_HOME="$abyss_editor_test/config" XDG_STATE_HOME="$abyss_editor_test/state" XDG_CACHE_HOME="$abyss_editor_test/cache" \
- timeout 20s qs -p "$abyss_editor_test" --no-color > "$abyss_editor_test/runtime.log" 2>&1 || status=$?
+python3 - "$repo_root" "$abyss_editor_test" > "$abyss_editor_test/runtime.log" 2>&1 <<'PY' || status=$?
+import sys
+from pathlib import Path
+sys.path.insert(0,str(Path(sys.argv[1])/"scripts"))
+from native_test_session import private_wayland,run_qs
+folder=Path(sys.argv[2])
+with private_wayland(folder) as env:
+    if env is None:
+        print("SKIP: Abyss editor requires private Niri")
+        raise SystemExit(77)
+    result=run_qs(folder,env,timeout=45)
+    print(result.stdout)
+    raise SystemExit(result.returncode)
+PY
+if [[ "$status" == 77 ]];then cat "$abyss_editor_test/runtime.log";exit 0;fi
 if [[ "$status" != 124 ]] || ! rg -q EDITOR_PASS "$abyss_editor_test/runtime.log" || rg -q 'EDITOR_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign|is not a type' "$abyss_editor_test/runtime.log";then cat "$abyss_editor_test/runtime.log";exit 1;fi
-printf 'PASS: live module identity and placement, popup/IPC preview drag drafts, Cancel, latest-config merge and output isolation\n'
+printf 'PASS: four-edge visible controls, small-output wheel/click input, module identity, popup/IPC drafts, Cancel, latest-config merge and output isolation\n'

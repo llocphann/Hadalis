@@ -6,6 +6,15 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
+recipe = ROOT / "sdata/dist-arch/inir-deps/PKGBUILD"
+arrays = {}
+for field in ("depends", "optdepends"):
+    result = subprocess.run(["bash", "-ec", 'source "$1"; name="$2"; declare -n values="$name"; printf "%s\\n" "${values[@]}"',
+                             "fixture", str(recipe), field], text=True, capture_output=True, check=True)
+    arrays[field] = result.stdout.splitlines()
+for name in ("tlp", "tlp-pd", "tlp-rdw"):
+    assert name not in arrays["depends"], name + " remains a mandatory core dependency"
+    assert any(value.startswith(name + ":") for value in arrays["optdepends"]), name + " lost its optional package guidance"
 with tempfile.TemporaryDirectory(prefix="hadalird-arch-") as name:
     base = Path(name)
     source = base / "src"

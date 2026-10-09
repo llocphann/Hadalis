@@ -7,7 +7,7 @@
 
 pkgname=inir-deps
 pkgver=2.29.3
-pkgrel=7
+pkgrel=8
 pkgdesc='iNiR desktop shell - dependency tracker (meta-package)'
 url='https://github.com/llocphann/Hadalis'
 arch=(any)
@@ -132,9 +132,6 @@ depends=(
   mission-center
 
   #--- Power management ---
-  tlp
-  tlp-pd
-  tlp-rdw
   ethtool
 
   #--- Desktop input method ---
@@ -169,6 +166,9 @@ depends=(
 # AUR / optional packages — listed here so pacman knows about them
 # but won't block install if missing.
 optdepends=(
+  'tlp: power management for the optional Hadalird TLP integration'
+  'tlp-pd: power profile provider for the optional Hadalird TLP integration'
+  'tlp-rdw: radio device policy for the optional Hadalird TLP integration'
   'cava: audio visualizer for bar'
   'easyeffects: optional audio effects and equalizer backend'
   'socat: optional EasyEffects control transport for equalizer'

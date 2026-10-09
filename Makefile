@@ -138,11 +138,6 @@ install-shell:
 	@chmod +x "$(DESTDIR)$(SHELL_INSTALL_DIR)/setup" "$(DESTDIR)$(SHELL_INSTALL_DIR)/scripts/inir"
 	@find "$(DESTDIR)$(SHELL_INSTALL_DIR)/scripts" -type f \( -name "*.sh" -o -name "*.fish" -o -name "*.py" \) -exec chmod +x {} +
 	@sed -i \
-		-e 's|/usr/libexec/inir-battery-charge-limit|$(BATTERY_HELPER)|g' \
-		-e 's|/usr/libexec/inir-thinkfan|$(THINKFAN_HELPER)|g' \
-		"$(DESTDIR)$(SHELL_INSTALL_DIR)/services/TlpSettingsService.qml" \
-		"$(DESTDIR)$(SHELL_INSTALL_DIR)/services/ThinkFanService.qml"
-	@sed -i \
 		's|^system_config_dir=.*|system_config_dir="$${INIR_SYSTEM_RUNTIME_DIR:-$(SHELL_INSTALL_DIR)}"|' \
 		"$(DESTDIR)$(SHELL_INSTALL_DIR)/scripts/inir"
 	@sed -i \
@@ -189,25 +184,11 @@ install-docs:
 install-license:
 	@install -Dm644 LICENSE "$(DESTDIR)$(LICENSE_DIR)/LICENSE"
 
-install-battery-helper:
-	@mkdir -p "$(DESTDIR)$(LIBEXECDIR)"
-	@sed \
-		-e 's|^config_dir=.*|config_dir=$(TLP_CONFDIR)|' \
-		-e 's|^tlp_settings_schema=.*|tlp_settings_schema=$(TLP_SETTINGS_SCHEMA)|' \
-		assets/helpers/inir-battery-charge-limit > "$(DESTDIR)$(BATTERY_HELPER)"
-	@chmod 755 "$(DESTDIR)$(BATTERY_HELPER)"
-	@mkdir -p "$(DESTDIR)$(POLKIT_ACTIONS_DIR)"
-	@sed 's|<annotate key="org.freedesktop.policykit.exec.path">[^<]*</annotate>|<annotate key="org.freedesktop.policykit.exec.path">$(BATTERY_HELPER)</annotate>|' \
-		assets/polkit/org.inir.battery-charge-limit.policy > "$(DESTDIR)$(BATTERY_POLICY)"
-	@chmod 644 "$(DESTDIR)$(BATTERY_POLICY)"
-	@install -Dm644 assets/tlp/tlp-settings-schema.json "$(DESTDIR)$(TLP_SETTINGS_SCHEMA)"
-
-install-thinkfan-helper:
-	@install -Dm755 assets/helpers/inir-thinkfan "$(DESTDIR)$(THINKFAN_HELPER)"
-	@mkdir -p "$(DESTDIR)$(POLKIT_ACTIONS_DIR)"
-	@sed 's|<annotate key="org.freedesktop.policykit.exec.path">[^<]*</annotate>|<annotate key="org.freedesktop.policykit.exec.path">$(THINKFAN_HELPER)</annotate>|' \
-		assets/polkit/org.inir.thinkfan.policy > "$(DESTDIR)$(THINKFAN_POLICY)"
-	@chmod 644 "$(DESTDIR)$(THINKFAN_POLICY)"
+# Keep historical explicit commands actionable without installing, resetting or
+# removing a separate package's privileged payload or owner-created profiles.
+install-battery-helper install-thinkfan-helper uninstall-battery-helper uninstall-thinkfan-helper:
+	@printf '%s\n' 'Privileged integrations are owned by optional Hadalird: https://github.com/llocphann/Hadalird' 'Use Hadalird install-helpers for an explicitly requested installation; preserve existing profiles on removal.' >&2
+	@exit 2
 
 install: build install-bin install-shell install-native install-systemd install-icon install-desktop install-docs install-license
 
@@ -233,17 +214,5 @@ uninstall-docs:
 
 uninstall-license:
 	@rm -rf "$(DESTDIR)$(LICENSE_DIR)"
-
-uninstall-battery-helper:
-	@if [ -z "$(DESTDIR)" ] && [ -x "$(BATTERY_HELPER)" ]; then \
-		"$(BATTERY_HELPER)" --config-reset >/dev/null 2>&1 || true; \
-		"$(BATTERY_HELPER)" --disable >/dev/null 2>&1 || true; \
-	fi
-	@rm -f "$(DESTDIR)$(BATTERY_DROPIN)"
-	@rm -f "$(DESTDIR)$(TLP_SETTINGS_DROPIN)"
-	@rm -f "$(DESTDIR)$(BATTERY_HELPER)" "$(DESTDIR)$(BATTERY_POLICY)" "$(DESTDIR)$(TLP_SETTINGS_SCHEMA)"
-
-uninstall-thinkfan-helper:
-	@rm -f "$(DESTDIR)$(THINKFAN_HELPER)" "$(DESTDIR)$(THINKFAN_POLICY)"
 
 uninstall: uninstall-systemd uninstall-desktop uninstall-icon uninstall-docs uninstall-license uninstall-shell uninstall-bin

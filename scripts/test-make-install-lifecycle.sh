@@ -63,12 +63,24 @@ expected_files=(
   "$stage$prefix/share/doc/inir-shell/RELEASING.md"
   "$stage$prefix/share/doc/inir-shell/UNINSTALL.md"
   "$stage$prefix/share/licenses/inir-shell/LICENSE"
+)
+
+optional_files=(
   "$stage$libexecdir/inir-battery-charge-limit"
   "$stage$libexecdir/inir-thinkfan"
   "$stage$polkit_actions_dir/org.inir.battery-charge-limit.policy"
   "$stage$polkit_actions_dir/org.inir.thinkfan.policy"
   "$stage$system_share/tlp-settings-schema.json"
+  "$stage$tlp_confdir/99-inir-battery-charge-limit.conf"
+  "$stage$tlp_confdir/99-inir-tlp-settings.conf"
+  "$stage$prefix/share/hadalird/current/manifest.json"
 )
+for path in "${optional_files[@]}"; do
+  [[ ! -e "$path" ]] || { printf 'FAIL: core installed optional integration %s\n' "$path" >&2; exit 1; }
+  mkdir -p "$(dirname "$path")"
+  printf '%s\n' 'preserve optional package and owner state' > "$path"
+done
+optional_before="$(sha256sum "${optional_files[@]}")"
 
 for path in "${expected_files[@]}"; do
   [[ -e "$path" ]] || {
@@ -111,31 +123,17 @@ if ! fish "$repo_root/scripts/qml-check.fish" --all --root "$runtime_dir"; then
   exit 1
 fi
 
-battery_helper="$stage$libexecdir/inir-battery-charge-limit"
-battery_policy="$stage$polkit_actions_dir/org.inir.battery-charge-limit.policy"
-thinkfan_policy="$stage$polkit_actions_dir/org.inir.thinkfan.policy"
-grep -Fxq "config_dir=$tlp_confdir" "$battery_helper" || {
-  printf 'FAIL: staged battery helper does not use configured TLP directory\n' >&2
-  exit 1
+for action in install-battery-helper install-thinkfan-helper uninstall-battery-helper uninstall-thinkfan-helper; do
+  if make -s "$action" "${make_args[@]}" >"$stage/retired-helper.log" 2>&1; then
+    printf 'FAIL: retired core helper target succeeded: %s\n' "$action" >&2
+    exit 1
+  fi
+  grep -Fq 'optional Hadalird' "$stage/retired-helper.log" || { cat "$stage/retired-helper.log"; exit 1; }
+done
+rm -f "$stage/retired-helper.log"
+[[ "$(sha256sum "${optional_files[@]}")" == "$optional_before" ]] || {
+  printf 'FAIL: core reinstall/helper targets modified optional integration state\n' >&2; exit 1;
 }
-grep -Fxq "tlp_settings_schema=$system_share/tlp-settings-schema.json" "$battery_helper" || {
-  printf 'FAIL: staged battery helper does not use configured TLP schema path\n' >&2
-  exit 1
-}
-grep -Fq ">${libexecdir}/inir-battery-charge-limit</annotate>" "$battery_policy" || {
-  printf 'FAIL: staged battery polkit policy does not use configured helper path\n' >&2
-  exit 1
-}
-grep -Fq ">${libexecdir}/inir-thinkfan</annotate>" "$thinkfan_policy" || {
-  printf 'FAIL: staged ThinkFan polkit policy does not use configured helper path\n' >&2
-  exit 1
-}
-
-# Exercise teardown of managed TLP drop-ins inside the staging root. Package
-# installation does not create them, but a live source install can own them.
-mkdir -p "$stage$tlp_confdir"
-printf '%s\n' '# staged battery lifecycle contract' > "$stage$tlp_confdir/99-inir-battery-charge-limit.conf"
-printf '%s\n' '# staged TLP settings lifecycle contract' > "$stage$tlp_confdir/99-inir-tlp-settings.conf"
 
 # The staged install must remain entirely inside DESTDIR. This catches install
 # targets that accidentally write to the host when packagers use a staging root.
@@ -162,19 +160,16 @@ for path in "${expected_files[@]}"; do
   fi
 done
 
-for dropin in \
-  "$stage$tlp_confdir/99-inir-battery-charge-limit.conf" \
-  "$stage$tlp_confdir/99-inir-tlp-settings.conf"; do
-  if [[ -e "$dropin" || -L "$dropin" ]]; then
-    printf 'FAIL: staged uninstall left managed TLP drop-in %s\n' "$dropin" >&2
-    exit 1
-  fi
-done
+[[ "$(sha256sum "${optional_files[@]}")" == "$optional_before" ]] || {
+  printf 'FAIL: core uninstall modified optional integration state\n' >&2; exit 1;
+}
 
 # Empty parent directories are harmless, but no managed payload file may remain.
 # Excluded/private artifacts are intentionally outside reinstall ownership; a
 # full uninstall removes the runtime directory and may remove them as collateral.
-if find "$stage$prefix" -type f -o -type l 2>/dev/null | grep -q .; then
+remaining="$(find "$stage$prefix" \( -type f -o -type l \) -print | sort)"
+preserved="$(printf '%s\n' "${optional_files[@]}" | sort)"
+if [[ "$remaining" != "$preserved" ]]; then
   printf 'FAIL: staged uninstall left managed files behind\n' >&2
   find "$stage$prefix" \( -type f -o -type l \) -print >&2
   exit 1

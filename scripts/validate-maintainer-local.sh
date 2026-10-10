@@ -309,6 +309,7 @@ run_check 'tracked JSON syntax' tracked_json_syntax
 run_check 'tracked JavaScript syntax' tracked_js_syntax
 run_check 'tracked Fish syntax' tracked_fish_syntax
 run_check 'Niri selected-fullscreen workspace regression' node scripts/test-niri-fullscreen-selection.mjs
+run_check 'NotificationCenter anchor hover lease regression' node scripts/test-notification-center-hover-lease.mjs
 run_check 'translation catalog structure' python3 translations/tools/l10n.py audit-all
 run_check 'translation source parity' python3 translations/tools/source-parity.py
 while IFS= read -r -d '' test_file; do

@@ -993,37 +993,6 @@ Scope {
                             ? ({ x: popupContentHover.point.scenePosition.x,
                                  y: popupContentHover.point.scenePosition.y })
                             : null
-                    // The source edge and connected popup's precise native
-                    // input footprint jointly own hover. The connection strips
-                    // are PART of the popup surface, not an extra timed lease.
-                    // The last patch used body bounds alone, so a slow physical
-                    // pointer transit across the drawn seam expired the visit.
-                    readonly property bool realPopupBodyHovered:
-                        popupContentHover.hovered && styledPopupHost.acceptsInput
-                        && Geometry.rectContains(styledPopupHost.inputBounds,
-                            popupContentHover.point.scenePosition.x,
-                            popupContentHover.point.scenePosition.y)
-                        && !(styledPopupHost.controller?.sourceInputRegions ?? [])
-                            .some(rect=>Geometry.rectContains(rect,
-                                popupContentHover.point.scenePosition.x,
-                                popupContentHover.point.scenePosition.y))
-                    readonly property bool connectedPopupHovered:
-                        popupContentHover.hovered && styledPopupHost.acceptsInput
-                        && Geometry.popupConnectedHover(styledPopupHost.inputBounds,
-                            styledPopupHost.connectionRects,
-                            styledPopupHost.controller?.sourceInputRegions ?? [],
-                            popupContentHover.point.scenePosition.x,
-                            popupContentHover.point.scenePosition.y)
-                    onConnectedPopupHoveredChanged: {
-                        if (styledPopupHost.hostedPopup)
-                            styledPopupHost.hostedPopup._contentHovered =
-                                styledPopupHost.connectedPopupHovered
-                    }
-                    onHostedPopupChanged: {
-                        if (styledPopupHost.hostedPopup)
-                            styledPopupHost.hostedPopup._contentHovered =
-                                styledPopupHost.connectedPopupHovered
-                    }
                     readonly property string presentationKind: {
                         const explicitKind = String(
                             hostedPopup?.liquidPresentationKind ?? "")
@@ -1094,12 +1063,12 @@ Scope {
 
                     HoverHandler {
                         id: popupContentHover
-                        // The existing inputFrame mask tracks ONLY the
-                        // native popup body and its actual connector strips,
-                        // excluding the source region. Do not use the raw
-                        // HoverHandler alone as a workspace-wide owner.
                         parent: styledPopupHost.hoverParent
                         enabled: styledPopupHost.open
+                        onHoveredChanged: {
+                            if (styledPopupHost.hostedPopup)
+                                styledPopupHost.hostedPopup._contentHovered = hovered
+                        }
                     }
                 }
             }

@@ -758,6 +758,68 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   The broader hover issue remains **OPEN** pending
   owner runtime feedback.
 
+  **Owner native video 2026-10-10 21:21 ICT — prior fix did NOT work:**
+  `2026-10-10_21.21.26.mp4`, 1920x1200 at 30fps,
+  22.53s, shows Notification Center reveal/retract
+  cycles at a right-edge join and additional Popup
+  visits. Its visual sequence is consistent with
+  spurious loss of hover around a connected edge,
+  but the recording alone has no Qt pointer coords
+  or IPC state, so it cannot prove each individual
+  dismissal occurred while a pointer remained
+  inside a particular native input strip.
+  **The previous `11b1b0b` / `e28d4c0`
+  policy implementation was internally inconsistent
+  with the native connected popup footprint:**
+  it treated only `inputBounds` as the popup,
+  but `AbyssBodyHost.inputFrame.containmentMask`
+  and `nativeInputRegion` both explicitly include
+  `inputBounds OR connectionRects` (minus the
+  owning source input region). Consequently a
+  pointer slowly crossing a real painted/native
+  shoulder strip became `contentHovered=false`,
+  and the existing 90ms/exit-grace timer could
+  retract the visit before entry into the body.
+  The earlier source-level regression incorrectly
+  required that actual strip hover be false, so its
+  green result did not validate the requested
+  visually connected interaction.
+
+  **Source correction on `dev`, native acceptance NOT YET:**
+  `a7369667da26022b7438a84787099bca34f5a07b`
+  introduces the shared bounded predicate
+  `Geometry.popupConnectedHover(body,shoulders,sourceRegions,x,y)`:
+  accepts actual body or exact native connector
+  rectangles, explicitly rejects source-overlap,
+  gaps, unknown coordinates and the workspace
+  outside them. This is ONE connected Popup hover
+  owner, not an independent infinite bridge timer.
+  `37aeca774716963e7f5be63f18cd422f21035e27`
+  makes hosted StyledPopups publish this connected
+  owner while retaining `realPopupBodyHovered`
+  as a separate body-only diagnostic; there are
+  no new input masks, pointer handlers or timers.
+  `00adcf81f2c3016b9ce2308fc086c0e2b7177012`
+  applies the same native geometry parity to
+  generic Wi-Fi/Bluetooth/Utilities/Launcher/Dock
+  Popup idle-dismiss policy, with existing editor
+  focus and 650ms grace preserved.
+  `scripts/test-popup-edge-body-hover-policy.mjs`
+  now passes **42/42** source-equivalent assertions,
+  including all four edge directions, strip vs
+  adjacent empty edge, source overlap, NaN,
+  Popup body, explicit pin and keyboard modes.
+  `scripts/test-notification-center-hover-lease.mjs`
+  passes **31/31** after updated diagnostic expression
+  boundaries. Both are registered in maintainer
+  validation, but full canonical / native Niri
+  tests were NOT executed after this commit.
+  Do not mark hover issue resolved until owner
+  confirms source→visible connector→body and
+  reverse transit, stationary connector dwell,
+  and closure after truly leaving the combined
+  source+popup surface.
+
 
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,

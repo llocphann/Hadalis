@@ -68,6 +68,29 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   focus/lease/Region evidence on any failure, compare owner hover behavior,
   then canonical and physical multi-output acceptance. Keep issue OPEN.
 
+  **OWNER REGRESSION RECONFIRMED 2026-10-10 (current continuation):** after
+  `6c10387` and its tests, Popup still loses hover/auto-closes while crossing
+  the connector, and Abyss Panel still lags. Therefore that runtime fix is
+  **INEFFECTIVE / NOT ACCEPTED**, irrespective of offline 504,005 assertions;
+  those assertions only proved geometry, not compositor pointer delivery.
+  Dedicated non-force revert `0d26291646bc9b4db6f0678c54b10f7a4b8c8962`
+  restored `AbyssGeometry.js`, the geometry test and hover runtime fixture
+  to `e6d220e` source without rewriting prior history. DO NOT reinstate the
+  physical outer-edge hitbox extension or Region coalescing unchanged.
+  A distinct read-only diagnosis `9c6366ee5d3557a98940637dad80b667b71bc4f0`
+  expands existing `abyssHoverProbe.snapshot()` with each mature popup's
+  requested/semantic/linger state, source-vs-body hover, input mask registration,
+  strip count and geometry; generic popup state is also captured. No automatic
+  remap, global hover padding, timer delay or input interception was added.
+  `abyssHoverProbe.refreshMask/swapMask/remapWindow` remain explicit bounded
+  diagnostic experiments; **do not apply them automatically**. Compare
+  snapshots with the installed exact source SHA during a genuine failed
+  crossing: distinguish compositor mask not delivering events, source hover
+  priority, and semantic timer expiry before changing input routing. Neither
+  old focused PASS nor an IPC snapshot alone is physical mouse acceptance.
+  Serial native fixture and canonical results on current SHA are NOT RUN;
+  preserve source/device and before/after receipts.
+
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,
   1 SKIP**. Failures: keyboard sizing, Dashboard Music, Dashboard warm readiness,

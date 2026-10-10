@@ -448,6 +448,81 @@ holds technical research; this file holds pending outcomes.
   only if actual user-visible motion/jank persists.
   **Lag acceptance remains OPEN.**
 
+  **Owner archive 19:03 local, 2026-10-10**
+  (`hadalis-abyss-hover-20261010-190302.tar.gz`,
+  exact `dev` checkout
+  `1ce236724be81cf75d974ef4bb8433c62d10279b`):
+  installed/checkout parity MATCH for 3 source files;
+  cold readiness attempt 4 (~3.7s after preflight),
+  host/Perimeter native readiness confirmed,
+  collector exit 0. Output `eDP-1`,
+  bounded frame sample count **277** (not exhausted),
+  min=2ms, p50=17ms, p95=28ms, p99=132ms,
+  max=844ms, mean=21.8989ms, over16.7ms=148,
+  over33.3ms=13, over100ms=4.
+  Panel state counters throughout the measured interval:
+  `panelNonzeroFrames=0`,
+  `panelProgressChangedFrames=0`,
+  `barProgressChangedFrames=0`, `popupOpenFrames=166`.
+  In other words, NO observed Left/Right/Dashboard/
+  Controls/Settings/Bar animation was captured,
+  while Notification Center popup was active
+  for a substantial part of the sample window.
+
+  The bounded 50ms Qt heartbeat was delivered
+  112 times, with five intervals >100ms and a
+  longest late interval of 293ms. At 12:03:09.951Z
+  a swap interval of 844ms ended with
+  Notification Center revealProgress≈0.008788,
+  while a heartbeat late by 141ms ended
+  at 12:03:09.845Z INSIDE that swap gap
+  (approximately 09.107–09.951Z). Thus the
+  Qt event loop was not completely blocked
+  throughout the full 844ms; sparse swaps
+  and event-loop lag are both plausible
+  contributors, their root cause NOT proven.
+  At 12:03:10.912Z a swap interval of 252ms
+  ended with Notification Center fully shown;
+  a 293ms heartbeat interval ended at
+  12:03:10.929Z, overlapping that swap gap
+  (approximately 10.660–10.912Z). This
+  strongly supports correlated Qt timer
+  lateness during part of the slow-swap event,
+  but NOT compositor/GPU timing diagnosis.
+  Slow-tail variability across 18:31 and
+  19:03 cannot establish a source-level
+  optimization or regression in the absence
+  of controlled warm/cold repeated samples.
+
+  **Read-only diagnostic continuation:**
+  `974c881247870882a07ed1b0f5c6bf60783fe608`
+  records the complete bounded 50ms heartbeat
+  `heartbeatHistory` (cap 160 entries) during
+  explicit `startFrames` only. Captures both
+  normal and late Qt timer ticks, with timestamps
+  and intervals, so later analysis can count
+  how often the Qt event loop serviced the timer
+  inside each observed frame-swapped gap.
+  The focused extracted-QML regression,
+  `468a1314d19dbefdfbb25f231f7cd05b2a339a4d`,
+  passes **26/26** assertions (including null
+  initial interval and bounded overflow).
+  No window lifecycle, shader, input, render
+  quality, animation or background event-loop
+  behavior was modified. Native validation on
+  this new diagnostic remains pending.
+
+  **Next discrimination:** capture one truly
+  settled-shell run WITHOUT restarting iNiR
+  immediately before sampling, and deliberately
+  activate a named Panel during PHASE 1. Compare
+  with the cold-start-adjacent archive, ensure
+  `panelProgressChangedFrames>0`, then correlate
+  individual swaps against complete heartbeat
+  chronology. If Panel motion is never sampled,
+  do NOT claim a Panel-specific jank fix.
+  **Lag still OPEN.**
+
 
 - [ ] **Strict-lossless CPU/RAM/GPU reductions:** re-audit latest `dev` and
   promote high-value findings only after behavior, read/dependency order,

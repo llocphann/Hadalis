@@ -455,6 +455,40 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   Do not infer the correction addresses all edge/Bar
   popup families or mark acceptance complete.
 
+  **Owner archive 2026-10-10 10:44:39Z (17:44 ICT) on exact
+  checkout `ab1f52dd255c32a7626fd35fcaffceadf1b304eb`:**
+  `hadalis-abyss-hover-20261010-174438.tar.gz`, 11 files,
+  collector exit=0, readiness attempt=4, all installed QML/JS
+  comparisons MATCH, live Abyss Perimeter loaded and active,
+  `startFrames` succeeded and 100/100 hover JSON snapshots valid.
+  One sampled output `eDP-1`, only mature popup kind
+  `notificationCenter`. There were **TWO** popup open/retract
+  episodes (slot orders 2 and 3), despite the collector's
+  boolean `popup_open_to_closed_transition_observed=1`:
+  order 2 was live #67–75, lost source hover at #72 while
+  neither body nor content received it; the new
+  `NotificationCenter._anchorHovered` now matches its
+  `StyledPopup.anchorHover` at #67–71 and its hover lease
+  remains true in those same samples. #72–73 shows
+  exitGraceHeld=true and requestedVisible=true, #74
+  requestedVisible=false and inputBounds width=0.
+  No mouse coordinates were captured, so this first
+  episode cannot yet be called a spurious seam dismissal
+  rather than genuine pointer departure.
+  Order 3 was live #81–96: anchor hover true #81–85;
+  **source→content transfer succeeded** at #86,
+  `contentHover=true` and `hoverLeaseRequested=true`
+  continuously #86–93 (~1.5 seconds). #94 reports all
+  hover=false with exitGraceHeld=true; #95 begins retract
+  after the grace (not unexpected unless the pointer stayed
+  inside the painted connector). This is native evidence
+  the earlier lease contradiction was repaired in the
+  observed source-held phase, and that one genuine
+  transfer works, NOT complete acceptance for all paths.
+  Status remains OPEN pending held-pointer connector dwell,
+  other Popup kinds and native regression confirmation.
+
+
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,
   1 SKIP**. Failures: keyboard sizing, Dashboard Music, Dashboard warm readiness,

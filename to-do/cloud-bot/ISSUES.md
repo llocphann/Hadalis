@@ -109,6 +109,23 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   that the running shell has been updated. Preserve actual command failure
   receipts and resume native hover/canonical acceptance only with live evidence.
 
+  **2026-10-10 collector Bash syntax regression and resolution:** the next
+  owner run failed at line 32 (`syntax error near unexpected token '|'`)
+  because the text-mode `qs list --all` process substitution placed a pipe
+  on the following line without ending the previous line with a pipe.
+  A first attempted in-place fix `10a6604` was ALSO invalid: JavaScript
+  replacement expanded the `$'` sequence inside `'/shell\\.qml$'` and
+  duplicated the script tail. DO NOT use that commit. Final fix
+  `9ba0204b4e2254393c8518526e9ddf6496b6769d` restored the exact
+  840c00d source and replaced the bad pipeline without JS substitution
+  expansion. Final Git blob `12dd8dd22d521f5be9312d17580c97ef7e46f780`
+  was reproduced byte-for-byte in a local test environment:
+  `bash -n` **exit 0** and a mocked active `qs -p` IPC sequence completed
+  `startFrames`, `stopFrames`, exactly 40 `snapshot` calls, **exit 0**.
+  These checks validate collector syntax and control flow only; they are
+  NOT a Quickshell/Niri live test and do not close the popup/lag issues.
+  Next: owner reruns after `git pull --ff-only` and supplies new receipts.
+
   For a read-only owner
   capture after installing the exact `dev` source, run
   `bash scripts/collect-abyss-hover-frames.sh`: 6 seconds of bounded

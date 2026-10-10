@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Source-expression regression for the revised Popup/Screen Edge hover policy.
-// Native input masks remain unchanged; only the owning anchor or popup body
-// may renew the visit. Read and execute the actual QML expressions.
+// Native input masks remain unchanged. The owned popup surface includes
+// ONLY the real input body and painted connector strips; source edge is the
+// other owner. Read and execute the actual QML expressions.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -29,14 +30,14 @@ const sourceFn = new Function('root', 'return (' + expression(styled,
 const requestFn = new Function('root', 'return (' + expression(styled,
     'readonly property bool humanVisibleRequest:',
     '\n    onHumanVisibleRequestChanged:') + ');');
-const Geometry = new Function(geometry + '\nreturn { rectContains };')();
+const Geometry = new Function(geometry + '\nreturn { rectContains, popupConnectedHover };')();
 const hostedFn = new Function('styledPopupHost', 'popupContentHover', 'Geometry',
     'return (' + expression(perimeter,
-        'readonly property bool realPopupBodyHovered:',
-        '\n                    onRealPopupBodyHoveredChanged:') + ');');
+        'readonly property bool connectedPopupHovered:',
+        '\n                    onConnectedPopupHoveredChanged:') + ');');
 const genericBodyFn = new Function('root', 'popupHover', 'Geometry',
     'return (' + expression(generic,
-        'readonly property bool popupBodyHovered:',
+        'readonly property bool connectedPopupHovered:',
         '\n    readonly property bool editorFocusHeld:') + ');');
 const noteFn = new Function('root', 'return (' + expression(notes,
     'alternativeVisibleCondition:',
@@ -50,21 +51,26 @@ function check(label, actual, expected) {
 const host = {
     acceptsInput: true,
     inputBounds: { x: 1490, y: 616, width: 420, height: 560 },
+    connectionRects: [{ x: 1890, y: 1180, width: 20, height: 20 }],
     controller: { sourceInputRegions: [{ x: 1910, y: 1190, width: 10, height: 10 }] },
 };
 const pointer = (x,y,hovered=true) => ({hovered,point:{scenePosition:{x,y}}});
 check('body content owns hover', hostedFn(host,pointer(1780,1100),Geometry), true);
 check('popup border padding stays inside body',hostedFn(host,pointer(1491,617),Geometry),true);
-check('shoulder strip does not independently own hover',
-    hostedFn(host,pointer(1903,1195),Geometry),false);
+check('actual connected shoulder strip retains hosted Popup',
+    hostedFn(host,pointer(1903,1195),Geometry),true);
+check('nearby empty workspace does not own Popup',
+    hostedFn(host,pointer(1880,1195),Geometry),false);
 check('outside popup cannot own hover',hostedFn(host,pointer(1400,800),Geometry),false);
 check('source region does not become popup hover',hostedFn(host,pointer(1919,1199),Geometry),false);
 check('no hovered point cannot own popup',hostedFn(host,pointer(1780,1100,false),Geometry),false);
 const genericParticipant = { ...host };
 check('generic Popup body owns hover',genericBodyFn({participant:genericParticipant},
     pointer(1780,1100),Geometry),true);
-check('generic bridge strip does NOT own hover',genericBodyFn({participant:genericParticipant},
-    pointer(1903,1195),Geometry),false);
+check('generic actual connected strip owns popup surface',genericBodyFn({participant:genericParticipant},
+    pointer(1903,1195),Geometry),true);
+check('generic non-painted gap cannot keep Popup open',genericBodyFn({participant:genericParticipant},
+    pointer(1880,1195),Geometry),false);
 check('generic dismissed/unready body does NOT own hover',genericBodyFn({
     participant:{...genericParticipant,acceptsInput:false}},pointer(1780,1100),Geometry),false);
 check('disabled/unpresented body cannot own hover',
@@ -80,7 +86,7 @@ const request = (edge,body,other=false) => ({
 check('edge opens and holds popup',requestFn(request(true,false)),true);
 check('body opens and holds popup',requestFn(request(false,true)),true);
 check('either owner holds during reverse transit',requestFn(request(true,true)),true);
-check('bridge-only does not hold',requestFn(request(false,false)),false);
+check('no source or connected Popup cannot hold',requestFn(request(false,false)),false);
 check('explicit opens remain independent',requestFn(request(false,false,true)),true);
 check('non-hover caller does not open on pointer',
     requestFn({...request(true,true),hoverActivates:false}),false);
@@ -95,7 +101,7 @@ assert.doesNotMatch(notes,/entryBridgeHeld|entryBridgeTimer/);count++;
 assert.match(notification,/root\._anchorHovered[\s\S]*?\|\| root\.popupHovered[\s\S]*?dragActive/);count++;
 assert.match(notification,/exitGraceTimer\.restart\(\)/);count++;
 assert.match(styled,/hoverTransferGraceMs: 90/);count++;
-assert.match(perimeter,/onRealPopupBodyHoveredChanged:/);count++;
-assert.match(generic,/root\.triggerHovered \|\| root\.popupBodyHovered \|\| root\.editorFocusHeld/);count++;
-assert.match(generic,/!root\.triggerHovered && !root\.popupBodyHovered && !root\.editorFocusHeld/);count++;
+assert.match(perimeter,/onConnectedPopupHoveredChanged:/);count++;
+assert.match(generic,/root\.triggerHovered \|\| root\.connectedPopupHovered \|\| root\.editorFocusHeld/);count++;
+assert.match(generic,/!root\.triggerHovered && !root\.connectedPopupHovered && !root\.editorFocusHeld/);count++;
 console.log('PASS: '+count+' actual QML source-edge/popup hover-policy assertions');

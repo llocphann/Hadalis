@@ -132,6 +132,50 @@ if [[ "$source_mismatch" == true ]]; then
     exit 4
 fi
 
+# A successful 'inir restart' may leave the critical host registered before
+# deferred panels and the optional Perimeter have mounted. The IPC CLI can even
+# return exit 0 for 'Target not found.'. Do not misreport this boot race as a
+# frame failure. Never remount or alter any shell surface to "fix" readiness.
+printf 'Waiting up to 25 seconds for Abyss Perimeter and frame probe readiness...\n' >&2
+probe_ready=0
+for ((attempt=0; attempt<100; attempt++)); do
+    host_ready_rc=0
+    "${qs_cmd[@]}" ipc call abyssHostProbe status > "$output_dir/abyss-host-status.txt" 2>&1 || host_ready_rc=$?
+    hover_ready_rc=0
+    "${qs_cmd[@]}" ipc call abyssHoverProbe snapshot > "$output_dir/hover-preflight.txt" 2>&1 || hover_ready_rc=$?
+    printf 'attempt=%03d utc=%s host_exit=%d hover_exit=%d host=%s hover_prefix=%s\n' \
+        "$attempt" "$(date -u +%FT%T.%3NZ)" "$host_ready_rc" "$hover_ready_rc" \
+        "$(tr '\n' ' ' < "$output_dir/abyss-host-status.txt" | cut -c1-500)" \
+        "$(tr '\n' ' ' < "$output_dir/hover-preflight.txt" | cut -c1-200)" \
+        >> "$output_dir/readiness-trace.log"
+    if ((host_ready_rc == 0 && hover_ready_rc == 0)) \
+            && grep -Fq '"family":"abyss"' "$output_dir/abyss-host-status.txt" \
+            && grep -Fq '"deferredPanelsReady":true' "$output_dir/abyss-host-status.txt" \
+            && grep -Fq '"perimeterLoaded":true' "$output_dir/abyss-host-status.txt" \
+            && grep -Fq '"perimeterActive":true' "$output_dir/abyss-host-status.txt" \
+            && grep -Fq '"nativeFirstFramesReady":true' "$output_dir/abyss-host-status.txt" \
+            && grep -Fq '"diagnosticUnmounted":false' "$output_dir/abyss-host-status.txt" \
+            && grep -Fq '"coldRecreatePending":false' "$output_dir/abyss-host-status.txt" \
+            && grep -Fq '"family":"abyss"' "$output_dir/hover-preflight.txt" \
+            && grep -Eq '"outputCount":[1-9][0-9]*' "$output_dir/hover-preflight.txt" \
+            && grep -Fq '"fieldReady":true' "$output_dir/hover-preflight.txt"; then
+        probe_ready=1
+        printf 'ready_attempt=%d\n' "$attempt" >> "$output_dir/identity.txt"
+        break
+    fi
+    if ((attempt < 99)); then sleep .25; fi
+done
+if ((probe_ready == 0)); then
+    {
+        printf 'ERROR: Abyss host did not become ready during a bounded 25s poll.\n'
+        printf 'See readiness-trace.log, abyss-host-status.txt, hover-preflight.txt.\n'
+        printf 'No frame/hover diagnosis was attempted and no UI was altered.\n'
+    } | tee "$output_dir/readiness-error.txt" >&2
+    exit 7
+fi
+"${qs_cmd[@]}" ipc show > "$output_dir/ipc-targets-ready.txt" 2>&1 || true
+printf 'Abyss Perimeter is ready; proceeding with bounded sampling.\n' >&2
+
 # Phase 1: open/close/reverse the panel on the intended output while frame
 # samples are enabled. Do not interleave IPC polling into this window.
 printf 'PHASE 1/2: open, close and reverse Abyss panels during the next six seconds.\n' >&2

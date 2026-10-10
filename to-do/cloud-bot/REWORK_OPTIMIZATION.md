@@ -293,6 +293,38 @@ holds technical research; this file holds pending outcomes.
   Panel capture and compare slow-events against actual
   animation state. **Lag remains OPEN.**
 
+  **Owner capture 2026-10-10 10:58:22Z
+  (`hadalis-abyss-hover-20261010-175821.tar.gz`,
+  checkout `1e934698dea22d39877dfda5e8de982ebc50c5ed`):**
+  three installed source files MATCH; native readiness
+  attempt 6, collector exit 0, valid `eDP-1`
+  `QQuickWindow.frameSwapped` trace with **358** samples.
+  min=2ms, p50=17ms, p95=18ms, p99=24ms, max=80ms,
+  mean=16.804469ms, >16.7ms=213, >33.3ms=3,
+  >100ms=0. Opt-in `slowEvents`:
+  1791629908168=42ms, popupsClosed, all sampled
+  panel progress=0; 1791629908424=80ms and
+  1791629909966=34ms, popupsOpen,
+  all sampled panel progress=0. Four visible
+  notification-center popup visits were subsequently
+  observed during the SEPARATE hover phase
+  (#15–29, #47–59, #70–77, #82–89).
+  These intervals cannot be mapped to a specific
+  opener/closer/reversal without animation state
+  correlation. p99 dropping from 71→40→24ms across
+  distinct owner-run traces is NOT a controlled
+  before/after performance win or a resolved bug.
+  FrameSlows remain real Qt wall-clock observations
+  (not GPU/presentation timings).
+  Diagnostic-only `d2db68cece00b95d06ec6915f51db94342c4d8da`
+  now includes bounded `popupMotion` metadata
+  (kind, requestedVisible, revealProgress) only
+  when a slow interval occurs. No animation curve
+  or compositor timing policy changed.
+  Need one actual native Panel opening/reversal
+  during the separate frame capture before a
+  causality/optimization claim. **Lag remains OPEN.**
+
 
 - [ ] **Strict-lossless CPU/RAM/GPU reductions:** re-audit latest `dev` and
   promote high-value findings only after behavior, read/dependency order,

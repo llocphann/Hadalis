@@ -12,6 +12,8 @@ const source = readFileSync(resolve(project,
     'modules/notificationCenter/NotificationCenterPopup.qml'), 'utf8');
 const styled = readFileSync(resolve(project,
     'modules/bar/StyledPopup.qml'), 'utf8');
+const abyss = readFileSync(resolve(project,
+    'modules/abyss/AbyssPerimeter.qml'), 'utf8');
 
 function propExpression(src, property, next) {
     const startToken = 'readonly property bool ' + property + ':';
@@ -73,4 +75,25 @@ check('entry bridge may hold transfer',
     { ...base, entryBridgeHeld: true }, false, true);
 check('no anchor item is safe',
     { ...base, anchorItem: null, _anchorHover: null }, false, false);
+// Verify the actual read-only QML HandlerPoint expressions. Qt resets
+// HandlerPoint to (0,0) after leave: diagnostic fields MUST return null.
+function scenePointExpr(qml, startMarker, endMarker) {
+    const start = qml.indexOf(startMarker);
+    assert.ok(start >= 0, 'Missing hover scene point property');
+    const end = qml.indexOf(endMarker, start + startMarker.length);
+    assert.ok(end > start, 'Missing end of hover scene point property');
+    return qml.slice(start + startMarker.length, end).trim();
+}
+const anchorPointFn = new Function('sourceHover', 'return (' + scenePointExpr(styled,
+    'readonly property var hoverProbeScenePoint:', '        HoverHandler {') + ');');
+const contentPointFn = new Function('popupContentHover', 'return (' + scenePointExpr(abyss,
+    'readonly property var hoverProbeContentScenePoint:',
+    '                    readonly property string presentationKind:') + ');');
+assert.deepEqual(anchorPointFn({ hovered: true, point: { scenePosition: { x: 13, y: 5 } } }),
+    { x: 13, y: 5 });
+assert.equal(anchorPointFn({ hovered: false }), null);
+assert.deepEqual(contentPointFn({ hovered: true, point: { scenePosition: { x: 1520, y: 650 } } }),
+    { x: 1520, y: 650 });
+assert.equal(contentPointFn({ hovered: false }), null);
+assertions += 4;
 console.log('PASS: ' + assertions + ' NotificationCenter source/lease assertions');

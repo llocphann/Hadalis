@@ -645,6 +645,45 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   entire multi-edge geometry or user acceptance.
   **General product hover issue remains OPEN.**
 
+  **Owner archive 2026-10-10 12:03:04Z (19:03 ICT),
+  `hadalis-abyss-hover-20261010-190302.tar.gz`:**
+  exact `dev` checkout `1ce236724be81cf75d974ef4bb8433c62d10279b`,
+  all three installed-versus-checkout source checks MATCH,
+  readiness polling success on attempt 4, both output
+  and field ready, 100/100 valid hover snapshots,
+  collector exit 0. `popup_open_transition_count=5`,
+  `popup_open_to_closed_transition_count=5`.
+  The five sampled `notificationCenter` slot orders
+  are 3 (#00–10), 4 (#13–19), 5 (#26–32),
+  6 (#45–58) and 7 (#81–97). The first order was
+  already open at the start of the hover sampling,
+  not proof it opened exactly at sample #00.
+
+  In #03–07, #15–16 and #29 the hovered
+  `contentScenePoint` lies in an actual
+  `inShoulderStrip=true` region while outside the
+  main input rectangle, with native region registered.
+  In #47 order 6 starts on the strip; #48–49 all
+  hover flags false, held by exit grace; #50–56
+  hosted content hover returns and is continuously
+  valid inside `inInputBounds=true`, so the popup
+  does not close at the gap. In order 7, #85 hovered
+  strip→#86–91 body input→#92–93 source anchor→
+  #94 shoulder strip, all with `requestedVisible=true`.
+  This includes a successful reverse transit through
+  the seam without premature popup retraction.
+  #95 later loses all hover, #96 grace/semantic hold,
+  #97 retracts, #98 slot released. No pointer
+  coordinates exist after leave, so the final close
+  cannot be labeled spurious. No evidence of
+  input capture over the full workspace, either.
+  Notification Center seam/body hover tests have
+  strong positive native evidence; actual user
+  acceptance, other Popup kinds/corners and
+  unusual layout transitions remain OPEN.
+  No change to input mask/shape/hover timers is
+  justified by this archive.
+
 
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,

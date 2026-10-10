@@ -150,6 +150,23 @@ holds technical research; this file holds pending outcomes.
   run the probe during actual panel animations.
   **Owner lag confirmation remains OPEN.**
 
+  **2026-10-10 08:26:41Z additional owner archive:** the QML installation
+  now matches checkout `3acf9685ce7aef5e1c7e879e2437a7001ac3f874`
+  for all three sampled files, but the live Quickshell IPC call to
+  `abyssHoverProbe.startFrames()` still prints `Target not found.`.
+  The bounded collector correctly aborted with exit 5 and packaged
+  `run-result.txt`, `frame-start.txt`, `diagnostic-error.txt`,
+  `identity.txt`. NO frame/hover samples were taken. A matching
+  installed file is not proof the active Perimeter instance is mounted.
+  Source gating requires Abyss family critical host, deferred
+  readiness, and enabled `abyssPerimeter` module; active-state
+  cause cannot be determined without live IPC inventory and host status.
+  The read-only collector expansion `5462432e442048be32bf7de8e1227b892ed86e93`
+  now includes `qs ipc show` and `abyssHostProbe.status()`
+  diagnostic outputs within the same ONE archive; it also refuses
+  a zero-count frame summary. No QML lifecycle or render
+  settings were changed. Jank root cause and acceptance remain OPEN.
+
 - [ ] **Strict-lossless CPU/RAM/GPU reductions:** re-audit latest `dev` and
   promote high-value findings only after behavior, read/dependency order,
   identity/NOTIFY and lifecycle parity. Keep hidden services/lightweight warm

@@ -107,6 +107,16 @@ function rectContains(rect,x,y) {
     return rect && rect.width > 0 && rect.height > 0 && x >= rect.x && y >= rect.y
         && x < rect.x+rect.width && y < rect.y+rect.height;
 }
+// A connected popup is one pointer surface: its actual body plus ONLY the
+// narrow native-input shoulder strips that visibly weld it to its source edge.
+// The source's own input regions remain a separate owner and take precedence.
+// Do not use the joined SDF bounding box: it can cover empty workspace.
+function popupConnectedHover(body,shoulders,sourceRegions,x,y) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+    if (!(rectContains(body,x,y)
+            || (shoulders ?? []).some(r=>rectContains(r,x,y)))) return false;
+    return !(sourceRegions ?? []).some(r=>rectContains(r,x,y));
+}
 function insets(thickness, barEdge, barThickness, barShown) {
     var result = {left: thickness, top: thickness, right: thickness, bottom: thickness};
     if (barShown && barEdge in result) result[barEdge] = Math.max(thickness, barThickness);

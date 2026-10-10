@@ -126,6 +126,30 @@ holds technical research; this file holds pending outcomes.
   running shell loads the updated QML, animate in PHASE 1,
   and provide the single archive with true bounded samples.
 
+  **Owner second one-file capture 2026-10-10 08:04:04Z:**
+  `hadalis-abyss-hover-20261010-150404.tar.gz` has
+  `run-result.txt exit 0` but raw `frame-start.txt`
+  is `Target not found.`, the stop reply has count=0 and
+  null min/p50/p95/p99/max. On the actual owner-installed
+  configuration `~/.config/quickshell/inir`, the
+  `AbyssPerimeter.qml` file was **DIFFERENT from checkout**
+  SHA `5896b425951a774f6b209d68b50616297f455a3c`.
+  The other sampled source files matched. Thus latest frame
+  timing probe was **NOT actually started**; the previous
+  collector falsely accepted `qs` exit code 0 on a missing
+  handler. No new frame-pacing values, FPS or root-cause
+  conclusions were obtained from this archive.
+  `faf8ad59b9336ad6d2689b20ace52b28f22a6d45`
+  now refuses mismatched installed QML and invalid IPC
+  replies and still emits one uploadable archive. Exact
+  Git blob `d4f52cef9342defc1fde61d1c4dfacdd67ff4f54`
+  passed `bash -n` and five mocked CLI cases with
+  expected status 5/6/2/0/4 and valid archives.
+  Synchronize with `./setup update` from `dev`
+  before `inir restart`, confirm on-disk parity and
+  run the probe during actual panel animations.
+  **Owner lag confirmation remains OPEN.**
+
 - [ ] **Strict-lossless CPU/RAM/GPU reductions:** re-audit latest `dev` and
   promote high-value findings only after behavior, read/dependency order,
   identity/NOTIFY and lifecycle parity. Keep hidden services/lightweight warm

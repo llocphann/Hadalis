@@ -36,6 +36,7 @@ const window = {
     _frameProbeHeartbeatOver100Ms: 0,
     _frameProbeHeartbeatMaxMs: 0,
     _frameProbeHeartbeatLateEvents: [],
+    _frameProbeHeartbeatHistory: [],
     _frameProbeBarPrevProgress: -1,
     _frameProbeBarChangedFrames: 0,
     barProgress: 1,
@@ -78,6 +79,11 @@ for(const tick of [1000,1050,1100,1210,1260]) qml.heartbeat(tick);
 check('heartbeat intervals after first tick',window._frameProbeHeartbeatCount,4);
 check('one heartbeat gap greater than 100ms',window._frameProbeHeartbeatOver100Ms,1);
 check('heartbeat max gap',window._frameProbeHeartbeatMaxMs,110);
+check('full heartbeat chronology captured',window._frameProbeHeartbeatHistory.length,5);
+check('first interval intentionally unknown',
+    window._frameProbeHeartbeatHistory[0].intervalMs,null);
+check('heartbeat chronology includes normal ticks',
+    window._frameProbeHeartbeatHistory[1].intervalMs,50);
 check('bounded late event timestamp',window._frameProbeHeartbeatLateEvents[0].timestampMs,1210);
 check('long interval duration',window._frameProbeSlowEvents[0].intervalMs,73);
 check('zero panel progress during the long interval',
@@ -88,7 +94,14 @@ check('result includes changed-frame counts',result.panelProgressChangedFrames,5
 check('result includes popup-open counts',result.popupOpenFrames,2);
 check('result contains heartbeat gap count',result.heartbeatOver100Ms,1);
 check('result contains max heartbeat gap',result.heartbeatMaxIntervalMs,110);
+check('returned history contains all ticks',result.heartbeatHistory.length,5);
+check('history not exhausted under normal capture',result.heartbeatHistoryExhausted,false);
 check('result contains bar change count',result.barProgressChangedFrames,0);
 check('measurement is disabled after stop',window._frameProbeEnabled,false);
 check('frame pacing caveat retains idle gaps',result.caveat.includes('idle gaps'),true);
+// Verify the guard on an abnormally long diagnostic run without touching
+// any live surfaces or changing the earlier stopFrameProbe receipt.
+for(let i=0;i<170;i++) qml.heartbeat(1300+i*50);
+check('heartbeat history is hard-capped at 160',
+    window._frameProbeHeartbeatHistory.length,160);
 console.log('PASS: '+checks+' actual-QML frame diagnostic assertions');

@@ -47,13 +47,24 @@ function popupShoulders(width,height,insets,edge,record,radius,softness,recordRa
     if (insets[edge] <= 0) return [];
     var firstCross=leading ? Math.floor(seam) : Math.ceil(seam)-1;
     var rows=[];
-    var records=[record];
+    // This function has exactly one non-empty record. The old distance()
+    // path allocated a new workspace rectangle and walked the same record
+    // array for each pixel-center SDF sample (many times per animation frame).
+    // Hoist invariant geometry, retain the identical arithmetic/paint oracle.
+    var left=insets.left>0 ? insets.left : -64;
+    var top=insets.top>0 ? insets.top : -64;
+    var right=insets.right>0 ? insets.right : -64;
+    var bottom=insets.bottom>0 ? insets.bottom : -64;
+    var workspaceRect={x:left,y:top,width:width-left-right,height:height-top-bottom};
+    var popupRadius=record.radius ?? recordRadius ?? radius;
     var cornerStart=(h ? insets.left : insets.top)+radius;
     var cornerEnd=extent-(h ? insets.right : insets.bottom)-radius;
     var painted=function(tangent,cross) {
-        return distance(h ? tangent+.5 : cross+.5,
-            h ? cross+.5 : tangent+.5,width,height,insets,radius,
-            records,softness,recordRadius) < 0;
+        var x=h ? tangent+.5 : cross+.5;
+        var y=h ? cross+.5 : tangent+.5;
+        var d=-roundedDistance(x,y,workspaceRect,radius);
+        d=smoothUnion(d,roundedDistance(x,y,surface,popupRadius),softness);
+        return d<0;
     };
     var append=function(first,last,cross) {
         rows.push(h ? {x:first,y:cross,width:Math.max(0,last-first),height:1}

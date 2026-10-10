@@ -325,6 +325,60 @@ holds technical research; this file holds pending outcomes.
   during the separate frame capture before a
   causality/optimization claim. **Lag remains OPEN.**
 
+  **Owner 18:07 local native diagnostic**
+  (`hadalis-abyss-hover-20261010-180711.tar.gz`):
+  `dev` checkout `122d8e5f970102fc56919b450db5f7c42c54fa8e`,
+  3 installed QML/JS checks MATCH, valid host
+  `eDP-1`, collector exit 0, startFrames=true.
+  `frameSwapped` wall-clock intervals: count=294,
+  min=2ms, p50=17ms, p95=20ms, p99=188ms,
+  max=612ms, mean=20.45918ms, over16.7=165,
+  over33.3=6 and `idleGapsOver100ms=4`.
+  Six timestamped intervals: 11:07:16.002Z=188ms,
+  16.315Z=313ms, 16.931Z=612ms (these had
+  popupsOpen=false and ALL sampled Panel progress 0);
+  17.421Z=86ms with Notification Center
+  revealProgress=0, requestedVisible=true;
+  18.571Z=117ms with revealProgress=1;
+  20.283Z=41ms with revealProgress=0.
+  Those latter three still had all sampled Panel
+  progress 0. They indicate concurrent Notification
+  Center state at outliers but DO NOT establish
+  compositor/GPU causation, whether a Panel moved
+  BETWEEN frame samples, or work done in Qt between
+  `frameSwapped` signals. The 100-snapshot hover
+  phase was separate/later, containing six visits
+  (five end before snapshot 100). Larger p99/max
+  versus prior run demonstrates **measurement
+  variability**, NOT a performance regression caused
+  by the previous read-only diagnostic.
+
+  **Follow-up, probe only:**
+  `5760ed7b005ed15809bcf062868bd6e43f4136f5`
+  adds three opt-in frame-window counters
+  `panelNonzeroFrames`,
+  `panelProgressChangedFrames` and
+  `popupOpenFrames` so a frame sample that never
+  observed a left/right/Dashboard/Controls/Settings
+  Panel motion is distinguishable from a genuinely
+  sampled reveal/retraction. This samples five
+  already-existing numeric progress properties
+  only while frame probing is explicitly active;
+  no FPS policy, render quality, shader or
+  animation curves are changed. Isolated test
+  `scripts/test-abyss-frame-activity-probe.mjs`,
+  committed `64fe2f589e6c6cdd9eb357f6c5808dff5c023fcf`,
+  executes exact QML callbacks with a controlled
+  0→.2→.6→1→.4→0 trace and a 73ms gap;
+  all **12/12** assertions pass. Registered in
+  canonical validator `bc74aeb9072a56f44031ac67978251129c227c15`.
+  These counters have not yet run on owner Niri;
+  full maintainer validator not executed at this SHA.
+  Next capture MUST show nonzero
+  `panelProgressChangedFrames` for a genuine
+  Panel animation before attempting to optimize
+  those transitions. **Lag acceptance remains OPEN.**
+
 
 - [ ] **Strict-lossless CPU/RAM/GPU reductions:** re-audit latest `dev` and
   promote high-value findings only after behavior, read/dependency order,

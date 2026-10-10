@@ -61,6 +61,25 @@ check('actual connected shoulder strip retains hosted Popup',
     hostedFn(host,pointer(1903,1195),Geometry),true);
 check('nearby empty workspace does not own Popup',
     hostedFn(host,pointer(1880,1195),Geometry),false);
+// All four physical Screen Edges must retain ONLY their actual narrow
+// connector strips. Their rectangular bounding boxes/empty corners must
+// never create an output-wide invisible hover catcher.
+for (const [edge,body,strip,p,miss] of [
+    ['top',{x:600,y:20,width:300,height:200},{x:700,y:0,width:25,height:20},{x:710,y:8},{x:750,y:8}],
+    ['bottom',{x:600,y:980,width:300,height:200},{x:700,y:1180,width:25,height:20},{x:710,y:1195},{x:750,y:1195}],
+    ['left',{x:20,y:400,width:300,height:300},{x:0,y:500,width:20,height:25},{x:10,y:510},{x:10,y:550}],
+    ['right',{x:1600,y:400,width:300,height:300},{x:1900,y:500,width:20,height:25},{x:1910,y:510},{x:1910,y:550}]
+]) {
+    check(edge+' painted strip belongs to the popup',
+        Geometry.popupConnectedHover(body,[strip],[],p.x,p.y),true);
+    check(edge+' adjacent unused Screen Edge does not belong to popup',
+        Geometry.popupConnectedHover(body,[strip],[],miss.x,miss.y),false);
+}
+check('source-occupied portion of connector is excluded',
+    Geometry.popupConnectedHover(host.inputBounds,host.connectionRects,
+        [{x:1900,y:1190,width:10,height:10}],1903,1195),false);
+check('unknown cursor coordinates cannot keep popup alive',
+    Geometry.popupConnectedHover(host.inputBounds,host.connectionRects,[],NaN,1195),false);
 check('outside popup cannot own hover',hostedFn(host,pointer(1400,800),Geometry),false);
 check('source region does not become popup hover',hostedFn(host,pointer(1919,1199),Geometry),false);
 check('no hovered point cannot own popup',hostedFn(host,pointer(1780,1100,false),Geometry),false);

@@ -1,3 +1,5 @@
+> Historical snapshot archived on 2026-10-10 from Hadalis `8b2ed6f0a1fccddade206f0060ed19d19337a5da`. This document does not assign active work or prove that pending acceptance is complete. Use [the current categorized tasks](../../../to-do/README.md).
+
 <p align="center">
   <img src="https://github.com/user-attachments/assets/da6beb4a-ccee-40ba-a372-5eea77b595f8" alt="iNiR" width="800">
 </p>
@@ -30,7 +32,7 @@
 
 ---
 
-> **О переводе:** Перевод от сообщества. Если что-то непонятно — смотрите [английскую версию](../../README.md).
+> **О переводе:** Перевод от сообщества. Если что-то непонятно — смотрите [английскую версию](../../../README.md).
 
 ---
 
@@ -204,7 +206,7 @@ inir doctor                     # автодиагностика и исправ
 inir update                     # pull + миграции + перезапуск
 ```
 
-**Поддерживаемые дистрибутивы:** Arch (автоматический установщик). Другие дистрибутивы могут установить вручную — см. [PACKAGES.md](../PACKAGES.md).
+**Поддерживаемые дистрибутивы:** Arch (автоматический установщик). Другие дистрибутивы могут установить вручную — см. [PACKAGES.md](../../PACKAGES.md).
 
 | Метод | Команда |
 |--------|---------|
@@ -226,7 +228,7 @@ inir update                     # pull + миграции + перезапуск
 | `Super+,` | Настройки |
 | `Super+Shift+W` | Переключение семейства панелей |
 
-Полный список: [KEYBINDS.md](../KEYBINDS.md)
+Полный список: [KEYBINDS.md](../../KEYBINDS.md)
 
 ---
 
@@ -240,13 +242,13 @@ inir update                     # pull + миграции + перезапуск
 
 | | |
 |---|---|
-| [INSTALL.md](../INSTALL.md) | Руководство по установке |
-| [SETUP.md](../SETUP.md) | Команды setup — обновления, миграции, откат |
-| [KEYBINDS.md](../KEYBINDS.md) | Все горячие клавиши |
-| [IPC.md](../IPC.md) | IPC-цели для скриптов и пользовательских привязок |
-| [PACKAGES.md](../PACKAGES.md) | Каждый пакет и зачем он нужен |
-| [LIMITATIONS.md](../LIMITATIONS.md) | Известные ограничения и обходные пути |
-| [ARCHITECTURE.md](../../ARCHITECTURE.md) | Техническая архитектура проекта |
+| [INSTALL.md](../../INSTALL.md) | Руководство по установке |
+| [SETUP.md](../../SETUP.md) | Команды setup — обновления, миграции, откат |
+| [KEYBINDS.md](../../KEYBINDS.md) | Все горячие клавиши |
+| [IPC.md](../../IPC.md) | IPC-цели для скриптов и пользовательских привязок |
+| [PACKAGES.md](../../PACKAGES.md) | Каждый пакет и зачем он нужен |
+| [LIMITATIONS.md](../../LIMITATIONS.md) | Известные ограничения и обходные пути |
+| [ARCHITECTURE.md](../../../ARCHITECTURE.md) | Техническая архитектура проекта |
 
 ---
 
@@ -260,13 +262,13 @@ inir repair                     # doctor + перезапуск + проверк
 ./setup rollback                # откатить последнее обновление
 ```
 
-Загляните в [LIMITATIONS.md](../LIMITATIONS.md) перед открытием issue.
+Загляните в [LIMITATIONS.md](../../LIMITATIONS.md) перед открытием issue.
 
 ---
 
 ## Участие
 
-Смотрите [CONTRIBUTING.md](../../CONTRIBUTING.md) — настройка среды разработки, паттерны кода и правила PR.
+Смотрите [CONTRIBUTING.md](../../../CONTRIBUTING.md) — настройка среды разработки, паттерны кода и правила PR.
 
 ---
 

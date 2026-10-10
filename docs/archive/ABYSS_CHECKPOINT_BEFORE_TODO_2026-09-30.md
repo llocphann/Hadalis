@@ -1,6 +1,6 @@
 # Archived README development checkpoint before chatbot to-do consolidation
 
-**Read-only history, not current tasks or acceptance.** See [`../../to-do/cloud-bot/ABYSS.md`](../../to-do/cloud-bot/ABYSS.md) and [`../../to-do/cloud-bot/RELEASE.md`](../../to-do/cloud-bot/RELEASE.md). Original unchecked status and completed commit notes preserved below.
+**Read-only history, not current tasks or acceptance.** Use [the categorized task entry](../../to-do/README.md). Original unchecked status and completed commit notes are preserved below.
 
 ## 3.1 Latest maintainer runtime findings
 

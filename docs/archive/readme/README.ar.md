@@ -1,3 +1,5 @@
+> Historical snapshot archived on 2026-10-10 from Hadalis `8b2ed6f0a1fccddade206f0060ed19d19337a5da`. This document does not assign active work or prove that pending acceptance is complete. Use [the current categorized tasks](../../../to-do/README.md).
+
 <div dir="rtl">
 
 <p align="center">
@@ -32,7 +34,7 @@
 
 ---
 
-> **حول الترجمة:** ترجمة مجتمعية. في حال وجود أي غموض، راجع [النسخة الإنجليزية](../../README.md).
+> **حول الترجمة:** ترجمة مجتمعية. في حال وجود أي غموض، راجع [النسخة الإنجليزية](../../../README.md).
 
 ---
 
@@ -214,7 +216,7 @@ inir update                     # سحب + ترحيل + إعادة تشغيل
 
 </div>
 
-**التوزيعات المدعومة:** Arch (مثبّت آلي). التوزيعات الأخرى يمكنها التثبيت يدوياً — راجع [PACKAGES.md](../PACKAGES.md).
+**التوزيعات المدعومة:** Arch (مثبّت آلي). التوزيعات الأخرى يمكنها التثبيت يدوياً — راجع [PACKAGES.md](../../PACKAGES.md).
 
 | الطريقة | الأمر |
 |--------|---------|
@@ -236,7 +238,7 @@ inir update                     # سحب + ترحيل + إعادة تشغيل
 | `Super+,` | الإعدادات |
 | `Super+Shift+W` | تبديل عائلة اللوحات |
 
-القائمة الكاملة: [KEYBINDS.md](../KEYBINDS.md)
+القائمة الكاملة: [KEYBINDS.md](../../KEYBINDS.md)
 
 ---
 
@@ -250,13 +252,13 @@ inir update                     # سحب + ترحيل + إعادة تشغيل
 
 | | |
 |---|---|
-| [INSTALL.md](../INSTALL.md) | دليل التثبيت |
-| [SETUP.md](../SETUP.md) | أوامر الإعداد — تحديثات، ترحيل، تراجع |
-| [KEYBINDS.md](../KEYBINDS.md) | جميع اختصارات لوحة المفاتيح |
-| [IPC.md](../IPC.md) | أهداف IPC للنصوص البرمجية والاختصارات |
-| [PACKAGES.md](../PACKAGES.md) | كل تبعية ولماذا هي موجودة |
-| [LIMITATIONS.md](../LIMITATIONS.md) | القيود المعروفة والحلول البديلة |
-| [ARCHITECTURE.md](../../ARCHITECTURE.md) | نظرة عامة على البنية التقنية |
+| [INSTALL.md](../../INSTALL.md) | دليل التثبيت |
+| [SETUP.md](../../SETUP.md) | أوامر الإعداد — تحديثات، ترحيل، تراجع |
+| [KEYBINDS.md](../../KEYBINDS.md) | جميع اختصارات لوحة المفاتيح |
+| [IPC.md](../../IPC.md) | أهداف IPC للنصوص البرمجية والاختصارات |
+| [PACKAGES.md](../../PACKAGES.md) | كل تبعية ولماذا هي موجودة |
+| [LIMITATIONS.md](../../LIMITATIONS.md) | القيود المعروفة والحلول البديلة |
+| [ARCHITECTURE.md](../../../ARCHITECTURE.md) | نظرة عامة على البنية التقنية |
 
 ---
 
@@ -274,13 +276,13 @@ inir repair                     # doctor + إعادة تشغيل + فحص سجل
 
 </div>
 
-تحقق من [LIMITATIONS.md](../LIMITATIONS.md) قبل فتح issue.
+تحقق من [LIMITATIONS.md](../../LIMITATIONS.md) قبل فتح issue.
 
 ---
 
 ## المساهمة
 
-انظر [CONTRIBUTING.md](../../CONTRIBUTING.md) — إعداد بيئة التطوير، أنماط الكود، وإرشادات طلبات السحب.
+انظر [CONTRIBUTING.md](../../../CONTRIBUTING.md) — إعداد بيئة التطوير، أنماط الكود، وإرشادات طلبات السحب.
 
 ---
 

@@ -6,10 +6,11 @@ Hadalis can expose ThinkFan status and switch between firmware-owned and ThinkFa
 
 The integration has three pieces:
 
-- `services/ThinkFanService.qml`
-  - reads status through the unprivileged helper path;
-  - requests profile changes through `pkexec`;
-  - refreshes state periodically and fails closed when the helper cannot be started or times out.
+- `services/ThinkFanService.qml` is the Hadalis host facade.
+  - delegates to the enabled optional Hadalird worker;
+  - exposes status/control to existing Settings and System Monitor consumers;
+  - returns unavailable state when the package or integration is absent. The
+    Hadalird worker owns polling, helper execution and timeout handling.
 - `/usr/libexec/inir-thinkfan`
   - reports ThinkFan/service/hardware state as JSON with `--status`;
   - applies `managed` or `firmware` ownership when invoked as root;
@@ -18,7 +19,7 @@ The integration has three pieces:
   - authorizes the exact installed helper through Polkit;
   - allows it without a password prompt only for the active local session, while inactive/non-local subjects remain denied.
 
-[Hadalird](https://github.com/llocphann/Hadalird) owns the optional worker, helper and policy. Hadalis source/Make/Arch installation does not install, reset or remove them. Install Hadalird separately and enable Thinkfan in Settings → Integrations. The current Nix package does not provision these privileged system-level files; see [NixOS / Home Manager](NIXOS.md#privileged-integration-limitation).
+[Hadalird](https://github.com/llocphann/Hadalird) owns the optional worker, helper and policy. Hadalis source/Make/Arch installation does not install, reset or remove them. Use Settings → Integrations to explicitly install Hadalird and its helpers, then enable Thinkfan. Helper provisioning uses the trusted system gateway and native authorization; it does not enable fan control. The current Nix package does not provision these privileged system-level files; see [NixOS / Home Manager](NIXOS.md#privileged-integration-limitation).
 
 ## Prerequisites
 
@@ -78,7 +79,7 @@ The helper returns failure when these postconditions are not met. After every ap
 
 ## Per-power-profile fan levels
 
-Settings → System → Fan Control can store one fan level for each desktop power profile: **Power Saver**, **Balanced**, and **Performance**. The stored values are intentionally conservative:
+The Fan Control settings can store one fan level for each desktop power profile: **Power Saver**, **Balanced**, and **Performance**. The stored values are intentionally conservative:
 
 - `0` means **Auto** and is the default for every profile;
 - fixed values are limited to levels **1–7**;
@@ -113,13 +114,16 @@ systemctl is-enabled thinkfan.service
 command -v thinkfan
 ```
 
-If the helper is unavailable, install/repair it from the optional Hadalird checkout using its explicitly selected helper target:
+If the helper is unavailable, check Gateway/Helpers status in Settings →
+Integrations, then explicitly select Install helpers or Reinstall helpers.
+Provisioning requires the trusted root-owned gateway; follow the current
+[Hadalird installation guide](https://github.com/llocphann/Hadalird) if it is
+missing. Core `inir-shell` updates do not repair independently owned optional
+helpers. Preserve package-manager ownership when repairing system files.
 
-```bash
-sudo make -C /path/to/Hadalird install-helpers
-```
-
-Then verify the bridge directly with `/usr/libexec/inir-thinkfan --status` and refresh/restart the shell. Package-managed Arch installs should reinstall/update `inir-shell` or `inir-shell-git` rather than overwrite package-owned files with the Make target.
+Then verify the bridge directly with `/usr/libexec/inir-thinkfan --status` and
+refresh the integration. A successful helper install does not configure or start
+`thinkfan.service`; enabling managed control is a separate user action.
 
 If `--status` reports `thinkfan-unavailable`, install ThinkFan and ensure `thinkfan` is in the system `PATH`.
 

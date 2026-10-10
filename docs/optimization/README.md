@@ -4,7 +4,7 @@ This directory is the **single active home for optimization documentation**.
 Do not create new optimization research Markdown elsewhere in `docs/`.
 
 The active task router remains
-[`to-do/cloud-bot/OPTIMIZATION.md`](../../to-do/cloud-bot/OPTIMIZATION.md);
+[`to-do/cloud-bot/REWORK_OPTIMIZATION.md`](../../to-do/cloud-bot/REWORK_OPTIMIZATION.md);
 that file routes work only and must not become a second technical ledger.
 
 ## Active documents
@@ -31,7 +31,7 @@ they are evidence artifacts, not competing optimization ledgers.
 ## Rules
 
 - Re-fetch current `dev`, read `AGENTS.md` and
-  `to-do/cloud-bot/OPTIMIZATION.md` before each research/write pass.
+  `to-do/cloud-bot/REWORK_OPTIMIZATION.md` before each research/write pass.
 - Search the canonical audit before promoting a candidate to avoid duplicate,
   ALREADY/CLOSED/SUPERSEDED findings.
 - Strict-lossless is the default. Visual substitutions require the audit's

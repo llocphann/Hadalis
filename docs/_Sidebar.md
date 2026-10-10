@@ -37,3 +37,9 @@
 - [Compositors](COMPOSITORS)
 - [Optimization research](optimization/STRICT_LOSSLESS_GPU_RAM_CPU_AUDIT.md)
 - [NixOS](NIXOS)
+
+### Development
+
+- [Current documentation](README.md)
+- [Chatbot tasks](../to-do/README.md)
+- [Historical documents](archive/README.md)

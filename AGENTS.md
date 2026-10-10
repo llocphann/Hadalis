@@ -13,10 +13,13 @@ Hadalis uses a single-agent development workflow on `dev`.
 7. Waffle is a separate supported shell family. Never classify Waffle as legacy or remove it as ii/Connected Perimeter cleanup.
 8. Prefer behavior/contract tests over implementation-spelling grep assertions. Do not change runtime behavior merely to make a stale test green.
 9. Use `to-do/` as the single active chatbot task entry point. ChatGPT is the only reasoning agent; repository tests and the canonical maintainer validator are the execution/acceptance path. Do not create bot-number, ownership, collision-boundary, separate task-board or handoff bureaucracy. Continue the highest-value unresolved work in one agent context.
+10. Automatically classify every new maintainer request into `Issues/bugs`, `Rework/optimization`, or `New features` before working on it. Merge duplicates; split mixed requests into their relevant categories. Default work order is Issues/bugs → Rework/optimization → New features unless the maintainer explicitly changes the immediate priority. Keep unverified source fixes open with their remaining acceptance; archive fully completed items after seven days. Follow the task index's archive policy.
 
 ## Task routing
 
 Read `to-do/README.md` after this file. Keep active work in `to-do/cloud-bot/`. Technical research remains in `docs/` and archives remain historical.
+
+The only active task lists are `ISSUES.md`, `REWORK_OPTIMIZATION.md`, and `NEW_FEATURES.md` in `to-do/cloud-bot/`. Old ABYSS/OPTIMIZATION/RELEASE links are compatibility pointers, not competing checklists. Record new reports and meaningful progress in the appropriate category, not in another chronological handoff document.
 
 ## Current product priorities
 

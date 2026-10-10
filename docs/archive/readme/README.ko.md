@@ -1,3 +1,5 @@
+> Historical snapshot archived on 2026-10-10 from Hadalis `8b2ed6f0a1fccddade206f0060ed19d19337a5da`. This document does not assign active work or prove that pending acceptance is complete. Use [the current categorized tasks](../../../to-do/README.md).
+
 <p align="center">
   <img src="https://github.com/user-attachments/assets/da6beb4a-ccee-40ba-a372-5eea77b595f8" alt="iNiR" width="800">
 </p>
@@ -30,7 +32,7 @@
 
 ---
 
-> **번역에 대해:** 커뮤니티 번역입니다. 불명확한 부분은 [영어 버전](../../README.md)을 참조하세요.
+> **번역에 대해:** 커뮤니티 번역입니다. 불명확한 부분은 [영어 버전](../../../README.md)을 참조하세요.
 
 ---
 
@@ -204,7 +206,7 @@ inir doctor                     # 자동 진단 및 수정
 inir update                     # pull + 마이그레이션 + 재시작
 ```
 
-**지원 배포판:** Arch (자동 설치 프로그램). 다른 배포판은 수동 설치 가능 — [PACKAGES.md](../PACKAGES.md) 참조.
+**지원 배포판:** Arch (자동 설치 프로그램). 다른 배포판은 수동 설치 가능 — [PACKAGES.md](../../PACKAGES.md) 참조.
 
 | 방법 | 명령 |
 |--------|---------|
@@ -226,7 +228,7 @@ inir update                     # pull + 마이그레이션 + 재시작
 | `Super+,` | 설정 |
 | `Super+Shift+W` | 패널 패밀리 전환 |
 
-전체 목록: [KEYBINDS.md](../KEYBINDS.md)
+전체 목록: [KEYBINDS.md](../../KEYBINDS.md)
 
 ---
 
@@ -240,13 +242,13 @@ inir update                     # pull + 마이그레이션 + 재시작
 
 | | |
 |---|---|
-| [INSTALL.md](../INSTALL.md) | 설치 가이드 |
-| [SETUP.md](../SETUP.md) | Setup 명령어 — 업데이트, 마이그레이션, 롤백 |
-| [KEYBINDS.md](../KEYBINDS.md) | 모든 키보드 단축키 |
-| [IPC.md](../IPC.md) | 스크립팅 및 단축키용 IPC 대상 |
-| [PACKAGES.md](../PACKAGES.md) | 모든 의존성과 이유 |
-| [LIMITATIONS.md](../LIMITATIONS.md) | 알려진 제한 사항과 해결 방법 |
-| [ARCHITECTURE.md](../../ARCHITECTURE.md) | 기술 아키텍처 개요 |
+| [INSTALL.md](../../INSTALL.md) | 설치 가이드 |
+| [SETUP.md](../../SETUP.md) | Setup 명령어 — 업데이트, 마이그레이션, 롤백 |
+| [KEYBINDS.md](../../KEYBINDS.md) | 모든 키보드 단축키 |
+| [IPC.md](../../IPC.md) | 스크립팅 및 단축키용 IPC 대상 |
+| [PACKAGES.md](../../PACKAGES.md) | 모든 의존성과 이유 |
+| [LIMITATIONS.md](../../LIMITATIONS.md) | 알려진 제한 사항과 해결 방법 |
+| [ARCHITECTURE.md](../../../ARCHITECTURE.md) | 기술 아키텍처 개요 |
 
 ---
 
@@ -260,13 +262,13 @@ inir repair                     # doctor + 재시작 + 필터링된 로그 확�
 ./setup rollback                # 마지막 업데이트 취소
 ```
 
-이슈를 열기 전에 [LIMITATIONS.md](../LIMITATIONS.md)를 확인하세요.
+이슈를 열기 전에 [LIMITATIONS.md](../../LIMITATIONS.md)를 확인하세요.
 
 ---
 
 ## 기여
 
-[CONTRIBUTING.md](../../CONTRIBUTING.md) 참조 — 개발 환경 설정, 코드 패턴, PR 가이드라인.
+[CONTRIBUTING.md](../../../CONTRIBUTING.md) 참조 — 개발 환경 설정, 코드 패턴, PR 가이드라인.
 
 ---
 

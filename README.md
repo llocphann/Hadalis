@@ -99,10 +99,10 @@ radius      -> PerimeterTokens.frameRadius
 
 The iRiS migration is complete and is now the production baseline. Before any
 future perimeter/connected-surface optimization, read
-`docs/IRIS_INTEGRATION_COMPLETE.md`. New work should focus on optimization,
+[the archived migration notes](docs/archive/surfaces/IRIS_INTEGRATION_COMPLETE.md). New work should focus on optimization,
 bug fixing and refinement rather than reopening the migration.
 
-Optimization research is centralized under `docs/optimization/`; the active task entry is `to-do/cloud-bot/OPTIMIZATION.md`. Superseded chat handoffs are retained only under `docs/archive/optimization/`.
+Optimization research is centralized under [docs/optimization](docs/optimization/README.md); pending implementation is tracked in [Rework/optimization](to-do/cloud-bot/REWORK_OPTIMIZATION.md). Superseded documents are indexed in [the archive](docs/archive/README.md).
 
 **Fullscreen Bar lifecycle lock (maintainer-approved 2026-09-19):**
 
@@ -168,11 +168,11 @@ Further equalizer presentation experiments are planned/deferred rather than curr
 
 ## 3. v1.0 release blockers
 
-The active source/release checklist now lives in [`to-do/cloud-bot/RELEASE.md`](to-do/cloud-bot/RELEASE.md). See [`docs/VALIDATION.md`](docs/VALIDATION.md) for the canonical SHA-pinned validator and maintainer-only live acceptance.
+Active correctness/release gates live in [Issues/bugs](to-do/cloud-bot/ISSUES.md); presentation and performance work lives in [Rework/optimization](to-do/cloud-bot/REWORK_OPTIMIZATION.md). See [canonical validation](docs/VALIDATION.md) for SHA-pinned local checks and separate maintainer desktop acceptance.
 
 ## 3.1 Latest maintainer runtime findings
 
-Current open/reconciliation tasks are at [`to-do/cloud-bot/ABYSS.md`](to-do/cloud-bot/ABYSS.md); original source-complete and historical status notes are retained at [`docs/archive/ABYSS_CHECKPOINT_BEFORE_TODO_2026-09-30.md`](docs/archive/ABYSS_CHECKPOINT_BEFORE_TODO_2026-09-30.md).
+Current open/reconciliation tasks start at [to-do/README.md](to-do/README.md), ordered Issues/bugs → Rework/optimization → New features. Original source-complete notes and past checkpoints remain in [the archive](docs/archive/README.md).
 
 ## 4. Connected-surface architecture contract
 
@@ -227,7 +227,7 @@ Rules:
 
 ## 6. v1.0 hardening tasks — P1
 
-See [`to-do/cloud-bot/RELEASE.md`](to-do/cloud-bot/RELEASE.md).
+See [Issues/bugs](to-do/cloud-bot/ISSUES.md) for correctness and release acceptance, then [Rework/optimization](to-do/cloud-bot/REWORK_OPTIMIZATION.md) for refinement.
 
 ## 7. Local release validation — P0 gate
 
@@ -264,6 +264,8 @@ Do not spend the 1.0 cycle on:
 To avoid future contradictions:
 
 - keep this README focused on **current** v1.0 requirements, invariants and release gates;
+- classify every maintainer request in [the chatbot task categories](to-do/README.md), merge duplicates and work Issues/bugs → Rework/optimization → New features unless explicitly reprioritized;
+- use [the documentation index](docs/README.md) for current references and [the archive](docs/archive/README.md) for retired/completed history; archive fully completed tasks after seven days and retain unresolved acceptance in the active lists;
 - treat the Material-only Global Theme rule as canonical anywhere older documentation still describes multiple Global Themes;
 - do not pin transient implementation status to old commit hashes here;
 - put historical changes in `CHANGELOG.md` / Git history;
@@ -274,7 +276,7 @@ If the maintainer gives a newer explicit instruction, that instruction supersede
 
 ## 11. Current unfinished handoff
 
-Start at [`to-do/README.md`](to-do/README.md), then the applicable Cloud Bot list. Historical unfinished/completed patches and the old prompt are archived at [`docs/archive/ABYSS_CHECKPOINT_BEFORE_TODO_2026-09-30.md`](docs/archive/ABYSS_CHECKPOINT_BEFORE_TODO_2026-09-30.md); always verify current `dev`.
+Start at [to-do/README.md](to-do/README.md), then Issues/bugs, Rework/optimization and New features in that order. Old checkpoints/prompts are historical; always verify current `dev`.
 
 ## 12. New-conversation continuation
 

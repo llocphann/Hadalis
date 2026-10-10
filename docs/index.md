@@ -57,4 +57,11 @@ The shell is configurable through Settings and `config.json`. Persistent writes 
 | Compositor support | [Compositors](COMPOSITORS) |
 | Performance | [Optimization research](optimization/STRICT_LOSSLESS_GPU_RAM_CPU_AUDIT.md) |
 
+## Development tasks
+
+Use [the documentation index](README.md) for current technical references and
+[the chatbot task entry](../to-do/README.md) for active work, ordered
+Issues/bugs → Rework/optimization → New features. Older plans/checkpoints live
+in [the archive](archive/README.md), with unresolved acceptance carried forward.
+
 If the wiki disagrees with the current shell, the shell wins. Then the wiki gets fixed.

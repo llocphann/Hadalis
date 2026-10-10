@@ -1,4 +1,4 @@
-> **ARCHIVED / SUPERSEDED — 2026-10-07.** Active optimization routing is now `to-do/cloud-bot/OPTIMIZATION.md` plus `docs/optimization/README.md`. This dated prompt is retained only for history.
+> **ARCHIVED / SUPERSEDED — 2026-10-07.** Current work starts at [the categorized task entry](../../../to-do/README.md); [optimization research](../../optimization/README.md) stays separate. This dated prompt is retained only for history.
 
 # Prompt — Next Chat: Optimization / Bug Fix / Refinement
 

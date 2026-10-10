@@ -1,6 +1,6 @@
 # Archived agent/WORK.md checkpoint
 
-**Historical only**; current Cloud Bot objective is [`../../to-do/cloud-bot/OPTIMIZATION.md`](../../to-do/cloud-bot/OPTIMIZATION.md).
+**Historical only**; current work starts at [the categorized task entry](../../to-do/README.md), ordered Issues/bugs → Rework/optimization → New features.
 
 # Active autonomous work
 

@@ -1,3 +1,5 @@
+> Historical snapshot archived on 2026-10-10 from Hadalis `8b2ed6f0a1fccddade206f0060ed19d19337a5da`. This document does not assign active work or prove that pending acceptance is complete. Use [the current categorized tasks](../../../to-do/README.md).
+
 <p align="center">
   <img src="https://github.com/user-attachments/assets/da6beb4a-ccee-40ba-a372-5eea77b595f8" alt="iNiR" width="800">
 </p>
@@ -30,7 +32,7 @@
 
 ---
 
-> **翻訳について：** コミュニティ翻訳です。不明な点があれば[英語版](../../README.md)をご参照ください。
+> **翻訳について：** コミュニティ翻訳です。不明な点があれば[英語版](../../../README.md)をご参照ください。
 
 ---
 
@@ -204,7 +206,7 @@ inir doctor                     # 自動診断と修復
 inir update                     # pull + マイグレーション + 再起動
 ```
 
-**対応ディストリビューション：** Arch（自動インストーラー）。他のディストリビューションは手動インストール可能 — [PACKAGES.md](../PACKAGES.md) を参照。
+**対応ディストリビューション：** Arch（自動インストーラー）。他のディストリビューションは手動インストール可能 — [PACKAGES.md](../../PACKAGES.md) を参照。
 
 | 方法 | コマンド |
 |--------|---------|
@@ -226,7 +228,7 @@ inir update                     # pull + マイグレーション + 再起動
 | `Super+,` | 設定 |
 | `Super+Shift+W` | パネルファミリー切り替え |
 
-全リスト：[KEYBINDS.md](../KEYBINDS.md)
+全リスト：[KEYBINDS.md](../../KEYBINDS.md)
 
 ---
 
@@ -240,13 +242,13 @@ inir update                     # pull + マイグレーション + 再起動
 
 | | |
 |---|---|
-| [INSTALL.md](../INSTALL.md) | インストールガイド |
-| [SETUP.md](../SETUP.md) | Setup コマンド — アップデート、マイグレーション、ロールバック |
-| [KEYBINDS.md](../KEYBINDS.md) | すべてのキーボードショートカット |
-| [IPC.md](../IPC.md) | スクリプトとキーバインド用 IPC ターゲット |
-| [PACKAGES.md](../PACKAGES.md) | すべての依存関係とその理由 |
-| [LIMITATIONS.md](../LIMITATIONS.md) | 既知の制限と回避策 |
-| [ARCHITECTURE.md](../../ARCHITECTURE.md) | 技術アーキテクチャ概要 |
+| [INSTALL.md](../../INSTALL.md) | インストールガイド |
+| [SETUP.md](../../SETUP.md) | Setup コマンド — アップデート、マイグレーション、ロールバック |
+| [KEYBINDS.md](../../KEYBINDS.md) | すべてのキーボードショートカット |
+| [IPC.md](../../IPC.md) | スクリプトとキーバインド用 IPC ターゲット |
+| [PACKAGES.md](../../PACKAGES.md) | すべての依存関係とその理由 |
+| [LIMITATIONS.md](../../LIMITATIONS.md) | 既知の制限と回避策 |
+| [ARCHITECTURE.md](../../../ARCHITECTURE.md) | 技術アーキテクチャ概要 |
 
 ---
 
@@ -260,13 +262,13 @@ inir repair                     # doctor + 再起動 + フィルタ済みログ�
 ./setup rollback                # 最後のアップデートを取り消し
 ```
 
-issue を開く前に [LIMITATIONS.md](../LIMITATIONS.md) を確認してください。
+issue を開く前に [LIMITATIONS.md](../../LIMITATIONS.md) を確認してください。
 
 ---
 
 ## コントリビュート
 
-[CONTRIBUTING.md](../../CONTRIBUTING.md) を参照 — 開発環境のセットアップ、コードパターン、PR ガイドライン。
+[CONTRIBUTING.md](../../../CONTRIBUTING.md) を参照 — 開発環境のセットアップ、コードパターン、PR ガイドライン。
 
 ---
 

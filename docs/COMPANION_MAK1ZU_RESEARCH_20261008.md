@@ -1,3 +1,3 @@
-# Companion research moved to Hadanion
+# Archived document
 
-The source-pinned local LLM research is maintained in [Hadanion](https://github.com/llocphann/Hadanion/blob/main/docs/COMPANION_MAK1ZU_RESEARCH_20261008.md). Historical introduction: Hadalis `b3e05cb4e59cd266a78057fbe4ae95ca679f316f`.
+The former document is [in the archive](archive/companion/COMPANION_MAK1ZU_RESEARCH_20261008.md). Current work is listed in [the chatbot tasks](../to-do/README.md).

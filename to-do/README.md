@@ -1,7 +1,16 @@
-# Hadalis chatbot to-do
+# Hadalis chatbot tasks
 
-**Single entry point for active chatbot work.** Read `AGENTS.md`, fetch the current `dev` HEAD, then use the Cloud Bot task index below.
+Read `AGENTS.md`, refetch `dev`, then follow this order:
 
-- [Cloud Bot](cloud-bot/README.md): ChatGPT is the only reasoning agent; it investigates, plans, implements authorized source changes, interprets evidence and records optimization research.
+1. [Issues/bugs — fix first](cloud-bot/ISSUES.md).
+2. [Rework/optimization](cloud-bot/REWORK_OPTIMIZATION.md).
+3. [New features](cloud-bot/NEW_FEATURES.md).
 
-Use repository tests and `bash scripts/validate-maintainer-local.sh` for local validation. Keep research histories, technical design specifications and finished patch journals in `docs/` or `docs/archive/`, **not** as competing active work lists. The application's separate Todo/Obsidian feature and its QML files are not chatbot tasks.
+[Task rules and archive policy](cloud-bot/README.md) govern incoming requests,
+deduplication, completion and automatic classification. This is the single entry
+point for chatbot work. The application's Todo/Obsidian feature is separate.
+
+Keep technical research in [docs/optimization](../docs/optimization/README.md)
+and historical records in [the archive](../docs/archive/README.md). Validate with
+repository regressions and `bash scripts/validate-maintainer-local.sh`; source,
+exact-SHA local checks and owner desktop acceptance are separate evidence.

@@ -1,3 +1,5 @@
+> Historical snapshot archived on 2026-10-10 from Hadalis `8b2ed6f0a1fccddade206f0060ed19d19337a5da`. This document does not assign active work or prove that pending acceptance is complete. Use [the current categorized tasks](../../../to-do/README.md).
+
 <p align="center">
   <img src="https://github.com/user-attachments/assets/da6beb4a-ccee-40ba-a372-5eea77b595f8" alt="iNiR" width="800">
 </p>
@@ -30,7 +32,7 @@
 
 ---
 
-> **Sobre la traducción:** Traducción comunitaria. Si algo no se entiende, consultá la [versión en inglés](../../README.md).
+> **Sobre la traducción:** Traducción comunitaria. Si algo no se entiende, consultá la [versión en inglés](../../../README.md).
 
 ---
 
@@ -204,7 +206,7 @@ inir doctor                     # auto-diagnosticar y arreglar
 inir update                     # pull + migrar + reiniciar
 ```
 
-**Distros soportadas:** Arch (instalador automatizado). Otras distros pueden instalar manualmente — ver [PACKAGES.md](../PACKAGES.md).
+**Distros soportadas:** Arch (instalador automatizado). Otras distros pueden instalar manualmente — ver [PACKAGES.md](../../PACKAGES.md).
 
 | Método | Comando |
 |--------|---------|
@@ -226,7 +228,7 @@ inir update                     # pull + migrar + reiniciar
 | `Super+,` | Configuración |
 | `Super+Shift+W` | Cambiar familia de paneles |
 
-Lista completa: [KEYBINDS.md](../KEYBINDS.md)
+Lista completa: [KEYBINDS.md](../../KEYBINDS.md)
 
 ---
 
@@ -240,13 +242,13 @@ Lista completa: [KEYBINDS.md](../KEYBINDS.md)
 
 | | |
 |---|---|
-| [INSTALL.md](../INSTALL.md) | Guía de instalación |
-| [SETUP.md](../SETUP.md) | Comandos del setup — updates, migraciones, rollback |
-| [KEYBINDS.md](../KEYBINDS.md) | Todos los atajos de teclado |
-| [IPC.md](../IPC.md) | Targets IPC para scripting y atajos custom |
-| [PACKAGES.md](../PACKAGES.md) | Cada paquete y por qué está |
-| [LIMITATIONS.md](../LIMITATIONS.md) | Limitaciones conocidas y workarounds |
-| [ARCHITECTURE.md](../../ARCHITECTURE.md) | Arquitectura técnica del proyecto |
+| [INSTALL.md](../../INSTALL.md) | Guía de instalación |
+| [SETUP.md](../../SETUP.md) | Comandos del setup — updates, migraciones, rollback |
+| [KEYBINDS.md](../../KEYBINDS.md) | Todos los atajos de teclado |
+| [IPC.md](../../IPC.md) | Targets IPC para scripting y atajos custom |
+| [PACKAGES.md](../../PACKAGES.md) | Cada paquete y por qué está |
+| [LIMITATIONS.md](../../LIMITATIONS.md) | Limitaciones conocidas y workarounds |
+| [ARCHITECTURE.md](../../../ARCHITECTURE.md) | Arquitectura técnica del proyecto |
 
 ---
 
@@ -260,13 +262,13 @@ inir repair                     # doctor + restart + chequeo de logs filtrado
 ./setup rollback                # deshacer la última actualización
 ```
 
-Revisá [LIMITATIONS.md](../LIMITATIONS.md) antes de abrir un issue.
+Revisá [LIMITATIONS.md](../../LIMITATIONS.md) antes de abrir un issue.
 
 ---
 
 ## Contribuir
 
-Ver [CONTRIBUTING.md](../../CONTRIBUTING.md) para setup de desarrollo, patrones de código y lineamientos de PRs.
+Ver [CONTRIBUTING.md](../../../CONTRIBUTING.md) para setup de desarrollo, patrones de código y lineamientos de PRs.
 
 ---
 

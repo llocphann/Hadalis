@@ -1,3 +1,5 @@
+> Historical snapshot archived on 2026-10-10 from Hadalis `8b2ed6f0a1fccddade206f0060ed19d19337a5da`. This document does not assign active work or prove that pending acceptance is complete. Use [the current categorized tasks](../../../to-do/README.md).
+
 <p align="center">
   <img src="https://github.com/user-attachments/assets/da6beb4a-ccee-40ba-a372-5eea77b595f8" alt="iNiR" width="800">
 </p>
@@ -30,7 +32,7 @@
 
 ---
 
-> **关于翻译：** 社区翻译。如有不明之处，请参阅[英文版](../../README.md)。
+> **关于翻译：** 社区翻译。如有不明之处，请参阅[英文版](../../../README.md)。
 
 ---
 
@@ -204,7 +206,7 @@ inir doctor                     # 自动诊断和修复
 inir update                     # 拉取 + 迁移 + 重启
 ```
 
-**支持的发行版：** Arch（自动化安装器）。其他发行版可手动安装——参见 [PACKAGES.md](../PACKAGES.md)。
+**支持的发行版：** Arch（自动化安装器）。其他发行版可手动安装——参见 [PACKAGES.md](../../PACKAGES.md)。
 
 | 方式 | 命令 |
 |--------|---------|
@@ -226,7 +228,7 @@ inir update                     # 拉取 + 迁移 + 重启
 | `Super+,` | 设置 |
 | `Super+Shift+W` | 切换面板家族 |
 
-完整列表：[KEYBINDS.md](../KEYBINDS.md)
+完整列表：[KEYBINDS.md](../../KEYBINDS.md)
 
 ---
 
@@ -240,13 +242,13 @@ inir update                     # 拉取 + 迁移 + 重启
 
 | | |
 |---|---|
-| [INSTALL.md](../INSTALL.md) | 安装指南 |
-| [SETUP.md](../SETUP.md) | Setup 命令 — 更新、迁移、回滚 |
-| [KEYBINDS.md](../KEYBINDS.md) | 所有快捷键 |
-| [IPC.md](../IPC.md) | 用于脚本和快捷键的 IPC 目标 |
-| [PACKAGES.md](../PACKAGES.md) | 每个依赖及其用途 |
-| [LIMITATIONS.md](../LIMITATIONS.md) | 已知限制和解决方法 |
-| [ARCHITECTURE.md](../../ARCHITECTURE.md) | 技术架构概述 |
+| [INSTALL.md](../../INSTALL.md) | 安装指南 |
+| [SETUP.md](../../SETUP.md) | Setup 命令 — 更新、迁移、回滚 |
+| [KEYBINDS.md](../../KEYBINDS.md) | 所有快捷键 |
+| [IPC.md](../../IPC.md) | 用于脚本和快捷键的 IPC 目标 |
+| [PACKAGES.md](../../PACKAGES.md) | 每个依赖及其用途 |
+| [LIMITATIONS.md](../../LIMITATIONS.md) | 已知限制和解决方法 |
+| [ARCHITECTURE.md](../../../ARCHITECTURE.md) | 技术架构概述 |
 
 ---
 
@@ -260,13 +262,13 @@ inir repair                     # doctor + 重启 + 过滤日志检查
 ./setup rollback                # 撤销上次更新
 ```
 
-提交 issue 前请先查看 [LIMITATIONS.md](../LIMITATIONS.md)。
+提交 issue 前请先查看 [LIMITATIONS.md](../../LIMITATIONS.md)。
 
 ---
 
 ## 贡献
 
-参见 [CONTRIBUTING.md](../../CONTRIBUTING.md) — 开发环境配置、代码规范和 PR 指南。
+参见 [CONTRIBUTING.md](../../../CONTRIBUTING.md) — 开发环境配置、代码规范和 PR 指南。
 
 ---
 

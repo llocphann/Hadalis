@@ -1,3 +1,5 @@
+> Historical snapshot archived on 2026-10-10 from Hadalis `8b2ed6f0a1fccddade206f0060ed19d19337a5da`. This document does not assign active work or prove that pending acceptance is complete. Use [the current categorized tasks](../../../to-do/README.md).
+
 <p align="center">
   <img src="https://github.com/user-attachments/assets/da6beb4a-ccee-40ba-a372-5eea77b595f8" alt="iNiR" width="800">
 </p>
@@ -30,7 +32,7 @@
 
 ---
 
-> **अनुवाद के बारे में:** सामुदायिक अनुवाद। अगर कुछ स्पष्ट न हो, तो [अंग्रेज़ी संस्करण](../../README.md) देखें।
+> **अनुवाद के बारे में:** सामुदायिक अनुवाद। अगर कुछ स्पष्ट न हो, तो [अंग्रेज़ी संस्करण](../../../README.md) देखें।
 
 ---
 
@@ -204,7 +206,7 @@ inir doctor                     # ऑटो-डायग्नोस और ठ�
 inir update                     # pull + माइग्रेशन + रीस्टार्ट
 ```
 
-**समर्थित डिस्ट्रो:** Arch (स्वचालित इंस्टॉलर)। अन्य डिस्ट्रो मैन्युअल रूप से इंस्टॉल कर सकते हैं — देखें [PACKAGES.md](../PACKAGES.md)।
+**समर्थित डिस्ट्रो:** Arch (स्वचालित इंस्टॉलर)। अन्य डिस्ट्रो मैन्युअल रूप से इंस्टॉल कर सकते हैं — देखें [PACKAGES.md](../../PACKAGES.md)।
 
 | तरीक़ा | कमांड |
 |--------|---------|
@@ -226,7 +228,7 @@ inir update                     # pull + माइग्रेशन + रीस
 | `Super+,` | सेटिंग्स |
 | `Super+Shift+W` | पैनल फ़ैमिली बदलें |
 
-पूर्ण सूची: [KEYBINDS.md](../KEYBINDS.md)
+पूर्ण सूची: [KEYBINDS.md](../../KEYBINDS.md)
 
 ---
 
@@ -240,13 +242,13 @@ inir update                     # pull + माइग्रेशन + रीस
 
 | | |
 |---|---|
-| [INSTALL.md](../INSTALL.md) | इंस्टॉलेशन गाइड |
-| [SETUP.md](../SETUP.md) | Setup कमांड — अपडेट, माइग्रेशन, रोलबैक |
-| [KEYBINDS.md](../KEYBINDS.md) | सभी कीबोर्ड शॉर्टकट |
-| [IPC.md](../IPC.md) | स्क्रिप्टिंग और कीबाइंड के लिए IPC टारगेट |
-| [PACKAGES.md](../PACKAGES.md) | हर डिपेंडेंसी और उसका कारण |
-| [LIMITATIONS.md](../LIMITATIONS.md) | ज्ञात सीमाएँ और समाधान |
-| [ARCHITECTURE.md](../../ARCHITECTURE.md) | तकनीकी आर्किटेक्चर ओवरव्यू |
+| [INSTALL.md](../../INSTALL.md) | इंस्टॉलेशन गाइड |
+| [SETUP.md](../../SETUP.md) | Setup कमांड — अपडेट, माइग्रेशन, रोलबैक |
+| [KEYBINDS.md](../../KEYBINDS.md) | सभी कीबोर्ड शॉर्टकट |
+| [IPC.md](../../IPC.md) | स्क्रिप्टिंग और कीबाइंड के लिए IPC टारगेट |
+| [PACKAGES.md](../../PACKAGES.md) | हर डिपेंडेंसी और उसका कारण |
+| [LIMITATIONS.md](../../LIMITATIONS.md) | ज्ञात सीमाएँ और समाधान |
+| [ARCHITECTURE.md](../../../ARCHITECTURE.md) | तकनीकी आर्किटेक्चर ओवरव्यू |
 
 ---
 
@@ -260,13 +262,13 @@ inir repair                     # doctor + रीस्टार्ट + फ़�
 ./setup rollback                # आख़िरी अपडेट पूर्ववत करें
 ```
 
-इश्यू खोलने से पहले [LIMITATIONS.md](../LIMITATIONS.md) देखें।
+इश्यू खोलने से पहले [LIMITATIONS.md](../../LIMITATIONS.md) देखें।
 
 ---
 
 ## योगदान
 
-[CONTRIBUTING.md](../../CONTRIBUTING.md) देखें — विकास सेटअप, कोड पैटर्न, और PR दिशानिर्देश।
+[CONTRIBUTING.md](../../../CONTRIBUTING.md) देखें — विकास सेटअप, कोड पैटर्न, और PR दिशानिर्देश।
 
 ---
 

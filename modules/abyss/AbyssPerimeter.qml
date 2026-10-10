@@ -1302,6 +1302,10 @@ Scope {
                 identity: "notification"
                 controller: liquid
                 anchors.fill: parent
+                // Keep toast labels/cards at their full resting dimensions
+                // behind the shrinking reveal clip. Its closing surface must
+                // not relayout content as the Notification Center opens.
+                stableContentSize: true
                 // This host ONLY owns transient notification banners. An open
                 // Notification Center has its own mature StyledPopup slot.
                 // Do not repurpose a closing banner into "center" content:

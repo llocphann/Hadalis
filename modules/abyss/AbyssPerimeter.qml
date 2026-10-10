@@ -1306,6 +1306,13 @@ Scope {
                 // behind the shrinking reveal clip. Its closing surface must
                 // not relayout content as the Notification Center opens.
                 stableContentSize: true
+                // Keep the banner's ListView loaded at target size while its
+                // delegates settle, before the visible reveal and allocator
+                // begin. On recording stop the saved-file-path card can require
+                // multiple layout passes; opening at a provisional height
+                // caused repeated field/placement work during animation.
+                residentContent: Notifications.popupList.length > 0
+                    && !Notifications.popupInhibited
                 // This host ONLY owns transient notification banners. An open
                 // Notification Center has its own mature StyledPopup slot.
                 // Do not repurpose a closing banner into "center" content:
@@ -1318,7 +1325,9 @@ Scope {
                 joinedEdge: window.presentation(presentationKind).joinCorner===true
                     ? ModuleLayout.adjacentEdge({edge:edge,along:along,span:span},window.width,window.height) : ""
                 outputName: window.outputName
-                open: window.presented && field.ready && (!GlobalStates.notificationCenterOpen && !Notifications.popupInhibited && Notifications.popupList.length > 0
+                open: window.presented && field.ready && (!GlobalStates.notificationCenterOpen
+                        && !Notifications.popupInhibited && Notifications.popupList.length > 0
+                        && (contentItem.item?.popupLayoutReady ?? false)
                         && (Config.options?.enabledPanels ?? []).includes("abyssNotificationPopup")
                         && Geometry.targets(window.outputName,Config.options?.notifications?.screenList ?? [],Quickshell.screens.map(s => s.name)))
                 edgeInsets: window.bodyInsets(edge,along,span)

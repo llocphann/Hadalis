@@ -207,6 +207,10 @@ LazyLoader {
         || root._liquidAnchor?.feature?.hovered
         || root.hoverTarget?.containsMouse
         || root.hoverTarget?.hovered)
+    // The source item/module and the real popup body own hover. The painted
+    // connector/shoulders never create an independent keep-open lease.
+    readonly property bool sourceEdgeHovered: root.moduleHoverActive
+        || (root._anchorHover?.hovered ?? false)
     property bool barAutoHideHoldEnabled: true
     property int _barPopupHoverLeaseId: 0
     property bool alternativeVisibleCondition: false
@@ -331,12 +335,12 @@ LazyLoader {
     // hover-activated, the body itself also counts as the request so the pointer
     // can travel from the bar through the connected shoulder without collapse.
     readonly property bool humanVisibleRequest: root.alternativeVisibleCondition
-        || (root.hoverActivates && (root.moduleHoverActive || root._anchorHover.hovered || root.popupHovered))
+        || (root.hoverActivates && (root.sourceEdgeHovered || root.popupHovered))
     onHumanVisibleRequestChanged: if (humanVisibleRequest) companionLease = null
     readonly property bool _rawVisibleRequest: root.companionLease !== null || root.humanVisibleRequest
     readonly property bool requestedVisible: !root._liquidDismissed && root._rawVisibleRequest
-    // Abyss semantic ownership includes only the 90 ms compositor hand-off
-    // grace, never the visual retract tail.
+    // Abyss semantic ownership includes only a bounded pointer leave/enter
+    // debounce, never the painted connector or visual retract tail.
     readonly property bool liquidSemanticVisible:
         root.requestedVisible || root._liquidSemanticHold
     on_RawVisibleRequestChanged: if (!root._rawVisibleRequest) root._liquidDismissed = false
@@ -441,10 +445,9 @@ LazyLoader {
         if (!root._lingerVisible)
             return
 
-        // Bar and popup are separate layer-shell surfaces. Compositors can emit
-        // one leave before the matching enter when the pointer crosses their
-        // shared seam. Give that hand-off a short grace period so a transient
-        // all-false hover state cannot start a retract/reopen oscillation.
+        // The only hover owners are the source edge and popup body. When both
+        // leave, debounce briefly for cross-window event ordering (not bridge
+        // ownership); then retract if neither owner reacquires hover.
         if (root.hoverActivates) {
             root._liquidSemanticHold = true
             hoverTransferTimer.restart()
@@ -486,14 +489,21 @@ LazyLoader {
     // `contentItem` is the default property and accepts only QQuickItem. Keep
     // internal QObject/QWindow helpers on explicit object properties so they are
     // never routed through the popup content contract during type construction.
+    property int hoverTransferGraceMs: 90
     property QtObject _hoverTransferTimerObject: Timer {
         id: hoverTransferTimer
-        interval: 90
+        interval: Math.max(0, root.hoverTransferGraceMs)
         repeat: false
         onTriggered: {
+            // A new edge/body hover may have arrived during the final timer
+            // tick. Never retract a visit which still has a true owner.
+            if (root.requestedVisible || (root.hoverActivates
+                    && (root.sourceEdgeHovered || root.popupHovered))) {
+                root._liquidSemanticHold = false
+                return
+            }
             root._liquidSemanticHold = false
-            if (!root.requestedVisible)
-                root._beginRetract()
+            root._beginRetract()
         }
     }
 

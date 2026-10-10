@@ -64,6 +64,24 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   the normal seven-day retention window.
 
 - [ ] **Popup/Edgebar closes while hovered — received/updated 2026-10-10:**
+  **Owner update, 2026-10-10 evening — LOCAL DESKTOP CHATBOT NEXT:**
+  The owner retested TWO successive cloud hover/bridge fixes and explicitly
+  reported **no improvement** (latest video: `2026-10-10_21.21.26.mp4`,
+  supplied in the chat, not tracked in Git). At the owner's request,
+  ALL runtime QML/JS, test and validation changes from the attempts were
+  reverted exactly to pre-experiment commit
+  `a7e76b509075ba1a3f2bc9d0c16b6a5e76672ba1`, with original source
+  blob SHAs verified and no runtime/test diff at final revert
+  `eb3f9d35133e41e7ad343b94c74671fc7fe5e9ac`.
+  **Do not reuse** either rejected approach or claim the green 42/42 and
+  31/31 source expression tests proved native pointer correctness.
+  The local chatbot must investigate with real Niri/Quickshell pointer
+  event/input-mask and semantic lifetime evidence before making a fix.
+  **Complete technical notes, precise reproduction and acceptance:**
+  [Popup–Screen Edge native hover investigation]
+  (../../docs/abyss/POPUP_EDGE_HOVER_UNRESOLVED_2026-10-10.md).
+  Status **OPEN**, owner acceptance pending; no new runtime patch authorized
+  by this revert/documentation action.
   NEW OWNER REPRO 2026-10-10: moving the pointer across the gap/connection
   between a Popup and its Screen Edge still loses hover/focus and automatically
   dismisses the Popup. Owner supplied `2026-10-10_13.34.50.mp4` (31.93 s,

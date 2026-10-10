@@ -13,13 +13,23 @@ for(const owner of ['top','bottom','left','right']) {
    const rec=panel(w,h,ins,owner,100,240,180,progress,14);
    const original=JSON.stringify(rec.content);
    const hit=popupInput(rec.content,w,h,ins,owner);
+   const paintedHit=popupInput(rec.content,w,h,ins,owner,rec.surface);
    assert.equal(JSON.stringify(rec.content),original,'connection hitbox must not alter presentation geometry');
    assert(hit.x>=0 && hit.y>=0 && hit.x+hit.width<=w && hit.y+hit.height<=h);
-   if(progress===0) { assert.equal(hit.width*hit.height,0); continue; }
+   assert(paintedHit.x>=0 && paintedHit.y>=0 && paintedHit.x+paintedHit.width<=w && paintedHit.y+paintedHit.height<=h);
+   if(progress===0) { assert.equal(hit.width*hit.height,0); assert.equal(paintedHit.width*paintedHit.height,0); continue; }
+   const contains=(x,y)=>x>=paintedHit.x && y>=paintedHit.y && x<=paintedHit.x+paintedHit.width && y<=paintedHit.y+paintedHit.height;
+   const c=rec.content;
+   for(const [x,y] of [[c.x-7,c.y+c.height/2],[c.x+c.width+7,c.y+c.height/2],[c.x+c.width/2,c.y-7],[c.x+c.width/2,c.y+c.height+7]]){
+    assert(distance(x,y,w,h,ins,34,[rec],24)<0,'tested padding is actually painted');
+    assert(contains(x,y),'painted padding must retain body/bridge hover');
+   }
    if(horizontal(owner)) {
+    assert.equal(paintedHit.x,rec.surface.x);assert.equal(paintedHit.width,rec.surface.width,'painted input is bounded to body tangent footprint');
     assert.equal(hit.x,rec.content.x);assert.equal(hit.width,rec.content.width,'no output-wide hover strip');
     assert.equal(owner==='top'?hit.y:hit.y+hit.height,owner==='top'?ins.top:h-ins.bottom);
    } else {
+    assert.equal(paintedHit.y,rec.surface.y);assert.equal(paintedHit.height,rec.surface.height,'painted input is bounded to body tangent footprint');
     assert.equal(hit.y,rec.content.y);assert.equal(hit.height,rec.content.height,'no output-wide hover strip');
     assert.equal(owner==='left'?hit.x:hit.x+hit.width,owner==='left'?ins.left:w-ins.right);
    }

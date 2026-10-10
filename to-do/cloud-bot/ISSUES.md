@@ -6,6 +6,23 @@ that implementation is missing. Refetch current `dev` before diagnosing.
 
 ## Current failures and owner reports
 
+- [ ] **Popup/Edgebar closes while hovered — received 2026-10-10:** popups and
+  Edgebars must stay open while the pointer is inside their actual body or the
+  drawn connection to the Screen Edge. Source repaired after Dashboard slide
+  `8c673129b`. Private pointer tests reproduced dismissal on painted padding and
+  interactive MouseArea children. Source now uses the unjoined painted footprint
+  for body/bridge input, makes that hover plane an ancestor of contents, and
+  coalesces Bar hold publication after the binding turn to prevent re-entry.
+  Native tests pass all four edges with sustained generic/mature body, padding
+  and bridge hover, interactive children, auto-hide Bar hold/release, final leave,
+  reopen, click-only actions and editor focus. Clock/Weather handoff (1,147
+  samples), connected Recording and cold remount tests also pass. State: waiting
+  for canonical exact-SHA validation and owner normal desktop acceptance.
+  Logs: `/tmp/hadalis-popup-hover-padding-red-20261010.log`,
+  `/tmp/hadalis-popup-hover-child-red-20261010.log`,
+  `/tmp/hadalis-popup-hover-padding-green-20261010.log`.
+  This new report reopens the relevant hover acceptance below.
+
 - [ ] **Canonical validation:** the clean-clone strict-QML run at exact SHA
   `8b2ed6f0a1fccddade206f0060ed19d19337a5da` finished **FAIL: 334 PASS, 1 FAIL,
   1 SKIP** on 2026-10-10. `test-shell-surface-contracts.py` expects Settings at

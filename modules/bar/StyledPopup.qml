@@ -44,7 +44,7 @@ LazyLoader {
             if (!root || !root._live) return
             root.syncCompanionAnchor()
             root.syncLiquidPresentation()
-            root._syncBarAutoHideLease()
+            Qt.callLater(root._syncBarAutoHideLease)
         })
     }
     function startColdAnchorResolution(): void {
@@ -164,7 +164,7 @@ LazyLoader {
     }
     property QtObject _liquidPresentationConnections: Connections {
         target: root
-        function onPresentationActiveChanged() { root.syncLiquidPresentation(); root._syncBarAutoHideLease() }
+        function onPresentationActiveChanged() { root.syncLiquidPresentation(); Qt.callLater(root._syncBarAutoHideLease) }
         function onContentItemChanged() { root.syncLiquidPresentation() }
         function on_LiquidControllerChanged() {
             if (root._liquidController) anchorResolveRetry.stop()
@@ -355,22 +355,25 @@ LazyLoader {
     active: !root.embeddedHost && !root._liquidController && root._anchorReady && (root.requestedVisible || root._lingerVisible)
 
     function _syncBarAutoHideLease(): void {
-        if (root._barPopupHoverLeaseId <= 0)
+        if (!root || !root._live || root._barPopupHoverLeaseId <= 0)
             return
         GlobalStates.setBarPopupHoverLease(root._barPopupHoverLeaseId,
             String(root._anchorScreen?.name ?? ""),
             root.barAutoHideHoldEnabled && root.presentationActive && root._anchorReady)
     }
 
-    on_AnchorScreenChanged: root._syncBarAutoHideLease()
-    onBarAutoHideHoldEnabledChanged: root._syncBarAutoHideLease()
+    // The lease makes an auto-hide anchor visible, which in turn contributes
+    // to presentationActive. Publish after that binding turn to avoid re-entry.
+    // Qt.callLater coalesces calls to this same function.
+    on_AnchorScreenChanged: Qt.callLater(root._syncBarAutoHideLease)
+    onBarAutoHideHoldEnabledChanged: Qt.callLater(root._syncBarAutoHideLease)
 
     // Hover handlers belong to the lazily-created presentation window. Their
     // last true state must not survive eviction, anchor replacement or a
     // hidden bar: otherwise requestedVisible can resurrect a stale popup.
     onActiveChanged: {
         if (root._liquidController) return
-        root._syncBarAutoHideLease()
+        Qt.callLater(root._syncBarAutoHideLease)
         if (active) {
             // A hidden anchor can become ready while requestedVisible was
             // already true; resume the reveal without waiting for a new hover.
@@ -391,7 +394,7 @@ LazyLoader {
         root._liquidSemanticHold = false
         root._bodyHovered = false
         root._contentHovered = false
-        root._syncBarAutoHideLease()
+        Qt.callLater(root._syncBarAutoHideLease)
     }
 
     function _beginRetract(): void {
@@ -451,7 +454,7 @@ LazyLoader {
         root.syncCompanionAnchor()
         root.syncEmbeddedContent()
         root._barPopupHoverLeaseId = GlobalStates.allocateBarPopupHoverLease()
-        root._syncBarAutoHideLease()
+        Qt.callLater(root._syncBarAutoHideLease)
         root._syncRequestedVisibility()
         root.syncLiquidPresentation()
     }

@@ -4,10 +4,24 @@ function edge(vertical, bottom) { return vertical ? (bottom ? "right" : "left") 
 function horizontal(edge) { return edge === "top" || edge === "bottom"; }
 // Only the popup's tangent footprint reaches its owning inner Edge. Never
 // capture the output-wide strip or the full content canvas hidden by reveal.
-function popupInput(content,width,height,insets,edge) {
+function popupInput(content,width,height,insets,edge,paintedSurface) {
     if (!content || content.width <= 0 || content.height <= 0)
         return {x:0,y:0,width:0,height:0};
     var x=content.x,y=content.y,right=x+content.width,bottom=y+content.height;
+    // Feature bounds exclude the body's visual padding. Use the unjoined
+    // painted footprint when supplied, trimming its off-output extrusion at
+    // the owner seam below. Corner welding must not enlarge this hover lease.
+    if (paintedSurface && paintedSurface.width > 0 && paintedSurface.height > 0) {
+        if (horizontal(edge)) {
+            x=paintedSurface.x;right=x+paintedSurface.width;
+            if (edge === "top") bottom=paintedSurface.y+paintedSurface.height;
+            else y=paintedSurface.y;
+        } else {
+            y=paintedSurface.y;bottom=y+paintedSurface.height;
+            if (edge === "left") right=paintedSurface.x+paintedSurface.width;
+            else x=paintedSurface.x;
+        }
+    }
     if (edge === "top") y=Math.min(y,insets.top);
     else if (edge === "bottom") bottom=Math.max(bottom,height-insets.bottom);
     else if (edge === "left") x=Math.min(x,insets.left);

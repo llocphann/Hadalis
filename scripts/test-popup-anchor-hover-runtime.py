@@ -15,6 +15,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import Quickshell
+import qs
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.bar
@@ -25,6 +26,8 @@ ShellRoot {
  property int frames: 0
  property int clicks: 0
  property int idleCloses: 0
+ property int genericCloses: 0
+ property bool barRevealed: true
  property string edge: "bottom"
  QtObject { id: trigger; property bool triggerHovered: true }
  Component.onCompleted: Quickshell.watchFiles=false
@@ -49,6 +52,7 @@ ShellRoot {
     property var liquidController: controller
     property string attachedEdge: root.edge
     property string kind: "clock"
+    visible: root.barRevealed || GlobalStates.barPopupHoverHeld(window.screen.name)
     MouseArea { anchors.fill:parent; hoverEnabled:true; onClicked:root.clicks++ }
    }
    AbyssBodyHost {
@@ -70,9 +74,18 @@ ShellRoot {
      onHoveredChanged:if(host.hostedPopup) host.hostedPopup._contentHovered=hovered
     }
    }
+   AbyssGenericPopupPresenter {
+    id: genericHost; anchors.fill:parent
+    controller:controller;outputName:window.screen.name
+    outputWidth:scene.width;outputHeight:scene.height
+    presentationInsets:controller.edgeInsets
+    requestedKind:"utilities";requestedOpen:false
+    requestedFallbackEdge:root.edge;requestedAlongCenter:260
+    onCloseRequested: { root.genericCloses++;requestedOpen=false }
+   }
    AbyssPopupContent {
     id: generic; x:320; y:40; width:300; height:180
-    kind:"launcher"; enabled:false; participant:trigger; idleDismissDelay:150
+    kind:"launcher"; enabled:false; visible:enabled; participant:trigger; idleDismissDelay:150
     onCloseRequested: { root.idleCloses++;enabled=false }
     MaterialTextField { id: editor; visible:false; z:2; width:140; height:40; text:"fixture"; enableSettingsSearch:false }
    }
@@ -80,7 +93,10 @@ ShellRoot {
  }
  StyledPopup {
   id: popup; hoverTarget:anchor
-  Rectangle { implicitWidth:180; implicitHeight:100; color:"#29414b" }
+  Rectangle {
+   implicitWidth:180; implicitHeight:100; color:"#29414b"
+   MouseArea { anchors.fill:parent;hoverEnabled:true;onClicked:root.clicks++ }
+  }
  }
  TestCase {
   id: test; when:false; optional:true
@@ -91,10 +107,12 @@ ShellRoot {
    tryVerify(()=>root.frames>before,2000)
    check(root.frames>before,"scene render deadline")
   }
-  function outside() { mouseMove(scene,600,20);wait(160);render() }
+  function outside() { mouseMove(scene,600,20);wait(160);render();root.barRevealed=true }
   function runChecks() { try {
    tryCompare(Config,"ready",true,4000)
    Config.setNestedValue("performance.reduceAnimations",true)
+   Config.setNestedValue("bar.autoHide.enable",true)
+   GlobalStates.deferredPanelsReady=true
    render();outside()
    check(!popup.requestedVisible,"popup starts open")
    for(const edge of ["bottom","top","left","right"]) {
@@ -109,12 +127,29 @@ ShellRoot {
     const y=edge==="top" ? ins.top+6 : edge==="bottom" ? scene.height-ins.bottom-6 : content.y+content.height/2
     const before=JSON.stringify({content,input:host.inputBounds,x,y,edge:host.edge})
     mouseMove(scene,x,y);wait(220);render()
+    // The source hover timer expires after handoff. The actual output lease
+    // must keep its auto-hide source visible while the pointer owns the popup.
+    root.barRevealed=false
     check(popup.requestedVisible && popup._contentHovered,
        "dwelling on the visible "+edge+" connection closed the popup: "+before)
-    mouseMove(host.contentParent,host.contentParent.width/2,host.contentParent.height/2);wait(50);render()
+    mouseMove(host.contentParent,host.contentParent.width/2,host.contentParent.height/2);wait(900);render()
     check(popup.requestedVisible && popup._contentHovered,"anchor-to-popup handoff collapsed the popup")
+    // Straight portions of the painted body include 14 px of padding around
+    // the feature. Hovering those pixels must hold the same lease as content.
+    const padPoints=[
+     [content.x-7,content.y+content.height/2],
+     [content.x+content.width+7,content.y+content.height/2],
+     [content.x+content.width/2,content.y-7],
+     [content.x+content.width/2,content.y+content.height+7]
+    ]
+    for(const point of padPoints){
+     mouseMove(scene,point[0],point[1]);wait(900);render()
+     check(popup.requestedVisible && popup._contentHovered,"painted popup padding dismissed owner on "+edge+": "+JSON.stringify({point,input:host.inputBounds,content:host.record.content,requested:popup.requestedVisible,hosted:host.hostedPopup!==null}))
+     check(GlobalStates.barPopupHoverHeld(window.screen.name) && anchor.visible,"hovered popup let the Edgebar auto-hide")
+    }
     outside()
     check(!popup.requestedVisible && !popup.presentationActive && controller.activePopup===null,"pointer exit left a stale popup lease")
+    check(!GlobalStates.barPopupHoverHeld(window.screen.name),"final exit retained an auto-hide Bar lease")
    }
    root.edge="bottom";render();outside()
    mouseMove(anchor,40,16);wait(80);render()
@@ -131,6 +166,28 @@ ShellRoot {
    check(popup.requestedVisible && controller.activePopup===popup,"explicit click-only request stopped working")
    popup.alternativeVisibleCondition=false;outside()
    check(!popup.presentationActive && root.clicks===0,"hover test clicked the trigger or leaked the popup")
+   for(const edge of ["bottom","top","left","right"]){
+    root.edge=edge;genericHost.hoverKind="utilities";genericHost.requestedOpen=true
+    tryCompare(genericHost,"ready",true,4000);render()
+    const feature=genericHost.contentItem.item
+    const child=Qt.createQmlObject('import QtQuick; MouseArea { anchors.fill:parent;hoverEnabled:true;acceptedButtons:Qt.NoButton;z:10 }',feature)
+    const c=genericHost.record.content,ins=controller.edgeInsets
+    const points=[
+     [edge==="left" ? ins.left+6 : edge==="right" ? scene.width-ins.right-6 : c.x+c.width/2,
+      edge==="top" ? ins.top+6 : edge==="bottom" ? scene.height-ins.bottom-6 : c.y+c.height/2],
+     [c.x+c.width/2,c.y+c.height/2],
+     [c.x-7,c.y+c.height/2],[c.x+c.width+7,c.y+c.height/2],
+     [c.x+c.width/2,c.y-7],[c.x+c.width/2,c.y+c.height+7]
+    ]
+    for(const point of points){
+     mouseMove(scene,point[0],point[1]);genericHost.hoverKind="";wait(900);render()
+     check(genericHost.requestedOpen && root.genericCloses===0,"generic body/bridge/padding idle timer closed a hovered popup on "+edge+": "+JSON.stringify(point))
+    }
+    child.destroy();mouseMove(scene,scene.width-10,scene.height/2);wait(900);render()
+    check(!genericHost.requestedOpen,"generic popup did not close after final leave")
+    check(root.genericCloses===1,"generic dismissal emitted more than once")
+    root.genericCloses=0
+   }
    generic.enabled=true;generic.forceActiveFocus();wait(40)
    check(generic.activeFocus,"focus fixture did not acquire Qt focus")
    trigger.triggerHovered=false;wait(400)
@@ -157,13 +214,12 @@ ShellRoot {
         data["panelFamily"] = "abyss"
         data["abyss"]["companion"]["enabled"] = False
         (config / "config.json").write_text(json.dumps(data))
-        # The unchanged workload has 22 grabs, each with a 2-second deadline,
-        # plus readiness and input waits. Unfocused nested Niri can throttle
-        # frames; the process bound must cover these per-step deadlines.
-        result = run_qs(folder, env, timeout=60)
+        # Every grab retains its 2-second deadline; sustained body/padding dwell
+        # must outlast actual hide timers even when nested Niri is unfocused.
+        result = run_qs(folder, env, timeout=170)
         if result.returncode or "POPUP_ANCHOR_HOVER_PASS" not in result.stdout or any(
             token in result.stdout for token in ["POPUP_ANCHOR_HOVER_FAIL", "ReferenceError:", "TypeError:", "Binding loop", "Failed to load configuration"]
         ):
             print(result.stdout)
             raise SystemExit(1)
-        print("POPUP_ANCHOR_HOVER_PASS native hover/reentry, content handoff, dismissal, disabled anchor and click-only request")
+        print("POPUP_ANCHOR_HOVER_PASS four-edge sustained body/padding/bridge hover with interactive children, generic idle timers, auto-hide Bar hold/release, reentry and click-only/editor focus")

@@ -207,9 +207,11 @@ Item {
     readonly property Item hoverParent: root.includeEdgeConnection ? inputFrame : contentCanvas
     readonly property rect inputBounds: {
         if (!root.acceptsInput || !root.ready) return Qt.rect(0,0,0,0)
-        const contentRect=Qt.rect(contentFrame.x,contentFrame.y,contentFrame.width,contentFrame.height)
+        const c=root.record.content
+        const contentRect=Qt.rect(c.x,c.y,c.width,c.height)
         if (!root.includeEdgeConnection) return contentRect
-        const region=Geometry.popupInput(contentRect,root.width,root.height,root.edgeInsets,root.edge)
+        const region=Geometry.popupInput(contentRect,root.width,root.height,
+            root.edgeInsets,root.edge,root.rawPresentationRecord.surface)
         return Qt.rect(region.x,region.y,region.width,region.height)
     }
     signal closeRequested()
@@ -467,7 +469,12 @@ Item {
     }
     Item {
         id: contentFrame
-        x: root.record.content.x; y: root.record.content.y
+        // The body/bridge hover plane must be an ancestor of interactive
+        // contents. A sibling behind MouseAreas loses hover when they consume
+        // it, incorrectly starting the popup's dismissal timer.
+        parent: root.includeEdgeConnection ? inputFrame : root
+        x: root.record.content.x-(root.includeEdgeConnection ? inputFrame.x : 0)
+        y: root.record.content.y-(root.includeEdgeConnection ? inputFrame.y : 0)
         width: root.pyramidPresentationActive
             ? root.record.content.width
             : (root.placementVisible
@@ -500,9 +507,9 @@ Item {
             readonly property var fullRect:
                 root.pyramidFullRecord?.content ?? root.targetRecord.content
             x: root.pyramidPresentationActive
-                ? fullRect.x-contentFrame.x : 0
+                ? fullRect.x-root.record.content.x : 0
             y: root.pyramidPresentationActive
-                ? fullRect.y-contentFrame.y : 0
+                ? fullRect.y-root.record.content.y : 0
             width: root.pyramidPresentationActive
                 ? fullRect.width : contentFrame.width
             height: root.pyramidPresentationActive

@@ -564,6 +564,66 @@ dev even when implementation belongs to Alis-Intergration `main`.
 Do not remove functionality, break direct Settings navigation or silently
 run privileged installation just because manual buttons are retired.
 
+- [ ] **SET-R02 — Redesign all Settings task sub-tabs for Abyss Panel — owner screenshots 2026-10-11:**
+  [Owner: Alis dev; Rework/UX] All *secondary in-page task tabs* in
+  Settings currently use the old compact, separate dark pill/chip
+  styling. Redesign the entire shared tab family to visually belong
+  to the **Abyss Panel**: a coherent liquid/connected or soft sculpted
+  silhouette with restrained curvature, appropriate spacing and
+  padding, clear selected/hover/focus states, readable icons and labels,
+  matching Abyss material, accent, opacity and theme tokens. Aim for
+  consistency with the real Abyss connected/glass surface and compact
+  Settings layout, not an unrelated floating chip bar; preserve
+  touch/keyboard hit target and WCAG-appropriate contrast where
+  feasible. Do not force one color regardless of active desktop
+  theme or add unnecessary GPU blur/shadow passes for simple tabs.
+
+  **Owner example screenshots, supplied in 2026-10-11 chat (not yet
+  persisted in Git):** (1) Displays / Input / Layout / Animations /
+  Rules; (2) Audio / Power / Fan Control / Locale / Input / Safety;
+  (3) Outputs / ii surfaces / Desktop widgets / Popups;
+  (4) Colors / Type / Motion / Advanced. **These are EXAMPLES, not the
+  full target list.** Inventory and apply to **ALL** existing and
+  dynamically supplied Settings task/subsection navigators throughout
+  both Settings Overlay and standalone Settings, Abyss surfaces and
+  optional Integration settings. Audit `modules/settings/**`,
+  `modules/waffle/settings/pages/**`, Companion/Integration page
+  loaders and any local look-alike tab implementations; consolidate
+  common visual behavior, do not hand-tune only four screenshot pages.
+
+  **Concrete source discovery:** `modules/common/widgets/SettingsTaskNavigator.qml`
+  currently intentionally sets `useAbyssPillShape: false` on
+  `ConfigSelectionArray`, which supports an Abyss pill shape;
+  `scripts/test-settings-inir-task-tabs-contract.py` currently
+  *asserts that old iNiR appearance is retained inside Abyss*.
+  Review `ConfigSelectionArray.qml`, its underlying selection button,
+  `SettingsMaterialPreset`/shared styling and page-specific tabs.
+  Change the shared Abyss-family style and update/replace the obsolete
+  old-style test expectation; do not just flip one flag if shape,
+  connected-surface flow, corner animation and accessibility are
+  visually wrong. Keep Waffle/ii-specific styling where deliberate;
+  make the effective presentation obey the selected shell family.
+
+  **Interaction/regression:** do not change the set of tabs, selected
+  values, section IDs, route keys, Settings search/deep links, saved
+  page/section history or page loading/lazy activation. Verify long
+  text/translations, tight screen widths, horizontal wrap/scroll
+  without clipped controls, reduced-motion and fractional DPI;
+  hover reversal, focus ring, arrows/tab/Enter/Escape, disabled
+  states, dynamic app install/uninstall, both themes/output scales
+  and no surprise settings navigation. Coordinate with SET-R01
+  (remove unnecessary cross-page redirect buttons) and INT-R02
+  (new Integrations Settings/Management hierarchy) so they reuse
+  exactly the same component, not duplicate custom tab bars.
+
+  **Acceptance:** one authoritative tab component/theme policy;
+  source-wide inventory of all consumers (including hidden/lazy
+  pages), before/after screenshots and owner review for every
+  navigation family, focused QML/JS tests updated, canonical
+  validation and live Niri Quickshell visual/interaction signoff.
+  State: OPEN; screenshot-based requirements and source candidates
+  identified, redesign/implementation NOT STARTED.
+
 - [ ] **SET-R01 — Eliminate redundant Settings-to-Settings navigation buttons:**
   The maintainer wants **no Settings action whose only purpose is to switch
   to another Settings tab/page**. Perform a complete source/UI audit of

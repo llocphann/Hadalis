@@ -1041,6 +1041,53 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   Missing receipt must reconcile state, not retry a possibly successful install.
   No implicit privileged install or TLP/Thinkfan/charge-policy change.
 
+- [ ] **CAP-I01 — Intermittent Quickshell restart during screenshot — owner report 2026-10-11:**
+  [Owner: Alis dev; priority: startup/crash investigation] The shell
+  sometimes appears to **reset/reinitialize when taking a screenshot**;
+  the owner suspects a crash but this is NOT YET CONFIRMED. Preserve
+  screenshots and normal shell state: screenshot/region-selection capture
+  must never restart Quickshell, clear unrelated UI/session state or
+  trigger an unrequested Settings/Panel reload. Distinguish (1) actual
+  Quickshell crash or signal, (2) managed systemd/CLI restart,
+  (3) QML source-watch hot reload, (4) compositor or output remount,
+  and (5) temporary overlay redraw that resembles a restart.
+  Do not blame grim, compositor, clipboard or GPU without receipts.
+
+  **Investigate boundedly before editing:** identify the exact source
+  and installed runtime SHAs, shell PID/uptime and user-service unit
+  status just before/after an observed failure. Correlate monotonic
+  timestamps, `journalctl --user` shell/Niri logs, exit status/signal,
+  coredumpctl (if present), kernel OOM/driver hints, restart supervisor
+  receipts and QML errors with the corresponding capture action.
+  Keep diagnostic output bounded/redacted and do not expose user
+  screenshot pixels, clipboard payloads, window names or secrets.
+  A PID change alone is not a proved crash; a screenshot completing
+  alone is not evidence that the UI did not restart.
+
+  **Source routes to inspect:** `modules/regionSelector/RegionSelector.qml`,
+  `RegionSelection.qml`, `RegionSelectorRouter.qml`, `OptionsToolbar.qml`,
+  annotation/OCR follow-up, `modules/ii/overlay/recorder/Recorder.qml`,
+  `scripts/inir` region screenshot dispatch and restart supervision,
+  `scripts/capture-windows.sh` (Niri window preview captures with
+  wl-copy/cliphist cleanup), and any relevant screenshot shortcuts.
+  Capture helpers, full-screen RegionSelection overlays and
+  `Quickshell.execDetached` are possible boundaries to inspect,
+  NOT established fault causes. Compare direct system screenshot
+  utilities with shell-initiated actions on an authorized test session.
+
+  **Reproduction/acceptance matrix:** region select → save/copy,
+  full-output screenshot, screenshot-window/preview, Edit/annotation,
+  clipboard after copy, cancel/escape and repeated rapid captures;
+  screenshot from hotkey versus Popup, Niri normal/fullscreen,
+  all outputs/fractional scales, light/dark, active Settings/Panel,
+  Companion enabled/disabled and background Recording where practical.
+  Check single and 10–20 bounded consecutive captures, error/timeouts,
+  screenshots actually saved/copied correctly, unmodified user files
+  and zero unexpected shell PID/uptime discontinuity. Add focused
+  tests for failure exits and lifecycle cleanup; native exact-SHA
+  reproduction and owner retest are mandatory before closure.
+  State: OPEN; crash vs reload NOT DIAGNOSED, no runtime fix applied.
+
 ## Cross-repository correctness and release gates
 
 **Central task intake 2026-10-11:** implementation owners are

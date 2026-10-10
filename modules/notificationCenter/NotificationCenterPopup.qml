@@ -60,8 +60,14 @@ Bar.StyledPopup {
             maximum = Math.max(maximum, Number(apps[i]?.seconds ?? 0))
         return maximum
     }
-    readonly property bool _anchorHovered: root.anchorItem
-        && (root.anchorItem.containsMouse ?? false)
+    // MouseArea.containsMouse can clear while StyledPopup's real source
+    // HoverHandler still reports hovered (owner native trace: #68–71 and
+    // #80–82). Both are legitimate views of the same corner anchor.
+    // Keep the notification's lifetime lease aligned with the already-active
+    // source hover rather than expiring its bridge grace beneath the pointer.
+    readonly property bool _anchorHovered: Boolean(root.anchorItem
+        && ((root.anchorItem.containsMouse ?? false)
+            || (root._anchorHover?.hovered ?? false)))
     readonly property bool hoverLeaseRequested:
         root.hoverAllowed
         && !root.explicitForThisOutput

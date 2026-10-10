@@ -758,44 +758,57 @@ run privileged installation just because manual buttons are retired.
   Calm stays below Balanced (the former Calm); Fluid/Deep should be distinct and
   restrained. Detailed wave controls belong to Custom; show numeric audio strength.
 
-- [ ] **ABYSS-R02 — Optional screen-facing corner rounding at zero Edge width — owner request 2026-10-11:**
-  [Owner: Alis dev; Rework] In Edit Abyss Layout, when the selected
-  Screen Edge has **Edge width = 0px**, add a clear **checkbox** for
-  rounding the *two corners of each visible module/surface that face
-  and contact the physical monitor edge*. Current behavior leaves those
-  display-facing corners squared/clipped and only rounds the free,
-  inward-facing corners. Checkbox OFF must preserve today's appearance
-  for backward compatibility; ON must produce visibly rounded physical-
-  facing corners, with immediate preview. For nonzero Edge width,
-  zero-width-specific option has no effect (disable or hide with hint).
+- [ ] **ABYSS-R02 — Attached liquid shoulder rounding at 0px Edge width — owner visual correction 2026-10-11:**
+  [Owner: Alis dev; Rework] **The former detached/inset rounded
+  rectangle mock is INCORRECT and rejected by the owner.** Use the
+  exact original user-supplied 47x43 PNG as the visual target:
 
-  Investigate modules/abyss/AbyssEdgeEditor.qml (Edge width, Edge width
-  affects modules and Module rounding controls),
-  modules/abyss/looks/AbyssLayout.js (edgeThicknesses, edgeModuleRadii,
-  per-output saveProfile) and modules/abyss/looks/AbyssGeometry.js /
-  connected Perimeter painting. Existing radius controls alone may not
-  expose the rounded physical-side silhouette if the output/window
-  boundary clips the curve; design a small visual inset or suitable
-  geometry without adding a second painter, disconnected surface or
-  transparent fullscreen input area. Preserve Niri physical corners.
+  ![Owner reference: attached top-right liquid/glass curved shoulder](../../docs/abyss/references/physical-edge-rounded-shoulder-20261010.png)
 
-  Store this independent toggle per Screen Edge and per-output profile,
-  preserving edit preview, Save/Cancel/Undo/Reset, persistence and old
-  configs. Respect Edge width affects modules: modules intentionally
-  hidden by zero thickness must not reappear solely from this setting;
-  zero-width local module bulges remain eligible for corner rounding.
-  Keep inherited/custom radius, modules' size, popup connection, hover
-  and click hit targets unchanged except where rounding requires a
-  correctly bounded hit shape. Coordinate with ABYSS-R01 corner safety
-  inset: the two requests address different outcomes (spacing from
-  physical screen corners vs rounding physical-facing module corners).
+  The image shows a horizontal edge/highlight **flowing continuously**
+  through a broad smooth arc into the module's vertical outer wall:
+  a connected liquid/glass **shoulder/fillet**, not a separate capsule.
+  The outer surface remains connected to the **physical Screen Edge**.
+  Round the two screen-facing outside shoulders of eligible modules,
+  with tangent-continuous silhouette and smooth anti-aliasing. Mirror
+  or rotate the reference principle across top/bottom/left/right edges
+  and both ends of a module; retain its theme-aware material/highlight.
 
-  Test OFF/ON, top/bottom/left/right, modules near both ends/center,
-  zero/nonzero widths, width affects modules on/off, fractional scaling,
-  light/dark, multi-output, connected Popup, antialiasing, drag/snapping,
-  Save/Cancel, reopen/reload and keyboard interaction. Update geometry/
-  QML regression tests and require real Niri owner visual acceptance.
-  State: OPEN; source design, native tests and owner signoff pending.
+  **Explicitly prohibited as a solution:** inset an entire rounded
+  rectangle away from the physical edge, leave a uniform empty gap,
+  round only inward/free corners, keep the exterior shoulder square
+  under decorative blur, or draw an independent corner widget/painter.
+  Local transparent pixels that form the arc are acceptable; a
+  disconnected pill/rectangle or global padding is not. Preserve
+  single connected Abyss SDF field and Niri physical input bounds.
+  **ABYSS-R01 physical monitor CORNER clearance is a separate request;
+  it must not move this module away from its owning screen EDGE.**
+
+  Add a checkbox such as 'Round screen-edge shoulders' in Edit Abyss
+  Layout when effective Edge width is **0px**; default OFF keeps
+  original square shoulder, ON produces the reference silhouette.
+  At nonzero Edge width it is inactive (hidden/disabled with reason).
+  Persist independently per edge and per output, preserving preview,
+  Save/Cancel/Undo/Reset, reload and old configuration defaults.
+  This setting is distinct from existing Module rounding, which
+  controls the inward/free corners. Modules intentionally hidden at
+  zero width must stay hidden; visible local bulges stay eligible.
+
+  Investigate AbyssEdgeEditor.qml (Edge width/Module rounding UI),
+  looks/AbyssLayout.js (edge thickness, radius and profile persistence),
+  looks/AbyssGeometry.js plus connected Perimeter SDF, physical window
+  clipping, anti-aliasing and popup input regions. Do not choose a
+  particular shader adjustment without qualifying reference geometry.
+  Preserve Popup anchoring and hover/click behavior; no second overlay.
+
+  Acceptance: side-by-side reference crop and real Niri/Quickshell
+  screenshots must show continuous horizontal-to-vertical contact
+  curvature, no squared exterior corner or detached gap. Verify
+  OFF/ON, four edges/both ends, zero/nonzero width, 'width affects
+  modules' both states, theme, scaling/multi-output, Popup connected
+  hover/click, save/reload/migrations and renderer performance.
+  Update focused QML/geometry regressions and obtain owner visual
+  signoff. State: OPEN; corrected spec/reference, NOT IMPLEMENTED.
 
 - [ ] **Screen Edge/module editor:** verify separate 0px-capable widths on all
   four edges, thickness-only versus inherited module sizing, per-module overrides,

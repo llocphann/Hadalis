@@ -89,7 +89,27 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   priority, and semantic timer expiry before changing input routing. Neither
   old focused PASS nor an IPC snapshot alone is physical mouse acceptance.
   Serial native fixture and canonical results on current SHA are NOT RUN;
-  preserve source/device and before/after receipts. For a read-only owner
+  preserve source/device and before/after receipts.
+
+  **Diagnostic failure received 2026-10-10, 07:18:55 UTC:** owner uploaded
+  `identity.txt` and `frame-start.txt` from collector first run. Checkout
+  `dev` was `ff56015cf43b16580f0373881e8471984d9633bc`;
+  `qs=/usr/bin/qs`, original `qs_config=auto`. Error:
+  `Could not find "default" config directory or shell.qml in any valid config path.`
+  This is the diagnostic **NOT STARTED**: neither frame intervals nor pointer
+  lease samples were collected; it proves neither a product bug cause nor a
+  product fix. Existing `scripts/inir` explicitly targets a running config
+  through `qs -p "$config_dir" ipc call`; old collector lacked `-p`.
+  Corrected collector `4dc295e7f118a2445ca5ab4d6a66de2552312532`
+  selects an active iNiR instance, or an explicitly provided path, and records
+  installed-QML-vs-checkout match flags without starting/restarting shell.
+  The corrected collector has NOT been run on the owner's desktop. Repeat
+  after pulling latest `dev`; if methods are absent inspect the installed
+  vs checkout flags, never treat a matching Git checkout SHA alone as proof
+  that the running shell has been updated. Preserve actual command failure
+  receipts and resume native hover/canonical acceptance only with live evidence.
+
+  For a read-only owner
   capture after installing the exact `dev` source, run
   `bash scripts/collect-abyss-hover-frames.sh`: 6 seconds of bounded
   frame-swapped intervals, followed by 40 at-most-150ms-apart requested

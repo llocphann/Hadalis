@@ -36,6 +36,17 @@ holds technical research; this file holds pending outcomes.
 
 ## Existing UI and layout
 
+- [ ] **Edit Dashboard toolbar slide — received 2026-10-10:** when entering
+  Edit Dashboard Layout, the connected toolbar must slide out from its edge
+  attachment instead of appearing instantly or materializing with scale/fade.
+  Source now translates full-size controls from the top attachment with the
+  shared slide token; field geometry and input follow the visible clipped area.
+  Exit retains the last footprint and releases input immediately. Native tests
+  pass 16 Dashboard/Overview × edge × size cases, partial close/reopen, complete
+  exit, reduced motion, stable canvas dimensions and Undo/Cancel/Done. State:
+  waiting for canonical exact-SHA validation and owner appearance acceptance.
+  Focused log: `/tmp/hadalis-dashboard-toolbar-slide-motion-20261010.log`.
+
 - [ ] **Abyss Waves:** verify round crest-only geometry, no trough erosion or
   needle peaks, restrained breaker/whitewater, continuous distance attenuation,
   stable same/opposite-direction interaction and idle sleep. Preserve one shared

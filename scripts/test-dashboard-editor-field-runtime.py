@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Composed field/editor across four edges, two surface sizes and both routes."""
+"""Composed field/editor and real slide/reversal across edges, sizes and routes."""
 import json, os, tempfile
 from pathlib import Path
 from native_test_session import private_wayland, run_qs
@@ -25,6 +25,7 @@ ShellRoot {
  property real surfaceHeight:900
  property string caseName:""
  property int capturedFrames:0
+ property int motionSamples:0
  Component.onCompleted:Quickshell.watchFiles=false
  FloatingWindow {
   id:window;visible:true;implicitWidth:1280;implicitHeight:900;color:"#111820"
@@ -50,6 +51,71 @@ ShellRoot {
   SignalSpy {id:clickSpy;signalName:"clicked"}
   function check(v,m){if(!v)throw new Error(root.caseName+": "+m)}
   function find(item,p){if(p(item))return item;for(const c of item.children??[]){const x=find(c,p);if(x)return x}return null}
+  function flushFrame(){
+   const before=root.capturedFrames
+   check(surface.grabToImage(result=>{root.capturedFrames++}),"editor field capture refused")
+   tryVerify(()=>root.capturedFrames>before,3000)
+  }
+  function sampleSlide(popup,canvas,dimensions){
+   const toolbar=popup.children.find(i=>i.canvasController===canvas)
+   check(toolbar?.visible,"toolbar content vanished during slide")
+   check(canvas.width===dimensions[0] && canvas.height===dimensions[1],"slide resized widget canvas")
+   check(toolbar.width===popup.width && toolbar.height===popup.height,"slide scaled/repacked toolbar")
+   check(popup.opacity===1 && toolbar.opacity===1 && popup.scale===1 && toolbar.scale===1,"toolbar must translate without fade/scale")
+   const top=popup.y+toolbar.y,bottom=popup.y+popup.height
+   check(top>=popup.y-.1 && top<=bottom+.1,"toolbar moved outside reveal viewport")
+   check(popup.clip && toolbar.y>=0,"toolbar did not slide under its attachment")
+   const participant=liquid.participants.dashboardEditor
+   check(Math.abs(participant.geometry.content.y-top)<.1,"field detached from sliding controls")
+   check(Math.abs(participant.geometry.content.height-(bottom-top))<.1,"field did not follow clipped content")
+   if(canvas.editMode){
+    check(Math.abs(participant.inputBounds.y-top)<.1 && Math.abs(participant.inputBounds.height-(bottom-top))<.1,"input not limited to visible controls")
+   }else check(participant.inputBounds.width===0 && !popup.enabled,"closing editor retained input")
+   root.motionSamples++
+  }
+  function advanceSlide(popup,canvas,dimensions,opening,partial){
+   const deadline=Date.now()+3000
+   let previous=popup.revealProgress,intermediate=0
+   while(Date.now()<deadline){
+    flushFrame()
+    const progress=popup.revealProgress
+    check(opening?progress>=previous-.001:progress<=previous+.001,"slide reversed unexpectedly")
+    if(progress>0 && progress<1){sampleSlide(popup,canvas,dimensions);intermediate++}
+    previous=progress
+    if(partial && progress>=.20 && progress<.85)return progress
+    if(!partial && progress===(opening?1:0)){
+     check(intermediate>0,"toolbar appeared/disappeared without intermediate movement")
+     return progress
+    }
+    wait(8)
+   }
+   throw new Error("toolbar slide did not reach "+(partial?"partial reveal":opening?"open":"closed"))
+  }
+  function checkSlide(popup,canvas,dimensions){
+   Config.setNestedValue("performance.reduceAnimations",false)
+   canvas.beginEditMode()
+   const partial=advanceSlide(popup,canvas,dimensions,true,true)
+   const resting=[popup.x,popup.y,popup.width,popup.height]
+   canvas.cancelEditMode()
+   check(Math.abs(popup.revealProgress-partial)<.001,"close snapped reveal progress")
+   check(JSON.stringify([popup.x,popup.y,popup.width,popup.height])===JSON.stringify(resting),"close lost retained toolbar footprint: "+JSON.stringify([resting,[popup.x,popup.y,popup.width,popup.height]]))
+   check(liquid.participants.dashboardEditor.inputBounds.width===0,"Cancel did not immediately release input")
+   flushFrame();sampleSlide(popup,canvas,dimensions)
+   const reversing=popup.revealProgress
+   check(reversing>0 && reversing<=partial,"toolbar vanished before reversal")
+   canvas.beginEditMode()
+   check(Math.abs(popup.revealProgress-reversing)<.001,"reopen snapped reveal progress")
+   advanceSlide(popup,canvas,dimensions,true,false)
+   check(popup.visible && popup.revealProgress===1,"toolbar failed to finish entry")
+   sampleSlide(popup,canvas,dimensions)
+   canvas.cancelEditMode()
+   check(liquid.participants.dashboardEditor.inputBounds.width===0,"exit retained editor input")
+   advanceSlide(popup,canvas,dimensions,false,false)
+   check(!popup.visible && liquid.participants.dashboardEditor.geometry===null,"closed editor retained paint")
+   Config.setNestedValue("performance.reduceAnimations",true)
+   canvas.beginEditMode();check(popup.revealProgress===1,"reduced motion must open immediately")
+   canvas.cancelEditMode();check(popup.revealProgress===0,"reduced motion must close immediately")
+  }
   function clickAction(popup,name){
    const button=findChild(popup,name)
    check(button?.visible && button.enabled,"action unavailable: "+name)
@@ -99,12 +165,12 @@ ShellRoot {
     check(viewport.contentY+viewport.height>=note.contentHeight,"last note line is unreachable")
     note.text=draft;wait(40)
     const dimensions=[canvas.width,canvas.height],saved=JSON.stringify(Config.options.dashboard.canvas.widgets)
-    canvas.beginEditMode();wait(120)
+    canvas.beginEditMode();wait(120);flushFrame()
     const popup=find(surface,i=>i.objectName==="abyssDashboardEditPopup" && i.canvasController===canvas)
     check(popup?.visible,"editor did not join output field")
     check(canvas.width===dimensions[0] && canvas.height===dimensions[1],"Edit resized widgets "+route+edge)
     const origin=canvas.mapToItem(surface,0,0)
-    check(popup.y+popup.height<=origin.y+1,"controls overlap widget canvas "+route+edge)
+    check(popup.y+popup.height<=origin.y+1,"controls overlap widget canvas "+route+edge+" "+JSON.stringify([popup.y,popup.height,origin.y,body.targetRecord.content]))
     check(popup.x>=0 && popup.y>=0 && popup.x+popup.width<=surface.width && popup.y+popup.height<=surface.height,"editor outside output")
     check(liquid.participants.dashboardEditor?.inputBounds.width>0,"editor lacks native field input")
     check(liquid.records.some(r=>r.content.width===popup.width && r.content.height===popup.height),"editor lacks shared field paint")
@@ -117,9 +183,10 @@ ShellRoot {
     canvas.beginEditMode();wait(80);canvas.setWidgetVisible("notes",false);clickAction(popup,"dashboardEditDone");wait(80)
     check(!canvas.editMode && !canvas.visibleIds.includes("notes"),"Done did not save layout")
     check(!popup.visible && liquid.participants.dashboardEditor?.inputBounds.width===0,"editor did not release input")
+    checkSlide(popup,canvas,dimensions)
     count++
    }
-   console.info("DASHBOARD_FIELD_PASS",count,"composed routes/edges/sizes: dimensions above-field Add Undo Cancel Done input-release")
+   console.info("DASHBOARD_FIELD_PASS",count,"composed routes/edges/sizes: dimensions above-field Add Undo Cancel Done input-release",root.motionSamples,"native slide/reversal samples")
   }catch(e){console.error("DASHBOARD_FIELD_FAIL",e.message,e.stack)}Qt.quit()}
  }
  Timer {interval:100;running:true;onTriggered:test.runChecks()}
@@ -130,6 +197,8 @@ ShellRoot {
   config=folder/"config/illogical-impulse";config.mkdir(parents=True,exist_ok=True)
   value=json.loads((ROOT/"defaults/config.json").read_text());value["panelFamily"]="abyss";value["abyss"]["companion"]["enabled"]=False
   (config/"config.json").write_text(json.dumps(value));env["QSG_RHI_BACKEND"]="opengl"
-  result=run_qs(folder,env,timeout=50)
+  result=run_qs(folder,env,timeout=80)
   if result.returncode or "DASHBOARD_FIELD_PASS" not in result.stdout or any(s in result.stdout for s in ["DASHBOARD_FIELD_FAIL","ReferenceError:","TypeError:","Binding loop","Failed to load configuration"]):print(result.stdout);raise SystemExit(1)
-  print("DASHBOARD_FIELD_PASS 16 composed route/edge/size cases; stable workspace; native Undo Cancel Done; field paint/input")
+  for line in result.stdout.splitlines():
+   if "DASHBOARD_FIELD_PASS" in line:print(line)
+  print("DASHBOARD_FIELD_PASS 16 composed route/edge/size cases; stable workspace; native Undo Cancel Done; full-size slide/reversal/reduced motion; field paint/input")

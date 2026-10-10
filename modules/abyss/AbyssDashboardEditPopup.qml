@@ -1,4 +1,5 @@
 import QtQuick
+import qs.modules.common
 import qs.modules.dashboard
 import qs.modules.abyss.looks
 
@@ -14,26 +15,61 @@ Item {
     readonly property real desiredHeight: toolbar.implicitHeight
     readonly property bool editing: canvasController?.editMode ?? false
     readonly property var contentRect: body?.targetRecord?.content
-    width: Math.min(toolbar.implicitWidth,
+    readonly property bool revealRequested: editing
+        && (body?.presented ?? false) && (body?.progress ?? 0)>.99
+    property real revealProgress: revealRequested ? 1 : 0
+    readonly property real targetWidth: Math.min(toolbar.implicitWidth,
         Math.max(1, contentRect?.width ?? 1), Math.max(1, (parent?.width ?? 1)-24))
-    height: desiredHeight
-    x: Math.max(12, Math.min((parent?.width ?? 0)-width-12,
-        (contentRect?.x ?? 0)+((contentRect?.width ?? 0)-width)/2))
-    y: Math.max(8, (contentRect?.y ?? 0)-height-(body?.padding ?? 14)+6)
-    visible: editing && (body?.presented ?? false) && (body?.progress ?? 0)>.99
-    enabled: visible && (body?.acceptsInput ?? false)
+    readonly property rect targetRect: Qt.rect(
+        Math.max(12, Math.min((parent?.width ?? 0)-targetWidth-12,
+            (contentRect?.x ?? 0)+((contentRect?.width ?? 0)-targetWidth)/2)),
+        Math.max(8, (contentRect?.y ?? 0)-desiredHeight-(body?.padding ?? 14)+6),
+        targetWidth, desiredHeight)
+    // Exiting edit mode releases the body's extra top clearance. Keep the last
+    // toolbar footprint while retracting instead of snapping to that new layout.
+    property var retainedRect: null
+    readonly property rect presentationRect: revealRequested
+        ? targetRect : (retainedRect ?? targetRect)
+    onTargetRectChanged: if (canvasController?.editMode && revealRequested)
+        retainedRect = targetRect
+    onRevealRequestedChanged: if (revealRequested) retainedRect = targetRect
+    x: presentationRect.x
+    y: presentationRect.y
+    width: presentationRect.width
+    height: presentationRect.height
+    readonly property real slideOffset: height*(1-revealProgress)
+    readonly property real revealedHeight: height*revealProgress
+    visible: revealProgress > 0
+    enabled: revealRequested && visible && (body?.acceptsInput ?? false)
+    clip: true
+    Behavior on revealProgress {
+        enabled: Appearance.animationsEnabled
+        NumberAnimation {
+            duration: SurfaceMotion.duration
+            easing.type: SurfaceMotion.easingType
+        }
+    }
     AbyssParticipant {
         identity: (root.body?.identity ?? "dashboard")+"Editor"
         controller: root.body?.controller ?? null
         geometry: root.visible ? ({edge:root.body.edge,
-            surface:{x:root.x-8,y:root.y-8,width:root.width+16,height:root.height+22},
-            content:{x:root.x,y:root.y,width:root.width,height:root.height},
-            along:root.x,span:root.width,depth:root.height,progress:1}) : null
-        inputBounds: root.enabled ? Qt.rect(root.x,root.y,root.width,root.height) : Qt.rect(0,0,0,0)
+            surface:{x:root.x-8,y:root.y+root.slideOffset-8,
+                width:root.width+16,height:root.revealedHeight+22},
+            content:{x:root.x,y:root.y+root.slideOffset,
+                width:root.width,height:root.revealedHeight},
+            along:root.x,span:root.width,depth:root.revealedHeight,
+            progress:root.revealProgress}) : null
+        surfaceSettled: root.revealRequested && root.revealProgress === 1
+        inputBounds: root.enabled
+            ? Qt.rect(root.x,root.y+root.slideOffset,root.width,root.revealedHeight)
+            : Qt.rect(0,0,0,0)
     }
     DashboardEditToolbar {
         id: toolbar
-        anchors.fill: parent
+        width: root.width
+        height: root.height
+        y: root.slideOffset
+        visible: root.visible
         canvasController: root.canvasController
         embeddedSurface: true
     }

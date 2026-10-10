@@ -25,6 +25,9 @@ function propExpression(src, property, next) {
     assert.ok(end >= 0, 'Missing expression boundary for ' + property);
     return src.slice(begin, end).trim();
 }
+const sourceExpression = propExpression(styled, 'sourceEdgeHovered',
+    'property bool barAutoHideHoldEnabled:');
+const sourceFn = new Function('root', 'return (' + sourceExpression + ');');
 const anchorExpression = propExpression(source, '_anchorHovered',
     'readonly property bool hoverLeaseRequested:');
 const leaseExpression = propExpression(source, 'hoverLeaseRequested',
@@ -46,13 +49,15 @@ const base = {
     explicitForThisOutput: false,
     presentationActive: true,
     popupHovered: false,
-    sourceEdgeHovered: false,
+    moduleHoverActive: false,
 };
 let assertions = 3;
 function check(label, root, expectedAnchor, expectedLease) {
-    const anchored = anchorFn(root);
+    const sourceHovered = sourceFn(root);
+    const sourceState = { ...root, sourceEdgeHovered: sourceHovered };
+    const anchored = anchorFn(sourceState);
     assert.equal(anchored, expectedAnchor, label + ': anchor');
-    const state = { ...root, _anchorHovered: anchored };
+    const state = { ...sourceState, _anchorHovered: anchored };
     assert.equal(leaseFn(state, { item: null }), expectedLease, label + ': lease');
     assertions += 2;
 }
@@ -74,8 +79,8 @@ check('popup body owns visit',
     { ...base, popupHovered: true }, false, true);
 check('connector cannot grant an independent hover lease',
     { ...base, entryBridgeHeld: true }, false, false);
-check('source edge hover is an owner',
-    { ...base, sourceEdgeHovered: true }, true, true);
+check('source module hover is an owner',
+    { ...base, moduleHoverActive: true }, true, true);
 check('no anchor item is safe',
     { ...base, anchorItem: null, _anchorHover: null }, false, false);
 // Verify the actual read-only QML HandlerPoint expressions. Qt resets

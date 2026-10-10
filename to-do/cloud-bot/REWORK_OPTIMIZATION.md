@@ -556,6 +556,147 @@ holds technical research; this file holds pending outcomes.
   tiers on an unexplained translucent-pixel variance. Owner multi-output and
   whole-session resource acceptance remain separate.
 
+## Alis Settings and Integrations redesign — owner request 2026-10-11
+
+These items improve existing Settings/navigation and the optional integration
+installer; they are NOT new third-party backends. Retain task status in Alis
+dev even when implementation belongs to Alis-Intergration `main`.
+Do not remove functionality, break direct Settings navigation or silently
+run privileged installation just because manual buttons are retired.
+
+- [ ] **SET-R01 — Eliminate redundant Settings-to-Settings navigation buttons:**
+  The maintainer wants **no Settings action whose only purpose is to switch
+  to another Settings tab/page**. Perform a complete source/UI audit of
+  `modules/settings/**`, Waffle Settings pages and the shared Settings
+  registry/search/deep-link navigation. Remove pure redirect cards/buttons,
+  extra promotional links and duplicate destinations, **not functional
+  controls**. Owner examples include **"Use opaque Material Appearance"**
+  (first locate whether it is merely navigation or changes a real value),
+  **"Configure Bar modules"** (confirmed `ModulesConfig.qml` → page
+  `abyss-modules`), and other unnecessary tab-hopping UI. Verified
+  candidates in `dev`: `ModulesConfig.qml` "Open Typography settings";
+  `QuickConfig.qml` "Bar & layout/Taskbar settings", "Wallpaper settings",
+  "Theme settings", "Capture settings"; `InterfaceConfig.qml`
+  "Manage availability in Shell & interface"; `ServicesConfig.qml`
+  "Bar weather module" and "Obsidian, Calendar and Music Recognition";
+  `SidebarsConfig.qml` AI privacy/Policies and
+  `GeneralConfigCore.qml` AI privacy. Inspect their actual effects and
+  eliminate only **pure navigation** after verifying what is redundant.
+  Preserve real controls (e.g. Open floating tools, reset, apply, install,
+  search, breadcrumb/back and system confirmation actions), direct
+  navigability via the standard Settings hierarchy, Settings search
+  results, saved deep links and existing Waffle/Abyss functionality.
+  Do not duplicate entire page content in the original page.
+  Acceptance: Settings route inventory with action-by-action decisions,
+  no unnecessary cross-tab button remaining, keyboard/Back/Escape,
+  Settings search, saved page selection, themes and both shell families
+  passing focused and native owner UI checks. State: OPEN for
+  inventory/removal; no code changes yet.
+
+- [ ] **INT-R01 — Move TLP and Thinkfan Settings into Integrations → Settings:**
+  [Owners: Alis dev host + Alis-Intergration main optional views]
+  Currently `modules/settings/GeneralConfig.qml` embeds
+  `TlpPowerSettings` under **System → Power**, while
+  `GeneralConfigCore.qml` embeds `ThinkfanSettings` under
+  **System → Fan**. Move optional app-specific TLP and Thinkfan editors
+  out of the System page and into **Integrations → Settings → TLP/
+  Thinkfan** as proper app subtabs (same behavior for Abyss and Waffle
+  through `WIntegrationsPage.qml`). Preserve Core Battery/Power
+  Profiles, warning/suspend settings and generic fan readings where
+  they belong; do not move basic host-owned functionality with the
+  optional package. Fix `SettingsPageRegistryData.qml`, section
+  search, legacy TLP page index 28, persisted selection, focused
+  shortcuts/deep links and module lazy loading to route the old
+  destinations to the new Integration subtabs. With optional
+  package missing/off, present a concise unavailable state without
+  loading plugin QML or silently installing it. Preserve real
+  TLP/Thinkfan values, apply/rollback and trusted policy boundaries.
+  State: OPEN; migration tests, cross-repo source identity and owner
+  Settings acceptance required.
+
+- [ ] **INT-R02 — Redesign Integrations around exactly two top-level tabs:**
+  The Integrations page should have **Settings** and **Management**,
+  with compact, clear design and responsive layout. **Settings**
+  contains secondary tabs for each supported app, including TLP,
+  Thinkfan, Obsidian and existing Calendar/Applications configuration
+  where appropriate. **Management** owns third-party app enable/
+  disable toggles, availability/version/health, progress, errors,
+  optional package install/update/refresh and nonprivileged
+  rollback/removal as appropriate; toggling never silently changes
+  privileged host policies. Current `IntegrationsConfig.qml` has
+  one tall "Optional integrations" management section mixed with
+  Obsidian/Calendar/Applications navigation and direct manual Gateway/
+  Helper actions; replace this with an accessible two-level navigation
+  model instead of adding a duplicate layer of cards. Audit dynamic
+  Integration settings from Alis-Intergration, unsupported packages,
+  active worker/disabled state, empty/loading/errors, keyboard/back,
+  narrow screens, long app names, responsive scrollbars, search and
+  saved page restoration; Waffle `WIntegrationsPage.qml` delegates
+  to the same shared component. **Gateway/Helpers install/remove
+  controls do not belong in Management** once setup ownership is
+  validated; display concise dependency state/error only if useful.
+  State: OPEN; UI hierarchy, lazy source, native and owner acceptance.
+
+- [ ] **INT-R03 — Installer-managed Gateway and Helpers across Alis setup lifecycle:**
+  Move approved Gateway and Integration system-helper provisioning
+  from manually pressed Settings buttons to the supported **Alis
+  `./setup install` / reinstall / update** flows (and relevant
+  package-managed paths). Audit actual supported setup subcommands
+  and `sdata/subcmd-install/*`, migration/update/uninstall scripts,
+  `scripts/hadalird-system-package.py`,
+  `assets/helpers/inir-hadalird-system-provision`, system Polkit
+  assets, `services/Hadalird.qml` and Alis-Intergration
+  `Makefile`/`make install-helpers`. Automatically detect, reconcile
+  and **prepare** the trusted, version-matched Gateway/Helpers so the
+  user does not need separate manual Settings installation. Where
+  privileged writes are required, use supported package-manager/
+  Polkit/sudo authorization during setup with an **explicit prompt**;
+  do not self-elevate silently, run a user checkout as root or
+  bypass system ownership/security. If declined, missing, unsupported
+  distribution or offline, keep Alis functional and report a clear
+  deferred/unavailable state and safe retry path without falsely
+  claiming successful installation. Never install third-party apps,
+  enable TLP/Thinkfan services or change charge/fan policy merely
+  because setup ran. Handle install, idempotent reinstall/update,
+  source checksums/signatures, existing compatible binaries,
+  partial/uncertain results, rollback, removal/uninstall and
+  package ownership without duplicate helper versions. Remove
+  **manual Gateway/Helpers buttons from Integrations** only after
+  provisioning is verified; preserve observability, user consent and
+  explicit helper-removal authority. Use
+  `scripts/test-hadalird-gateway-bootstrap.py`, system provisioning,
+  install lifecycle and Polkit tests plus a real authorized machine
+  acceptance; tests must not mutate personal/system policy.
+  Cross-reference existing privileged
+  [Hadalird/Polkit Issue](ISSUES.md); do not duplicate an already
+  indeterminate privileged action. State: OPEN, security/packaging
+  design and explicit native install permission required.
+
+- [ ] **ABYSS-R01 — Comfortable corner clearance in Edit Abyss Layout:**
+  The user wants Screen Edge modules **visually close to, but never
+  actually flush against**, physical screen corners while
+  **Edit Abyss Layout** is active. Replace the current true-endpoint
+  drop/snap packing with a small consistent **corner-safe inset** for
+  module content/hit target: `modules/abyss/looks/AbyssLayout.js`
+  currently uses `margin = 0` in both `snapMove` and `geometry`,
+  and `scripts/test-abyss-module-layout.py` explicitly asserts a
+  module can touch the physical endpoint. Update the source behavior
+  AND those now-obsolete assertions, including deterministic drag,
+  snap guides, start/end alignment, saved normalized positions,
+  per-output overrides, compact layouts and all four edges/scales.
+  Derive an aesthetically modest clearance token from existing
+  edge/corner geometry and viewport bounds, not a large fixed
+  exclusion that wastes space. Distinguish **module content clearance**
+  from optional `joinCorner` visual field/Popup attachment:
+  allow the selected decorative liquid connection to bridge the
+  remaining gap without extending the actual interactive module
+  into a hard corner or blocking Niri hot corners. Preserve
+  collision packing, multi-selection work, small-monitor clipping,
+  full Edit → Save/Cancel → reopen consistency and correct
+  normal-mode rendering after the edited layout is committed.
+  State: OPEN; design/source/unit/native visual tests and owner
+  acceptance pending.
+
 ## Existing UI and layout
 
 - [ ] **Quickshell typography consistency — owner request 2026-10-10:**

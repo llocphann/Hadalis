@@ -153,6 +153,36 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   controlled no-notification/with-notification reproduction,
   verified initial/resting size and owner acceptance.
 
+- [ ] **AC-I04 — Companion-enabled Screen Edge module hover regression — owner report 2026-10-11:**
+  [Owners: Alis `dev` host + Alis-Companion `main`] With **Companion
+  enabled/open**, Screen Edge modules stop opening their connected Popups
+  on pointer **hover**, although clicking the same module still works.
+  This is a **new Companion-enabled reproduction** of the historically
+  investigated Popup/Edgebar hover/input problem below; it does NOT prove
+  the old defect has the same cause. Compare the exact same module, output,
+  edge and placement with Companion **disabled vs enabled**, Companion
+  visually absent/present, cursor idle/rapid enter/leave and click
+  control; test Clock/Calendar, Weather, Media, Wi-Fi/Bluetooth and
+  representative top/bottom/left/right edge modules. Observe actual Niri/
+  Qt pointer enter/leave, activation leases, `AbyssPerimeter.qml`
+  `nativeInputMask`/layer/keyboard focus and the shared
+  `companionExtension.inputRegions` from
+  `modules/abyss/HadanionSurface.qml` and the source package's actor
+  hover/overlay regions. Distinguish a Companion region intercepting the
+  pointer, a priority/lease change and missed hover activation; **all
+  remain hypotheses until source- and event-backed diagnosis**.
+  Preserve Companion drag/chat/animations, one optional actor, real input
+  hit areas and click behavior; NEVER solve this by an unmasked,
+  full-output interception layer or a click-only workaround. Capture
+  pinned Alis/Companion/installed release SHAs and bounded exact-source
+  native pointer/IPC evidence before proposing a patch. Relevant older
+  [hover investigation](../../docs/abyss/POPUP_EDGE_HOVER_UNRESOLVED_2026-10-10.md)
+  includes previously ineffective approaches: inspect/revert disproven
+  candidates rather than stack another blind fix. Acceptance: normal
+  hover → connected Popup and reverse transfer restored with Companion
+  on/off, clicks unaffected, four edges/scales/outputs and actual owner
+  desktop signoff. State: OPEN; NOT_DIAGNOSED, native reproduction needed.
+
 - [ ] **Popup/Edgebar closes while hovered — received/updated 2026-10-10:**
   **Owner update, 2026-10-10 evening — LOCAL DESKTOP CHATBOT NEXT:**
   The owner retested TWO successive cloud hover/bridge fixes and explicitly

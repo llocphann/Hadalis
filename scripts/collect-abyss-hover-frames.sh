@@ -210,6 +210,7 @@ printf 'Two seconds to move the pointer away from this terminal...\n' >&2
 sleep 2
 failed=0
 popup_seen=0
+popup_open_transitions=0
 popup_dismissed_after_seen=0
 previous_popup_open=0
 for ((i=0; i<100; i++)); do
@@ -225,9 +226,12 @@ for ((i=0; i<100; i++)); do
         # physical mouse motion or a hover-loss cause from the last sample.
         if [[ "$snapshot_output" == *'"liquidPopupsOpen":true'* ]]; then
             popup_seen=1
+            if ((previous_popup_open == 0)); then
+                popup_open_transitions=$((popup_open_transitions + 1))
+            fi
             previous_popup_open=1
         elif ((previous_popup_open == 1)); then
-            popup_dismissed_after_seen=1
+            popup_dismissed_after_seen=$((popup_dismissed_after_seen + 1))
             previous_popup_open=0
         fi
     fi
@@ -236,7 +240,9 @@ done
 {
     printf 'snapshot_failures=%d\n' "$failed"
     printf 'popup_seen_during_capture=%d\n' "$popup_seen"
-    printf 'popup_open_to_closed_transition_observed=%d\n' "$popup_dismissed_after_seen"
+    printf 'popup_open_transition_count=%d\n' "$popup_open_transitions"
+    printf 'popup_open_to_closed_transition_count=%d\n' "$popup_dismissed_after_seen"
+    printf 'popup_open_to_closed_transition_observed=%d\n' "$((popup_dismissed_after_seen>0))"
 } >> "$output_dir/identity.txt"
 if ((popup_seen == 0)); then
     printf 'WARNING: no Popup opened during the 100 hover samples.\n' \

@@ -99,7 +99,18 @@ holds technical research; this file holds pending outcomes.
   truncating the prior timestamp before subtraction. Example
   `1791618576306 - 617213874 = 1791001362432`;
   the spurious interval magnitude is explained by that exact
-  integer overflow. Diagnostic-only commit
+  integer overflow. Since the capture time is known and the 6-second
+  window cannot cross the next signed-modulo epoch boundary, the constant
+  offset is exactly `417 * 4294967296 = 1791001362432 ms`; subtracting
+  this from the stored summary statistics recovers **approximate Qt
+  frameSwapped intervals**: min=1ms, p50=17ms, p95=18ms, p99=41ms,
+  max=45ms, mean=16.573ms (363 intervals). This DOES show a slow
+  upper tail in *Qt wall-clock frameSwapped events*, but cannot
+  assign cause to SDF/mask/GPU/compositor, cannot reconstruct threshold
+  counts from the summary, and cannot prove the user's specific
+  lag reproduction overlapped these frames. Thus raw counters
+  `over16ms/over33ms/idleGapsOver100ms=363` remain INVALID.
+  Diagnostic-only commit
   `b8be0fcb551a319fbff0b6c2a65c062f955c5ead` changes
   that property to QML `real`, not shell rendering itself.
   User-visible Panel lag remains **OPEN/UNMEASURED**.

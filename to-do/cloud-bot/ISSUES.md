@@ -6,6 +6,29 @@ that implementation is missing. Refetch current `dev` before diagnosing.
 
 ## Current failures and owner reports
 
+- [ ] **P0 — fullscreen window retains hidden Screen Edges/Panel/Perimeter after switching to another window (owner report 2026-10-10):**
+  Reproduce on Niri: fullscreen client A, then open/focus window B in the
+  same active workspace. Screen Edges, Abyss Panel and Perimeter reportedly
+  disappear even though B is the foreground normal window. Source diagnosis:
+  `GameMode.hasFullscreenOnOutput()` currently treats ANY fullscreen-sized
+  window on an active workspace as if it still visually covers that output,
+  ignoring `workspace.active_window_id`. Niri explicitly keeps fullscreen
+  windows as ordinary scrolling-layout participants, so focusing another
+  window does not necessarily revoke A's fullscreen geometry. Shared gate
+  drives `AbyssPerimeter.presented`, ScreenEdges frame updates, ScreenCorners,
+  Sidebar and other output surfaces. Independently,
+  `NiriService.handleWorkspaceActiveWindowChanged()` and
+  `handleWindowFocusChanged()` compare an object key (string) to a Niri
+  workspace ID (number) with `===`, potentially discarding active-window
+  selection updates needed to repair this gate.
+  Investigate/fix with output-local selected-window semantics and numeric-ID
+  normalization, preserve actual fullscreen suppression, multi-monitor
+  isolation and mapped-window/stacking ownership. Test focus A→B→A,
+  second monitor, workspace switch, startup unknown selection. Do not
+  change layer ordering, input masks, animation, focus or visual quality.
+  **Source-level diagnosis only; no owner native Niri reproduction captured.
+  Acceptance OPEN.**
+
 - [ ] **Popup/Edgebar closes while hovered — received/updated 2026-10-10:**
   NEW OWNER REPRO 2026-10-10: moving the pointer across the gap/connection
   between a Popup and its Screen Edge still loses hover/focus and automatically

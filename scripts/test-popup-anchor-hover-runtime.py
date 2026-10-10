@@ -168,6 +168,25 @@ ShellRoot {
     root.barRevealed=false
     check(popup.requestedVisible && popup._contentHovered,
        "dwelling on the visible "+edge+" connection closed the popup: "+before)
+    // Continue from the body-side bridge onto the actual outer painted edge
+    // (0..physicalThickness), not just the previous inner seam at 8px.
+    // This is outside the source region and must retain the SAME body lease.
+    const physicalX=horizontal ? x : (edge==="left" ? 2 : scene.width-2)
+    const physicalY=horizontal ? (edge==="top" ? 2 : scene.height-2) : y
+    check(Geometry.distance(physicalX,physicalY,scene.width,scene.height,ins,
+       AbyssStyle.perimeterRadius,[host.rawPresentationRecord],
+       AbyssStyle.connectionDepth,AbyssStyle.neckRadius)<0,
+       "physical edge handoff probe is not painted on "+edge)
+    check(Geometry.rectContains(host.inputBounds,physicalX,physicalY)
+       && !Geometry.rectContains(source,physicalX,physicalY),
+       "physical edge input did not reach connected body on "+edge)
+    mouseMove(scene,physicalX,physicalY);wait(900);render()
+    check(popup.requestedVisible && popup._contentHovered
+       && GlobalStates.barPopupHoverHeld(window.screen.name),
+       "physical edge seam lost sustained hover/Bar lease on "+edge)
+    mouseMove(scene,x,y);wait(900);render()
+    check(popup.requestedVisible && popup._contentHovered,
+       "physical-to-bridge reverse hover collapsed the Popup on "+edge)
     mouseMove(host.contentParent,host.contentParent.width/2,host.contentParent.height/2);wait(900);render()
     check(popup.requestedVisible && popup._contentHovered,"anchor-to-popup handoff collapsed the popup")
     // Straight portions of the painted body include 14 px of padding around
@@ -236,6 +255,9 @@ ShellRoot {
     const points=[
      [edge==="left" ? ins.left+6 : edge==="right" ? scene.width-ins.right-6 : c.x+c.width/2,
       edge==="top" ? ins.top+6 : edge==="bottom" ? scene.height-ins.bottom-6 : c.y+c.height/2],
+     // Generic owners share the same physical seam/native mask requirement.
+     [edge==="left" ? 2 : edge==="right" ? scene.width-2 : c.x+c.width/2,
+      edge==="top" ? 2 : edge==="bottom" ? scene.height-2 : c.y+c.height/2],
      [c.x+c.width/2,c.y+c.height/2],
      [c.x-7,c.y+c.height/2],[c.x+c.width+7,c.y+c.height/2],
      [c.x+c.width/2,c.y-7],[c.x+c.width/2,c.y+c.height+7]

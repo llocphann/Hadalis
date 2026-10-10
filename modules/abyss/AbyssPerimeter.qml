@@ -1302,10 +1302,15 @@ Scope {
                 identity: "notification"
                 controller: liquid
                 anchors.fill: parent
-                readonly property bool centerOnOutput: GlobalStates.notificationCenterOpen && GlobalStates.notificationCenterPresentationOutput === window.outputName
+                // This host ONLY owns transient notification banners. An open
+                // Notification Center has its own mature StyledPopup slot.
+                // Do not repurpose a closing banner into "center" content:
+                // the prior branch changed its requested height/edge while
+                // its animated surface was still visually resident.
                 readonly property string position: Config.options?.notifications?.position ?? "topRight"
-                readonly property string presentationKind: centerOnOutput ? "notificationCenter" : "notifications"
-                edge: window.positionEdge(presentationKind,centerOnOutput ? "right" : position.startsWith("bottom") ? "bottom" : "top")
+                readonly property string presentationKind: "notifications"
+                edge: window.positionEdge(presentationKind,
+                    position.startsWith("bottom") ? "bottom" : "top")
                 joinedEdge: window.presentation(presentationKind).joinCorner===true
                     ? ModuleLayout.adjacentEdge({edge:edge,along:along,span:span},window.width,window.height) : ""
                 outputName: window.outputName
@@ -1313,13 +1318,18 @@ Scope {
                         && (Config.options?.enabledPanels ?? []).includes("abyssNotificationPopup")
                         && Geometry.targets(window.outputName,Config.options?.notifications?.screenList ?? [],Quickshell.screens.map(s => s.name)))
                 edgeInsets: window.bodyInsets(edge,along,span)
-                readonly property real contentWidth: centerOnOutput ? 390 : (contentItem.item?.desiredWidth ?? Appearance.sizes.notificationPopupWidth)+padding*2
-                readonly property real contentHeight: centerOnOutput ? window.height-window.nativeInsets.top-window.nativeInsets.bottom-72 : Math.min(window.height*.42,Math.max(100,(contentItem.item?.desiredHeight ?? 130)+padding*2))
+                readonly property real contentWidth:
+                    (contentItem.item?.desiredWidth
+                        ?? Appearance.sizes.notificationPopupWidth)+padding*2
+                readonly property real contentHeight: Math.min(window.height*.42,
+                    Math.max(100,(contentItem.item?.desiredHeight ?? 130)+padding*2))
                 span: Geometry.horizontal(edge) ? contentWidth : contentHeight
-                along: window.positionAlong(presentationKind,edge,span,centerOnOutput ? (Geometry.horizontal(edge) ? (window.width-span)/2 : window.nativeInsets.top+36) : position.endsWith("Left") ? 40 : (Geometry.horizontal(edge) ? window.width : window.height)-span-40)
+                along: window.positionAlong(presentationKind,edge,span,
+                    position.endsWith("Left") ? 40
+                        : (Geometry.horizontal(edge) ? window.width : window.height)-span-40)
                 depth: Geometry.horizontal(edge) ? contentHeight : contentWidth
-                obstacles: centerOnOutput ? [] : window.sideObstacles.concat(popup.open ? [popup.record] : [])
-                contentKind: centerOnOutput ? "center" : "popup"
+                obstacles: window.sideObstacles.concat(popup.open ? [popup.record] : [])
+                contentKind: "popup"
                 source: "content/AbyssNotificationsContent.qml"
                 onCloseRequested: GlobalStates.closeNotificationCenter()
             }

@@ -518,6 +518,59 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   coordinate fields and generic-edge transfer still
   require native owner validation; issue remains OPEN.
 
+  **Owner archive 2026-10-10 10:58:22Z (17:58 local),
+  `hadalis-abyss-hover-20261010-175821.tar.gz`:**
+  `dev` checkout `1e934698dea22d39877dfda5e8de982ebc50c5ed`,
+  all three on-disk comparisons MATCH, native Abyss
+  Perimeter ready at polling attempt 6, collector exit 0,
+  100/100 snapshots valid, four
+  `notificationCenter` open→closed cycles:
+  #15–29→30 (order 3), #47–59→60 (order 4),
+  #70–77→78 (order 5), #82–89→90 (order 6).
+  This was exactly counted by the corrected
+  `popup_open_transition_count=4` and
+  `popup_open_to_closed_transition_count=4`.
+  Anchor→hosted Popup hover was explicitly observed
+  in all four cycles; 3 cycles had sustained hosted
+  hover (#20–21 and #23–26 in the first,
+  #50–55 in second, #73 third, #85 fourth).
+  Crucially, order 3 lost both source and hosted
+  hover at #22 and regained hosted hover at #23;
+  the `exitGraceHeld=true` bridge prevented retraction.
+  A subsequent all-false interval #27→28 ended
+  the visit. This is proof that the grace sometimes
+  recovers a transient loss, not proof of full native
+  connector continuity or a bug-caused final close.
+  The existing scene-local source/host pointers reveal
+  within-hover approach positions, e.g. order 3:
+  source (1919,1199), hosted (1899.48,1199)
+  → (1879.97,1187.29), absent at #22,
+  regained (1856.55,1171.68). These positions
+  belong to separate QQuickWindows (never claim global
+  location or interpolate the missing point).
+  During the open state input bounds reached
+  x=1490,y=616,w=420,h=560 and stripCount=62,
+  `nativeRegionRegistered=true`.
+  No objective basis yet to widen the native
+  input mask, increase hover grace, or alter SDF paint.
+
+  **Focused diagnostic follow-up:**
+  `d2db68cece00b95d06ec6915f51db94342c4d8da`
+  adds snapshot-only `hoverGeometry`:
+  actual joined/raw surface bounds, edge, insets and
+  point coverage by host input rectangle, connection
+  strips or excluded Bar source input; null when no
+  hosted pointer. This is a per-QQuickWindow local
+  hit test, NOT a global pointer tracker.
+  `scripts/test-abyss-hover-geometry-probe.mjs`
+  (`c36358b317ecea96d8c8d9ce834051e8eadcb056`)
+  passed 13/13 pure source-equivalent JS assertions;
+  `6cf1f3db8f7577c9bd7d3ba58bcb312b019752fc`
+  registers it in canonical validation.
+  Owner Niri acceptance and general Popup hover
+  regression remain OPEN; no rendering/input behavior
+  was changed to produce this probe.
+
 
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,

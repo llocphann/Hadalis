@@ -16,10 +16,18 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   cold mount and Recording fixtures pass; final generic/mature hover fixture
   **FAILS** at left bridge x=14,y=200. That point overlaps the source anchor;
   inspect actual requested/anchor/body leases before deciding whether this is a
-  probe error or runtime dismissal. Qualification remains incomplete; do not
-  weaken all-edge dwell/input tests. Next: qualify genuine painted bridge points
-  outside the source, run related native fixtures sequentially, then canonical
-  on clean committed source. Owner cold/normal hover, connected input,
+  probe error or runtime dismissal. Cloud continuation on 2026-10-10 committed
+  test-only qualification change `c499fb3ecdb07250c710bac82f483272c42e46c2`:
+  `scripts/test-popup-anchor-hover-runtime.py` now searches SDF-painted
+  bridge pixels outside both source input regions and content, asserts the
+  resulting point belongs to the native/hover footprint, and preserves all
+  four edges, Bar leases and 900ms dwell. This removes one ambiguous oracle;
+  **runtime NOT RUN, result UNKNOWN**, and no source runtime fix or product
+  acceptance is claimed. Next: execute the corrected fixture on this exact
+  commit with a stable private output, inspect requested/anchor/body leases
+  if it fails, then run geometry/Weather/cold/Recording checks sequentially.
+  Resolve failures before exact-SHA canonical clean-clone validation. Do not
+  weaken all-edge dwell/input tests. Owner cold/normal hover, connected input,
   click-through and multi-output acceptance remain separate.
   [Durable receipt and logs](../../docs/evidence/abyss-product/20261010-hover-checkpoint/README.md).
   Maintainer requested stop/save/push; no further implementation or test runs.

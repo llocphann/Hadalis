@@ -6,6 +6,27 @@ holds technical research; this file holds pending outcomes.
 
 ## Resource use and responsiveness
 
+- [ ] **Abyss Panel motion stutter — received/updated 2026-10-10:**
+  Owner reports visible judder/jank while Abyss panels/Popups appear, disappear
+  and transfer across edges; supplemental video `2026-10-10_13.34.50.mp4`
+  is in the request (31.93 s at ~30 fps capture), not a frame-time/CPU/GPU
+  trace and not committed to this repo. This is a concrete responsiveness
+  acceptance under existing Connected presentation / strict-lossless research,
+  not a new render-quality tier or permission to lower visual fidelity.
+  Priority after actionable hover/correctness Issues. Profile cold/warm
+  open, close, reversing mid-animation, rapid multi-edge switching and
+  simultaneous/pyramidal panels; record actual frame time distribution
+  (p50/p95/p99/dropped frames), main-thread CPU, compositor/GPU and
+  allocations on comparable exact-SHA owner output sessions. Candidate:
+  `AbyssGeometry.popupShoulders` produces per-scanline native input Regions
+  during animations; investigate lossless adjacent-strip compaction and
+  Instantiator/Region churn without dropping painted pixels, reordering
+  input-source ownership or altering shader/animation cadence. Require
+  pixel-union oracle, native pointer dwell/focus/click-through checks,
+  visual parity and measured before/after; keep open until owner confirms
+  perceptibly smooth transitions. A static code reduction alone is not FPS
+  or desktop acceptance.
+
 - [ ] **Strict-lossless CPU/RAM/GPU reductions:** re-audit latest `dev` and
   promote high-value findings only after behavior, read/dependency order,
   identity/NOTIFY and lifecycle parity. Keep hidden services/lightweight warm

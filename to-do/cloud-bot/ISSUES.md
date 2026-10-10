@@ -89,7 +89,16 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   priority, and semantic timer expiry before changing input routing. Neither
   old focused PASS nor an IPC snapshot alone is physical mouse acceptance.
   Serial native fixture and canonical results on current SHA are NOT RUN;
-  preserve source/device and before/after receipts.
+  preserve source/device and before/after receipts. For a read-only owner
+  capture after installing the exact `dev` source, run
+  `bash scripts/collect-abyss-hover-frames.sh`: 6 seconds of bounded
+  frame-swapped intervals, followed by 40 at-most-150ms-apart requested
+  IPC hover snapshots, each with a timestamp and actual errors preserved.
+  Reproduce opening/reversal during the first phase, the source→bridge→body
+  hover loss during the second. Share `identity.txt`,
+  `frame-intervals.txt`, `hover-snapshots.log`. A checkout git SHA
+  is not installed shell SHA; verify the latter separately. The helper never
+  refreshes/remaps mask or changes config. Cloud acceptance remains OPEN.
 
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,

@@ -287,7 +287,7 @@ Scope {
                     heartbeatOver100Ms:window._frameProbeHeartbeatOver100Ms,
                     heartbeatMaxIntervalMs:window._frameProbeHeartbeatMaxMs,
                     heartbeatLateEvents:window._frameProbeHeartbeatLateEvents.slice(),
-                    caveat:"swap wall-clock gaps include idle; 50ms Qt timer lateness is only event-loop correlation, not GPU/compositor proof"
+                    caveat:"swap wall-clock gaps include idle gaps; 50ms Qt timer lateness is only event-loop correlation, not GPU/compositor proof"
                 }
             }
             Timer {

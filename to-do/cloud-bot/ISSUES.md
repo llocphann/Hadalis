@@ -50,9 +50,23 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   `bash scripts/validate-maintainer-local.sh` on a clean exact-SHA checkout;
   then request independent owner desktop/multi-output acceptance.
   [Durable receipt and logs](../../docs/evidence/abyss-product/20261010-hover-checkpoint/README.md).
-  The earlier maintainer stop/save/push was honored at the checkpoint; this
-  new continuation changed only the fixture and task record, with **no new
-  runtime test or desktop acceptance**. Related hover gates remain open.
+  The earlier maintainer stop/save/push was honored at the checkpoint.
+  **NEW source candidate 2026-10-10:** `6c10387d18aa1793d7ad2f2ef20eb37020d69abf`
+  extends only the popup's tangent-bounded painted input to the physical
+  Screen Edge (previously stopped at its inner seam); no output-wide mask.
+  It also coalesces exactly adjacent equal-span SDF strips to reduce live
+  Region/Instantiator churn while retaining every covered input pixel.
+  Contract additions: `38437f56` (physical seam/strict SDF occupancy) and
+  `5a2cb977` (four-edge physical rim → connector → content and reverse,
+  sustained 900ms, generic/StyledPopup, Bar lease, click-through, focus).
+  Offline V8 execution of the repository geometry test body passed
+  **504,005 assertions**, source/test blob SHAs `3d6953ae`/`372ff060`,
+  with equivalent assertion and readFile stubs; 576 independent strip-union
+  comparisons showed identical occupied pixels. **This is not a Qt/Quickshell
+  run; runtime, exact-SHA canonical and owner session are NOT VALIDATED.**
+  Next: perform the serial native commands above at fresh HEAD, preserve
+  focus/lease/Region evidence on any failure, compare owner hover behavior,
+  then canonical and physical multi-output acceptance. Keep issue OPEN.
 
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,

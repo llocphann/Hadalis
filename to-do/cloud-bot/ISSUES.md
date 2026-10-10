@@ -205,6 +205,47 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   Do not mutate installed runtime automatically from collector.
   Keep **Popup hover user acceptance OPEN**.
 
+  **Owner archive 2026-10-10 08:26:41Z — now source MATCH, target MISSING:**
+  The single `hadalis-abyss-hover-20261010-152641.tar.gz` contains
+  `run-result.txt: collector_exit_status=5`,
+  `frame-start.txt: Target not found.`,
+  `diagnostic-error.txt` correctly refuses a successful frame probe.
+  Checkout: `dev` at `3acf9685ce7aef5e1c7e879e2437a7001ac3f874`,
+  running resolver: `/home/llocphann/.config/quickshell/inir`.
+  Unlike the previous run, ALL THREE installed-vs-checkout source
+  comparisons `shell.qml`, `AbyssPerimeter.qml` and `AbyssGeometry.js`
+  now **MATCH**. This means the installed files match the checkout,
+  but it does NOT establish that the active QML tree has constructed
+  `AbyssPerimeter.qml` or that its IPC handler is registered.
+  There are NO frame intervals and NO hover samples in this bundle;
+  do NOT infer a popup dismiss cause from these absences.
+
+  Source review on `dev`:
+  `shell.qml` activates `ShellAbyssCriticalPanels.qml` only under
+  `activePanelFamily=abyss` and familyMountReady; within that critical
+  host the `AbyssPerimeter.qml` LazyLoader additionally requires
+  `Config.ready`, deferred readiness, `enabledPanels` containing
+  `abyssPerimeter`, and no diagnostic unmount. The handler
+  `abyssHoverProbe` lives INSIDE that optional Perimeter. Therefore
+  candidate explanations for `Target not found.` include the
+  relevant family/host/Perimeter not being mounted, or a stale/failed
+  live engine instance. None are yet proven by the archive.
+  Distinguish them using registry and critical-host state before
+  changing lifecycle or hit regions. Quickshell documents the
+  read-only `qs ipc show` target/function enumeration.
+
+  **Collector evidence expansion
+  `5462432e442048be32bf7de8e1227b892ed86e93`:**
+  capture `ipc-targets.txt` from `qs -p CONFIG ipc show`,
+  `abyss-host-status.txt` from existing read-only
+  `abyssHostProbe status`, `hover-preflight.txt` from
+  `abyssHoverProbe snapshot`, plus per-probe process statuses,
+  in the SAME one-file archive before `startFrames`. Keep
+  fail-closed `startFrames` recognition and now reject a
+  `stopFrames` result with count=0 as non-evidence (exit 6).
+  Script does NOT remount or reconfigure the desktop.
+  This candidate's native run is PENDING; status remains OPEN.
+
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,
   1 SKIP**. Failures: keyboard sizing, Dashboard Music, Dashboard warm readiness,

@@ -64,7 +64,40 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   the normal seven-day retention window.
 
 - [ ] **Notification Center post-notification Popup has wrong size/placement and lags — owner report 2026-10-10 21:55 ICT:**
-  **NEW INDEPENDENT ISSUE; local desktop chatbot to diagnose.** Owner video
+  **SOURCE-LEVEL FIX IMPLEMENTED on dev (2026-10-10); Niri acceptance OPEN.**
+  The earlier native video exposed a tall right-edge notification surface
+  morphing into a much smaller bottom-right Popup while a new alert was
+  still present. The confirmed source-level conflict was the older
+  `AbyssPerimeter.qml` transient `notification` host:
+  `centerOnOutput` switched its presentationKind, edge, contentKind
+  and measured contentHeight to a nearly full-screen `center` layout
+  immediately when `GlobalStates.notificationCenterOpen` became true,
+  even though the very same event requested this host to CLOSE and
+  `AbyssBodyHost.visualResident` kept its closing animation alive.
+  Source change `6f0321dec1c688d25cddcd5728ee0f2a2276f8b0`
+  fixes the role conflict: the transient host now ALWAYS uses
+  `presentationKind: "notifications"` and `contentKind: "popup"`,
+  with independent toast-only dimensions/edge/along/obstacles;
+  `!GlobalStates.notificationCenterOpen` still causes its normal
+  semantic close. The dedicated NotificationCenterPopup remains the
+  sole history Popup. `98415d0c43d3145920265f8f6ccdccdf79368273`
+  enables stable-size toast content behind its existing reveal clip
+  rather than resizing/reflowing the content with that clip.
+  This removes a concrete source of extra Loader construction,
+  history markAllRead coupling, a wrong-height transition and layout
+  churn. It does NOT establish a native end-to-end FPS improvement.
+  `scripts/test-abyss-notification-transition.mjs` runs exact
+  committed QML expressions against the fresh-alert → Center-open
+  transition, top/bottom placement, multiple/empty notifications,
+  customized Center sizes and separate dedicated host: **32/32 PASS**
+  in an isolated JS environment. Registered in
+  `scripts/validate-maintainer-local.sh`. Full validator / Niri
+  test and owner acceptance remain PENDING. **Keep issue OPEN**;
+  next owner action: sync dev, install QML, reproduce the 21:55
+  recording steps, confirm tall sidebar never appears, observe
+  layout stability AND whether perceived animation lag has ended.
+  Preserve the separately reverted hover/bridge work.
+  **Original video and independent bug report:** Owner video
   `2026-10-10_21.55.09.mp4` (1920×1200, 30fps, ~8.73s,
   shared in ChatGPT, NOT a repository file) shows a recent notification
   toast (~0.7–1.5s), followed by a connected right-hand Notification
@@ -85,7 +118,7 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   **Technical analysis, video timeline, read-only native measurement
   requirements and acceptance:**
   [Notification Center post-alert sizing/lag investigation](../../docs/abyss/NOTIFICATION_CENTER_POST_ALERT_GEOMETRY_LAG_2026-10-10.md).
-  No runtime patch applied; keep OPEN until exact-SHA Niri capture,
+  Runtime source patch is committed; keep OPEN until exact-SHA Niri capture,
   controlled no-notification/with-notification reproduction,
   verified initial/resting size and owner acceptance.
 

@@ -196,9 +196,10 @@ def main() -> None:
           and "readonly property bool popupHovered: root._bodyHovered || root._contentHovered" in styled_popup,
           "StyledPopup hover bridge must track body and content without a seam-triggered retract")
     check("property QtObject _hoverTransferTimerObject: Timer {" in styled_popup
-          and "interval: 90" in styled_popup
+          and "property int hoverTransferGraceMs: 90" in styled_popup
+          and "interval: Math.max(0, root.hoverTransferGraceMs)" in styled_popup
           and "hoverTransferTimer.restart()" in styled_popup,
-          "StyledPopup must debounce the compositor leave/enter hand-off across Bar and popup windows")
+          "StyledPopup must debounce loss of both source and body hover without connector ownership")
 
     check("root.hoverTarget.visible" in styled_popup
           and "onActiveChanged: {" in styled_popup

@@ -848,6 +848,47 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   compact/expanded layouts; keep selection, search and playback behavior.
   State: OPEN; source investigation and owner desktop acceptance pending.
 
+- [ ] **Volume/Brightness OSD missing in fullscreen; Physical Screen Edge fallback — owner report 2026-10-11:**
+  Under real fullscreen, changing volume or brightness does not display its
+  corresponding IPC/OSD/Popup. Restore transient Volume and Brightness feedback
+  while keeping the app genuinely fullscreen. When normal Abyss Screen Edge
+  surfaces are suppressed, attach the indicators visually to the **Physical
+  Screen Edges** of the affected output; when no longer fullscreen, restore
+  their standard connected Abyss presentation. Do not reopen an entire hidden
+  edgebar/panel just to show the OSD, nor create a permanent overlay/input mask.
+  Audit modules/abyss/AbyssOsdController.qml, AbyssPerimeter.qml,
+  content/AbyssOsdContent.qml, modules/screenCorners/ScreenEdges.qml and
+  services/GameMode.qml for visibility, output selection and fullscreen
+  stacking. Niri/layer-shell placement and compositor feasibility require
+  native evidence; root cause is not proven. Preserve theme, smooth arrival,
+  proper timeout, focus/click-through and multi-output isolation; verify
+  volume up/down/mute and brightness keys, games/videos fullscreen on each
+  output, scaling, fast repeats, leaving fullscreen and nonfullscreen behavior.
+  **Independent of the already owner-accepted fullscreen focus/screen-edge
+  suppression regression** documented earlier; do not reopen that fix.
+  State: OPEN; diagnosis, Niri functional/visual test and owner signoff pending.
+
+- [ ] **Recording Popup Expand Controls/Minimize buttons fail; dot-only minimized hover mode — owner report 2026-10-11:**
+  The Expand Controls and Minimize actions on the Recording Popup do not work.
+  Restore the action handlers and connected geometry/input ownership. In
+  **minimized mode**, resting UI must show **only one small blinking red dot**
+  while recording: no timer, Stop/audio buttons, drag handle or expand control
+  exposed until hovered. Hovering the dot temporarily expands the recording
+  controls; leaving hover returns to dot-only form. Activating **Expand
+  Controls** explicitly returns to persistent expanded mode; **Minimize**
+  returns to minimized mode. Keep the wake/hover region available as the
+  footprint collapses, and preserve stop/audio/drag access after expansion.
+  Check modules/recordingOsd/RecordingControls.qml and RecordingOsd.qml,
+  modules/abyss/AbyssRecordingBody.qml and shared input Regions. Source
+  already exposes collapsed but it is not evidence that full dot-only mode
+  works; do not infer a specific root cause. Test horizontal/vertical edges,
+  rapid hover/reentry, auto-hide, click targets, focus/keyboard access,
+  drag/position, different screens and scaling, lock/unlock and recording
+  start/stop. Don't create transparent interception zones or accidentally
+  end recording. Cross-reference the existing Recording presentation item
+  in REWORK_OPTIMIZATION.md; avoid a duplicate feature item.
+  State: OPEN; native UI/interaction test and owner acceptance pending.
+
 - [ ] **New boot/runtime warnings:** owner's log runs `0ea54cc09` and reaches
   the first frame; no startup Type-unavailable failure is shown. Investigate
   `qt.svg` unresolved paint server `a`, oversized SVG buffer, DelegateModel cancel

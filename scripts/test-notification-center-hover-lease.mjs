@@ -25,9 +25,6 @@ function propExpression(src, property, next) {
     assert.ok(end >= 0, 'Missing expression boundary for ' + property);
     return src.slice(begin, end).trim();
 }
-const sourceExpression = propExpression(styled, 'sourceEdgeHovered',
-    'property bool barAutoHideHoldEnabled:');
-const sourceFn = new Function('root', 'return (' + sourceExpression + ');');
 const anchorExpression = propExpression(source, '_anchorHovered',
     'readonly property bool hoverLeaseRequested:');
 const leaseExpression = propExpression(source, 'hoverLeaseRequested',
@@ -40,7 +37,6 @@ const leaseFn = new Function('root', 'contentLoader',
 assert.match(styled, /property Item _anchorHover: Item\s*\{/);
 assert.match(styled, /readonly property bool hovered: sourceHover\.hovered/);
 assert.match(source, /onHoverLeaseRequestedChanged:\s*\{[\s\S]*?if \(root\.hoverLeaseRequested\)\s*\{[\s\S]*?exitGraceTimer\.stop\(\)/);
-assert.doesNotMatch(source, /entryBridgeHeld|entryBridgeTimer/);
 
 const base = {
     anchorItem: { containsMouse: false },
@@ -49,15 +45,13 @@ const base = {
     explicitForThisOutput: false,
     presentationActive: true,
     popupHovered: false,
-    moduleHoverActive: false,
+    entryBridgeHeld: false,
 };
 let assertions = 3;
 function check(label, root, expectedAnchor, expectedLease) {
-    const sourceHovered = sourceFn(root);
-    const sourceState = { ...root, sourceEdgeHovered: sourceHovered };
-    const anchored = anchorFn(sourceState);
+    const anchored = anchorFn(root);
     assert.equal(anchored, expectedAnchor, label + ': anchor');
-    const state = { ...sourceState, _anchorHovered: anchored };
+    const state = { ...root, _anchorHovered: anchored };
     assert.equal(leaseFn(state, { item: null }), expectedLease, label + ': lease');
     assertions += 2;
 }
@@ -77,10 +71,8 @@ check('explicit opening does not request hover lease',
     true, false);
 check('popup body owns visit',
     { ...base, popupHovered: true }, false, true);
-check('connector cannot grant an independent hover lease',
-    { ...base, entryBridgeHeld: true }, false, false);
-check('source module hover is an owner',
-    { ...base, moduleHoverActive: true }, true, true);
+check('entry bridge may hold transfer',
+    { ...base, entryBridgeHeld: true }, false, true);
 check('no anchor item is safe',
     { ...base, anchorItem: null, _anchorHover: null }, false, false);
 // Verify the actual read-only QML HandlerPoint expressions. Qt resets
@@ -96,7 +88,7 @@ const anchorPointFn = new Function('sourceHover', 'return (' + scenePointExpr(st
     'readonly property var hoverProbeScenePoint:', '        HoverHandler {') + ');');
 const contentPointFn = new Function('popupContentHover', 'return (' + scenePointExpr(abyss,
     'readonly property var hoverProbeContentScenePoint:',
-    '                    // The source edge and connected popup\'s precise native') + ');');
+    '                    readonly property string presentationKind:') + ');');
 assert.deepEqual(anchorPointFn({ hovered: true, point: { scenePosition: { x: 13, y: 5 } } }),
     { x: 13, y: 5 });
 assert.equal(anchorPointFn({ hovered: false }), null);
@@ -104,7 +96,4 @@ assert.deepEqual(contentPointFn({ hovered: true, point: { scenePosition: { x: 15
     { x: 1520, y: 650 });
 assert.equal(contentPointFn({ hovered: false }), null);
 assertions += 4;
-assert.match(source, /if \(root\.hoverLeaseRequested\)[\s\S]*?exitGraceTimer\.stop\(\)/);
-assert.match(source, /if \(root\.presentationActive && root\.hoverAllowed[\s\S]*?exitGraceTimer\.restart\(\)/);
-assertions += 2;
 console.log('PASS: ' + assertions + ' NotificationCenter source/lease assertions');

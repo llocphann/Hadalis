@@ -758,57 +758,81 @@ run privileged installation just because manual buttons are retired.
   Calm stays below Balanced (the former Calm); Fluid/Deep should be distinct and
   restrained. Detailed wave controls belong to Custom; show numeric audio strength.
 
-- [ ] **ABYSS-R02 — Attached liquid shoulder rounding at 0px Edge width — owner visual correction 2026-10-11:**
-  [Owner: Alis dev; Rework] **The former detached/inset rounded
-  rectangle mock is INCORRECT and rejected by the owner.** Use the
-  exact original user-supplied 47x43 PNG as the visual target:
+- [ ] **ABYSS-R02 — Checkbox to preserve rounded INNER workspace corners at 0px Edge width — owner clarification 2026-10-11:**
+  [Owner: Alis dev; Rework] **FINAL OWNER-APPROVED GEOMETRY INTENT:**
+  When an Edge in **Edit Abyss Layout** is configured with effective
+  **Edge width = 0px**, offer exactly **one independent CHECKBOX option**
+  such as **'Round inner workspace corners at 0px'**. With it ON,
+  the workspace's **INNER boundary corners** at the physical monitor
+  corner retain their smooth, concave/transitional curvature: e.g.
+  at the top-right of the workspace the inner TOP edge flows by a
+  quarter-curve into the inner RIGHT edge; likewise bottom-right,
+  top-left and bottom-left. The 0px side has no full-width painted
+  strip, but the small localized corner geometry must remain visible.
+  This is the **workspace-facing inner silhouette**, NOT a rounded
+  independent module, NOT its physical/outside monitor-facing
+  shoulder, and NOT the outer rectangle/frame border.
 
-  ![Owner reference: attached top-right liquid/glass curved shoulder](../../docs/abyss/references/physical-edge-rounded-shoulder-20261010.png)
+  **Reference, reinterpreted correctly:**
+  ![Owner crop: top-right INNER workspace corner arc, not a module shoulder](../../docs/abyss/references/physical-edge-rounded-shoulder-20261010.png)
+  See the owner's later full right-edge screenshot and explicitly
+  confirmed OFF (90-degree inner workspace corner) vs ON (smooth
+  rounded inner workspace corner) illustration in the conversation.
+  The previous detached-pill/rounded-module and outer-liquid-shoulder
+  interpretations are **REJECTED** and must not guide implementation.
 
-  The image shows a horizontal edge/highlight **flowing continuously**
-  through a broad smooth arc into the module's vertical outer wall:
-  a connected liquid/glass **shoulder/fillet**, not a separate capsule.
-  The outer surface remains connected to the **physical Screen Edge**.
-  Round the two screen-facing outside shoulders of eligible modules,
-  with tangent-continuous silhouette and smooth anti-aliasing. Mirror
-  or rotate the reference principle across top/bottom/left/right edges
-  and both ends of a module; retain its theme-aware material/highlight.
+  **Geometry/controls:** Checkbox ON uses the EXISTING global
+  **Curvature** control from Settings (`abyss.perimeter.radius`,
+  `AbyssStyle.perimeterRadius`), with no extra independent radius slider.
+  Outer physical screen boundary remains straight, clipped to the
+  output and fully attached; the rounded arc is entirely at the
+  **inner workspace boundary** where adjacent Screen Edges meet.
+  Do not add physical-edge padding, detach modules, turn the 0px
+  edge into a visible full strip, or add a floating outline.
+  Checkbox OFF retains current zero-width square-corner behavior
+  for existing users and saved layouts. At width greater than 0px,
+  the checkbox is disabled/hidden with an explanatory hint and
+  must not replace/change normal current Curvature behavior.
+  Show an immediate geometry preview when checked/unchecked;
+  when the global Curvature changes, the enabled inner arc follows.
 
-  **Explicitly prohibited as a solution:** inset an entire rounded
-  rectangle away from the physical edge, leave a uniform empty gap,
-  round only inward/free corners, keep the exterior shoulder square
-  under decorative blur, or draw an independent corner widget/painter.
-  Local transparent pixels that form the arc are acceptable; a
-  disconnected pill/rectangle or global padding is not. Preserve
-  single connected Abyss SDF field and Niri physical input bounds.
-  **ABYSS-R01 physical monitor CORNER clearance is a separate request;
-  it must not move this module away from its owning screen EDGE.**
+  **State/persistence:** Place the checkbox close to Edge width
+  in `modules/abyss/AbyssEdgeEditor.qml`; support chosen top,
+  bottom, left and right Edge, per-output layout overrides and
+  legacy defaults. Save/Cancel/Undo/Reset, hot reload and session
+  restart must preserve both the choice and normal settings.
+  Coordinate combinations at one monitor corner if its two meeting
+  Edges have different 0px checkbox states; choose a deterministic
+  corner-ownership rule so there is no seam, double arc or ghost
+  curve. This option is distinct from `Module rounding`,
+  `Width affects modules`, `joinCorner` and the separate ABYSS-R01
+  *distance between modules and physical screen corners* rework.
 
-  Add a checkbox such as 'Round screen-edge shoulders' in Edit Abyss
-  Layout when effective Edge width is **0px**; default OFF keeps
-  original square shoulder, ON produces the reference silhouette.
-  At nonzero Edge width it is inactive (hidden/disabled with reason).
-  Persist independently per edge and per output, preserving preview,
-  Save/Cancel/Undo/Reset, reload and old configuration defaults.
-  This setting is distinct from existing Module rounding, which
-  controls the inward/free corners. Modules intentionally hidden at
-  zero width must stay hidden; visible local bulges stay eligible.
+  **Implementation audit:** `modules/abyss/settings/AbyssStyleSettings.qml`
+  exposes `Curvature`; `modules/abyss/looks/AbyssStyle.qml` owns
+  `perimeterRadius`; `modules/abyss/looks/AbyssGeometry.js` currently
+  uses a special negative extent for any zero inset in its
+  workspace distance field; `modules/screenCorners/ScreenEdges.qml`
+  and `ScreenEdgeField.frag` have a separate inverted rounded
+  workspace/frame representation. Identify the actual Abyss
+  presentation path and preserve the existing single SDF/paint
+  ownership and strict-lossless visual contract; do NOT blindly
+  add a second overlay or change the unrelated physical Screen
+  Edge/ii/Waffle corner implementation. Implement localized
+  0px-corner behavior without creating a transparent input blocker.
 
-  Investigate AbyssEdgeEditor.qml (Edge width/Module rounding UI),
-  looks/AbyssLayout.js (edge thickness, radius and profile persistence),
-  looks/AbyssGeometry.js plus connected Perimeter SDF, physical window
-  clipping, anti-aliasing and popup input regions. Do not choose a
-  particular shader adjustment without qualifying reference geometry.
-  Preserve Popup anchoring and hover/click behavior; no second overlay.
-
-  Acceptance: side-by-side reference crop and real Niri/Quickshell
-  screenshots must show continuous horizontal-to-vertical contact
-  curvature, no squared exterior corner or detached gap. Verify
-  OFF/ON, four edges/both ends, zero/nonzero width, 'width affects
-  modules' both states, theme, scaling/multi-output, Popup connected
-  hover/click, save/reload/migrations and renderer performance.
-  Update focused QML/geometry regressions and obtain owner visual
-  signoff. State: OPEN; corrected spec/reference, NOT IMPLEMENTED.
+  **Acceptance:** Compare real Niri/Quickshell output against
+  the confirmed inner-boundary illustration, with visible arc
+  and correct tangency at top-right/bottom-right/top-left/bottom-left.
+  Test checkbox OFF/ON, one or both meeting edges at 0px,
+  zero/nonzero edge-width transition, different global Curvature
+  values, all four edge orientations, per-output settings,
+  fractional DPI, dark/light, fullscreen enter/exit, Popup hover,
+  save/cancel/undo/reset, close/reopen/restart and performance.
+  Preserve existing nonzero-width corners and compositor hot
+  corner input. Update focused QML/JS/field pixel tests and
+  obtain owner visual signoff.
+  State: OPEN; corrected checkbox specification only, NOT IMPLEMENTED.
 
 - [ ] **Screen Edge/module editor:** verify separate 0px-capable widths on all
   four edges, thickness-only versus inherited module sizing, per-module overrides,

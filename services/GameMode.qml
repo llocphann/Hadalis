@@ -52,22 +52,12 @@ Singleton {
     // True if ANY window in ANY workspace is fullscreen (for toast suppression)
     readonly property bool hasAnyFullscreenWindow: checkAnyFullscreenWindow()
 
-    // True only when a fullscreen window sits on an ACTIVE workspace, i.e. is
-    // actually visible right now. A fullscreen-sized window parked on a
-    // background workspace (an RDP session, a paused game) keeps
-    // hasAnyFullscreenWindow true, but must not mute desktop companions that
-    // only ever appear over the workspace the user is looking at.
-    readonly property bool hasVisibleFullscreenWindow: {
-        if (!CompositorService.isNiri) return hasAnyFullscreenWindow
-        const windows = NiriService.windows
-        if (!Array.isArray(windows)) return false
-        for (let i = 0; i < windows.length; i++) {
-            if (!isWindowFullscreen(windows[i])) continue
-            const ws = NiriService.workspaces[windows[i].workspace_id]
-            if (ws?.is_active) return true
-        }
-        return false
-    }
+    // Niri keeps fullscreen windows in the scrolling layout after they
+    // lose focus. Only the *selected* window on each output's active workspace
+    // actually covers that output; a fullscreen neighbor must not hide shell
+    // chrome while the user is working in another window.
+    readonly property bool hasVisibleFullscreenWindow: CompositorService.isNiri
+        ? hasFullscreenOnOutput("") : hasAnyFullscreenWindow
     
     // Suppress niri reload toast briefly after GameMode changes
     property bool suppressNiriToast: false
@@ -219,23 +209,37 @@ Singleton {
         return root._isWindowFullscreenWithWorkspace(window, null, false)
     }
     
-    // True when a fullscreen window covers the given output (empty name = any
-    // output). Callers gating a per-monitor surface MUST pass their output
-    // name: a game on one monitor must not unmap the wallpaper on the other.
-    // Goes through isWindowFullscreen because reading `window.is_fullscreen`
-    // directly never fires on current niri (see above) — it silently reports
-    // "no fullscreen" forever.
+    // Select the frontmost window in a Niri workspace, not every window
+    // whose geometry happens to remain fullscreen in a hidden column.
+    // NiriService stores workspace.active_window_id from native events.
+    // On cold boot the first active-window event may not have arrived yet:
+    // use the focused window, or an unambiguous singleton, as fallback.
+    function _selectedWindowForWorkspace(ws, windows) {
+        if (!ws || !Array.isArray(windows)) return null
+        const matching = windows.filter(w =>
+            String(w?.workspace_id) === String(ws.id))
+        const activeId = ws.active_window_id
+        if (activeId !== undefined && activeId !== null)
+            return matching.find(w => String(w.id) === String(activeId)) ?? null
+        const focused = matching.find(w => w.is_focused === true)
+        return focused ?? (matching.length === 1 ? matching[0] : null)
+    }
+
+    // True when the foreground fullscreen window covers this output
+    // (empty name = any output). Do not gate per-monitor surfaces on a
+    // fullscreen-sized neighbor in an inactive column or workspace.
     function hasFullscreenOnOutput(outputName: string): bool {
         if (!CompositorService.isNiri) return false
         const windows = NiriService.windows
         if (!Array.isArray(windows)) return false
+        const workspaces = NiriService.workspaces ?? {}
 
-        for (let i = 0; i < windows.length; i++) {
-            const w = windows[i]
-            const ws = NiriService.workspaces?.[w.workspace_id]
-            if (!(ws?.is_active ?? false)) continue
+        for (const ws of Object.values(workspaces)) {
+            if (!ws?.is_active) continue
             if (outputName.length > 0 && ws.output !== outputName) continue
-            if (root._isWindowFullscreenWithWorkspace(w, ws, true)) return true
+            const selected = root._selectedWindowForWorkspace(ws, windows)
+            if (selected && root._isWindowFullscreenWithWorkspace(selected, ws, true))
+                return true
         }
         return false
     }

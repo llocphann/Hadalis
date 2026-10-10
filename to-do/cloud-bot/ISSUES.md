@@ -26,8 +26,36 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   isolation and mapped-window/stacking ownership. Test focus A→B→A,
   second monitor, workspace switch, startup unknown selection. Do not
   change layer ordering, input masks, animation, focus or visual quality.
-  **Source-level diagnosis only; no owner native Niri reproduction captured.
-  Acceptance OPEN.**
+  **Source fix committed on dev, native acceptance still OPEN.**
+  `47071303a50f26cee31a6a03aabf7297662d51f4` fixes numeric-vs-string
+  workspace dictionary key comparisons in both NiriService
+  active-window update handlers. `0129cb4ce8d3c81215387b0959f93f7708f5c028`
+  changes GameMode's per-output fullscreen coverage to select only
+  `workspace.active_window_id` (normalized as strings); while no active
+  ID is reported, it falls back to the focused window or the sole
+  unambiguous workspace window. Global visible-fullscreen/GameMode now
+  delegates to the same foreground-aware predicate. No layer-shell,
+  native input region, rendering, hover or animation logic was edited.
+  This matches Niri's documented scrolling-layout fullscreen behavior
+  (https://github.com/niri-wm/niri/wiki/Fullscreen-and-Maximize).
+  A permanent direct-source behavior regression
+  `scripts/test-niri-fullscreen-selection.mjs` was added in
+  `b1b565e926d235a11f9443e9adc1f8a72ca468b1` and integrated
+  with the canonical `scripts/validate-maintainer-local.sh`
+  in `da3a9bf3086d8da6b0ee519015601f059871dc5c`.
+  An independent isolated V8 run of the exact recorded test logic
+  against the newly committed QML functions passed 14/14 assertions,
+  including numeric Niri IPC workspace event updates and focus
+  A(fullscreen)→B(normal)→A. The native Niri compositor scenario and
+  full maintainer validation have NOT been run on this code here.
+  Next: sync `dev` into the installed iNiR runtime via
+  `./setup update --local` and restart, then reproduce on the
+  same workspace; assert Screen Edges/Panel/Perimeter return for B,
+  hide under A fullscreen, recover when A exits, remain correct
+  on a second output, and don't regress popup hover/lifecycle.
+  If still failing, capture Niri workspaces/windows and
+  `abyssHoverProbe.snapshot` with exact running source identity.
+  **Do not mark completed until owner confirms native behavior.**
 
 - [ ] **Popup/Edgebar closes while hovered — received/updated 2026-10-10:**
   NEW OWNER REPRO 2026-10-10: moving the pointer across the gap/connection

@@ -98,6 +98,43 @@ retired designs and completed migration notes. Existing evidence, screenshots,
 source pins and consumed receipts keep their original paths and status. Old
 ABYSS/OPTIMIZATION/RELEASE files are short link-compatibility pointers only.
 
+## Cross-repository task management — effective 2026-10-11
+
+**Alis dev is the only canonical task tracker for Alis, Alis-Companion and
+Alis-Intergration.** Use the SAME Issues/bugs, Rework/optimization and
+New features files for every repository. The old Companion visual/AI TODOs
+and the former Hadanion/Hadalird task routing are source snapshots,
+not authorization to keep updating separate task lists. Integration has
+no active TODO of its own at intake; its package delivery and release
+tasks have been captured from manifest, source and host requirements.
+All future incoming requests, bug reports, progress and completion for
+either satellite must be classified here; do not add a fourth backlog.
+
+**Source ownership is separate from task ownership:** core host/shared AI,
+perimeter, desktop UI and generic Notes/Todo belong to Alis dev; optional
+Companion actor, renderer, movement/persona and client behavior belong to
+[Alis-Companion](https://github.com/llocphann/Alis-Companion) main;
+optional TLP/Thinkfan/Obsidian workers and helpers belong to
+[Alis-Intergration](https://github.com/llocphann/Alis-Intergration) main.
+Those names/refs reflect discovery on 2026-10-11; refetch the actual
+target branch before work and never assume an Alis dev branch exists there.
+Never mutate Alis stable or rewrite cross-repository Git history.
+Implementation in a satellite repo is permitted only under its own
+current authority; preserve unrelated concurrent work.
+
+For each implementation step record selected Alis task ID, owning source
+repository and branch, source/host Git SHAs, installed release identity
+if applicable, commands, PASS/FAIL/SKIP and exit codes, owner permission,
+native/local dependencies and remaining release gates. A source-only test
+or a mock is not hardware/visual/real-model acceptance. Do not reexecute
+indeterminate privileged or deployment work. User data access, device
+policy changes, local agent hooks, memory capture or background inference
+require the original explicit consent; task migration grants none.
+
+No new agent, bot-number, parallel management board, Automation or MegaQML
+runtime is created. Source docs and old checklists can be read as evidence,
+but any status change is written **only here in Alis**.
+
 ## Research and external repositories
 
 [Optimization research](../../docs/optimization/README.md) remains technical
@@ -105,10 +142,11 @@ reference, separate from task status. Resumed product work authorizes the
 requested strict-lossless implementations after parity/measurement gates;
 research-only findings are not automatically approved runtime changes.
 
-[Hadalird](https://github.com/llocphann/Hadalird) owns optional TLP, Thinkfan and
-Obsidian implementation. [Hadanion](https://github.com/llocphann/Hadanion) owns
-Companion design/animation and AI tasks. Hadalis owns their host/package UI and
-shared APIs. Use the owning repo's current task entry for implementation there.
+Alis-Intergration owns optional TLP, Thinkfan and Obsidian implementation,
+while Alis-Companion owns optional Companion animation and AI behavior.
+Alis owns shared host APIs. **All task/status/priority decisions happen in
+the Alis lists above**, regardless of which source repository carries the
+code. Historical satellite TODO pages must not be treated as live queues.
 
 Only the **five-hour** limit remaining below 3% triggers checkpoint/push and
 a single continuation at that window's reset plus three minutes. Weekly usage

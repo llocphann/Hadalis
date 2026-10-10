@@ -21,6 +21,18 @@ The `cloud-bot` directory name does not create a separate workflow for Local AI.
 
 ## Task routing
 
+**Single portfolio backlog:** Alis dev also owns every task for
+[Alis-Companion](https://github.com/llocphann/Alis-Companion) and
+[Alis-Intergration](https://github.com/llocphann/Alis-Intergration).
+Their code, package tests and technical evidence stay in their repositories;
+the three Alis task categories alone own intake, priority, progress,
+completion and archiving. The satellite repositories' previous TODO
+documents are immutable *import evidence*, not competing active work queues.
+Never create a separate Companion or Integration task board. Record the actual
+implementation repository/ref, both compatible source SHAs and source/native
+acceptance gates when executing external tasks; the general Alis dev-only rule
+does not imply an external repository has a dev branch.
+
 Read `to-do/README.md` after this file. Keep active work in `to-do/cloud-bot/`. Technical research remains in `docs/` and archives remain historical.
 
 The only active task lists are `ISSUES.md`, `REWORK_OPTIMIZATION.md`, and `NEW_FEATURES.md` in `to-do/cloud-bot/`. Old ABYSS/OPTIMIZATION/RELEASE links are compatibility pointers, not competing checklists. Record new reports and meaningful progress in the appropriate category, not in another chronological handoff document.

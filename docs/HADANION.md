@@ -12,4 +12,8 @@ Compatibility remains for `abyss.companion`, `abyss.companionMind`, Settings slo
 
 General GGUF discovery/supervision now lives in `scripts/ai/` and remains available to the AI tab. Hadanion uses the shared text-session API and explicit journal helper inputs. User journal paths and permissions are unchanged.
 
-Companion active plans and the mak1zu local LLM research moved to Hadanion; [the categorized Hadalis tasks](../to-do/README.md) retain host work and external routing only. Retired designs are in [the Companion archive](archive/companion/). Historical `docs/wull-*` receipts remain unchanged with their original Hadalis SHA. New extraction results must be qualified separately from those receipts and from live desktop acceptance.
+Companion work is now centrally tracked in
+[Alis dev TODO](../to-do/README.md), including visual/AI implementation
+and host acceptance. Alis-Companion retains the implementation source,
+technical contracts, evidence and immutable prior-checklist snapshots,
+but no separate active planning/status queue.

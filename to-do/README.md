@@ -15,6 +15,14 @@ and completed milestones. Waiting desktop/hardware gates stay open while other
 authorized work proceeds. The `cloud-bot` folder holds both environments' lists;
 the application's Todo/Obsidian feature is separate.
 
+Alis dev is the **sole task board** for the core Alis shell,
+[Alis-Companion](https://github.com/llocphann/Alis-Companion) and
+[Alis-Intergration](https://github.com/llocphann/Alis-Intergration).
+The optional packages keep their own implementation source and test evidence,
+but no longer own separate TODO status or task priorities. Every external task
+must cite its repository/ref/actual source SHA and compatible host SHA.
+The three categories above cover all three repositories.
+
 Keep technical research in [docs/optimization](../docs/optimization/README.md)
 and historical records in [the archive](../docs/archive/README.md). Validate with
 repository regressions and `bash scripts/validate-maintainer-local.sh`; source,

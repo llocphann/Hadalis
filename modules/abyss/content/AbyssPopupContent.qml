@@ -10,7 +10,6 @@ import qs.modules.bar.weather
 import qs.modules.mediaControls
 import qs.modules.abyss.looks
 import "../../common/functions/PopupFocus.js" as PopupFocus
-import "../looks/AbyssGeometry.js" as Geometry
 
 // Rehost the mature popup contents, including Events, ThinkFan and Equalizer.
 FocusScope {
@@ -28,22 +27,6 @@ FocusScope {
     readonly property bool hoverDismissEnabled: root.autoDismissOnIdle
         && ["wifi","bluetooth","utilities","launcher","dockAppMenu"].includes(root.kind)
     readonly property bool triggerHovered: root.participant?.triggerHovered ?? false
-    // Popup hover is restricted to the exact native union of the body and
-    // its painted edge-connection strips. The source trigger is the other
-    // independent owner; empty workspace is never a hover surface.
-    readonly property bool popupBodyHovered: popupHover.hovered
-        && (root.participant?.acceptsInput ?? false)
-        && Geometry.rectContains(root.participant?.inputBounds,
-            popupHover.point.scenePosition.x, popupHover.point.scenePosition.y)
-        && !(root.participant?.controller?.sourceInputRegions ?? [])
-            .some(rect=>Geometry.rectContains(rect,
-                popupHover.point.scenePosition.x, popupHover.point.scenePosition.y))
-    readonly property bool connectedPopupHovered: popupHover.hovered
-        && (root.participant?.acceptsInput ?? false)
-        && Geometry.popupConnectedHover(root.participant?.inputBounds,
-            root.participant?.connectionRects ?? [],
-            root.participant?.controller?.sourceInputRegions ?? [],
-            popupHover.point.scenePosition.x,popupHover.point.scenePosition.y)
     readonly property bool editorFocusHeld: root.activeFocus && root.Window.active
         && PopupFocus.editableDescendant(root.Window.window?.activeFocusItem, root)
     signal closeRequested()
@@ -53,7 +36,7 @@ FocusScope {
             idleDismiss.stop()
             return
         }
-        if (root.triggerHovered || root.connectedPopupHovered || root.editorFocusHeld)
+        if (root.triggerHovered || popupHover.hovered || root.editorFocusHeld)
             idleDismiss.stop()
         else
             idleDismiss.restart()
@@ -63,13 +46,13 @@ FocusScope {
     onKindChanged: root.refreshIdleDismiss()
     onEnabledChanged: root.refreshIdleDismiss()
     onTriggerHoveredChanged: root.refreshIdleDismiss()
-    onConnectedPopupHoveredChanged: root.refreshIdleDismiss()
     onEditorFocusHeldChanged: root.refreshIdleDismiss()
 
     HoverHandler {
         id: popupHover
         parent: root.participant?.hoverParent ?? root
         enabled: root.hoverDismissEnabled
+        onHoveredChanged: root.refreshIdleDismiss()
     }
 
     Timer {
@@ -78,7 +61,7 @@ FocusScope {
         repeat: false
         onTriggered: {
             if (root.hoverDismissEnabled && root.enabled
-                    && !root.triggerHovered && !root.connectedPopupHovered && !root.editorFocusHeld)
+                    && !root.triggerHovered && !popupHover.hovered && !root.editorFocusHeld)
                 root.closeRequested()
         }
     }

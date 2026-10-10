@@ -858,6 +858,25 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   and buffer messages remains open. Trace the model reset and popup/text-field
   focus lifecycle independently; preserve the redacted Weather location.
 
+- [ ] **Calendar Popup Add/Edit Events text fields too small; event Remove button clipped — owner report 2026-10-10:**
+  In **Calendar Popup → Add Event**, the text input boxes are visibly
+  smaller/shorter than their text, reducing readability. Existing event
+  **Remove** control is partly cut off. Restore sufficient field height and
+  internal text baseline/padding to fit the actual font and placeholder at
+  normal and scaled DPI; ensure the Remove control is fully visible and has
+  an accessible click target without clipping the card, Popup edge or editor
+  action row. Investigate the Calendar Popup embedded layout
+  (`modules/bar/ClockCalendarContent.qml`,
+  `modules/sidebarRight/events/EventsWidget.qml`,
+  `EventsDialog.qml` embedded presentation, and `EventCard.qml`) to
+  identify **which** remove control is clipped before changing its layout;
+  `EventsDialog.qml` currently specifies 36px embedded text-field height
+  and 30px embedded action buttons, but this alone does not prove the cause.
+  Preserve compact Popup design and correct Add/Edit/Remove behavior; test
+  long input text, placeholder, light/dark, font scaling, small screens,
+  empty/populated calendar and add/edit/save/remove. State: OPEN; source
+  diagnosis, native visual test and owner acceptance pending.
+
 - [ ] **Weather popup overlap / Calendar-Weather Pyramid flicker — owner update 2026-10-10:**
   New case: rapidly hover between Calendar Popup and Weather Popup; Weather
   intermittently flashes. PyramidPopup coordination is a *suspected*, not

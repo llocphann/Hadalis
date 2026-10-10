@@ -30,6 +30,72 @@ function popupInput(content,width,height,insets,edge,paintedSurface) {
     right=clamp(right,x,width);bottom=clamp(bottom,y,height);
     return {x:x,y:y,width:right-x,height:bottom-y};
 }
+// The smooth union paints two concave shoulders beyond the body's tangent
+// bounds. Rasterize only those small shoulder strips, using the same SDF as
+// the field. Expanding the entire body rectangle would capture blank desktop.
+function popupShoulders(width,height,insets,edge,record,radius,softness,recordRadius) {
+    if (!record || !record.surface || record.surface.width <= 0
+            || record.surface.height <= 0 || softness <= 0) return [];
+    var h=horizontal(edge),leading=edge === "top" || edge === "left";
+    var surface=record.surface;
+    var start=Math.floor(h ? surface.x : surface.y);
+    var end=Math.ceil(h ? surface.x+surface.width : surface.y+surface.height);
+    var extent=Math.floor(h ? width : height);
+    var seam=leading ? insets[edge]
+        : (h ? height : width)-insets[edge];
+    // Disabled Edges have no owner seam to fuse with.
+    if (insets[edge] <= 0) return [];
+    var firstCross=leading ? Math.floor(seam) : Math.ceil(seam)-1;
+    var rows=[];
+    var records=[record];
+    var cornerStart=(h ? insets.left : insets.top)+radius;
+    var cornerEnd=extent-(h ? insets.right : insets.bottom)-radius;
+    var painted=function(tangent,cross) {
+        return distance(h ? tangent+.5 : cross+.5,
+            h ? cross+.5 : tangent+.5,width,height,insets,radius,
+            records,softness,recordRadius) < 0;
+    };
+    var append=function(first,last,cross) {
+        rows.push(h ? {x:first,y:cross,width:Math.max(0,last-first),height:1}
+            : {x:cross,y:first,width:1,height:Math.max(0,last-first)});
+    };
+    var scan=function(first,last,cross) {
+        // A nearby physical corner can make the SDF non-monotone. Preserve
+        // each filled interval instead of bridging an empty pixel gap.
+        var segment=-1,before=rows.length;
+        for (var t=first;t<last;t++) {
+            if (painted(t,cross)) { if (segment < 0) segment=t; }
+            else if (segment >= 0) { append(segment,t,cross);segment=-1; }
+        }
+        if (segment >= 0) append(segment,last,cross);
+        if (rows.length === before) append(first,first,cross);
+    };
+    for (var i=0;i<Math.ceil(softness)+1;i++) {
+        var cross=firstCross+(leading ? i : -i);
+        if (cross < 0 || cross >= Math.floor(h ? height : width)) continue;
+        var lo=Math.max(0,Math.floor(start-softness)),hi=Math.max(0,Math.min(extent,start));
+        var first=lo,last=hi;
+        while (lo < hi) {
+            var middle=Math.floor((lo+hi)/2);
+            if (painted(middle,cross)) hi=middle; else lo=middle+1;
+        }
+        if (first < cornerStart) scan(first,last,cross);
+        else append(lo,last,cross);
+        lo=Math.min(extent,end);hi=Math.min(extent,Math.ceil(end+softness));
+        first=Math.max(0,lo);last=hi;
+        while (lo < hi) {
+            var middle=Math.floor((lo+hi)/2);
+            if (painted(middle,cross)) lo=middle+1; else hi=middle;
+        }
+        if (last > cornerEnd) scan(first,last,cross);
+        else append(first,lo,cross);
+    }
+    return rows;
+}
+function rectContains(rect,x,y) {
+    return rect && rect.width > 0 && rect.height > 0 && x >= rect.x && y >= rect.y
+        && x < rect.x+rect.width && y < rect.y+rect.height;
+}
 function insets(thickness, barEdge, barThickness, barShown) {
     var result = {left: thickness, top: thickness, right: thickness, bottom: thickness};
     if (barShown && barEdge in result) result[barEdge] = Math.max(thickness, barThickness);

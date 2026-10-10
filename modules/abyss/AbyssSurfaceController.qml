@@ -11,6 +11,8 @@ QtObject {
     readonly property AbyssPyramidCoordinator pyramidCoordinator:
         AbyssPyramidCoordinator { controller: root }
     property var moduleRecords: []
+    // Source modules retain pointer priority over the popup bridge they own.
+    property var sourceInputRegions: []
     property int presentationOrder: 0
     function nextPresentationOrder(): int { return ++presentationOrder }
     property int vacancyInteractionOrder: 0
@@ -287,6 +289,9 @@ QtObject {
         mapped.length = kept
         return mapped
     }
+    readonly property var nativeInputRegions: Object.keys(participants)
+        .map(key=>participants[key]?.nativeInputRegion ?? null)
+        .filter(region=>region !== null)
 
     function impulse(edge, along, span, strength, mass = 1, channel = "module"): void {
         waves.impulse(edge,along,span,strength,mass,channel)

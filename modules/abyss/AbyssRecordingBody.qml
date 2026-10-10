@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import Quickshell
 import qs
 import qs.services
 import qs.modules.common
@@ -86,11 +87,17 @@ AbyssBodyHost {
         y: Geometry.horizontal(root.edge) ? (root.edge==="top" ? 0 : root.height-12) : center-18
         width: Geometry.horizontal(root.edge) ? 36 : 12
         height: Geometry.horizontal(root.edge) ? 12 : 36
+        readonly property Region inputRegion: Region {
+            x: Math.floor(wakeTarget.x); y: Math.floor(wakeTarget.y)
+            width: root.recoverable ? Math.ceil(wakeTarget.x+wakeTarget.width)-x : 0
+            height: root.recoverable ? Math.ceil(wakeTarget.y+wakeTarget.height)-y : 0
+        }
         HoverHandler { id: wakeHover; enabled: root.recoverable }
         AbyssParticipant {
             identity: "recordingWake"
             controller: root.controller
             inputBounds: root.recoverable ? Qt.rect(wakeTarget.x,wakeTarget.y,wakeTarget.width,wakeTarget.height) : Qt.rect(0,0,0,0)
+            nativeInputRegion: root.recoverable ? wakeTarget.inputRegion : null
         }
     }
 }

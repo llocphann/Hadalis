@@ -21,6 +21,8 @@ import qs.modules.common.widgets
 import qs.modules.bar
 import qs.modules.abyss
 import qs.modules.abyss.content
+import qs.modules.abyss.looks
+import "modules/abyss/looks/AbyssGeometry.js" as Geometry
 ShellRoot {
  id: root
  property int frames: 0
@@ -35,9 +37,9 @@ ShellRoot {
   id: controller
   presentationItem: scene
   outputWidth: scene.width; outputHeight: scene.height
-  // Production clearanceInsets includes the source module's inward depth.
-  edgeInsets: ({left:root.edge==="left" ? 40 : 8,right:root.edge==="right" ? 40 : 8,
-     top:root.edge==="top" ? 40 : 8,bottom:root.edge==="bottom" ? 40 : 8})
+  edgeInsets: ({left:8,right:8,top:8,bottom:8})
+  sourceInputRegions: [Qt.rect(anchor.x,anchor.y,
+    anchor.visible && anchor.enabled ? anchor.width : 0,anchor.height)]
  }
  FloatingWindow {
   id: window; visible:true; implicitWidth:640; implicitHeight:360; color:"#111820"
@@ -66,7 +68,9 @@ ShellRoot {
     embeddedItem:hostedPopup?.contentItem ?? null
     padding:14; span:root.edge==="left" || root.edge==="right" ? 128 : 208
     depth:root.edge==="left" || root.edge==="right" ? 208 : 128; along:136
-    edgeInsets:controller.edgeInsets
+    // Production placement clearance includes module depth; painting does not.
+    edgeInsets:({left:root.edge==="left" ? 40 : 8,right:root.edge==="right" ? 40 : 8,
+     top:root.edge==="top" ? 40 : 8,bottom:root.edge==="bottom" ? 40 : 8})
     Component.onCompleted:controller.registerPopupHost(0,host)
     Component.onDestruction:controller.unregisterPopupHost(0,host)
     HoverHandler {
@@ -142,14 +146,39 @@ ShellRoot {
      [content.x+content.width/2,content.y-7],
      [content.x+content.width/2,content.y+content.height+7]
     ]
+    check(controller.nativeInputRegions.includes(host.nativeInputRegion),"popup mask did not reach native owner")
+    const maskRows=host.nativeInputRegion.regions[1].regions
+    check(maskRows.length===host.connectionRects.length,"native shoulder mask lost strips")
+    for(let i=0;i<maskRows.length;i++){
+     const actual=maskRows[i],expected=host.connectionRects[i]
+     check(actual.x===expected.x && actual.y===expected.y && actual.width===expected.width && actual.height===expected.height,"native shoulder mask differs from hover mask")
+    }
+    const s=host.rawPresentationRecord.surface
+    const shoulders=edge==="top" || edge==="bottom"
+     ? [[s.x-5,edge==="top" ? ins.top+3 : scene.height-ins.bottom-3],
+        [s.x+s.width+5,edge==="top" ? ins.top+3 : scene.height-ins.bottom-3]]
+     : [[edge==="left" ? ins.left+3 : scene.width-ins.right-3,s.y-5],
+        [edge==="left" ? ins.left+3 : scene.width-ins.right-3,s.y+s.height+5]]
+    for(const point of shoulders){
+     check(Geometry.distance(point[0],point[1],scene.width,scene.height,ins,AbyssStyle.perimeterRadius,[host.rawPresentationRecord],AbyssStyle.connectionDepth,AbyssStyle.neckRadius)<0,"shoulder probe is not painted")
+    }
+    padPoints.push(...shoulders)
     for(const point of padPoints){
      mouseMove(scene,point[0],point[1]);wait(900);render()
      check(popup.requestedVisible && popup._contentHovered,"painted popup padding dismissed owner on "+edge+": "+JSON.stringify({point,input:host.inputBounds,content:host.record.content,requested:popup.requestedVisible,hosted:host.hostedPopup!==null}))
      check(GlobalStates.barPopupHoverHeld(window.screen.name) && anchor.visible,"hovered popup let the Edgebar auto-hide")
     }
+    const blank=edge==="top" || edge==="bottom"
+     ? [s.x-5,content.y+content.height/2]
+     : [content.x+content.width/2,s.y-5]
+    check(Geometry.distance(blank[0],blank[1],scene.width,scene.height,ins,AbyssStyle.perimeterRadius,[host.rawPresentationRecord],AbyssStyle.connectionDepth,AbyssStyle.neckRadius)>0,"blank probe overlaps paint")
+    check(!host.hoverParent.contains(Qt.point(blank[0]-host.hoverParent.x,blank[1]-host.hoverParent.y)),"shoulder mask widened into blank desktop")
+    mouseMove(scene,blank[0],blank[1]);wait(160);render()
+    check(!popup.requestedVisible,"blank desktop retained popup hover")
     outside()
     check(!popup.requestedVisible && !popup.presentationActive && controller.activePopup===null,"pointer exit left a stale popup lease")
     check(!GlobalStates.barPopupHoverHeld(window.screen.name),"final exit retained an auto-hide Bar lease")
+    check(host.connectionRects.length===0 && host.connectionRegions.length===0,"closed popup retained shoulder mask allocations")
    }
    root.edge="bottom";render();outside()
    mouseMove(anchor,40,16);wait(80);render()
@@ -216,10 +245,10 @@ ShellRoot {
         (config / "config.json").write_text(json.dumps(data))
         # Every grab retains its 2-second deadline; sustained body/padding dwell
         # must outlast actual hide timers even when nested Niri is unfocused.
-        result = run_qs(folder, env, timeout=170)
+        result = run_qs(folder, env, timeout=190)
         if result.returncode or "POPUP_ANCHOR_HOVER_PASS" not in result.stdout or any(
-            token in result.stdout for token in ["POPUP_ANCHOR_HOVER_FAIL", "ReferenceError:", "TypeError:", "Binding loop", "Failed to load configuration"]
+            token in result.stdout for token in ["POPUP_ANCHOR_HOVER_FAIL", "ReferenceError:", "TypeError:", "Binding loop", "Object set as mask", "Failed to load configuration"]
         ):
             print(result.stdout)
             raise SystemExit(1)
-        print("POPUP_ANCHOR_HOVER_PASS four-edge sustained body/padding/bridge hover with interactive children, generic idle timers, auto-hide Bar hold/release, reentry and click-only/editor focus")
+        print("POPUP_ANCHOR_HOVER_PASS four-edge sustained body/padding/bridge/shoulder hover with interactive children, generic idle timers, auto-hide Bar hold/release, reentry and click-only/editor focus")

@@ -1,4 +1,6 @@
 import QtQuick
+import QtQml.Models
+import Quickshell
 import qs
 import qs.modules.common
 import qs.modules.abyss.looks
@@ -205,14 +207,49 @@ Item {
     readonly property bool ready: embeddedItem !== null || content.status === Loader.Ready
     readonly property Item contentParent: contentCanvas
     readonly property Item hoverParent: root.includeEdgeConnection ? inputFrame : contentCanvas
+    // Placement clearance includes module depth; the painted field's actual
+    // seam stays at the physical Edge. Keep the bridge between both interactive.
+    readonly property var connectionInsets: root.controller?.edgeInsets ?? root.edgeInsets
     readonly property rect inputBounds: {
         if (!root.acceptsInput || !root.ready) return Qt.rect(0,0,0,0)
         const c=root.record.content
         const contentRect=Qt.rect(c.x,c.y,c.width,c.height)
         if (!root.includeEdgeConnection) return contentRect
         const region=Geometry.popupInput(contentRect,root.width,root.height,
-            root.edgeInsets,root.edge,root.rawPresentationRecord.surface)
+            root.connectionInsets,root.edge,root.rawPresentationRecord.surface)
         return Qt.rect(region.x,region.y,region.width,region.height)
+    }
+    readonly property var connectionRects: root.includeEdgeConnection
+            && root.inputBounds.width > 0 && root.inputBounds.height > 0
+        ? Geometry.popupShoulders(root.width,root.height,root.connectionInsets,root.edge,
+            root.rawPresentationRecord,AbyssStyle.perimeterRadius,
+            AbyssStyle.connectionDepth,AbyssStyle.neckRadius) : []
+    property var connectionRegions: []
+    readonly property Region nativeInputRegion: Region {
+        Region {
+            x: Math.floor(root.inputBounds.x); y: Math.floor(root.inputBounds.y)
+            width: root.inputBounds.width > 0
+                ? Math.ceil(root.inputBounds.x+root.inputBounds.width)-x : 0
+            height: root.inputBounds.height > 0
+                ? Math.ceil(root.inputBounds.y+root.inputBounds.height)-y : 0
+        }
+        Region { regions: root.connectionRegions }
+    }
+    Instantiator {
+        // Reuse Region identities while the strip count is stable; unload on close.
+        model: root.connectionRects.length
+        delegate: Region {
+            required property int index
+            readonly property var rect: root.connectionRects[index] ?? null
+            x: rect?.x ?? 0; y: rect?.y ?? 0
+            width: rect?.width ?? 0; height: rect?.height ?? 0
+        }
+        onObjectAdded: (index,object) => {
+            root.connectionRegions=root.connectionRegions.concat([object])
+        }
+        onObjectRemoved: (index,object) => {
+            root.connectionRegions=root.connectionRegions.filter(region=>region!==object)
+        }
     }
     signal closeRequested()
     AbyssParticipant {
@@ -240,6 +277,7 @@ Item {
             stackProximity:root.stackProximity,
             record:root.requestedRecord})
         inputBounds: root.inputBounds
+        nativeInputRegion: root.includeEdgeConnection ? root.nativeInputRegion : null
         mass: root.mass
     }
     function react(opening): void {
@@ -463,9 +501,22 @@ Item {
     }
     Item {
         id: inputFrame
-        x: root.inputBounds.x; y: root.inputBounds.y
-        width: root.inputBounds.width; height: root.inputBounds.height
+        readonly property real shoulderReach: root.connectionRects.length > 0
+            ? Math.ceil(AbyssStyle.connectionDepth)+1 : 0
+        x: root.inputBounds.x-(Geometry.horizontal(root.edge) ? shoulderReach : 0)
+        y: root.inputBounds.y-(Geometry.horizontal(root.edge) ? 0 : shoulderReach)
+        width: root.inputBounds.width+(Geometry.horizontal(root.edge) ? 2*shoulderReach : 0)
+        height: root.inputBounds.height+(Geometry.horizontal(root.edge) ? 0 : 2*shoulderReach)
         enabled: root.acceptsInput && root.ready
+        containmentMask: QtObject {
+            function contains(point: point): bool {
+                const x=point.x+inputFrame.x,y=point.y+inputFrame.y
+                if ((root.controller?.sourceInputRegions ?? []).some(
+                        rect=>Geometry.rectContains(rect,x,y))) return false
+                return Geometry.rectContains(root.inputBounds,x,y)
+                    || root.connectionRects.some(rect=>Geometry.rectContains(rect,x,y))
+            }
+        }
     }
     Item {
         id: contentFrame

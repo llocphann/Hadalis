@@ -6,36 +6,39 @@ that implementation is missing. Refetch current `dev` before diagnosing.
 
 ## Current failures and owner reports
 
-- [ ] **Popup/Edgebar closes while hovered — received 2026-10-10:** popups and
-  Edgebars must stay open while the pointer is inside their actual body or the
-  drawn connection to the Screen Edge. Source repaired after Dashboard slide
-  `8c673129b`. Private pointer tests reproduced dismissal on painted padding and
-  interactive MouseArea children. Source now uses the unjoined painted footprint
-  for body/bridge input, makes that hover plane an ancestor of contents, and
-  coalesces Bar hold publication after the binding turn to prevent re-entry.
-  Native tests pass all four edges with sustained generic/mature body, padding
-  and bridge hover, interactive children, auto-hide Bar hold/release, final leave,
-  reopen, click-only actions and editor focus. Clock/Weather handoff (1,147
-  samples), connected Recording and cold remount tests also pass. State: waiting
-  for canonical exact-SHA validation and owner normal desktop acceptance.
-  Logs: `/tmp/hadalis-popup-hover-padding-red-20261010.log`,
-  `/tmp/hadalis-popup-hover-child-red-20261010.log`,
-  `/tmp/hadalis-popup-hover-padding-green-20261010.log`.
-  This new report reopens the relevant hover acceptance below.
+- [ ] **Popup/Edgebar closes while hovered — received/updated 2026-10-10:**
+  body and painted Screen Edge connections must retain hover. Pushed source
+  `10311cd96892d86d86870d327d28b27e32df8fbd` repairs padding/interactive-child
+  hover and coalesces Bar hold publication; its focused four-edge checks passed.
+  A further composite-mask candidate for SDF shoulders, physical Edge bridges,
+  source-module pointer priority and Recording input is saved **WIP / HOLD** in
+  this stop checkpoint. Final shoulder geometry, Clock/Weather (1,156 samples),
+  cold mount and Recording fixtures pass; final generic/mature hover fixture
+  **FAILS** at left bridge x=14,y=200. That point overlaps the source anchor;
+  inspect actual requested/anchor/body leases before deciding whether this is a
+  probe error or runtime dismissal. Qualification remains incomplete; do not
+  weaken all-edge dwell/input tests. Next: qualify genuine painted bridge points
+  outside the source, run related native fixtures sequentially, then canonical
+  on clean committed source. Owner cold/normal hover, connected input,
+  click-through and multi-output acceptance remain separate.
+  [Durable receipt and logs](../../docs/evidence/abyss-product/20261010-hover-checkpoint/README.md).
+  Maintainer requested stop/save/push; no further implementation or test runs.
+  This report reopens relevant hover acceptance below.
 
-- [ ] **Canonical validation:** the clean-clone strict-QML run at exact SHA
-  `8b2ed6f0a1fccddade206f0060ed19d19337a5da` finished **FAIL: 334 PASS, 1 FAIL,
-  1 SKIP** on 2026-10-10. `test-shell-surface-contracts.py` expects Settings at
-  Top during Polkit, while the new authentication behavior yields at Bottom.
-  Focused repair on 2026-10-10 exercises the production Rail host and exact
-  Focus bindings in private native layer-shell windows: 65 forward/reverse
-  states pass across dialog/external/shell authorization, region selection and
-  Settings open state. The stale Top expectation now matches Bottom; runtime
-  behavior is unchanged. State: waiting for canonical validation of the repaired
-  exact SHA. Native properties do not prove owner Polkit visibility/focus.
-  Logs: `/tmp/hadalis-settings-auth-bindings-20261010.log` and
-  `/tmp/hadalis-canonical-8b2ed6f0a-20261010.log`. A prior SHA's PASS cannot close
-  this runtime gate.
+- [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
+  `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,
+  1 SKIP**. Failures: keyboard sizing, Dashboard Music, Dashboard warm readiness,
+  Equalizer presentation, Weather handoff, Abyss editor, OSD and shared content.
+  [Full logs and failure details](../../docs/evidence/abyss-product/20261010-hover-checkpoint/README.md)
+  are preserved. The warm fixture had a 757x852 canvas; a larger private-Niri
+  output probe is recorded, but not all failures are proven environment-only.
+  No retry was run after the explicit stop. The checkpoint's WIP source was
+  not part of this clean-clone run and has no canonical result. Next: resolve
+  affected focused failures, then validate the exact new committed SHA.
+  Earlier `8b2ed6f0a` FAIL 334/1/1 remains historical; `a349d1a0c` corrected its
+  stale Settings Top expectation to Bottom with 65 native forward/reverse states.
+  Current canonical passes that contract; owner Polkit/focus acceptance is open.
+  A previous or focused PASS never closes the overall gate.
 
 - [ ] **New boot/runtime warnings:** owner's log runs `0ea54cc09` and reaches
   the first frame; no startup Type-unavailable failure is shown. Investigate

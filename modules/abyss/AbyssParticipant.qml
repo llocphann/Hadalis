@@ -18,6 +18,8 @@ QtObject {
     property int vacancyHoverOrder: 0
     property var placementRequest: null
     property rect inputBounds: Qt.rect(0,0,0,0)
+    // Optional composite native mask; geometry/read-order APIs stay unchanged.
+    property var nativeInputRegion: null
     property real mass: 1
     property var heldController: null
     property string heldIdentity: ""

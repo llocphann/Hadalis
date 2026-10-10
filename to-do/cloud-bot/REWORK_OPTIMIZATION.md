@@ -17,7 +17,8 @@ holds technical research; this file holds pending outcomes.
 - [ ] **Audio Spectrum processing:** investigate the Round 49 profile-factor
   reuse candidate. Source count/profile/stereo/clamped strength are frame-invariant
   until configuration or shape changes. A candidate is prepared only in
-  `/tmp/hadalis-bar-cava-candidate.qml`; product code is unchanged. Require actual
+  [the stop checkpoint's unpromoted candidate](../../docs/evidence/abyss-product/20261010-hover-checkpoint/unpromoted/bar-cava-candidate.qml)
+  (copied from `/tmp/hadalis-bar-cava-candidate.qml`); product code is unchanged. Require actual
   QV4 exact sample/level parity, unchanged scratch/NOTIFY, strict render comparison
   and measured cost before implementing. Preserve upstream-like bounce, CAVA
   ownership, warm reopen and every animation/frame cadence.
@@ -36,16 +37,15 @@ holds technical research; this file holds pending outcomes.
 
 ## Existing UI and layout
 
-- [ ] **Edit Dashboard toolbar slide — received 2026-10-10:** when entering
-  Edit Dashboard Layout, the connected toolbar must slide out from its edge
-  attachment instead of appearing instantly or materializing with scale/fade.
-  Source now translates full-size controls from the top attachment with the
-  shared slide token; field geometry and input follow the visible clipped area.
-  Exit retains the last footprint and releases input immediately. Native tests
-  pass 16 Dashboard/Overview × edge × size cases, partial close/reopen, complete
-  exit, reduced motion, stable canvas dimensions and Undo/Cancel/Done. State:
-  waiting for canonical exact-SHA validation and owner appearance acceptance.
-  Focused log: `/tmp/hadalis-dashboard-toolbar-slide-motion-20261010.log`.
+- [ ] **Edit Dashboard toolbar slide — received/updated 2026-10-10:** pushed
+  `8c673129b58dbde73bf31c82df25c1085bf63e15` slides full-size connected controls
+  from the attachment using the shared motion token. Input follows the clipped
+  reveal; exit retains its footprint and releases input immediately. Native
+  16 Dashboard/Overview × edge × size cases, reversal, complete exit, reduced
+  motion, stable canvas and Undo/Cancel/Done pass. Its focused check also passes
+  in the exact `10311cd96` canonical run, whose overall result is FAIL 327/8/1.
+  State: source/focused-qualified; owner appearance acceptance still pending.
+  [Durable focused evidence](../../docs/evidence/abyss-product/20261010-hover-checkpoint/hadalis-dashboard-toolbar-slide-motion-20261010.log).
 
 - [ ] **Abyss Waves:** verify round crest-only geometry, no trough erosion or
   needle peaks, restrained breaker/whitewater, continuous distance attenuation,

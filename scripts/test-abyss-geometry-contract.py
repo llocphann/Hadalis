@@ -36,6 +36,47 @@ for(const owner of ['top','bottom','left','right']) {
   }
  }
 }
+// Pixel-center oracle for the small native shoulder masks. No painted
+// connection pixel is dropped; no empty pixel is intercepted by the addition.
+for(const owner of ['top','bottom','left','right']) {
+ for(const scale of [1,1.25,1.5,2]) for(const softness of [4,24,48]) {
+  const w=1920/scale,h=1200/scale,ins={left:40,top:40,right:40,bottom:40};
+  for(const progress of [0,.2,1]) for(const radius of [20,29,38]) for(const nativeThickness of [8,40]) {
+   const placementInsets={left:40,top:40,right:40,bottom:40};
+   ins[owner]=nativeThickness;
+   const rec=panel(w,h,placementInsets,owner,100.25,240.5,180,progress,14);
+   const original=JSON.stringify(rec);
+   const rows=popupShoulders(w,h,ins,owner,rec,34,softness,radius);
+   assert.equal(JSON.stringify(rec),original,'native input does not mutate paint records');
+   if(progress===0) {assert.equal(rows.length,0);continue;}
+   const hit=popupInput(rec.content,w,h,ins,owner,rec.surface);
+   const tangent=horizontal(owner)?rec.content.x+rec.content.width/2:rec.content.y+rec.content.height/2;
+   const bridgeX=owner==='left'?nativeThickness+2:owner==='right'?w-nativeThickness-2:tangent;
+   const bridgeY=owner==='top'?nativeThickness+2:owner==='bottom'?h-nativeThickness-2:tangent;
+   assert(distance(bridgeX,bridgeY,w,h,ins,34,[rec],softness,radius)<0,'bridge probe is painted');
+   assert(rectContains(hit,bridgeX,bridgeY),'module clearance must not truncate physical Edge bridge');
+   for(const row of rows){
+    assert(row.x>=0 && row.y>=0 && row.x+row.width<=w && row.y+row.height<=h);
+    for(let y=row.y;y<row.y+row.height;y++) for(let x=row.x;x<row.x+row.width;x++)
+     assert(distance(x+.5,y+.5,w,h,ins,34,[rec],softness,radius)<0,'extra native mask captures empty desktop');
+   }
+   const hEdge=horizontal(owner),start=Math.floor(hEdge?rec.surface.x:rec.surface.y),end=Math.ceil(hEdge?rec.surface.x+rec.surface.width:rec.surface.y+rec.surface.height);
+   const seam=owner==='top'?ins.top:owner==='bottom'?h-ins.bottom:owner==='left'?ins.left:w-ins.right;
+   const leading=owner==='top'||owner==='left';
+   for(let i=0;i<=Math.ceil(softness);i++){
+    const cross=(leading?Math.floor(seam):Math.ceil(seam)-1)+(leading?i:-i);
+    for(const [first,last] of [[start-Math.ceil(softness),start],[end,end+Math.ceil(softness)]]) for(let t=first;t<last;t++){
+     const x=(hEdge?t:cross)+.5,y=(hEdge?cross:t)+.5;
+     if(x<0 || y<0 || x>=w || y>=h)continue;
+     // Existing perimeter/corner paint alone does not grant this popup a lease.
+     if(distance(x,y,w,h,ins,34,[],softness,radius)>0
+         && distance(x,y,w,h,ins,34,[rec],softness,radius)<0)
+      assert(rectContains(hit,x,y)||rows.some(row=>rectContains(row,x,y)),'painted connection shoulder missing from native mask');
+    }
+   }
+  }
+ }
+}
 for(const edge of ['top','right','bottom','left']) {
  const ins={left:16,top:16,right:16,bottom:16,[edge]:0};
  const x=edge==='left'?0.5:edge==='right'?1919.5:960;

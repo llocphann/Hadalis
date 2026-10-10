@@ -107,6 +107,11 @@ ShellRoot {
     body.edge=edge;body.alongCenter=-1;settle()
     check(body.recorder.isVertical===["left","right"].includes(edge),"incorrect Recording orientation on "+edge)
     check(body.inputBounds.width>0 && body.inputBounds.height>0,"Recording lost connected input")
+    check(controller.nativeInputRegions.includes(body.nativeInputRegion),"Recording controls did not reach native input mask")
+    const mask=body.nativeInputRegion.regions[0]
+    check(mask.x<=body.inputBounds.x && mask.y<=body.inputBounds.y
+      && mask.x+mask.width>=body.inputBounds.x+body.inputBounds.width
+      && mask.y+mask.height>=body.inputBounds.y+body.inputBounds.height,"Recording native mask clips control footprint")
     click("recordingSystemAudio");check(systemAudio.muted,"system audio did not mute on "+edge+" open="+body.open+" progress="+body.progress+" content="+JSON.stringify(body.record.content)+" controls="+body.recorder.controls.width+"x"+body.recorder.controls.height)
     click("recordingSystemAudio");check(!systemAudio.muted,"system audio did not unmute")
     click("recordingMicrophone");check(audio.micMuted,"mic did not mute")

@@ -31,8 +31,9 @@ ShellRoot {
   id: controller
   presentationItem: scene
   outputWidth: scene.width; outputHeight: scene.height
-  edgeInsets: ({left:root.edge==="left"?40:8,right:root.edge==="right"?40:8,
-    top:root.edge==="top"?40:8,bottom:root.edge==="bottom"?40:8})
+  edgeInsets: ({left:8,right:8,top:8,bottom:8})
+  sourceInputRegions: [Qt.rect(clockAnchor.x,clockAnchor.y,clockAnchor.width,clockAnchor.height),
+    Qt.rect(weatherAnchor.x,weatherAnchor.y,weatherAnchor.width,weatherAnchor.height)]
  }
  FloatingWindow {
   visible: true; implicitWidth: 1100; implicitHeight: 800; color: "#111820"
@@ -68,7 +69,9 @@ ShellRoot {
      readonly property bool horizontal: root.edge==="top" || root.edge==="bottom"
      readonly property rect anchorBounds: popup?._anchorRect(scene.width,scene.height) ?? Qt.rect(0,0,0,0)
      anchors.fill:parent; controller:controller; identity:"styledPopup"+index
-     edge:root.edge; edgeInsets:controller.edgeInsets
+     edge:root.edge
+     edgeInsets:({left:root.edge==="left"?40:8,right:root.edge==="right"?40:8,
+      top:root.edge==="top"?40:8,bottom:root.edge==="bottom"?40:8})
      includeEdgeConnection:true; stackPolicy:"pyramid"
      semanticOpenOverride:popup?.liquidSemanticVisible ?? false
      open:popup?.presentationActive ?? false

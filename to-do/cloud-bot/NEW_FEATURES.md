@@ -112,6 +112,94 @@ do not reimplement them solely because a checkbox is open.
   [Rework](REWORK_OPTIMIZATION.md). State: NEW, design/implementation and owner
   input acceptance pending.
 
+- [ ] **Quick Notes Markdown Reading and editable Source/Live mode — owner request 2026-10-11:**
+  [Owner: Alis dev; NEW feature] Upgrade existing shared Quick Notes into
+  a genuine **Markdown note reader and editor** without replacing the
+  canonical Notepad tab/content/autosave model. The user wants
+  **two primary interaction states**, not two separate note copies:
+  **Reading** when the Quick Notes popup is revealed by **hover with
+  no actual editor/text-input focus**, and **Editing** once the user
+  clicks the note body to input text. Reading must render Markdown
+  like Obsidian Reading mode; Editing must offer Source editing and/or
+  Obsidian-style **Live Editing** with a clear, durable mode choice
+  (initially allow a reliable Source editor while providing a plan
+  to qualify Live Editing; neither should silently corrupt syntax).
+  Hover alone, pointer movement, a pinned popup or tab switch must
+  NOT steal keyboard focus or change the note bytes. In Reading mode
+  a click on the rendered text activates the editor for the same
+  note; keep editor mode through typing/selection even if the pointer
+  leaves the popup. Exit to Reading only on deliberate blur/outside
+  click/escape/close where safe, after flushing pending changes;
+  retain caret/selection and scroll mapping sensibly on return.
+
+  **Markdown coverage:** headings, bold/italic, inline code/fenced
+  blocks, links, lists, nested/numbered lists, checkboxes, blockquotes,
+  horizontal rules and images/attachments at minimum. Keep ordinary
+  plain text readable; unsupported markup remains visible as literal
+  source rather than being silently discarded. Reading mode must
+  show real visual formatting, not a TextArea displaying Markdown
+  punctuation. Live Editing (if selected) should show formatted
+  text while revealing underlying syntax near the caret/selection,
+  with reversible edits and no HTML conversion of saved note text.
+  Avoid a huge always-running Markdown parser or web engine.
+
+  **Formatting shortcuts in Editing:** implement Ctrl+B to wrap/toggle
+  **bold** and Ctrl+I to wrap/toggle *italic* for the selected text;
+  when nothing is selected, insert paired markers and position the
+  caret between them. Add appropriate standard shortcuts such as
+  Ctrl+K for link, plus optionally a simple toolbar/commands for
+  headings, lists, task lists, quote, inline/code block and strikethrough
+  (with documented, conflict-free bindings). Preserve selection,
+  undo/redo, Unicode/IME composition, word boundaries, multiline
+  selections and literal backslash/code-fence contexts. Shortcuts
+  must work only while the editor has focus, and must not override
+  system/window actions, Ctrl+V image import, Ctrl+S flush or normal
+  clipboard behavior. Keyboard accessibility is mandatory.
+
+  **Single owner, many surfaces:** investigate
+  `modules/screenCorners/QuickNotesPopup.qml` (hover/pin/OnDemand vs
+  Exclusive keyboard focus and editor activation),
+  `modules/sidebarRight/notepad/QuickNotesView.qml`,
+  `NotepadWidget.qml` (existing TextArea, autosave, cursor, image
+  preview, paste/image import and current Ctrl+V/Ctrl+S),
+  `services/Notepad.qml` (stable note ID, persisted plain Markdown
+  string in notepad-tabs.json), Sidebar Left and Dashboard reusers,
+  and the separate legacy ii Notes content as an explicit
+  compatibility decision. Share the Markdown parsing/rendering
+  and editing commands rather than cloning one popup-only editor;
+  preserve compact Quick Notes UI and existing multi-tab workflows.
+  Keep concurrent views on one note synchronized by stable ID,
+  without discarding unsaved changes or overwriting an external
+  Obsidian-exported note.
+
+  **Security & performance:** render untrusted note Markdown as data,
+  never executable HTML/JS/QML; sanitize or disable raw HTML,
+  JavaScript/data URLs and remote image/network fetching by default.
+  File links and attachment paths must respect existing safe local
+  note-attachment ownership, explicit user interaction and
+  permission boundaries. Do not load note images, large documents
+  or heavy renderer work when hidden; bound parsed document size
+  and support long-note scrolling with responsive lazy/idle updates.
+  Preserve literal Markdown bytes and image attachment references
+  through viewing, editing, copy/paste, save/reload and
+  Zettelkasten/Obsidian export. Existing [Quick Notes image delivery]
+  (below) remains a separate accepted-source/native delivery gate;
+  do not duplicate its helper or reimport images on mode changes.
+
+  **Acceptance:** popup first hover -> Markdown Reading without
+  cursor/keyboard grab; click note -> Source/Live Editing; Ctrl+B/
+  Ctrl+I (selection and empty selection), link and formatting
+  actions, undo/redo, IME and escaped punctuation; outside click/
+  Escape/pin behavior, rapid hover reversal, tab switch, simultaneous
+  Sidebar/Dashboard/corner notes, copied/attached images, empty
+  notes, long notes, checklists, theme/scale/fractional monitors,
+  disabled optional Obsidian and after restart. Verify identical
+  stored Markdown text and stable note ID across each transition.
+  Add QML/parser/formatting/focus/performance tests and require
+  native Niri/Quickshell owner visual + input acceptance.
+  State: NEW/OPEN; source audit complete at high level, design/
+  implementation/test and owner acceptance pending.
+
 - [ ] **Quick Notes image delivery:** Hadalis `add29d6f8` implements shared
   paste/import, original-byte storage, Markdown persistence and preview with
   stable asynchronous note ownership. Hadalird `b0c975a7f40bdf531012be326bc728f5c014b696`

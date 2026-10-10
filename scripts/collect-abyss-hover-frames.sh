@@ -79,6 +79,19 @@ if [[ -z "$resolved_config" ]]; then
 fi
 qs_cmd=(qs -p "$resolved_config")
 
+# Capture a bounded live IPC inventory and critical host status. Both are
+# read-only; they distinguish wrong instance / missing critical family from a
+# missing optional Perimeter before assuming a method-specific failure.
+qs_show_rc=0
+"${qs_cmd[@]}" ipc show > "$output_dir/ipc-targets.txt" 2>&1 || qs_show_rc=$?
+printf 'ipc_show_exit_status=%d\n' "$qs_show_rc" > "$output_dir/ipc-preflight-status.txt"
+host_status_rc=0
+"${qs_cmd[@]}" ipc call abyssHostProbe status > "$output_dir/abyss-host-status.txt" 2>&1 || host_status_rc=$?
+printf 'abyss_host_status_exit_status=%d\n' "$host_status_rc" >> "$output_dir/ipc-preflight-status.txt"
+snapshot_preflight_rc=0
+"${qs_cmd[@]}" ipc call abyssHoverProbe snapshot > "$output_dir/hover-preflight.txt" 2>&1 || snapshot_preflight_rc=$?
+printf 'hover_preflight_exit_status=%d\n' "$snapshot_preflight_rc" >> "$output_dir/ipc-preflight-status.txt"
+
 source_mismatch=false
 {
     printf 'capture_utc=%s\n' "$(date -u +%FT%TZ)"
@@ -130,14 +143,14 @@ if ((frame_start_rc != 0)) || ! grep -Eq '"started"[[:space:]]*:[[:space:]]*true
     {
         printf 'ERROR: startFrames did not confirm an active handler (qs exit=%s).\n' "$frame_start_rc"
         printf 'The IPC CLI can exit 0 even for Target not found.\n'
-        printf 'Inspect frame-start.txt and installed_vs_checkout in identity.txt.\n'
+        printf 'Inspect ipc-targets.txt, abyss-host-status.txt, hover-preflight.txt and identity.txt.\n'
     } | tee "$output_dir/diagnostic-error.txt" >&2
     exit 5
 fi
 sleep 6
 frame_stop_rc=0
 "${qs_cmd[@]}" ipc call abyssHoverProbe stopFrames > "$output_dir/frame-intervals.txt" 2>&1 || frame_stop_rc=$?
-if ((frame_stop_rc != 0)) || ! grep -Fq '"sample":"QQuickWindow frameSwapped wall-clock intervals (ms)"' "$output_dir/frame-intervals.txt"; then
+if ((frame_stop_rc != 0)) || ! grep -Fq '"sample":"QQuickWindow frameSwapped wall-clock intervals (ms)"' "$output_dir/frame-intervals.txt" || ! grep -Eq '"count"[[:space:]]*:[[:space:]]*[1-9][0-9]*' "$output_dir/frame-intervals.txt"; then
     {
         printf 'ERROR: stopFrames did not return a valid frame summary (qs exit=%s).\n' "$frame_stop_rc"
         printf 'Inspect frame-intervals.txt and installed runtime parity.\n'

@@ -234,6 +234,38 @@ holds technical research; this file holds pending outcomes.
   with explicit open/close/reverse of Abyss Panel before
   attributing any slow events to animation. **Lag remains OPEN.**
 
+  **Owner VALID capture 2026-10-10 10:33:48Z,
+  `hadalis-abyss-hover-20261010-173348.tar.gz`:**
+  `dev` checkout `ffef7ef8ab5ca6107f11de959b33c404d644dd50`,
+  three installed QML/JS comparisons MATCH, readiness attempt 0,
+  active Niri `eDP-1` Perimeter, `startFrames` started=true,
+  `stopFrames` returned **342** real Qt `frameSwapped`
+  wall-clock intervals: min=0ms, p50=17ms, p95=19ms,
+  p99=71ms, max=184ms, mean=17.6403508772ms,
+  over16.7ms=193, over33.3ms=8,
+  idleGapsOver100ms=3, maxIntervalCount=600 not exhausted.
+  Valid slow tail persists (8/342 >33.3ms), with three
+  >100ms gaps; include clock quantization and idle gaps.
+  These are NOT GPU/compositor-present timings and the
+  aggregate does not identify which precise Panel animation,
+  if any, was running when the slow intervals occurred.
+  NotificationCenter's two observable hover/open/retract
+  cycles (#66–76 and #78–87) happened later during the
+  separate hover phase; do NOT assign the frame samples
+  to these popup events without new correlated evidence.
+  Source-only `adc17c8b63b6f169005c11a193ab69343e6024ef`
+  adds at most 40 timestamped slowEvents >33.3ms
+  to the opt-in frame measurement: timestampMs,
+  intervalMs and snapshot-only-on-outlier values
+  for Bar visibility, liquid Popup presence,
+  left/right Panel, Dashboard, Controls and Settings
+  reveal progress. This only reads presentation state
+  when a slow interval is observed; it does not alter
+  timers, motion curves, shader quality or input masks.
+  Still need the owner to open/close/reverse the intended
+  Panel during PHASE 1 and submit a native archive
+  with event timestamps. **Lag acceptance remains OPEN.**
+
 - [ ] **Strict-lossless CPU/RAM/GPU reductions:** re-audit latest `dev` and
   promote high-value findings only after behavior, read/dependency order,
   identity/NOTIFY and lifecycle parity. Keep hidden services/lightweight warm

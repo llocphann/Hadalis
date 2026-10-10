@@ -132,14 +132,15 @@ sidebar_pos = corners.index("readonly property bool shouldShowSidebarCornerOpen:
 if notif_pos >= sidebar_pos:
     fail("Notification Center priority must resolve before legacy sidebar corner-open")
 
-# The popup reuses the canonical connected surface implementation, which owns
-# the immutable SurfaceMotion slide contract. Hover and explicit opens are
-# separate leases, with drag and transfer grace holding the surface resident.
+# Notification Center has one source-edge/body hover lease. Explicit
+# keyboard opens and drag operations remain independent. The configured
+# grace is a short leave/enter debounce, NOT a bridge-owned visibility lease.
 for token in (
     "Bar.StyledPopup {",
     "required property string outputName",
     "GlobalStates.notificationCenterExplicitOpen",
-    "property bool entryBridgeHeld: false",
+    "root.sourceEdgeHovered",
+    "root.popupHovered",
     "property bool exitGraceHeld: false",
     "Config.options?.notificationCenter?.closeGraceMs ?? 280",
     "(contentLoader.item?.dragActive ?? false)",
@@ -148,10 +149,8 @@ for token in (
 ):
     require(popup, token, "Notification Center popup lifecycle contract missing")
 
-if popup.count("Config.options?.notificationCenter?.closeGraceMs ?? 280") < 2:
-    fail("Notification Center transfer grace must control both entry and exit")
-forbid(popup, "interval: 260",
-       "Notification Center entry bridge still bypasses the public grace setting")
+for token in ("entryBridgeHeld", "entryBridgeTimer"):
+    forbid(popup, token, "Notification Center must not have a bridge-owned hover lease")
 
 # Global state is authoritative and opening the old Right Sidebar must no longer
 # mark history read or suppress transient toasts.

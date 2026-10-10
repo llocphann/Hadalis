@@ -571,6 +571,48 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   regression remain OPEN; no rendering/input behavior
   was changed to produce this probe.
 
+  **Owner archive 2026-10-10 11:07:12Z (18:07 ICT), 
+  `hadalis-abyss-hover-20261010-180711.tar.gz`:**
+  Checkout `122d8e5f970102fc56919b450db5f7c42c54fa8e`
+  on `dev`, installed-vs-checkout files
+  `shell.qml`, `AbyssPerimeter.qml`,
+  `AbyssGeometry.js` all MATCH, but installed git
+  HEAD unavailable; collector exit=0, readiness
+  attempt 5, host ready/coldRecreated=true,
+  100/100 valid output-local hover snapshots.
+  Six distinct `notificationCenter` opens:
+  #6–19, #24–30, #34–45, #48–55, #59–66,
+  and #70–99 (last still in flight when sampling
+  ended). Five observed open→closed transitions;
+  summary counters exactly `6` and `5`.
+
+  New geometry data confirms the actual hosted
+  HoverHandler receives pointer on the 62 native
+  shoulder/connector strips OUTSIDE the rectangular
+  body input: `pointHit.inShoulderStrip=true`,
+  `inInputBounds=false`, source exclusion=false
+  repeatedly (e.g. #14–16, #36–41 and #74–79).
+  Raw surface x=1490,y=616,w=480,h=560;
+  corner-joined surface x=1490,y=616,w=480,h=634;
+  main body input x=1490,y=616,w=420,h=560
+  on 1920x1200 eDP-1 output. In last visit,
+  stable connector hover #74–79 at (1899.48,1195.09)
+  then #80–97 shows continuous body-input hover
+  (e.g. 1903.39,1175.58 up to 1907.29,1085.82).
+  The bridge→body transition did NOT dismiss
+  the Popup. At #98 the existing HandlerPoint was
+  null, then #99 requestedVisible=false with
+  semanticHold=true; physical cursor position once
+  hover was lost is unknown. Earlier five dismissals
+  likewise follow all-false hover plus grace expiry;
+  none proves the pointer remained inside the
+  rendered union at dismissal. Input-region geometry
+  therefore cannot yet be identified as the defect.
+  This source/record supports no widening of hitboxes,
+  timers, SDF union or intrusive global pointer hooks.
+  Generic Popup, each screen edge, actual painted-pixel
+  parity and definitive user acceptance remain OPEN.
+
 
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,

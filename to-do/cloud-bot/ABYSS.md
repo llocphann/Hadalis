@@ -1528,3 +1528,31 @@ CPU/RAM/GPU percentage claim from these functional tests.
   owner recording or alter system mute state.
 - [ ] Owner desktop appearance and an actual recording/stop remain separate
   acceptance. Canonical validation must apply to the final committed source.
+
+### 2026-10-10 — MPD mutation ordering and identical-payload recovery
+
+- [x] Serialize queue writes, single/bulk enqueue, saved-playlist writes and
+  transport commands in the order requested. Previously detached Play could
+  overtake a pending queue's Clear/Add, producing `Bad song index` or letting
+  the queue's initial Play override the newer selection. Idle MPRIS transport
+  remains available; while a mutation is pending, transport joins the same FIFO.
+- [x] Surface command ACK failures without disconnecting a healthy MPD server.
+  Reusing an identical queue/bulk/playlist payload no longer waits forever for a
+  FileView `saved` signal that a no-op write does not emit. Reuse only confirmed
+  disk writes; reset failed-write cache so an identical retry really persists
+  the payload. A failed write preserves the MPD queue and releases the FIFO.
+- [x] Actual LocalMusic QML/Process/FileView test passed against an isolated MPD
+  protocol server with both Python and the existing local Rust compatibility
+  backend. It covers delayed Clear/Add versus Play, visible ACK, healthy
+  connection, action ordering, repeated queue/bulk/playlist payloads and failed
+  payload/identical retry. Receipt: `/tmp/hadalis-music-all-mutations-20261010.log`.
+  The Rust binary is an existing build, not a new source-build qualification.
+- [x] A separate real private MPD decoded generated WAV/FLAC, then passed Queue,
+  Stop/idle/Play, Pause, Shuffle/Repeat and recovery from an indexed track whose
+  header was deliberately corrupted. Receipt:
+  `/tmp/hadalis-music-private-open-error-20261010.log`. It used only a null audio
+  output and synthetic files. Real QML demand events, MPD/source contracts,
+  Dashboard diagnostic reducer/model and Qt 6 parse also passed.
+- [ ] Owner audible PipeWire playback and the owner's previously reported FLAC
+  files remain separate. No owner queue, output routing or music bytes were
+  changed by these tests. Validate the final exact SHA canonically.

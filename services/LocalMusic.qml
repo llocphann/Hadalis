@@ -83,6 +83,11 @@ Singleton {
     property var _enqueueRequests: []
     property var _bulkEnqueueRequests: []
     property var _playlistRequests: []
+    property var _commandRequests: []
+    property var _mpdMutationKinds: []
+    property string _activeMpdMutation: ""
+    readonly property bool mpdMutationPending:
+        _activeMpdMutation.length > 0 || _mpdMutationKinds.length > 0
     property bool _queuePayloadWriting: false
     property bool _bulkEnqueuePayloadWriting: false
     property bool _playlistPayloadWriting: false
@@ -442,10 +447,11 @@ Singleton {
             uri: uri,
             playNow: playNow === true
         }]
-        _drainEnqueueRequests()
+        _scheduleMpdMutation("enqueue")
     }
 
     function _drainEnqueueRequests(): void {
+        if (_activeMpdMutation !== "enqueue") return
         if (_enqueueProc.running || _enqueueRequests.length === 0) return
         const request = _enqueueRequests[0]
         _enqueueRequests = _enqueueRequests.slice(1)
@@ -476,14 +482,15 @@ Singleton {
         const uris = _trackUris(tracks)
         if (uris.length === 0) return
         _bulkEnqueueRequests = [..._bulkEnqueueRequests, uris]
-        _drainBulkEnqueueRequests()
+        _scheduleMpdMutation("bulk")
     }
 
     function _drainBulkEnqueueRequests(): void {
+        if (_activeMpdMutation !== "bulk") return
         if (_bulkEnqueueProc.running || _bulkEnqueuePayloadWriting
                 || _bulkEnqueueRequests.length === 0) return
         _bulkEnqueuePayloadWriting = true
-        bulkEnqueuePayloadFile.setText(JSON.stringify(_bulkEnqueueRequests[0]))
+        _saveMpdPayload(bulkEnqueuePayloadFile, JSON.stringify(_bulkEnqueueRequests[0]), root._startBulkEnqueuePayloadProcess)
     }
 
     function _startBulkEnqueuePayloadProcess(): void {
@@ -506,8 +513,7 @@ Singleton {
         if (_bulkEnqueueRequests.length > 0)
             _bulkEnqueueRequests = _bulkEnqueueRequests.slice(1)
         error = "mpd_bulk_enqueue_payload_failed"
-        if (_bulkEnqueueRequests.length > 0)
-            Qt.callLater(root._drainBulkEnqueueRequests)
+        _finishMpdMutation()
     }
 
     function createPlaylist(name: string, tracks): void {
@@ -528,14 +534,15 @@ Singleton {
             name: playlistName,
             uris: uris
         }]
-        _drainPlaylistRequests()
+        _scheduleMpdMutation("playlist")
     }
 
     function _drainPlaylistRequests(): void {
+        if (_activeMpdMutation !== "playlist") return
         if (_playlistProc.running || _playlistPayloadWriting
                 || _playlistRequests.length === 0) return
         _playlistPayloadWriting = true
-        playlistPayloadFile.setText(JSON.stringify(_playlistRequests[0].uris))
+        _saveMpdPayload(playlistPayloadFile, JSON.stringify(_playlistRequests[0].uris), root._startPlaylistPayloadProcess)
     }
 
     function _startPlaylistPayloadProcess(): void {
@@ -559,8 +566,7 @@ Singleton {
         if (_playlistRequests.length > 0)
             _playlistRequests = _playlistRequests.slice(1)
         error = "mpd_playlist_payload_failed"
-        if (_playlistRequests.length > 0)
-            Qt.callLater(root._drainPlaylistRequests)
+        _finishMpdMutation()
     }
 
     function playQueue(queue, index = 0, name = ""): void {
@@ -582,14 +588,32 @@ Singleton {
             index: index,
             uris: valid.map(track => String(track.uri ?? track.path))
         }]
-        _drainQueueRequests()
+        _scheduleMpdMutation("queue")
     }
 
     function _drainQueueRequests(): void {
+        if (_activeMpdMutation !== "queue") return
         if (_queueProc.running || _queuePayloadWriting
                 || _queueRequests.length === 0) return
         _queuePayloadWriting = true
-        queuePayloadFile.setText(JSON.stringify(_queueRequests[0].uris))
+        _saveMpdPayload(queuePayloadFile, JSON.stringify(_queueRequests[0].uris), root._startQueuePayloadProcess)
+    }
+
+    function _saveMpdPayload(file, serialized: string, start): void {
+        // An unchanged FileView write emits no saved() signal, including a
+        // newly created file whose loaded flag is still false. Only reuse a
+        // confirmed write: failed writes can leave new bytes in its cache.
+        if (file.committedPayload === serialized) Qt.callLater(start)
+        else file.setText(serialized)
+    }
+
+    function _resetFailedMpdPayload(file): void {
+        file.committedPayload = ""
+        // Reset the failed write's cached bytes so an identical retry writes
+        // them again instead of silently becoming a FileView no-op.
+        const path = file.path
+        file.path = ""
+        file.path = path
     }
 
     function _startQueuePayloadProcess(): void {
@@ -613,8 +637,7 @@ Singleton {
         if (_queueRequests.length > 0)
             _queueRequests = _queueRequests.slice(1)
         error = "mpd_queue_payload_failed"
-        if (_queueRequests.length > 0)
-            Qt.callLater(root._drainQueueRequests)
+        _finishMpdMutation()
     }
 
     function _scheduleStatusFallback(): void {
@@ -622,13 +645,52 @@ Singleton {
             statusRefreshTimer.restart()
     }
 
+    // Serialize intent before payload writes, not merely after Process starts.
+    // A Play/Delete/Enqueue must never overtake Clear/Add from a pending queue.
+    function _scheduleMpdMutation(kind: string): void {
+        _mpdMutationKinds = [..._mpdMutationKinds, kind]
+        _drainMpdMutations()
+    }
+
+    function _drainMpdMutations(): void {
+        if (_activeMpdMutation.length > 0 || _mpdMutationKinds.length === 0) return
+        _activeMpdMutation = _mpdMutationKinds[0]
+        _mpdMutationKinds = _mpdMutationKinds.slice(1)
+        if (_activeMpdMutation === "queue") _drainQueueRequests()
+        else if (_activeMpdMutation === "enqueue") _drainEnqueueRequests()
+        else if (_activeMpdMutation === "bulk") _drainBulkEnqueueRequests()
+        else if (_activeMpdMutation === "playlist") _drainPlaylistRequests()
+        else if (_activeMpdMutation === "command") _drainCommandRequests()
+    }
+
+    function _finishMpdMutation(): void {
+        _activeMpdMutation = ""
+        Qt.callLater(root._drainMpdMutations)
+    }
+
+    function _mutationFailure(output: string, fallback: string): void {
+        try {
+            error = String(JSON.parse(output || "{}").error ?? fallback)
+        } catch (e) { error = fallback }
+    }
+
     function _sendMpd(command: string, args): void {
-        Quickshell.execDetached([
+        _commandRequests = [..._commandRequests, {
+            command: command, args: Array.isArray(args) ? args.slice() : []
+        }]
+        _scheduleMpdMutation("command")
+    }
+
+    function _drainCommandRequests(): void {
+        if (_activeMpdMutation !== "command" || _commandRequests.length === 0) return
+        const request = _commandRequests[0]
+        _commandRequests = _commandRequests.slice(1)
+        _commandProc.output = ""
+        _commandProc.command = [
             root.nativeDispatchPath, "mpd", "command",
-            mpdHost, String(mpdPort), command,
-            JSON.stringify(Array.isArray(args) ? args : [])
-        ])
-        root._scheduleStatusFallback()
+            mpdHost, String(mpdPort), request.command, JSON.stringify(request.args)
+        ]
+        _commandProc.running = true
     }
 
     function togglePlaying(): void {
@@ -647,7 +709,7 @@ Singleton {
         }
 
         const player = mprisPlayer
-        if (player && (player.canTogglePlaying ?? false)) {
+        if (!mpdMutationPending && player && (player.canTogglePlaying ?? false)) {
             player.togglePlaying()
             root._scheduleStatusFallback()
             return
@@ -657,7 +719,7 @@ Singleton {
 
     function next(): void {
         const player = mprisPlayer
-        if (player && MprisController.canGoNextForPlayer(player)) {
+        if (!mpdMutationPending && player && MprisController.canGoNextForPlayer(player)) {
             MprisController.nextForPlayer(player, false)
             root._scheduleStatusFallback()
             return
@@ -671,7 +733,7 @@ Singleton {
             return
         }
         const player = mprisPlayer
-        if (player && MprisController.canGoPreviousForPlayer(player)) {
+        if (!mpdMutationPending && player && MprisController.canGoPreviousForPlayer(player)) {
             MprisController.previousForPlayer(player, false)
             root._scheduleStatusFallback()
             return
@@ -704,7 +766,7 @@ Singleton {
     function seek(seconds: real): void {
         const target = Math.max(0, Number(seconds) || 0)
         const player = mprisPlayer
-        if (player && (player.canSeek ?? false)
+        if (!mpdMutationPending && player && (player.canSeek ?? false)
                 && (player.positionSupported ?? true)) {
             player.position = target
             root._scheduleStatusFallback()
@@ -717,7 +779,7 @@ Singleton {
         const clamped = Math.max(0, Math.min(1, Number(value) || 0))
         volume = clamped
         const player = mprisPlayer
-        if (player && (player.volumeSupported ?? false) && (player.canControl ?? false)) {
+        if (!mpdMutationPending && player && (player.volumeSupported ?? false) && (player.canControl ?? false)) {
             player.volume = clamped
             root._scheduleStatusFallback()
             return
@@ -896,29 +958,35 @@ Singleton {
 
     FileView {
         id: queuePayloadFile
+        property string committedPayload: ""
         path: Qt.resolvedUrl(root._queuePayloadPath)
         watchChanges: false
         printErrors: false
-        onSaved: root._startQueuePayloadProcess()
-        onSaveFailed: error => root._failQueuePayloadWrite(error)
+        onLoaded: committedPayload = text()
+        onSaved: { committedPayload = text(); root._startQueuePayloadProcess() }
+        onSaveFailed: error => { root._resetFailedMpdPayload(queuePayloadFile); root._failQueuePayloadWrite(error) }
     }
 
     FileView {
         id: bulkEnqueuePayloadFile
+        property string committedPayload: ""
         path: Qt.resolvedUrl(root._bulkEnqueuePayloadPath)
         watchChanges: false
         printErrors: false
-        onSaved: root._startBulkEnqueuePayloadProcess()
-        onSaveFailed: error => root._failBulkEnqueuePayloadWrite(error)
+        onLoaded: committedPayload = text()
+        onSaved: { committedPayload = text(); root._startBulkEnqueuePayloadProcess() }
+        onSaveFailed: error => { root._resetFailedMpdPayload(bulkEnqueuePayloadFile); root._failBulkEnqueuePayloadWrite(error) }
     }
 
     FileView {
         id: playlistPayloadFile
+        property string committedPayload: ""
         path: Qt.resolvedUrl(root._playlistPayloadPath)
         watchChanges: false
         printErrors: false
-        onSaved: root._startPlaylistPayloadProcess()
-        onSaveFailed: error => root._failPlaylistPayloadWrite(error)
+        onLoaded: committedPayload = text()
+        onSaved: { committedPayload = text(); root._startPlaylistPayloadProcess() }
+        onSaveFailed: error => { root._resetFailedMpdPayload(playlistPayloadFile); root._failPlaylistPayloadWrite(error) }
     }
 
     Process {
@@ -1002,6 +1070,18 @@ Singleton {
     }
 
     Process {
+        id: _commandProc
+        property string output: ""
+        stdout: StdioCollector { onStreamFinished: _commandProc.output = text ?? "" }
+        onStarted: _commandProc.output = ""
+        onExited: (code, _status) => {
+            if (code !== 0) root._mutationFailure(_commandProc.output, "mpd_command_failed")
+            else root._scheduleStatusFallback()
+            root._finishMpdMutation()
+        }
+    }
+
+    Process {
         id: _queueProc
         property string output: ""
         stdout: StdioCollector {
@@ -1010,12 +1090,11 @@ Singleton {
         onStarted: _queueProc.output = ""
         onExited: (code, _status) => {
             if (code !== 0)
-                root.error = "mpd_queue_failed"
+                root._mutationFailure(_queueProc.output, "mpd_queue_failed")
             else
                 root._scheduleStatusFallback()
 
-            if (root._queueRequests.length > 0)
-                Qt.callLater(root._drainQueueRequests)
+            root._finishMpdMutation()
         }
     }
 
@@ -1028,7 +1107,7 @@ Singleton {
         onStarted: _enqueueProc.output = ""
         onExited: (code, _status) => {
             if (code !== 0) {
-                root.error = "mpd_enqueue_failed"
+                root._mutationFailure(_enqueueProc.output, "mpd_enqueue_failed")
             } else {
                 try {
                     root._applyPayload(JSON.parse(_enqueueProc.output || "{}"), false)
@@ -1036,8 +1115,7 @@ Singleton {
                     root.error = "mpd_enqueue_parse_failed"
                 }
             }
-            if (root._enqueueRequests.length > 0)
-                Qt.callLater(root._drainEnqueueRequests)
+            root._finishMpdMutation()
         }
     }
 
@@ -1050,7 +1128,7 @@ Singleton {
         onStarted: _bulkEnqueueProc.output = ""
         onExited: (code, _status) => {
             if (code !== 0) {
-                root.error = "mpd_bulk_enqueue_failed"
+                root._mutationFailure(_bulkEnqueueProc.output, "mpd_bulk_enqueue_failed")
             } else {
                 try {
                     root._applyPayload(JSON.parse(_bulkEnqueueProc.output || "{}"), false)
@@ -1058,8 +1136,7 @@ Singleton {
                     root.error = "mpd_bulk_enqueue_parse_failed"
                 }
             }
-            if (root._bulkEnqueueRequests.length > 0)
-                Qt.callLater(root._drainBulkEnqueueRequests)
+            root._finishMpdMutation()
         }
     }
 
@@ -1082,8 +1159,7 @@ Singleton {
                 root.error = ""
                 playlistRescanTimer.restart()
             }
-            if (root._playlistRequests.length > 0)
-                Qt.callLater(root._drainPlaylistRequests)
+            root._finishMpdMutation()
         }
     }
 }

@@ -290,10 +290,52 @@ Scope {
                     editorRegionCount: editor.regions.length,
                     liquidPresented: Boolean(liquid.presented),
                     liquidPopupsOpen: Boolean(liquid.popupsOpen),
-                    popupSlots: liquid.popupSlots.map(slot => slot
-                        ? { kind: String(slot.popup?._liquidAnchor?.kind ?? ""),
-                            active: Boolean(slot.popup?.presentationActive) }
-                        : null),
+                    // Read only on explicit IPC snapshot: distinguish lost
+                    // source hover, lost body hover, a visible compositor
+                    // mask, and a timed semantic retract. Never log each
+                    // frame or force a repaint while diagnosing.
+                    barPopupHoverLease: GlobalStates.barPopupHoverHeld(window.outputName),
+                    popupSlots: liquid.popupSlots.map((slot,index) => {
+                        if (!slot) return null
+                        const p=slot.popup
+                        const host=liquid._popupHost(index)
+                        const bounds=host?.inputBounds ?? null
+                        const content=host?.record?.content ?? null
+                        return {
+                            kind:String(p?._liquidAnchor?.kind ?? ""),
+                            order:slot.order,
+                            active:Boolean(p?.presentationActive),
+                            requestedVisible:Boolean(p?.requestedVisible),
+                            semanticHold:Boolean(p?._liquidSemanticHold),
+                            lingerVisible:Boolean(p?._lingerVisible),
+                            moduleHover:Boolean(p?.moduleHoverActive),
+                            anchorHover:Boolean(p?._anchorHover?.hovered),
+                            bodyHover:Boolean(p?._bodyHovered),
+                            contentHover:Boolean(p?._contentHovered),
+                            hosted:p?._hostedController === liquid,
+                            bodyAcceptsInput:Boolean(host?.acceptsInput),
+                            bodyReady:Boolean(host?.ready),
+                            hoverParentEnabled:Boolean(host?.hoverParent?.enabled),
+                            nativeRegionRegistered:Boolean(host?.nativeInputRegion
+                                && liquid.nativeInputRegions.includes(host.nativeInputRegion)),
+                            stripCount:host?.connectionRects?.length ?? 0,
+                            bounds:bounds ? {x:bounds.x,y:bounds.y,
+                                w:bounds.width,h:bounds.height} : null,
+                            content:content ? {x:content.x,y:content.y,
+                                w:content.width,h:content.height} : null
+                        }
+                    }),
+                    genericPopup:{
+                        activeKind:String(popup.activeKind ?? ""),
+                        desiredKind:String(popup.desiredKind ?? ""),
+                        resident:Boolean(popup.resident),
+                        requestedOpen:Boolean(popup.requestedOpen),
+                        progress:Number(popup.progress ?? 0),
+                        inputBounds:{x:popup.inputBounds.x,y:popup.inputBounds.y,
+                            w:popup.inputBounds.width,h:popup.inputBounds.height},
+                        triggerHover:Boolean(popup.contentItem.item?.triggerHovered),
+                        focusHeld:Boolean(popup.contentItem.item?.editorFocusHeld)
+                    },
                     modules: modules
                 }
             }

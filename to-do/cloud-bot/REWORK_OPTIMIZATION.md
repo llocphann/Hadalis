@@ -63,7 +63,19 @@ holds technical research; this file holds pending outcomes.
   during slow open/reverse/multi-edge transitions, and CPU/GPU compositor
   evidence where available. Diagnose spikes in mask rebuild, allocator
   movement, ShaderEffect/waves, or focus/remount from evidence first.
-  **USER-EXPERIENCE ACCEPTANCE REMAINS OPEN.**
+  **USER-EXPERIENCE ACCEPTANCE REMAINS OPEN.** Exact source at
+  `0ded4c9b388b407506add4029a7eb8985dc426fe` passed a second
+  **offline V8** run of the current repository Node geometry test body:
+  518,945 assertions, same predicate/serialization checks, using emulated
+  Node asserts/readFile; still NOT Qt/Quickshell or canonical. A single
+  read-only collection helper
+  [`scripts/collect-abyss-hover-frames.sh`](../../scripts/collect-abyss-hover-frames.sh)
+  captures frame interval samples without IPC polling and then separate
+  timestamped hover state samples (no native compositor mask refresh).
+  After installing the new exact source, run it while reproducing motion
+  and transfer, preserve the three receipts and source/installed SHA. Do
+  not report whole-shell FPS gain from V8 microbench timings, and do not
+  call the previous Region-count reduction current after its revert.
 
 - [ ] **Strict-lossless CPU/RAM/GPU reductions:** re-audit latest `dev` and
   promote high-value findings only after behavior, read/dependency order,

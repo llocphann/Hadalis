@@ -55,6 +55,67 @@ The disappearance of the center Loader from the banner codepath also prevents th
 
 **What is NOT yet proven:** full maintainer validator, true Qt/QML loading, Niri multi-output/reveal correctness, absence of input glitches, and actual reduction of Qt heartbeat/frameSwapped slow gaps on owner hardware. The targeted patch removes an evidenced layout conflict; other sources of lag may remain. Do not mark the three owner outcomes accepted until an exact-SHA native reproduction matches the video steps and the owner confirms them.
 
+## Owner follow-up: recording-stop `Recording saved` notification lag
+
+**Owner observation (2026-10-10):** previous Notification Center size/position
+problem is now acceptable in native use. A distinct remaining case happens
+after stopping screen recording: the system announces completion and the
+transient notification popup still lags. Keep its desktop acceptance OPEN.
+
+**Source path confirmed:**
+
+1. `scripts/videos/record.sh` sends `notify-send "Recording saved"`
+   with the full absolute saved-video path after successful recording
+   and file verification. Optional Discord compression defaults OFF; do
+   not attribute a runtime stall to ffmpeg without local configuration evidence.
+2. `services/Notifications.qml` appends the accepted notification into
+   `Notifications.popupList`, rendered in the transient
+   `NotificationListView` with grouped cards.
+3. `modules/abyss/content/AbyssNotificationsContent.qml` previously
+   bound the desired Popup height directly to
+   `popupLoader.item?.contentHeight`. Immediately after a new notification,
+   delegates and a potentially wrapping saved-file path may take several
+   Qt layout passes, so the requested span/depth can change more than once
+   during reveal and trigger further allocator/field updates.
+4. `modules/abyss/AbyssRecordingBody.qml` also closes as
+   `RecorderStatus.isRecording` changes. It may overlap the notification
+   transition. Existing evidence does NOT establish which Qt/RHI/compositor
+   frame is late or that the file body alone causes the stall.
+
+**Narrow source remedy on dev; Niri validation still pending:**
+
+- `98d0b387881c1d94b75dff5a78aee312bf830da5` adds
+  `settledPopupHeight` / `popupLayoutReady` to the notification
+  adapter. A one-shot, event-driven 75ms Timer batches positive
+  `NotificationListView.contentHeight` updates. It does not publish
+  zero or intermediate card sizes; later list changes are also batched.
+- `df86dca7278f680d2c9d555c62ac7b1be8f9943e` makes the
+  transient Abyss host load content offscreen via `residentContent`
+  while a notification is pending; `open` waits for
+  `contentItem.item?.popupLayoutReady`, avoiding a Loader/open
+  chicken-and-egg dependency. The separate Center,
+  input masks, hover/bridge and recording-save action remain unchanged.
+- `a57020f20da369baf8db183a2164cb1dbc1cc927` extends
+  `scripts/test-abyss-notification-transition.mjs`: the real
+  committed QML expressions and measurement functions are checked
+  against zero/provisional/settled ListView height, a synthetic
+  `Recording saved` path, later notifications, empty history and
+  existing Center/placement invariants. **46/46** isolated JS tests
+  passed. The canonical validator already calls this script; the
+  full validator has NOT been run on this SHA.
+
+**Native acceptance still needed:** stop a short recording with
+`screenRecord.showNotifications=true`, verify exactly one properly
+sized, promptly revealed `Recording saved` banner with no
+mid-animation resize, open the Notifications/Activity center while
+that banner is still up, and repeat with long paths and multiple
+notifications. If the visible lag persists, collect the exact same
+phase's Qt heartbeat/frameSwapped timestamps alongside
+`notification.contentHeight`, `settledPopupHeight`,
+`popupLayoutReady`, `notification.record`, and
+`recording.progress`. No source-only test proves a GPU or Niri
+performance gain; keep the task OPEN until owner confirmation.
+
 ## Local chatbot's next steps
 
 1. Follow \`AGENTS.md\`, \`to-do/README.md\` and \`to-do/cloud-bot/README.md\`. Refetch \`dev\` and verify the installed/running QML matches the exact checkout. Never edit \`stable\`. This issue is independently OPEN even if Screen Edge hover becomes stable.

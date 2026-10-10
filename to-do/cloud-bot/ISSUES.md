@@ -29,9 +29,20 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   Resolve failures before exact-SHA canonical clean-clone validation. Do not
   weaken all-edge dwell/input tests. Owner cold/normal hover, connected input,
   click-through and multi-output acceptance remain separate.
+  Serial local validation order (preserve full logs, actual exit codes and exact
+  source SHA): `python3 scripts/test-abyss-geometry-contract.py`,
+  `python3 scripts/test-popup-anchor-hover-runtime.py`,
+  `python3 scripts/test-popup-cold-start-lifecycle-runtime.py`,
+  `python3 scripts/test-weather-popup-handoff-runtime.py`, then
+  `python3 scripts/test-recording-abyss-runtime.py`. Stop on a real failure
+  and diagnose rather than interpreting older PASS logs as new results.
+  Once focused failures are resolved, execute
+  `bash scripts/validate-maintainer-local.sh` on a clean exact-SHA checkout;
+  then request independent owner desktop/multi-output acceptance.
   [Durable receipt and logs](../../docs/evidence/abyss-product/20261010-hover-checkpoint/README.md).
-  Maintainer requested stop/save/push; no further implementation or test runs.
-  This report reopens relevant hover acceptance below.
+  The earlier maintainer stop/save/push was honored at the checkpoint; this
+  new continuation changed only the fixture and task record, with **no new
+  runtime test or desktop acceptance**. Related hover gates remain open.
 
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,

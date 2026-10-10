@@ -266,6 +266,34 @@ holds technical research; this file holds pending outcomes.
   Panel during PHASE 1 and submit a native archive
   with event timestamps. **Lag acceptance remains OPEN.**
 
+  **Owner bounded trace 2026-10-10 10:44:39Z (17:44 local), exact
+  checkout `ab1f52dd255c32a7626fd35fcaffceadf1b304eb`:**
+  `hadalis-abyss-hover-20261010-174438.tar.gz`
+  successfully measured **344** Qt `frameSwapped` wall-clock
+  intervals: min=0ms, p50=17ms, p95=18ms, p99=40ms,
+  max=161ms, mean=17.485465ms, >16.7ms=210,
+  >33.3ms=4, >100ms=2. Compared with prior
+  17:33 trace (342 intervals, p99=71ms, max=184ms,
+  >33.3ms=8), this is a *different non-controlled
+  six-second interaction*, NOT an optimization benchmark
+  or measured performance improvement.
+  New bounded `slowEvents` captured exactly four spikes:
+  timestampMs=1791629083567 interval=161ms,
+  1791629084032=40ms, 1791629085028=84ms,
+  1791629085180=137ms. All four had
+  `leftPanelProgress=rightPanelProgress=dashboardProgress=
+  controlPanelProgress=settingsProgress=0`;
+  Bar visible true for all, liquidPopupsOpen=true
+  only for the later two spikes. Thus no observed
+  Panel motion coincided with these four spikes; this
+  does not establish that the user never moved a Panel
+  or that GPU/compositor caused delays. Popup hover
+  episode #67–96 belongs to the LATER sampling phase.
+  Next: obtain a controlled native open/close/reverse
+  Panel capture and compare slow-events against actual
+  animation state. **Lag remains OPEN.**
+
+
 - [ ] **Strict-lossless CPU/RAM/GPU reductions:** re-audit latest `dev` and
   promote high-value findings only after behavior, read/dependency order,
   identity/NOTIFY and lifecycle parity. Keep hidden services/lightweight warm

@@ -167,6 +167,47 @@ holds technical research; this file holds pending outcomes.
   a zero-count frame summary. No QML lifecycle or render
   settings were changed. Jank root cause and acceptance remain OPEN.
 
+  **VALID owner Qt frame interval trace, 2026-10-10
+  09:28:01Z, `eDP-1` on Niri:** archive
+  `hadalis-abyss-hover-20261010-162800.tar.gz` was
+  captured at checkout `a5ebffa747ddead7799d6dd6501f712996e068bf`
+  and installed source parity MATCH for all 3 tracked files.
+  IPC registry includes `abyssHoverProbe.startFrames`,
+  `stopFrames`; actual start reply
+  `[{"output":"eDP-1","started":true,"maxIntervals":600}]`.
+  Frame stop reply: count=346, min=2ms, p50=17ms,
+  p95=22ms, p99=76ms, max=86ms, mean=17.5983ms;
+  intervals over16.7ms=208, over33.3ms=7,
+  idle gaps over100ms=0. Sum of intervals ~6.09s.
+  These are real bounded Qt `QQuickWindow.frameSwapped`
+  **wall-clock intervals**, not compositor present/GPU
+  timings, and are valid after the QML `int` overflow
+  correction. A sparse slow tail is confirmed (7/346
+  intervals exceeded 33.3ms), but the log does NOT timestamp
+  individual outliers or prove the owner performed a
+  specific animation during that 6s window.
+  The `notificationCenter` popup was first observed
+  only at hover sample #35 (~09:28:18Z), which was
+  AFTER the separate frame measurement ended; do NOT
+  attribute those 7 outliers to that exact popup reveal.
+  No root cause, before/after speed-up or acceptable
+  product smoothness claim is supported. **Lag remains OPEN.**
+
+  To avoid losing the next hover-transfer event at the end
+  of the original ~9.5-second, 40-snapshot phase, collector
+  `d642cce966aea969a7f843180db82bece38e970a`
+  now captures 100 bounded snapshots (~24s expected
+  including IPC overhead, not an exact deadline).
+  `1a0875d1b0fdd9c7f572d96e1a6e1d3c6cd90c00`
+  adds read-only NotificationCenter hover-grace owner state
+  to the popup slot snapshot. Neither alters rendering,
+  frame scheduling, animation curves, shape nor
+  native input. Next: exact installed-dev native capture,
+  explicitly perform opening/reversal during Phase 1,
+  open and cross popup during Phase 2, share ONE `.tar.gz`.
+  Native acceptance on these latest diagnostic changes
+  is still PENDING.
+
 - [ ] **Strict-lossless CPU/RAM/GPU reductions:** re-audit latest `dev` and
   promote high-value findings only after behavior, read/dependency order,
   identity/NOTIFY and lifecycle parity. Keep hidden services/lightweight warm

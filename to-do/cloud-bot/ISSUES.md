@@ -64,6 +64,37 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   the normal seven-day retention window.
 
 - [ ] **Notification Center post-notification Popup has wrong size/placement and lags — owner report 2026-10-10 21:55 ICT:**
+  **Owner follow-up 2026-10-10: normal post-alert Center sizing is now OK;
+  stopping screen recording and receiving the `Recording saved` notification
+  still makes the transient popup lag.** This is a narrower unresolved
+  case, not evidence the prior toast-to-Center separation regressed.
+  Concrete path: `scripts/videos/record.sh` calls
+  `notify-send "Recording saved" "${SAVE_PATH%/}/$output_name" -a Recorder`
+  after the recording file is finalized, and
+  `AbyssNotificationsContent.qml` previously published the transient
+  `NotificationListView.contentHeight` directly. Long path cards may need
+  multiple delegate/layout passes, driving repeated body requests while
+  the recording indicator disappears and popup reveal starts.
+  Causality of native frame pacing is **not proven**.
+
+  Source-level refinement on `dev`:
+  `98d0b387881c1d94b75dff5a78aee312bf830da5`
+  batches positive ListView measurements through an on-demand 75ms
+  Timer and publishes settledPopupHeight/popupLayoutReady.
+  `df86dca7278f680d2c9d555c62ac7b1be8f9943e`
+  enables `residentContent` while transient notifications are pending,
+  measuring their card offscreen at the resting target size; only reveals
+  the banner once popupLayoutReady. No new background timer,
+  global mouse grab, visual quality reduction or change to the
+  dedicated NotificationCenterPopup. A source-executed regression,
+  `a57020f20da369baf8db183a2164cb1dbc1cc927`, verifies
+  zero/provisional/measured/new-notification states and multiple
+  banner/Center cases: **46/46** isolated JavaScript assertions PASS.
+  This is NOT native Qt frame/presentation evidence; on-Niri recording
+  stop/new-notification acceptance remains OPEN. Update the common
+  technical investigation in
+  [Notification post-alert geometry and recording-stop lag](../../docs/abyss/NOTIFICATION_CENTER_POST_ALERT_GEOMETRY_LAG_2026-10-10.md).
+
   **SOURCE-LEVEL FIX IMPLEMENTED on dev (2026-10-10); Niri acceptance OPEN.**
   The earlier native video exposed a tall right-edge notification surface
   morphing into a much smaller bottom-right Popup while a new alert was

@@ -11,6 +11,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = path => readFileSync(resolve(root, path), 'utf8');
 const styled = read('modules/bar/StyledPopup.qml');
 const perimeter = read('modules/abyss/AbyssPerimeter.qml');
+const generic = read('modules/abyss/content/AbyssPopupContent.qml');
 const notification = read('modules/notificationCenter/NotificationCenterPopup.qml');
 const notes = read('modules/screenCorners/QuickNotesPopup.qml');
 const geometry = read('modules/abyss/looks/AbyssGeometry.js');
@@ -33,6 +34,10 @@ const hostedFn = new Function('styledPopupHost', 'popupContentHover', 'Geometry'
     'return (' + expression(perimeter,
         'readonly property bool realPopupBodyHovered:',
         '\n                    onRealPopupBodyHoveredChanged:') + ');');
+const genericBodyFn = new Function('root', 'popupHover', 'Geometry',
+    'return (' + expression(generic,
+        'readonly property bool popupBodyHovered:',
+        '\n    readonly property bool editorFocusHeld:') + ');');
 const noteFn = new Function('root', 'return (' + expression(notes,
     'alternativeVisibleCondition:',
     '\n    // Pre-arm click-to-focus') + ');');
@@ -55,6 +60,13 @@ check('shoulder strip does not independently own hover',
 check('outside popup cannot own hover',hostedFn(host,pointer(1400,800),Geometry),false);
 check('source region does not become popup hover',hostedFn(host,pointer(1919,1199),Geometry),false);
 check('no hovered point cannot own popup',hostedFn(host,pointer(1780,1100,false),Geometry),false);
+const genericParticipant = { ...host };
+check('generic Popup body owns hover',genericBodyFn({participant:genericParticipant},
+    pointer(1780,1100),Geometry),true);
+check('generic bridge strip does NOT own hover',genericBodyFn({participant:genericParticipant},
+    pointer(1903,1195),Geometry),false);
+check('generic dismissed/unready body does NOT own hover',genericBodyFn({
+    participant:{...genericParticipant,acceptsInput:false}},pointer(1780,1100),Geometry),false);
 check('disabled/unpresented body cannot own hover',
     hostedFn({...host,acceptsInput:false},pointer(1780,1100),Geometry),false);
 const source = (module,handler) => ({moduleHoverActive:module,_anchorHover:{hovered:handler}});
@@ -84,4 +96,6 @@ assert.match(notification,/root\._anchorHovered[\s\S]*?\|\| root\.popupHovered[\
 assert.match(notification,/exitGraceTimer\.restart\(\)/);count++;
 assert.match(styled,/hoverTransferGraceMs: 90/);count++;
 assert.match(perimeter,/onRealPopupBodyHoveredChanged:/);count++;
+assert.match(generic,/root\.triggerHovered \|\| root\.popupBodyHovered \|\| root\.editorFocusHeld/);count++;
+assert.match(generic,/!root\.triggerHovered && !root\.popupBodyHovered && !root\.editorFocusHeld/);count++;
 console.log('PASS: '+count+' actual QML source-edge/popup hover-policy assertions');

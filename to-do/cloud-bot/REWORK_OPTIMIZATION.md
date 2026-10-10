@@ -88,6 +88,33 @@ holds technical research; this file holds pending outcomes.
   requires owner rerun. **Jank cause and performance acceptance UNKNOWN/OPEN**;
   no percent/fps gain inferred from the failed capture.
 
+  **Owner's second capture (2026-10-10 07:49:30Z), Niri/eDP-1:**
+  `startFrames` succeeded and `stopFrames` returned 363 intervals,
+  but recorded min/p50/p95/p99/max/mean all approx
+  **1,791,001,362,433–1,791,001,362,477 ms** and all
+  363 intervals were flagged over16/33/100 ms. These timings
+  are **INVALID**, not evidence of low FPS: the old diagnostic
+  stored `Date.now()` (~1.791e12 epoch milliseconds) in a
+  signed 32-bit QML `property int _frameProbePreviousMs`,
+  truncating the prior timestamp before subtraction. Example
+  `1791618576306 - 617213874 = 1791001362432`;
+  the spurious interval magnitude is explained by that exact
+  integer overflow. Diagnostic-only commit
+  `b8be0fcb551a319fbff0b6c2a65c062f955c5ead` changes
+  that property to QML `real`, not shell rendering itself.
+  User-visible Panel lag remains **OPEN/UNMEASURED**.
+  Commit `15f5abbb1bc19bf5377636dbee03c7f973713330`
+  makes the collector auto-package complete/partial receipts into
+  **one `.tar.gz`**, preserving original IPC exit status.
+  Exact committed collector blob
+  `defb45271438a80cc012d611467ce6c9451f264a`
+  passed real `bash -n` (exit 0) and a fake `qs -p` run:
+  success with 40 snapshots and one archive (exit 0), plus an
+  explicit `startFrames` failure (exit 1, partial archive).
+  Those are script tests, not Niri/Qt acceptance. Next: ensure
+  running shell loads the updated QML, animate in PHASE 1,
+  and provide the single archive with true bounded samples.
+
 - [ ] **Strict-lossless CPU/RAM/GPU reductions:** re-audit latest `dev` and
   promote high-value findings only after behavior, read/dependency order,
   identity/NOTIFY and lifecycle parity. Keep hidden services/lightweight warm

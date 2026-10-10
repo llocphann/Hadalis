@@ -203,8 +203,13 @@ Scope {
             // fictitious trillion-millisecond frame intervals.
             property real _frameProbePreviousMs: 0
             property var _frameProbeIntervals: []
+            // Bounded, opt-in traces of slow intervals. The per-frame hot path
+            // reads existing clock/array state only; surface-state snapshots
+            // are taken ONLY if an interval actually exceeds 33.3ms.
+            property var _frameProbeSlowEvents: []
             function startFrameProbe(): var {
                 window._frameProbeIntervals = []
+                window._frameProbeSlowEvents = []
                 window._frameProbePreviousMs = 0
                 window._frameProbeEnabled = true
                 return {output:window.outputName,started:true,maxIntervals:600}
@@ -228,6 +233,7 @@ Scope {
                     over16ms:intervals.filter(ms=>ms>16.7).length,
                     over33ms:intervals.filter(ms=>ms>33.3).length,
                     idleGapsOver100ms:intervals.filter(ms=>ms>100).length,
+                    slowEvents:window._frameProbeSlowEvents.slice(),
                     caveat:"includes idle gaps; not compositor present/GPU/FPS proof"
                 }
             }
@@ -238,8 +244,23 @@ Scope {
                     const now=Date.now()
                     if (window._frameProbePreviousMs > 0
                             && window._frameProbeIntervals.length < 600) {
-                        window._frameProbeIntervals.push(
-                            Math.max(0,now-window._frameProbePreviousMs))
+                        const intervalMs = Math.max(0,now-window._frameProbePreviousMs)
+                        window._frameProbeIntervals.push(intervalMs)
+                        if (intervalMs > 33.3
+                                && window._frameProbeSlowEvents.length < 40) {
+                            // Occurs only for slow intervals, not every frame.
+                            // Correlation hints, not compositor present proof.
+                            window._frameProbeSlowEvents.push({
+                                timestampMs:now, intervalMs:intervalMs,
+                                barVisible:Boolean(bar.visible),
+                                liquidPopupsOpen:Boolean(liquid.popupsOpen),
+                                leftPanelProgress:leftPanel.progress,
+                                rightPanelProgress:rightPanel.progress,
+                                dashboardProgress:dashboardBody.progress,
+                                controlPanelProgress:controls.progress,
+                                settingsProgress:settings.progress
+                            })
+                        }
                     }
                     window._frameProbePreviousMs=now
                     if (window._frameProbeIntervals.length >= 600)

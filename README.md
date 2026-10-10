@@ -27,6 +27,7 @@ Requirement precedence:
 
 Working rules:
 
+- **Local and Cloud development AI follow the same [intake and selection policy](to-do/cloud-bot/README.md).** Classify actionable requests on receipt, merge repeats/corrections and choose the next task autonomously in Issues/bugs → Rework/optimization → New features order, ranking severity/actionability within each category. An explicit immediate priority from the maintainer takes precedence.
 - Work directly on **`dev`**. Do not create or switch to another branch unless the maintainer explicitly requests it.
 - Refetch the latest **`dev`** before every significant audit and immediately before every write/ref update. Use `stable` only when a behavioral comparison is actually needed; never merge into or mutate `stable` as part of normal development.
 - Re-read the current target file and its caller/consumer before changing architecture.
@@ -280,5 +281,5 @@ Start at [to-do/README.md](to-do/README.md), then Issues/bugs, Rework/optimizati
 
 ## 12. New-conversation continuation
 
-Read `AGENTS.md`, [`to-do/README.md`](to-do/README.md), the relevant Cloud Bot list and current `dev`. Do not start from superseded historical prompts or SHAs.
+For both Local and Cloud AI, read `AGENTS.md`, [to-do/README.md](to-do/README.md), the shared intake/selection policy and current `dev`. Automatically reconcile the new request with the category lists, select the highest-priority actionable task and continue within authorized scope. Do not start from superseded historical prompts or SHAs.
 

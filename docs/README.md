@@ -4,9 +4,10 @@ Chatbot work starts at [to-do/README.md](../to-do/README.md), in this order:
 [Issues/bugs](../to-do/cloud-bot/ISSUES.md),
 [Rework/optimization](../to-do/cloud-bot/REWORK_OPTIMIZATION.md), then
 [New features](../to-do/cloud-bot/NEW_FEATURES.md).
-The [task rules](../to-do/cloud-bot/README.md) cover automatic classification,
-deduplication and dated archives. Technical documents describe the product;
-they are not additional task lists.
+The [shared Local and Cloud AI policy](../to-do/cloud-bot/README.md) requires
+classification on receipt, autonomous task selection, deduplication and dated
+archives. Both environments use these same lists. Technical documents describe
+the product; they are not additional task lists.
 
 ## Current reference
 

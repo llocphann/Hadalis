@@ -2,6 +2,10 @@
 
 Hadalis uses a single-agent development workflow on `dev`.
 
+These instructions apply equally to **Local and Cloud development AI**, on
+every new request and continuation. Both use the same repository task lists.
+The `cloud-bot` directory name does not create a separate workflow for Local AI.
+
 ## Working rules
 
 1. Fetch/refetch the current `dev` HEAD before every audit and immediately before every write or ref update. Never assume a previously seen HEAD is current.
@@ -13,7 +17,7 @@ Hadalis uses a single-agent development workflow on `dev`.
 7. Waffle is a separate supported shell family. Never classify Waffle as legacy or remove it as ii/Connected Perimeter cleanup.
 8. Prefer behavior/contract tests over implementation-spelling grep assertions. Do not change runtime behavior merely to make a stale test green.
 9. Use `to-do/` as the single active chatbot task entry point. ChatGPT is the only reasoning agent; repository tests and the canonical maintainer validator are the execution/acceptance path. Do not create bot-number, ownership, collision-boundary, separate task-board or handoff bureaucracy. Continue the highest-value unresolved work in one agent context.
-10. Automatically classify every new maintainer request into `Issues/bugs`, `Rework/optimization`, or `New features` before working on it. Merge duplicates; split mixed requests into their relevant categories. Default work order is Issues/bugs → Rework/optimization → New features unless the maintainer explicitly changes the immediate priority. Keep unverified source fixes open with their remaining acceptance; archive fully completed items after seven days. Follow the task index's archive policy.
+10. On receipt, automatically record/classify every actionable maintainer request into `Issues/bugs`, `Rework/optimization`, or `New features` before implementation. Merge duplicates and corrections; split mixed requests by outcome. Select the next actionable task autonomously using the shared policy below, without asking the maintainer to classify or choose routine work. Default order is Issues/bugs → Rework/optimization → New features unless the maintainer explicitly changes the immediate priority. Keep unverified source fixes open with their remaining acceptance; archive fully completed items after seven days.
 
 ## Task routing
 
@@ -21,9 +25,20 @@ Read `to-do/README.md` after this file. Keep active work in `to-do/cloud-bot/`. 
 
 The only active task lists are `ISSUES.md`, `REWORK_OPTIMIZATION.md`, and `NEW_FEATURES.md` in `to-do/cloud-bot/`. Old ABYSS/OPTIMIZATION/RELEASE links are compatibility pointers, not competing checklists. Record new reports and meaningful progress in the appropriate category, not in another chronological handoff document.
 
+Read and apply [the shared intake and task-selection policy](to-do/cloud-bot/README.md)
+after the entry point. Re-evaluate it on new input, every continuation and after
+each completed milestone. Prioritize impact/severity within a category, not file
+position or the newest message alone. Keep a task awaiting unavailable evidence
+open, record what it needs, then continue independent authorized work. A generic
+"continue" means choose the next task from these lists and carry it through the
+required implementation and validation; it does not require another task choice
+from the maintainer.
+
 ## Current product priorities
 
-Until the maintainer changes them, prioritize:
+Unless the maintainer changes them, these product directions guide implementation
+within the selected task. They do not override the category/severity order or an
+explicit immediate priority.
 
 1. Caelestia-like UI/UX using the existing iNiR surfaces: existing popups should visually connect to their bar/screen edge instead of introducing a second popup system.
 2. Connected-surface presentation is the default for existing bar popups and must not require a user-facing toggle. Keep the broader `iiPerimeter` composition cutover guarded until it can replace the legacy composition without dropping functionality.

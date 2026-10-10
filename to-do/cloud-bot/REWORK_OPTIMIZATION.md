@@ -90,11 +90,14 @@ holds technical research; this file holds pending outcomes.
 
 ## Documentation maintenance
 
-- [x] **Categorized task cleanup — completed 2026-10-10:** three active lists
-  replace chronological/duplicate ledgers in the required priority order.
-  AGENTS and task rules classify future requests and archive fully completed
-  items after seven days. Archived 26 superseded documents, preserving unresolved
-  gates, original evidence and current research. Documentation contracts,
-  Material-only docs and all changed/archived Markdown link targets pass; no new
-  runtime/desktop acceptance is claimed. Retain this recent completion until
-  2026-10-17, then move it to the dated chatbot archive.
+- [x] **Categorized tasks and shared AI workflow — completed 2026-10-10:**
+  three active lists replace chronological/duplicate ledgers; 26 superseded
+  documents are archived with evidence/current research preserved. AGENTS and
+  all current entry points apply the same policy to Local and Cloud AI: classify
+  on receipt, merge/split outcomes, select by category then impact/actionability,
+  record dependencies and continue independent authorized work. Completion and
+  seven-day archiving preserve unverified gates and concurrent status edits.
+  Documentation contracts, Material-only docs, shared workflow links and diff
+  checks pass. This is documentation validation, not runtime/desktop acceptance.
+  Retain this recent completion until 2026-10-17, then move it to the dated
+  chatbot archive.

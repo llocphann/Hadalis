@@ -141,20 +141,162 @@ do not reimplement them solely because a checkbox is open.
   retains the Launcher effective-quality indicator and optional host API.
   Do not silently lower manual quality as part of strict-lossless optimization.
 
-## External feature ownership
+## Alis-Companion — centralized features and permissions
 
-Hadalird extraction is source/package-qualified. Its optional TLP, Thinkfan and
-Obsidian implementation belongs to [Hadalird](https://github.com/llocphann/Hadalird).
-Host installer/state/Polkit failures stay in Hadalis Issues/bugs. Generic Notes,
-AI and shell features must work with optional packages absent.
+**Central task intake 2026-10-11:** implementation owners are
+[Alis-Companion](https://github.com/llocphann/Alis-Companion) main
+(source snapshot 732136ef65bb3c84d9339207210c955759a85b76)
+and [Alis-Intergration](https://github.com/llocphann/Alis-Intergration) main
+(source snapshot b0c975a7f40bdf531012be326bc728f5c014b696).
+These source SHAs identify the import, **not** the installed release or
+acceptance. Alis dev holds the ONLY authoritative TODO status; package code,
+test scripts and historical receipts remain in each source repository.
 
-Companion requests — Aqua/Octo edge orientation, symmetrical cloud actions,
-themed Obsidian icon, portals, rolling, quicksand clipping, render quality and
-AI/mood/energy/schedule behavior — belong to the current Hadanion plans:
 
-- [Design and animation](https://github.com/llocphann/Hadanion/blob/main/to-do/cloud-bot/ABYSS_WATER_DROPLET_COMPANION.md).
-- [Local AI](https://github.com/llocphann/Hadanion/blob/main/to-do/cloud-bot/WULL_LOCAL_AI.md).
+**Visual source:** [active snapshot](https://github.com/llocphann/Alis-Companion/blob/732136ef65bb3c84d9339207210c955759a85b76/to-do/cloud-bot/ABYSS_WATER_DROPLET_COMPANION.md).
+**AI source:** [active snapshot](https://github.com/llocphann/Alis-Companion/blob/732136ef65bb3c84d9339207210c955759a85b76/to-do/cloud-bot/WULL_LOCAL_AI.md).
+All statuses below represent remaining tasks; previously implemented
+source, synthetic fixtures and staged 3D previews must NOT be rebuilt.
 
-Keep Hadalis' optional host/shared AI APIs; preserve concurrent Hadanion work
-and the owner's Companion enablement preference. Historical Hadalis Companion
-checklists and captures do not override the owning repo's current state.
+- [ ] **AC-F01 — Opt-in semantic host event bridge (VIS-02):**
+  Alis dev owns authenticated, versioned, bounded semantic event reduction
+  and consent; Companion owns the already staged receiving schema, existing
+  WullPresence, WullCuriosity, WullMotion and Director arbitration.
+  Validate stale/order/unknown/replay rejection, one visual clock/epoch,
+  focus, 45-second permission grace, background lock/fullscreen/security
+  priority, direct chat/drag/modal, portal/cowork and disconnect/revoke.
+  Synthetic protocol QML fixtures already qualified; no live host
+  transport, sensors or agent hooks authorized. State: SOURCE-READY,
+  LIVE BLOCKED_APPROVAL.
+
+- [ ] **AC-F02 — Original 3D cowork laptop (VIS-04):**
+  The Aqua and Octo original Blender scenes, 8 added performances per
+  cast, interruption-safe controller and private native previews exist;
+  they are STAGING, not a shipped working actor. Finish ONE actor runtime
+  asset/material for laptop_open -> typing/thinking/agent/pause -> close,
+  uninterrupted across short focus changes and interrupted safely by
+  cast/drag/chat/portal. Respect theme, original liquid/limbs/cups,
+  4-rim connection, corners, hit-regions, scaling, accessibility,
+  disabled/reduced motion and GPU budget. Do not open portal or spawn
+  another actor on mere laptop appearance. Require native owner approval.
+  State: PARTIAL SOURCE, LIVE OPEN.
+
+- [ ] **AC-F03 — Focus cowork and bounded ambient reactions (VIS P1):**
+  Reuse the Alis Focus timer/session for optional reading, book,
+  coffee/sip and quiet thoughts; use permitted coarse idle/battery/
+  MPRIS/search/success/failure categories with cooldown, permission
+  and opt-out, not raw app content or a second clock. Favor existing
+  clips before new authored gestures. State: NEW/consent gated.
+
+- [ ] **AC-F04 — User-initiated Pocket plus visual regression authoring (VIS P1):**
+  Prove Wayland drag/drop, selected original-file-safe bounded metadata,
+  explicit user permission and existing Alis/Vault interfaces before
+  attaching Pocket; never auto-ingest documents, edit originals or
+  trigger a portal by default. Maintain four-rim pointer/one-shot/
+  focus/clip/cast/disabled lifecycle regression matrix. Defer extra
+  props/easter eggs until core value and cost are accepted. State:
+  NEW/permissions and native proof required.
+
+- [ ] **AC-F05 — Non-punitive bond/dialogue (VIS P1):**
+  Optional familiarity, mood and preference are separate; no guilt,
+  streak decay, surveillance, false intimacy or copied third-party
+  character assets/catchphrases. Require clear settings and user consent.
+  State: NEW, UX/privacy contract first.
+
+- [ ] **AC-F06 — User-consented memory with inspect/edit/forget (AI P1):**
+  Existing bounded SQLite consent prototype is DORMANT. Specify identity
+  and device boundary, source=explicit_user, per-cast vs shared scope,
+  TTL/quota, UI for viewing/editing/forgetting, migration/revoke and
+  WAL/backups/external Obsidian/chat deletion semantics. Never infer
+  memory silently or promise secure disk erasure from SQL DELETE alone.
+  State: NEW/BLOCKED_APPROVAL.
+
+- [ ] **AC-F07 — Optional proactive policy (AI P1):**
+  Existing fake-clock policy prototype is DORMANT; require explicit
+  enable, quiet hours, no wakes, ignored/dismissed backoff, event and
+  daily quotas, manual mode, Focus, chat/modal, lock, fullscreen,
+  idle, reduced motion and shared presentation budget. No background
+  model loading or notifications until owner authorizes. State:
+  NEW/BLOCKED_APPROVAL.
+
+- [ ] **AC-F08 — Grounded Todo/Obsidian reminders (AI P1):**
+  Only read typed user-authorized tasks and chosen rows; retain existing
+  byte-safe explicit Mood/Energy note writes with real confirmation.
+  Never promote vault text to prompt instructions, fabricate scheduled
+  reminders or claim user journal was saved from a synthetic fixture.
+  The optional Integration journal may not be installed. State:
+  SOURCE PARTIAL/INSTALL + PERMISSION GATES.
+
+- [ ] **AC-F09 — Shared persona expression without extra movement owner (AI P1):**
+  AI may propose bounded text/expression but cannot decide scene
+  location, move actor, open Popup, trigger portal or view raw content;
+  use existing visual Director and generic Alis AI provider. Character
+  animations must work with AI off or unavailable. State: NEW,
+  depends on semantic host contract.
+
+- [ ] **AC-F10 — Typed local tools / conditional RAG research (AI P2):**
+  Start with read-only typed existing state/repo/doc metadata; any
+  user-approved edits/actions need allowlisted capability, explicit
+  confirmation, receipts, timeout, cancel/idempotence and rollback.
+  Consider RAG and 2-model Reflex/Brain routing only if real workload
+  measurements establish value and privacy. Archived suggested GGUF
+  models are not assumed installed. **Distillation, SFT/LoRA, autonomous
+  diary, self-modifying persona, Discord/MCP, aggressive sensors and
+  broad coding-agent automation remain DEFERRED / OUT OF SCOPE.**
+  State: RESEARCH ONLY, further authorization required.
+
+## Alis-Intergration — centralized optional package features
+
+**Central task intake 2026-10-11:** implementation owners are
+[Alis-Companion](https://github.com/llocphann/Alis-Companion) main
+(source snapshot 732136ef65bb3c84d9339207210c955759a85b76)
+and [Alis-Intergration](https://github.com/llocphann/Alis-Intergration) main
+(source snapshot b0c975a7f40bdf531012be326bc728f5c014b696).
+These source SHAs identify the import, **not** the installed release or
+acceptance. Alis dev holds the ONLY authoritative TODO status; package code,
+test scripts and historical receipts remain in each source repository.
+
+
+There was NO active TODO directory in the integration repository; these
+outcomes come from its manifest, README, source and outstanding Alis
+host acceptance, not from an invented prior roadmap.
+
+- [ ] **AI-F01 — TLP/Battery existing optional feature acceptance:**
+  [Owner: Alis-Intergration main] Verify source-implemented TLP worker,
+  vendor probes, charge limits, Radio Device Wizard, permission-scoped
+  helpers and Classic/Waffle settings; no root action or profile
+  overwrite at install or without user permission. State: IMPLEMENTED
+  IN SOURCE, HOST/NATIVE ACCEPTANCE OPEN.
+
+- [ ] **AI-F02 — Thinkfan existing optional feature acceptance:**
+  [Owner: Alis-Intergration main] Verify worker status/rpm/sensors,
+  permissions, fail-safe fan control and disabled/missing package
+  recovery; never install/enable/change fan service automatically.
+  State: SOURCE PRESENT, OWNER HARDWARE QA OPEN.
+
+- [ ] **AI-F03 — Obsidian optional theme, Todo and Zettelkasten delivery:**
+  [Owner: Alis-Intergration main] Verify theme, path settings,
+  managed/Daily Note task backend, Quick Notes, Zettelkasten images/
+  attachments and correct safe vault writes in synthetic fixtures,
+  then consented live Obsidian. Keep notes untouched when disabled
+  and generic host Todo/Notes available without optional package.
+  State: SOURCE PRESENT, OWNER VAULT QA OPEN.
+
+- [ ] **AI-F04 — Versioned package lifecycle and host delivery:**
+  [Owner: Alis-Intergration main] Qualify release manifest/API,
+  sourceSha-pinned atomic current-link install/update/rollback/
+  uninstall, lazy worker lifetime, explicit refresh and helper
+  install separated from ordinary package. Run make test and
+  cross-repo Alis tests, multi-family QML, DESTDIR/PREFIX and
+  absent-dependency cases. Related bugs tracked in Issues, not
+  recreated here. State: SOURCE PRESENT, RELEASE GATES OPEN.
+
+## Cross-repository code ownership
+
+All task selection, classification, status, progress and completion for
+Alis core, Alis-Companion and Alis-Intergration now belong to these
+THREE Alis dev lists. Implementation, tests and technical evidence remain
+in their respective source repositories. Historical satellite TODOs are
+import baselines only, not separate active queues. Respect optional
+default-off state, source identity, explicit permission and all
+owner/desktop release gates. Do not mutate Alis stable.

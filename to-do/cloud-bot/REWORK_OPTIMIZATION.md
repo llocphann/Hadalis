@@ -738,6 +738,65 @@ holds technical research; this file holds pending outcomes.
   identity in New features so both old/current installations can be traced
   safely during transition. State: planning only; NOT IMPLEMENTED.
 
+## Cross-repository Companion and Intergration rework
+
+**Central task intake 2026-10-11:** implementation owners are
+[Alis-Companion](https://github.com/llocphann/Alis-Companion) main
+(source snapshot 732136ef65bb3c84d9339207210c955759a85b76)
+and [Alis-Intergration](https://github.com/llocphann/Alis-Intergration) main
+(source snapshot b0c975a7f40bdf531012be326bc728f5c014b696).
+These source SHAs identify the import, **not** the installed release or
+acceptance. Alis dev holds the ONLY authoritative TODO status; package code,
+test scripts and historical receipts remain in each source repository.
+
+
+- [ ] **AC-R01 — Companion G1 performance, strict-lossless shaders and cost baseline (VIS-03/VIS-05):**
+  [Owner: Alis-Companion main] Existing read-only CPU/RSS/PSS sampling
+  and comparison scripts are implemented, but no qualified GPU frametime,
+  VRAM or whole-shell p95/p99 G1 baseline exists. With exact Alis/Companion
+  SHAs, real PIDs and matched hardware/power/DPR, repeat disabled, hidden,
+  Aqua/Octo idle/moving/grip/cast and quality tier states at least 3
+  times. Sample CPU/PSS separately from actual GPU/VRAM/frame pacing;
+  report NOT_MEASURED where unsupported. After G0 passes, test one
+  isolated WaterDropletMaterial.frag/OctoTentacle.frag E1 candidate at a
+  time against strict RGBA and comparable AB/BA performance. No
+  unapproved 2D/hybrid quality downgrade or "optimization %" without
+  valid proof. Link to existing Alis Quickshell profiler and strict-lossless
+  research; do not duplicate its backlog. State: G0/G1 gated.
+  [Renderer source](https://github.com/llocphann/Alis-Companion/blob/732136ef65bb3c84d9339207210c955759a85b76/to-do/cloud-bot/ABYSS_WATER_DROPLET_COMPANION.md).
+
+- [ ] **AC-R02 — Preserve original Aqua/Octo look and physical visual parity:**
+  [Owner: Alis-Companion main] Keep one original 3D actor, existing 30
+  animation clips per cast, 5.6-second Octo grip/quicksand, physically
+  owned motion, palette/face/liquid/cups, pointer pass-through and
+  portals for long movements only. Review eye normals/proportions,
+  transparent water contact, shadows, four rims/corners, casts,
+  fractional DPI, themes, quiet/low-power behavior and input ownership.
+  Some native fixtures/source Blender staging passed; reference
+  visual parity, GPU budget and owner acceptance remain OPEN.
+  This does not replace the new cowork-laptop feature below.
+
+- [ ] **AC-R03 — Existing Companion voice/persona and inference cost (AI P0):**
+  [Owner: Alis-Companion main; host AI in Alis dev] JS/Python Aqua/Octo
+  persona, reply guard and 14 EN/VN paired prompts already exist.
+  Benchmark on an explicitly selected pinned real model/provider:
+  distinct casual voices, uncertainty and grounded refusals, repetition/
+  crash recovery and human judgment. Record model format/quant, context,
+  CPU/GPU offload, warm/cold TTFT, per-turn tokens, peak RSS/PSS/VRAM,
+  cancellations and truly disabled baseline. Do not assume archived
+  model IDs are installed, download automatically or infer gains from
+  fixture-only tests. State: real-model assessment OPEN.
+  [AI source](https://github.com/llocphann/Alis-Companion/blob/732136ef65bb3c84d9339207210c955759a85b76/to-do/cloud-bot/WULL_LOCAL_AI.md).
+
+- [ ] **AI-R01 — Existing optional Integration Settings UI parity:**
+  [Owner: Alis-Intergration main] Qualify existing TlpPowerSettings and
+  Waffle equivalents, ThinkfanSettings, ObsidianThemeSettings and
+  ObsidianTodoSettings for theme, readable labels, initial loading,
+  backend missing/offline/disabled, error and scaling. Keep one source
+  of truth for generic Alis Battery/Todo/Notes, preserve lazy disposable
+  package worker lifecycle, native user focus and no implicit root
+  actions. State: source implemented, owner visual/host qualification OPEN.
+
 ## Documentation maintenance
 
 - [x] **Categorized tasks and shared AI workflow — completed 2026-10-10:**

@@ -1011,6 +1011,81 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   Missing receipt must reconcile state, not retry a possibly successful install.
   No implicit privileged install or TLP/Thinkfan/charge-policy change.
 
+## Cross-repository correctness and release gates
+
+**Central task intake 2026-10-11:** implementation owners are
+[Alis-Companion](https://github.com/llocphann/Alis-Companion) main
+(source snapshot 732136ef65bb3c84d9339207210c955759a85b76)
+and [Alis-Intergration](https://github.com/llocphann/Alis-Intergration) main
+(source snapshot b0c975a7f40bdf531012be326bc728f5c014b696).
+These source SHAs identify the import, **not** the installed release or
+acceptance. Alis dev holds the ONLY authoritative TODO status; package code,
+test scripts and historical receipts remain in each source repository.
+
+
+- [ ] **AC-I01 — Companion visual G0 oracle still inconclusive (VIS-01):**
+  [Owner: Alis-Companion main] Exact-source A/A GPU capture of original
+  Aqua/Octo shaders previously ended INCONCLUSIVE_CAPTURE_VARIANCE
+  (exit 2), despite equal source/QSB hashes. Earlier warm-up and modified
+  fwidth diagnostics are not approved production/lossless fixes.
+  Reproduce original shader under real owned Wayland GPU, prove strict
+  repeatable A/A, negative-detectable and independent A/B captures with
+  PNGs, QSB/renderer SHA and error receipts. Stop if G0 remains red;
+  do not authorize E1 or weaken exact RGBA. State: BLOCKED_LOCAL/GPU.
+  [Visual source](https://github.com/llocphann/Alis-Companion/blob/732136ef65bb3c84d9339207210c955759a85b76/to-do/cloud-bot/ABYSS_WATER_DROPLET_COMPANION.md).
+
+- [ ] **AC-I02 — Companion joint host tests and physical acceptance (VIS-00):**
+  [Owners: Alis-Companion main + Alis dev] Confirm both clean source SHAs,
+  installed optional package SHA, compatible Alis host API, manifest and
+  default-off preference; run make test with HADALIS_ROOT set to the actual
+  Alis checkout, then Alis validator on the tested SHA. Require recorded
+  exit codes/PASS/FAIL/SKIP. Verify live Niri/Quickshell chat, actor
+  movement, four screen rims, overlay/input, drag, cast transitions,
+  portals, sound/theme, lock/suspend/hotplug, DPI scaling, unload,
+  cancellation, optional packages absent, no orphan helper process,
+  no double actor and preserved preference. Source-only PASS is
+  not complete physical owner acceptance. State: OPEN.
+
+- [ ] **AC-I03 — Companion provider and output safety (AI P0):**
+  [Owners: Alis-Companion main + Alis dev] Qualify existing shared AI
+  provider/session, local GGUF and helper without a second model daemon.
+  The selected local-only mode must never silently use cloud; make
+  provider/privacy selection visible. Test all text/speech/check-in/
+  reminder/error outputs against malformed JSON, prompt injection,
+  untrusted quoted-vault data, internal/tool tokens, unauthorized commands
+  and fabricated action confirmations. Preserve chat history/paging,
+  cancel/retry, mid-answer cast switch, empty/restart state and bounded
+  output, real chosen-model privacy and redacted logs. Model reply
+  sanitization alone does NOT authorize tool use. State: OPEN;
+  host + model + owner acceptance pending.
+  [AI source](https://github.com/llocphann/Alis-Companion/blob/732136ef65bb3c84d9339207210c955759a85b76/to-do/cloud-bot/WULL_LOCAL_AI.md).
+
+- [ ] **AI-I01 — Intergration package/host correctness and native release gates:**
+  [Owners: Alis-Intergration main + Alis dev] Existing Hadalird manifest
+  identifies version 0.2.1, hostApi 1 and optional TLP/Thinkfan/Obsidian
+  workers; this repo has no active TODO file to migrate. Prove exact
+  package source/host version compatibility, enable/disable/refresh,
+  unloaded default-off workers, package-absent and incompatible-release
+  behavior, settings lazy imports, no orphan process, no implicit
+  privileged helper provisioning, no lost data and no false success.
+  Run the integration make test with pinned Alis root plus corresponding
+  host/Qt/Niri checks. Keep existing Alis "Hadalird helper/package state
+  and Polkit focus" issue as the detailed privileged lifecycle gate.
+  State: OPEN; no new runtime defect diagnosed.
+  [Manifest](https://github.com/llocphann/Alis-Intergration/blob/b0c975a7f40bdf531012be326bc728f5c014b696/manifest.json).
+
+- [ ] **AI-I02 — Integration TLP, Thinkfan, Obsidian failure-state verification:**
+  [Owner: Alis-Intergration main] Test real/restricted battery limits,
+  TLP vendor capabilities, charge policy and Radio Device Wizard;
+  Thinkfan readings/worker status/Polkit denial and fan-safety lifecycle;
+  Obsidian theme, Todo/Tasks and Daily Note backend, Zettelkasten, Quick
+  Notes and image attachments with permission, path, conflict and
+  byte-safe non-destructive fixture tests. Separate synthetic results
+  from user-approved hardware/personal-vault tests. Preserve generic Alis
+  Battery/Notes/Todo when optional package is absent; never claim a
+  note, setting or privileged action succeeded without a confirmed
+  execution receipt. State: OPEN/native and owner acceptance.
+
 ## Correctness and release acceptance
 
 - [ ] **Lifecycle/input on the installed candidate:** boot without unavailable

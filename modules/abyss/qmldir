@@ -1,6 +1,7 @@
 module qs.modules.abyss
 AbyssPerimeter 1.0 AbyssPerimeter.qml
 AbyssBodyHost 1.0 AbyssBodyHost.qml
+AbyssRecordingBody 1.0 AbyssRecordingBody.qml
 AbyssDashboardEditPopup 1.0 AbyssDashboardEditPopup.qml
 AbyssOsdController 1.0 AbyssOsdController.qml
 AbyssSurfaceController 1.0 AbyssSurfaceController.qml

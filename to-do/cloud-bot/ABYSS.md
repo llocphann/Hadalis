@@ -65,7 +65,7 @@ The following 12+14 requirements originated in the 2026-09-28 handoff. They are 
 These are checkpoint tasks and may have been superseded by newer `dev` commits; inspect current evidence and the latest optimization handoff before acting.
 
 1. **Utilities Popup is source-complete but not runtime/hardware accepted.** Remote `dev` now contains the four lazy pages, focused embedded Monitor Arrangement, safe session Display Mode service, real PipeWire Sound Output selection, embedded Night Light/Anti Flashbang, bottom-center dots, horizontal swipe/keys and the Utilities launcher inside Quick Actions (the temporary standalone Edge module is retired by migration 055). Added contracts are `scripts/test-abyss-display-mode.py`, `scripts/test-abyss-utilities-popup.sh` and the updated popup-presentation regression. Run the canonical validator on the exact current SHA, then validate four-Edge placement, small/fractional outputs, real multi-output Extend/Primary/Second-only, hotplug during a transition, rollback after a failed Niri action, `wl-mirror` start/stop/disconnect, real PipeWire default-sink changes, and Night Light/Anti Flashbang input/scroll behavior. Do not claim the old 204/0/2 result covers these commits; do not fake Mirror.
-2. **Anchored composition/focus is source-implemented through allocator + simultaneous StyledPopup ownership, but not accepted yet.** `2874ff988` retains anchors, partitions inward, reflows to readable minima and evicts only when necessary; `84a53ee4d` supports simultaneous mature StyledPopups; `f6b479bbe` separates reveal from eviction motion; `35fdf061d` makes newest focus-requesting popup arbitration/restoration match native StyledPopup OnDemand/Exclusive semantics. Do not revert to lateral relocation or single-active ownership. Next, qualify physical focus/input ordering for Settings/Dashboard/IPC/Sidebar/corner combinations on all edges and small/fractional outputs, including a newer popup forcing an older one to slide-close and later restore without losing draft/keyboard state. Generic native menus/Recording HUD remain outside field allocation.
+2. **Anchored composition/focus is source-implemented through allocator + simultaneous StyledPopup ownership, but not accepted yet.** `2874ff988` retains anchors, partitions inward, reflows to readable minima and evicts only when necessary; `84a53ee4d` supports simultaneous mature StyledPopups; `f6b479bbe` separates reveal from eviction motion; `35fdf061d` makes newest focus-requesting popup arbitration/restoration match native StyledPopup OnDemand/Exclusive semantics. Do not revert to lateral relocation or single-active ownership. Next, qualify physical focus/input ordering for Settings/Dashboard/IPC/Sidebar/corner combinations on all edges and small/fractional outputs, including a newer popup forcing an older one to slide-close and later restore without losing draft/keyboard state. Generic native menus remain outside field allocation; Recording now has an Abyss field participant (qualification below).
 3. **Dashboard/Editor coverage:** exercise packed restored layouts, every widget, hidden overflow/Add, viewport shrink, cancel/undo/reset and save/reopen with physical input. No scroll/growing workspace or neighbour scrambling. Verify real Calendar/Weather/Media/Resources/network examples, small/fractional Editor toolbar fit, joins, per-output/latest-config merges and persistent IPC targets. Measure drag frame cost; identity retention and a two-card video alone do not prove smoothness everywhere.
 4. **Inherited interaction, wallpaper/hot-corner Overview and connectivity:** `4a25474f9` ports the mature cross-output Quick Notes editor lease into Abyss: editor ownership is compare-and-set by output, non-owner Notes/Notification Center corner triggers stay dormant while the lease is held, and monitor removal releases a stale owner. `55bb439a6` removes the retired Orbit hot-corner path, and `ffe46cbae` gives Niri Overview configured-corner priority over all remaining Abyss Quick Notes/Notification/Sidebar corner input on each output. The focused corner contract guards both source rules; real two-output keyboard/pointer focus is still an acceptance gate. Next qualify Sidebar custom dimensions/hot corners on multiple outputs. Validate both wallpaper paths: `4a2143b68` for field material alpha/blur/output-aware video stills, and `7f795a0e5` for Niri built-in Overview backdrop wallpaper from hot-corner/Mod+Tab activation. Confirm no gray compositor backdrop remains with the default enabled backdrop, and verify blur/dim, disabled-backdrop behavior, video and multiple outputs. Connectivity ownership is now the System Tray only: migration 053 removes old Wi-Fi/Bluetooth Edge placements and `6ef3d4756` makes the built-in status icons hover-open the mature connection popup. Live-check Wi-Fi→popup, Bluetooth→popup, transfer from icon into popup, switching between the two, same-icon re-entry, real association/pairing/device removal/service errors, plus ordinary tray DBus nested menus/app actions/keyboard access. Real backlight/DDC/night-light sensitivity, latency and failure behavior remain separate from fake-hardware tests.
 5. **Settings/public design audit:** finish overlap/deduplication across Abyss, Desktop Panels and shared widgets; consolidate Dashboard card-opacity multiplying global content opacity. Audit all units, remaining result/media/Sidebar/native-menu fills, borderless navigation and active indicators, ordinary button wave faces and readable preset differences. Finish Orbital Weather appearance. Confirm the final public Abyss/Waffle-only migration, historic Material aliases and flat opaque/no-effects inheritance without deleting supported Waffle or dropping mature features.
@@ -1223,7 +1223,7 @@ Remaining owner requirements, in this same active list:
   attachment location. Transfer referenced images with notes, preserve originals
   until successful completion and qualify Unicode/collisions/failure/restart with
   synthetic notes/vaults; do not read personal note stores as test fixtures.
-- [ ] Rework Recording popup/controls for Abyss surface presentation, reusing
+- [x] Source and focused fixture: rework Recording popup/controls for Abyss surface presentation, reusing
   RecorderStatus and existing stop/audio/drag/auto-hide behavior with one owner.
   Keep ii/Waffle supported. Test injected recording state; do not stop an owner
   recording as a fixture action.
@@ -1506,3 +1506,25 @@ then actual MPD queue/decoder qualification and the latest exact-SHA canonical
 validator. Continue strict-lossless parity and measured resource work; retain
 G0 `dc4d5ecfe118` as offline-only INCONCLUSIVE_CAPTURE_VARIANCE and make no
 CPU/RAM/GPU percentage claim from these functional tests.
+
+### 2026-10-10 — Connected Recording controls
+
+- [x] Recording controls now participate in the existing Abyss field, allocator
+  and input mask. Share the timer, Stop, microphone/system mute and collapse
+  controls with the retained ii/Waffle native presenter. The primary output
+  owns one control set; idle Recording allocates neither controls nor a window.
+  The Abyss path creates no additional native Recording window. Drag/release
+  selects the nearest edge; timer width stays stable across minute boundaries.
+- [x] Keep pointer ownership on the drawn connection. Auto-hide removes body
+  input after two seconds and retains only a 36-by-12-pixel edge recovery target
+  while recording. Lock/unmapped output removes that target. Hidden controls
+  stop their pulse animation. Existing `recordingOsd` IPC actions remain intact.
+- [x] Actual native QML fixture passed on all four edges, including audio-mode
+  visibility, real pointer controls, connection dwell, auto-hide/recovery, drag,
+  Stop callback, idle/secondary-output allocation and retained ii/Waffle snap.
+  Receipt: `/tmp/hadalis-recording-ipc-20261010.log`. Six affected QML files
+  parsed with Qt 6; IPC registry check passed (64 targets). Private Niri stayed
+  unfocused; the fixture injected recorder/audio callbacks and did not start an
+  owner recording or alter system mute state.
+- [ ] Owner desktop appearance and an actual recording/stop remain separate
+  acceptance. Canonical validation must apply to the final committed source.

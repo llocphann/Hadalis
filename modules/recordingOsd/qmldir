@@ -1,2 +1,3 @@
 module qs.modules.recordingOsd
 RecordingOsd 1.0 RecordingOsd.qml
+RecordingControls 1.0 RecordingControls.qml

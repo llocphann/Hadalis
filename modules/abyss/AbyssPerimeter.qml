@@ -1097,6 +1097,15 @@ Scope {
                     }
                 }
             }
+            AbyssRecordingBody {
+                anchors.fill: parent
+                controller: liquid
+                outputName: window.outputName
+                targetOutput: GlobalStates.primaryScreen?.name === window.outputName
+                available: window.presented && field.ready && GlobalStates.deferredPanelsReady
+                enabledPanel: (Config.options?.enabledPanels ?? []).includes("iiRecordingOsd")
+                edgeInsets: window.bodyInsets(edge,along,span)
+            }
             AbyssBodyHost {
                 id: utility
                 property string retainedKind: "session"

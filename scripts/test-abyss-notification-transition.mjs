@@ -12,6 +12,7 @@ const source=read('modules/abyss/AbyssPerimeter.qml');
 const bannerContent=read('modules/abyss/content/AbyssNotificationsContent.qml');
 const centerPopup=read('modules/notificationCenter/NotificationCenterPopup.qml');
 const corners=read('modules/abyss/AbyssCorners.qml');
+const adapter=read('modules/abyss/content/AbyssNotificationsContent.qml');
 
 const start=source.indexOf('id: notification\n');
 const end=source.indexOf('id: toastBody\n',start);
@@ -48,7 +49,7 @@ function same(label,actual,expected) {
 }
 function state({centerOpen=false,toastCount=1,toastHeight=130,
     position='topRight',customCenterWidth=420,customCenterHeight=560,
-    outputName='eDP-1'}={}) {
+    outputName='eDP-1',popupLayoutReady=true}={}) {
     const config={options:{
         panelFamily:'abyss',enabledPanels:['abyssNotificationPopup','abyssNotificationCenter'],
         notifications:{position,screenList:[]},
@@ -63,7 +64,7 @@ function state({centerOpen=false,toastCount=1,toastHeight=130,
         positionAlong:(_kind,_edge,_span,fallback)=>fallback};
     const ctx=[config,gs,notification,window,
         {sizes:{notificationPopupWidth:360}},14,
-        {item:{desiredWidth:360,desiredHeight:toastHeight}},
+        {item:{desiredWidth:360,desiredHeight:toastHeight,popupLayoutReady}},
         {ready:true},{horizontal:e=>e==='top'||e==='bottom',
             targets:()=>true},
         {screens:[{name:'eDP-1'}]}];
@@ -81,6 +82,12 @@ function state({centerOpen=false,toastCount=1,toastHeight=130,
 const normal=state();
 const openingCenter=state({centerOpen:true});
 same('toast visible before center opens',normal.open,true);
+same('transient banner waits for a settled layout before opening',
+    state({popupLayoutReady:false}).open,false);
+same('transient banner measurement preloads content independently of open',
+    banner.includes('residentContent: Notifications.popupList.length > 0'),true);
+same('transient banner opens from the same host after sizing stabilizes',
+    state({popupLayoutReady:true}).open,true);
 same('center open dismisses toast request',openingCenter.open,false);
 for(const prop of ['position','kind','edge','width','height','span','depth','along','contentKind']) {
     same('opening center MUST NOT mutate closing toast '+prop,openingCenter[prop],normal[prop]);
@@ -117,4 +124,66 @@ same('custom Notification Center width still binds to public setting',
     centerPopup.includes('Config.options?.notificationCenter?.popupWidth ?? 420'),true);
 same('custom Notification Center height still binds to public setting',
     centerPopup.includes('Config.options?.notificationCenter?.popupHeight ?? 560'),true);
+// Run the real QML measurement functions against a synthetic Recording saved
+// message: its absolute path makes the notification delegate taller only AFTER
+// the initial ListView creates and lays out the card. No UI is instantiated.
+function qmlMethod(name) {
+    const marker='function '+name+'(): void {';
+    const start=adapter.indexOf(marker);
+    assert.ok(start>=0,'missing '+name);
+    const brace=adapter.indexOf('{',start);
+    let depth=0,end=-1;
+    for(let i=brace;i<adapter.length;i++) {
+        if(adapter[i]==='{') depth++;
+        if(adapter[i]==='}' && --depth===0){end=i+1;break;}
+    }
+    assert.ok(end>brace,'unterminated QML method '+name);
+    return adapter.slice(start,end).replace('(): void {','() {');
+}
+const rootState={center:false,settledPopupHeight:0,popupLayoutReady:false};
+const recordedPath='/home/tester/Videos/2026-10-10_recorder-test.mp4';
+const notificationApi={popupList:[{summary:'Recording saved',body:recordedPath}]};
+const popupLoader={item:{contentHeight:0}};
+const timer={restarts:0,restart(){this.restarts++}};
+const methods=new Function('root','Notifications','popupLoader','popupMeasureTimer',
+    qmlMethod('schedulePopupMeasurement')+'\n'
+    +qmlMethod('commitPopupMeasurement')+'\n'
+    +'return {schedule:schedulePopupMeasurement,commit:commitPopupMeasurement};')(
+        rootState,notificationApi,popupLoader,timer);
+methods.schedule();
+same('no banner reveal while ListView height is provisional',rootState.popupLayoutReady,false);
+same('zero ListView height never schedules reveal',timer.restarts,0);
+// A first provisional delegate height, followed by the final wrapped file path.
+popupLoader.item.contentHeight=62;
+methods.schedule();
+popupLoader.item.contentHeight=166;
+methods.schedule();
+same('both provisional changes are batched by one timer',timer.restarts,2);
+same('height remains unpublished before settle',rootState.settledPopupHeight,0);
+methods.commit();
+same('final path card height committed',rootState.settledPopupHeight,166);
+same('settled card enables native banner reveal',rootState.popupLayoutReady,true);
+popupLoader.item.contentHeight=254;
+methods.schedule();
+same('already visible popup does not resize until batch settles',
+    rootState.settledPopupHeight,166);
+methods.commit();
+same('subsequent additional notification size committed once',rootState.settledPopupHeight,254);
+notificationApi.popupList=[];
+popupLoader.item.contentHeight=300;
+methods.schedule();
+methods.commit();
+same('empty popup list cannot resurrect old measurement',
+    rootState.settledPopupHeight,254);
+rootState.center=true;
+notificationApi.popupList=[{summary:'a different notification'}];
+methods.schedule();
+methods.commit();
+same('history-center content cannot override transient sizing',
+    rootState.settledPopupHeight,254);
+same('actual adapter gates view until measured',
+    adapter.includes('property bool popupLayoutReady: false')
+        && adapter.includes('readonly property real desiredHeight: root.settledPopupHeight')
+        && adapter.includes('target: popupLoader.item')
+        && adapter.includes('interval: 75'),true);
 console.log('PASS: '+tests+' source-executed Abyss Notification Center transition assertions');

@@ -79,10 +79,6 @@ require(
     "Quick Notes hover must not materialize the timer subtree before Timers is selected",
 )
 
-for retired in ("entryBridgeHeld", "entryBridgeTimer"):
-    if retired in popup:
-        fail("Quick Notes must not keep the Popup open with an independent bridge lease")
-
 for token in (
     "import QtQuick.Controls",
     "Bar.StyledPopup {",
@@ -91,8 +87,9 @@ for token in (
     "attachmentEdgeOverride: root.cornerAttachmentEdge",
     "attachmentThicknessOverride: root.cornerAttachmentThickness",
     "hoverActivates: true",
-    "hoverTransferGraceMs: Math.max(260, Math.min(700,",
+    "property bool entryBridgeHeld: false",
     "alternativeVisibleCondition: root.editorFocused || root.todoDialogOpen",
+    "id: entryBridgeTimer",
     "Math.round(root.cornerAttachmentThickness * 6)",
     "keyboardFocusOnDemand: true",
     "keyboardFocus: root.editorFocused || root.todoDialogOpen",

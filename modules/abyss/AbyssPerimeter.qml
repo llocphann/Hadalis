@@ -207,9 +207,20 @@ Scope {
             // reads existing clock/array state only; surface-state snapshots
             // are taken ONLY if an interval actually exceeds 33.3ms.
             property var _frameProbeSlowEvents: []
+            // Cheap, opt-in presence/motion counters: if every Panel is zero
+            // through the entire six-second window, slow frames cannot be
+            // attributed to an observed Panel animation. Never run at idle.
+            property var _frameProbePreviousPanelProgress: null
+            property int _frameProbePanelNonzeroFrames: 0
+            property int _frameProbePanelChangedFrames: 0
+            property int _frameProbePopupOpenFrames: 0
             function startFrameProbe(): var {
                 window._frameProbeIntervals = []
                 window._frameProbeSlowEvents = []
+                window._frameProbePreviousPanelProgress = null
+                window._frameProbePanelNonzeroFrames = 0
+                window._frameProbePanelChangedFrames = 0
+                window._frameProbePopupOpenFrames = 0
                 window._frameProbePreviousMs = 0
                 window._frameProbeEnabled = true
                 return {output:window.outputName,started:true,maxIntervals:600}
@@ -234,7 +245,10 @@ Scope {
                     over33ms:intervals.filter(ms=>ms>33.3).length,
                     idleGapsOver100ms:intervals.filter(ms=>ms>100).length,
                     slowEvents:window._frameProbeSlowEvents.slice(),
-                    caveat:"includes idle gaps; not compositor present/GPU/FPS proof"
+                    panelNonzeroFrames:window._frameProbePanelNonzeroFrames,
+                    panelProgressChangedFrames:window._frameProbePanelChangedFrames,
+                    popupOpenFrames:window._frameProbePopupOpenFrames,
+                    caveat:"includes idle gaps; not compositor present/GPU/FPS proof; motion counts only frameSwapped samples"
                 }
             }
             Connections {
@@ -242,6 +256,22 @@ Scope {
                 enabled: window._frameProbeEnabled
                 function onFrameSwapped(): void {
                     const now=Date.now()
+                    // Five reused numeric state reads per sampled frame;
+                    // this instrumentation is off unless startFrames ran.
+                    const panels=[
+                        Number(leftPanel.progress ?? 0),
+                        Number(rightPanel.progress ?? 0),
+                        Number(dashboardBody.progress ?? 0),
+                        Number(controls.progress ?? 0),
+                        Number(settings.progress ?? 0)
+                    ]
+                    if (panels.some(value=>value>0.001))
+                        window._frameProbePanelNonzeroFrames++
+                    const previous=window._frameProbePreviousPanelProgress
+                    if (previous && panels.some((value,i)=>Math.abs(value-previous[i])>0.001))
+                        window._frameProbePanelChangedFrames++
+                    window._frameProbePreviousPanelProgress=panels
+                    if (liquid.popupsOpen) window._frameProbePopupOpenFrames++
                     if (window._frameProbePreviousMs > 0
                             && window._frameProbeIntervals.length < 600) {
                         const intervalMs = Math.max(0,now-window._frameProbePreviousMs)

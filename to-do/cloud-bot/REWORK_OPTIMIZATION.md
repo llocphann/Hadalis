@@ -39,6 +39,32 @@ holds technical research; this file holds pending outcomes.
   paths before proposing another lossless candidate. Do not conflate Region
   reduction with a confirmed user-visible jank fix.
 
+  **Owner still reports jank after `6c10387`, 2026-10-10:** that Region
+  compaction/physical-mask patch was reverted in `0d26291646bc9b4db6f0678c54b10f7a4b8c8962`
+  as ineffective. The earlier 55.7% rectangle reduction is now **historical
+  only, NOT a current resource saving**. Do not stack another workaround on
+  it. New independent strict-math hot-path candidate
+  `b50c3b8064317fd8feb1ccd20303315765b2f2c8` reuses the immutable
+  workspace rectangle and single popup record in `popupShoulders`, avoiding
+  per-pixel object allocation/record-array traversal while preserving exactly
+  the same SDF operations. Direct before/after V8 tests compared full
+  shoulder rectangle arrays in **720 edge/scale/softness/radius/progress cases:
+  identical**. Isolated loops of 2,000 calls measured 824→621ms at softness 24
+  and 1,694→1,303ms at softness 48 (single V8 environment; not a whole-shell
+  FPS/CPU/GPU/memory result). Native Qt/Quickshell has NOT been tested.
+  To identify actual jank instead of guessing, opt-in diagnostics
+  `1633a6e1d909de0c93e8a33999cccab1b78dcac3` adds
+  `abyssHoverProbe.startFrames()` / `stopFrames()`: per-output bounded
+  600 QQuickWindow `frameSwapped` wall-clock interval samples with
+  p50/p95/p99 and interval gaps. Disabled until explicitly called, no
+  recurring profiler/timer; results can include idle gaps and are NOT
+  compositor-present timestamps or hardware GPU counters. Next: collect
+  installed exact-SHA source, a real captured output/frame interval sample
+  during slow open/reverse/multi-edge transitions, and CPU/GPU compositor
+  evidence where available. Diagnose spikes in mask rebuild, allocator
+  movement, ShaderEffect/waves, or focus/remount from evidence first.
+  **USER-EXPERIENCE ACCEPTANCE REMAINS OPEN.**
+
 - [ ] **Strict-lossless CPU/RAM/GPU reductions:** re-audit latest `dev` and
   promote high-value findings only after behavior, read/dependency order,
   identity/NOTIFY and lifecycle parity. Keep hidden services/lightweight warm

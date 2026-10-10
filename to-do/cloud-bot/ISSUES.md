@@ -161,6 +161,43 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   identity. The helper never remaps/refreshes the mask or changes
   configuration. **Popup hover acceptance remains OPEN.**
 
+  **Owner archive 2026-10-10 08:04:04Z (local 15:04):**
+  `hadalis-abyss-hover-20261010-150404.tar.gz` contains
+  `collector_exit_status=0`, but `frame-start.txt` is actually
+  `Target not found.`; `frame-intervals.txt` has `count=0`
+  and all quantiles null. Checkout `dev` at
+  `5896b425951a774f6b209d68b50616297f455a3c`;
+  Quickshell runtime location:
+  `/home/llocphann/.config/quickshell/inir`.
+  The installed `shell.qml` and `AbyssGeometry.js` MATCH
+  checkout, but **`AbyssPerimeter.qml` is DIFFERENT**. A
+  restart without a setup sync did not put the newest QML in
+  the live installed runtime. The 40 snapshot IPC responses
+  were successful but all had no active Popup or module hover
+  (`liquidPopupsOpen=false`, empty popup slots); not a captured
+  source→connector crossing. The old collector trusted an exit
+  code 0 from missing target, a false positive diagnostic result.
+
+  **Diagnostic guard fix `faf8ad59b9336ad6d2689b20ace52b28f22a6d45`:**
+  fail closed if installed `shell.qml`, `AbyssPerimeter.qml`
+  or `AbyssGeometry.js` differ from checkout (exit 4);
+  require actual `"started":true` IPC response even if
+  `qs` exits 0 with `Target not found.` (exit 5);
+  require frame-summary signature (exit 6); reject invalid
+  Abyss snapshots (exit 2). Preserve original exit code and
+  raw receipts in one automatic `.tar.gz`, including failures.
+  **Exact committed script Git blob
+  `d4f52cef9342defc1fde61d1c4dfacdd67ff4f54`** was
+  byte-matched by local `git hash-object`, and passed real
+  `bash -n` exit 0 and five deterministic fake-IPC cases:
+  missing handler 5, malformed stop 6, malformed snapshot 2,
+  valid 40 snapshots 0, stale installed QML 4. Each generated
+  one valid evidence archive. No new real Niri hover test on
+  this corrected SHA. From checkout run the repository-supported
+  `./setup update`, then `inir restart`, then collector.
+  Do not mutate installed runtime automatically from collector.
+  Keep **Popup hover user acceptance OPEN**.
+
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,
   1 SKIP**. Failures: keyboard sizing, Dashboard Music, Dashboard warm readiness,

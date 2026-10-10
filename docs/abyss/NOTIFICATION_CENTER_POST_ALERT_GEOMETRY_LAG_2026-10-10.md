@@ -36,6 +36,25 @@ Examined \`dev\` HEAD \`2a830cc22a364dc284fe780db9ddf1fda9f42d3a\` after the use
 
 The video therefore indicates a **size/placement transition defect that requires native tracing**. It does NOT prove that the notification toast, list Loader, SDF shader, geometry allocator, pyramid motion or hover bridge is the causal component. Avoid applying another speculative source patch.
 
+## 2026-10-10 Cloud AI source fix: toast-to-center role conflict
+
+**State: implemented on dev, focused source regression PASS, native Niri and owner acceptance PENDING.**
+
+Deeper source analysis established a deterministic conflict in `modules/abyss/AbyssPerimeter.qml`: there are **two distinct hosts**, the transient `notification` AbyssBodyHost and the dedicated `NotificationCenterPopup` rehosted in the `styledPopupHosts` Repeater. In the original code, opening the dedicated Center set `GlobalStates.notificationCenterOpen=true`. This **closed** the transient `notification` host (`open` has an explicit negative condition on that global), but simultaneously changed this closing host's `centerOnOutput` expression to true, forcing new `presentationKind`, `edge`, `contentKind`, `along`, `obstacles` and nearly full-output `contentHeight`. The old `AbyssBodyHost.visualResident` keeps its closing record visible until reveal progress reaches zero. Therefore a closing banner could visibly change into an oversized Center-shaped right column while the separately-owned actual Center was opening.
+
+For reproducible arithmetic only: executing the **original source expression** with 1200px output height, 16px top/bottom insets, 14px padding and 130px banner content gave height **158px** before `notificationCenterOpen`, versus **1096px** immediately after it. These are illustrative inputs, not the owner's verified configuration. The real user video is consistent with this branch switch, but without per-frame native receipts it does not independently establish it as the sole cause of all observed lag.
+
+**Runtime corrections committed:**
+
+- `6f0321dec1c688d25cddcd5728ee0f2a2276f8b0` — make the transient `notification` host strictly own **only banner content**. Fix its kind to `notifications`, and its `contentKind` to `popup`. Continue deriving its own width, height, location and obstacles from banner settings alone. Preserve the existing `!GlobalStates.notificationCenterOpen` close predicate and the separately-owned `NotificationCenterPopup`. No new input mask, hover bridge, edge policy or global timer.
+- `98415d0c43d3145920265f8f6ccdccdf79368273` — turn on existing `AbyssBodyHost.stableContentSize` for this banner, keeping icon/text layout at target dimensions behind its reveal clip during retract. This is targeted at reflow/jitter during the closing visual transition, **not proof of frame pacing improvement**.
+- `63952a5be606e5db1cdb5c581da76856d8bd5127` and `644da2ae9d870e33b9cb3fe98013bba1adfbb1cb` — add and correct the focused `scripts/test-abyss-notification-transition.mjs` behavioral source regression, evaluating actual committed QML expressions across a new banner, Center opening, no/multiple banners, alternative Edge positions and customized Center dimensions. The latest test passes **32/32** in an isolated JavaScript execution using mocked QML dependencies.
+- `279fc68bca020d853a4f6011b9810f3ea08a3e96` — make this test an explicit gate in the canonical `scripts/validate-maintainer-local.sh`.
+
+The disappearance of the center Loader from the banner codepath also prevents that host from instantiating a second history content and calling `Notifications.markAllRead()` because of banner-to-center role switching. The Center's own history and explicit/hover semantics remain unchanged.
+
+**What is NOT yet proven:** full maintainer validator, true Qt/QML loading, Niri multi-output/reveal correctness, absence of input glitches, and actual reduction of Qt heartbeat/frameSwapped slow gaps on owner hardware. The targeted patch removes an evidenced layout conflict; other sources of lag may remain. Do not mark the three owner outcomes accepted until an exact-SHA native reproduction matches the video steps and the owner confirms them.
+
 ## Local chatbot's next steps
 
 1. Follow \`AGENTS.md\`, \`to-do/README.md\` and \`to-do/cloud-bot/README.md\`. Refetch \`dev\` and verify the installed/running QML matches the exact checkout. Never edit \`stable\`. This issue is independently OPEN even if Screen Edge hover becomes stable.
@@ -55,4 +74,4 @@ The video therefore indicates a **size/placement transition defect that requires
 - [ ] No regressions to hover ownership, click-through, keyboard focus, other Popup kinds, multiple output layouts or fullscreen handling.
 - [ ] Native Niri evidence and **owner-confirmed acceptance**. Until then: OPEN.
 
-**Work boundary:** This intake documents a new video-confirmed bug. It does not undo the earlier exact hover revert and does not ship a speculative performance/layout fix.
+**Work boundary:** This record now includes a bounded source-level fix for the actual toast-to-Center geometry branch; it does NOT undo the earlier exact hover revert. Native performance and owner acceptance still need independent confirmation.

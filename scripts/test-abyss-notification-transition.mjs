@@ -38,7 +38,7 @@ const expressions={
 };
 const functions=Object.fromEntries(Object.entries(expressions).map(([key,code])=>[
     key,new Function('Config','GlobalStates','Notifications','window',
-        'Appearance','padding','contentItem','field','Geometry',
+        'Appearance','padding','contentItem','field','Geometry','Quickshell',
         'position','presentationKind','edge','span','contentWidth','contentHeight',
         'return ('+code+');')]));
 let tests=0;
@@ -65,7 +65,8 @@ function state({centerOpen=false,toastCount=1,toastHeight=130,
         {sizes:{notificationPopupWidth:360}},14,
         {item:{desiredWidth:360,desiredHeight:toastHeight}},
         {ready:true},{horizontal:e=>e==='top'||e==='bottom',
-            targets:()=>true}];
+            targets:()=>true},
+        {screens:[{name:'eDP-1'}]}];
     function value(which,...additional){return functions[which](...ctx,...additional)}
     const side=value('position'),kind=value('kind'),edge=value('edge',side,kind);
     const width=value('width',side,kind,edge);

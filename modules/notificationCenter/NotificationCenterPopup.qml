@@ -21,7 +21,8 @@ Bar.StyledPopup {
     // keyboard. Only search/focus acquisition is deferred; pointer content
     // remains visible and interactive.
     property bool keyboardAllowed: true
-    property bool entryBridgeHeld: false
+    // Only actual source-edge and popup-body hover own the preview.
+    // A bounded exit grace covers Qt cross-window pointer-event ordering.
     property bool exitGraceHeld: false
     property bool keyboardInteraction: false
     property bool hoverSessionArmed: true
@@ -60,21 +61,17 @@ Bar.StyledPopup {
             maximum = Math.max(maximum, Number(apps[i]?.seconds ?? 0))
         return maximum
     }
-    // MouseArea.containsMouse can clear while StyledPopup's real source
-    // HoverHandler still reports hovered (owner native trace: #68–71 and
-    // #80–82). Both are legitimate views of the same corner anchor.
-    // Keep the notification's lifetime lease aligned with the already-active
-    // source hover rather than expiring its bridge grace beneath the pointer.
+    // The dwell-gated MouseArea and StyledPopup source HoverHandler are
+    // two views of the SAME owning edge; neither describes the connector.
     readonly property bool _anchorHovered: Boolean(root.anchorItem
         && ((root.anchorItem.containsMouse ?? false)
-            || (root._anchorHover?.hovered ?? false)))
+            || root.sourceEdgeHovered))
     readonly property bool hoverLeaseRequested:
         root.hoverAllowed
         && !root.explicitForThisOutput
         && root.presentationActive
         && (root._anchorHovered
             || root.popupHovered
-            || root.entryBridgeHeld
             || (contentLoader.item?.dragActive ?? false))
 
     hoverTarget: root.anchorItem
@@ -88,7 +85,6 @@ Bar.StyledPopup {
     attachmentThicknessOverride: root.cornerAttachmentThickness
     hoverActivates: root.hoverAllowed && root.hoverSessionArmed
     alternativeVisibleCondition: root.explicitForThisOutput
-        || root.entryBridgeHeld
         || root.exitGraceHeld
         || root.keyboardInteraction
         || (contentLoader.item?.dragActive ?? false)
@@ -148,9 +144,7 @@ Bar.StyledPopup {
     }
 
     function dismissAndDisarm(): void {
-        entryBridgeTimer.stop()
         exitGraceTimer.stop()
-        root.entryBridgeHeld = false
         root.exitGraceHeld = false
         root.keyboardInteraction = false
         root.hoverSessionArmed = false
@@ -169,8 +163,10 @@ Bar.StyledPopup {
 
     onHoverAllowedChanged: {
         if (!hoverAllowed && !explicitForThisOutput) {
-            entryBridgeTimer.stop()
-            entryBridgeHeld = false
+            // Source ownership revocation is NOT an ordinary pointer leave.
+            exitGraceTimer.stop()
+            exitGraceHeld = false
+            GlobalStates.setNotificationCenterHoverOutput(root.outputName, false)
         }
     }
 
@@ -182,7 +178,8 @@ Bar.StyledPopup {
             return
         }
 
-        if (root.presentationActive && !root.explicitForThisOutput) {
+        if (root.presentationActive && root.hoverAllowed
+                && !root.explicitForThisOutput) {
             root.exitGraceHeld = true
             exitGraceTimer.restart()
             return
@@ -192,19 +189,10 @@ Bar.StyledPopup {
     }
 
     onPresentationActiveChanged: {
-        if (presentationActive) {
-            Qt.callLater(() => {
-                if (root.presentationActive && !root.explicitForThisOutput) {
-                    root.entryBridgeHeld = true
-                    entryBridgeTimer.restart()
-                }
-            })
+        if (presentationActive)
             return
-        }
 
-        entryBridgeTimer.stop()
         exitGraceTimer.stop()
-        root.entryBridgeHeld = false
         root.exitGraceHeld = false
         root.keyboardInteraction = false
         if (contentLoader.item)
@@ -216,16 +204,6 @@ Bar.StyledPopup {
 
     Component.onDestruction:
         GlobalStates.setNotificationCenterHoverOutput(root.outputName, false)
-
-    property QtObject _entryBridgeTimer: Timer {
-        id: entryBridgeTimer
-        // Use the public transfer-grace setting for both directions. A separate
-        // hard-coded entry delay made Settings only partially authoritative.
-        interval: Math.max(0,
-            Config.options?.notificationCenter?.closeGraceMs ?? 280)
-        repeat: false
-        onTriggered: root.entryBridgeHeld = false
-    }
 
     property QtObject _exitGraceTimer: Timer {
         id: exitGraceTimer

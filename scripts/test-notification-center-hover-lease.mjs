@@ -37,6 +37,7 @@ const leaseFn = new Function('root', 'contentLoader',
 assert.match(styled, /property Item _anchorHover: Item\s*\{/);
 assert.match(styled, /readonly property bool hovered: sourceHover\.hovered/);
 assert.match(source, /onHoverLeaseRequestedChanged:\s*\{[\s\S]*?if \(root\.hoverLeaseRequested\)\s*\{[\s\S]*?exitGraceTimer\.stop\(\)/);
+assert.doesNotMatch(source, /entryBridgeHeld|entryBridgeTimer/);
 
 const base = {
     anchorItem: { containsMouse: false },
@@ -45,7 +46,7 @@ const base = {
     explicitForThisOutput: false,
     presentationActive: true,
     popupHovered: false,
-    entryBridgeHeld: false,
+    sourceEdgeHovered: false,
 };
 let assertions = 3;
 function check(label, root, expectedAnchor, expectedLease) {
@@ -71,8 +72,10 @@ check('explicit opening does not request hover lease',
     true, false);
 check('popup body owns visit',
     { ...base, popupHovered: true }, false, true);
-check('entry bridge may hold transfer',
-    { ...base, entryBridgeHeld: true }, false, true);
+check('connector cannot grant an independent hover lease',
+    { ...base, entryBridgeHeld: true }, false, false);
+check('source edge hover is an owner',
+    { ...base, sourceEdgeHovered: true }, true, true);
 check('no anchor item is safe',
     { ...base, anchorItem: null, _anchorHover: null }, false, false);
 // Verify the actual read-only QML HandlerPoint expressions. Qt resets
@@ -96,4 +99,7 @@ assert.deepEqual(contentPointFn({ hovered: true, point: { scenePosition: { x: 15
     { x: 1520, y: 650 });
 assert.equal(contentPointFn({ hovered: false }), null);
 assertions += 4;
+assert.match(source, /if \(root\.hoverLeaseRequested\)[\s\S]*?exitGraceTimer\.stop\(\)/);
+assert.match(source, /if \(root\.presentationActive && root\.hoverAllowed[\s\S]*?exitGraceTimer\.restart\(\)/);
+assertions += 2;
 console.log('PASS: ' + assertions + ' NotificationCenter source/lease assertions');

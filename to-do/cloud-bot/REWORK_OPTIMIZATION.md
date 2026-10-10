@@ -76,6 +76,17 @@ holds technical research; this file holds pending outcomes.
   and transfer, preserve the three receipts and source/installed SHA. Do
   not report whole-shell FPS gain from V8 microbench timings, and do not
   call the previous Region-count reduction current after its revert.
+  **First owner measurement attempt 2026-10-10 07:18:55 UTC was BLOCKED**:
+  uploaded `frame-start.txt` reports Quickshell could not find its
+  `default` configuration. It contains no frame intervals or FPS; uploaded
+  `identity.txt` pins only the dev checkout `ff56015cf` and
+  `qs_config=auto`, not the installed shell. This was caused by the original
+  collector omitting the config path, whereas the Hadalis launcher uses
+  `qs -p "$config_dir" ipc call`. Fixed diagnostic collector in
+  `4dc295e7f118a2445ca5ab4d6a66de2552312532` to select the live iNiR
+  instance and report installed/source parity. Corrected collector still
+  requires owner rerun. **Jank cause and performance acceptance UNKNOWN/OPEN**;
+  no percent/fps gain inferred from the failed capture.
 
 - [ ] **Strict-lossless CPU/RAM/GPU reductions:** re-audit latest `dev` and
   promote high-value findings only after behavior, read/dependency order,

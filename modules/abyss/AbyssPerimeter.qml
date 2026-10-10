@@ -223,12 +223,19 @@ Scope {
             property int _frameProbeHeartbeatOver100Ms: 0
             property real _frameProbeHeartbeatMaxMs: 0
             property var _frameProbeHeartbeatLateEvents: []
+            // At most 160 ticks (~8s at 50ms). Retain the FULL opt-in
+            // heartbeat chronology so a sparse frame-swapped gap can be
+            // compared to actual event-loop deliveries within that gap.
+            property var _frameProbeHeartbeatHistory: []
             property real _frameProbeBarPrevProgress: -1
             property int _frameProbeBarChangedFrames: 0
             function recordProbeHeartbeat(now): void {
                 const previous=window._frameProbeHeartbeatPrevMs
+                const intervalMs=previous > 0 ? Math.max(0,now-previous) : null
+                if (window._frameProbeHeartbeatHistory.length < 160)
+                    window._frameProbeHeartbeatHistory.push({
+                        timestampMs:now,intervalMs:intervalMs})
                 if (previous > 0) {
-                    const intervalMs=Math.max(0,now-previous)
                     window._frameProbeHeartbeatCount++
                     window._frameProbeHeartbeatMaxMs=Math.max(
                         window._frameProbeHeartbeatMaxMs,intervalMs)
@@ -253,6 +260,7 @@ Scope {
                 window._frameProbeHeartbeatOver100Ms = 0
                 window._frameProbeHeartbeatMaxMs = 0
                 window._frameProbeHeartbeatLateEvents = []
+                window._frameProbeHeartbeatHistory = []
                 window._frameProbeBarPrevProgress = -1
                 window._frameProbeBarChangedFrames = 0
                 window._frameProbePreviousMs = 0
@@ -287,6 +295,8 @@ Scope {
                     heartbeatOver100Ms:window._frameProbeHeartbeatOver100Ms,
                     heartbeatMaxIntervalMs:window._frameProbeHeartbeatMaxMs,
                     heartbeatLateEvents:window._frameProbeHeartbeatLateEvents.slice(),
+                    heartbeatHistory:window._frameProbeHeartbeatHistory.slice(),
+                    heartbeatHistoryExhausted:window._frameProbeHeartbeatHistory.length>=160,
                     caveat:"swap wall-clock gaps include idle gaps; 50ms Qt timer lateness is only event-loop correlation, not GPU/compositor proof"
                 }
             }

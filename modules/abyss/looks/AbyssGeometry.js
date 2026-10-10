@@ -22,10 +22,16 @@ function popupInput(content,width,height,insets,edge,paintedSurface) {
             else x=paintedSurface.x;
         }
     }
-    if (edge === "top") y=Math.min(y,insets.top);
-    else if (edge === "bottom") bottom=Math.max(bottom,height-insets.bottom);
-    else if (edge === "left") x=Math.min(x,insets.left);
-    else if (edge === "right") right=Math.max(right,width-insets.right);
+    // The actual rendered connection continues across the physical Screen
+    // Edge strip. Retain that painted band for pointer hand-off, but only over
+    // this popup's tangent footprint (never an output-wide hover surface).
+    // Content-only callers and Edges with 0px thickness keep their old seam.
+    var physical=paintedSurface && paintedSurface.width>0 && paintedSurface.height>0
+        && insets[edge]>0;
+    if (edge === "top") y=Math.min(y,physical?0:insets.top);
+    else if (edge === "bottom") bottom=Math.max(bottom,physical?height:height-insets.bottom);
+    else if (edge === "left") x=Math.min(x,physical?0:insets.left);
+    else if (edge === "right") right=Math.max(right,physical?width:width-insets.right);
     x=clamp(x,0,width);y=clamp(y,0,height);
     right=clamp(right,x,width);bottom=clamp(bottom,y,height);
     return {x:x,y:y,width:right-x,height:bottom-y};
@@ -47,6 +53,11 @@ function popupShoulders(width,height,insets,edge,record,radius,softness,recordRa
     if (insets[edge] <= 0) return [];
     var firstCross=leading ? Math.floor(seam) : Math.ceil(seam)-1;
     var rows=[];
+    // Several scanlines share the exact same occupied tangent interval.
+    // Joining only adjacent equal-width strips preserves the pixel union
+    // while avoiding per-scanline native Region/Instantiator churn.
+    var lastStripBySpan=Object.create(null);
+    var step=leading ? 1 : -1;
     var records=[record];
     var cornerStart=(h ? insets.left : insets.top)+radius;
     var cornerEnd=extent-(h ? insets.right : insets.bottom)-radius;
@@ -56,8 +67,24 @@ function popupShoulders(width,height,insets,edge,record,radius,softness,recordRa
             records,softness,recordRadius) < 0;
     };
     var append=function(first,last,cross) {
-        rows.push(h ? {x:first,y:cross,width:Math.max(0,last-first),height:1}
-            : {x:cross,y:first,width:1,height:Math.max(0,last-first)});
+        if (last<=first) return; // Zero-area strips never intersect pointer pixels.
+        var key=first+":"+last;
+        var previous=lastStripBySpan[key];
+        if (previous && previous.lastCross+step===cross) {
+            if (h) {
+                previous.rect.y=Math.min(previous.rect.y,cross);
+                previous.rect.height++;
+            } else {
+                previous.rect.x=Math.min(previous.rect.x,cross);
+                previous.rect.width++;
+            }
+            previous.lastCross=cross;
+            return;
+        }
+        var rect=h ? {x:first,y:cross,width:last-first,height:1}
+            : {x:cross,y:first,width:1,height:last-first};
+        rows.push(rect);
+        lastStripBySpan[key]={rect:rect,lastCross:cross};
     };
     var scan=function(first,last,cross) {
         // A nearby physical corner can make the SDF non-monotone. Preserve

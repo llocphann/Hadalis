@@ -758,6 +758,45 @@ run privileged installation just because manual buttons are retired.
   Calm stays below Balanced (the former Calm); Fluid/Deep should be distinct and
   restrained. Detailed wave controls belong to Custom; show numeric audio strength.
 
+- [ ] **ABYSS-R02 — Optional screen-facing corner rounding at zero Edge width — owner request 2026-10-11:**
+  [Owner: Alis dev; Rework] In Edit Abyss Layout, when the selected
+  Screen Edge has **Edge width = 0px**, add a clear **checkbox** for
+  rounding the *two corners of each visible module/surface that face
+  and contact the physical monitor edge*. Current behavior leaves those
+  display-facing corners squared/clipped and only rounds the free,
+  inward-facing corners. Checkbox OFF must preserve today's appearance
+  for backward compatibility; ON must produce visibly rounded physical-
+  facing corners, with immediate preview. For nonzero Edge width,
+  zero-width-specific option has no effect (disable or hide with hint).
+
+  Investigate modules/abyss/AbyssEdgeEditor.qml (Edge width, Edge width
+  affects modules and Module rounding controls),
+  modules/abyss/looks/AbyssLayout.js (edgeThicknesses, edgeModuleRadii,
+  per-output saveProfile) and modules/abyss/looks/AbyssGeometry.js /
+  connected Perimeter painting. Existing radius controls alone may not
+  expose the rounded physical-side silhouette if the output/window
+  boundary clips the curve; design a small visual inset or suitable
+  geometry without adding a second painter, disconnected surface or
+  transparent fullscreen input area. Preserve Niri physical corners.
+
+  Store this independent toggle per Screen Edge and per-output profile,
+  preserving edit preview, Save/Cancel/Undo/Reset, persistence and old
+  configs. Respect Edge width affects modules: modules intentionally
+  hidden by zero thickness must not reappear solely from this setting;
+  zero-width local module bulges remain eligible for corner rounding.
+  Keep inherited/custom radius, modules' size, popup connection, hover
+  and click hit targets unchanged except where rounding requires a
+  correctly bounded hit shape. Coordinate with ABYSS-R01 corner safety
+  inset: the two requests address different outcomes (spacing from
+  physical screen corners vs rounding physical-facing module corners).
+
+  Test OFF/ON, top/bottom/left/right, modules near both ends/center,
+  zero/nonzero widths, width affects modules on/off, fractional scaling,
+  light/dark, multi-output, connected Popup, antialiasing, drag/snapping,
+  Save/Cancel, reopen/reload and keyboard interaction. Update geometry/
+  QML regression tests and require real Niri owner visual acceptance.
+  State: OPEN; source design, native tests and owner signoff pending.
+
 - [ ] **Screen Edge/module editor:** verify separate 0px-capable widths on all
   four edges, thickness-only versus inherited module sizing, per-module overrides,
   joined nearby modules when width does not affect them, nearest-corner joins

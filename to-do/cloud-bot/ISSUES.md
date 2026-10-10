@@ -246,6 +246,64 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   Script does NOT remount or reconfigure the desktop.
   This candidate's native run is PENDING; status remains OPEN.
 
+  **Owner archive 2026-10-10 09:28:01Z (16:28 local), exact
+  checkout `a5ebffa747ddead7799d6dd6501f712996e068bf`:**
+  `hadalis-abyss-hover-20261010-162800.tar.gz` was inspected
+  without extracting archive paths to disk. Contains a valid
+  `collector_exit_status=0`, installed/checkout parity MATCH
+  for `shell.qml`, `AbyssPerimeter.qml`, `AbyssGeometry.js`,
+  live IPC registry `target abyssHoverProbe` with
+  `startFrames`, `stopFrames`, `snapshot`; all 3 preflight
+  CLI status values 0. `abyssHostProbe.status()` returned:
+  family abyss, perimeterLoaded/perimeterActive true,
+  deferredPanelsReady=true, nativeFirstFramesReady=true,
+  coldRecreated=true. Thus the prior `Target not found.`
+  obstruction **is NOT present in this capture**.
+
+  40 valid hover snapshots for output `eDP-1`; samples 00–34
+  show no popup. Exactly samples 35–39 show an OPEN
+  `notificationCenter` popup in slot 0. At #35 and #36 its
+  input bounds grow from width ~0.012 to ~123.68px; #37
+  width 420px and anchorHover=true. #38 (09:28:18.946Z)
+  anchorHover=false but contentHover=true, establishing
+  a pointer-reachable content phase. #39
+  (09:28:19.186Z) anchorHover=false and contentHover=false,
+  bodyHover=false, yet `requestedVisible=true`,
+  `lingerVisible=true`, `hosted=true`,
+  `nativeRegionRegistered=true`, `bodyReady=true`,
+  `bodyAcceptsInput=true` and input width still 420px.
+  `semanticHold=false` all five slots; `barPopupHoverLease`
+  is false by design for NotificationCenter
+  (`barAutoHideHoldEnabled: false`), NOT a lost Bar lease.
+  There is **no popup dismissal observed**, because the
+  original 40-snapshot window ends immediately after #39.
+  Neither a true source→connector failure nor a fix is
+  established by this trace. Avoid interpreting the final
+  all-false hover state alone as a confirmed bug.
+
+  **Targeted follow-up on `dev`:**
+  collector `d642cce966aea969a7f843180db82bece38e970a`
+  extends the bounded hover phase to 100 snapshots,
+  adds `popup_seen_during_capture` and
+  `popup_open_to_closed_transition_observed` markers in
+  `identity.txt`, and still archives everything in one
+  `.tar.gz` (a missing popup emits a warning).
+  Read-only `AbyssPerimeter.qml` snapshot addition
+  `1a0875d1b0fdd9c7f572d96e1a6e1d3c6cd90c00`
+  exposes `humanVisibleRequest`, `rawVisibleRequest`,
+  `hoverActivates` and NotificationCenter's
+  `anchorHovered`, `entryBridgeHeld`, `exitGraceHeld`,
+  `hoverLeaseRequested`, `hoverSessionArmed`,
+  `hoverAllowed`, `explicitForThisOutput`. No hitbox,
+  focus, lease duration, animation or dismissal behavior
+  was modified. This requires managed local installation
+  sync of new QML before a live owner rerun; the additions
+  have only source-level checks, NOT native validation.
+  If later samples show an unexpected closure, correlate
+  the two grace timers and semantic source state before
+  attempting a causal geometry workaround.
+  **Popup defect acceptance remains OPEN.**
+
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,
   1 SKIP**. Failures: keyboard sizing, Dashboard Music, Dashboard warm readiness,

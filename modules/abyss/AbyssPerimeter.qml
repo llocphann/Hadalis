@@ -128,6 +128,18 @@ Scope {
     IpcHandler {
         target: "abyssHoverProbe"
         function snapshot(): string { return root.hoverProbeSnapshot() }
+        // Opt-in bounded present-interval capture. No sampling timer or
+        // telemetry workload exists until explicitly requested over IPC.
+        function startFrames(): string {
+            return JSON.stringify((root.outputHosts ?? []).map(host =>
+                host?.startFrameProbe ? host.startFrameProbe()
+                    : {unavailable:true}))
+        }
+        function stopFrames(): string {
+            return JSON.stringify((root.outputHosts ?? []).map(host =>
+                host?.stopFrameProbe ? host.stopFrameProbe()
+                    : {unavailable:true}))
+        }
         // One-shot diagnostic experiment: request a compositor input-mask
         // rebuild without remounting Abyss or changing any configuration.
         // Do not use as an automatic startup workaround: first determine
@@ -183,6 +195,54 @@ Scope {
             readonly property bool nativeFieldReady: field.ready
             property bool _probeMaskProxy: false
             property bool _probeUnmapped: false
+            // Quiescent by default: these fields are only touched by the
+            // abyssHoverProbe.startFrames/stopFrames diagnostic IPC.
+            property bool _frameProbeEnabled: false
+            property int _frameProbePreviousMs: 0
+            property var _frameProbeIntervals: []
+            function startFrameProbe(): var {
+                window._frameProbeIntervals = []
+                window._frameProbePreviousMs = 0
+                window._frameProbeEnabled = true
+                return {output:window.outputName,started:true,maxIntervals:600}
+            }
+            function stopFrameProbe(): var {
+                window._frameProbeEnabled = false
+                const intervals=window._frameProbeIntervals.slice()
+                intervals.sort((a,b)=>a-b)
+                const n=intervals.length
+                const percentile=p=>n ? intervals[Math.min(n-1,
+                    Math.max(0,Math.ceil(n*p)-1))] : null
+                const sum=intervals.reduce((a,b)=>a+b,0)
+                return {
+                    output:window.outputName,
+                    sample:"QQuickWindow frameSwapped wall-clock intervals (ms)",
+                    count:n,exhausted:n>=600,
+                    min:n?intervals[0]:null,
+                    p50:percentile(.5),p95:percentile(.95),
+                    p99:percentile(.99),max:n?intervals[n-1]:null,
+                    mean:n?sum/n:null,
+                    over16ms:intervals.filter(ms=>ms>16.7).length,
+                    over33ms:intervals.filter(ms=>ms>33.3).length,
+                    idleGapsOver100ms:intervals.filter(ms=>ms>100).length,
+                    caveat:"includes idle gaps; not compositor present/GPU/FPS proof"
+                }
+            }
+            Connections {
+                target: field.Window.window
+                enabled: window._frameProbeEnabled
+                function onFrameSwapped(): void {
+                    const now=Date.now()
+                    if (window._frameProbePreviousMs > 0
+                            && window._frameProbeIntervals.length < 600) {
+                        window._frameProbeIntervals.push(
+                            Math.max(0,now-window._frameProbePreviousMs))
+                    }
+                    window._frameProbePreviousMs=now
+                    if (window._frameProbeIntervals.length >= 600)
+                        window._frameProbeEnabled=false
+                }
+            }
             Timer {
                 id: probeRemapTimer
                 interval: 260

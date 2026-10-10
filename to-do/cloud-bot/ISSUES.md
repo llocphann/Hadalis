@@ -194,7 +194,14 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   valid 40 snapshots 0, stale installed QML 4. Each generated
   one valid evidence archive. No new real Niri hover test on
   this corrected SHA. From checkout run the repository-supported
-  `./setup update`, then `inir restart`, then collector.
+  `./setup update --local`, then `inir restart`, then collector
+  (supported local-sync mode skips git pull and preserves dev tracking;
+  full setup still performs its managed backup/sync/validation tasks).
+  This safer local-sync hint was added to the collector in
+  `5f7493ace0c4c3eee0f1f7e1bd7c75103a138b9a`;
+  new exact blob `b19868ae8983bced8475b5133d44fddb89f0bbad`
+  has `bash -n` exit 0 and differs from the five-case tested
+  script only in this human-readable remediation text.
   Do not mutate installed runtime automatically from collector.
   Keep **Popup hover user acceptance OPEN**.
 

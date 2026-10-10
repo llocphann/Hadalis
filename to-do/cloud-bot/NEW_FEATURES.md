@@ -4,6 +4,103 @@ Work after [Issues/bugs](ISSUES.md) and [Rework/optimization](REWORK_OPTIMIZATIO
 Source-implemented features below still need their stated delivery/owner gates;
 do not reimplement them solely because a checkbox is open.
 
+
+- [ ] **Alis Quickshell deep performance profiler — owner request 2026-10-11:**
+  Add an opt-in, bounded debug suite to trace actual Alis resource costs:
+  CPU, GPU, RAM/PSS/RSS, frame pacing and QML/JavaScript/render hotspots,
+  with per-module/per-popup attribution ONLY where instrumentation or
+  controlled evidence permits. Existing inir doctor --perf, ResourceUsage,
+  MemoryPressureService and Abyss frame/hover collector are starting points,
+  not full component attribution. Distinguish **direct measurement**,
+  **instrumented span**, **controlled A/B estimate**, **correlation** and
+  **unavailable**; never invent exact GPU %, VRAM, RAM or CPU numbers for
+  individual QML objects from a process-wide or system-wide counter.
+  **Work packages, all OPEN:**
+  - [ ] **P1 — Architecture and observability map:** inventory shell.qml,
+    Quickshell windows and services, Qt GUI/render/audio threads, native
+    helper PIDs and Niri compositor, then map Abyss/Waffle, Screen Edges,
+    Panel, Popup, Dashboard, Wallpaper, Media/EQ, Weather, Notifications,
+    Recording, AI and shared QML loaders. Document attribution limitations
+    per resource, GPU vendor, compositor and permission level.
+  - [ ] **P2 — User-initiated trace command:** expose alis debug perf
+    start/status/stop/report (or equivalent under alis doctor --perf).
+    Support fixed-duration sessions, cancel, caps on sample rate/memory/
+    output size, machine-readable exit errors, exact source SHA and
+    running qs -p config identity. Remain compatible with inir during
+    brand migration. Reject stale installs, wrong instance, absent IPC
+    handlers, missing receipts and empty traces instead of false success.
+  - [ ] **P3 — CPU and thread scheduler timeline:** collect timestamped
+    /proc and cgroup CPU times for Quickshell PID, main/render/media
+    threads, child Rust/Python helpers and Niri independently. Normalize
+    multicore percentages, sampler interval, PID restarts and power
+    profile. Optional perf/flamegraph capture only with explicit
+    authorization and hardware/kernel support, never implicit root.
+  - [ ] **P4 — Memory and object lifetime:** track RSS/PSS/USS if available,
+    JavaScript/GC and JSGCHeap/memfd accumulation, Loader/Window lifetime,
+    image/video/texture caches and alloc/free deltas across repeat
+    open/close cycles. Mark shared caches and unattributable process
+    memory rather than assigning it arbitrarily to a single module.
+  - [ ] **P5 — GPU and VRAM capabilities:** inspect rendering backend/
+    Qt Quick RHI, driver/renderer and safe DRM fdinfo or available
+    vendor engine/memory counters (NVIDIA/AMD/Intel). Separate shell,
+    compositor and global GPU usage. Capture QSG/render-phase timing where
+    possible. Report unsupported counters as unknown, not zero;
+    global GPU busy percentage CANNOT prove one Popup's GPU cost.
+  - [ ] **P6 — QML/JS lifecycle probes:** opt-in instrumented spans for
+    expensive function handlers, models/bindings where feasible,
+    Loader incubation, object create/destroy, timer wakeups, shaders,
+    images/video decode, popup geometry and connection/hover transitions.
+    Key events to module, window and output, with duration and scope;
+    idle logging overhead should be nearly zero when disabled.
+  - [ ] **P7 — Frame-time and input correlation:** measure per-window
+    QQuickWindow frameSwapped intervals and, where available, Qt GUI/
+    render phases, alongside hover/click/Popup/Recording/animation
+    events. Compute p50/p95/p99/max, count and long-frame episodes.
+    FrameSwapped wall-clock callbacks are NOT compositor presentation
+    timestamps. Do not poll IPC while measuring the same short frame.
+  - [ ] **P8 — Component cost ranking with uncertainty:** correlate
+    measured thread CPU, event spans, optional stack samples and
+    deliberately isolated on/off A/B traces. Report confidence, units
+    and method per component, and top offenders by verified duration,
+    allocation changes or associated frame spikes. Preserve GPU shared
+    passes, caching and inclusive/exclusive span limitations. Use
+    unavailable when reliable module attribution cannot be made.
+  - [ ] **P9 — Reproducible workload scenarios:** baseline cold boot and
+    stable idle, then Panel/Screen Edge hover, multi-popup Pyramid
+    transitions, Notifications, Recording start/stop, Calendar/Weather,
+    Dashboard/Music/EQ, wallpaper/video, fullscreen, multi-output,
+    fractional scaling and low-power state. Record exact source SHA,
+    system/Qt/Quickshell/Niri version, GPU driver, monitor and
+    profile settings and capture overhead. Compare matched baselines.
+  - [ ] **P10 — Reports and optional debug UI:** export compact JSON,
+    optionally CSV/HTML, chronological hot spans, CPU thread timeline,
+    RAM growth, GPU support level, stutter episodes and before/after
+    comparisons. An optional developer view may follow only once
+    collectors are correct; no always-on debug animation or timer.
+  - [ ] **P11 — Privacy/security and safety budget:** disabled by default;
+    no upload, unsolicited persistent logging or sudo. Redact
+    notifications, credentials, window titles, note text, clipboard,
+    file paths, network names and access tokens. Bound runtime/buffers/
+    disk size; recover cleanly from cancel/crash/restart and quantify
+    profiler perturbation. Never modify user content, graphics quality
+    or physical input to gather metrics.
+  - [ ] **P12 — Correctness and native validation:** test counter
+    wraparound, timebase, nested spans, PID changes, absent GPU sensors,
+    permission failures, missing/mismatched IPC, output switches and
+    privacy redaction. Verify native Quickshell/Qt/Niri timings and
+    on/off overhead on the same deployed SHA. A fixture pass cannot
+    prove true per-module GPU costs or on-screen frame smoothness.
+  - [ ] **P13 — Link performance research and existing bugs:** define
+    trace schema and limitations, attach measured results to the
+    canonical strict-lossless GPU/RAM/CPU audit and existing Abyss
+    stutter/Notification/Recording investigations. Do not duplicate
+    their bug tasks, replay consumed receipts or claim improvements
+    without matched before/after evidence.
+
+  **State:** NEW/READY for design and source audit, NOT IMPLEMENTED.
+  Alis CLI/identity dependency is tracked in Rework/optimization.
+  No revived Automation/MegaQML service is required.
+
 - [ ] **Edit Abyss Layout Screen Edge module multi-selection — owner request 2026-10-10:**
   Add an explicit multiple-selection mode for Screen Edge modules while
   **Edit Abyss Layout** is active. Show which modules are selected, support

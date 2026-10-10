@@ -662,6 +662,82 @@ holds technical research; this file holds pending outcomes.
   References: `/tmp/codex-clipboard-c5723427-ceae-4515-a739-3010f8a551fa.png`,
   `/tmp/codex-clipboard-3baf8385-6e63-4e7b-8306-0e0ec31f3be9.png`.
 
+
+## Product identity, CLI and upgrade compatibility
+
+- [ ] **Rebrand iNiR/Hadalis public surfaces to Alis — owner request 2026-10-11:**
+  "Rebranch" here means a full **product rebrand**, not a Git branch-history
+  rewrite. The future public shell should consistently show **Alis** from
+  first installation to normal daily operation. Preserve historical sources,
+  evidence, externally owned Hadanion/Hadalird names and internal compatibility
+  requirements. Do NOT blindly replace every occurrence of an old string.
+  **Subtasks and acceptance, all OPEN:**
+  - [ ] **R1 — Full rename inventory and classification:** enumerate iNiR,
+    inir, Hadalis, old repo URLs, INIR_ environment variables, package/service
+    names, QML app IDs, IPC targets, config/cache/data paths, shell strings,
+    icons and translations. Tag each as user-facing rename, interface
+    migration, compatibility alias, historical reference or external name.
+    Produce a source-path/consumer matrix and prioritize risk before edits.
+  - [ ] **R2 — Public identity consistency:** make active Shell/Panel/Popup,
+    Notification/OSD, greeting, Settings/About, tooltips, tray/menu,
+    application launch search, error/update/permissions messages and logs
+    use one Alis name, product icon and localized terminology. Keep feature
+    names Abyss, Waffle and iRiS, and meaningful legacy persisted enums.
+  - [ ] **R3 — New install and greeting:** update setup and the installer
+    greeting, FirstRunExperience.qml, welcome.qml and BootGreeting.qml.
+    First installation must say "Welcome to Alis", display Alis as
+    notification sender, offer accurate Alis commands, and keep text
+    legible across supported locales/scales. Upgrading a current iNiR user
+    must NOT retrigger the first-run wizard or lose wizard completion.
+  - [ ] **R4 — Alis command and completions:** migrate scripts/inir and
+    installed entry points to a discoverable alis CLI covering real
+    run/start/restart/stop/service/status/settings/welcome/logs/doctor/update
+    operations and existing supported flags. Update bash/fish/zsh completion,
+    launcher hints, keybinds and command examples. Provide an explicit
+    temporary inir forwarding compatibility command with regression tests.
+  - [ ] **R5 — Quickshell/Niri/IPC/session naming:** plan ShellId, qs -p
+    config selector, IPC instance targets, process detection, Niri binds,
+    desktop activation and logs. Transition inir.service, compositor wants
+    links and ExecStart/ExecStopPost to one new service owner. Never start two
+    Quickshell sessions, lose IPC handles, reorder layer windows or break
+    restart/cold-boot; preserve a verified rollback.
+  - [ ] **R6 — Lossless user-data migration:** safely migrate or alias
+    ~/.config/inir, ~/.config/quickshell/inir, cache/state/data, model
+    directories and INIR_* overrides to Alis equivalents. Preserve legacy
+    illogical-impulse compatibility chain, user settings, themes, layouts,
+    first-run marker, notes, credentials, wallpaper paths, models and
+    optional service preferences. Detect collisions and symlinks; back up,
+    dry-run, make idempotent and fail closed instead of overwriting.
+  - [ ] **R7 — Packages, desktop files, native helper ABI:** audit and
+    revise .desktop metadata, desktop icons, Makefile, Arch PKGBUILD/SRCINFO,
+    install/uninstall hooks, distro/Nix outputs, native/inir-* crates/binaries
+    and packaged service assets. Explicitly map sockets, DBus names, Polkit
+    action IDs, privileges, allowlists, package managers and ABI consumers
+    before changing them; preserve compatibility where needed. No changes
+    to standalone Hadalird/Hadanion repos without authorization.
+  - [ ] **R8 — Active docs, updates and translations:** update project
+    links including old llocphann/Hadalis update endpoints, onboarding
+    screenshots, release docs, install guides, commands, messages and
+    translated user-facing text. Do not destroy valid historical commit
+    references or rewrite old investigation logs to appear new.
+  - [ ] **R9 — Automated regression/upgrade matrix:** test new installs,
+    in-place iNiR-to-Alis upgrades, mixed/partially migrated paths,
+    failed/rollback migrations, XDG/PREFIX variations, systemd lifecycle,
+    Niri startup, stale binaries, completions, source-sync and
+    package-managed installs, optional helpers, uninstall/reinstall,
+    preserved personal data and old-command alias. Run the canonical
+    maintainer validator on the exact final SHA.
+  - [ ] **R10 — Real owner-desktop release acceptance:** verify first-run
+    greeting, shell app identity, every common Popup and system
+    notification, Settings, IPC, startup/restart, CLI and rollback under
+    real Niri/Quickshell. Prove no stray active iNiR public branding
+    except explicitly retained compatibility warnings. Keep OPEN until
+    the owner approves; no runtime changes were requested now.
+
+  **Dependency:** coordinate the new performance profiler CLI and config
+  identity in New features so both old/current installations can be traced
+  safely during transition. State: planning only; NOT IMPLEMENTED.
+
 ## Documentation maintenance
 
 - [x] **Categorized tasks and shared AI workflow — completed 2026-10-10:**

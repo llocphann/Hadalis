@@ -132,10 +132,34 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   frame-swapped intervals, followed by 40 at-most-150ms-apart requested
   IPC hover snapshots, each with a timestamp and actual errors preserved.
   Reproduce opening/reversal during the first phase, the source→bridge→body
-  hover loss during the second. Share `identity.txt`,
-  `frame-intervals.txt`, `hover-snapshots.log`. A checkout git SHA
-  is not installed shell SHA; verify the latter separately. The helper never
-  refreshes/remaps mask or changes config. Cloud acceptance remains OPEN.
+  hover loss during the second. Owner now supplies **one**
+  `hadalis-abyss-hover-*.tar.gz` archive rather than three separate files.
+  Archive contains the original `identity.txt`, `frame-start.txt`,
+  `frame-intervals.txt`, `hover-snapshots.log` and `run-result.txt`
+  (on early failure, only the evidence files already produced).
+  `15f5abbb1bc19bf5377636dbee03c7f973713330` adds a bounded
+  exit-handler archive on both success and nonzero IPC exits; final Git
+  blob `defb45271438a80cc012d611467ce6c9451f264a` passed actual
+  `bash -n` exit 0 and fake `qs -p` full 40-snapshot test (exit 0)
+  plus simulated failing `startFrames` (exit 1 and valid partial archive).
+  This is script/mock validation, NOT production hover acceptance.
+
+  **Real owner capture 2026-10-10 at 07:49:30Z**, checkout
+  `8fd0db31006096f738dd8a4b527a009e10649558`, on Niri
+  single eDP-1 output: Quickshell config resolved to
+  `/home/llocphann/.config/quickshell/inir`, installed shell,
+  AbyssPerimeter and AbyssGeometry file comparisons all MATCH, 40/40
+  snapshot IPC calls succeeded. However **all 40 snapshots are idle**:
+  `liquidPopupsOpen=false`, generic popup resident=false,
+  0 mature popup slots active, Bar hover/hold=false and no module
+  hovered. Therefore this trace does NOT capture a crossing or show
+  why hover is lost. To reproduce next time: when script prints
+  `PHASE 2/2`, OPEN the target Popup and cross its visible connector
+  during the ~7 seconds. If still all idle, investigate event/mask
+  delivery separately; do not assert a closed popup is an observed
+  dismissal. A checkout Git SHA alone does not verify loaded shell
+  identity. The helper never remaps/refreshes the mask or changes
+  configuration. **Popup hover acceptance remains OPEN.**
 
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,

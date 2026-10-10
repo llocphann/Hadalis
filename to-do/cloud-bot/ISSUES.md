@@ -10,10 +10,15 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   `8b2ed6f0a1fccddade206f0060ed19d19337a5da` finished **FAIL: 334 PASS, 1 FAIL,
   1 SKIP** on 2026-10-10. `test-shell-surface-contracts.py` expects Settings at
   Top during Polkit, while the new authentication behavior yields at Bottom.
-  Check actual focus/layering and update a stale contract only with behavior
-  evidence, then validate the repaired exact SHA. Log:
-  `/tmp/hadalis-canonical-8b2ed6f0a-20261010.log`. A prior SHA's PASS or the
-  documentation-only checks cannot close this runtime gate.
+  Focused repair on 2026-10-10 exercises the production Rail host and exact
+  Focus bindings in private native layer-shell windows: 65 forward/reverse
+  states pass across dialog/external/shell authorization, region selection and
+  Settings open state. The stale Top expectation now matches Bottom; runtime
+  behavior is unchanged. State: waiting for canonical validation of the repaired
+  exact SHA. Native properties do not prove owner Polkit visibility/focus.
+  Logs: `/tmp/hadalis-settings-auth-bindings-20261010.log` and
+  `/tmp/hadalis-canonical-8b2ed6f0a-20261010.log`. A prior SHA's PASS cannot close
+  this runtime gate.
 
 - [ ] **New boot/runtime warnings:** owner's log runs `0ea54cc09` and reaches
   the first frame; no startup Type-unavailable failure is shown. Investigate

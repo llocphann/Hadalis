@@ -797,8 +797,10 @@ def main() -> None:
         settings_surface = read(settings_path)
         if settings_path.endswith("SettingsOverlay.qml"):
             settings_surface += read("modules/settings/SettingsOverlayNativeHost.qml")
+        # Authentication must cover Settings. The native flag matrix in
+        # test-hadalird-polkit-visibility.py exercises yielding and restoration.
         for token in (
-            "PolkitService.active ? WlrLayer.Top : WlrLayer.Overlay",
+            "? WlrLayer.Bottom : WlrLayer.Overlay",
             "ConnectedSurfaceIrisEdgeSurface {",
             'edge: "bottom"',
             "ownerThickness: root._screenEdgeThickness",

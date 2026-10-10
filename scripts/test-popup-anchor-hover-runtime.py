@@ -124,12 +124,44 @@ ShellRoot {
     mouseMove(anchor,anchor.width/2,anchor.height/2);wait(80);render()
     check(popup.requestedVisible && controller.activePopup===popup,"bare Item anchor did not open by hover on "+edge)
     check(popup.contentItem.parent===host.contentParent,"popup content was not hosted by the existing field")
-    // This point lies on the drawn connector, outside both source and content.
+    // Test the PAINTED connection, not source-anchor hover. A source region
+    // has pointer priority and is intentionally excluded from the body mask.
+    // The old left probe (14,200) overlapped the source (8..40,160..240);
+    // _contentHovered=false there is not evidence of a broken body lease.
     const content=host.record.content
     const ins=controller.edgeInsets
-    const x=edge==="left" ? ins.left+6 : edge==="right" ? scene.width-ins.right-6 : content.x+content.width/2
-    const y=edge==="top" ? ins.top+6 : edge==="bottom" ? scene.height-ins.bottom-6 : content.y+content.height/2
-    const before=JSON.stringify({content,input:host.inputBounds,x,y,edge:host.edge})
+    const source=controller.sourceInputRegions[0]
+    const surface=host.rawPresentationRecord.surface
+    const horizontal=edge==="top" || edge==="bottom"
+    const cross=edge==="left" ? ins.left+6 : edge==="right" ? scene.width-ins.right-6
+      : edge==="top" ? ins.top+6 : scene.height-ins.bottom-6
+    const center=horizontal ? content.x+content.width/2 : content.y+content.height/2
+    const minT=Math.max(0,Math.ceil(horizontal ? surface.x : surface.y))
+    const maxT=Math.min((horizontal ? scene.width : scene.height)-1,
+      Math.floor((horizontal ? surface.x+surface.width : surface.y+surface.height)-1))
+    let bridge=null
+    for(let delta=0;delta<=maxT-minT && bridge===null;delta++){
+     for(const tangent of [Math.floor(center-delta),Math.ceil(center+delta)]){
+      if(tangent<minT || tangent>maxT) continue
+      const px=horizontal ? tangent : cross
+      const py=horizontal ? cross : tangent
+      if(Geometry.rectContains(source,px,py)
+          || Geometry.rectContains(content,px,py)) continue
+      if(Geometry.distance(px,py,scene.width,scene.height,ins,
+          AbyssStyle.perimeterRadius,[host.rawPresentationRecord],
+          AbyssStyle.connectionDepth,AbyssStyle.neckRadius)>=0) continue
+      bridge=[px,py]
+      break
+     }
+    }
+    check(bridge!==null,"no painted connection probe outside source/content on "+edge)
+    const x=bridge[0],y=bridge[1]
+    check(!Geometry.rectContains(source,x,y)
+          && !Geometry.rectContains(content,x,y),"bridge probe overlaps source/content")
+    check(Geometry.rectContains(host.inputBounds,x,y)
+          || host.connectionRects.some(rect=>Geometry.rectContains(rect,x,y)),
+          "painted bridge pixel missing from body/native input footprint on "+edge)
+    const before=JSON.stringify({content,input:host.inputBounds,x,y,edge:host.edge,source})
     mouseMove(scene,x,y);wait(220);render()
     // The source hover timer expires after handoff. The actual output lease
     // must keep its auto-hide source visible while the pointer owns the popup.

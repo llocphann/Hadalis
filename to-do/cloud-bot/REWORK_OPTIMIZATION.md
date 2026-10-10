@@ -208,6 +208,32 @@ holds technical research; this file holds pending outcomes.
   Native acceptance on these latest diagnostic changes
   is still PENDING.
 
+  **Owner archive 17:06 local, 2026-10-10 (checkout
+  `418fcd9e9947cfadfe1b2453257751792875d623`):**
+  This is NOT a new measurement of the prior p99=76ms
+  slow-frame tail. The collector aborted exit 5:
+  `abyssHoverProbe.startFrames` and its earlier snapshot
+  both returned `Target not found.` because
+  `abyssHostProbe.status` reported
+  `deferredPanelsReady=false`, `perimeterLoaded=false`,
+  `perimeterActive=false`, `initialMountReady=false`,
+  `coldRecreatePending=true`. All three installed
+  QML/JS parity checks MATCH. Runtime IPC target absence
+  was directly observed; permanence vs transient boot race
+  is unproven without a subsequent status.
+  No frame-intervals or hover-snapshots payloads exist
+  in the archive.
+  `5bab2c774df7e2ecb5c0a446e3053a981323b1cd`
+  adds bounded readiness polling (100 polls, 250ms apart,
+  max ~25s) to the script, with `readiness-trace.log`,
+  final status, clear timeout exit 7 and automatic partial
+  archive, preventing premature `startFrames` calls while
+  the Perimeter is unmounted. It does not change QML
+  rendering, startup, compositor layers, animation or
+  actual frame pacing. Await a native ready capture
+  with explicit open/close/reverse of Abyss Panel before
+  attributing any slow events to animation. **Lag remains OPEN.**
+
 - [ ] **Strict-lossless CPU/RAM/GPU reductions:** re-audit latest `dev` and
   promote high-value findings only after behavior, read/dependency order,
   identity/NOTIFY and lifecycle parity. Keep hidden services/lightweight warm

@@ -254,6 +254,12 @@ Scope {
                                 timestampMs:now, intervalMs:intervalMs,
                                 barVisible:Boolean(bar.visible),
                                 liquidPopupsOpen:Boolean(liquid.popupsOpen),
+                                popupMotion:liquid.popupSlots.filter(slot=>slot?.popup)
+                                    .map(slot=>({
+                                        kind:String(slot.popup?._liquidAnchor?.kind ?? ""),
+                                        revealProgress:Number(slot.popup?.revealProgress ?? 0),
+                                        requestedVisible:Boolean(slot.popup?.requestedVisible)
+                                    })),
                                 leftPanelProgress:leftPanel.progress,
                                 rightPanelProgress:rightPanel.progress,
                                 dashboardProgress:dashboardBody.progress,
@@ -318,6 +324,37 @@ Scope {
                     popupOpen: liquid.popupsOpen }
             }
             // This function is evaluated only by abyssHoverProbe.snapshot.
+            // Read-only hit test of the current Perimeter pointer coordinates.
+            // Source anchor QQuickWindow scene coordinates are NOT passed here.
+            // Only valid when the existing hosted HoverHandler has a point;
+            // null after leave is intentionally not treated as (0,0).
+            function hoverProbeGeometry(host, scenePoint): var {
+                if (!host) return null
+                const bounds=host.inputBounds
+                const raw=host.rawPresentationRecord?.surface ?? null
+                const joined=host.record?.surface ?? null
+                const strips=host.connectionRects ?? []
+                const rect=r=>r ? {x:r.x,y:r.y,w:r.width,h:r.height} : null
+                return {
+                    edge:String(host.edge ?? ""),
+                    joinedEdge:String(host.joinedEdge ?? ""),
+                    outputWidth:window.width,
+                    outputHeight:window.height,
+                    connectionInsets:host.connectionInsets ?? null,
+                    rawSurface:rect(raw),
+                    joinedSurface:rect(joined),
+                    pointHit:scenePoint ? {
+                        inInputBounds:Geometry.rectContains(bounds,
+                            scenePoint.x,scenePoint.y),
+                        inShoulderStrip:strips.some(r=>Geometry.rectContains(r,
+                            scenePoint.x,scenePoint.y)),
+                        inSourceRegion:(host.controller?.sourceInputRegions ?? [])
+                            .some(r=>Geometry.rectContains(r,scenePoint.x,scenePoint.y)),
+                        inRawSurfaceBounds:Geometry.rectContains(raw,
+                            scenePoint.x,scenePoint.y)
+                    } : null
+                }
+            }
             // No perpetual logging, pointer handlers or geometry changes.
             function hoverProbeOutput(): var {
                 const modules = []
@@ -416,6 +453,8 @@ Scope {
                             bodyHover:Boolean(p?._bodyHovered),
                             contentHover:Boolean(p?._contentHovered),
                             contentScenePoint:host?.hoverProbeContentScenePoint ?? null,
+                            hoverGeometry:window.hoverProbeGeometry(host,
+                                host?.hoverProbeContentScenePoint ?? null),
                             hosted:p?._hostedController === liquid,
                             bodyAcceptsInput:Boolean(host?.acceptsInput),
                             bodyReady:Boolean(host?.ready),

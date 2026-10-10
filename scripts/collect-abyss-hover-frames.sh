@@ -79,6 +79,7 @@ if [[ -z "$resolved_config" ]]; then
 fi
 qs_cmd=(qs -p "$resolved_config")
 
+source_mismatch=false
 {
     printf 'capture_utc=%s\n' "$(date -u +%FT%TZ)"
     printf 'git_HEAD=%s\n' "$(git -C "$repo_root" rev-parse HEAD 2>/dev/null || printf unavailable)"
@@ -94,37 +95,70 @@ qs_cmd=(qs -p "$resolved_config")
                 printf 'installed_vs_checkout[%s]=MATCH\n' "$rel"
             else
                 printf 'installed_vs_checkout[%s]=DIFFERENT\n' "$rel"
+                source_mismatch=true
             fi
         else
             printf 'installed_vs_checkout[%s]=MISSING\n' "$rel"
+            source_mismatch=true
         fi
     done
     printf 'capture=6s frame-only, then 40 bounded hover snapshots at 150ms spacing\n'
     printf 'caveat=source checkout SHA is not proof of installed shell identity\n'
 } > "$output_dir/identity.txt"
 
+# Fail CLOSED on stale/mismatched installed source. 'inir restart' alone
+# restarts the installed copy; it does not sync checkout QML into that copy.
+if [[ "$source_mismatch" == true ]]; then
+    {
+        printf 'ERROR: installed iNiR QML does not match this dev checkout.\n'
+        printf 'Run the supported Hadalis setup update from this checkout, then restart iNiR.\n'
+        printf 'From repo: ./setup update  (follow maintainer setup instructions)\n'
+        printf 'Then: inir restart; bash scripts/collect-abyss-hover-frames.sh\n'
+        printf 'No FPS or hover conclusion can be drawn from this stale runtime.\n'
+    } | tee "$output_dir/config-error.txt" >&2
+    exit 4
+fi
+
 # Phase 1: open/close/reverse the panel on the intended output while frame
 # samples are enabled. Do not interleave IPC polling into this window.
 printf 'PHASE 1/2: open, close and reverse Abyss panels during the next six seconds.\n' >&2
-if ! "${qs_cmd[@]}" ipc call abyssHoverProbe startFrames > "$output_dir/frame-start.txt" 2>&1; then
-    printf 'Failed startFrames. Check %s/frame-start.txt and installed/checkout parity.\n' "$output_dir" >&2
-    exit 1
+frame_start_rc=0
+"${qs_cmd[@]}" ipc call abyssHoverProbe startFrames > "$output_dir/frame-start.txt" 2>&1 || frame_start_rc=$?
+# Quickshell may print 'Target not found.' and still return exit status 0.
+# Require the exact success receipt, not just the CLI process status.
+if ((frame_start_rc != 0)) || ! grep -Eq '"started"[[:space:]]*:[[:space:]]*true' "$output_dir/frame-start.txt"; then
+    {
+        printf 'ERROR: startFrames did not confirm an active handler (qs exit=%s).\n' "$frame_start_rc"
+        printf 'The IPC CLI can exit 0 even for Target not found.\n'
+        printf 'Inspect frame-start.txt and installed_vs_checkout in identity.txt.\n'
+    } | tee "$output_dir/diagnostic-error.txt" >&2
+    exit 5
 fi
 sleep 6
-if ! "${qs_cmd[@]}" ipc call abyssHoverProbe stopFrames > "$output_dir/frame-intervals.txt" 2>&1; then
-    printf 'Failed stopFrames. Check %s/frame-intervals.txt.\n' "$output_dir" >&2
-    exit 1
+frame_stop_rc=0
+"${qs_cmd[@]}" ipc call abyssHoverProbe stopFrames > "$output_dir/frame-intervals.txt" 2>&1 || frame_stop_rc=$?
+if ((frame_stop_rc != 0)) || ! grep -Fq '"sample":"QQuickWindow frameSwapped wall-clock intervals (ms)"' "$output_dir/frame-intervals.txt"; then
+    {
+        printf 'ERROR: stopFrames did not return a valid frame summary (qs exit=%s).\n' "$frame_stop_rc"
+        printf 'Inspect frame-intervals.txt and installed runtime parity.\n'
+    } | tee "$output_dir/diagnostic-error.txt" >&2
+    exit 6
 fi
 
 # Phase 2: cross the Popup/Screen Edge seam, then enter empty desktop.
 # Snapshots are boolean state and geometry only, not user content.
 printf 'PHASE 2/2: OPEN A POPUP NOW and slowly cross its Screen Edge connector.\n' >&2
 printf 'Sampling hover for about 7 seconds; try to reproduce the dismissal.\n' >&2
+printf 'Two seconds to move the pointer away from this terminal...\n' >&2
+sleep 2
 failed=0
 for ((i=0; i<40; i++)); do
     printf 'sample=%02d utc=%s\n' "$i" "$(date -u +%FT%T.%3NZ)" >> "$output_dir/hover-snapshots.log"
-    if ! "${qs_cmd[@]}" ipc call abyssHoverProbe snapshot >> "$output_dir/hover-snapshots.log" 2>&1; then
-        printf 'error=cannot_call_snapshot\n' >> "$output_dir/hover-snapshots.log"
+    snapshot_rc=0
+    snapshot_output="$("${qs_cmd[@]}" ipc call abyssHoverProbe snapshot 2>&1)" || snapshot_rc=$?
+    printf '%s\n' "$snapshot_output" >> "$output_dir/hover-snapshots.log"
+    if ((snapshot_rc != 0)) || [[ "$snapshot_output" != *'"family":"abyss"'* ]]; then
+        printf 'error=invalid_snapshot qs_exit=%d\n' "$snapshot_rc" >> "$output_dir/hover-snapshots.log"
         failed=$((failed + 1))
     fi
     sleep .15

@@ -379,6 +379,75 @@ holds technical research; this file holds pending outcomes.
   Panel animation before attempting to optimize
   those transitions. **Lag acceptance remains OPEN.**
 
+  **Owner 18:31 local source-pinned native trace:**
+  `hadalis-abyss-hover-20261010-183130.tar.gz`,
+  exact `dev` checkout `48ea131296a474faca11eda3dbdd97e1efa0f1c4`;
+  all 3 installed source checks MATCH; collection exit=0.
+  First preflight at 11:31:32.145Z: root family abyss,
+  shellEntryReady=true, deferredPanelsReady=false,
+  perimeterLoaded=false, pending cold re-create=true.
+  Perimeter was constructed by 11:31:34.098Z but
+  `nativeFirstFramesReady` stayed false until
+  11:31:40.075Z; cold recreation was observed
+  at 11:31:41.902Z; second Perimeter instance
+  became native-frame-ready at 11:31:46.536Z
+  (poll 28, approximately **14.4s** after preflight).
+  This capture documents prolonged readiness/warm-up
+  on this ONE startup, not the underlying compositor
+  reason or a repeatable median boot regression.
+  Current 600ms+450ms cold recreation policy comes
+  from prior 0/16→16/16 native pointer recovery and
+  must NOT be disabled on speculation.
+
+  First valid bounded 6s `frameSwapped` trace AFTER
+  readiness: count=210, p50=17ms, p95=52ms,
+  p99=328ms, max=852ms, mean=28.4381ms,
+  over33.3ms=15, idleGapsOver100ms=7,
+  `panelNonzeroFrames=0`,
+  `panelProgressChangedFrames=0`,
+  `popupOpenFrames=162`.
+  Largest frame gaps 852ms at 11:31:48.002Z
+  and 663ms at 11:31:48.956Z occurred with
+  liquidPopupsOpen=false, all five tracked Panel
+  progress values 0, within 1.5–2.4s after
+  readiness. A 328ms gap at 11:31:49.573Z
+  coincided with NotificationCenter opening
+  (`revealProgress≈0.0053`); later 95ms, 59ms,
+  56ms and 38ms gaps also sampled Popup motion.
+  Those sample correlations cannot prove GPU,
+  compositor, Qt event-loop, shader, or popup
+  animation root cause. The 100-snapshot hover
+  measurement is later and separate; it showed
+  4 notification popup visits and a long stable hold.
+  This trace never sampled an active Left/Right,
+  Dashboard, Controls or Settings Panel animation;
+  **do not claim the user's Panel jank has been
+  reproduced or fixed**.
+
+  **Follow-up instrument, not performance treatment:**
+  `1e06a5a7aca6b08a4bed3058a4944809ad823780`
+  adds an opt-in 50ms Qt Timer heartbeat, bounded
+  late-tick timestamps (>100ms gap), count/max,
+  plus `barProgressChangedFrames` and Bar progress
+  at slow-event timestamps. Running a timer
+  only during the six-second explicit probe
+  discriminates normal Qt event-loop cadence
+  with sparse frameSwapped signals from correlated
+  Qt timer lateness, though timer jitter is
+  not GPU/compositor proof. No regular background
+  timer or modification of input masks, animation
+  duration, shader, cold-start remount occurs.
+  `scripts/test-abyss-frame-activity-probe.mjs`
+  now tests these exact QML functions and passes
+  **20/20** deterministic source-level assertions
+  (`ce1f272a99e3341d1262a2952b4e15af812ba3b0`,
+  `87e42c3eb3c9525fde2756b40764a904c7e1da54`).
+  Full native/new-checkout acceptance is PENDING.
+  Preserve 18:31 trace as separate cold-tail sample;
+  seek a fresh settled-shell Panel animation capture
+  only if actual user-visible motion/jank persists.
+  **Lag acceptance remains OPEN.**
+
 
 - [ ] **Strict-lossless CPU/RAM/GPU reductions:** re-audit latest `dev` and
   promote high-value findings only after behavior, read/dependency order,

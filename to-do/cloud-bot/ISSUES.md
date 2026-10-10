@@ -684,6 +684,80 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   No change to input mask/shape/hover timers is
   justified by this archive.
 
+  **Owner-directed hover policy revision (2026-10-10 evening):**
+  The user supplied native screenshots of an edge-connected
+  Notification Center and explicitly changed the desired
+  behavior: a hover-opened popup must stay open as long as
+  the pointer is within **its owning Screen Edge/anchor**
+  OR its **real Popup body**; it should only begin losing
+  hover visibility after leaving both, with a bounded Qt/
+  Niri event-order debounce. The painted connector/
+  shoulder strips MUST NOT be an independent hover owner.
+  This is a change in policy from prior bridge-hover
+  investigation; it does NOT prove the previously observed
+  connector geometry was defective.
+
+  **Implemented on `dev` only, native acceptance pending:**
+  `6c00e25da9b5b508ead66990b8a42722f965bb21`
+  makes shared `StyledPopup` expose `sourceEdgeHovered`
+  and drive humanVisibleRequest solely from source edge or
+  popupHovered, preserving alternative/explicit/companion
+  ownership and a 90ms configurable cross-window event
+  debounce without bridge-owned lease.
+  `11b1b0bbeb3656a0bda7ac310812e624aeeacdf9`
+  makes the Abyss hosted `_contentHovered` track
+  a real existing HoverHandler point ONLY when within
+  the popup's rectangular inputBounds (excluding the
+  other Bar/source input regions), instead of treating
+  hover over connector strips as body hover.
+  `6efe3b72e899f894a923793a25a15ba5258b5b4d`
+  removes independent `entryBridgeHeld`/entryTimer
+  from Notification Center, retains public
+  `notificationCenter.closeGraceMs` as exit-only
+  debounce and keeps explicit keyboard-open, drag
+  and corner source gating.
+  `e2be98955eb6d4b25252b091156acf36933b0fc2`
+  removes Quick Notes' independent entry bridge,
+  preserving prior configured corner crossing duration
+  as `hoverTransferGraceMs`, while keeping pin,
+  editor focus, dialog and cleanup semantics.
+  `e28d4c068402d25f56b366ed10cb04dd51e8b825`
+  applies the source-trigger OR actual-body hover
+  rule to generic Abyss Wi-Fi/Bluetooth/Utilities/
+  Launcher/Dock popups, retaining editorFocusHeld
+  and the existing 650ms idle dismissal debounce.
+  **No change** to native/visual connection geometry,
+  Region masks, SDF paint, animation curves, other
+  desktop layers, and no changes to `stable`.
+
+  The dedicated `scripts/test-popup-edge-body-hover-policy.mjs`
+  was added at `98a1c9f32c33e02baf94404d67fc3ae50eef7fd5`
+  and extended at `ef769bc84a00b0283e6c6b345a9a690553ebf021`:
+  **30/30** source-equivalent JS assertions pass for
+  edge/body alone, no owner, bridge-only false,
+  generic body bounds, Quick Notes explicit pin/edit,
+  and non-hover explicit popup opens.
+  Notification Center's existing extracted-source
+  regression now passes **31/31** after updating its
+  actual sourceEdgeHovered expression; legacy Python
+  contracts were updated for this deliberate policy
+  change. The new policy test is included in
+  `scripts/validate-maintainer-local.sh`.
+  These are not Niri runtime, screenshot, focus,
+  full maintainer gate or four-edge acceptance.
+
+  **Next owner acceptance:** sync `dev`, install QML,
+  restart Niri/Quickshell, verify one notification
+  corner and one generic Popup source→body→source;
+  hold the pointer on the actual body and source
+  separately, then leave both to check closure.
+  Verify Quick Notes pin/editor and source corner
+  on the left; test opposite and adjacent edges
+  where configured. No unsafe stretching of
+  input regions to keep the popup alive.
+  The broader hover issue remains **OPEN** pending
+  owner runtime feedback.
+
 
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,

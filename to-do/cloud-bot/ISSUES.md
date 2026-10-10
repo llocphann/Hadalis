@@ -509,8 +509,12 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   summary by adding counts while keeping the legacy
   observed flag. Reprocessing 17:44 showed opens
   at #67/#81 and closes at #76/#97: two full cycles.
-  23/23 focused source/lease assertions still PASS
-  in an isolated JS source-level run. The new
+  The focused diagnostic source/lease regression now
+  includes the new pointer fields
+  (`c0e02aa337f434d74253e317f7f306aaa6018ae5`),
+  and **27/27** assertions PASS in an isolated
+  JS execution of the committed source expressions.
+  These are not Qt/Niri runtime tests. The new
   coordinate fields and generic-edge transfer still
   require native owner validation; issue remains OPEN.
 

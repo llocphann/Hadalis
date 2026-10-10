@@ -409,8 +409,13 @@ Scope {
                                   } : null,
                             moduleHover:Boolean(p?.moduleHoverActive),
                             anchorHover:Boolean(p?._anchorHover?.hovered),
+                            // These points are each local to THEIR OWN
+                            // QQuickWindow. Never compare corner-source
+                            // coordinates directly to Perimeter coordinates.
+                            anchorScenePoint:p?._anchorHover?.hoverProbeScenePoint ?? null,
                             bodyHover:Boolean(p?._bodyHovered),
                             contentHover:Boolean(p?._contentHovered),
+                            contentScenePoint:host?.hoverProbeContentScenePoint ?? null,
                             hosted:p?._hostedController === liquid,
                             bodyAcceptsInput:Boolean(host?.acceptsInput),
                             bodyReady:Boolean(host?.ready),
@@ -849,6 +854,13 @@ Scope {
                     required property int index
                     readonly property var popupEntry: liquid.popupSlots[index] ?? null
                     readonly property var hostedPopup: popupEntry?.popup ?? null
+                    // Existing content HoverHandler exposes scene position only
+                    // while hovered. No additional handlers or input regions.
+                    readonly property var hoverProbeContentScenePoint:
+                        popupContentHover.hovered
+                            ? ({ x: popupContentHover.point.scenePosition.x,
+                                 y: popupContentHover.point.scenePosition.y })
+                            : null
                     readonly property string presentationKind: {
                         const explicitKind = String(
                             hostedPopup?.liquidPresentationKind ?? "")
@@ -918,6 +930,7 @@ Scope {
                         liquid.unregisterPopupHost(index,styledPopupHost)
 
                     HoverHandler {
+                        id: popupContentHover
                         parent: styledPopupHost.hoverParent
                         enabled: styledPopupHost.open
                         onHoveredChanged: {

@@ -398,6 +398,63 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   **Native readiness, real source→connector→popup passage,
   and user-confirmed hover behavior are still OPEN.**
 
+  **Owner READY archive 2026-10-10 10:33:48Z (17:33 local):**
+  `hadalis-abyss-hover-20261010-173348.tar.gz`, exact
+  `dev` checkout `ffef7ef8ab5ca6107f11de959b33c404d644dd50`,
+  installed-vs-checkout parity MATCH on all three critical
+  sampled files, running Niri `eDP-1` one output.
+  `collector_exit_status=0`; `ready_attempt=0`,
+  `abyssHostProbe.status` shows Abyss active, deferred panels
+  ready, perimeter loaded/active, coldRecreated=true,
+  nativeFirstFramesReady=true; `startFrames` returned
+  `started=true`, and 100/100 IPC hover snapshots parsed.
+  `identity.txt` reported popup_seen=1,
+  popup_open_to_closed_transition_observed=1.
+  Inspecting all samples reveals TWO full open→retract→closed
+  cycles for **notificationCenter** (NOT generic Bar popup):
+  #66–76 (~10:34:09.564–11.507Z; order 18) and #78–87
+  (~10:34:11.882–13.597Z; order 19).
+  The visible input region widened to 420 px at #68/#80
+  (bounds x=1490..1910, y=616..1176 on eDP-1).
+  `nativeRegionRegistered=true`, `bodyAcceptsInput=true`,
+  `stripCount=62` while fully open. At #72/#83 the
+  StyledPopup source `anchorHover` drops from true to false,
+  without any sampled `bodyHover` or `contentHover`.
+  At #73/#84 `requestedVisible=false`,
+  `semanticHold=true`; at #74/#85 `stripCount=0`,
+  `bounds.width=0`, `bodyAcceptsInput=false`.
+  Popup slot vanishes at #76/#87. These prove hover-driven
+  closure, NOT that the pointer physically remained over
+  a painted connector (no pointer coordinates in archive).
+
+  **Direct source/state contradiction observed and narrowly fixed:**
+  At #68–71 and #80–82, `StyledPopup._anchorHover.hovered=true`,
+  yet NotificationCenter `_anchorHovered=false` and
+  `hoverLeaseRequested=false`. The latter tested only
+  the specialized `anchorItem.containsMouse` flag (which
+  ScreenCorners gates behind its dwell-ready MouseArea).
+  Commit `96262edd788bf22fc69daaf4effe78a6384a2b38`
+  now makes `NotificationCenterPopup._anchorHovered`
+  include the existing actual source `HoverHandler`,
+  preserving an active notification hover lease instead
+  of letting its `entryBridgeHeld` time out beneath
+  an observed hovered anchor. This leaves existing
+  configured grace periods, placement, hit regions,
+  input surface and animation unchanged.
+  `scripts/test-notification-center-hover-lease.mjs`
+  (`196d675e458cd65d4d24e5d073ecd9c1612c6ee4`)
+  executes the actual source property expressions and
+  passed 23/23 isolated JavaScript assertions; the
+  canonical maintainer validator now runs it via
+  `418c7de3ca406f160977e9c0dfcc387d478f3e8d`.
+  Actual Niri regression proof and generic popup edge
+  traversal remain PENDING. Next: sync updated
+  `dev` QML via `./setup update --local`, restart,
+  rerun bounded archive and retest corner-to-popup
+  hover dwell without leaving the painted connector.
+  Do not infer the correction addresses all edge/Bar
+  popup families or mark acceptance complete.
+
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,
   1 SKIP**. Failures: keyboard sizing, Dashboard Music, Dashboard warm readiness,

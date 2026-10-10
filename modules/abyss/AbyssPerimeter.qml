@@ -214,6 +214,33 @@ Scope {
             property int _frameProbePanelNonzeroFrames: 0
             property int _frameProbePanelChangedFrames: 0
             property int _frameProbePopupOpenFrames: 0
+            // Timer and frameSwapped use the same Qt event loop. Large timer
+            // gaps overlapping large swap gaps suggest scheduling stalls;
+            // normal timer cadence with sparse swaps suggests no render/present.
+            // They are correlations, not a profiler or compositor timestamps.
+            property real _frameProbeHeartbeatPrevMs: 0
+            property int _frameProbeHeartbeatCount: 0
+            property int _frameProbeHeartbeatOver100Ms: 0
+            property real _frameProbeHeartbeatMaxMs: 0
+            property var _frameProbeHeartbeatLateEvents: []
+            property real _frameProbeBarPrevProgress: -1
+            property int _frameProbeBarChangedFrames: 0
+            function recordProbeHeartbeat(now): void {
+                const previous=window._frameProbeHeartbeatPrevMs
+                if (previous > 0) {
+                    const intervalMs=Math.max(0,now-previous)
+                    window._frameProbeHeartbeatCount++
+                    window._frameProbeHeartbeatMaxMs=Math.max(
+                        window._frameProbeHeartbeatMaxMs,intervalMs)
+                    if (intervalMs > 100) {
+                        window._frameProbeHeartbeatOver100Ms++
+                        if (window._frameProbeHeartbeatLateEvents.length < 30)
+                            window._frameProbeHeartbeatLateEvents.push({
+                                timestampMs:now,intervalMs:intervalMs})
+                    }
+                }
+                window._frameProbeHeartbeatPrevMs=now
+            }
             function startFrameProbe(): var {
                 window._frameProbeIntervals = []
                 window._frameProbeSlowEvents = []
@@ -221,6 +248,13 @@ Scope {
                 window._frameProbePanelNonzeroFrames = 0
                 window._frameProbePanelChangedFrames = 0
                 window._frameProbePopupOpenFrames = 0
+                window._frameProbeHeartbeatPrevMs = 0
+                window._frameProbeHeartbeatCount = 0
+                window._frameProbeHeartbeatOver100Ms = 0
+                window._frameProbeHeartbeatMaxMs = 0
+                window._frameProbeHeartbeatLateEvents = []
+                window._frameProbeBarPrevProgress = -1
+                window._frameProbeBarChangedFrames = 0
                 window._frameProbePreviousMs = 0
                 window._frameProbeEnabled = true
                 return {output:window.outputName,started:true,maxIntervals:600}
@@ -248,8 +282,20 @@ Scope {
                     panelNonzeroFrames:window._frameProbePanelNonzeroFrames,
                     panelProgressChangedFrames:window._frameProbePanelChangedFrames,
                     popupOpenFrames:window._frameProbePopupOpenFrames,
-                    caveat:"includes idle gaps; not compositor present/GPU/FPS proof; motion counts only frameSwapped samples"
+                    barProgressChangedFrames:window._frameProbeBarChangedFrames,
+                    heartbeatSampleCount:window._frameProbeHeartbeatCount,
+                    heartbeatOver100Ms:window._frameProbeHeartbeatOver100Ms,
+                    heartbeatMaxIntervalMs:window._frameProbeHeartbeatMaxMs,
+                    heartbeatLateEvents:window._frameProbeHeartbeatLateEvents.slice(),
+                    caveat:"swap wall-clock gaps include idle; 50ms Qt timer lateness is only event-loop correlation, not GPU/compositor proof"
                 }
+            }
+            Timer {
+                id: frameHeartbeat
+                interval: 50
+                repeat: true
+                running: window._frameProbeEnabled
+                onTriggered: window.recordProbeHeartbeat(Date.now())
             }
             Connections {
                 target: field.Window.window
@@ -272,6 +318,12 @@ Scope {
                         window._frameProbePanelChangedFrames++
                     window._frameProbePreviousPanelProgress=panels
                     if (liquid.popupsOpen) window._frameProbePopupOpenFrames++
+                    const currentBarProgress=Number(window.barProgress ?? 0)
+                    if (window._frameProbeBarPrevProgress >= 0
+                            && Math.abs(currentBarProgress
+                                - window._frameProbeBarPrevProgress) > 0.001)
+                        window._frameProbeBarChangedFrames++
+                    window._frameProbeBarPrevProgress=currentBarProgress
                     if (window._frameProbePreviousMs > 0
                             && window._frameProbeIntervals.length < 600) {
                         const intervalMs = Math.max(0,now-window._frameProbePreviousMs)
@@ -283,6 +335,7 @@ Scope {
                             window._frameProbeSlowEvents.push({
                                 timestampMs:now, intervalMs:intervalMs,
                                 barVisible:Boolean(bar.visible),
+                                barProgress:Number(window.barProgress ?? 0),
                                 liquidPopupsOpen:Boolean(liquid.popupsOpen),
                                 popupMotion:liquid.popupSlots.filter(slot=>slot?.popup)
                                     .map(slot=>({

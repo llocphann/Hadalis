@@ -63,6 +63,32 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   acceptance is the basis for checking off this task. Archive after
   the normal seven-day retention window.
 
+- [ ] **Notification Center post-notification Popup has wrong size/placement and lags — owner report 2026-10-10 21:55 ICT:**
+  **NEW INDEPENDENT ISSUE; local desktop chatbot to diagnose.** Owner video
+  `2026-10-10_21.55.09.mp4` (1920×1200, 30fps, ~8.73s,
+  shared in ChatGPT, NOT a repository file) shows a recent notification
+  toast (~0.7–1.5s), followed by a connected right-hand Notification
+  Center opening with an abnormally tall/narrow silhouette
+  (~1.7–2.5s), changing apparent size/attachment around
+  ~2.7–2.9s, then appearing as a much shorter bottom-right
+  Notifications/Activity tabbed Popup (~2.9–4.1s). The change is
+  visually observable; exact frame timing, compositor involvement,
+  configured dimensions and causality are **NOT** yet measured.
+  This is distinct from the existing premature hover/bridge dismissal.
+  Repository source offers plausible investigation sites only:
+  `NotificationCenterPopup.qml` fixed requested implicit dimensions,
+  `AbyssPerimeter.qml` hosted popup span/depth/edge/join,
+  `AbyssBodyHost.qml` animation and retained/visual placement,
+  `AbyssBodyPlacement.js` allocator shrink/stack and
+  `AbyssGeometry.js` corner joins. Do not declare any of
+  these the cause without an actual native before/after trace.
+  **Technical analysis, video timeline, read-only native measurement
+  requirements and acceptance:**
+  [Notification Center post-alert sizing/lag investigation](../../docs/abyss/NOTIFICATION_CENTER_POST_ALERT_GEOMETRY_LAG_2026-10-10.md).
+  No runtime patch applied; keep OPEN until exact-SHA Niri capture,
+  controlled no-notification/with-notification reproduction,
+  verified initial/resting size and owner acceptance.
+
 - [ ] **Popup/Edgebar closes while hovered — received/updated 2026-10-10:**
   **Owner update, 2026-10-10 evening — LOCAL DESKTOP CHATBOT NEXT:**
   The owner retested TWO successive cloud hover/bridge fixes and explicitly

@@ -371,6 +371,21 @@ Scope {
                             requestedVisible:Boolean(p?.requestedVisible),
                             semanticHold:Boolean(p?._liquidSemanticHold),
                             lingerVisible:Boolean(p?._lingerVisible),
+                            // Read-only ownership inputs help distinguish
+                            // actual hover loss from configured grace holds.
+                            humanVisibleRequest:Boolean(p?.humanVisibleRequest),
+                            rawVisibleRequest:Boolean(p?._rawVisibleRequest),
+                            hoverActivates:Boolean(p?.hoverActivates),
+                            notificationHover: String(p?._liquidAnchor?.kind ?? "") === "notificationCenter"
+                                ? {
+                                    anchorHovered:Boolean(p?._anchorHovered),
+                                    entryBridgeHeld:Boolean(p?.entryBridgeHeld),
+                                    exitGraceHeld:Boolean(p?.exitGraceHeld),
+                                    hoverLeaseRequested:Boolean(p?.hoverLeaseRequested),
+                                    hoverSessionArmed:Boolean(p?.hoverSessionArmed),
+                                    hoverAllowed:Boolean(p?.hoverAllowed),
+                                    explicitForThisOutput:Boolean(p?.explicitForThisOutput)
+                                  } : null,
                             moduleHover:Boolean(p?.moduleHoverActive),
                             anchorHover:Boolean(p?._anchorHover?.hovered),
                             bodyHover:Boolean(p?._bodyHovered),

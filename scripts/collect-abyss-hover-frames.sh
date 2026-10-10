@@ -112,7 +112,7 @@ if [[ "$source_mismatch" == true ]]; then
     {
         printf 'ERROR: installed iNiR QML does not match this dev checkout.\n'
         printf 'Run the supported Hadalis setup update from this checkout, then restart iNiR.\n'
-        printf 'From repo: ./setup update  (follow maintainer setup instructions)\n'
+        printf 'From repo: ./setup update --local  (sync this dev checkout; skip git pull)\n'
         printf 'Then: inir restart; bash scripts/collect-abyss-hover-frames.sh\n'
         printf 'No FPS or hover conclusion can be drawn from this stale runtime.\n'
     } | tee "$output_dir/config-error.txt" >&2

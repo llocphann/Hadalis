@@ -21,6 +21,7 @@ Bar.StyledPopup {
 
     required property Item anchorItem
     property bool editorFocused: false
+    property bool entryBridgeHeld: false
     // Popup ownership is local to this output. Do not reuse timer.pinnedToBar:
     // that persistent state controls the independent Bar timer indicator.
     property bool popupPinned: false
@@ -62,13 +63,8 @@ Bar.StyledPopup {
     attachmentEdgeOverride: root.cornerAttachmentEdge
     attachmentThicknessOverride: root.cornerAttachmentThickness
     hoverActivates: true
-    // Use only the source edge and real popup body for hover ownership.
-    // Preserve the historical corner transfer allowance as a leave/enter
-    // debounce, not a free-standing bridge lease.
-    hoverTransferGraceMs: Math.max(260, Math.min(700,
-        Math.round(root.cornerAttachmentThickness * 6)))
     alternativeVisibleCondition: root.editorFocused || root.todoDialogOpen
-        || root.popupPinned
+        || root.entryBridgeHeld || root.popupPinned
     // Pre-arm click-to-focus before the first editor click. OnDemand does not
     // steal focus merely because the hover popup is visible.
     keyboardFocusOnDemand: true
@@ -91,7 +87,9 @@ Bar.StyledPopup {
     }
 
     function leaveEditorMode(): void {
+        entryBridgeTimer.stop()
         notesTrayHideTimer.stop()
+        root.entryBridgeHeld = false
         root.notesTrayOpen = false
         if (notesViewLoader.item) {
             notesViewLoader.item.flushPendingSave()
@@ -131,9 +129,18 @@ Bar.StyledPopup {
     }
     onSelectedNotesTabChanged: root.leaveEditorMode()
     onPresentationActiveChanged: {
-        if (presentationActive)
+        if (presentationActive) {
+            Qt.callLater(() => {
+                if (root.presentationActive && !root.editorFocused) {
+                    root.entryBridgeHeld = true
+                    entryBridgeTimer.restart()
+                }
+            })
             return
+        }
 
+        entryBridgeTimer.stop()
+        root.entryBridgeHeld = false
         if (notesViewLoader.item) {
             notesViewLoader.item.flushPendingSave()
             notesViewLoader.item.releaseEditorFocus()
@@ -144,6 +151,17 @@ Bar.StyledPopup {
     Component.onDestruction: {
         if (notesViewLoader.item)
             notesViewLoader.item.flushPendingSave()
+    }
+
+    // Give the pointer enough time to cross a bottom/left Bar owner before the
+    // shared popup hover hand-off takes over. This is only an entry bridge; once
+    // the body is reached, StyledPopup's normal full-body hover contract owns it.
+    property QtObject _entryBridgeTimer: Timer {
+        id: entryBridgeTimer
+        interval: Math.max(260, Math.min(700,
+            Math.round(root.cornerAttachmentThickness * 6)))
+        repeat: false
+        onTriggered: root.entryBridgeHeld = false
     }
 
     property QtObject _notesTrayHideTimer: Timer {

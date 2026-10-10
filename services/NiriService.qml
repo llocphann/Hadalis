@@ -513,7 +513,7 @@ Singleton {
 
                 const updatedWorkspaces = {}
                 for (const id in root.workspaces) {
-                    updatedWorkspaces[id] = id === focusedWindow.workspace_id ? updatedWs : root.workspaces[id]
+                    updatedWorkspaces[id] = String(id) === String(focusedWindow.workspace_id) ? updatedWs : root.workspaces[id]
                 }
                 root.workspaces = updatedWorkspaces
             }
@@ -532,7 +532,7 @@ Singleton {
 
         const updatedWorkspaces = {}
         for (const id in root.workspaces)
-            updatedWorkspaces[id] = id === data.workspace_id ? updatedWs : root.workspaces[id]
+            updatedWorkspaces[id] = String(id) === String(data.workspace_id) ? updatedWs : root.workspaces[id]
         root.workspaces = updatedWorkspaces
     }
 

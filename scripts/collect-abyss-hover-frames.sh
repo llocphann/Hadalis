@@ -6,6 +6,28 @@ set -uo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 output_dir="${1:-${TMPDIR:-/tmp}/hadalis-abyss-hover-$(date +%Y%m%d-%H%M%S)}"
 mkdir -p -- "$output_dir" || exit 1
+# Preserve a single uploadable bundle, including partial diagnostic evidence
+# when an IPC call fails. Keep the original exit status in the bundle.
+archive_capture() {
+    local rc=$?
+    trap - EXIT
+    printf 'collector_exit_status=%d\n' "$rc" > "$output_dir/run-result.txt"
+    local archive="${output_dir%/}.tar.gz"
+    if command -v tar >/dev/null 2>&1; then
+        if tar -czf "$archive" -C "$output_dir" .; then
+            printf 'UPLOAD ONLY THIS FILE: %s\n' "$archive"
+        else
+            printf 'ERROR: archive creation failed; raw evidence: %s\n' "$output_dir" >&2
+            if ((rc == 0)); then rc=3; fi
+        fi
+    else
+        printf 'ERROR: tar is unavailable; raw evidence: %s\n' "$output_dir" >&2
+        if ((rc == 0)); then rc=127; fi
+    fi
+    exit "$rc"
+}
+trap archive_capture EXIT
+
 if ! command -v qs >/dev/null 2>&1; then
     printf 'qs unavailable; no runtime test performed.\n' | tee "$output_dir/config-error.txt" >&2
     exit 127
@@ -83,6 +105,7 @@ qs_cmd=(qs -p "$resolved_config")
 
 # Phase 1: open/close/reverse the panel on the intended output while frame
 # samples are enabled. Do not interleave IPC polling into this window.
+printf 'PHASE 1/2: open, close and reverse Abyss panels during the next six seconds.\n' >&2
 if ! "${qs_cmd[@]}" ipc call abyssHoverProbe startFrames > "$output_dir/frame-start.txt" 2>&1; then
     printf 'Failed startFrames. Check %s/frame-start.txt and installed/checkout parity.\n' "$output_dir" >&2
     exit 1
@@ -95,6 +118,8 @@ fi
 
 # Phase 2: cross the Popup/Screen Edge seam, then enter empty desktop.
 # Snapshots are boolean state and geometry only, not user content.
+printf 'PHASE 2/2: OPEN A POPUP NOW and slowly cross its Screen Edge connector.\n' >&2
+printf 'Sampling hover for about 7 seconds; try to reproduce the dismissal.\n' >&2
 failed=0
 for ((i=0; i<40; i++)); do
     printf 'sample=%02d utc=%s\n' "$i" "$(date -u +%FT%T.%3NZ)" >> "$output_dir/hover-snapshots.log"
@@ -106,5 +131,5 @@ for ((i=0; i<40; i++)); do
 done
 printf 'snapshot_failures=%d\n' "$failed" >> "$output_dir/identity.txt"
 printf 'Diagnostic folder: %s\n' "$output_dir"
-printf 'Share identity.txt, frame-intervals.txt and hover-snapshots.log for diagnosis.\n'
+printf 'Archive created on exit; upload only the .tar.gz file printed below.\n'
 if ((failed>0)); then exit 2; fi

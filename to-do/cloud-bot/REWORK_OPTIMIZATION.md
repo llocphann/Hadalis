@@ -24,8 +24,20 @@ holds technical research; this file holds pending outcomes.
   input-source ownership or altering shader/animation cadence. Require
   pixel-union oracle, native pointer dwell/focus/click-through checks,
   visual parity and measured before/after; keep open until owner confirms
-  perceptibly smooth transitions. A static code reduction alone is not FPS
-  or desktop acceptance.
+  perceptibly smooth transitions. Candidate `6c10387d18aa1793d7ad2f2ef20eb37020d69abf`
+  now coalesces contiguous same-span SDF mask strips at construction, preserving
+  pixel union and reducing native Region/Instantiator objects. Across 576
+  independent 4-edge/scale/softness/radius/progress cases, static mask instances
+  fell from 22,752 to 10,080 (55.7% fewer **Region rectangles only**, not FPS,
+  CPU, GPU or RAM). Geometry contract test additions `38437f56` and native
+  hover fixture additions `5a2cb977` are committed; an offline V8 run of the
+  geometry test body passed 504,005 assertions with stubs. Source has **not**
+  passed Quickshell/native compositor, canonical exact-SHA or owner visual
+  acceptance. Next: serial native hover/geometry test first (Issues), then
+  collect comparable before/after frame pacing and cost on installed source;
+  if still visibly jerky, profile allocator/animation/ShaderEffect/wave frame
+  paths before proposing another lossless candidate. Do not conflate Region
+  reduction with a confirmed user-visible jank fix.
 
 - [ ] **Strict-lossless CPU/RAM/GPU reductions:** re-audit latest `dev` and
   promote high-value findings only after behavior, read/dependency order,

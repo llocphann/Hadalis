@@ -488,6 +488,32 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   Status remains OPEN pending held-pointer connector dwell,
   other Popup kinds and native regression confirmation.
 
+  **Follow-up diagnostic precision, not a product fix:**
+  `eb1be574f339fc5fb3661ca20a012dce4aa8544f`
+  exposes the already-existing StyledPopup source
+  HoverHandler's `scenePosition` ONLY while hovered.
+  `6f51143c30ad9137608dc6fee361f49ba270b56e`
+  does the same for the existing hosted popup content
+  handler and records `anchorScenePoint` and
+  `contentScenePoint` in `abyssHoverProbe.snapshot`.
+  Qt's HandlerPoint resets coordinates when there is
+  no pointer; both fields return null when unhovered.
+  The corner source and Perimeter body are in DIFFERENT
+  QQuickWindow coordinate systems: never treat these
+  as global coordinates or proof of cursor location
+  during a missed/cleared hover event. No new
+  input handlers, region masks, leases, timers or
+  popup rendering behavior were introduced.
+  `02b26956c02a1d64466bd2d28afb230892cdadb6`
+  corrects the collector's boolean-only popup cycle
+  summary by adding counts while keeping the legacy
+  observed flag. Reprocessing 17:44 showed opens
+  at #67/#81 and closes at #76/#97: two full cycles.
+  23/23 focused source/lease assertions still PASS
+  in an isolated JS source-level run. The new
+  coordinate fields and generic-edge transfer still
+  require native owner validation; issue remains OPEN.
+
 
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,

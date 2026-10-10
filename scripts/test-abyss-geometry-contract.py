@@ -50,7 +50,30 @@ for(const owner of ['top','bottom','left','right']) {
    assert.equal(JSON.stringify(rec),original,'native input does not mutate paint records');
    if(progress===0) {assert.equal(rows.length,0);continue;}
    const hit=popupInput(rec.content,w,h,ins,owner,rec.surface);
+   const legacy=popupInput(rec.content,w,h,ins,owner);
+   // Only real painted popups retain their tangent-limited outer physical
+   // Screen Edge. Content-only callers keep the original inner-seam hitbox.
+   assert.equal(owner==='top'?legacy.y:owner==='bottom'?legacy.y+legacy.height
+     :owner==='left'?legacy.x:legacy.x+legacy.width,
+     owner==='top'?ins.top:owner==='bottom'?h-ins.bottom
+     :owner==='left'?ins.left:w-ins.right,
+     'content-only caller must still stop at the inner seam');
    const tangent=horizontal(owner)?rec.content.x+rec.content.width/2:rec.content.y+rec.content.height/2;
+   const physicalPoint=owner==='left'?[.5,tangent]
+     :owner==='right'?[w-.5,tangent]
+     :owner==='top'?[tangent,.5]:[tangent,h-.5];
+   assert(rectContains(hit,physicalPoint[0],physicalPoint[1]),
+     'painted popup must retain hover across the physical Screen Edge');
+   assert(distance(physicalPoint[0],physicalPoint[1],w,h,ins,34,[rec],softness,radius)<0,
+     'physical input retention must follow painted geometry');
+   const outsideTangent=horizontal(owner)
+     ? [Math.max(0,rec.surface.x-2),physicalPoint[1]]
+     : [physicalPoint[0],Math.max(0,rec.surface.y-2)];
+   assert(!rectContains(hit,outsideTangent[0],outsideTangent[1]),
+     'physical hover must not expand to an output-wide strip');
+   if(scale===1 && softness===24 && progress===1 && radius===29 && nativeThickness===8)
+    assert(rows.some(row=>horizontal(owner)?row.height>1:row.width>1),
+      'adjacent identical shoulder strips should reuse a native Region');
    const bridgeX=owner==='left'?nativeThickness+2:owner==='right'?w-nativeThickness-2:tangent;
    const bridgeY=owner==='top'?nativeThickness+2:owner==='bottom'?h-nativeThickness-2:tangent;
    assert(distance(bridgeX,bridgeY,w,h,ins,34,[rec],softness,radius)<0,'bridge probe is painted');

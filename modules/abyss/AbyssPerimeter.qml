@@ -993,6 +993,29 @@ Scope {
                             ? ({ x: popupContentHover.point.scenePosition.x,
                                  y: popupContentHover.point.scenePosition.y })
                             : null
+                    // The native input mask still covers the painted connector,
+                    // but only its rectangular popup body may renew a hover
+                    // lease. Shoulder strips are visual/pointer transit, not
+                    // an independent semantic keep-open owner.
+                    readonly property bool realPopupBodyHovered:
+                        popupContentHover.hovered && styledPopupHost.acceptsInput
+                        && Geometry.rectContains(styledPopupHost.inputBounds,
+                            popupContentHover.point.scenePosition.x,
+                            popupContentHover.point.scenePosition.y)
+                        && !(styledPopupHost.controller?.sourceInputRegions ?? [])
+                            .some(rect=>Geometry.rectContains(rect,
+                                popupContentHover.point.scenePosition.x,
+                                popupContentHover.point.scenePosition.y))
+                    onRealPopupBodyHoveredChanged: {
+                        if (styledPopupHost.hostedPopup)
+                            styledPopupHost.hostedPopup._contentHovered =
+                                styledPopupHost.realPopupBodyHovered
+                    }
+                    onHostedPopupChanged: {
+                        if (styledPopupHost.hostedPopup)
+                            styledPopupHost.hostedPopup._contentHovered =
+                                styledPopupHost.realPopupBodyHovered
+                    }
                     readonly property string presentationKind: {
                         const explicitKind = String(
                             hostedPopup?.liquidPresentationKind ?? "")
@@ -1063,12 +1086,11 @@ Scope {
 
                     HoverHandler {
                         id: popupContentHover
+                        // Keep the existing broad inputFrame pointer tracker
+                        // for transfer; its live point is filtered to the
+                        // actual popup rectangle by realPopupBodyHovered.
                         parent: styledPopupHost.hoverParent
                         enabled: styledPopupHost.open
-                        onHoveredChanged: {
-                            if (styledPopupHost.hostedPopup)
-                                styledPopupHost.hostedPopup._contentHovered = hovered
-                        }
                     }
                 }
             }

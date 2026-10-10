@@ -7,6 +7,16 @@ that implementation is missing. Refetch current `dev` before diagnosing.
 ## Current failures and owner reports
 
 - [ ] **Popup/Edgebar closes while hovered — received/updated 2026-10-10:**
+  NEW OWNER REPRO 2026-10-10: moving the pointer across the gap/connection
+  between a Popup and its Screen Edge still loses hover/focus and automatically
+  dismisses the Popup. Owner supplied `2026-10-10_13.34.50.mp4` (31.93 s,
+  1920x1200, ~30 fps) in the conversation, showing multiple edge-attached
+  panels; the clip is not independently frame-timing evidence or an attached
+  repo fixture. Do not count the previous probe correction as a product fix.
+  Preserve native/Qt pointer focus and hover separately from keyboard focus;
+  require deliberate pointer transfer (physical frame → connector → body),
+  sustained dwell, fast reversal, all four edges, generic and StyledPopup,
+  Bar auto-hide leases and click-through to blank workspace.
   body and painted Screen Edge connections must retain hover. Pushed source
   `10311cd96892d86d86870d327d28b27e32df8fbd` repairs padding/interactive-child
   hover and coalesces Bar hold publication; its focused four-edge checks passed.

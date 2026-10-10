@@ -6,7 +6,7 @@ that implementation is missing. Refetch current `dev` before diagnosing.
 
 ## Current failures and owner reports
 
-- [ ] **P0 — fullscreen window retains hidden Screen Edges/Panel/Perimeter after switching to another window (owner report 2026-10-10):**
+- [x] **P0 — fullscreen window retains hidden Screen Edges/Panel/Perimeter after switching to another window (owner report 2026-10-10):**
   Reproduce on Niri: fullscreen client A, then open/focus window B in the
   same active workspace. Screen Edges, Abyss Panel and Perimeter reportedly
   disappear even though B is the foreground normal window. Source diagnosis:
@@ -55,7 +55,13 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   on a second output, and don't regress popup hover/lifecycle.
   If still failing, capture Niri workspaces/windows and
   `abyssHoverProbe.snapshot` with exact running source identity.
-  **Do not mark completed until owner confirms native behavior.**
+  **Owner accepted on 2026-10-10: fullscreen switch regression is fixed.**
+  Preserve the fix and the 14/14 focused source assertions.
+  Note that the separately supplied 17:06 diagnostic archive reports
+  an earlier checkout SHA (`418fcd9e`) and cannot by itself identify
+  the exact running fix revision; owner's explicit functional
+  acceptance is the basis for checking off this task. Archive after
+  the normal seven-day retention window.
 
 - [ ] **Popup/Edgebar closes while hovered — received/updated 2026-10-10:**
   NEW OWNER REPRO 2026-10-10: moving the pointer across the gap/connection
@@ -354,6 +360,43 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   the two grace timers and semantic source state before
   attempting a causal geometry workaround.
   **Popup defect acceptance remains OPEN.**
+
+  **Owner archive 2026-10-10 10:06:09Z (17:06:09 ICT):**
+  `hadalis-abyss-hover-20261010-170607.tar.gz`, on
+  `dev` checkout `418fcd9e9947cfadfe1b2453257751792875d623`,
+  exited `5` before measurement.
+  `shell.qml`, `AbyssPerimeter.qml` and `AbyssGeometry.js`
+  on disk all MATCH checkout, but registered
+  `abyssHostProbe.status()` returned
+  `family=abyss`, `shellEntryReady=true`,
+  `deferredPanelsReady=false`,
+  `perimeterLoaded=false`, `perimeterActive=false`,
+  `initialMountReady=false`, `nativeFirstFramesReady=false`,
+  `coldRecreatePending=true`, `coldRecreated=false`.
+  `abyssHoverProbe.snapshot` and `startFrames` both printed
+  `Target not found.` with CLI exit status 0. Therefore the
+  optional Perimeter handler had NOT been registered when
+  this one snapshot was taken; its absence is directly explained
+  by the deferred/initial-mount gating in
+  `shell.qml` and `ShellAbyssCriticalPanels.qml`.
+  A single sample does NOT prove whether loading was merely
+  delayed (e.g. immediately after shell restart) or permanently
+  stalled. There are NO hover or frame samples in this archive.
+  Popup loss and frame lag remain unmeasured by this run.
+
+  **Collector hardening `5bab2c774df7e2ecb5c0a446e3053a981323b1cd`:**
+  after on-disk parity check, poll `abyssHostProbe.status`
+  and `abyssHoverProbe.snapshot` at 250ms intervals for
+  no more than 25s until Abyss, deferred readiness, active
+  loaded Perimeter, first frame, complete cold re-create
+  and at least one ready output are confirmed. Log every
+  result to `readiness-trace.log` and final host/preflight
+  payloads to the SAME automatic one-file `.tar.gz`.
+  Give distinct exit 7 and archive evidence on timeout.
+  Collector never mutates input regions, remounts QML,
+  disables rendering or restarts the shell.
+  **Native readiness, real source→connector→popup passage,
+  and user-confirmed hover behavior are still OPEN.**
 
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,

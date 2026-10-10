@@ -96,7 +96,7 @@ const anchorPointFn = new Function('sourceHover', 'return (' + scenePointExpr(st
     'readonly property var hoverProbeScenePoint:', '        HoverHandler {') + ');');
 const contentPointFn = new Function('popupContentHover', 'return (' + scenePointExpr(abyss,
     'readonly property var hoverProbeContentScenePoint:',
-    '                    readonly property string presentationKind:') + ');');
+    '                    // The native input mask still covers the painted connector,') + ');');
 assert.deepEqual(anchorPointFn({ hovered: true, point: { scenePosition: { x: 13, y: 5 } } }),
     { x: 13, y: 5 });
 assert.equal(anchorPointFn({ hovered: false }), null);

@@ -115,7 +115,7 @@ source_mismatch=false
             source_mismatch=true
         fi
     done
-    printf 'capture=6s frame-only, then 40 bounded hover snapshots at 150ms spacing\n'
+    printf 'capture=6s frame-only, then 100 bounded hover snapshots at 150ms spacing\n'
     printf 'caveat=source checkout SHA is not proof of installed shell identity\n'
 } > "$output_dir/identity.txt"
 
@@ -161,11 +161,14 @@ fi
 # Phase 2: cross the Popup/Screen Edge seam, then enter empty desktop.
 # Snapshots are boolean state and geometry only, not user content.
 printf 'PHASE 2/2: OPEN A POPUP NOW and slowly cross its Screen Edge connector.\n' >&2
-printf 'Sampling hover for about 7 seconds; try to reproduce the dismissal.\n' >&2
+printf 'Sampling hover for about 24 seconds; reproduce the transfer and any dismissal.\n' >&2
 printf 'Two seconds to move the pointer away from this terminal...\n' >&2
 sleep 2
 failed=0
-for ((i=0; i<40; i++)); do
+popup_seen=0
+popup_dismissed_after_seen=0
+previous_popup_open=0
+for ((i=0; i<100; i++)); do
     printf 'sample=%02d utc=%s\n' "$i" "$(date -u +%FT%T.%3NZ)" >> "$output_dir/hover-snapshots.log"
     snapshot_rc=0
     snapshot_output="$("${qs_cmd[@]}" ipc call abyssHoverProbe snapshot 2>&1)" || snapshot_rc=$?
@@ -173,10 +176,28 @@ for ((i=0; i<40; i++)); do
     if ((snapshot_rc != 0)) || [[ "$snapshot_output" != *'"family":"abyss"'* ]]; then
         printf 'error=invalid_snapshot qs_exit=%d\n' "$snapshot_rc" >> "$output_dir/hover-snapshots.log"
         failed=$((failed + 1))
+    else
+        # Track only objective observed open/close transitions; do not infer
+        # physical mouse motion or a hover-loss cause from the last sample.
+        if [[ "$snapshot_output" == *'"liquidPopupsOpen":true'* ]]; then
+            popup_seen=1
+            previous_popup_open=1
+        elif ((previous_popup_open == 1)); then
+            popup_dismissed_after_seen=1
+            previous_popup_open=0
+        fi
     fi
     sleep .15
 done
-printf 'snapshot_failures=%d\n' "$failed" >> "$output_dir/identity.txt"
+{
+    printf 'snapshot_failures=%d\n' "$failed"
+    printf 'popup_seen_during_capture=%d\n' "$popup_seen"
+    printf 'popup_open_to_closed_transition_observed=%d\n' "$popup_dismissed_after_seen"
+} >> "$output_dir/identity.txt"
+if ((popup_seen == 0)); then
+    printf 'WARNING: no Popup opened during the 100 hover samples.\n' \
+        | tee "$output_dir/hover-not-observed.txt" >&2
+fi
 printf 'Diagnostic folder: %s\n' "$output_dir"
 printf 'Archive created on exit; upload only the .tar.gz file printed below.\n'
 if ((failed>0)); then exit 2; fi

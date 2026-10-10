@@ -78,8 +78,7 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   The local chatbot must investigate with real Niri/Quickshell pointer
   event/input-mask and semantic lifetime evidence before making a fix.
   **Complete technical notes, precise reproduction and acceptance:**
-  [Popup–Screen Edge native hover investigation]
-  (../../docs/abyss/POPUP_EDGE_HOVER_UNRESOLVED_2026-10-10.md).
+  [Popup–Screen Edge native hover investigation](../../docs/abyss/POPUP_EDGE_HOVER_UNRESOLVED_2026-10-10.md).
   Status **OPEN**, owner acceptance pending; no new runtime patch authorized
   by this revert/documentation action.
   NEW OWNER REPRO 2026-10-10: moving the pointer across the gap/connection

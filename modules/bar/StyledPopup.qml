@@ -311,6 +311,12 @@ LazyLoader {
         anchors.fill: parent
         enabled: root.hoverActivates && root._anchorReady
         readonly property bool hovered: sourceHover.hovered
+        // Read-only, scene-local coordinates, valid ONLY while hovered.
+        // Qt resets HandlerPoint when not tracking a point; never
+        // interpret (0,0) after leave as a genuine pointer position.
+        readonly property var hoverProbeScenePoint: sourceHover.hovered
+            ? ({ x: sourceHover.point.scenePosition.x,
+                 y: sourceHover.point.scenePosition.y }) : null
         HoverHandler {
             id: sourceHover
             onHoveredChanged: {

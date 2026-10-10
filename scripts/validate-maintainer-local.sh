@@ -311,6 +311,7 @@ run_check 'tracked Fish syntax' tracked_fish_syntax
 run_check 'Niri selected-fullscreen workspace regression' node scripts/test-niri-fullscreen-selection.mjs
 run_check 'NotificationCenter anchor hover lease regression' node scripts/test-notification-center-hover-lease.mjs
 run_check 'Abyss hover scene geometry diagnostic regression' node scripts/test-abyss-hover-geometry-probe.mjs
+run_check 'Abyss frame activity diagnostic regression' node scripts/test-abyss-frame-activity-probe.mjs
 run_check 'translation catalog structure' python3 translations/tools/l10n.py audit-all
 run_check 'translation source parity' python3 translations/tools/source-parity.py
 while IFS= read -r -d '' test_file; do

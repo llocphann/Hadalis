@@ -613,6 +613,38 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   Generic Popup, each screen edge, actual painted-pixel
   parity and definitive user acceptance remain OPEN.
 
+  **Owner archive 2026-10-10 11:31:32Z (18:31 local):**
+  `hadalis-abyss-hover-20261010-183130.tar.gz`, `dev`
+  checkout `48ea131296a474faca11eda3dbdd97e1efa0f1c4`,
+  installed `shell.qml`, `AbyssPerimeter.qml`, and
+  `AbyssGeometry.js` all MATCH. Collector exit=0,
+  Niri eDP-1 ready on poll 28 after ~14.4 seconds.
+  All 100/100 JSON hover snapshots valid, four
+  `notificationCenter` open→closed episodes:
+  order 3 #08–14, order 4 #19–24, order 5 #27–31,
+  order 6 #34–84; counters `4` and `4` correct.
+  True hosted hover on connector strips was observed
+  at #21 (1903.39,1199), #28 (1887.78,1187.29),
+  #35 (1903.39,1191.19). In order 6, a transient
+  complete hover loss at #36 was recovered at #37
+  by the existing exitGraceHeld lease; then hosted
+  `contentHover=true` continuously from #37 to #81
+  (approximately 45 snapshots over ~10 seconds),
+  with fully open input width 420px and
+  `hoverLeaseRequested=true`. A sustained stationary
+  point (1782.41,1167.78) at #48–79 retained the
+  Popup; no spontaneous hover-driven dismissal while
+  continuously hovered was observed. At #82–83 all
+  hovered flags and scene point were absent, grace
+  began, and #84 had requestedVisible=false.
+  No global pointer coordinates on leave, so the
+  closed episodes do NOT prove a hit-test hole.
+  Connector-to-body and stable-body NotificationCenter
+  subcase has positive repeated native evidence.
+  Do NOT generalize to other popup types, corners,
+  entire multi-edge geometry or user acceptance.
+  **General product hover issue remains OPEN.**
+
 
 - [ ] **Canonical validation — updated 2026-10-10:** exact committed SHA
   `10311cd96892d86d86870d327d28b27e32df8fbd` finished **FAIL: 327 PASS, 8 FAIL,

@@ -7,6 +7,9 @@ holds technical research; this file holds pending outcomes.
 ## Resource use and responsiveness
 
 - [ ] **Abyss Panel motion stutter — received/updated 2026-10-10:**
+  Specific owner Notification Edgebar-hover and Recording-start stutters have
+  independent reproductions in [Issues](ISSUES.md); keep this broad
+  presentation optimization separate from those correctness investigations.
   Owner reports visible judder/jank while Abyss panels/Popups appear, disappear
   and transfer across edges; supplemental video `2026-10-10_13.34.50.mp4`
   is in the request (31.93 s at ~30 fps capture), not a frame-time/CPU/GPU
@@ -554,6 +557,48 @@ holds technical research; this file holds pending outcomes.
   whole-session resource acceptance remain separate.
 
 ## Existing UI and layout
+
+- [ ] **Quickshell typography consistency — owner request 2026-10-10:**
+  Standardize inconsistent text appearance across Quickshell: review font
+  family/fallback, size, weight, text color, alignment, line height and theme
+  roles. Reuse shared text tokens without removing intentional heading/body
+  hierarchy or legitimate Abyss/Waffle distinctions. Qualify Panel, Popup,
+  Settings and edit surfaces at varying scales and light/dark themes. State:
+  READY for UI audit; owner visual acceptance pending.
+
+- [ ] **Compact Edit Abyss Layout control bar — owner request 2026-10-10:**
+  Redesign controls for BOTH horizontal and vertical edit orientations to
+  occupy less room while preserving discoverable actions, module context,
+  per-edge editing, Cancel/Undo/Done, input targets and narrow-screen access.
+  Test four edges, long labels, expanded edit controls and interaction with
+  screen-edge modules; coordinate with new multi-selection functionality in
+  [New features](NEW_FEATURES.md). State: READY for compact design; native
+  input/layout and owner visual acceptance pending.
+
+- [ ] **Wi-Fi and Bluetooth Popups about 35% smaller — owner request 2026-10-10:**
+  Reduce each Popup's displayed footprint by roughly 35% (target about 65%
+  of previous width/height where viable). Preserve readable status/rows,
+  usable hit targets, connection/discovery, loading/error/empty states and
+  scroll access. Test long networks/devices, small screens, all attached edges
+  and scaling. Separate from existing Wi-Fi/Bluetooth missing-text bug in
+  [Issues](ISSUES.md). State: READY for responsive sizing; owner acceptance open.
+
+- [ ] **Monitor Arrangement tiles about 30% smaller — owner request 2026-10-10:**
+  Reduce UI monitor tiles by roughly 30% (about 70% of former displayed width/
+  height), never real display resolution or compositor placement. Maintain
+  correct aspect labels, selection/dragging, snapping, multi-monitor layouts,
+  non-overlapping controls and responsive hit targets. Related to existing
+  Utilities acceptance in [New features](NEW_FEATURES.md), not a new backend.
+  State: READY for presentation audit and owner desktop acceptance.
+
+- [ ] **Quick Notes Edgebar scrolling sensitivity — owner request 2026-10-10:**
+  Tune wheel/touchpad scroll speed for predictable navigation, including
+  Shift-held scrolling while performing bulk selection. Inspect modifier/event
+  routing and nested scroll containers; preserve range selection, existing
+  note focus and selection state without unexpected horizontal scrolling,
+  acceleration or skipped notes. Check long lists, trackpad/wheel, different
+  scales and ordinary versus Shift navigation. State: READY for interaction
+  tuning; preferred speed and owner acceptance require native input retest.
 
 - [ ] **Edit Dashboard toolbar slide — received/updated 2026-10-10:** pushed
   `8c673129b58dbde73bf31c82df25c1085bf63e15` slides full-size connected controls

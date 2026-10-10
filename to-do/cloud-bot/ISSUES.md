@@ -807,6 +807,47 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   Current canonical passes that contract; owner Polkit/focus acceptance is open.
   A previous or focused PASS never closes the overall gate.
 
+- [ ] **Notification Popup stutter on Notification Edgebar hover and Recording start — owner report 2026-10-10:**
+  Two distinct triggers need independent reproductions: (1) while a
+  Notification Popup is open, hovering its Notification Edgebar opens the
+  attached surface and causes visible stutter; (2) clicking **Record** starts
+  recording, presents a Notification Popup and causes visible stutter. Do not
+  confuse recording **start** with the separately tracked **Recording saved**
+  notification on recording **stop** above, or with the pointer-hover dismissal
+  issue. Root cause is UNVERIFIED; do not assume geometry, Pyramid, rendering,
+  recorder or notification ownership before tracing them.
+  Next: on an exact-SHA installed Niri/Quickshell desktop capture Popup/Edgebar
+  lifetime, hover and recorded-frame timestamps, p50/p95/p99/dropped frames,
+  compositor/main-thread load, and comparison runs without notification/
+  recording; test cold/warm transitions and rapid hover. Acceptance: both
+  triggers are smooth with notifications and recording still functional and
+  confirmed by the owner. Link: generalized presentation jank is tracked in
+  [Rework](REWORK_OPTIMIZATION.md). State: OPEN, native evidence pending.
+
+- [ ] **Detailed Weather Popup background does not follow theme — owner report 2026-10-10:**
+  Several component/card backgrounds remain grey rather than adapting to the
+  selected theme. Audit `modules/bar/weather/WeatherPopupContent.qml` and
+  child theme bindings, including inherited/default backgrounds. Correct
+  fixed-grey surfaces without flattening meaningful component hierarchy;
+  verify light/dark, wallpaper color changes, open/reopen, readable contrast
+  and Abyss connected presentation. State: OPEN; needs theme screenshots,
+  source validation and owner acceptance.
+
+- [ ] **Edit Abyss Layout Media IPC preview incorrectly shows Volume IPC — owner report 2026-10-10:**
+  The editor presents the **Volume IPC** sample when **Media IPC** is selected.
+  Trace IPC preview type-to-component routing and restore the proper Media IPC
+  sample while retaining a correct Volume IPC preview and actual IPC behavior.
+  Test horizontal/vertical layout, four Screen Edges, Cancel/Done and per-output
+  save/reopen. State: OPEN; source diagnosis and native visual acceptance pending.
+
+- [ ] **Music tab Results / Queue scroll and scrollbar missing — owner report 2026-10-10:**
+  Result, Queue and potentially other affected Music tab lists do not scroll
+  and show no scrollbar. Repair content height/viewport/event routing and
+  render theme-consistent scrollbar when content overflows. Check wheel,
+  touchpad, drag and keyboard scrolling through long results and Queue in
+  compact/expanded layouts; keep selection, search and playback behavior.
+  State: OPEN; source investigation and owner desktop acceptance pending.
+
 - [ ] **New boot/runtime warnings:** owner's log runs `0ea54cc09` and reaches
   the first frame; no startup Type-unavailable failure is shown. Investigate
   `qt.svg` unresolved paint server `a`, oversized SVG buffer, DelegateModel cancel
@@ -817,7 +858,14 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   and buffer messages remains open. Trace the model reset and popup/text-field
   focus lifecycle independently; preserve the redacted Weather location.
 
-- [ ] **Weather popup overlap:** reproduce the video at
+- [ ] **Weather popup overlap / Calendar-Weather Pyramid flicker — owner update 2026-10-10:**
+  New case: rapidly hover between Calendar Popup and Weather Popup; Weather
+  intermittently flashes. PyramidPopup coordination is a *suspected*, not
+  established, cause. Inspect actual `AbyssPyramidCoordinator.qml` scheduling,
+  source/body hover leases, z-order and native open/retract transitions;
+  preserve Calendar and Weather functionality. Acceptance includes fast
+  back-and-forth hover without flashes on relevant edges, exact-SHA Niri
+  evidence and owner retest. Earlier case still OPEN: reproduce the video at
   `/home/llocphann/Videos/2026-10-10_00.19.58.mp4`, especially rapid Clock/other
   module → Weather transfer. The actual four-edge fixture passed 1,148 geometry
   samples at `0ea54cc09`; it did not change Weather production code or prove
@@ -848,11 +896,17 @@ that implementation is missing. Refetch current `dev` before diagnosing.
   Stop → long idle → Play, queue/delete, Shuffle/Repeat and actual problematic
   FLAC files. Do not alter owner music bytes, queue or output routing as a test.
 
-- [ ] **Volume +/- and DSP crackle:** qualify the existing relative-volume
-  queue against actual default/output routing and repeated keypresses. Verify
-  selecting non-flat EQ then opening any popup/Sidebar/Dashboard does not resend
-  the preset, restart the analyzer or cause crackle. CAVA warm/lifecycle fixtures
-  are bounded evidence; actual EasyEffects/player-switch audio remains open.
+- [ ] **Volume +/- and DSP crackle — owner update 2026-10-10:**
+  Intermittent audible distortion occurs when an EQ DSP-bearing Popup opens
+  during active media playback. The suggested cause (preset automatically
+  reapplied on each Popup open/close) remains an UNVERIFIED hypothesis.
+  Qualify existing relative-volume queue, default/output routing and repeated
+  keypresses. Observe DSP/EasyEffects preset writes, lifecycle subscriptions,
+  analyzer restarts and output changes before attributing causality.
+  Verify that selecting non-flat EQ and repeatedly opening/closing EQ Popups,
+  Sidebar and Dashboard does not resend the preset, disrupt playback or crackle.
+  CAVA warm/lifecycle fixtures are bounded source evidence; real audio, device
+  and owner acceptance remain OPEN. Avoid changing owner presets during probes.
 
 - [ ] **Edit Widgets / Dashboard Layout offset:** verify the connected toolbar
   stays outside the workspace with real widget dimensions. Exercise desktop

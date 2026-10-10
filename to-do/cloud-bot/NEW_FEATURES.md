@@ -4,6 +4,17 @@ Work after [Issues/bugs](ISSUES.md) and [Rework/optimization](REWORK_OPTIMIZATIO
 Source-implemented features below still need their stated delivery/owner gates;
 do not reimplement them solely because a checkbox is open.
 
+- [ ] **Edit Abyss Layout Screen Edge module multi-selection — owner request 2026-10-10:**
+  Add an explicit multiple-selection mode for Screen Edge modules while
+  **Edit Abyss Layout** is active. Show which modules are selected, support
+  add/remove/clear selection and coherent subsequent edits when several targets
+  are selected. Keep normal non-edit behavior intact; define guarded batch
+  actions instead of silently changing unrelated modules. Test horizontal and
+  vertical edges, cross-edge/per-output selection, drag/snapping and Cancel/
+  Undo/Done/save semantics; coordinate with compact toolbar redesign in
+  [Rework](REWORK_OPTIMIZATION.md). State: NEW, design/implementation and owner
+  input acceptance pending.
+
 - [ ] **Quick Notes image delivery:** Hadalis `add29d6f8` implements shared
   paste/import, original-byte storage, Markdown persistence and preview with
   stable asynchronous note ownership. Hadalird `b0c975a7f40bdf531012be326bc728f5c014b696`

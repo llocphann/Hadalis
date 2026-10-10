@@ -198,7 +198,10 @@ Scope {
             // Quiescent by default: these fields are only touched by the
             // abyssHoverProbe.startFrames/stopFrames diagnostic IPC.
             property bool _frameProbeEnabled: false
-            property int _frameProbePreviousMs: 0
+            // Date.now() is epoch milliseconds (~1.8e12), far beyond QML
+            // int's 32-bit range. A wrapped previous timestamp produces
+            // fictitious trillion-millisecond frame intervals.
+            property real _frameProbePreviousMs: 0
             property var _frameProbeIntervals: []
             function startFrameProbe(): var {
                 window._frameProbeIntervals = []
